@@ -18,6 +18,10 @@ import com.cloudflow.common.statemachine.core.StateMachine;
 import com.cloudflow.common.statemachine.core.StateMachineRegistry;
 import com.cloudflow.crm.enums.CrmLeadStatus;
 import com.cloudflow.crm.enums.CrmLeadEvent;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.crm.event.LeadConvertedEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +35,9 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
     private final ICrmCustomerService crmCustomerService;
     private final CrmCustomerMapper customerMapper;
     private final StateMachineRegistry stateMachineRegistry;
+    private final OutboxPublisher outboxPublisher;
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     public PageResult<CrmLead> queryPage(CrmLead query, PageQuery pageQuery) {
@@ -133,6 +140,33 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
         lead.setUpdateBy(currentUserName());
         lead.setUpdateTime(now());
         updateById(lead);
+
+        // M1-7: 发布事件到 Outbox
+        LeadConvertedEvent event = new LeadConvertedEvent();
+        event.setLeadId(lead.getLeadId());
+        event.setLeadNo(lead.getLeadNo());
+        event.setLeadName(lead.getLeadName());
+        event.setCustomerId(persistedCustomer.getCustomerId());
+        event.setCustomerName(persistedCustomer.getCustomerName());
+        event.setCustomerType(persistedCustomer.getCustomerType());
+        event.setOriginalOwnerId(lead.getOwnerId());
+        event.setOriginalOwnerName(lead.getOwnerName());
+        event.setNewOwnerId(persistedCustomer.getOwnerId());
+        event.setNewOwnerName(persistedCustomer.getOwnerName());
+        event.setConvertedAt(now());
+
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("LEAD_CONVERTED")
+                    .sourceModule("cloudflow-crm")
+                    .sourceId(lead.getLeadId())
+                    .payload(OBJECT_MAPPER.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("线索转客户事件发布失败, leadId=" + lead.getLeadId() + ", error=" + e.getMessage());
+        }
+
         return persistedCustomer.getCustomerId();
     }
 

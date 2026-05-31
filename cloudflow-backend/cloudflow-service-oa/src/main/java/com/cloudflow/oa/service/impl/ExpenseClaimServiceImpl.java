@@ -35,6 +35,10 @@ import com.cloudflow.common.statemachine.core.StateMachine;
 import com.cloudflow.common.statemachine.core.StateMachineRegistry;
 import com.cloudflow.oa.enums.ExpenseClaimStatus;
 import com.cloudflow.oa.enums.ExpenseClaimEvent;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.oa.event.ExpenseClaimSubmittedEvent;
+import com.cloudflow.oa.event.ExpenseClaimPaidEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -83,6 +87,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
     @Autowired
     private StateMachineRegistry stateMachineRegistry;
+
+    @Autowired
+    private OutboxPublisher outboxPublisher;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -267,7 +274,36 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                     claim.getUserName(), claim.getUserId(), e);
         }
 
-        return updateById(claim);
+        boolean updated = updateById(claim);
+
+        // M1-7: 发布事件到 Outbox
+        if (updated) {
+            ExpenseClaimSubmittedEvent event = new ExpenseClaimSubmittedEvent();
+            event.setClaimId(claim.getId());
+            event.setClaimNo(claim.getClaimNo());
+            event.setUserId(claim.getUserId());
+            event.setUserName(claim.getUserName());
+            event.setTotalAmount(claim.getTotalAmount());
+            event.setCategory(claim.getCategory());
+            event.setDeptName(claim.getDeptName());
+            event.setExceededStandard(claim.getExceededStandard() != null && claim.getExceededStandard() == 1);
+            event.setBudgetExceeded(claim.getBudgetExceeded() != null && claim.getBudgetExceeded() == 1);
+            event.setSubmittedAt(LocalDateTime.now());
+
+            try {
+                BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                        .eventType("EXPENSE_CLAIM_SUBMITTED")
+                        .sourceModule("cloudflow-oa")
+                        .sourceId(claim.getId())
+                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .build();
+                outboxPublisher.publish(envelope);
+            } catch (Exception e) {
+                log.warn("报销单提交事件发布失败, claimId=" + claim.getId() + ", error=" + e.getMessage());
+            }
+        }
+
+        return updated;
     }
 
     @Override
@@ -290,6 +326,27 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         boolean updated = updateById(claim);
         if (updated) {
             writeoffBudget(claim);
+
+            // M1-7: 发布事件到 Outbox
+            ExpenseClaimPaidEvent event = new ExpenseClaimPaidEvent();
+            event.setClaimId(claim.getId());
+            event.setClaimNo(claim.getClaimNo());
+            event.setUserId(claim.getUserId());
+            event.setUserName(claim.getUserName());
+            event.setTotalAmount(claim.getTotalAmount());
+            event.setPaidAt(LocalDateTime.now());
+
+            try {
+                BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                        .eventType("EXPENSE_CLAIM_PAID")
+                        .sourceModule("cloudflow-oa")
+                        .sourceId(claim.getId())
+                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .build();
+                outboxPublisher.publish(envelope);
+            } catch (Exception e) {
+                log.warn("报销单打款事件发布失败, claimId=" + claim.getId() + ", error=" + e.getMessage());
+            }
         }
         return updated;
     }

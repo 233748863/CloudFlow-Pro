@@ -19,6 +19,12 @@ import com.cloudflow.oa.mapper.OaInvoiceWriteoffMapper;
 import com.cloudflow.oa.service.IOaInvoiceService;
 import com.cloudflow.oa.service.remote.RemoteCrmService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.oa.event.InvoiceWriteoffEvent;
+import com.cloudflow.oa.event.InvoiceVoidEvent;
+import com.cloudflow.oa.event.InvoiceBoundEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +44,9 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
     private final BizPaymentRequestMapper paymentRequestMapper;
     private final OaContractMapper contractMapper;
     private final RemoteCrmService remoteCrmService;
+    private final OutboxPublisher outboxPublisher;
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     public PageResult<OaInvoice> queryPage(OaInvoice query, PageQuery pageQuery) {
@@ -117,6 +126,33 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
         if (updated) {
             syncReceivableInvoiceStatus(invoice, BigDecimal.ZERO, null);
             syncRelatedBusinessStatus(invoice);
+
+            // M1-7: 发布事件到 Outbox
+            InvoiceBoundEvent event = new InvoiceBoundEvent();
+            event.setInvoiceId(invoice.getInvoiceId());
+            event.setInvoiceCode(invoice.getInvoiceCode());
+            event.setInvoiceNo(invoice.getInvoiceNo());
+            event.setInvoiceDirection(invoice.getInvoiceDirection());
+            event.setGrossAmount(invoice.getGrossAmount());
+            event.setCustomerId(invoice.getCustomerId());
+            event.setCustomerName(invoice.getCustomerName());
+            event.setContractId(invoice.getContractId());
+            event.setContractNo(invoice.getContractNo());
+            event.setExpenseClaimId(invoice.getExpenseClaimId());
+            event.setPaymentRequestId(invoice.getPaymentRequestId());
+            event.setBoundAt(LocalDateTime.now());
+
+            try {
+                BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                        .eventType("INVOICE_BOUND")
+                        .sourceModule("cloudflow-oa")
+                        .sourceId(invoice.getInvoiceId())
+                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .build();
+                outboxPublisher.publish(envelope);
+            } catch (Exception e) {
+                log.warn("发票绑定事件发布失败, invoiceId=" + invoice.getInvoiceId() + ", error=" + e.getMessage());
+            }
         }
         return updated;
     }
@@ -147,6 +183,33 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
         if (updated) {
             syncReceivableInvoiceStatus(invoice, totalWriteoff, writeoff.getWriteoffDate());
             syncRelatedBusinessStatus(invoice);
+
+            // M1-7: 发布事件到 Outbox
+            InvoiceWriteoffEvent event = new InvoiceWriteoffEvent();
+            event.setInvoiceId(invoice.getInvoiceId());
+            event.setInvoiceCode(invoice.getInvoiceCode());
+            event.setInvoiceNo(invoice.getInvoiceNo());
+            event.setInvoiceDirection(invoice.getInvoiceDirection());
+            event.setGrossAmount(invoice.getGrossAmount());
+            event.setWriteoffAmount(writeoff.getWriteoffAmount());
+            event.setTotalWriteoffAmount(totalWriteoff);
+            event.setStatus(invoice.getStatus());
+            event.setWriteoffDate(writeoff.getWriteoffDate());
+            event.setCustomerId(invoice.getCustomerId());
+            event.setContractId(invoice.getContractId());
+            event.setWriteoffAt(LocalDateTime.now());
+
+            try {
+                BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                        .eventType("INVOICE_WRITEOFF")
+                        .sourceModule("cloudflow-oa")
+                        .sourceId(invoice.getInvoiceId())
+                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .build();
+                outboxPublisher.publish(envelope);
+            } catch (Exception e) {
+                log.warn("发票核销事件发布失败, invoiceId=" + invoice.getInvoiceId() + ", error=" + e.getMessage());
+            }
         }
         return updated;
     }
@@ -163,6 +226,30 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
         if (updated) {
             syncReceivableInvoiceStatus(invoice, BigDecimal.ZERO, null);
             syncRelatedBusinessStatus(invoice);
+
+            // M1-7: 发布事件到 Outbox
+            InvoiceVoidEvent event = new InvoiceVoidEvent();
+            event.setInvoiceId(invoice.getInvoiceId());
+            event.setInvoiceCode(invoice.getInvoiceCode());
+            event.setInvoiceNo(invoice.getInvoiceNo());
+            event.setInvoiceDirection(invoice.getInvoiceDirection());
+            event.setGrossAmount(invoice.getGrossAmount());
+            event.setRemark(remark);
+            event.setCustomerId(invoice.getCustomerId());
+            event.setContractId(invoice.getContractId());
+            event.setVoidAt(LocalDateTime.now());
+
+            try {
+                BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                        .eventType("INVOICE_VOID")
+                        .sourceModule("cloudflow-oa")
+                        .sourceId(invoice.getInvoiceId())
+                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .build();
+                outboxPublisher.publish(envelope);
+            } catch (Exception e) {
+                log.warn("发票作废事件发布失败, invoiceId=" + invoice.getInvoiceId() + ", error=" + e.getMessage());
+            }
         }
         return updated;
     }

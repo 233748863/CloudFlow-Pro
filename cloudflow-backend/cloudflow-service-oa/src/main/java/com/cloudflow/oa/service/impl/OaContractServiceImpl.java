@@ -28,6 +28,11 @@ import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.lock.DistributedLock;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.oa.event.ContractCreatedEvent;
+import com.cloudflow.oa.event.ContractSubmittedEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -57,6 +62,9 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     private final IOaTraceEventService oaTraceEventService;
     private final IOaRiskAlertService oaRiskAlertService;
     private final IOaContractAmountThresholdService oaContractAmountThresholdService;
+    private final OutboxPublisher outboxPublisher;
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     public PageResult<OaContract> queryPage(OaContract query, PageQuery pageQuery) {
@@ -96,6 +104,34 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
                 OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(), "CONTRACT_CREATED",
                 "合同创建", contract.getContractNo() + " / " + contract.getContractName(),
                 UserContext.getUserId(), resolveUserName(), null);
+
+        // M1-7: 发布事件到 Outbox
+        ContractCreatedEvent event = new ContractCreatedEvent();
+        event.setContractId(contract.getContractId());
+        event.setContractNo(contract.getContractNo());
+        event.setContractName(contract.getContractName());
+        event.setContractType(contract.getContractType());
+        event.setCounterpartyName(contract.getCounterpartyName());
+        event.setAmount(contract.getAmount());
+        event.setCurrency(contract.getCurrency());
+        event.setOwnerId(contract.getOwnerId());
+        event.setOwnerName(contract.getOwnerName());
+        event.setStartDate(contract.getStartDate());
+        event.setEndDate(contract.getEndDate());
+        event.setCreatedAt(LocalDateTime.now());
+
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("CONTRACT_CREATED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(contract.getContractId())
+                    .payload(OBJECT_MAPPER.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("合同创建事件发布失败, contractId=" + contract.getContractId() + ", error=" + e.getMessage());
+        }
+
         return contract.getContractId();
     }
 
@@ -208,6 +244,33 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
                 OaContractConstants.BUSINESS_TYPE_APPROVAL, id, "CONTRACT_SUBMITTED",
                 "合同提交审批", contract.getContractNo() + " 已进入审批",
                 UserContext.getUserId(), resolveUserName(), null);
+
+        // M1-7: 发布事件到 Outbox
+        if (updated) {
+            ContractSubmittedEvent event = new ContractSubmittedEvent();
+            event.setContractId(contract.getContractId());
+            event.setContractNo(contract.getContractNo());
+            event.setContractName(contract.getContractName());
+            event.setContractType(contract.getContractType());
+            event.setAmount(contract.getAmount());
+            event.setOwnerId(contract.getOwnerId());
+            event.setOwnerName(contract.getOwnerName());
+            event.setDeptName(contract.getDeptName());
+            event.setSubmittedAt(LocalDateTime.now());
+
+            try {
+                BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                        .eventType("CONTRACT_SUBMITTED")
+                        .sourceModule("cloudflow-oa")
+                        .sourceId(contract.getContractId())
+                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .build();
+                outboxPublisher.publish(envelope);
+            } catch (Exception e) {
+                log.warn("合同提交事件发布失败, contractId=" + contract.getContractId() + ", error=" + e.getMessage());
+            }
+        }
+
         return updated;
     }
 
