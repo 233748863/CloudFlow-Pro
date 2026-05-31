@@ -9,6 +9,7 @@ import com.cloudflow.oa.config.NotificationWebSocketHandler;
 import com.cloudflow.oa.domain.SysNotice;
 import com.cloudflow.oa.mapper.SysNoticeMapper;
 import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Async;
@@ -91,6 +92,7 @@ public class SysNoticeServiceImpl implements ISysNoticeService {
     }
 
     @Override
+    @Audit(name = "删除通知")
     public void deleteNotice(Long noticeId) {
         noticeMapper.deleteById(noticeId);
     }

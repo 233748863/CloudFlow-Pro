@@ -10,6 +10,7 @@ import com.cloudflow.oa.domain.vo.OaExpenseExceedDetailVO;
 import com.cloudflow.oa.domain.vo.OaExpenseExceedResultVO;
 import com.cloudflow.oa.mapper.OaExpenseStandardMapper;
 import com.cloudflow.oa.service.IOaExpenseStandardService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -92,6 +93,7 @@ public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
 
     @Override
     @Transactional
+    @Audit(name = "更新报销标准")
     public boolean update(OaExpenseStandard standard) {
         if (standard == null || standard.getStandardId() == null) {
             throw new IllegalArgumentException("ID 必填");

@@ -11,6 +11,7 @@ import com.cloudflow.workflow.mapper.WfTaskCandidateMapper;
 import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
 import com.cloudflow.workflow.service.IWorkflowBatchService;
 import com.cloudflow.workflow.service.remote.RemoteUserService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

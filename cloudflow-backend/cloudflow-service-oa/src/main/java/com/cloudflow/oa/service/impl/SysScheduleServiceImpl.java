@@ -7,6 +7,7 @@ import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.SysScheduleEventMapper;
 import com.cloudflow.oa.service.ISysScheduleService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -58,6 +59,7 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
     @Override
     @Transactional
     @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#event.creatorId", condition = "#event != null && #event.creatorId != null")
+    @Audit(name = "更新日程")
     public boolean updateEvent(SysScheduleEvent event) {
         // 1. 业务配置校验
         validateBookingConstraints(event);

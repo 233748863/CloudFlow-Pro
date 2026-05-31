@@ -15,6 +15,7 @@ import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.mapper.SysConsumableMapper;
 import com.cloudflow.oa.mapper.SysSupplierMapper;
 import com.cloudflow.oa.service.IConsumableService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

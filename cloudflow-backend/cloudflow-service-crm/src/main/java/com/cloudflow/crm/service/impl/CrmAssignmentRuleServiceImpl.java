@@ -7,6 +7,7 @@ import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmAssignmentRule;
 import com.cloudflow.crm.mapper.CrmAssignmentRuleMapper;
 import com.cloudflow.crm.service.ICrmAssignmentRuleService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -43,6 +44,7 @@ public class CrmAssignmentRuleServiceImpl extends CrmServiceSupport<CrmAssignmen
     }
 
     @Override
+    @Audit(name = "更新分配规则")
     public boolean updateRule(CrmAssignmentRule rule) {
         if (rule == null || rule.getRuleId() == null) {
             throw new IllegalArgumentException("规则ID不能为空");

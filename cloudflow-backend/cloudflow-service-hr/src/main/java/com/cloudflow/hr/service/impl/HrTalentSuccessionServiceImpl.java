@@ -22,6 +22,7 @@ import com.cloudflow.hr.mapper.HrTalentSuccessionPlanMapper;
 import com.cloudflow.hr.mapper.HrTalentSuccessorMapper;
 import com.cloudflow.hr.service.IHrTalentSuccessionService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +70,7 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新继任计划")
     public void updatePlan(Long planId, HrTalentSuccessionPlanDTO dto) {
         crudService.updateProperties(HrTalentSuccessionPlan.class, planId,
                 MapConverters.toMap(dto, objectMapper));

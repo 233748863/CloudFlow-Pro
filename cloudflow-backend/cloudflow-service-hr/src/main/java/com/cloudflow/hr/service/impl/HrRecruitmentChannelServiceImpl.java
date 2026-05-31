@@ -6,6 +6,7 @@ import com.cloudflow.hr.domain.vo.recruitment.HrChannelStatVO;
 import com.cloudflow.hr.mapper.HrCandidateMapper;
 import com.cloudflow.hr.mapper.HrRecruitmentChannelMapper;
 import com.cloudflow.hr.service.IHrRecruitmentChannelService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

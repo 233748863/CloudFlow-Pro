@@ -27,6 +27,7 @@ import com.cloudflow.workflow.service.IWfDefinitionService;
 import com.cloudflow.workflow.service.ScriptExecutionPolicy;
 import com.cloudflow.workflow.service.WorkflowAuditService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -301,6 +302,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     }
 
     @Override
+    @Audit(name = "删除流程定义")
     public R<?> deleteProcessDefinition(String definitionId) {
         log.info("[deleteProcessDefinition] 开始删除流程定义, definitionId={}", definitionId);
 

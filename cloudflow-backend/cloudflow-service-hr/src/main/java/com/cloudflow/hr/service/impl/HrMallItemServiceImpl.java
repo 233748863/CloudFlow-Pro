@@ -13,6 +13,7 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrMallItemMapper;
 import com.cloudflow.hr.service.IHrMallItemService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +61,7 @@ public class HrMallItemServiceImpl implements IHrMallItemService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新商品")
     public void updateItem(Long itemId, HrMallItemDTO dto) {
         crudService.updateProperties(HrMallItem.class, itemId,
                 MapConverters.toMap(dto, objectMapper));

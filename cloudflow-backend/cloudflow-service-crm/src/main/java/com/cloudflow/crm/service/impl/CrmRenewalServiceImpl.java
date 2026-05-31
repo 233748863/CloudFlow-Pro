@@ -16,6 +16,7 @@ import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmRenewalService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
 import com.cloudflow.crm.service.remote.RemoteWorkflowService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -92,6 +93,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
     }
 
     @Override
+    @Audit(name = "更新续约")
     public boolean updateRenewal(CrmRenewal renewal) {
         if (renewal == null || renewal.getRenewalId() == null) {
             throw new IllegalArgumentException("续约ID不能为空");

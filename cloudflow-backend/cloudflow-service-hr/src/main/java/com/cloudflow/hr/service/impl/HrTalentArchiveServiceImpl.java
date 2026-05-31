@@ -7,6 +7,7 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentArchiveMapper;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrTalentArchiveService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

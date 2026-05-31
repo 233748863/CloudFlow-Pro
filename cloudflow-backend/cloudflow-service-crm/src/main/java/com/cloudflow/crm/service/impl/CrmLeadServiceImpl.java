@@ -11,6 +11,7 @@ import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmLeadMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmLeadService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +47,7 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
     }
 
     @Override
+    @Audit(name = "更新线索")
     public boolean updateLead(CrmLead lead) {
         if (lead == null || lead.getLeadId() == null) {
             throw new IllegalArgumentException("线索ID不能为空");

@@ -9,6 +9,7 @@ import com.cloudflow.hr.domain.vo.recruitment.HrResumeParsedFieldVO;
 import com.cloudflow.hr.mapper.HrCandidateMapper;
 import com.cloudflow.hr.mapper.HrResumeParsedFieldsMapper;
 import com.cloudflow.hr.service.IHrResumeParserService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import lombok.RequiredArgsConstructor;
@@ -223,6 +224,7 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
     }
 
     @Override
+    @Audit(name = "更新简历解析")
     public void updateParsed(Long parsedId, HrResumeParsedFieldsPayload payload) {
         if (payload == null) {
             return;

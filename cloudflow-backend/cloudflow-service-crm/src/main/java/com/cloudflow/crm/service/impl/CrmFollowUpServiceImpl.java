@@ -10,6 +10,7 @@ import com.cloudflow.crm.mapper.CrmFollowUpMapper;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmFollowUpService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -66,6 +67,7 @@ public class CrmFollowUpServiceImpl extends CrmServiceSupport<CrmFollowUpMapper,
     }
 
     @Override
+    @Audit(name = "更新跟进记录")
     public boolean updateFollowUp(CrmFollowUp followUp) {
         if (followUp == null || followUp.getFollowUpId() == null) {
             throw new IllegalArgumentException("跟进ID不能为空");

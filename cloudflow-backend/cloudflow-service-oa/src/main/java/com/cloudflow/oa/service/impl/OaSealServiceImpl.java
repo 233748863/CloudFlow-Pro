@@ -18,6 +18,7 @@ import com.cloudflow.oa.service.IOaSealService;
 import com.cloudflow.oa.service.ISysNoticeService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -160,6 +161,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新印章")
     public boolean updateSeal(OaSeal seal) {
         if (seal == null || seal.getSealId() == null) {
             throw new IllegalArgumentException("印章ID不能为空");

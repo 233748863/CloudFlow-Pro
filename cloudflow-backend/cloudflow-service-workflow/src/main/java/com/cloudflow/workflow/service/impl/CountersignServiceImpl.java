@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.workflow.service.ICountersignService;
+import com.cloudflow.common.audit.annotation.Audit;
 
 import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -582,6 +583,7 @@ public class CountersignServiceImpl implements ICountersignService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新会签任务")
     public void updateCountersignTask(WfCountersignTask csTask) {
         if (csTask == null || csTask.getCountersignId() == null) {
             throw WorkflowException.validationError("会签任务信息不能为空");

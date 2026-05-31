@@ -15,6 +15,7 @@ import com.cloudflow.crm.mapper.CrmReceivableMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmReceivableService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -83,6 +84,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
     }
 
     @Override
+    @Audit(name = "更新应收款")
     public boolean updateReceivable(CrmReceivable receivable) {
         if (receivable == null || receivable.getReceivableId() == null) {
             throw new IllegalArgumentException("回款ID不能为空");

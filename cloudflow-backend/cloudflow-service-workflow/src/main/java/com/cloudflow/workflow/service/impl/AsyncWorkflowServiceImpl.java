@@ -12,6 +12,7 @@ import com.cloudflow.workflow.service.IAsyncWorkflowService;
 import com.cloudflow.workflow.service.ISysNoticeService;
 import com.cloudflow.workflow.service.WorkflowAuditService;
 import com.cloudflow.workflow.service.monitor.IProcessMonitorService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -235,6 +236,7 @@ public class AsyncWorkflowServiceImpl implements IAsyncWorkflowService {
      */
     @Override
     @Async("workflowExecutor")
+    @Audit(name = "更新统计数据")
     public void updateStatisticsAsync(String instanceId) {
         long startTime = System.currentTimeMillis();
         

@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.workflow.service.IWorkflowP4Service;
+import com.cloudflow.common.audit.annotation.Audit;
 
 import java.time.LocalDateTime;
 import cn.dev33.satoken.stp.StpUtil;
@@ -526,6 +527,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除附件")
     public R<?> deleteAttachment(String attachmentId, Long operatorId) {
         Long effectiveOperatorId = resolveOperatorId(operatorId, "deleteAttachment");
         WfTaskAttachment a = attachmentMapper.selectById(attachmentId);

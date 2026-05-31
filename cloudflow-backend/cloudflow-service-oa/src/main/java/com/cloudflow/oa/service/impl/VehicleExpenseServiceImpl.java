@@ -8,6 +8,7 @@ import com.cloudflow.oa.domain.VehicleExpense;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
 import com.cloudflow.oa.service.IVehicleExpenseService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;

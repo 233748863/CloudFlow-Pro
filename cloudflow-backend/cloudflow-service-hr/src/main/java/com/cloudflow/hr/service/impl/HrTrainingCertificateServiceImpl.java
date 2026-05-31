@@ -19,6 +19,7 @@ import com.cloudflow.hr.service.HrFileStorage;
 import com.cloudflow.hr.service.HrPdfRenderer;
 import com.cloudflow.hr.service.IHrTrainingArchiveService;
 import com.cloudflow.hr.service.IHrTrainingCertificateService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

@@ -14,6 +14,7 @@ import com.cloudflow.hr.mapper.HrContractSignatureMapper;
 import com.cloudflow.hr.mapper.HrEmployeeContractMapper;
 import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.hr.service.HrEssSupport;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

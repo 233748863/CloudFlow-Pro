@@ -12,6 +12,7 @@ import com.cloudflow.crm.mapper.CrmOpportunityMapper;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
 import com.cloudflow.crm.service.ICrmNotificationService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;

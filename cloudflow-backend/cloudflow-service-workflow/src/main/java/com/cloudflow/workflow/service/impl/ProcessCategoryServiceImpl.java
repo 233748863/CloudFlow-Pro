@@ -6,6 +6,7 @@ import com.cloudflow.workflow.domain.WfProcessCategory;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessCategoryMapper;
 import com.cloudflow.workflow.service.IProcessCategoryService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -112,6 +113,7 @@ public class ProcessCategoryServiceImpl implements IProcessCategoryService {
     }
 
     @Override
+    @Audit(name = "更新流程分类")
     public void update(WfProcessCategory category) {
         Long currentTenantId = UserContext.getTenantId();
         if (category.getCategoryId() == null) {
@@ -145,6 +147,7 @@ public class ProcessCategoryServiceImpl implements IProcessCategoryService {
     }
 
     @Override
+    @Audit(name = "删除流程分类")
     public void delete(Long categoryId) {
         WfProcessCategory category = categoryMapper.selectById(categoryId);
         if (category == null) {

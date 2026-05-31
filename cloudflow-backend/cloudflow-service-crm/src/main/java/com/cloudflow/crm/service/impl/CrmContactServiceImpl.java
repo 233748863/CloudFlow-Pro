@@ -6,6 +6,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.crm.domain.CrmContact;
 import com.cloudflow.crm.mapper.CrmContactMapper;
 import com.cloudflow.crm.service.ICrmContactService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -31,6 +32,7 @@ public class CrmContactServiceImpl extends CrmServiceSupport<CrmContactMapper, C
     }
 
     @Override
+    @Audit(name = "更新联系人")
     public boolean updateContact(CrmContact contact) {
         if (contact == null || contact.getContactId() == null) {
             throw new IllegalArgumentException("联系人ID不能为空");

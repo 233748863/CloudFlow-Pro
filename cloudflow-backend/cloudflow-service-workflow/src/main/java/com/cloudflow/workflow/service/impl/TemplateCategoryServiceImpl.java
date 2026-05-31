@@ -9,6 +9,7 @@ import com.cloudflow.workflow.mapper.TemplateCategoryMapper;
 import com.cloudflow.workflow.mapper.WorkflowTemplateMapper;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.ITemplateCategoryService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -141,6 +142,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新模板分类")
     public TemplateCategory update(TemplateCategory category) {
         log.info("更新分类 - ID:{}", category.getId());
 
@@ -187,6 +189,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除模板分类")
     public void delete(String categoryId) {
         log.info("删除分类 - ID:{}", categoryId);
 

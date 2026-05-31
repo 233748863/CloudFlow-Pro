@@ -13,6 +13,7 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentDevelopmentActionMapper;
 import com.cloudflow.hr.service.IHrTalentDevelopmentService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +51,7 @@ public class HrTalentDevelopmentServiceImpl implements IHrTalentDevelopmentServi
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新发展行动")
     public void updateAction(Long actionId, HrTalentDevelopmentActionDTO dto) {
         crudService.updateProperties(HrTalentDevelopmentAction.class, actionId,
                 MapConverters.toMap(dto, objectMapper));

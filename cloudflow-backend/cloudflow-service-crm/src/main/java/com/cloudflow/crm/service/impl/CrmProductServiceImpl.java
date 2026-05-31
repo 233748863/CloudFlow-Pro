@@ -8,6 +8,7 @@ import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmProduct;
 import com.cloudflow.crm.mapper.CrmProductMapper;
 import com.cloudflow.crm.service.ICrmProductService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -45,6 +46,7 @@ public class CrmProductServiceImpl extends CrmServiceSupport<CrmProductMapper, C
     }
 
     @Override
+    @Audit(name = "更新产品")
     public boolean updateProduct(CrmProduct product) {
         if (product == null || product.getProductId() == null) {
             throw new IllegalArgumentException("产品ID不能为空");

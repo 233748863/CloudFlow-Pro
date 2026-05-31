@@ -27,6 +27,7 @@ import com.cloudflow.oa.mapper.OaBudgetSubjectMapper;
 import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.remote.RemoteBusinessRuleService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -136,6 +137,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新预算")
     public boolean updateBudget(OaBudgetPlan budgetPlan) {
         if (budgetPlan == null || budgetPlan.getBudgetId() == null) {
             throw new IllegalArgumentException("预算ID不能为空");
@@ -191,6 +193,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     }
 
     @Override
+    @Audit(name = "更新预算科目")
     public boolean updateSubject(OaBudgetSubject subject) {
         if (subject == null || subject.getSubjectId() == null) {
             throw new IllegalArgumentException("预算科目ID不能为空");

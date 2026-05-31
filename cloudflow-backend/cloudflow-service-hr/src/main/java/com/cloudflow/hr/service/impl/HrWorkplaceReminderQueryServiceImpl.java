@@ -7,6 +7,7 @@ import com.cloudflow.hr.domain.vo.HrWorkplaceReminderVO;
 import com.cloudflow.hr.mapper.HrEmployeeContractMapper;
 import com.cloudflow.hr.mapper.HrLifecycleTaskMapper;
 import com.cloudflow.hr.service.IHrWorkplaceReminderQueryService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

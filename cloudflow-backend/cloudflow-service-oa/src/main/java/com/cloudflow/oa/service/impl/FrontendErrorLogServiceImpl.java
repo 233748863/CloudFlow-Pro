@@ -5,6 +5,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.FrontendErrorLog;
 import com.cloudflow.oa.mapper.FrontendErrorLogMapper;
 import com.cloudflow.oa.service.IFrontendErrorLogService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;

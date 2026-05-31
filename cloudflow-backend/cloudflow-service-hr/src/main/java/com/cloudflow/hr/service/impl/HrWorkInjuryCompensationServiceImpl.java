@@ -13,6 +13,7 @@ import com.cloudflow.hr.mapper.HrWorkInjuryCompensationMapper;
 import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.IHrWorkInjuryCompensationService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +59,7 @@ public class HrWorkInjuryCompensationServiceImpl implements IHrWorkInjuryCompens
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新工伤赔偿")
     public void updateCompensation(Long compensationId, HrWorkInjuryCompensationDTO dto) {
         crudService.updateProperties(HrWorkInjuryCompensation.class, compensationId,
                 MapConverters.toMap(dto, objectMapper));

@@ -16,6 +16,7 @@ import com.cloudflow.hr.mapper.HrEmployeeBenefitMapper;
 import com.cloudflow.hr.mapper.HrMallOrderMapper;
 import com.cloudflow.hr.service.IHrBenefitMineService;
 import com.cloudflow.hr.service.IHrPointAccountService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

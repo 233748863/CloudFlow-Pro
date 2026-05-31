@@ -21,6 +21,7 @@ import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmQuoteService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
 import com.cloudflow.crm.service.remote.RemoteWorkflowService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -100,6 +101,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新报价")
     public boolean updateQuote(CrmQuote quote) {
         if (quote == null || quote.getQuoteId() == null) {
             throw new IllegalArgumentException("报价ID不能为空");

@@ -20,6 +20,7 @@ import com.cloudflow.oa.service.remote.RemoteCrmWorkplaceService;
 import com.cloudflow.oa.service.remote.RemoteHrWorkplaceService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaContractConstants;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;

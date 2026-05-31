@@ -7,6 +7,7 @@ import com.cloudflow.workflow.mapper.WfNotificationConfigMapper;
 import com.cloudflow.workflow.mapper.WfNotificationLogMapper;
 import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.ISysNoticeService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;

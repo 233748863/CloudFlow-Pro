@@ -9,6 +9,7 @@ import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.OaContractMilestoneMapper;
 import com.cloudflow.oa.mapper.OaContractPaymentScheduleMapper;
 import com.cloudflow.oa.service.IOaContractMilestoneService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -89,6 +90,7 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
 
     @Override
     @Transactional
+    @Audit(name = "更新合同里程碑")
     public boolean updateMilestone(OaContractMilestone milestone) {
         if (milestone == null || milestone.getId() == null) {
             throw new IllegalArgumentException("ID 必填");
@@ -185,6 +187,7 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
 
     @Override
     @Transactional
+    @Audit(name = "更新付款计划")
     public boolean updatePayment(OaContractPaymentSchedule schedule) {
         if (schedule == null || schedule.getId() == null) {
             throw new IllegalArgumentException("ID 必填");

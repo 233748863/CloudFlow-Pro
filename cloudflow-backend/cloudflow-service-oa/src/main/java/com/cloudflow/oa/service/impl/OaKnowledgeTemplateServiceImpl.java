@@ -6,6 +6,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.OaKnowledgeTemplate;
 import com.cloudflow.oa.mapper.OaKnowledgeTemplateMapper;
 import com.cloudflow.oa.service.IOaKnowledgeTemplateService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -91,6 +92,7 @@ public class OaKnowledgeTemplateServiceImpl implements IOaKnowledgeTemplateServi
 
     @Override
     @Transactional
+    @Audit(name = "更新知识模板")
     public boolean update(OaKnowledgeTemplate template) {
         if (template == null || template.getId() == null) {
             throw new IllegalArgumentException("ID 必填");

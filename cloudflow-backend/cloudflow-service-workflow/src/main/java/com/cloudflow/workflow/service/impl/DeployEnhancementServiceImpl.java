@@ -12,6 +12,7 @@ import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.service.IDeployEnhancementService;
 import com.cloudflow.workflow.service.ScriptExecutionPolicy;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -124,6 +125,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     }
 
     @Override
+    @Audit(name = "更新发布窗口")
     public R<?> updateDeployWindow(DeployWindowDTO dto) {
         if (dto.getId() == null) {
             return R.fail("窗口ID不能为空");
@@ -141,6 +143,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     }
 
     @Override
+    @Audit(name = "删除发布窗口")
     public R<?> deleteDeployWindow(Long windowId) {
         WfDeployWindow window = deployWindowMapper.selectById(windowId);
         if (window == null) {

@@ -10,6 +10,7 @@ import com.cloudflow.workflow.enums.OperationType;
 import com.cloudflow.workflow.enums.TargetType;
 import com.cloudflow.workflow.mapper.WfAuditLogMapper;
 import com.cloudflow.workflow.service.IAuditLogService;
+import com.cloudflow.common.audit.annotation.Audit;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -168,6 +169,7 @@ public class AuditLogServiceImpl implements IAuditLogService {
      * 删除过期的审计日志
      */
     @Override
+    @Audit(name = "删除过期日志")
     public int deleteExpiredLogs(int daysToKeep) {
         log.info("删除过期的审计日志: daysToKeep={}", daysToKeep);
         
@@ -190,6 +192,7 @@ public class AuditLogServiceImpl implements IAuditLogService {
      * 按目标对象删除历史审计日志
      */
     @Override
+    @Audit(name = "删除审计日志")
     public int deleteByTarget(TargetType targetType, String targetId) {
         if (targetType == null || !StringUtils.hasText(targetId)) {
             return 0;

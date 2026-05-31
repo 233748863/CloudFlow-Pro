@@ -10,6 +10,7 @@ import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionRuleVO;
 import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionValidateVO;
 import com.cloudflow.hr.mapper.HrPerfDistributionRuleMapper;
 import com.cloudflow.hr.service.IHrPerformanceDistributionService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -115,6 +116,7 @@ public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistr
 
     @Override
     @Transactional
+    @Audit(name = "删除分配规则")
     public void deleteRule(Long id) {
         HrPerfDistributionRule entity = distributionRuleMapper.selectOne(
                 new LambdaQueryWrapper<HrPerfDistributionRule>()

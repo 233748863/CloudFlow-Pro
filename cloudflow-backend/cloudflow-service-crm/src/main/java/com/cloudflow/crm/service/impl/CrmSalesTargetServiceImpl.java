@@ -10,6 +10,7 @@ import com.cloudflow.crm.domain.vo.CrmPerformanceSummaryVO;
 import com.cloudflow.crm.mapper.CrmSalesTargetMapper;
 import com.cloudflow.crm.service.ICrmPerformanceQueryService;
 import com.cloudflow.crm.service.ICrmSalesTargetService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -67,6 +68,7 @@ public class CrmSalesTargetServiceImpl extends CrmServiceSupport<CrmSalesTargetM
     }
 
     @Override
+    @Audit(name = "更新销售目标")
     public boolean updateSalesTarget(CrmSalesTarget salesTarget) {
         if (salesTarget == null || salesTarget.getSalesTargetId() == null) {
             throw new IllegalArgumentException("销售目标ID不能为空");

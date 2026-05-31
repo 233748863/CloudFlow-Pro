@@ -6,6 +6,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.OaContractAmountThreshold;
 import com.cloudflow.oa.mapper.OaContractAmountThresholdMapper;
 import com.cloudflow.oa.service.IOaContractAmountThresholdService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -81,6 +82,7 @@ public class OaContractAmountThresholdServiceImpl implements IOaContractAmountTh
 
     @Override
     @Transactional
+    @Audit(name = "更新合同金额阈值")
     public boolean update(OaContractAmountThreshold threshold) {
         if (threshold == null || threshold.getId() == null) {
             throw new IllegalArgumentException("ID 必填");

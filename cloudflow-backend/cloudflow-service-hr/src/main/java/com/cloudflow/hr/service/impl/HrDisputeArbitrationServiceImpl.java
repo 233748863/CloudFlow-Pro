@@ -13,6 +13,7 @@ import com.cloudflow.hr.mapper.HrDisputeArbitrationMapper;
 import com.cloudflow.hr.mapper.HrLaborDisputeMapper;
 import com.cloudflow.hr.service.IHrDisputeArbitrationService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,7 @@ public class HrDisputeArbitrationServiceImpl implements IHrDisputeArbitrationSer
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新争议仲裁")
     public void updateArbitration(Long arbitrationId, HrDisputeArbitrationDTO dto) {
         crudService.updateProperties(HrDisputeArbitration.class, arbitrationId,
                 MapConverters.toMap(dto, objectMapper));

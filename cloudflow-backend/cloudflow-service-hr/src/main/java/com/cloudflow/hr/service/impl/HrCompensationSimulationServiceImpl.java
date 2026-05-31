@@ -9,6 +9,7 @@ import com.cloudflow.hr.domain.vo.compensation.HrCompensationSimulateVO;
 import com.cloudflow.hr.mapper.HrCompComponentMapper;
 import com.cloudflow.hr.mapper.HrCompGradeMapper;
 import com.cloudflow.hr.service.IHrCompensationSimulationService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

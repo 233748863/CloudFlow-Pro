@@ -7,6 +7,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.oa.domain.VehicleViolation;
 import com.cloudflow.oa.mapper.VehicleViolationMapper;
 import com.cloudflow.oa.service.IVehicleViolationService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

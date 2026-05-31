@@ -35,6 +35,7 @@ import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.hr.service.IHrMallOrderService;
 import com.cloudflow.hr.service.IHrTalentPoolService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

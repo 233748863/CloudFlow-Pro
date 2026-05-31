@@ -4,6 +4,7 @@ import com.cloudflow.hr.domain.vo.HrDeptSummaryVO;
 import com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.hr.mapper.HrDirectoryMapper;
 import com.cloudflow.hr.service.IHrIntegrationQueryService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

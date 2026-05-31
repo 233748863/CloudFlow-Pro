@@ -29,6 +29,7 @@ import com.cloudflow.hr.mapper.HrPerformanceObjectiveMapper;
 import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.cloudflow.hr.mapper.HrPerformanceSalaryAdjustmentMapper;
 import com.cloudflow.hr.service.IHrPerformanceService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -360,6 +361,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新绩效结果")
     public void updateResult(HrPerformanceResultUpdatePayload payload) {
         Long assignmentId = payload == null ? null : payload.getAssignmentId();
         BigDecimal actualAmount = payload == null ? BigDecimal.ZERO : payload.getActualAmount();

@@ -40,6 +40,7 @@ import com.cloudflow.oa.mapper.OaProjectRiskMapper;
 import com.cloudflow.oa.service.IOaProjectService;
 import com.cloudflow.oa.service.IWorkTaskService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -126,6 +127,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "更新项目")
     public boolean updateProject(OaProject project) {
         if (project == null || project.getProjectId() == null) {
             throw new IllegalArgumentException("项目ID不能为空");
@@ -301,6 +303,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "更新项目成员")
     public boolean updateMember(OaProjectMember member) {
         if (member == null || member.getId() == null || member.getProjectId() == null) {
             throw new IllegalArgumentException("项目成员ID不能为空");
@@ -350,6 +353,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "更新项目里程碑")
     public boolean updateMilestone(OaProjectMilestone milestone) {
         if (milestone == null || milestone.getMilestoneId() == null || milestone.getProjectId() == null) {
             throw new IllegalArgumentException("项目里程碑ID不能为空");
@@ -410,6 +414,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "更新项目风险")
     public boolean updateRisk(OaProjectRisk risk) {
         if (risk == null || risk.getRiskId() == null || risk.getProjectId() == null) {
             throw new IllegalArgumentException("项目风险ID不能为空");
@@ -471,6 +476,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "更新WBS任务")
     public boolean updateWbsTask(WorkTask task) {
         if (task == null || task.getTaskId() == null || task.getProjectId() == null) {
             throw new IllegalArgumentException("WBS任务ID不能为空");
@@ -482,6 +488,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "更新WBS树")
     public boolean updateWbsTree(Long projectId, List<ProjectWbsTreeNodeDTO> nodes) {
         requireProject(projectId);
         if (nodes == null || nodes.isEmpty()) {
@@ -520,6 +527,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "更新项目依赖")
     public boolean updateDependency(OaProjectDependency dependency) {
         if (dependency == null || dependency.getDependencyId() == null) {
             throw new IllegalArgumentException("依赖ID不能为空");

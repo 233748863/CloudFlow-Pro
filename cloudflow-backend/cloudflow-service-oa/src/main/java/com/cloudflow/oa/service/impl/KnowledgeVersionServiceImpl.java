@@ -9,6 +9,7 @@ import com.cloudflow.oa.domain.vo.knowledge.KnowledgeVersionDiffVO;
 import com.cloudflow.oa.mapper.KnowledgeDocVersionMapper;
 import com.cloudflow.oa.mapper.KnowledgeDocumentMapper;
 import com.cloudflow.oa.service.IKnowledgeVersionService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -17,6 +17,7 @@ import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.ITemplateService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -188,6 +189,7 @@ public class TemplateServiceImpl implements ITemplateService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新模板")
     public TemplateDTO updateTemplate(String id, UpdateTemplateRequest request) {
         log.info("更新模板 - ID:{}", id);
 
@@ -241,6 +243,7 @@ public class TemplateServiceImpl implements ITemplateService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除模板")
     public void deleteTemplate(String id) {
         log.info("删除模板 - ID:{}", id);
 

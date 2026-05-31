@@ -26,6 +26,7 @@ import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -99,6 +100,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新合同")
     public boolean updateContract(OaContract contract) {
         if (contract == null || contract.getContractId() == null) {
             throw new IllegalArgumentException("合同ID不能为空");

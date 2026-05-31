@@ -18,6 +18,7 @@ import com.cloudflow.oa.mapper.OaInvoiceMapper;
 import com.cloudflow.oa.mapper.OaInvoiceWriteoffMapper;
 import com.cloudflow.oa.service.IOaInvoiceService;
 import com.cloudflow.oa.service.remote.RemoteCrmService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,6 +79,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
     }
 
     @Override
+    @Audit(name = "更新发票")
     public boolean updateInvoice(OaInvoice invoice) {
         if (invoice == null || invoice.getInvoiceId() == null) {
             throw new IllegalArgumentException("发票ID不能为空");

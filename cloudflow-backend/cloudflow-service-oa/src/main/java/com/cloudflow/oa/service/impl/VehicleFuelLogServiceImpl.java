@@ -9,6 +9,7 @@ import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.OaRiskAlertMapper;
 import com.cloudflow.oa.mapper.VehicleFuelLogMapper;
 import com.cloudflow.oa.service.IVehicleFuelLogService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -86,6 +87,7 @@ public class VehicleFuelLogServiceImpl extends ServiceImpl<VehicleFuelLogMapper,
     }
 
     @Override
+    @Audit(name = "更新加油记录")
     public boolean updateFuelLog(VehicleFuelLog log) {
         if (log == null || log.getFuelLogId() == null) {
             return false;

@@ -18,6 +18,7 @@ import com.cloudflow.crm.mapper.CrmRenewalMapper;
 import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.remote.RemoteHrService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -87,6 +88,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
     }
 
     @Override
+    @Audit(name = "更新客户")
     public boolean updateCustomer(CrmCustomer customer) {
         if (customer == null || customer.getCustomerId() == null) {
             throw new IllegalArgumentException("客户ID不能为空");

@@ -18,6 +18,7 @@ import com.cloudflow.oa.service.IOaSealRenewalService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -99,6 +100,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新印章续期")
     public boolean updateRenewal(OaSealRenewal renewal) {
         if (renewal == null || renewal.getId() == null) {
             throw new IllegalArgumentException("续期申请ID不能为空");

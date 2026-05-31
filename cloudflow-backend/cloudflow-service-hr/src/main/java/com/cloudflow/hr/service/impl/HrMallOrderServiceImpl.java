@@ -25,6 +25,7 @@ import com.cloudflow.hr.service.IHrMallItemService;
 import com.cloudflow.hr.service.IHrMallOrderService;
 import com.cloudflow.hr.service.IHrPointAccountService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

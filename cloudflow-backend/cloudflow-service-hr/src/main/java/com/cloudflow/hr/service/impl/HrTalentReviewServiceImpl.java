@@ -31,6 +31,7 @@ import com.cloudflow.hr.mapper.HrTalentReviewMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewParticipantMapper;
 import com.cloudflow.hr.service.IHrTalentReviewService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -84,6 +85,7 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新人才评审")
     public void updateReview(Long reviewId, HrTalentReviewDTO dto) {
         crudService.updateProperties(HrTalentReview.class, reviewId, MapConverters.toMap(dto, objectMapper));
     }
@@ -300,6 +302,7 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新校准会议")
     public void updateCalibrationSession(Long sessionId, HrTalentCalibrationSessionDTO dto) {
         crudService.updateProperties(HrTalentCalibrationSession.class, sessionId,
                 MapConverters.toMap(dto, objectMapper));

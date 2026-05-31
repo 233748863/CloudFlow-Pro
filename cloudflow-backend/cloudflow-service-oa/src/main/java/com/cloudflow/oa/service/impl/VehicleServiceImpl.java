@@ -23,6 +23,7 @@ import com.cloudflow.oa.service.IVehicleService;
 import com.cloudflow.oa.service.IVehicleViolationService;
 import com.cloudflow.oa.util.OaContractConstants;
 import com.cloudflow.oa.util.VehicleConstants;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

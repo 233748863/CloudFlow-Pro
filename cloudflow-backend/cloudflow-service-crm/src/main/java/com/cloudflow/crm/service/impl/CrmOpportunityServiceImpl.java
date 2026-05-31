@@ -20,6 +20,7 @@ import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmOpportunityService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -84,6 +85,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
     }
 
     @Override
+    @Audit(name = "更新商机")
     public boolean updateOpportunity(CrmOpportunity opportunity) {
         if (opportunity == null || opportunity.getOpportunityId() == null) {
             throw new IllegalArgumentException("商机ID不能为空");
@@ -289,6 +291,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
     }
 
     @Override
+    @Audit(name = "更新商机阶段")
     public boolean updateStage(Long opportunityId, String stage, String lostReason) {
         if (opportunityId == null) {
             throw new IllegalArgumentException("商机ID不能为空");

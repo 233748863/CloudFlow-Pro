@@ -21,6 +21,7 @@ import com.cloudflow.hr.mapper.HrDisputeEvidenceMapper;
 import com.cloudflow.hr.mapper.HrLaborDisputeMapper;
 import com.cloudflow.hr.service.IHrLaborDisputeService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -75,6 +76,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新劳动争议")
     public void updateDispute(Long disputeId, HrLaborDisputeDTO dto) {
         crudService.updateProperties(HrLaborDispute.class, disputeId,
                 MapConverters.toMap(dto, objectMapper));

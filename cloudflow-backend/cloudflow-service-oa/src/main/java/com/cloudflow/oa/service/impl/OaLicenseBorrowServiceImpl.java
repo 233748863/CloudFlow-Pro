@@ -24,6 +24,7 @@ import com.cloudflow.oa.service.ISysNoticeService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -120,6 +121,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新证照借用")
     public boolean updateBorrow(OaLicenseBorrow borrow) {
         if (borrow == null || borrow.getId() == null) {
             throw new IllegalArgumentException("证照借用申请ID不能为空");

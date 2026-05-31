@@ -12,6 +12,7 @@ import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.SysAnnouncementMapper;
 import com.cloudflow.oa.mapper.SysAnnouncementReadMapper;
 import com.cloudflow.oa.service.ISysAnnouncementService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -114,6 +115,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     @Override
     @Transactional
     @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
+    @Audit(name = "更新公告")
     public boolean updateAnnouncement(SysAnnouncement announcement) {
         announcement.setUpdateTime(LocalDateTime.now());
         return updateById(announcement);

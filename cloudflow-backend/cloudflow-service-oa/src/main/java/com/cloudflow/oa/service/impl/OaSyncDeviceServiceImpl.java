@@ -6,6 +6,7 @@ import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.oa.domain.OaSyncDevice;
 import com.cloudflow.oa.mapper.OaSyncDeviceMapper;
 import com.cloudflow.oa.service.IOaSyncDeviceService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -74,6 +75,7 @@ public class OaSyncDeviceServiceImpl extends ServiceImpl<OaSyncDeviceMapper, OaS
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新同步时间")
     public void updateLastSyncTime(String deviceId, Long userId, Long tenantId, Long syncTimeMillis) {
         OaSyncDevice device = validateDevice(deviceId, userId, tenantId);
         if (syncTimeMillis == null || syncTimeMillis <= 0) {

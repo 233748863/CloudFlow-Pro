@@ -29,6 +29,7 @@ import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -130,6 +131,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新用印申请")
     public boolean updateApplication(OaSealApplication application) {
         if (application == null || application.getId() == null) {
             throw new IllegalArgumentException("用印申请ID不能为空");

@@ -8,6 +8,7 @@ import com.cloudflow.oa.domain.WorkTask;
 import com.cloudflow.oa.domain.dto.ProjectWbsTreeNodeDTO;
 import com.cloudflow.oa.mapper.WorkTaskMapper;
 import com.cloudflow.oa.service.IWorkTaskService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -38,6 +39,7 @@ public class WorkTaskServiceImpl extends ServiceImpl<WorkTaskMapper, WorkTask> i
     }
 
     @Override
+    @Audit(name = "更新任务状态")
     public boolean updateStatus(Long taskId, String status) {
         WorkTask task = new WorkTask();
         task.setTaskId(taskId);

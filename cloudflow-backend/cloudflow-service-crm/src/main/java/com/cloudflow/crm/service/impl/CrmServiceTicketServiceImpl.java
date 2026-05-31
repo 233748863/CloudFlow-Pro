@@ -9,6 +9,7 @@ import com.cloudflow.crm.domain.CrmServiceTicket;
 import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmServiceTicketService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -70,6 +71,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
     }
 
     @Override
+    @Audit(name = "更新服务工单")
     public boolean updateTicket(CrmServiceTicket ticket) {
         if (ticket == null || ticket.getTicketId() == null) {
             throw new IllegalArgumentException("工单ID不能为空");

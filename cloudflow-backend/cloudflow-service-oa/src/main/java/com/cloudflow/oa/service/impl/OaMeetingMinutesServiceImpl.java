@@ -10,6 +10,7 @@ import com.cloudflow.oa.mapper.OaMeetingAttendanceMapper;
 import com.cloudflow.oa.mapper.OaMeetingMinutesMapper;
 import com.cloudflow.oa.service.IOaMeetingMinutesService;
 import com.cloudflow.oa.service.IWorkTaskService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -91,6 +92,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
 
     @Override
     @Transactional
+    @Audit(name = "更新会议纪要")
     public boolean update(OaMeetingMinutes minutes) {
         if (minutes == null || minutes.getId() == null) {
             throw new IllegalArgumentException("ID 必填");

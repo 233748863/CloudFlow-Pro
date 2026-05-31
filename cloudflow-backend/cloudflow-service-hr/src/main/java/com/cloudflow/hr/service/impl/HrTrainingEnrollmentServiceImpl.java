@@ -15,6 +15,7 @@ import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrTrainingArchiveService;
 import com.cloudflow.hr.service.IHrTrainingEnrollmentService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

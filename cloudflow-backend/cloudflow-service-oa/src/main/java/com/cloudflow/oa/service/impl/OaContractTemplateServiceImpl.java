@@ -6,6 +6,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.OaContractTemplate;
 import com.cloudflow.oa.mapper.OaContractTemplateMapper;
 import com.cloudflow.oa.service.IOaContractTemplateService;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -90,6 +91,7 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
 
     @Override
     @Transactional
+    @Audit(name = "更新合同模板")
     public boolean update(OaContractTemplate template) {
         if (template == null || template.getId() == null) {
             throw new IllegalArgumentException("模板 ID 必填");

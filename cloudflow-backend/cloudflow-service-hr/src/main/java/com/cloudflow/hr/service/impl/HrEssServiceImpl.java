@@ -35,6 +35,7 @@ import com.cloudflow.hr.service.IHrEssService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -178,6 +179,7 @@ public class HrEssServiceImpl implements IHrEssService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新银行卡")
     public void updateBankCard(Long id, Map<String, Object> payload) {
         HrBankCard card = bankCardMapper.selectById(id);
         if (card == null) {

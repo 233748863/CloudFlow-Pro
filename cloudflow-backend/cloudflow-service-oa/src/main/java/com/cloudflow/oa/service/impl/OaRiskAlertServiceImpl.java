@@ -16,6 +16,7 @@ import com.cloudflow.oa.service.IOaRiskAlertService;
 import com.cloudflow.oa.service.IOaTraceEventService;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,6 +99,7 @@ public class OaRiskAlertServiceImpl extends ServiceImpl<OaRiskAlertMapper, OaRis
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "更新风险状态")
     public boolean updateRiskStatus(Long id, OaRiskStatusDTO dto) {
         OaRiskAlert risk = requireRisk(id);
         if (dto == null || !StringUtils.hasText(dto.getRiskStatus())) {

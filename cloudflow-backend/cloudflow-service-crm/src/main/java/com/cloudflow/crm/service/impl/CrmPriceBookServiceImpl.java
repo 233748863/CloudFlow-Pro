@@ -8,6 +8,7 @@ import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmPriceBook;
 import com.cloudflow.crm.mapper.CrmPriceBookMapper;
 import com.cloudflow.crm.service.ICrmPriceBookService;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -42,6 +43,7 @@ public class CrmPriceBookServiceImpl extends CrmServiceSupport<CrmPriceBookMappe
     }
 
     @Override
+    @Audit(name = "更新价格手册")
     public boolean updatePriceBook(CrmPriceBook priceBook) {
         if (priceBook == null || priceBook.getPriceBookId() == null) {
             throw new IllegalArgumentException("价目表ID不能为空");

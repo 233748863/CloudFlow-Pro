@@ -357,6 +357,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     }
 
     @Override
+    @Audit(name = "更新付款状态")
     public void updatePaymentStatus(Long paymentRequestId, String paymentStatus) {
         if (paymentRequestId == null || !StringUtils.hasText(paymentStatus)) {
             return;
