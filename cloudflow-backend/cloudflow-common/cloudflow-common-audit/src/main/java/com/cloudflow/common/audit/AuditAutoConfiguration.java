@@ -7,6 +7,7 @@ import com.cloudflow.common.audit.handle.ICompareHandle;
 import com.cloudflow.common.audit.handle.JaversCompareHandle;
 import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
 import com.cloudflow.common.audit.support.SpelParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -40,11 +41,12 @@ public class AuditAutoConfiguration {
     /**
      * 默认审计日志处理器（本地 Mapper 入库）
      * <p>可通过自定义 {@link IAuditLogHandle} Bean 覆盖</p>
+     * <p>M0-5：注入 ObjectMapper 用于 diff=true 时 JSON 序列化</p>
      */
     @Bean
     @ConditionalOnMissingBean(IAuditLogHandle.class)
-    public IAuditLogHandle defaultAuditLogHandle(SysAuditLogMapper auditLogMapper) {
-        return new DefaultAuditLogHandle(auditLogMapper);
+    public IAuditLogHandle defaultAuditLogHandle(SysAuditLogMapper auditLogMapper, ObjectMapper objectMapper) {
+        return new DefaultAuditLogHandle(auditLogMapper, objectMapper);
     }
 
     /**

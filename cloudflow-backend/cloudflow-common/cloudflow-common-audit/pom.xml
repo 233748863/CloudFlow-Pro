@@ -25,6 +25,19 @@
             <artifactId>javers-core</artifactId>
         </dependency>
 
+        <!-- zjsonpatch（M0-5：JSON diff 生成） -->
+        <dependency>
+            <groupId>com.flipkart.zjsonpatch</groupId>
+            <artifactId>zjsonpatch</artifactId>
+            <version>0.4.16</version>
+        </dependency>
+
+        <!-- Jackson（M0-5：JSON 序列化与 diff） -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
         <!-- MyBatis-Plus（审计日志本地入库） -->
         <dependency>
             <groupId>com.baomidou</groupId>

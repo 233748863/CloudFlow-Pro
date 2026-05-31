@@ -36,6 +36,15 @@ public class SysAuditLogEntity {
     /** 变更后值 */
     private String afterVal;
 
+    /** 变更前完整 JSON（M0-5：diff=true 时记录） */
+    private String beforeJson;
+
+    /** 变更后完整 JSON（M0-5：diff=true 时记录） */
+    private String afterJson;
+
+    /** JSON diff（M0-5：diff=true 时记录，Jackson JsonDiff 格式） */
+    private String diffJson;
+
     /** 操作人 */
     private String createBy;
 

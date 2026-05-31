@@ -64,4 +64,25 @@ public @interface Audit {
      * @return SPEL 表达式
      */
     String newVal() default "";
+
+    /**
+     * 是否记录完整 JSON diff（M0-5：before_json / after_json / diff_json）
+     * <p>默认 false，仅记录字段级差异（beforeVal / afterVal）</p>
+     * @return true=记录完整 JSON
+     */
+    boolean diff() default false;
+
+    /**
+     * 是否高风险操作（M0-5：高风险操作未落审计时启动期检查失败）
+     * <p>高风险操作示例：删除用户、禁用账号、修改角色权限、重置密码</p>
+     * @return true=高风险
+     */
+    boolean highRisk() default false;
+
+    /**
+     * 是否触发通知（M0-5：配合 INF-06 通知系统）
+     * <p>true 时需在 outbox 路径有对应 NotifyDispatchService.dispatch</p>
+     * @return true=触发通知
+     */
+    boolean sendNotify() default false;
 }

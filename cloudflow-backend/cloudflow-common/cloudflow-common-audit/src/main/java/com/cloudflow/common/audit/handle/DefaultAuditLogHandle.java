@@ -6,6 +6,9 @@ import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantConfigProperties;
 import cn.hutool.extra.spring.SpringUtil;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.javers.core.Changes;
@@ -32,9 +35,19 @@ import java.util.Objects;
 public class DefaultAuditLogHandle implements IAuditLogHandle {
 
     private final SysAuditLogMapper auditLogMapper;
+    private final ObjectMapper objectMapper;
 
     @Override
     public void handle(Audit audit, Changes changes) {
+        handle(audit, changes, null, null);
+    }
+
+    /**
+     * M0-5 扩展：支持 diff=true 时记录完整 JSON。
+     * @param oldVal 旧值对象（diff=true 时需要）
+     * @param newVal 新值对象（diff=true 时需要）
+     */
+    public void handle(Audit audit, Changes changes, Object oldVal, Object newVal) {
         // 无变更则跳过
         if (changes.isEmpty()) {
             return;
@@ -79,6 +92,22 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
             auditLog.setCreateBy(username);
             auditLog.setCreateTime(LocalDateTime.now());
             auditLog.setTenantId(tenantId);
+
+            // M0-5: diff=true 时记录完整 JSON
+            if (audit.diff() && oldVal != null && newVal != null) {
+                try {
+                    String beforeJson = objectMapper.writeValueAsString(oldVal);
+                    String afterJson = objectMapper.writeValueAsString(newVal);
+                    JsonNode beforeNode = objectMapper.readTree(beforeJson);
+                    JsonNode afterNode = objectMapper.readTree(afterJson);
+                    JsonNode diffNode = JsonDiff.asJson(beforeNode, afterNode);
+                    auditLog.setBeforeJson(beforeJson);
+                    auditLog.setAfterJson(afterJson);
+                    auditLog.setDiffJson(diffNode.toString());
+                } catch (Exception e) {
+                    log.warn("审计 JSON diff 失败: {}", e.getMessage());
+                }
+            }
 
             auditLogList.add(auditLog);
         }

@@ -33,8 +33,14 @@ public class JaversCompareHandle implements ICompareHandle {
         // 使用 Javers 比较新旧值差异
         Changes changes = DataAuditor.compare(oldVal, newVal);
 
-        // 如果存在审计日志处理器，则交给它处理
-        auditLogHandleOptional.ifPresent(handle -> handle.handle(audit, changes));
+        // 如果存在审计日志处理器，则交给它处理（M0-5：传递 oldVal/newVal 用于 diff=true）
+        auditLogHandleOptional.ifPresent(handle -> {
+            if (handle instanceof com.cloudflow.common.audit.handle.DefaultAuditLogHandle defaultHandle) {
+                defaultHandle.handle(audit, changes, oldVal, newVal);
+            } else {
+                handle.handle(audit, changes);
+            }
+        });
 
         return changes;
     }
