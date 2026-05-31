@@ -24,6 +24,7 @@ import {
   Textarea,
 } from '@/components/common';
 import { dictDataApi, dictTypeApi, type SysDictData, type SysDictType } from '../../services/api/dict';
+import { queryClient, queryKeys } from '@/lib/queryClient';
 import { cn } from '@/utils/cn';
 
 type DictTypeFilters = {
@@ -437,6 +438,8 @@ export const DictPage: React.FC = () => {
         toast.success('字典数据已创建');
       }
 
+      // 失效该字典类型的缓存，业务页面下次渲染会重新拉取
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dict(currentType) });
       closeDataModal();
       await loadDictData(currentType);
     } catch (error) {
@@ -454,12 +457,17 @@ export const DictPage: React.FC = () => {
       if (deleteTarget.type === 'dictType' && deleteTarget.item.dictId) {
         await dictTypeApi.remove([deleteTarget.item.dictId]);
         toast.success('字典类型已删除');
+        // 同时失效该 dictType 的业务缓存
+        if (deleteTarget.item.dictType) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.dict(deleteTarget.item.dictType) });
+        }
         await loadDictTypes();
       }
 
       if (deleteTarget.type === 'dictData' && deleteTarget.item.dictCode) {
         await dictDataApi.remove([deleteTarget.item.dictCode]);
         toast.success('字典数据已删除');
+        void queryClient.invalidateQueries({ queryKey: queryKeys.dict(deleteTarget.item.dictType) });
         await loadDictData(deleteTarget.item.dictType);
       }
     } catch (error) {

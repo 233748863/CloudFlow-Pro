@@ -30,12 +30,24 @@ function AppInner() {
     void preloadConfigs([SYS_PAGE_DEFAULT_PAGE_SIZE]);
 
     // 预加载常用字典，减少首次渲染时的 loading 闪烁
+    // 包含全部 P0/P1 字典（共 13 个）— React Query staleTime 10 分钟
+    // 这些字典体积小（每个 ≤ 8 项），首屏并行预热请求总耗时 < 200ms
     const commonDicts = [
+      // P0 - 业务驱动（员工/合同/发票/薪资/线索/请求）
       'employee_status',
       'employee_type',
       'request_status',
       'contract_status',
       'invoice_status',
+      'salary_slip_status',
+      'crm_lead_status',
+      // P1 - 运营配置（风险等级/公告/工作流）
+      'severity_level',
+      'announcement_status',
+      'announcement_type',
+      'announcement_priority',
+      'workflow_status',
+      'workflow_definition_status',
     ];
 
     commonDicts.forEach((dictType) => {
