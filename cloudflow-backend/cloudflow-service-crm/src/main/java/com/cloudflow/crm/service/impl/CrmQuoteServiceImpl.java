@@ -109,6 +109,8 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         fillCustomerSnapshot(quote);
         prepareQuoteForSave(quote);
         CrmQuote persisted = getAccessibleQuote(quote.getQuoteId());
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(persisted, CrmQuote::getOwnerId, "报价");
         quote.setTenantId(persisted.getTenantId());
         if (!StringUtils.hasText(quote.getQuoteNo())) {
             quote.setQuoteNo(persisted.getQuoteNo());

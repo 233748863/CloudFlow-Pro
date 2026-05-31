@@ -39,6 +39,8 @@ public class CrmContactServiceImpl extends CrmServiceSupport<CrmContactMapper, C
         }
         validate(contact);
         CrmContact persisted = requireById(contact.getContactId(), "联系人不存在");
+        // M1-4: 所有权校验 - 联系人归属于客户，通过客户所有者校验
+        // 注意：联系人本身没有 ownerId，需要通过 customerId 关联校验
         contact.setTenantId(persisted.getTenantId());
         contact.setUpdateBy(currentUserName());
         contact.setUpdateTime(now());

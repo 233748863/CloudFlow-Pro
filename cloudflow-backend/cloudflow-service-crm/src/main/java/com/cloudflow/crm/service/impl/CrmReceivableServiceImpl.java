@@ -92,6 +92,8 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         fillBindingSnapshot(receivable);
         validate(receivable);
         CrmReceivable persisted = getAccessibleReceivable(receivable.getReceivableId());
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(persisted, CrmReceivable::getOwnerId, "应收款");
         receivable.setTenantId(persisted.getTenantId());
         if (!StringUtils.hasText(receivable.getReceivableNo())) {
             receivable.setReceivableNo(persisted.getReceivableNo());

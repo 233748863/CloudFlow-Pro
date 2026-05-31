@@ -5,6 +5,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -64,6 +65,11 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "更新福利申请")
     public void updateRequest(Long requestId, HrBenefitRequestDTO dto) {
+        // M1-4: 所有权校验
+        HrBenefitRequest existing = requestMapper.selectById(requestId);
+        if (existing != null && existing.getEmployeeId() != null) {
+            DataScopeUtils.assertOwnership(existing.getEmployeeId(), "福利申请");
+        }
         crudService.updateProperties(HrBenefitRequest.class, requestId,
                 MapConverters.toMap(dto, objectMapper));
     }
@@ -137,6 +143,10 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
         HrBenefitRequest request = requestMapper.selectById(requestId);
         if (request == null) {
             throw new HrBusinessException("BENEFIT_REQUEST_NOT_FOUND", "福利申领不存在：" + requestId);
+        }
+        // M1-4: 所有权校验
+        if (request.getEmployeeId() != null) {
+            DataScopeUtils.assertOwnership(request.getEmployeeId(), "福利申请");
         }
         if ("APPROVED".equals(request.getStatus()) || "PAID".equals(request.getStatus())) {
             throw new HrBusinessException("BENEFIT_REQUEST_STATUS_INVALID", "已审批或已发放的申领不允许撤销");

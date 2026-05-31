@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.KnowledgeDocument;
@@ -146,9 +147,8 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
             throw new IllegalArgumentException("文档ID不能为空");
         }
         KnowledgeDocument old = requireDocument(document.getDocumentId());
-        if (!isOwner(old) && !hasManageRole()) {
-            throw new IllegalArgumentException("只能修改自己的知识文档");
-        }
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(old, KnowledgeDocument::getSubmitterId, "知识文档");
         if (!"DRAFT".equals(old.getStatus()) && !"REJECTED".equals(old.getStatus())) {
             throw new IllegalArgumentException("只有草稿或已驳回文档可以修改");
         }
@@ -172,9 +172,8 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
     @Transactional(rollbackFor = Exception.class)
     public boolean submit(Long documentId) {
         KnowledgeDocument document = requireDocument(documentId);
-        if (!isOwner(document) && !hasManageRole()) {
-            throw new IllegalArgumentException("只能提交自己的知识文档");
-        }
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(document, KnowledgeDocument::getSubmitterId, "知识文档");
         if (!"DRAFT".equals(document.getStatus()) && !"REJECTED".equals(document.getStatus())) {
             throw new IllegalArgumentException("只有草稿或已驳回文档可以提交审批");
         }
@@ -228,9 +227,8 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
     @Transactional(rollbackFor = Exception.class)
     public boolean recall(Long documentId) {
         KnowledgeDocument document = requireDocument(documentId);
-        if (!isOwner(document)) {
-            throw new IllegalArgumentException("只能撤回自己的知识文档");
-        }
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(document, KnowledgeDocument::getSubmitterId, "知识文档");
         if (!"PENDING".equals(document.getStatus())) {
             throw new IllegalArgumentException("只有审批中的文档可以撤回");
         }

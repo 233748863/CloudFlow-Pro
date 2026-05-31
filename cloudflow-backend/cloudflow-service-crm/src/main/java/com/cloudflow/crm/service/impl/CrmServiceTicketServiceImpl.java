@@ -79,6 +79,8 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         fillCustomerSnapshot(ticket);
         validate(ticket);
         CrmServiceTicket persisted = getAccessibleTicket(ticket.getTicketId());
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(persisted, CrmServiceTicket::getOwnerId, "服务工单");
         ticket.setTenantId(persisted.getTenantId());
         if (!StringUtils.hasText(ticket.getTicketNo())) {
             ticket.setTicketNo(persisted.getTicketNo());

@@ -111,6 +111,13 @@ public class HrAttendanceAppealServiceImpl implements IHrAttendanceAppealService
         if (appeal == null) {
             return;
         }
+        // M1-4: 所有权校验
+        if (appeal.getEmployeeId() != null) {
+            Long currentEmployeeId = UserContext.getUserId();
+            if (currentEmployeeId == null || !currentEmployeeId.equals(appeal.getEmployeeId())) {
+                throw new IllegalArgumentException("无权撤回他人的考勤申诉");
+            }
+        }
         String s = appeal.getStatus();
         if (!"DRAFT".equalsIgnoreCase(s) && !"PENDING".equalsIgnoreCase(s)) {
             throw new IllegalStateException("当前状态不可撤回：" + s);

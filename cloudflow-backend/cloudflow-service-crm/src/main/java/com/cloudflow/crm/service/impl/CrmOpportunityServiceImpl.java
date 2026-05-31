@@ -93,6 +93,8 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         fillCustomerSnapshot(opportunity);
         validate(opportunity);
         CrmOpportunity persisted = getAccessibleOpportunity(opportunity.getOpportunityId());
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(persisted, CrmOpportunity::getOwnerId, "商机");
         opportunity.setTenantId(persisted.getTenantId());
         opportunity.setOwnerId(opportunity.getOwnerId() == null ? persisted.getOwnerId() : opportunity.getOwnerId());
         opportunity.setOwnerName(StringUtils.hasText(opportunity.getOwnerName()) ? opportunity.getOwnerName() : persisted.getOwnerName());
@@ -306,6 +308,8 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
             return winOpportunity(opportunityId);
         }
         CrmOpportunity opportunity = getAccessibleOpportunity(opportunityId);
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(opportunity, CrmOpportunity::getOwnerId, "商机");
         opportunity.setStage(stage);
         opportunity.setStatus(CrmConstants.OpportunityStatus.OPEN);
         opportunity.setStageChangedTime(now());

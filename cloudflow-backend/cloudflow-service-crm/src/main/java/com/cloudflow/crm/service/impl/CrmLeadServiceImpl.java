@@ -3,6 +3,7 @@ package com.cloudflow.crm.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmLead;
@@ -54,6 +55,8 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
         }
         validate(lead);
         CrmLead persisted = requireById(lead.getLeadId(), "线索不存在");
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(persisted, CrmLead::getOwnerId, "线索");
         lead.setTenantId(persisted.getTenantId());
         lead.setLeadNo(persisted.getLeadNo());
         if (persisted.getConvertedCustomerId() != null) {
@@ -73,6 +76,8 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
             throw new IllegalArgumentException("线索ID不能为空");
         }
         CrmLead lead = requireById(request.getLeadId(), "线索不存在");
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(lead, CrmLead::getOwnerId, "线索");
         if (!CrmConstants.DelFlag.NORMAL.equals(lead.getDeleted())) {
             throw new IllegalArgumentException("线索不存在");
         }

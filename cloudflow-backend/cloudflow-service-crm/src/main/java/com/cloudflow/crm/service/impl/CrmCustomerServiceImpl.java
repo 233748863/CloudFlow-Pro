@@ -96,6 +96,8 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
         validate(customer);
         enrichOwnerFromHr(customer);
         CrmCustomer persisted = requireById(customer.getCustomerId(), "客户不存在");
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(persisted, CrmCustomer::getOwnerId, "客户");
         customer.setTenantId(persisted.getTenantId());
         customer.setUpdateBy(currentUserName());
         customer.setUpdateTime(now());

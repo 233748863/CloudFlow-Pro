@@ -106,6 +106,8 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
             throw new IllegalArgumentException("合同ID不能为空");
         }
         OaContract persisted = requireContract(contract.getContractId());
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(persisted, OaContract::getOwnerId, "合同");
         if (!OaContractConstants.CONTRACT_STATUS_DRAFT.equals(persisted.getStatus())
                 && !OaContractConstants.CONTRACT_STATUS_REJECTED.equals(persisted.getStatus())
                 && !OaContractConstants.CONTRACT_STATUS_APPROVED.equals(persisted.getStatus())
@@ -162,6 +164,8 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     @Transactional(rollbackFor = Exception.class)
     public boolean submitContract(Long id) {
         OaContract contract = requireContract(id);
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(contract, OaContract::getOwnerId, "合同");
         if (!OaContractConstants.CONTRACT_STATUS_DRAFT.equals(contract.getStatus())
                 && !OaContractConstants.CONTRACT_STATUS_REJECTED.equals(contract.getStatus())) {
             throw new IllegalArgumentException("只有草稿或已驳回合同可以提交审批");

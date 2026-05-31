@@ -139,6 +139,11 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     @Transactional(rollbackFor = Exception.class)
     public boolean updateClaim(BizExpenseClaim claim) {
         normalizeClaimItems(claim);
+        // M1-4: 所有权校验
+        BizExpenseClaim existing = getById(claim.getId());
+        if (existing != null) {
+            DataScopeUtils.assertOwnership(existing, BizExpenseClaim::getUserId, "报销单");
+        }
         // 更新报销申请
         boolean result = updateById(claim);
         
@@ -168,6 +173,8 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         if (claim == null) {
             return false;
         }
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(claim, BizExpenseClaim::getUserId, "报销单");
         
         // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
         if (!StringUtils.hasText(claim.getDeptName())) {

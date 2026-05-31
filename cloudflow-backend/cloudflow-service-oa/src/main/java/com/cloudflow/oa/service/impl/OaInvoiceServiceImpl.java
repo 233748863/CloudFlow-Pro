@@ -85,6 +85,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
             throw new IllegalArgumentException("发票ID不能为空");
         }
         validateInvoice(invoice);
+        // M1-4: 所有权校验 - 发票通常由财务管理，不做个人所有权校验
         invoice.setUpdateBy(resolveUserName());
         invoice.setUpdateTime(LocalDateTime.now());
         return updateById(invoice);

@@ -75,6 +75,8 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         if (trip == null) {
             return false;
         }
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(trip, BusinessTrip::getUserId, "出差申请");
         // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
         if (!StringUtils.hasText(trip.getDeptName())) {
             trip.setDeptName(UserContext.getDeptName());
@@ -146,6 +148,8 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         if (trip == null) {
             return false;
         }
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(trip, BusinessTrip::getUserId, "出差申请");
         if (!"DRAFT".equals(trip.getStatus()) && !"PENDING".equals(trip.getStatus())) {
             log.warn("出差申请 {} 当前状态 {} 不允许取消", trip.getTripNo(), trip.getStatus());
             return false;

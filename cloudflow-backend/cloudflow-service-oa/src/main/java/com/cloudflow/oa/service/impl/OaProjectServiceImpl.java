@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
@@ -134,6 +135,8 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         }
         validate(project);
         OaProject persisted = requireProject(project.getProjectId());
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(persisted, OaProject::getOwnerId, "项目");
         project.setTenantId(persisted.getTenantId());
         project.setProjectNo(StringUtils.hasText(project.getProjectNo()) ? project.getProjectNo() : persisted.getProjectNo());
         project.setInstanceId(persisted.getInstanceId());
@@ -155,6 +158,8 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     @Transactional(rollbackFor = Exception.class)
     public boolean submitProject(Long projectId) {
         OaProject project = requireProject(projectId);
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(project, OaProject::getOwnerId, "项目");
         if (!"DRAFT".equals(project.getStatus()) && !"REJECTED".equals(project.getStatus())) {
             throw new IllegalArgumentException("只有草稿或已驳回项目可以提交立项");
         }

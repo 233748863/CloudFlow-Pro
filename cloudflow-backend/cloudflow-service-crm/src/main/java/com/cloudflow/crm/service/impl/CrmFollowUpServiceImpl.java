@@ -74,6 +74,8 @@ public class CrmFollowUpServiceImpl extends CrmServiceSupport<CrmFollowUpMapper,
         }
         validate(followUp);
         CrmFollowUp persisted = getAccessibleFollowUp(followUp.getFollowUpId());
+        // M1-4: 所有权校验
+        DataScopeUtils.assertOwnership(persisted, CrmFollowUp::getOwnerId, "跟进记录");
         followUp.setTenantId(persisted.getTenantId());
         followUp.setUpdateBy(currentUserName());
         followUp.setUpdateTime(now());
