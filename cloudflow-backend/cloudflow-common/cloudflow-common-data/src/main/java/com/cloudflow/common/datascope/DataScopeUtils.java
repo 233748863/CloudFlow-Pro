@@ -1,6 +1,7 @@
 package com.cloudflow.common.datascope;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.exception.ServiceException;
 
 /**
  * 数据权限工具类
@@ -126,12 +127,67 @@ public final class DataScopeUtils {
     /**
      * 跳过行级过滤：设置 skip 标记为 true，拦截器将不会添加数据权限条件。
      * 适用于特殊场景，如管理员查看所有数据、TOC 用户、或业务已确定无需数据范围限制的情况。
-     * 
+     *
      * @return DataScope 跳过过滤的数据权限对象
      */
     public static DataScope skip() {
         DataScope scope = listScope();
         scope.setSkip(true);
         return scope;
+    }
+
+    /**
+     * M0-6: 断言当前用户拥有实体所有权。
+     * <p>
+     * 用于写路径（update / delete）前置校验，替换业务模块里"靠前端传 id"的模式。
+     * 失败抛 ServiceException("ERR.NO_PERMISSION", 403)。
+     * <p>
+     * 示例：
+     * <pre>
+     * public void updateClaim(BizExpenseClaim claim) {
+     *     DataScopeUtils.assertOwnership(claim.getUserId(), "报销单");
+     *     // 业务逻辑
+     * }
+     * </pre>
+     *
+     * @param ownerUserId 实体所有者用户 ID
+     * @param entityName  实体名称（用于错误提示）
+     * @throws ServiceException 当前用户不是所有者时抛出 403
+     */
+    public static void assertOwnership(Long ownerUserId, String entityName) {
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId == null) {
+            throw new ServiceException("ERR.NO_PERMISSION", 403);
+        }
+        if (!currentUserId.equals(ownerUserId)) {
+            throw new ServiceException("无权操作该" + entityName, 403);
+        }
+    }
+
+    /**
+     * M0-6: 断言当前用户拥有实体所有权（通过 getter 获取 ownerUserId）。
+     * <p>
+     * 适用于实体对象有 getUserId() / getOwnerId() / getApplicantId() 等方法的场景。
+     * <p>
+     * 示例：
+     * <pre>
+     * public void updateClaim(BizExpenseClaim claim) {
+     *     DataScopeUtils.assertOwnership(claim, BizExpenseClaim::getUserId, "报销单");
+     *     // 业务逻辑
+     * }
+     * </pre>
+     *
+     * @param entity         实体对象
+     * @param ownerIdGetter  获取所有者 ID 的 getter（如 BizExpenseClaim::getUserId）
+     * @param entityName     实体名称（用于错误提示）
+     * @param <T>            实体类型
+     * @throws ServiceException 当前用户不是所有者时抛出 403
+     */
+    public static <T> void assertOwnership(T entity, java.util.function.Function<T, Long> ownerIdGetter, String entityName) {
+        if (entity == null) {
+            throw new ServiceException("实体不存在", 404);
+        }
+        Long ownerUserId = ownerIdGetter.apply(entity);
+        assertOwnership(ownerUserId, entityName);
     }
 }
