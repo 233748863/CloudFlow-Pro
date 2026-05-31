@@ -30,6 +30,7 @@ import com.cloudflow.oa.service.remote.RemoteBusinessRuleService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -168,6 +169,8 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     @Override
     @Audit(name = "提交报销申请", spel = "#id", oldVal = "@expenseClaimServiceImpl.getById(#id)")
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'expense:claim:' + #id + ':submit'")
     public boolean submitClaim(Long id) {
         BizExpenseClaim claim = getById(id);
         if (claim == null) {

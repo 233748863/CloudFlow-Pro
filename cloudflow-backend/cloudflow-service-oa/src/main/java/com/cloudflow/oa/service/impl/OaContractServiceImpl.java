@@ -27,6 +27,7 @@ import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -162,6 +163,8 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'contract:' + #id + ':submit'")
     public boolean submitContract(Long id) {
         OaContract contract = requireContract(id);
         // M1-4: 所有权校验

@@ -29,6 +29,7 @@ import com.cloudflow.oa.service.IPurchaseRequestService;
 import com.cloudflow.oa.service.ISupplierService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -145,6 +146,8 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     @Override
     @Audit(name = "提交采购申请", spel = "#id", oldVal = "@purchaseRequestServiceImpl.getRequestWithItems(#id)")
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'purchase:' + #id + ':submit'")
     public boolean submitPurchase(Long id) {
         BizPurchaseRequest purchase = getRequestWithItems(id);
         if (purchase == null || !Integer.valueOf(0).equals(purchase.getDeleted())) {

@@ -30,6 +30,7 @@ import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.cloudflow.hr.mapper.HrPerformanceSalaryAdjustmentMapper;
 import com.cloudflow.hr.service.IHrPerformanceService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -395,6 +396,8 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     }
 
     @Override
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'performance:objective:' + #objectiveId + ':submit:plan'")
     public void submitPlan(Long objectiveId) {
         Map<String, Object> before = loadObjective(objectiveId);
         objectiveMapper.update(null,
@@ -407,6 +410,8 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     }
 
     @Override
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'performance:objective:' + #objectiveId + ':submit:result'")
     public void submitResult(Long objectiveId) {
         Map<String, Object> before = loadObjective(objectiveId);
         objectiveMapper.update(null,

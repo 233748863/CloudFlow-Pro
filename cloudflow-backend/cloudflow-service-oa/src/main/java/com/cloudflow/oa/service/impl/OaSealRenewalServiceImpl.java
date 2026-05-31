@@ -19,6 +19,7 @@ import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -220,6 +221,8 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'seal:renewal:' + #id + ':approve'")
     public void approveRenewal(Long id, String processInstanceId) {
         OaSealRenewal renewal = requireRenewal(id);
         if (!OaBorrowConstants.STATUS_PENDING.equals(renewal.getStatus())) {

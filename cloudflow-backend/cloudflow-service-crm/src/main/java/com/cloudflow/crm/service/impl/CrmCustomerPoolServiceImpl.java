@@ -15,6 +15,7 @@ import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmCustomerPoolLogMapper;
 import com.cloudflow.crm.service.ICrmCustomerPoolService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -85,6 +86,8 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'customer:' + #customerId + ':claim'", waitMs = 200, leaseMs = 5000)
     public boolean claimFromPool(Long customerId, String reason) {
         CrmCustomer customer = loadCustomer(customerId);
         if (!CrmConstants.CustomerPoolFlag.IN_POOL.equals(customer.getPoolFlag())) {
@@ -113,6 +116,8 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'customer:' + #assignDTO.customerId + ':assign'", waitMs = 200, leaseMs = 5000)
     public boolean assignFromPool(CrmCustomerAssignDTO assignDTO) {
         if (assignDTO == null || assignDTO.getCustomerId() == null) {
             throw new IllegalArgumentException("客户ID不能为空");

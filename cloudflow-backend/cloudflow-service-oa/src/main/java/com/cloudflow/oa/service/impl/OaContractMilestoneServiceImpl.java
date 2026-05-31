@@ -10,6 +10,7 @@ import com.cloudflow.oa.mapper.OaContractMilestoneMapper;
 import com.cloudflow.oa.mapper.OaContractPaymentScheduleMapper;
 import com.cloudflow.oa.service.IOaContractMilestoneService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -215,6 +216,8 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
 
     @Override
     @Transactional
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'contract:payment:' + #id + ':pay'", waitMs = 500, leaseMs = 15000)
     public boolean payPayment(Long id, BigDecimal actualAmount, String remark) {
         OaContractPaymentSchedule exist = paymentMapper.selectById(id);
         if (exist == null || (exist.getDeleted() != null && exist.getDeleted() == 1)) {

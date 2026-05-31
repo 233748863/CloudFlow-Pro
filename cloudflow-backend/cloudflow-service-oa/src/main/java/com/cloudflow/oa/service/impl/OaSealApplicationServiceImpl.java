@@ -30,6 +30,7 @@ import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -186,6 +187,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'seal:application:' + #id + ':submit'")
     public boolean submitApplication(Long id) {
         OaSealApplication application = requireApplication(id);
         if (!OaBorrowConstants.STATUS_DRAFT.equals(application.getStatus())) {
@@ -267,6 +270,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'seal:' + #id + ':borrow'")
     public boolean confirmBorrow(Long id, String remark, String attachmentUrl) {
         OaSealApplication application = requireApplication(id);
         if (!OaBorrowConstants.STATUS_APPROVED.equals(application.getStatus())) {
@@ -302,6 +307,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'seal:' + #id + ':return'")
     public boolean confirmReturn(Long id, String remark, String attachmentUrl) {
         OaSealApplication application = requireApplication(id);
         if (!OaBorrowConstants.STATUS_BORROWED.equals(application.getStatus())

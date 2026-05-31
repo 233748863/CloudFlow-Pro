@@ -19,6 +19,7 @@ import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -88,6 +89,8 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     @Override
     @Audit(name = "提交付款申请", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'payment:' + #id + ':submit'")
     public boolean submitPayment(Long id) {
         BizPaymentRequest payment = getById(id);
         if (payment == null) {
@@ -167,6 +170,8 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     @Override
     @Audit(name = "确认付款", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'payment:' + #id + ':confirm'", waitMs = 500, leaseMs = 15000)
     public boolean confirmPaid(Long id) {
         BizPaymentRequest payment = getById(id);
         if (payment == null || !Integer.valueOf(0).equals(payment.getDeleted())) {

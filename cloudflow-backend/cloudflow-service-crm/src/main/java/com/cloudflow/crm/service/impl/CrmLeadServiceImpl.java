@@ -13,6 +13,7 @@ import com.cloudflow.crm.mapper.CrmLeadMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmLeadService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,6 +72,8 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'lead:' + #request.leadId")
     public Long convertLead(CrmLeadConvertDTO request) {
         if (request == null || request.getLeadId() == null) {
             throw new IllegalArgumentException("线索ID不能为空");

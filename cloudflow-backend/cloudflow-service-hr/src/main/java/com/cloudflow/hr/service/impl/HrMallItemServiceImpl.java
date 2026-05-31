@@ -14,6 +14,7 @@ import com.cloudflow.hr.mapper.HrMallItemMapper;
 import com.cloudflow.hr.service.IHrMallItemService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -110,6 +111,8 @@ public class HrMallItemServiceImpl implements IHrMallItemService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'mall:item:' + #itemId + ':stock'", waitMs = 200, leaseMs = 5000)
     public int deductStock(Long itemId, Integer quantity) {
         if (quantity == null || quantity <= 0) {
             throw new HrBusinessException("INVALID_QUANTITY", "数量必须为正数");

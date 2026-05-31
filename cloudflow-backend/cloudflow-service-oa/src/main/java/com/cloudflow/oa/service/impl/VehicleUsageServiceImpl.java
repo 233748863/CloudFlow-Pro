@@ -22,6 +22,7 @@ import com.cloudflow.oa.service.IWorkflowService;
 import com.cloudflow.oa.util.OaContractConstants;
 import com.cloudflow.oa.util.VehicleConstants;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,8 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'vehicle:' + #usage.vehicleId + ':submit'")
     public R<Void> submitUsage(VehicleUsage usage) {
         Long count = this.count(new LambdaQueryWrapper<VehicleUsage>()
                 .eq(VehicleUsage::getVehicleId, usage.getVehicleId())
@@ -115,6 +118,8 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'vehicle:usage:' + #usageId + ':dispatch'")
     public R<Void> dispatchVehicle(Long usageId, VehicleDispatchDTO dto) {
         VehicleUsage usage = getById(usageId);
         if (usage == null) {
@@ -148,6 +153,8 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    // M1-5: 防并发冲突
+    @DistributedLock(key = "'vehicle:usage:' + #usageId + ':return'")
     public R<Void> returnVehicle(Long usageId, double endMileage, String remark, String returnLocation) {
         VehicleUsage usage = this.getById(usageId);
         if (usage == null) {
