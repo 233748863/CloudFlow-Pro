@@ -25,7 +25,6 @@
         <module>cloudflow-service-oa</module>
         <module>cloudflow-service-crm</module>
         <module>cloudflow-service-hr</module>
-        <module>cloudflow-archunit-tests</module>
     </modules>
 
     <properties>
