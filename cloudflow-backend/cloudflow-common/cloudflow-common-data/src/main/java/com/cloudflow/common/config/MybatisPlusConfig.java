@@ -3,6 +3,7 @@ package com.cloudflow.common.config;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.handler.TenantLineHandler;
+import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import com.cloudflow.common.datascope.DataScopeHandle;
@@ -41,8 +42,8 @@ public class MybatisPlusConfig {
     private DataScopeHandle dataScopeHandle;
 
     /**
-     * 多租户插件 + 数据权限插件 + 分页插件
-     * 注意：插件顺序很重要，多租户 > 数据权限 > 分页
+     * 多租户插件 + 乐观锁插件 + 数据权限插件 + 分页插件
+     * 注意：插件顺序很重要，多租户 > 乐观锁 > 数据权限 > 分页
      */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
@@ -85,7 +86,10 @@ public class MybatisPlusConfig {
             log.info("多租户功能已禁用（cloudflow.tenant.enabled=false），不注册 TenantLineInnerInterceptor");
         }
 
-        // 2. 数据权限插件（如果存在 DataScopeHandle 实现）
+        // 2. 乐观锁插件（M0-4：业务实体 @Version 字段支持）
+        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+
+        // 3. 数据权限插件（如果存在 DataScopeHandle 实现）
         if (dataScopeHandle != null) {
             interceptor.addInnerInterceptor(new DataScopeInnerInterceptor(dataScopeHandle));
         }

@@ -2,6 +2,7 @@ package com.cloudflow.oa.domain;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -97,6 +98,10 @@ public class BizExpenseClaim implements Serializable {
     /** 删除标志 */
     @TableField(fill = FieldFill.INSERT)
     private Integer deleted;
+
+    /** 乐观锁版本号（M0-4：并发控制） */
+    @Version
+    private Integer version;
 
     /** 创建者 */
     @TableField(fill = FieldFill.INSERT)
