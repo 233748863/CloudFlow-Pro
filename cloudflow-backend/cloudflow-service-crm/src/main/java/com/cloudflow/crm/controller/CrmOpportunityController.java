@@ -104,6 +104,7 @@ public class CrmOpportunityController {
     }
 
     @SysLog("CRM商机生成项目草稿")
+    @RepeatSubmit
     @PostMapping("/{id}/project-draft")
     @SaCheckPermission("crm:project:draft")
     public R<Long> createProjectDraft(@PathVariable("id") Long id) {

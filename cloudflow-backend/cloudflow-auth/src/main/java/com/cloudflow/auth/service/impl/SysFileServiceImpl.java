@@ -11,6 +11,7 @@ import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.auth.enums.FileStorageType;
 import com.cloudflow.auth.mapper.SysFileMapper;
 import com.cloudflow.auth.service.ISysFileService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.auth.storage.FileStorageRegistry;
 import com.cloudflow.auth.storage.FileStorageService;
@@ -119,6 +120,7 @@ public class SysFileServiceImpl implements ISysFileService {
     }
 
     @Override
+    @Audit(name = "删除文件", highRisk = true)
     public void deleteFileByIds(Long[] fileIds) {
         for (Long id : fileIds) {
             SysFile existingFile = sysFileMapper.selectById(id);

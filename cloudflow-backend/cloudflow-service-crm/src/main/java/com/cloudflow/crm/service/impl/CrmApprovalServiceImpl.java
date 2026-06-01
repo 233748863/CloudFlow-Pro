@@ -22,6 +22,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -63,7 +65,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 customer.getCustomerName(),
                 payload,
                 remark);
-        startWorkflow(approval, "customer_claim_review");
+        startWorkflowAfterCommit(approval, "customer_claim_review");
         return approval.getApprovalId();
     }
 
@@ -88,7 +90,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 customer.getCustomerName(),
                 payload,
                 remark);
-        startWorkflow(approval, "customer_level_change");
+        startWorkflowAfterCommit(approval, "customer_level_change");
         return approval.getApprovalId();
     }
 
@@ -114,7 +116,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 opportunity.getOpportunityName(),
                 payload,
                 lostReason);
-        startWorkflow(approval, "opportunity_downgrade_review");
+        startWorkflowAfterCommit(approval, "opportunity_downgrade_review");
         return approval.getApprovalId();
     }
 
@@ -150,7 +152,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 receivable.getReceivableName(),
                 payload,
                 reason);
-        startWorkflow(approval, "crm_refund_review");
+        startWorkflowAfterCommit(approval, "crm_refund_review");
         return approval.getApprovalId();
     }
 
@@ -214,6 +216,19 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
             log.warn("启动 CRM 审批流程失败: approvalId={}, processDefKey={}",
                     approval.getApprovalId(), processDefKey, ex);
         }
+    }
+
+    private void startWorkflowAfterCommit(CrmApproval approval, String processDefKey) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            startWorkflow(approval, processDefKey);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                startWorkflow(approval, processDefKey);
+            }
+        });
     }
 
     private String extractInstanceId(Object data) {

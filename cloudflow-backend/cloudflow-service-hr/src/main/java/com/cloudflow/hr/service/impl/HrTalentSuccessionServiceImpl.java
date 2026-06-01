@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
@@ -20,9 +21,8 @@ import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessorVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentSuccessionPlanMapper;
 import com.cloudflow.hr.mapper.HrTalentSuccessorMapper;
-import com.cloudflow.hr.service.IHrTalentSuccessionService;
 import com.cloudflow.hr.service.HrTypedCrudService;
-import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.hr.service.IHrTalentSuccessionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,10 +70,9 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新继任计划")
+    @Audit(name = "更新继任计划", highRisk = true)
     public void updatePlan(Long planId, HrTalentSuccessionPlanDTO dto) {
-        crudService.updateProperties(HrTalentSuccessionPlan.class, planId,
-                MapConverters.toMap(dto, objectMapper));
+        crudService.updateProperties(HrTalentSuccessionPlan.class, planId, MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
@@ -108,22 +107,22 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
         QueryWrapper<HrTalentSuccessor> dup = new QueryWrapper<>();
         dup.eq("tenant_id", currentTenantId()).eq("plan_id", planId).eq("employee_id", employeeId).eq("deleted", 0);
         if (successorMapper.selectCount(dup) > 0) {
-            throw new HrBusinessException("DUPLICATE_SUCCESSOR",
-                    "该员工已是本计划继任人：" + employeeId);
+            throw new HrBusinessException("DUPLICATE_SUCCESSOR", "该员工已是本计划继任人：" + employeeId);
         }
-        HrTalentSuccessor s = objectMapper.convertValue(dto, HrTalentSuccessor.class);
-        s.setTenantId(currentTenantId());
-        s.setPlanId(planId);
-        s.setStatus(StringUtils.hasText(s.getStatus()) ? s.getStatus() : "ACTIVE");
-        s.setDeleted(0);
-        s.setCreateBy(currentUserName());
-        s.setUpdateBy(currentUserName());
-        successorMapper.insert(s);
-        return s.getId();
+        HrTalentSuccessor successor = objectMapper.convertValue(dto, HrTalentSuccessor.class);
+        successor.setTenantId(currentTenantId());
+        successor.setPlanId(planId);
+        successor.setStatus(StringUtils.hasText(successor.getStatus()) ? successor.getStatus() : "ACTIVE");
+        successor.setDeleted(0);
+        successor.setCreateBy(currentUserName());
+        successor.setUpdateBy(currentUserName());
+        successorMapper.insert(successor);
+        return successor.getId();
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除继任人", highRisk = true)
     public void removeSuccessor(Long successorId) {
         crudService.delete(HrTalentSuccessor.class, successorId);
     }
@@ -136,26 +135,37 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
             throw new HrBusinessException("PLAN_NOT_FOUND", "继任计划不存在：" + planId);
         }
         if (!"DRAFT".equals(plan.getStatus())) {
-            throw new HrBusinessException("PLAN_STATUS_INVALID",
-                    "继任计划状态 " + plan.getStatus() + " 不允许发起发布审批");
+            throw new HrBusinessException("PLAN_STATUS_INVALID", "继任计划状态 " + plan.getStatus() + " 不允许发起发布审批");
         }
         QueryWrapper<HrTalentSuccessor> qw = new QueryWrapper<>();
         qw.eq("plan_id", planId).eq("tenant_id", currentTenantId()).eq("status", "ACTIVE").eq("deleted", 0);
         if (successorMapper.selectCount(qw) == 0) {
             throw new HrBusinessException("NO_SUCCESSOR", "继任计划必须至少提名一名继任人后才能发布");
         }
+
+        UpdateWrapper<HrTalentSuccessionPlan> uw = new UpdateWrapper<>();
+        uw.eq("id", planId).eq("tenant_id", currentTenantId())
+                .set("update_time", LocalDateTime.now());
+        planMapper.update(null, uw);
+        HrTransactionHooks.afterCommit(() -> startTalentSuccessionWorkflow(
+                planId, plan.getPlanNo(), plan.getPlanName(), plan.getPositionId()));
+        log.info("继任计划发布已提交，planId={}", planId);
+        return null;
+    }
+
+    private void startTalentSuccessionWorkflow(Long planId, String planNo, String planName, Long positionId) {
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(currentTenantId());
         dto.setProcessDefinitionKey(successionProcessKey);
         dto.setBusinessType("HR_TALENT_SUCCESSION");
         dto.setBusinessId(planId);
-        dto.setBusinessNo(plan.getPlanNo());
-        dto.setProcessTitle("继任计划发布-" + plan.getPlanName());
+        dto.setBusinessNo(planNo);
+        dto.setProcessTitle("继任计划发布-" + planName);
         dto.setStartUserId(UserContext.getUserId());
         Map<String, Object> vars = new LinkedHashMap<>();
         vars.put("planId", planId);
-        vars.put("planName", plan.getPlanName());
-        vars.put("positionId", plan.getPositionId());
+        vars.put("planName", planName);
+        vars.put("positionId", positionId);
         dto.setVariables(vars);
         R<String> response = workflowServiceClient.startProcess(dto);
         if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
@@ -168,7 +178,6 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
                 .set("update_time", LocalDateTime.now());
         planMapper.update(null, uw);
         log.info("继任计划发布已提交，planId={}, processInstanceId={}", planId, response.getData());
-        return response.getData();
     }
 
     private long currentTenantId() {

@@ -174,7 +174,8 @@ public class HrTypedCrudService {
 
     @Audit(name = "HR记录删除",
             oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
-            newVal = "@hrTypedCrudService.emptySnapshot(#entityClass)")
+            newVal = "@hrTypedCrudService.emptySnapshot(#entityClass)",
+            highRisk = true)
     public <T> void delete(Class<T> entityClass, Long id) {
         BaseMapper<T> mapper = mapper(entityClass);
         TableInfo tableInfo = tableInfo(entityClass);

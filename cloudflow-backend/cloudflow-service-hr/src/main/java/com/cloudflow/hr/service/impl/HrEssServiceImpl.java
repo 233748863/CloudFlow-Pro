@@ -179,7 +179,7 @@ public class HrEssServiceImpl implements IHrEssService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新银行卡")
+    @Audit(name = "更新银行卡", highRisk = true)
     public void updateBankCard(Long id, Map<String, Object> payload) {
         HrBankCard card = bankCardMapper.selectById(id);
         if (card == null) {

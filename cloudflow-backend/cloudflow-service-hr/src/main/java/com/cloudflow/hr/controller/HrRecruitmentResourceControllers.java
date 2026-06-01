@@ -57,6 +57,7 @@ class HrRecruitmentRequisitionController {
     }
 
     @SysLog("新增HR招聘需求")
+    @RepeatSubmit
     @PostMapping("/requisitions")
     @SaCheckPermission("hr:recruitment:add")
     public R<Long> createRequisition(@RequestBody HrRecruitmentRequisitionPayload payload) {
@@ -95,6 +96,7 @@ class HrCandidateController {
     }
 
     @SysLog("新增HR候选人")
+    @RepeatSubmit
     @PostMapping("/candidates")
     @SaCheckPermission("hr:recruitment:add")
     public R<Long> createCandidate(@RequestBody HrCandidatePayload payload) {
@@ -135,6 +137,7 @@ class HrInterviewController {
     }
 
     @SysLog("新增HR面试")
+    @RepeatSubmit
     @PostMapping("/interviews")
     @SaCheckPermission("hr:recruitment:add")
     public R<Long> createInterview(@RequestBody HrInterviewPayload payload) {
@@ -173,6 +176,7 @@ class HrOfferController {
     }
 
     @SysLog("新增HR Offer")
+    @RepeatSubmit
     @PostMapping("/offers")
     @SaCheckPermission("hr:recruitment:add")
     public R<Long> createOffer(@RequestBody HrOfferPayload payload) {
@@ -226,6 +230,7 @@ class HrRecruitmentChannelController {
     }
 
     @SysLog("新增HR招聘渠道")
+    @RepeatSubmit
     @PostMapping("/channels")
     @SaCheckPermission("hr:recruitment:add")
     public R<Long> createChannel(@RequestBody HrRecruitmentChannelPayload payload) {

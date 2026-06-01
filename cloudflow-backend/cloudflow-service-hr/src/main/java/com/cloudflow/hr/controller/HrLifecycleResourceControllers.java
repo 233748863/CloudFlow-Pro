@@ -39,6 +39,7 @@ class HrLifecycleApplicationController {
     }
 
     @SysLog("新增HR生命周期申请")
+    @RepeatSubmit
     @PostMapping("/applications")
     @SaCheckPermission("hr:lifecycle:add")
     public R<Long> createLifecycleApplication(@RequestBody HrLifecycleApplicationPayload payload) {

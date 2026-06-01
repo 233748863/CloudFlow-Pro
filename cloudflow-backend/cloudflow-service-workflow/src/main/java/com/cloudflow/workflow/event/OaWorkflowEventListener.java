@@ -99,14 +99,12 @@ public class OaWorkflowEventListener {
         int affectedRows;
         if (action == null) {
             affectedRows = jdbcTemplate.update(
-                    "UPDATE " + binding.tableName +
-                            " SET " + binding.instanceColumn + " = ?, update_by = ?, update_time = NOW() WHERE " + binding.idColumn + " = ?",
+                    binding.updateInstanceSql,
                     instanceId, WORKFLOW_UPDATE_BY, businessId
             );
         } else {
             affectedRows = jdbcTemplate.update(
-                    "UPDATE " + binding.tableName +
-                            " SET " + binding.instanceColumn + " = ?, status = ?, update_by = ?, update_time = NOW() WHERE " + binding.idColumn + " = ?",
+                    binding.updateInstanceAndStatusSql,
                     instanceId, binding.resolveStatus(action), WORKFLOW_UPDATE_BY, businessId
             );
         }
@@ -157,6 +155,8 @@ public class OaWorkflowEventListener {
         private final String approvedStatus;
         private final String rejectedStatus;
         private final String cancelledStatus;
+        private final String updateInstanceSql;
+        private final String updateInstanceAndStatusSql;
 
         private OaBusinessBinding(String processDefKey,
                                   String tableName,
@@ -174,6 +174,23 @@ public class OaWorkflowEventListener {
             this.approvedStatus = approvedStatus;
             this.rejectedStatus = rejectedStatus;
             this.cancelledStatus = cancelledStatus;
+            validateIdentifier(tableName);
+            validateIdentifier(idColumn);
+            validateIdentifier(instanceColumn);
+            this.updateInstanceSql = String.format(
+                    "UPDATE %s SET %s = ?, update_by = ?, update_time = NOW() WHERE %s = ?",
+                    tableName, instanceColumn, idColumn
+            );
+            this.updateInstanceAndStatusSql = String.format(
+                    "UPDATE %s SET %s = ?, status = ?, update_by = ?, update_time = NOW() WHERE %s = ?",
+                    tableName, instanceColumn, idColumn
+            );
+        }
+
+        private static void validateIdentifier(String identifier) {
+            if (!identifier.matches("[A-Za-z0-9_]+")) {
+                throw new IllegalArgumentException("非法 SQL 标识符: " + identifier);
+            }
         }
 
         private Long resolveBusinessId(String businessKey) {

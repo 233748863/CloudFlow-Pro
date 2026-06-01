@@ -1,12 +1,10 @@
 package com.cloudflow.common.audit.support;
 
+import com.cloudflow.common.core.spel.MethodBasedSpelEvaluator;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 /**
  * SPEL 表达式解析器
@@ -19,10 +17,6 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
  */
 public class SpelParser implements ApplicationContextAware {
 
-    private static final SpelExpressionParser PARSER = new SpelExpressionParser();
-
-    private static ApplicationContext applicationContext;
-
     /**
      * 解析 SPEL 表达式
      *
@@ -31,24 +25,11 @@ public class SpelParser implements ApplicationContextAware {
      * @return 表达式计算结果
      */
     public static Object parser(ProceedingJoinPoint joinPoint, String spel) {
-        StandardEvaluationContext context = new StandardEvaluationContext();
-        // 注入 Spring Bean 解析器，支持 @beanName.method() 语法
-        if (applicationContext != null) {
-            context.setBeanResolver(new org.springframework.context.expression.BeanFactoryResolver(applicationContext));
-        }
-        // 将方法参数注入为 SPEL 变量
-        String[] paramNames = ((MethodSignature) joinPoint.getSignature()).getParameterNames();
-        Object[] args = joinPoint.getArgs();
-        if (paramNames != null) {
-            for (int i = 0; i < paramNames.length; i++) {
-                context.setVariable(paramNames[i], args[i]);
-            }
-        }
-        return PARSER.parseExpression(spel).getValue(context);
+        return MethodBasedSpelEvaluator.evaluate(spel, joinPoint);
     }
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        SpelParser.applicationContext = applicationContext;
+        new MethodBasedSpelEvaluator().setApplicationContext(applicationContext);
     }
 }

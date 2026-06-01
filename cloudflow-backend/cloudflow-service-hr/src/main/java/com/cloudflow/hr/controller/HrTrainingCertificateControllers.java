@@ -147,6 +147,7 @@ class HrTrainingCertificateTemplateController {
     }
 
     @SysLog("新增培训证书模板")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:training:cert:issue")
     public R<Long> create(@RequestBody HrTrainingCertificateTemplatePayload payload) {

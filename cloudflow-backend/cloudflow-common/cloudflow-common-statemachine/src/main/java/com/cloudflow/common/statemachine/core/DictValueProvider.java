@@ -1,6 +1,5 @@
 package com.cloudflow.common.statemachine.core;
 
-import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -9,7 +8,7 @@ import java.util.Set;
  *
  * <p>本模块仅声明接口，不强制依赖任何字典实现，避免循环依赖。
  * 若运行时上下文中没有 DictValueProvider Bean（例如被 cloudflow-gateway 这种无字典的模块依赖），
- * 字典校验自动跳过，仅打印 INFO 日志。
+ * 由自动配置决定是严格失败还是警告跳过。
  */
 public interface DictValueProvider {
 
@@ -19,6 +18,10 @@ public interface DictValueProvider {
      */
     Set<String> getValues(String dictType);
 
-    /** 默认 NOOP 实现，方便测试或字典缺失场景。 */
-    DictValueProvider NOOP = dictType -> Collections.emptySet();
+    /**
+     * 当前实现是否具备真实字典能力。
+     */
+    default boolean available() {
+        return true;
+    }
 }

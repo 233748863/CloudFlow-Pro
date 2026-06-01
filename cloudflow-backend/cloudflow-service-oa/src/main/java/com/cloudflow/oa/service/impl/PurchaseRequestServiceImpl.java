@@ -171,6 +171,18 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         PurchaseRequestStatus newStatus = stateMachine.fire(currentStatus, PurchaseRequestEvent.SUBMIT);
         purchase.setStatus(newStatus.name());
 
+        boolean updated = updateById(purchase);
+        if (updated) {
+            startPurchaseWorkflowAfterCommit(purchase);
+        }
+        return updated;
+    }
+
+    private void startPurchaseWorkflowAfterCommit(BizPurchaseRequest purchase) {
+        OaTransactionHooks.afterCommit(() -> startPurchaseWorkflow(purchase));
+    }
+
+    private void startPurchaseWorkflow(BizPurchaseRequest purchase) {
         try {
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
             req.setProcessDefKey("purchase_request");
@@ -199,7 +211,10 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (instanceId != null) {
-                    purchase.setInstanceId(instanceId);
+                    BizPurchaseRequest update = new BizPurchaseRequest();
+                    update.setId(purchase.getId());
+                    update.setInstanceId(instanceId);
+                    updateById(update);
                 }
                 log.info("采购申请 {} 工作流启动成功，流程实例ID: {}", purchase.getPurchaseNo(), instanceId);
             } else {
@@ -211,8 +226,6 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
                     OaBusinessTypes.PURCHASE_REQUEST, purchase.getId(), purchase.getPurchaseNo(),
                     purchase.getUserName(), purchase.getUserId(), e);
         }
-
-        return updateById(purchase);
     }
 
     @Override

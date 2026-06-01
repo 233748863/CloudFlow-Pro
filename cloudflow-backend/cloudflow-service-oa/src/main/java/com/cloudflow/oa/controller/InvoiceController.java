@@ -95,6 +95,7 @@ public class InvoiceController {
     }
 
     @SysLog("作废发票")
+    @RepeatSubmit
     @PostMapping("/{id}/void")
     @SaCheckPermission("oa:invoice:void")
     public R<Void> voidInvoice(@PathVariable("id") Long id, @RequestBody(required = false) Map<String, String> body) {

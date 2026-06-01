@@ -104,11 +104,20 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         BusinessTripStatus newStatus = stateMachine.fire(currentStatus, BusinessTripEvent.SUBMIT);
         trip.setStatus(newStatus.name());
 
+        boolean updated = updateById(trip);
+        startTripWorkflowAfterCommit(trip);
+        return updated;
+    }
+
+    private void startTripWorkflowAfterCommit(BusinessTrip trip) {
+        OaTransactionHooks.afterCommit(() -> startTripWorkflow(trip));
+    }
+
+    private void startTripWorkflow(BusinessTrip trip) {
         try {
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
             req.setProcessDefKey("business_trip");
             req.setBusinessKey("BUSINESS_TRIP:" + trip.getId());
-            // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
             Map<String, Object> variables = new HashMap<>();
             variables.put("tripId", trip.getId());
             variables.put("tripNo", trip.getTripNo());
@@ -124,7 +133,6 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
             variables.put("transportType", trip.getTransportType());
             variables.put("reason", trip.getReason());
             variables.put("deptName", trip.getDeptName());
-            // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
             WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
                     OaBusinessTypes.BUSINESS_TRIP,
@@ -138,7 +146,10 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (instanceId != null) {
-                    trip.setInstanceId(instanceId);
+                    BusinessTrip update = new BusinessTrip();
+                    update.setId(trip.getId());
+                    update.setInstanceId(instanceId);
+                    updateById(update);
                 }
                 log.info("出差申请 {} 工作流启动成功", trip.getTripNo());
             }
@@ -148,12 +159,10 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
                     OaBusinessTypes.BUSINESS_TRIP, trip.getId(), trip.getTripNo(),
                     trip.getUserName(), trip.getUserId(), e);
         }
-
-        return updateById(trip);
     }
 
     @Override
-    @Audit(name = "取消出差申请", spel = "#id")
+    @Audit(name = "取消出差申请", spel = "#id", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public boolean cancelTrip(Long id) {
         BusinessTrip trip = getById(id);

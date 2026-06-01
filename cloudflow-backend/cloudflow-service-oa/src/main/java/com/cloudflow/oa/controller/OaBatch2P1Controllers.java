@@ -299,6 +299,7 @@ class OaKnowledgeTemplateController {
     }
 
     @SysLog("使用知识库模板(累加使用次数)")
+    @RepeatSubmit
     @PostMapping("/{id}/use")
     @SaCheckPermission("oa:knowledge:add")
     public R<String> use(@PathVariable Long id) {

@@ -59,7 +59,7 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
     @Override
     @Transactional
     @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#event.creatorId", condition = "#event != null && #event.creatorId != null")
-    @Audit(name = "更新日程")
+    @Audit(name = "更新日程", highRisk = true)
     public boolean updateEvent(SysScheduleEvent event) {
         // 1. 业务配置校验
         validateBookingConstraints(event);
@@ -188,6 +188,7 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
 
     @Override
     @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#userId")
+    @Audit(name = "取消日程预订", highRisk = true)
     public boolean cancelBooking(Long eventId, Long userId) {
         SysScheduleEvent event = getById(eventId);
         if (event == null) {

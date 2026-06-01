@@ -59,6 +59,7 @@ public class PurchaseRequestController {
     }
 
     @SysLog("补货建议生成采购草稿")
+    @RepeatSubmit
     @PostMapping("/from-suggestion")
     @SaCheckPermission("oa:purchase:add")
     public R<BizPurchaseRequest> fromSuggestion(@RequestBody PurchaseFromSuggestionDTO dto) {

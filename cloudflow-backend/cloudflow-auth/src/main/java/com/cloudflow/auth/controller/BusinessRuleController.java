@@ -7,6 +7,7 @@ import com.cloudflow.auth.domain.BusinessRuleHitRecord;
 import com.cloudflow.auth.domain.BusinessRuleVersion;
 import com.cloudflow.auth.service.IBusinessRuleService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -45,6 +46,7 @@ public class BusinessRuleController {
     }
 
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:rule:edit")
     public R<Void> add(@RequestBody BusinessRule rule) {
         try {
@@ -65,6 +67,7 @@ public class BusinessRuleController {
     }
 
     @PostMapping("/draft")
+    @RepeatSubmit
     @SaCheckPermission("system:rule:edit")
     public R<BusinessRuleVersion> draft(@RequestBody BusinessRule rule) {
         try {
@@ -75,6 +78,7 @@ public class BusinessRuleController {
     }
 
     @PostMapping("/versions/{versionId}/publish")
+    @RepeatSubmit
     @SaCheckPermission("system:rule:publish")
     public R<Void> publish(@PathVariable Long versionId) {
         try {
@@ -85,6 +89,7 @@ public class BusinessRuleController {
     }
 
     @PostMapping("/{ruleId}/rollback/{versionId}")
+    @RepeatSubmit
     @SaCheckPermission("system:rule:rollback")
     public R<Void> rollback(@PathVariable Long ruleId, @PathVariable Long versionId) {
         try {
@@ -119,6 +124,7 @@ public class BusinessRuleController {
     }
 
     @PostMapping("/hit-records")
+    @RepeatSubmit
     @SaCheckPermission("system:rule:edit")
     public R<Void> recordHit(@RequestBody BusinessRuleHitRecord record) {
         return R.result(businessRuleService.recordHit(record));

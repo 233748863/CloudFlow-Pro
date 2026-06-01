@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysMenu;
 import com.cloudflow.auth.mapper.SysMenuMapper;
 import com.cloudflow.auth.service.ISysMenuService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -114,6 +115,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
     }
 
     @Override
+    @Audit(name = "删除菜单", highRisk = true)
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int deleteMenuById(Long menuId) {
         LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<>();

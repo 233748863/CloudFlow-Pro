@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.SysUserBlacklist;
 import com.cloudflow.auth.mapper.SysUserBlacklistMapper;
 import com.cloudflow.auth.service.ISysUserBlacklistService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -94,6 +95,7 @@ public class SysUserBlacklistServiceImpl implements ISysUserBlacklistService {
 
     @Override
     @Transactional
+    @Audit(name = "删除用户黑名单", highRisk = true)
     public boolean remove(Long id) {
         if (id == null) {
             return false;

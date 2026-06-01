@@ -19,6 +19,7 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.hr.service.IHrPerformance360Service;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -175,6 +176,7 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
 
     @Override
     @Transactional
+    @Audit(name = "取消360评估人", highRisk = true)
     public void cancelEvaluator(Long evaluatorId) {
         evaluatorMapper.update(null, new LambdaUpdateWrapper<HrPerfEvaluator>()
                 .eq(HrPerfEvaluator::getId, evaluatorId)

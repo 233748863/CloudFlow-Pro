@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.SysIpAcl;
 import com.cloudflow.auth.mapper.SysIpAclMapper;
 import com.cloudflow.auth.service.ISysIpAclService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -103,6 +104,7 @@ public class SysIpAclServiceImpl implements ISysIpAclService {
     }
 
     @Override
+    @Audit(name = "删除IP访问控制规则", highRisk = true)
     @Transactional
     public boolean remove(Long id) {
         if (id == null) {

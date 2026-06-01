@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 
 /**
  * 流程版本控制器。
@@ -108,6 +109,7 @@ public class VersionController {
         return R.ok(comparison);
     }
 
+    @RepeatSubmit
     @PostMapping("/rollback")
     @SaCheckPermission("workflow:deploy:manage")
     public ResponseEntity<Serializable> rollbackToVersion(@RequestBody RollbackVersionRequest request) {

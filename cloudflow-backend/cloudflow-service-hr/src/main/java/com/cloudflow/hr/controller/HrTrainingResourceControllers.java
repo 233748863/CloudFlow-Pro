@@ -70,6 +70,7 @@ class HrTrainingPlanController {
     }
 
     @SysLog("新增HR培训计划")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:training:plan:add")
     public R<Long> create(@RequestBody HrTrainingPlanPayload payload) {
@@ -118,6 +119,7 @@ class HrTrainingCategoryController {
     }
 
     @SysLog("新增HR培训分类")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:training:course:add")
     public R<Long> create(@RequestBody HrTrainingCategoryPayload payload) {
@@ -158,6 +160,7 @@ class HrTrainingInstructorController {
     }
 
     @SysLog("新增HR培训讲师")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:training:course:add")
     public R<Long> create(@RequestBody HrTrainingInstructorPayload payload) {
@@ -205,6 +208,7 @@ class HrTrainingCourseController {
     }
 
     @SysLog("新增HR培训课程")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:training:course:add")
     public R<Long> create(@RequestBody HrTrainingCoursePayload payload) {
@@ -253,6 +257,7 @@ class HrTrainingSessionController {
     }
 
     @SysLog("新建HR培训班次")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:training:session:add")
     public R<Long> create(@RequestBody HrTrainingSessionPayload payload) {

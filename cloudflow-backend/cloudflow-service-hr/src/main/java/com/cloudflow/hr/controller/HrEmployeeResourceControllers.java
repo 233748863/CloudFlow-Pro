@@ -62,6 +62,7 @@ class HrEmployeeController {
     }
 
     @SysLog("新增HR员工")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:employees:add")
     public R<Long> createEmployee(@RequestBody HrEmployeePayload payload) {
@@ -108,6 +109,7 @@ class HrEmployeeContractController {
     }
 
     @SysLog("新增HR员工合同")
+    @RepeatSubmit
     @PostMapping("/contracts")
     @SaCheckPermission("hr:employees:edit")
     public R<Long> createContract(@RequestBody HrEmployeeContractPayload payload) {
@@ -148,6 +150,7 @@ class HrEmployeeDocumentController {
     }
 
     @SysLog("新增HR员工证件")
+    @RepeatSubmit
     @PostMapping("/documents")
     @SaCheckPermission("hr:employees:edit")
     public R<Long> createDocument(@RequestBody HrEmployeeDocumentPayload payload) {
@@ -188,6 +191,7 @@ class HrEmergencyContactController {
     }
 
     @SysLog("新增HR紧急联系人")
+    @RepeatSubmit
     @PostMapping("/emergency-contacts")
     @SaCheckPermission("hr:employees:edit")
     public R<Long> createContact(@RequestBody HrEmergencyContactPayload payload) {

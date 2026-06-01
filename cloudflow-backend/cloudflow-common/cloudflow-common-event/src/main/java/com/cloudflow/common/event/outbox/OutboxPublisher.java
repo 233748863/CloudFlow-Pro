@@ -61,6 +61,7 @@ public class OutboxPublisher {
         outbox.setAggregateType(envelope.getSourceModule());
         outbox.setAggregateId(envelope.getSourceId());
         outbox.setEventType(envelope.getEventType());
+        outbox.setEventId(envelope.getEventId());
         try {
             outbox.setPayloadJson(objectMapper.writeValueAsString(envelope));
         } catch (JsonProcessingException e) {
@@ -71,6 +72,8 @@ public class OutboxPublisher {
         outbox.setNextRetryAt(LocalDateTime.now());
         outbox.setCreatedAt(LocalDateTime.now());
         outbox.setTenantId(envelope.getTenantId());
+        outbox.setLockedBy(null);
+        outbox.setLockedUntil(null);
 
         outboxEventMapper.insert(outbox);
         log.debug("Outbox 事件已写入: eventType={}, eventId={}, aggregateId={}",

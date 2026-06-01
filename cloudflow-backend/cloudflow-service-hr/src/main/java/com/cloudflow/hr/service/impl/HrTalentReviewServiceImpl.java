@@ -3,6 +3,7 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
@@ -29,9 +30,8 @@ import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.cloudflow.hr.mapper.HrTalentCalibrationSessionMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewParticipantMapper;
-import com.cloudflow.hr.service.IHrTalentReviewService;
 import com.cloudflow.hr.service.HrTypedCrudService;
-import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.hr.service.IHrTalentReviewService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -228,32 +228,15 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
             throw new HrBusinessException("REVIEW_STATUS_INVALID",
                     "盘点状态 " + review.getStatus() + " 不允许发起发布审批");
         }
-        ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(currentTenantId());
-        dto.setProcessDefinitionKey(reviewProcessKey);
-        dto.setBusinessType("HR_TALENT_REVIEW");
-        dto.setBusinessId(reviewId);
-        dto.setBusinessNo(review.getReviewNo());
-        dto.setProcessTitle("人才盘点发布-" + review.getReviewName());
-        dto.setStartUserId(UserContext.getUserId());
-        Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("reviewId", reviewId);
-        vars.put("reviewName", review.getReviewName());
-        vars.put("scopeType", review.getScopeType());
-        dto.setVariables(vars);
-        R<String> response = workflowServiceClient.startProcess(dto);
-        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
-            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
-            throw new HrBusinessException("WORKFLOW_START_FAILED", "盘点发布流程启动失败：" + msg);
-        }
         UpdateWrapper<HrTalentReview> uw = new UpdateWrapper<>();
         uw.eq("id", reviewId).eq("tenant_id", currentTenantId())
-                .set("process_instance_id", response.getData())
                 .set("status", "CALIBRATING")
                 .set("update_time", LocalDateTime.now());
         reviewMapper.update(null, uw);
-        log.info("人才盘点发布已提交，reviewId={}, processInstanceId={}", reviewId, response.getData());
-        return response.getData();
+        HrTransactionHooks.afterCommit(() -> startTalentReviewWorkflow(
+                reviewId, review.getReviewNo(), review.getReviewName(), review.getScopeType()));
+        log.info("人才盘点发布已提交，reviewId={}", reviewId);
+        return null;
     }
 
     @Override
@@ -306,6 +289,33 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
     public void updateCalibrationSession(Long sessionId, HrTalentCalibrationSessionDTO dto) {
         crudService.updateProperties(HrTalentCalibrationSession.class, sessionId,
                 MapConverters.toMap(dto, objectMapper));
+    }
+
+    private void startTalentReviewWorkflow(Long reviewId, String reviewNo, String reviewName, String scopeType) {
+        ProcessStartDTO dto = new ProcessStartDTO();
+        dto.setTenantId(currentTenantId());
+        dto.setProcessDefinitionKey(reviewProcessKey);
+        dto.setBusinessType("HR_TALENT_REVIEW");
+        dto.setBusinessId(reviewId);
+        dto.setBusinessNo(reviewNo);
+        dto.setProcessTitle("人才盘点发布-" + reviewName);
+        dto.setStartUserId(UserContext.getUserId());
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("reviewId", reviewId);
+        vars.put("reviewName", reviewName);
+        vars.put("scopeType", scopeType);
+        dto.setVariables(vars);
+        R<String> response = workflowServiceClient.startProcess(dto);
+        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
+            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
+            throw new HrBusinessException("WORKFLOW_START_FAILED", "盘点发布流程启动失败：" + msg);
+        }
+        UpdateWrapper<HrTalentReview> uw = new UpdateWrapper<>();
+        uw.eq("id", reviewId).eq("tenant_id", currentTenantId())
+                .set("process_instance_id", response.getData())
+                .set("update_time", LocalDateTime.now());
+        reviewMapper.update(null, uw);
+        log.info("人才盘点发布已提交，reviewId={}, processInstanceId={}", reviewId, response.getData());
     }
 
     private void applyParticipantPayload(HrTalentReviewParticipant target, HrTalentParticipantDTO dto) {

@@ -1,5 +1,6 @@
 package com.cloudflow.workflow.service;
 
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
@@ -210,6 +211,7 @@ public class TimerSchedulerService {
     /**
      * 取消指定流程实例的所有定时任务
      */
+    @Audit(name = "取消实例定时器", highRisk = true)
     public void cancelTimersForInstance(String instanceId) {
         try {
             // 查找该实例的所有定时任务

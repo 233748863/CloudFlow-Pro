@@ -6,6 +6,7 @@
         <artifactId>cloudflow-common</artifactId>
         <groupId>com.cloudflow</groupId>
         <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -37,3 +38,5 @@
     </dependencies>
 
 </project>
+
+

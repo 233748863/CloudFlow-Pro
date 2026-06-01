@@ -20,4 +20,5 @@ public class RegisterBody {
     private String email;
     
     private String captchaToken;
+
 }

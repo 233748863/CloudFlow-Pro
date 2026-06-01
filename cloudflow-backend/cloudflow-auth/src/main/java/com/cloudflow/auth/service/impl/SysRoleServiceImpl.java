@@ -8,6 +8,7 @@ import com.cloudflow.auth.mapper.SysRoleMapper;
 import com.cloudflow.auth.mapper.SysRoleMenuMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysRoleService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.constant.CacheConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -145,6 +146,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     @Override
     @Transactional
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
+    @Audit(name = "删除角色", highRisk = true)
     public int deleteRoleByIds(Long[] roleIds) {
         for (Long roleId : roleIds) {
             roleMapper.deleteById(roleId);

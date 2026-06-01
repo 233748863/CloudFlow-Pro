@@ -45,4 +45,48 @@ public @interface RepeatSubmit {
      * 重复提交时的提示消息
      */
     String message() default "请勿重复提交，请稍后再试";
+
+    /**
+     * 当前注解是否启用。
+     */
+    boolean enabled() default true;
+
+    /**
+     * 自定义 SpEL key。
+     */
+    String key() default "";
+
+    /**
+     * Redis key 前缀。
+     */
+    String keyPrefix() default "";
+
+    /**
+     * Key 是否包含租户。
+     */
+    boolean includeTenant() default true;
+
+    /**
+     * Key 是否包含用户。
+     */
+    boolean includeUser() default true;
+
+    /**
+     * Key 是否包含 URI。
+     */
+    boolean includeUri() default true;
+
+    /**
+     * Key 是否包含参数摘要。
+     */
+    boolean includeArgs() default true;
+
+    /**
+     * 显式豁免当前方法。
+     */
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    @Documented
+    @interface Disabled {
+    }
 }

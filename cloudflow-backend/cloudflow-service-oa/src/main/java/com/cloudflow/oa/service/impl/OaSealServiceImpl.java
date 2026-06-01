@@ -194,6 +194,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除印章", highRisk = true)
     public boolean removeSeals(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;

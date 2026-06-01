@@ -115,7 +115,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     @Override
     @Transactional
     @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
-    @Audit(name = "更新公告")
+    @Audit(name = "更新公告", highRisk = true)
     public boolean updateAnnouncement(SysAnnouncement announcement) {
         announcement.setUpdateTime(LocalDateTime.now());
         return updateById(announcement);
@@ -124,6 +124,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     @Override
     @Transactional
     @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
+    @Audit(name = "撤回公告", highRisk = true)
     public boolean revokeAnnouncement(Long announcementId) {
         SysAnnouncement announcement = getById(announcementId);
         if (announcement != null && "1".equals(announcement.getStatus())) {

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 
 @RestController
 @RequestMapping("/wf/callback/dlq")
@@ -38,6 +39,7 @@ public class CallbackDlqAdminController {
         return R.ok(deadLetterMapper.selectPage(new Page<>(current, size), q));
     }
 
+    @RepeatSubmit
     @PostMapping("/{id}/replay")
     public R<Void> replay(@PathVariable Long id) {
         WfCallbackDeadLetter dlq = deadLetterMapper.selectById(id);
@@ -48,6 +50,7 @@ public class CallbackDlqAdminController {
         return R.ok();
     }
 
+    @RepeatSubmit
     @PostMapping("/{id}/ignore")
     public R<Void> ignore(@PathVariable Long id) {
         WfCallbackDeadLetter dlq = deadLetterMapper.selectById(id);

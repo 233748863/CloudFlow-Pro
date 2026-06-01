@@ -69,7 +69,15 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
         usage.setStatus(VehicleConstants.USAGE_STATUS_PENDING);
         usage.setDriverMode(usage.getDriverMode() == null ? 0 : usage.getDriverMode());
         this.save(usage);
+        startVehicleWorkflowAfterCommit(usage);
+        return R.ok();
+    }
 
+    private void startVehicleWorkflowAfterCommit(VehicleUsage usage) {
+        OaTransactionHooks.afterCommit(() -> startVehicleWorkflow(usage));
+    }
+
+    private void startVehicleWorkflow(VehicleUsage usage) {
         Map<String, Object> variables = new HashMap<>();
         variables.put("initiator", usage.getApplicantId());
         variables.put("vehicleInfo", usage.getReason());
@@ -91,8 +99,6 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
             usage.setProcessInstanceId(instanceId);
             this.updateById(usage);
         }
-
-        return R.ok();
     }
 
     @Override
@@ -189,6 +195,7 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消车辆使用申请", highRisk = true)
     public R<Void> cancelUsage(Long usageId) {
         VehicleUsage usage = this.getById(usageId);
         if (usage == null) {

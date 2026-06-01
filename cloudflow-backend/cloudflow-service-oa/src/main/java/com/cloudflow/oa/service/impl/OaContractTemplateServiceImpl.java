@@ -103,6 +103,7 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
 
     @Override
     @Transactional
+    @Audit(name = "删除合同模板", highRisk = true)
     public boolean remove(Long id) {
         if (id == null) {
             return false;

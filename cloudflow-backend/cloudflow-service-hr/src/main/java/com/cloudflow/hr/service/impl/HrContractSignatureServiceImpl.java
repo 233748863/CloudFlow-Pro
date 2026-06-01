@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantContext;
@@ -12,8 +13,8 @@ import com.cloudflow.hr.domain.entity.HrEmployeeContract;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrContractSignatureMapper;
 import com.cloudflow.hr.mapper.HrEmployeeContractMapper;
-import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.hr.service.HrEssSupport;
+import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,9 +28,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * 电子合同签署服务实现，详见接口文档。
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -77,33 +75,6 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
         signature.setUpdateBy(currentUserName());
         contractSignatureMapper.insert(signature);
 
-        ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(tenantId);
-        dto.setProcessDefinitionKey(processDefinitionKey);
-        dto.setBusinessType("HR_CONTRACT_SIGN");
-        dto.setBusinessId(signature.getId());
-        dto.setBusinessNo(String.valueOf(contractId));
-        dto.setProcessTitle("员工电子合同签署-合同 " + contractId);
-        dto.setStartUserId(UserContext.getUserId());
-        Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("contractId", contractId);
-        vars.put("contractType", contract.getContractType());
-        vars.put("employeeId", employeeId);
-        vars.put("signMethod", signature.getSignMethod());
-        dto.setVariables(vars);
-
-        R<String> response = workflowServiceClient.startProcess(dto);
-        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
-            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
-            throw new HrBusinessException("WORKFLOW_START_FAILED", "合同签署流程启动失败：" + msg);
-        }
-        UpdateWrapper<HrContractSignature> wrapper = new UpdateWrapper<>();
-        wrapper.eq("id", signature.getId())
-                .eq("tenant_id", tenantId)
-                .set("process_instance_id", response.getData())
-                .set("update_time", LocalDateTime.now());
-        contractSignatureMapper.update(null, wrapper);
-
         UpdateWrapper<HrEmployeeContract> contractWrapper = new UpdateWrapper<>();
         contractWrapper.eq("id", contractId)
                 .eq("tenant_id", tenantId)
@@ -111,13 +82,14 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
                 .set("update_time", LocalDateTime.now());
         employeeContractMapper.update(null, contractWrapper);
 
-        log.info("合同签署申请已发起，contractId: {}, signatureId: {}, processInstanceId: {}",
-                contractId, signature.getId(), response.getData());
+        HrTransactionHooks.afterCommit(() -> startContractSignatureWorkflow(
+                signature.getId(), contractId, tenantId, employeeId, signature.getSignMethod(), contract.getContractType()));
+        log.info("合同签署申请已发起，contractId: {}, signatureId: {}", contractId, signature.getId());
         return signature.getId();
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消合同签署", highRisk = true)
     public void cancel(Long id) {
         HrContractSignature signature = loadSignature(id);
         essSupport.assertOwner(signature.getSignerId());
@@ -125,16 +97,26 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
             throw new HrBusinessException("STATUS_NOT_CANCELABLE",
                     "当前签署状态 " + signature.getSignStatus() + " 不允许撤销");
         }
-        if (StringUtils.hasText(signature.getProcessInstanceId())) {
-            R<Void> cancelResult = workflowServiceClient.cancelProcess(signature.getProcessInstanceId());
-            if (cancelResult == null || !cancelResult.isSuccess()) {
-                String msg = cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg();
-                log.warn("撤销合同签署流程失败，signatureId: {}, processInstanceId: {}, msg: {}",
-                        id, signature.getProcessInstanceId(), msg);
-            }
+        cancelWorkflowIfNeeded(id, signature.getProcessInstanceId());
+        markCancelled(signature);
+    }
+
+    private void cancelWorkflowIfNeeded(Long id, String processInstanceId) {
+        if (!StringUtils.hasText(processInstanceId)) {
+            return;
         }
+        R<Void> cancelResult = workflowServiceClient.cancelProcess(processInstanceId);
+        if (cancelResult == null || !cancelResult.isSuccess()) {
+            String msg = cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg();
+            log.warn("撤销合同签署流程失败，signatureId: {}, processInstanceId: {}, msg: {}",
+                    id, processInstanceId, msg);
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    protected void markCancelled(HrContractSignature signature) {
         UpdateWrapper<HrContractSignature> wrapper = new UpdateWrapper<>();
-        wrapper.eq("id", id)
+        wrapper.eq("id", signature.getId())
                 .eq("tenant_id", currentTenantId())
                 .set("sign_status", "CANCELLED")
                 .set("update_time", LocalDateTime.now())
@@ -170,6 +152,38 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
                 .set("update_time", now);
         employeeContractMapper.update(null, contractWrapper);
         log.info("合同签署完成回写，signatureId: {}, contractId: {}", id, signature.getContractId());
+    }
+
+    private void startContractSignatureWorkflow(Long signatureId, Long contractId, Long tenantId,
+                                                Long employeeId, String signMethod, String contractType) {
+        ProcessStartDTO dto = new ProcessStartDTO();
+        dto.setTenantId(tenantId);
+        dto.setProcessDefinitionKey(processDefinitionKey);
+        dto.setBusinessType("HR_CONTRACT_SIGN");
+        dto.setBusinessId(signatureId);
+        dto.setBusinessNo(String.valueOf(contractId));
+        dto.setProcessTitle("员工电子合同签署-合同 " + contractId);
+        dto.setStartUserId(UserContext.getUserId());
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("contractId", contractId);
+        vars.put("contractType", contractType);
+        vars.put("employeeId", employeeId);
+        vars.put("signMethod", signMethod);
+        dto.setVariables(vars);
+
+        R<String> response = workflowServiceClient.startProcess(dto);
+        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
+            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
+            throw new HrBusinessException("WORKFLOW_START_FAILED", "合同签署流程启动失败：" + msg);
+        }
+        UpdateWrapper<HrContractSignature> wrapper = new UpdateWrapper<>();
+        wrapper.eq("id", signatureId)
+                .eq("tenant_id", tenantId)
+                .set("process_instance_id", response.getData())
+                .set("update_time", LocalDateTime.now());
+        contractSignatureMapper.update(null, wrapper);
+        log.info("合同签署申请已发起，contractId: {}, signatureId: {}, processInstanceId: {}",
+                contractId, signatureId, response.getData());
     }
 
     private HrContractSignature loadSignature(Long id) {

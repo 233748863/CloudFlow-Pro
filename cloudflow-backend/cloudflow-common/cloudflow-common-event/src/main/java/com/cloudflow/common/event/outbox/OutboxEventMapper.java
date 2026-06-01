@@ -13,9 +13,19 @@ import java.util.List;
 @Mapper
 public interface OutboxEventMapper extends BaseMapper<OutboxEvent> {
 
-    /**
-     * 查询待发布事件（status=PENDING 且 nextRetryAt <= now）。
-     * 按 createdAt 升序，保证 FIFO。
-     */
-    List<OutboxEvent> selectPendingEvents(@Param("now") LocalDateTime now, @Param("limit") int limit);
+    int claimBatch(@Param("owner") String owner,
+                   @Param("now") LocalDateTime now,
+                   @Param("lockedUntil") LocalDateTime lockedUntil,
+                   @Param("limit") int limit);
+
+    List<OutboxEvent> selectClaimedEvents(@Param("owner") String owner, @Param("limit") int limit);
+
+    int markPublished(@Param("id") Long id, @Param("owner") String owner, @Param("publishedAt") LocalDateTime publishedAt);
+
+    int markFailed(@Param("id") Long id,
+                   @Param("owner") String owner,
+                   @Param("retryCount") int retryCount,
+                   @Param("nextRetryAt") LocalDateTime nextRetryAt,
+                   @Param("lastError") String lastError,
+                   @Param("status") String status);
 }

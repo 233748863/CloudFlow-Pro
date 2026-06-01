@@ -1,12 +1,12 @@
 package com.cloudflow.common.idempotent.aspectj;
 
-import cn.hutool.crypto.SecureUtil;
-import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.exception.ErrorCodeConstants;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
+import com.cloudflow.common.idempotent.config.IdempotentProperties;
+import com.cloudflow.common.idempotent.support.RepeatSubmitKeyResolver;
 import com.cloudflow.common.redis.core.SysConfigHelper;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,16 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Array;
 import java.time.Duration;
-import java.time.temporal.Temporal;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.UUID;
 
 /**
  * 防重复提交 AOP 切面
@@ -49,19 +40,19 @@ public class RepeatSubmitAspect {
 
     private static final Logger log = LoggerFactory.getLogger(RepeatSubmitAspect.class);
 
-    /** Redis Key 前缀 */
-    private static final String REPEAT_SUBMIT_KEY = "cloudflow:repeat_submit:";
-
     private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
     private final SysConfigHelper sysConfigHelper;
+    private final IdempotentProperties properties;
+    private final RepeatSubmitKeyResolver keyResolver;
 
-    public RepeatSubmitAspect(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, SysConfigHelper sysConfigHelper) {
+    public RepeatSubmitAspect(StringRedisTemplate redisTemplate,
+                              ObjectMapper objectMapper,
+                              SysConfigHelper sysConfigHelper,
+                              IdempotentProperties properties) {
         this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper.copy();
-        this.objectMapper.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true);
-        this.objectMapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
         this.sysConfigHelper = sysConfigHelper;
+        this.properties = properties;
+        this.keyResolver = new RepeatSubmitKeyResolver(objectMapper);
     }
 
     /**
@@ -72,139 +63,35 @@ public class RepeatSubmitAspect {
      */
     @Before("@annotation(repeatSubmit)")
     public void doBefore(JoinPoint joinPoint, RepeatSubmit repeatSubmit) {
+        if (!properties.isEnabled() || !repeatSubmit.enabled()) {
+            return;
+        }
         long intervalMillis = repeatSubmit.timeUnit().toMillis(repeatSubmit.interval());
-        long minInterval = sysConfigHelper.getConfigLong("sys.common.repeatSubmit.intervalMillis", 1000L);
+        long minInterval = sysConfigHelper.getConfigLong("sys.common.repeatSubmit.intervalMillis", properties.getMinIntervalMillis());
         if (intervalMillis < minInterval) {
             intervalMillis = minInterval;
         }
 
-        String key = buildKey(joinPoint);
+        HttpServletRequest request = currentRequest();
+        String prefix = repeatSubmit.keyPrefix().isBlank() ? properties.getKeyPrefix() : repeatSubmit.keyPrefix();
+        String key = keyResolver.resolve(prefix, joinPoint, repeatSubmit, request);
 
         Boolean success = redisTemplate.opsForValue()
                 .setIfAbsent(key, "1", Duration.ofMillis(intervalMillis));
 
         if (Boolean.FALSE.equals(success)) {
             log.warn("[RepeatSubmit] 检测到重复提交, key={}", key);
-            throw new RepeatSubmitException(repeatSubmit.message());
+            throw new ServiceException(repeatSubmit.message(), ErrorCodeConstants.REPEAT_SUBMIT);
         }
 
         log.debug("[RepeatSubmit] 防重标记已设置, key={}, interval={}ms", key, intervalMillis);
     }
 
-    /**
-     * 构建防重复提交的 Redis Key
-     * 格式: cloudflow:repeat_submit:{userId}:{uri}:{paramsMd5}
-     */
-    private String buildKey(JoinPoint joinPoint) {
+    private HttpServletRequest currentRequest() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
-            throw new RepeatSubmitException("无法获取请求上下文");
+            throw new ServiceException("无法获取请求上下文", ErrorCodeConstants.INTERNAL_SERVER_ERROR);
         }
-        HttpServletRequest request = attributes.getRequest();
-
-        Long currentUserId = UserContext.getUserId();
-        String userId = currentUserId != null ? String.valueOf(currentUserId) : "anonymous";
-        String uri = request.getRequestURI();
-        String paramsDigest = buildParamsDigest(joinPoint.getArgs());
-
-        return REPEAT_SUBMIT_KEY + userId + ":" + uri + ":" + paramsDigest;
-    }
-
-    private String buildParamsDigest(Object[] args) {
-        if (args == null || args.length == 0) {
-            return "";
-        }
-
-        List<Object> normalizedArgs = new ArrayList<>();
-        for (Object arg : args) {
-            if (isIgnoredArgument(arg)) {
-                continue;
-            }
-            normalizedArgs.add(normalizeValue(arg));
-        }
-
-        if (normalizedArgs.isEmpty()) {
-            return "";
-        }
-
-        try {
-            return SecureUtil.md5(objectMapper.writeValueAsString(normalizedArgs));
-        } catch (Exception e) {
-            throw new RepeatSubmitException("生成防重参数摘要失败");
-        }
-    }
-
-    private Object normalizeValue(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (isSimpleValue(value)) {
-            return value;
-        }
-        if (value instanceof Map<?, ?> map) {
-            TreeMap<String, Object> normalizedMap = new TreeMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (entry.getKey() == null || isIgnoredArgument(entry.getValue())) {
-                    continue;
-                }
-                normalizedMap.put(String.valueOf(entry.getKey()), normalizeValue(entry.getValue()));
-            }
-            return normalizedMap;
-        }
-        if (value instanceof Collection<?> collection) {
-            List<Object> normalizedList = new ArrayList<>();
-            for (Object item : collection) {
-                if (isIgnoredArgument(item)) {
-                    continue;
-                }
-                normalizedList.add(normalizeValue(item));
-            }
-            return normalizedList;
-        }
-        if (value.getClass().isArray()) {
-            List<Object> normalizedArray = new ArrayList<>();
-            int length = Array.getLength(value);
-            for (int i = 0; i < length; i++) {
-                Object item = Array.get(value, i);
-                if (isIgnoredArgument(item)) {
-                    continue;
-                }
-                normalizedArray.add(normalizeValue(item));
-            }
-            return normalizedArray;
-        }
-        return normalizeValue(objectMapper.convertValue(value, Object.class));
-    }
-
-    private boolean isIgnoredArgument(Object arg) {
-        if (arg == null) {
-            return false;
-        }
-        return arg instanceof ServletRequest
-                || arg instanceof ServletResponse
-                || arg instanceof MultipartFile
-                || arg instanceof InputStream
-                || arg instanceof OutputStream;
-    }
-
-    private boolean isSimpleValue(Object value) {
-        return value instanceof CharSequence
-                || value instanceof Number
-                || value instanceof Boolean
-                || value instanceof Character
-                || value instanceof Enum<?>
-                || value instanceof UUID
-                || value instanceof Date
-                || value instanceof Temporal;
-    }
-
-    /**
-     * 重复提交异常
-     * 使用 RuntimeException 以便被全局异常处理器捕获
-     */
-    public static class RepeatSubmitException extends RuntimeException {
-        public RepeatSubmitException(String message) {
-            super(message);
-        }
+        return attributes.getRequest();
     }
 }

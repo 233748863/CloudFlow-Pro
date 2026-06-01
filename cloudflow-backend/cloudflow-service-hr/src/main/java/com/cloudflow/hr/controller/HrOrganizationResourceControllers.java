@@ -54,6 +54,7 @@ class HrPositionFamilyController {
     }
 
     @SysLog("新增HR职族")
+    @RepeatSubmit
     @PostMapping("/families")
     @SaCheckPermission("hr:organization:add")
     public R<Long> createFamily(@RequestBody HrPositionFamilyPayload payload) {
@@ -94,6 +95,7 @@ class HrJobLevelController {
     }
 
     @SysLog("新增HR职级")
+    @RepeatSubmit
     @PostMapping("/levels")
     @SaCheckPermission("hr:organization:add")
     public R<Long> createLevel(@RequestBody HrJobLevelPayload payload) {
@@ -134,6 +136,7 @@ class HrPositionController {
     }
 
     @SysLog("新增HR岗位")
+    @RepeatSubmit
     @PostMapping("/positions")
     @SaCheckPermission("hr:organization:add")
     public R<Long> createPosition(@RequestBody HrPositionPayload payload) {
@@ -175,6 +178,7 @@ class HrHeadcountController {
     }
 
     @SysLog("新增HR编制")
+    @RepeatSubmit
     @PostMapping("/headcounts")
     @SaCheckPermission("hr:organization:add")
     public R<Long> createHeadcount(@RequestBody HrHeadcountPayload payload) {

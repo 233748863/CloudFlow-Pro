@@ -1,9 +1,14 @@
 package com.cloudflow.common.core.exception;
 
 import com.cloudflow.common.core.domain.R;
+import org.slf4j.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DeadlockLoserDataAccessException;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -16,6 +21,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+
+import java.nio.file.AccessDeniedException;
+import java.util.UUID;
 
 /**
  * 全局异常处理器
@@ -116,6 +124,25 @@ public class GlobalExceptionHandler {
         return R.fail(HttpStatus.METHOD_NOT_ALLOWED.value(), message);
     }
 
+    @ExceptionHandler({
+            DuplicateKeyException.class,
+            OptimisticLockingFailureException.class,
+            CannotAcquireLockException.class,
+            DeadlockLoserDataAccessException.class
+    })
+    public ResponseEntity<R<?>> handleConcurrentException(Exception e, HttpServletRequest request) {
+        log.warn("请求地址'{}',发生并发冲突: {}", request.getRequestURI(), e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(R.fail(ErrorCodeConstants.CONCURRENT_MODIFICATION, "数据已被其他请求更新，请刷新后重试"));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<R<?>> handleAccessDeniedException(AccessDeniedException e, HttpServletRequest request) {
+        log.warn("请求地址'{}',访问被拒绝: {}", request.getRequestURI(), e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源"));
+    }
+
     /**
      * 拦截未知的运行时异常
      */
@@ -123,7 +150,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public R<?> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
         log.error("请求地址'{}',发生未知异常.", request.getRequestURI(), e);
-        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage());
+        if ("org.springframework.security.access.AccessDeniedException".equals(e.getClass().getName())) {
+            return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
+        }
+        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "系统异常，请联系管理员，traceId=" + traceId());
     }
 
     /**
@@ -133,7 +163,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public R<?> handleException(Exception e, HttpServletRequest request) {
         log.error("请求地址'{}',发生系统异常.", request.getRequestURI(), e);
-        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "系统异常，请联系管理员");
+        if ("org.springframework.security.access.AccessDeniedException".equals(e.getClass().getName())) {
+            return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
+        }
+        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "系统异常，请联系管理员，traceId=" + traceId());
     }
 
     private int resolveHttpStatus(Integer code, int defaultStatus) {
@@ -141,5 +174,10 @@ public class GlobalExceptionHandler {
             return defaultStatus;
         }
         return HttpStatus.resolve(code) != null ? code : defaultStatus;
+    }
+
+    private String traceId() {
+        String traceId = MDC.get("traceId");
+        return traceId != null && !traceId.isBlank() ? traceId : UUID.randomUUID().toString();
     }
 }

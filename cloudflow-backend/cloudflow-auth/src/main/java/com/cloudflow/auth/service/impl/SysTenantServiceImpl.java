@@ -11,6 +11,7 @@ import com.cloudflow.auth.mapper.SysFileMapper;
 import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysTenantService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.tenant.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +52,7 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
     }
 
     @Override
+    @Audit(name = "检查租户禁用状态", highRisk = true)
     public boolean isTenantDisabled(Long tenantId) {
         return getTenantStatistics(tenantId).isDisabled();
     }

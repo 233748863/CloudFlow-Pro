@@ -34,8 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 付款申请Service实现类
- */
+ * 浠樻鐢宠Service瀹炵幇绫? */
 @Slf4j
 @Service
 public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapper, BizPaymentRequest> 
@@ -73,24 +72,23 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     }
 
     @Override
-    @Audit(name = "创建付款申请", spel = "#payment", diff = true, highRisk = true)
+    @Audit(name = "鍒涘缓浠樻鐢宠", spel = "#payment", diff = true, highRisk = true)
     public boolean createPayment(BizPaymentRequest payment) {
         normalizePaymentAttachment(payment);
         return save(payment);
     }
 
     @Override
-    @Audit(name = "更新付款申请", spel = "#payment", oldVal = "@paymentRequestServiceImpl.getById(#payment.id)", diff = true, highRisk = true)
+    @Audit(name = "鏇存柊浠樻鐢宠", spel = "#payment", oldVal = "@paymentRequestServiceImpl.getById(#payment.id)", diff = true, highRisk = true)
     public boolean updatePayment(BizPaymentRequest payment) {
         normalizePaymentAttachment(payment);
         return updateById(payment);
     }
 
     @Override
-    @Audit(name = "提交付款申请", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)", diff = true, highRisk = true)
+    @Audit(name = "鎻愪氦浠樻鐢宠", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
-    // M1-5: 防并发冲突
-    @DistributedLock(key = "'payment:' + #id + ':submit'")
+    // M1-5: 闃插苟鍙戝啿绐?    @DistributedLock(key = "'payment:' + #id + ':submit'")
     public boolean submitPayment(Long id) {
         BizPaymentRequest payment = getById(id);
         if (payment == null) {
@@ -98,7 +96,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         }
         normalizePaymentAttachment(payment);
         
-        // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
+        // 琛ュ伩閫昏緫锛氬巻鍙叉暟鎹彲鑳界己灏戠敤鎴蜂俊鎭紝浠庡綋鍓嶇櫥褰曚笂涓嬫枃琛ュ厖
         if (!StringUtils.hasText(payment.getDeptName())) {
             payment.setDeptName(UserContext.getDeptName());
         }
@@ -113,16 +111,28 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         }
         reserveBudget(payment);
         
-        // 更新状态为审批中
+        // update status before workflow start
         payment.setStatus("PENDING");
         updatePurchasePaymentStatus(payment.getId(), "PENDING");
+        boolean updated = updateById(payment);
+        if (updated) {
+            startPaymentWorkflowAfterCommit(payment);
+        }
+        return updated;
+    }
+
+    private void startPaymentWorkflowAfterCommit(BizPaymentRequest payment) {
+        OaTransactionHooks.afterCommit(() -> startPaymentWorkflow(payment));
+    }
+
+    private void startPaymentWorkflow(BizPaymentRequest payment) {
         
-        // 启动工作流
+        // start workflow
         try {
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
             req.setProcessDefKey("payment_request");
             req.setBusinessKey("PAYMENT_REQUEST:" + payment.getId());
-            // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
+            // 娴佺▼鍙橀噺 - 鍖呭惈瀹屾暣涓氬姟瀛楁锛屼緵瀹℃壒浜哄湪瀹℃壒鍗＄墖鍜岃鎯呬腑鏌ョ湅
             Map<String, Object> variables = new HashMap<>();
             variables.put("paymentId", payment.getId());
             variables.put("paymentNo", payment.getPaymentNo());
@@ -135,7 +145,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
             variables.put("payeeBank", payment.getPayeeBank());
             variables.put("reason", payment.getReason());
             variables.put("deptName", payment.getDeptName());
-            // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
+            // 鏄惧紡鍐欏叆鍥炶皟鍏冩暟鎹紝瀹℃壒瀹屾垚鍚庣敱 OA 鑷繁閫氳繃 Stream 鍥炲啓涓氬姟鐘舵€併€?            WorkflowCallbackConstants.applyCallbackMetadata(
             WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
                     OaBusinessTypes.PAYMENT_REQUEST,
@@ -147,38 +157,38 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
             
             R<?> result = remoteWorkflowService.startProcess(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                // 从返回结果中提取流程实例ID
+                // 浠庤繑鍥炵粨鏋滀腑鎻愬彇娴佺▼瀹炰緥ID
                 String instanceId = extractInstanceId(result.getData());
                 if (instanceId != null) {
-                    payment.setInstanceId(instanceId);
+                    BizPaymentRequest update = new BizPaymentRequest();
+                    update.setId(payment.getId());
+                    update.setInstanceId(instanceId);
+                    updateById(update);
                 }
-                log.info("付款申请 {} 工作流启动成功，流程实例ID: {}", payment.getPaymentNo(), instanceId);
+                log.info("浠樻鐢宠 {} 宸ヤ綔娴佸惎鍔ㄦ垚鍔燂紝娴佺▼瀹炰緥ID: {}", payment.getPaymentNo(), instanceId);
             } else {
-                log.warn("付款申请 {} 工作流启动返回异常: {}", payment.getPaymentNo(), result != null ? result.getMsg() : "null");
+                log.warn("浠樻鐢宠 {} 宸ヤ綔娴佸惎鍔ㄨ繑鍥炲紓甯? {}", payment.getPaymentNo(), result != null ? result.getMsg() : "null");
             }
         } catch (Exception e) {
-            // 工作流启动失败不影响提交，状态已更新为PENDING
-            log.error("付款申请 {} 启动工作流失败，但提交状态已更新", payment.getPaymentNo(), e);
+            // 宸ヤ綔娴佸惎鍔ㄥけ璐ヤ笉褰卞搷鎻愪氦锛岀姸鎬佸凡鏇存柊涓篜ENDING
+            log.error("浠樻鐢宠 {} 鍚姩宸ヤ綔娴佸け璐ワ紝浣嗘彁浜ょ姸鎬佸凡鏇存柊", payment.getPaymentNo(), e);
             workflowFailureHelper.handleWorkflowStartFailure(
                     OaBusinessTypes.PAYMENT_REQUEST, payment.getId(), payment.getPaymentNo(),
                     payment.getUserName(), payment.getUserId(), e);
         }
-
-        return updateById(payment);
     }
 
     @Override
-    @Audit(name = "确认付款", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)", diff = true, highRisk = true)
+    @Audit(name = "纭浠樻", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
-    // M1-5: 防并发冲突
-    @DistributedLock(key = "'payment:' + #id + ':confirm'", waitMs = 500, leaseMs = 15000)
+    // M1-5: 闃插苟鍙戝啿绐?    @DistributedLock(key = "'payment:' + #id + ':confirm'", waitMs = 500, leaseMs = 15000)
     public boolean confirmPaid(Long id) {
         BizPaymentRequest payment = getById(id);
         if (payment == null || !Integer.valueOf(0).equals(payment.getDeleted())) {
-            throw new IllegalArgumentException("付款申请不存在");
+            throw new IllegalArgumentException("payment request does not exist");
         }
         if (!"APPROVED".equals(payment.getStatus())) {
-            throw new IllegalArgumentException("只有审批通过的付款申请可以确认付款");
+            throw new IllegalArgumentException("payment request must be approved before confirmation");
         }
         payment.setStatus("PAID");
         payment.setUpdateBy(UserContext.getUserName());
@@ -197,7 +207,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
                     payment.getBudgetSubjectCode(),
                     payment.getBudgetSubjectName(),
                     payment.getAmount(),
-                    "付款确认核销预算"
+                    "浠樻纭鏍搁攢棰勭畻"
             );
         }
         return updated;
@@ -209,10 +219,10 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     }
     
     /**
-     * 从工作流启动结果中提取流程实例ID
+     * 浠庡伐浣滄祦鍚姩缁撴灉涓彁鍙栨祦绋嬪疄渚婭D
      * 
-     * @param data 工作流返回的数据
-     * @return 流程实例ID，提取失败返回null
+     * @param data 宸ヤ綔娴佽繑鍥炵殑鏁版嵁
+     * @return 娴佺▼瀹炰緥ID锛屾彁鍙栧け璐ヨ繑鍥瀗ull
      */
     private String extractInstanceId(Object data) {
         if (data instanceof Map) {
@@ -232,10 +242,10 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
 
     private void normalizePaymentAttachment(BizPaymentRequest payment) {
         if (payment == null) {
-            throw new IllegalArgumentException("付款申请不能为空");
+            throw new IllegalArgumentException("浠樻鐢宠涓嶈兘涓虹┖");
         }
         payment.setAttachmentUrl(
-                OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(payment.getAttachmentUrl(), "付款申请附件")
+                OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(payment.getAttachmentUrl(), "浠樻鐢宠闄勪欢")
         );
     }
 
@@ -264,7 +274,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
                 payment.getBudgetSubjectCode(),
                 payment.getBudgetSubjectName(),
                 payment.getAmount(),
-                "付款提交占用预算"
+                "浠樻鎻愪氦鍗犵敤棰勭畻"
         );
     }
 }

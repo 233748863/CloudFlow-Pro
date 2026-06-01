@@ -218,63 +218,10 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         ExpenseClaimStatus newStatus = stateMachine.fire(currentStatus, ExpenseClaimEvent.SUBMIT);
         claim.setStatus(newStatus.name());
         
-        // 启动工作流
-        try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
-            req.setProcessDefKey("expense_claim");
-            req.setBusinessKey("EXPENSE_CLAIM:" + claim.getId());
-            // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("claimId", claim.getId());
-            variables.put("claimNo", claim.getClaimNo());
-            variables.put("totalAmount", claim.getTotalAmount());
-            variables.put("userId", claim.getUserId());
-            variables.put("userName", claim.getUserName());
-            variables.put("category", claim.getCategory());
-            variables.put("description", claim.getDescription());
-            variables.put("deptName", claim.getDeptName());
-            // OA-P0-3 超标变量(供工作流 CONDITION 分支路由到上级节点)
-            if (exceedResult != null) {
-                variables.put("exceededStandard", exceedResult.isExceeded());
-                variables.put("exceededAmount", exceedResult.getTotalExceededAmount());
-            } else {
-                variables.put("exceededStandard", false);
-            }
-            // OA-P0-2 预算超额变量(供工作流 CONDITION 分支路由到 CFO 特批节点)
-            boolean budgetExceeded = claim.getBudgetExceeded() != null && claim.getBudgetExceeded() == 1;
-            variables.put("budgetExceeded", budgetExceeded);
-            variables.put("budgetExceededAmount", claim.getBudgetExceededAmount() != null
-                    ? claim.getBudgetExceededAmount() : BigDecimal.ZERO);
-            // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
-            WorkflowCallbackConstants.applyCallbackMetadata(
-                    variables,
-                    OaBusinessTypes.EXPENSE_CLAIM,
-                    claim.getId(),
-                    claim.getClaimNo(),
-                    "workflow:stream:approval-callback:oa"
-            );
-            req.setVariables(variables);
-            
-            R<?> result = remoteWorkflowService.startProcess(req);
-            if (result != null && result.getCode() == 200 && result.getData() != null) {
-                // 从返回结果中提取流程实例ID
-                String instanceId = extractInstanceId(result.getData());
-                if (instanceId != null) {
-                    claim.setInstanceId(instanceId);
-                }
-                log.info("报销申请 {} 工作流启动成功，流程实例ID: {}", claim.getClaimNo(), instanceId);
-            } else {
-                log.warn("报销申请 {} 工作流启动返回异常: {}", claim.getClaimNo(), result != null ? result.getMsg() : "null");
-            }
-        } catch (Exception e) {
-            // 工作流启动失败不影响提交，状态已更新为PENDING
-            log.error("报销申请 {} 启动工作流失败，但提交状态已更新", claim.getClaimNo(), e);
-            workflowFailureHelper.handleWorkflowStartFailure(
-                    OaBusinessTypes.EXPENSE_CLAIM, claim.getId(), claim.getClaimNo(),
-                    claim.getUserName(), claim.getUserId(), e);
-        }
-
         boolean updated = updateById(claim);
+        if (updated) {
+            OaTransactionHooks.afterCommit(() -> startExpenseClaimWorkflow(claim, exceedResult));
+        }
 
         // M1-7: 发布事件到 Outbox
         if (updated) {
@@ -304,6 +251,62 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         }
 
         return updated;
+    }
+
+    private void startExpenseClaimWorkflow(BizExpenseClaim claim, OaExpenseExceedResultVO exceedResult) {
+        try {
+            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            req.setProcessDefKey("expense_claim");
+            req.setBusinessKey("EXPENSE_CLAIM:" + claim.getId());
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("claimId", claim.getId());
+            variables.put("claimNo", claim.getClaimNo());
+            variables.put("totalAmount", claim.getTotalAmount());
+            variables.put("userId", claim.getUserId());
+            variables.put("userName", claim.getUserName());
+            variables.put("category", claim.getCategory());
+            variables.put("description", claim.getDescription());
+            variables.put("deptName", claim.getDeptName());
+            if (exceedResult != null) {
+                variables.put("exceededStandard", exceedResult.isExceeded());
+                variables.put("exceededAmount", exceedResult.getTotalExceededAmount());
+            } else {
+                variables.put("exceededStandard", false);
+            }
+            boolean budgetExceeded = claim.getBudgetExceeded() != null && claim.getBudgetExceeded() == 1;
+            variables.put("budgetExceeded", budgetExceeded);
+            variables.put("budgetExceededAmount", claim.getBudgetExceededAmount() != null
+                    ? claim.getBudgetExceededAmount() : BigDecimal.ZERO);
+            WorkflowCallbackConstants.applyCallbackMetadata(
+                    variables,
+                    OaBusinessTypes.EXPENSE_CLAIM,
+                    claim.getId(),
+                    claim.getClaimNo(),
+                    "workflow:stream:approval-callback:oa"
+            );
+            req.setVariables(variables);
+
+            R<?> result = remoteWorkflowService.startProcess(req);
+            if (result != null && result.getCode() == 200 && result.getData() != null) {
+                String instanceId = extractInstanceId(result.getData());
+                if (instanceId != null) {
+                    BizExpenseClaim update = new BizExpenseClaim();
+                    update.setId(claim.getId());
+                    update.setInstanceId(instanceId);
+                    update.setUpdateTime(LocalDateTime.now());
+                    update.setUpdateBy(UserContext.getUserName());
+                    updateById(update);
+                }
+                log.info("报销申请 {} 工作流启动成功，流程实例ID: {}", claim.getClaimNo(), instanceId);
+            } else {
+                log.warn("报销申请 {} 工作流启动返回异常: {}", claim.getClaimNo(), result != null ? result.getMsg() : "null");
+            }
+        } catch (Exception e) {
+            log.error("报销申请 {} 启动工作流失败，但提交状态已更新", claim.getClaimNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.EXPENSE_CLAIM, claim.getId(), claim.getClaimNo(),
+                    claim.getUserName(), claim.getUserId(), e);
+        }
     }
 
     @Override

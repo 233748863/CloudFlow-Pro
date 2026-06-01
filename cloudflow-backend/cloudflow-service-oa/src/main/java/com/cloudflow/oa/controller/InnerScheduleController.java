@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 
 /**
  * OA内部日程接口
@@ -31,6 +32,7 @@ public class InnerScheduleController {
     private final IMeetingRoomService meetingRoomService;
 
     @Inner(allowedServices = HR_CALLERS)
+    @RepeatSubmit
     @PostMapping("/meeting-room-booking")
     public R<MeetingRoomBookingVO> createMeetingRoomBooking(@RequestBody MeetingRoomBookingCreateDTO dto) {
         String message = validate(dto);

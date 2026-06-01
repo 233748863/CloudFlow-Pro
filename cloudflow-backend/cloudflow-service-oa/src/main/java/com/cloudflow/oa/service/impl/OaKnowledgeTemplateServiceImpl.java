@@ -92,7 +92,7 @@ public class OaKnowledgeTemplateServiceImpl implements IOaKnowledgeTemplateServi
 
     @Override
     @Transactional
-    @Audit(name = "更新知识模板")
+    @Audit(name = "更新知识模板", highRisk = true)
     public boolean update(OaKnowledgeTemplate template) {
         if (template == null || template.getId() == null) {
             throw new IllegalArgumentException("ID 必填");
@@ -104,6 +104,7 @@ public class OaKnowledgeTemplateServiceImpl implements IOaKnowledgeTemplateServi
 
     @Override
     @Transactional
+    @Audit(name = "删除知识模板", highRisk = true)
     public boolean remove(Long id) {
         if (id == null) {
             return false;

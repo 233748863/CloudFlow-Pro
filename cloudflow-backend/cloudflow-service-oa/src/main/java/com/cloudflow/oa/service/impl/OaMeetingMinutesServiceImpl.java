@@ -92,7 +92,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
 
     @Override
     @Transactional
-    @Audit(name = "更新会议纪要")
+    @Audit(name = "更新会议纪要", highRisk = true)
     public boolean update(OaMeetingMinutes minutes) {
         if (minutes == null || minutes.getId() == null) {
             throw new IllegalArgumentException("ID 必填");
@@ -104,6 +104,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
 
     @Override
     @Transactional
+    @Audit(name = "删除会议纪要", highRisk = true)
     public boolean remove(Long id) {
         if (id == null) {
             return false;
@@ -176,6 +177,7 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
 
     @Override
     @Transactional
+    @Audit(name = "删除会议纪要参会记录", highRisk = true)
     public boolean removeAttendance(Long id) {
         if (id == null) {
             return false;

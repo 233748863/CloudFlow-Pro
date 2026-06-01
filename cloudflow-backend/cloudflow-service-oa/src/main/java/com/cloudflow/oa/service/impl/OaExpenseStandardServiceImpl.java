@@ -93,7 +93,7 @@ public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
 
     @Override
     @Transactional
-    @Audit(name = "更新报销标准")
+    @Audit(name = "更新报销标准", highRisk = true)
     public boolean update(OaExpenseStandard standard) {
         if (standard == null || standard.getStandardId() == null) {
             throw new IllegalArgumentException("ID 必填");
@@ -105,6 +105,7 @@ public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
 
     @Override
     @Transactional
+    @Audit(name = "删除报销标准", highRisk = true)
     public boolean remove(Long standardId) {
         if (standardId == null) {
             return false;

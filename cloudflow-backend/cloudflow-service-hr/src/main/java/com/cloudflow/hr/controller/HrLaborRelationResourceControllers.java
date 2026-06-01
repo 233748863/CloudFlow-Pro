@@ -68,6 +68,7 @@ class HrWorkInjuryController {
     }
 
     @SysLog("登记工伤")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:injury:report")
     public R<Long> create(@Validated @RequestBody HrWorkInjuryDTO dto) {
@@ -115,6 +116,7 @@ class HrWorkInjuryInvestigationController {
     }
 
     @SysLog("新增工伤调查")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:injury:investigate")
     public R<Long> create(@PathVariable Long injuryId, @Validated @RequestBody HrWorkInjuryInvestigationDTO dto) {
@@ -144,6 +146,7 @@ class HrWorkInjuryTreatmentController {
     }
 
     @SysLog("新增工伤医疗")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:injury:treatment")
     public R<Long> create(@PathVariable Long injuryId, @Validated @RequestBody HrWorkInjuryTreatmentDTO dto) {
@@ -173,6 +176,7 @@ class HrWorkInjuryCompensationController {
     }
 
     @SysLog("新增工伤赔偿")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:injury:compensation")
     public R<Long> create(@PathVariable Long injuryId, @Validated @RequestBody HrWorkInjuryCompensationDTO dto) {
@@ -210,6 +214,7 @@ class HrWorkInjuryRehabilitationController {
     }
 
     @SysLog("新增工伤康复跟踪")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:injury:rehab")
     public R<Long> create(@PathVariable Long injuryId, @Validated @RequestBody HrWorkInjuryRehabilitationDTO dto) {

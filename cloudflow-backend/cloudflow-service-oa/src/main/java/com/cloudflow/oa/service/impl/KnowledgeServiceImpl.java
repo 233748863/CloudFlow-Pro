@@ -169,10 +169,8 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
 
     @Override
     @Audit(name = "提交知识库发布审批", spel = "#documentId")
-    @Transactional(rollbackFor = Exception.class)
     public boolean submit(Long documentId) {
         KnowledgeDocument document = requireDocument(documentId);
-        // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(document, KnowledgeDocument::getSubmitterId, "知识文档");
         if (!"DRAFT".equals(document.getStatus()) && !"REJECTED".equals(document.getStatus())) {
             throw new IllegalArgumentException("只有草稿或已驳回文档可以提交审批");
@@ -213,21 +211,13 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
             throw new IllegalArgumentException("流程启动失败，请稍后重试");
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        document.setStatus("PENDING");
-        document.setSubmitTime(now);
-        document.setInstanceId(instanceId);
-        document.setUpdateBy(UserContext.getUserName());
-        document.setUpdateTime(now);
-        return updateById(document);
+        return markSubmitted(document, instanceId);
     }
 
     @Override
     @Audit(name = "撤回知识库发布审批", spel = "#documentId")
-    @Transactional(rollbackFor = Exception.class)
     public boolean recall(Long documentId) {
         KnowledgeDocument document = requireDocument(documentId);
-        // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(document, KnowledgeDocument::getSubmitterId, "知识文档");
         if (!"PENDING".equals(document.getStatus())) {
             throw new IllegalArgumentException("只有审批中的文档可以撤回");
@@ -240,6 +230,22 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
                 throw new IllegalArgumentException(result.getMsg() != null ? result.getMsg() : "流程撤回失败");
             }
         }
+        return markRecalled(document);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    protected boolean markSubmitted(KnowledgeDocument document, String instanceId) {
+        LocalDateTime now = LocalDateTime.now();
+        document.setStatus("PENDING");
+        document.setSubmitTime(now);
+        document.setInstanceId(instanceId);
+        document.setUpdateBy(UserContext.getUserName());
+        document.setUpdateTime(now);
+        return updateById(document);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    protected boolean markRecalled(KnowledgeDocument document) {
         document.setStatus("DRAFT");
         document.setUpdateBy(UserContext.getUserName());
         document.setUpdateTime(LocalDateTime.now());

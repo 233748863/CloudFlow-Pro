@@ -1,9 +1,11 @@
 package com.cloudflow.common.statemachine.core;
 
 import com.cloudflow.common.statemachine.annotation.DictBound;
+import com.cloudflow.common.statemachine.config.StateMachineProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -30,9 +32,11 @@ public class StateMachineRegistry {
 
     private final Map<String, StateMachine<?, ?>> machines = new LinkedHashMap<>();
     private final DictValueProvider dictValueProvider;
+    private final StateMachineProperties properties;
 
-    public StateMachineRegistry(DictValueProvider dictValueProvider) {
-        this.dictValueProvider = dictValueProvider != null ? dictValueProvider : DictValueProvider.NOOP;
+    public StateMachineRegistry(DictValueProvider dictValueProvider, StateMachineProperties properties) {
+        this.dictValueProvider = dictValueProvider;
+        this.properties = properties;
     }
 
     /** 注册状态机。entityName 重复抛 IllegalStateException。 */
@@ -92,24 +96,41 @@ public class StateMachineRegistry {
 
     private void verifyOne(StateMachine<?, ?> machine) {
         Class<?> stateType = machine.stateType();
+        Class<?> eventType = machine.eventType();
         if (!stateType.isEnum()) {
             // 状态类型必须是 enum 才能枚举所有值
             throw new IllegalStateException(machine.entityName() + " stateType 必须是 enum，实际为 " + stateType);
         }
+        if (!eventType.isEnum()) {
+            throw new IllegalStateException(machine.entityName() + " eventType 必须是 enum，实际为 " + eventType);
+        }
 
         Set<String> enumCodes = enumCodes(stateType);
+        verifyTransitions(machine, enumCodes, enumCodes(eventType));
+        verifyTerminalStates(machine, enumCodes);
         DictBound dict = stateType.getAnnotation(DictBound.class);
         if (dict == null) {
-            // 没有字典绑定，只校验 transitions 引用的状态都在 enum 范围
+            dict = findFieldLevelDictBound(stateType);
+        }
+        if (dict == null) {
             log.debug("[{}] 无 @DictBound，跳过字典校验", machine.entityName());
+            return;
+        }
+
+        if (dictValueProvider == null || !dictValueProvider.available()) {
+            if (properties.isStrictDictBinding()) {
+                throw new IllegalStateException(machine.entityName() + " 缺少 DictValueProvider，无法校验字典绑定");
+            }
+            log.warn("[{}] DictValueProvider 不可用，跳过字典一致性校验", machine.entityName());
             return;
         }
 
         Set<String> dictValues = dictValueProvider.getValues(dict.value());
         if (dictValues == null || dictValues.isEmpty()) {
-            // 字典系统未启用 / 字典数据未初始化 → 只警告不失败，避免无字典环境（如 gateway）启动失败
-            log.warn("[{}] @DictBound({}) 字典值为空，跳过字典一致性校验。请确认字典数据已初始化。",
-                    machine.entityName(), dict.value());
+            if (properties.isStrictDictBinding()) {
+                throw new IllegalStateException(machine.entityName() + " 字典 " + dict.value() + " 无可用值");
+            }
+            log.warn("[{}] @DictBound({}) 字典值为空，已按非严格模式跳过。", machine.entityName(), dict.value());
             return;
         }
 
@@ -134,7 +155,55 @@ public class StateMachineRegistry {
     private static Set<String> enumCodes(Class<?> enumType) {
         Object[] constants = enumType.getEnumConstants();
         return Arrays.stream(constants)
-                .map(o -> ((StateValue) o).code())
+                .map(o -> {
+                    if (o instanceof StateValue stateValue) {
+                        return stateValue.code();
+                    }
+                    if (o instanceof StateEvent stateEvent) {
+                        return stateEvent.code();
+                    }
+                    return String.valueOf(o);
+                })
                 .collect(Collectors.toCollection(TreeSet::new));
+    }
+
+    private DictBound findFieldLevelDictBound(Class<?> enumType) {
+        for (Field field : enumType.getDeclaredFields()) {
+            DictBound dictBound = field.getAnnotation(DictBound.class);
+            if (dictBound != null) {
+                return dictBound;
+            }
+        }
+        return null;
+    }
+
+    private void verifyTransitions(StateMachine<?, ?> machine, Set<String> stateCodes, Set<String> eventCodes) {
+        for (Map.Entry<?, ?> entry : machine.transitions().entrySet()) {
+            StateMachine.TransitionKey<?, ?> key = (StateMachine.TransitionKey<?, ?>) entry.getKey();
+            StateValue from = (StateValue) key.from();
+            StateEvent event = (StateEvent) key.event();
+            StateValue to = (StateValue) entry.getValue();
+            if (!stateCodes.contains(from.code())) {
+                throw new IllegalStateException(machine.entityName() + " transition.from 非法状态: " + from.code());
+            }
+            if (!stateCodes.contains(to.code())) {
+                throw new IllegalStateException(machine.entityName() + " transition.to 非法状态: " + to.code());
+            }
+            if (!eventCodes.contains(event.code())) {
+                throw new IllegalStateException(machine.entityName() + " transition.event 非法事件: " + event.code());
+            }
+        }
+    }
+
+    private void verifyTerminalStates(StateMachine<?, ?> machine, Set<String> stateCodes) {
+        if (machine.terminalStates().isEmpty()) {
+            throw new IllegalStateException(machine.entityName() + " 未声明终态");
+        }
+        for (Object terminal : machine.terminalStates()) {
+            String code = ((StateValue) terminal).code();
+            if (!stateCodes.contains(code)) {
+                throw new IllegalStateException(machine.entityName() + " 存在非法终态: " + code);
+            }
+        }
     }
 }

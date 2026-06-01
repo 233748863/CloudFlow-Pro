@@ -1170,6 +1170,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "终止流程实例", highRisk = true)
     public R<?> terminateProcess(String instanceId, String reason) {
         log.info("[terminateProcess] 终止流程, instanceId={}, reason={}", instanceId, reason);
 

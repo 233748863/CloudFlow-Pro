@@ -103,6 +103,7 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
 
     @Override
     @Transactional
+    @Audit(name = "删除合同里程碑", highRisk = true)
     public boolean removeMilestone(Long id) {
         if (id == null) {
             return false;
@@ -200,6 +201,7 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
 
     @Override
     @Transactional
+    @Audit(name = "删除付款计划", highRisk = true)
     public boolean removePayment(Long id) {
         if (id == null) {
             return false;

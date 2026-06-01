@@ -1,11 +1,14 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.statemachine.core.StateMachine;
+import com.cloudflow.common.statemachine.core.StateMachineRegistry;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -13,15 +16,12 @@ import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestQueryDTO;
 import com.cloudflow.hr.domain.entity.HrBenefitRequest;
 import com.cloudflow.hr.domain.vo.benefit.HrBenefitRequestVO;
+import com.cloudflow.hr.enums.BenefitRequestEvent;
+import com.cloudflow.hr.enums.BenefitRequestStatus;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrBenefitRequestMapper;
-import com.cloudflow.hr.service.IHrBenefitRequestService;
 import com.cloudflow.hr.service.HrTypedCrudService;
-import com.cloudflow.common.audit.annotation.Audit;
-import com.cloudflow.common.statemachine.core.StateMachine;
-import com.cloudflow.common.statemachine.core.StateMachineRegistry;
-import com.cloudflow.hr.enums.BenefitRequestStatus;
-import com.cloudflow.hr.enums.BenefitRequestEvent;
+import com.cloudflow.hr.service.IHrBenefitRequestService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -68,9 +69,8 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新福利申请")
+    @Audit(name = "更新福利申请", highRisk = true)
     public void updateRequest(Long requestId, HrBenefitRequestDTO dto) {
-        // M1-4: 所有权校验
         HrBenefitRequest existing = requestMapper.selectById(requestId);
         if (existing != null && existing.getEmployeeId() != null) {
             DataScopeUtils.assertOwnership(existing.getEmployeeId(), "福利申请");
@@ -111,52 +111,37 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
             throw new HrBusinessException("BENEFIT_REQUEST_NOT_FOUND", "福利申领不存在：" + requestId);
         }
 
-        // M1-6: 使用状态机进行状态转换（提交前验证状态）
         StateMachine<BenefitRequestStatus, BenefitRequestEvent> stateMachine = stateMachineRegistry.require("BenefitRequest");
         BenefitRequestStatus currentStatus = BenefitRequestStatus.valueOf(request.getStatus());
         BenefitRequestStatus newStatus = stateMachine.fire(currentStatus, BenefitRequestEvent.SUBMIT);
 
-        ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(currentTenantId());
-        dto.setProcessDefinitionKey(benefitProcessKey);
-        dto.setBusinessType("HR_BENEFIT_REQUEST");
-        dto.setBusinessId(requestId);
-        dto.setBusinessNo(request.getRequestNo());
-        dto.setProcessTitle("福利申领-" + request.getRequestNo());
-        dto.setStartUserId(UserContext.getUserId());
-        Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("requestId", requestId);
-        vars.put("amount", request.getAmount());
-        vars.put("pointAmount", request.getPointAmount());
-        vars.put("requestType", request.getRequestType());
-        dto.setVariables(vars);
-        R<String> response = workflowServiceClient.startProcess(dto);
-        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
-            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
-            throw new HrBusinessException("WORKFLOW_START_FAILED", "福利申领审批启动失败：" + msg);
-        }
         UpdateWrapper<HrBenefitRequest> uw = new UpdateWrapper<>();
         uw.eq("id", requestId).eq("tenant_id", currentTenantId())
-                .set("process_instance_id", response.getData())
                 .set("status", newStatus.name())
                 .set("update_time", LocalDateTime.now());
         requestMapper.update(null, uw);
-        return response.getData();
+
+        HrTransactionHooks.afterCommit(() -> startBenefitWorkflow(
+                requestId,
+                request.getRequestNo(),
+                request.getAmount(),
+                request.getPointAmount(),
+                request.getRequestType()));
+        return null;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消福利申请", highRisk = true)
     public void cancelRequest(Long requestId, String reason) {
         HrBenefitRequest request = requestMapper.selectById(requestId);
         if (request == null) {
             throw new HrBusinessException("BENEFIT_REQUEST_NOT_FOUND", "福利申领不存在：" + requestId);
         }
-        // M1-4: 所有权校验
         if (request.getEmployeeId() != null) {
             DataScopeUtils.assertOwnership(request.getEmployeeId(), "福利申请");
         }
 
-        // M1-6: 使用状态机进行状态转换
         StateMachine<BenefitRequestStatus, BenefitRequestEvent> stateMachine = stateMachineRegistry.require("BenefitRequest");
         BenefitRequestStatus currentStatus = BenefitRequestStatus.valueOf(request.getStatus());
         BenefitRequestStatus newStatus = stateMachine.fire(currentStatus, BenefitRequestEvent.CANCEL);
@@ -164,6 +149,34 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
         UpdateWrapper<HrBenefitRequest> uw = new UpdateWrapper<>();
         uw.eq("id", requestId).eq("tenant_id", currentTenantId())
                 .set("status", newStatus.name())
+                .set("update_time", LocalDateTime.now());
+        requestMapper.update(null, uw);
+    }
+
+    private void startBenefitWorkflow(Long requestId, String requestNo, BigDecimal amount,
+                                      Integer pointAmount, String requestType) {
+        ProcessStartDTO dto = new ProcessStartDTO();
+        dto.setTenantId(currentTenantId());
+        dto.setProcessDefinitionKey(benefitProcessKey);
+        dto.setBusinessType("HR_BENEFIT_REQUEST");
+        dto.setBusinessId(requestId);
+        dto.setBusinessNo(requestNo);
+        dto.setProcessTitle("福利申领-" + requestNo);
+        dto.setStartUserId(UserContext.getUserId());
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("requestId", requestId);
+        vars.put("amount", amount);
+        vars.put("pointAmount", pointAmount);
+        vars.put("requestType", requestType);
+        dto.setVariables(vars);
+        R<String> response = workflowServiceClient.startProcess(dto);
+        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
+            String msg = response == null ? "Workflow service unavailable" : response.getMsg();
+            throw new HrBusinessException("WORKFLOW_START_FAILED", "福利申领审批启动失败：" + msg);
+        }
+        UpdateWrapper<HrBenefitRequest> uw = new UpdateWrapper<>();
+        uw.eq("id", requestId).eq("tenant_id", currentTenantId())
+                .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         requestMapper.update(null, uw);
     }

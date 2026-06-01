@@ -109,32 +109,15 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
             throw new HrBusinessException("LABOR_DISPUTE_STATUS_INVALID",
                     "状态 " + dispute.getStatus() + " 不允许发起审批");
         }
-        ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(currentTenantId());
-        dto.setProcessDefinitionKey(disputeProcessKey);
-        dto.setBusinessType("HR_LABOR_DISPUTE");
-        dto.setBusinessId(disputeId);
-        dto.setBusinessNo(dispute.getDisputeNo());
-        dto.setProcessTitle("劳动争议-" + dispute.getDisputeNo());
-        dto.setStartUserId(UserContext.getUserId());
-        Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("disputeId", disputeId);
-        vars.put("disputeType", dispute.getDisputeType());
-        vars.put("claimAmount", dispute.getClaimAmount());
-        dto.setVariables(vars);
-        R<String> response = workflowServiceClient.startProcess(dto);
-        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
-            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
-            throw new HrBusinessException("WORKFLOW_START_FAILED", "劳动争议审批启动失败：" + msg);
-        }
         String nextStatus = "REGISTERED".equals(dispute.getStatus()) ? "MEDIATING" : "ARBITRATING";
         UpdateWrapper<HrLaborDispute> uw = new UpdateWrapper<>();
         uw.eq("id", disputeId).eq("tenant_id", currentTenantId())
-                .set("process_instance_id", response.getData())
                 .set("status", nextStatus)
                 .set("update_time", LocalDateTime.now());
         disputeMapper.update(null, uw);
-        return response.getData();
+        HrTransactionHooks.afterCommit(() -> startLaborDisputeWorkflow(
+                disputeId, dispute.getDisputeNo(), dispute.getDisputeType(), dispute.getClaimAmount()));
+        return null;
     }
 
     @Override
@@ -199,5 +182,31 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
 
     private String currentUserName() {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+    }
+
+    private void startLaborDisputeWorkflow(Long disputeId, String disputeNo, String disputeType, java.math.BigDecimal claimAmount) {
+        ProcessStartDTO dto = new ProcessStartDTO();
+        dto.setTenantId(currentTenantId());
+        dto.setProcessDefinitionKey(disputeProcessKey);
+        dto.setBusinessType("HR_LABOR_DISPUTE");
+        dto.setBusinessId(disputeId);
+        dto.setBusinessNo(disputeNo);
+        dto.setProcessTitle("劳动争议-" + disputeNo);
+        dto.setStartUserId(UserContext.getUserId());
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("disputeId", disputeId);
+        vars.put("disputeType", disputeType);
+        vars.put("claimAmount", claimAmount);
+        dto.setVariables(vars);
+        R<String> response = workflowServiceClient.startProcess(dto);
+        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
+            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
+            throw new HrBusinessException("WORKFLOW_START_FAILED", "劳动争议审批启动失败：" + msg);
+        }
+        UpdateWrapper<HrLaborDispute> uw = new UpdateWrapper<>();
+        uw.eq("id", disputeId).eq("tenant_id", currentTenantId())
+                .set("process_instance_id", response.getData())
+                .set("update_time", LocalDateTime.now());
+        disputeMapper.update(null, uw);
     }
 }

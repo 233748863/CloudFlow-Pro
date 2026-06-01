@@ -27,4 +27,22 @@ public class OutboxProperties {
 
     /** 扫描间隔毫秒（默认 5000ms = 5s） */
     private long scanIntervalMs = 5000;
+
+    /** 调度实例 owner 前缀 */
+    private String owner = "outbox";
+
+    /** 抢占锁超时时间秒 */
+    private long lockSeconds = 30;
+
+    /** DLQ Stream key */
+    private String dlqStreamKey = "cloudflow:event:dlq";
+
+    /** Consumer 是否启用 */
+    private boolean consumerEnabled = true;
+
+    /** Consumer 前缀 */
+    private String consumerPrefix = "event-consumer";
+
+    /** 幂等 TTL 小时 */
+    private long idempotentTtlHours = 24;
 }

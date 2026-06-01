@@ -51,6 +51,7 @@ public class WorkflowEnhanceController {
      * 减签
      * 移除已加签但尚未处理的审批人
      */
+    @RepeatSubmit
     @PostMapping("/task/removeSign")
     @SaCheckPermission("workflow:task:reduce-sign")
     public R<?> removeSign(@RequestBody RemoveSignReq req) {
@@ -111,6 +112,7 @@ public class WorkflowEnhanceController {
      * 作废流程实例
      * 管理员可作废任何运行中的流程，作废后流程终止且不可恢复
      */
+    @RepeatSubmit
     @PostMapping("/instance/invalidate")
     @SaCheckPermission("workflow:process:terminate")
     public R<?> invalidateProcess(@RequestBody ProcessInvalidateRequest dto) {

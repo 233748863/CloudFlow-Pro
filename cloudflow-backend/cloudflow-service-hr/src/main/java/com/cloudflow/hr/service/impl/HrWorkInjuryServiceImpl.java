@@ -109,31 +109,39 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
             throw new HrBusinessException("WORK_INJURY_STATUS_INVALID",
                     "状态 " + injury.getStatus() + " 不允许发起认定");
         }
+        UpdateWrapper<HrWorkInjury> uw = new UpdateWrapper<>();
+        uw.eq("id", injuryId).eq("tenant_id", currentTenantId())
+                .set("status", "DETERMINING")
+                .set("update_time", LocalDateTime.now());
+        injuryMapper.update(null, uw);
+        HrTransactionHooks.afterCommit(() -> startWorkInjuryWorkflow(injuryId, injury.getInjuryNo(), injury.getEmployeeId(), injury.getInjuryLevel()));
+        return null;
+    }
+
+    private void startWorkInjuryWorkflow(Long injuryId, String injuryNo, Long employeeId, String injuryLevel) {
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(currentTenantId());
         dto.setProcessDefinitionKey(injuryProcessKey);
         dto.setBusinessType("HR_WORK_INJURY");
         dto.setBusinessId(injuryId);
-        dto.setBusinessNo(injury.getInjuryNo());
-        dto.setProcessTitle("工伤认定-" + injury.getInjuryNo());
+        dto.setBusinessNo(injuryNo);
+        dto.setProcessTitle("宸ヤ激璁ゅ畾-" + injuryNo);
         dto.setStartUserId(UserContext.getUserId());
         Map<String, Object> vars = new LinkedHashMap<>();
         vars.put("injuryId", injuryId);
-        vars.put("employeeId", injury.getEmployeeId());
-        vars.put("injuryLevel", injury.getInjuryLevel());
+        vars.put("employeeId", employeeId);
+        vars.put("injuryLevel", injuryLevel);
         dto.setVariables(vars);
         R<String> response = workflowServiceClient.startProcess(dto);
         if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
-            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
-            throw new HrBusinessException("WORKFLOW_START_FAILED", "工伤认定审批启动失败：" + msg);
+            String msg = response == null ? "Workflow 鏈嶅姟鏃犲搷搴?" : response.getMsg();
+            throw new HrBusinessException("WORKFLOW_START_FAILED", "宸ヤ激璁ゅ畾瀹℃壒鍚姩澶辫触锛?" + msg);
         }
         UpdateWrapper<HrWorkInjury> uw = new UpdateWrapper<>();
         uw.eq("id", injuryId).eq("tenant_id", currentTenantId())
                 .set("process_instance_id", response.getData())
-                .set("status", "DETERMINING")
                 .set("update_time", LocalDateTime.now());
         injuryMapper.update(null, uw);
-        return response.getData();
     }
 
     @Override

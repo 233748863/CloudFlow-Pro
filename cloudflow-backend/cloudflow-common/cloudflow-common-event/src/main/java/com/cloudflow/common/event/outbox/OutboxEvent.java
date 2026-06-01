@@ -34,6 +34,9 @@ public class OutboxEvent {
     /** 状态：PENDING / PUBLISHED / FAILED */
     private String status;
 
+    /** 业务事件唯一 ID */
+    private String eventId;
+
     /** 重试次数（失败时累加） */
     private Integer retryCount;
 
@@ -51,4 +54,10 @@ public class OutboxEvent {
 
     /** 租户 ID */
     private Long tenantId;
+
+    /** 抢占 owner */
+    private String lockedBy;
+
+    /** 抢占超时时间 */
+    private LocalDateTime lockedUntil;
 }

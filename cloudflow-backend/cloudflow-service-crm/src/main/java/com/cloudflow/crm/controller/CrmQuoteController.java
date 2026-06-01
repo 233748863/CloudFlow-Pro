@@ -111,6 +111,7 @@ public class CrmQuoteController {
     }
 
     @SysLog("CRM报价生成合同草稿")
+    @RepeatSubmit
     @PostMapping("/{id}/contract-draft")
     @SaCheckPermission("crm:contract:draft")
     public R<Long> createContractDraft(@PathVariable("id") Long id) {

@@ -28,6 +28,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 
 /**
  * 批量操作控制器。
@@ -50,6 +51,7 @@ public class BatchOperationController {
     /**
      * 批量归档流程（管理员权限）。
      */
+    @RepeatSubmit
     @PostMapping("/archive")
     @SaCheckPermission("workflow:batch:manage")
     public R<BatchOperationResultDTO> archiveWorkflows(@RequestBody BatchArchiveRequest request) {
@@ -110,6 +112,7 @@ public class BatchOperationController {
     /**
      * 批量恢复归档流程（管理员权限）。
      */
+    @RepeatSubmit
     @PostMapping("/restore")
     @SaCheckPermission("workflow:batch:manage")
     public R<BatchOperationResultDTO> restoreWorkflows(@RequestBody BatchRestoreRequest request) {

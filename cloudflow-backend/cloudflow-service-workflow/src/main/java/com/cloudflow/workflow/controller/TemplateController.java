@@ -19,6 +19,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 
 /**
  * 流程模板控制器
@@ -79,6 +80,7 @@ public class TemplateController {
         }
     }
 
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("workflow:template:add")
     public R<TemplateDTO> createTemplate(@RequestBody CreateTemplateRequest request) {
@@ -155,6 +157,7 @@ public class TemplateController {
         }
     }
 
+    @RepeatSubmit
     @PostMapping("/categories")
     @SaCheckPermission("workflow:template:add")
     public R<TemplateCategory> createCategory(@RequestBody TemplateCategoryRequest request) {

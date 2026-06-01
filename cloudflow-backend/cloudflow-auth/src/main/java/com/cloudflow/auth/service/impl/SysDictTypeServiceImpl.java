@@ -7,6 +7,9 @@ import com.cloudflow.auth.domain.SysDictType;
 import com.cloudflow.auth.mapper.SysDictDataMapper;
 import com.cloudflow.auth.mapper.SysDictTypeMapper;
 import com.cloudflow.auth.service.ISysDictTypeService;
+import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.exception.ErrorCodeConstants;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.redis.core.SysDictHelper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -178,18 +181,56 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     @Override
+    @Audit(name = "删除字典类型", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public void deleteDictTypeByIds(Long[] dictIds) {
-        // 先查询要删除的字典类型，获取 dictType 列表
         List<SysDictType> dictTypes = listByIds(Arrays.asList(dictIds));
         for (SysDictType dictType : dictTypes) {
-            // 删除关联的字典数据
+            assertDictTypeNotReferenced(dictType.getDictType());
             dictDataMapper.delete(new LambdaQueryWrapper<SysDictData>()
                     .eq(SysDictData::getDictType, dictType.getDictType()));
             sysDictHelper.removeDictDataCache(dictType.getDictType());
         }
-        // 删除字典类型
         removeByIds(Arrays.asList(dictIds));
         log.info("删除字典类型: {} 条，关联字典数据已清理", dictIds.length);
+    }
+
+    @Override
+    @Audit(name = "删除字典数据", highRisk = true)
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteDictDataByIds(Long[] dictCodes) {
+        Set<String> affectedTypes = new HashSet<>();
+        for (Long dictCode : dictCodes) {
+            SysDictData data = dictDataMapper.selectById(dictCode);
+            if (data == null) {
+                continue;
+            }
+            assertDictValueNotReferenced(data.getDictType(), data.getDictValue());
+            affectedTypes.add(data.getDictType());
+        }
+        if (dictCodes.length > 0) {
+            dictDataMapper.deleteBatchIds(Arrays.asList(dictCodes));
+        }
+        for (String dictType : affectedTypes) {
+            refreshDictCache(dictType);
+        }
+    }
+
+    private void assertDictTypeNotReferenced(String dictType) {
+        long count = dictDataMapper.selectCount(new LambdaQueryWrapper<SysDictData>()
+                .eq(SysDictData::getDictType, dictType)
+                .eq(SysDictData::getStatus, "0"));
+        if (count > 0) {
+            throw new ServiceException("字典类型 " + dictType + " 仍存在 " + count + " 条字典数据，禁止删除",
+                    ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
+    }
+
+    private void assertDictValueNotReferenced(String dictType, String dictValue) {
+        if (!"sys_yes_no".equals(dictType) && !"sys_normal_disable".equals(dictType)) {
+            return;
+        }
+        throw new ServiceException("字典值 " + dictType + ":" + dictValue + " 为系统保留值，禁止删除",
+                ErrorCodeConstants.CONCURRENT_MODIFICATION);
     }
 }

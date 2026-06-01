@@ -166,12 +166,29 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         project.setStatus("PENDING");
         project.setUpdateBy(UserContext.getUserName());
         project.setUpdateTime(LocalDateTime.now());
+        boolean updated = updateById(project);
+        if (updated) {
+            if ((project.getBaselineVersion() == null || project.getBaselineVersion() <= 0)) {
+                snapshotBaseline(projectId);
+            }
+            refreshProjectActualCost(projectId);
+            syncProjectRiskLevel(projectId);
+            startProjectWorkflowAfterCommit(project);
+        }
+        return updated;
+    }
+
+    private void startProjectWorkflowAfterCommit(OaProject project) {
+        OaTransactionHooks.afterCommit(() -> startProjectWorkflow(project));
+    }
+
+    private void startProjectWorkflow(OaProject project) {
         try {
             WorkflowProcessStartDTO dto = new WorkflowProcessStartDTO();
             dto.setProcessDefKey("project_approval");
-            dto.setBusinessKey("PROJECT:" + projectId);
+            dto.setBusinessKey("PROJECT:" + project.getProjectId());
             Map<String, Object> variables = new HashMap<>();
-            variables.put("projectId", projectId);
+            variables.put("projectId", project.getProjectId());
             variables.put("projectNo", project.getProjectNo());
             variables.put("projectName", project.getProjectName());
             variables.put("budgetAmount", project.getBudgetAmount());
@@ -180,30 +197,24 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
                     OaBusinessTypes.PROJECT,
-                    projectId,
+                    project.getProjectId(),
                     project.getProjectNo(),
                     "workflow:stream:approval-callback:oa"
             );
             dto.setVariables(variables);
             var result = remoteWorkflowService.startProcess(dto);
             if (result != null && result.isSuccess() && result.getData() != null) {
-                project.setInstanceId(extractInstanceId(result.getData()));
+                OaProject update = new OaProject();
+                update.setProjectId(project.getProjectId());
+                update.setInstanceId(extractInstanceId(result.getData()));
+                updateById(update);
             }
         } catch (Exception e) {
             log.error("项目 {} 启动工作流失败: {}", project.getProjectNo(), e.getMessage(), e);
             workflowFailureHelper.handleWorkflowStartFailure(
-                    OaBusinessTypes.PROJECT, projectId, project.getProjectNo(),
+                    OaBusinessTypes.PROJECT, project.getProjectId(), project.getProjectNo(),
                     project.getOwnerName(), project.getOwnerId(), e);
         }
-        boolean updated = updateById(project);
-        if (updated) {
-            if ((project.getBaselineVersion() == null || project.getBaselineVersion() <= 0)) {
-                snapshotBaseline(projectId);
-            }
-            refreshProjectActualCost(projectId);
-            syncProjectRiskLevel(projectId);
-        }
-        return updated;
     }
 
     @Override
@@ -308,7 +319,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
-    @Audit(name = "更新项目成员")
+    @Audit(name = "更新项目成员", highRisk = true)
     public boolean updateMember(OaProjectMember member) {
         if (member == null || member.getId() == null || member.getProjectId() == null) {
             throw new IllegalArgumentException("项目成员ID不能为空");
@@ -320,6 +331,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "删除项目成员", highRisk = true)
     public boolean removeMembers(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -358,7 +370,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
-    @Audit(name = "更新项目里程碑")
+    @Audit(name = "更新项目里程碑", highRisk = true)
     public boolean updateMilestone(OaProjectMilestone milestone) {
         if (milestone == null || milestone.getMilestoneId() == null || milestone.getProjectId() == null) {
             throw new IllegalArgumentException("项目里程碑ID不能为空");
@@ -374,6 +386,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "删除项目里程碑", highRisk = true)
     public boolean removeMilestones(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -419,7 +432,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
-    @Audit(name = "更新项目风险")
+    @Audit(name = "更新项目风险", highRisk = true)
     public boolean updateRisk(OaProjectRisk risk) {
         if (risk == null || risk.getRiskId() == null || risk.getProjectId() == null) {
             throw new IllegalArgumentException("项目风险ID不能为空");
@@ -435,6 +448,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "删除项目风险", highRisk = true)
     public boolean removeRisks(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -481,7 +495,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
-    @Audit(name = "更新WBS任务")
+    @Audit(name = "更新WBS任务", highRisk = true)
     public boolean updateWbsTask(WorkTask task) {
         if (task == null || task.getTaskId() == null || task.getProjectId() == null) {
             throw new IllegalArgumentException("WBS任务ID不能为空");
@@ -512,6 +526,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "删除WBS任务", highRisk = true)
     public boolean removeWbsTasks(List<Long> ids) {
         return workTaskService.removeProjectTasks(ids);
     }
@@ -532,7 +547,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
-    @Audit(name = "更新项目依赖")
+    @Audit(name = "更新项目依赖", highRisk = true)
     public boolean updateDependency(OaProjectDependency dependency) {
         if (dependency == null || dependency.getDependencyId() == null) {
             throw new IllegalArgumentException("依赖ID不能为空");
@@ -544,6 +559,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     }
 
     @Override
+    @Audit(name = "删除项目依赖", highRisk = true)
     public boolean removeDependencies(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;

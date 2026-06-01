@@ -4,6 +4,9 @@ import com.cloudflow.common.idempotent.aspectj.RepeatSubmitAspect;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -15,12 +18,16 @@ import org.springframework.data.redis.core.StringRedisTemplate;
  * @author CloudFlow
  */
 @AutoConfiguration
+@EnableConfigurationProperties(IdempotentProperties.class)
 public class IdempotentAutoConfiguration {
 
     @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "cloudflow.idempotent", name = "enabled", havingValue = "true", matchIfMissing = true)
     public RepeatSubmitAspect repeatSubmitAspect(StringRedisTemplate redisTemplate,
                                                   ObjectMapper objectMapper,
-                                                  SysConfigHelper sysConfigHelper) {
-        return new RepeatSubmitAspect(redisTemplate, objectMapper, sysConfigHelper);
+                                                  SysConfigHelper sysConfigHelper,
+                                                  IdempotentProperties properties) {
+        return new RepeatSubmitAspect(redisTemplate, objectMapper, sysConfigHelper, properties);
     }
 }

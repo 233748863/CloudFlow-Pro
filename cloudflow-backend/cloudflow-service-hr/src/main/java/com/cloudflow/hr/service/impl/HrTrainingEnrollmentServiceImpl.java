@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantContext;
@@ -93,34 +94,10 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
         enrollment.setUpdateBy(currentUserName());
         enrollmentMapper.insert(enrollment);
 
-        ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(tenantId);
-        dto.setProcessDefinitionKey(processDefinitionKey);
-        dto.setBusinessType("HR_TRAINING_ENROLLMENT");
-        dto.setBusinessId(enrollment.getId());
-        dto.setBusinessNo(String.valueOf(sessionId));
-        dto.setProcessTitle("培训报名审批-班次 " + sessionId);
-        dto.setStartUserId(UserContext.getUserId());
-        Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("sessionId", sessionId);
-        vars.put("employeeId", employeeId);
-        vars.put("enrollType", enrollment.getEnrollType());
-        dto.setVariables(vars);
-
-        R<String> response = workflowServiceClient.startProcess(dto);
-        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
-            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
-            throw new HrBusinessException("WORKFLOW_START_FAILED", "培训报名流程启动失败：" + msg);
-        }
-        UpdateWrapper<HrTrainingEnrollment> wrapper = new UpdateWrapper<>();
-        wrapper.eq("id", enrollment.getId())
-                .eq("tenant_id", tenantId)
-                .set("process_instance_id", response.getData())
-                .set("update_time", LocalDateTime.now());
-        enrollmentMapper.update(null, wrapper);
-        log.info("培训报名已提交，enrollmentId: {}, sessionId: {}, employeeId: {}, processInstanceId: {}",
-                enrollment.getId(), sessionId, employeeId, response.getData());
-        // HR-P0-1 触发培训档案异步增量刷新
+        HrTransactionHooks.afterCommit(() -> startTrainingEnrollmentWorkflow(
+                enrollment.getId(), tenantId, sessionId, employeeId, enrollment.getEnrollType()));
+        log.info("培训报名已提交，enrollmentId: {}, sessionId: {}, employeeId: {}",
+                enrollment.getId(), sessionId, employeeId);
         archiveService.incrementOnEnrollmentChange(employeeId);
         return enrollment.getId();
     }
@@ -171,12 +148,11 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
         enrollmentMapper.update(null, wrapper);
-        // HR-P0-1 触发培训档案异步增量刷新(完成/失败均影响累计学时与完成次数)
         archiveService.incrementOnEnrollmentChange(enrollment.getEmployeeId());
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消培训报名", highRisk = true)
     public void cancel(Long enrollmentId) {
         HrTrainingEnrollment enrollment = loadEnrollment(enrollmentId);
         essSupport.assertOwner(enrollment.getEmployeeId());
@@ -184,22 +160,62 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
             throw new HrBusinessException("STATUS_NOT_CANCELABLE",
                     "当前报名状态 " + enrollment.getStatus() + " 不允许撤销");
         }
-        if (StringUtils.hasText(enrollment.getProcessInstanceId())) {
-            R<Void> cancelResult = workflowServiceClient.cancelProcess(enrollment.getProcessInstanceId());
-            if (cancelResult == null || !cancelResult.isSuccess()) {
-                log.warn("撤销培训报名流程失败，enrollmentId: {}, msg: {}",
-                        enrollmentId, cancelResult == null ? null : cancelResult.getMsg());
-            }
+        cancelWorkflowIfNeeded(enrollmentId, enrollment.getProcessInstanceId());
+        markWithdrawn(enrollment);
+    }
+
+    private void cancelWorkflowIfNeeded(Long enrollmentId, String processInstanceId) {
+        if (!StringUtils.hasText(processInstanceId)) {
+            return;
         }
+        R<Void> cancelResult = workflowServiceClient.cancelProcess(processInstanceId);
+        if (cancelResult == null || !cancelResult.isSuccess()) {
+            log.warn("撤销培训报名流程失败，enrollmentId: {}, msg: {}",
+                    enrollmentId, cancelResult == null ? null : cancelResult.getMsg());
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    protected void markWithdrawn(HrTrainingEnrollment enrollment) {
         UpdateWrapper<HrTrainingEnrollment> wrapper = new UpdateWrapper<>();
-        wrapper.eq("id", enrollmentId)
+        wrapper.eq("id", enrollment.getId())
                 .eq("tenant_id", currentTenantId())
                 .set("status", "WITHDRAWN")
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
         enrollmentMapper.update(null, wrapper);
-        // HR-P0-1 触发培训档案异步增量刷新(撤销影响进行中计数)
         archiveService.incrementOnEnrollmentChange(enrollment.getEmployeeId());
+    }
+
+    private void startTrainingEnrollmentWorkflow(Long enrollmentId, Long tenantId, Long sessionId,
+                                                 Long employeeId, String enrollType) {
+        ProcessStartDTO dto = new ProcessStartDTO();
+        dto.setTenantId(tenantId);
+        dto.setProcessDefinitionKey(processDefinitionKey);
+        dto.setBusinessType("HR_TRAINING_ENROLLMENT");
+        dto.setBusinessId(enrollmentId);
+        dto.setBusinessNo(String.valueOf(sessionId));
+        dto.setProcessTitle("培训报名审批-班次 " + sessionId);
+        dto.setStartUserId(UserContext.getUserId());
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("sessionId", sessionId);
+        vars.put("employeeId", employeeId);
+        vars.put("enrollType", enrollType);
+        dto.setVariables(vars);
+
+        R<String> response = workflowServiceClient.startProcess(dto);
+        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
+            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
+            throw new HrBusinessException("WORKFLOW_START_FAILED", "培训报名流程启动失败：" + msg);
+        }
+        UpdateWrapper<HrTrainingEnrollment> wrapper = new UpdateWrapper<>();
+        wrapper.eq("id", enrollmentId)
+                .eq("tenant_id", tenantId)
+                .set("process_instance_id", response.getData())
+                .set("update_time", LocalDateTime.now());
+        enrollmentMapper.update(null, wrapper);
+        log.info("培训报名已提交，enrollmentId: {}, sessionId: {}, employeeId: {}, processInstanceId: {}",
+                enrollmentId, sessionId, employeeId, response.getData());
     }
 
     private HrTrainingEnrollment loadEnrollment(Long id) {

@@ -9,6 +9,7 @@ import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
 import com.cloudflow.common.core.domain.R;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -99,17 +100,12 @@ public class SysAuditLogController {
     }
 
     /**
-     * 删除审计日志（支持批量）
-     *
-     * @param ids 审计日志ID列表
+     * 审计日志不可删除。
      */
     @DeleteMapping
     @SaCheckPermission("system:audit:remove")
+    @ResponseStatus(HttpStatus.GONE)
     public R delete(@RequestBody List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return R.fail("请选择要删除的审计日志");
-        }
-        sysAuditLogMapper.deleteBatchIds(ids);
-        return R.ok("删除成功");
+        return R.fail(HttpStatus.GONE.value(), "审计日志不可删除");
     }
 }

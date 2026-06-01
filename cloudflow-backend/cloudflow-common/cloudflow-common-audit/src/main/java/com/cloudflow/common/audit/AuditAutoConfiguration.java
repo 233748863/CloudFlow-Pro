@@ -9,6 +9,7 @@ import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
 import com.cloudflow.common.audit.support.SpelParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.context.ApplicationContext;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,5 +66,11 @@ public class AuditAutoConfiguration {
     @Bean
     public AuditAspect auditAspect(ICompareHandle compareHandle) {
         return new AuditAspect(compareHandle);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public HighRiskAuditVerifier highRiskAuditVerifier(ApplicationContext applicationContext) {
+        return new HighRiskAuditVerifier(applicationContext);
     }
 }

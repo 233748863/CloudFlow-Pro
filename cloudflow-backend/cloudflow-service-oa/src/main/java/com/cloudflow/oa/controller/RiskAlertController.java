@@ -37,6 +37,7 @@ public class RiskAlertController {
     }
 
     @SysLog("人工标记风险")
+    @RepeatSubmit
     @PostMapping("/manual")
     @SaCheckPermission("oa:risk:add")
     public R<Void> manual(@RequestBody OaRiskAlert risk) {

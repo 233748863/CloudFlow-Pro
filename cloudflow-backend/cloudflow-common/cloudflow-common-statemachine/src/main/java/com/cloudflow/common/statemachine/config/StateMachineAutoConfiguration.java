@@ -3,11 +3,13 @@ package com.cloudflow.common.statemachine.config;
 import com.cloudflow.common.statemachine.core.DictValueProvider;
 import com.cloudflow.common.statemachine.core.StateMachineDefinition;
 import com.cloudflow.common.statemachine.core.StateMachineRegistry;
+import com.cloudflow.common.statemachine.exception.StateMachineExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
 import java.util.List;
@@ -21,6 +23,7 @@ import java.util.List;
  * </ul>
  */
 @AutoConfiguration
+@EnableConfigurationProperties(StateMachineProperties.class)
 public class StateMachineAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(StateMachineAutoConfiguration.class);
@@ -28,14 +31,25 @@ public class StateMachineAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public DictValueProvider dictValueProvider() {
-        log.info("未找到 DictValueProvider Bean，使用 NOOP 实现（字典校验将跳过）");
-        return DictValueProvider.NOOP;
+        log.warn("未找到 DictValueProvider Bean，将按配置决定是否阻断启动");
+        return new DictValueProvider() {
+            @Override
+            public java.util.Set<String> getValues(String dictType) {
+                return java.util.Collections.emptySet();
+            }
+
+            @Override
+            public boolean available() {
+                return false;
+            }
+        };
     }
 
     @Bean
     public StateMachineRegistry stateMachineRegistry(DictValueProvider dictValueProvider,
+                                                      StateMachineProperties properties,
                                                       @Autowired(required = false) List<StateMachineDefinition> definitions) {
-        StateMachineRegistry registry = new StateMachineRegistry(dictValueProvider);
+        StateMachineRegistry registry = new StateMachineRegistry(dictValueProvider, properties);
         if (definitions != null && !definitions.isEmpty()) {
             log.info("发现 {} 个 StateMachineDefinition，开始注册", definitions.size());
             for (StateMachineDefinition def : definitions) {
@@ -50,5 +64,11 @@ public class StateMachineAutoConfiguration {
     @Bean
     public StateMachineLifecycle stateMachineLifecycle(StateMachineRegistry registry) {
         return new StateMachineLifecycle(registry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public StateMachineExceptionHandler stateMachineExceptionHandler() {
+        return new StateMachineExceptionHandler();
     }
 }

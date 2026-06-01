@@ -24,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
@@ -132,6 +134,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除印章续期", highRisk = true)
     public boolean removeRenewals(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -165,7 +168,29 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
         assertNoPendingRenewal(renewal.getSealId(), renewal.getId());
         renewal.setStatus(OaBorrowConstants.STATUS_PENDING);
         compensateUserSnapshot(renewal);
+        renewal.setUpdateBy(UserContext.getUserName());
+        renewal.setUpdateTime(LocalDateTime.now());
+        boolean updated = updateById(renewal);
+        if (updated) {
+            startRenewalWorkflowAfterCommit(renewal);
+        }
+        return updated;
+    }
 
+    private void startRenewalWorkflowAfterCommit(OaSealRenewal renewal) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            startRenewalWorkflow(renewal);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                startRenewalWorkflow(renewal);
+            }
+        });
+    }
+
+    private void startRenewalWorkflow(OaSealRenewal renewal) {
         try {
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
             req.setProcessDefKey("seal_renewal");
@@ -190,7 +215,10 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
             req.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                renewal.setInstanceId(extractInstanceId(result.getData()));
+                OaSealRenewal update = new OaSealRenewal();
+                update.setId(renewal.getId());
+                update.setInstanceId(extractInstanceId(result.getData()));
+                updateById(update);
             } else {
                 log.warn("印章续期 {} 工作流启动返回异常: {}", renewal.getRenewalNo(), result != null ? result.getMsg() : "null");
             }
@@ -200,13 +228,11 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
                     OaBusinessTypes.SEAL_RENEWAL, renewal.getId(), renewal.getRenewalNo(),
                     renewal.getApplicantName(), renewal.getApplicantId(), e);
         }
-        renewal.setUpdateBy(UserContext.getUserName());
-        renewal.setUpdateTime(LocalDateTime.now());
-        return updateById(renewal);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消印章续期", highRisk = true)
     public boolean cancelRenewal(Long id) {
         OaSealRenewal renewal = requireRenewal(id);
         if (!OaBorrowConstants.STATUS_DRAFT.equals(renewal.getStatus())

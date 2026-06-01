@@ -115,4 +115,5 @@ public class SysTenant {
      * 备注
      */
     private String remark;
+
 }

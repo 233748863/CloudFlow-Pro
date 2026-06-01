@@ -132,7 +132,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新用印申请")
+    @Audit(name = "更新用印申请", highRisk = true)
     public boolean updateApplication(OaSealApplication application) {
         if (application == null || application.getId() == null) {
             throw new IllegalArgumentException("用印申请ID不能为空");
@@ -163,6 +163,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除用印申请", highRisk = true)
     public boolean removeApplications(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -200,6 +201,18 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setStatus(OaBorrowConstants.STATUS_PENDING);
         compensateUserSnapshot(application);
 
+        application.setUpdateBy(UserContext.getUserName());
+        application.setUpdateTime(LocalDateTime.now());
+        boolean updated = updateById(application);
+        if (updated) {
+            OaTransactionHooks.afterCommit(() -> startSealApplicationWorkflow(application));
+        }
+        updateLinkedContractStatus(application, OaContractConstants.CONTRACT_STATUS_SEALING);
+        traceSeal(application, "SEAL_APPLICATION_SUBMITTED", "用印提交审批", application.getApplicationNo());
+        return updated;
+    }
+
+    private void startSealApplicationWorkflow(OaSealApplication application) {
         try {
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
             req.setProcessDefKey("seal_application");
@@ -228,7 +241,15 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             req.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                application.setInstanceId(extractInstanceId(result.getData()));
+                String instanceId = extractInstanceId(result.getData());
+                if (StringUtils.hasText(instanceId)) {
+                    OaSealApplication update = new OaSealApplication();
+                    update.setId(application.getId());
+                    update.setInstanceId(instanceId);
+                    update.setUpdateBy(UserContext.getUserName());
+                    update.setUpdateTime(LocalDateTime.now());
+                    updateById(update);
+                }
             } else {
                 log.warn("用印申请 {} 工作流启动返回异常: {}", application.getApplicationNo(), result != null ? result.getMsg() : "null");
             }
@@ -238,16 +259,11 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
                     OaBusinessTypes.SEAL_APPLICATION, application.getId(), application.getApplicationNo(),
                     application.getUserName(), application.getUserId(), e);
         }
-        application.setUpdateBy(UserContext.getUserName());
-        application.setUpdateTime(LocalDateTime.now());
-        boolean updated = updateById(application);
-        updateLinkedContractStatus(application, OaContractConstants.CONTRACT_STATUS_SEALING);
-        traceSeal(application, "SEAL_APPLICATION_SUBMITTED", "用印提交审批", application.getApplicationNo());
-        return updated;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消用印申请", highRisk = true)
     public boolean cancelApplication(Long id) {
         OaSealApplication application = requireApplication(id);
         if (!OaBorrowConstants.STATUS_DRAFT.equals(application.getStatus())

@@ -92,6 +92,8 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
             auditLog.setCreateBy(username);
             auditLog.setCreateTime(LocalDateTime.now());
             auditLog.setTenantId(tenantId);
+            auditLog.setHighRisk(audit.highRisk() ? 1 : 0);
+            auditLog.setRiskLevel(audit.highRisk() ? "HIGH" : "NORMAL");
 
             // M0-5: diff=true 时记录完整 JSON
             if (audit.diff() && oldVal != null && newVal != null) {

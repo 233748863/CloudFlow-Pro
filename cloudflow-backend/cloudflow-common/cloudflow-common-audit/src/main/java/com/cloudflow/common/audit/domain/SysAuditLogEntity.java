@@ -45,6 +45,12 @@ public class SysAuditLogEntity {
     /** JSON diff（M0-5：diff=true 时记录，Jackson JsonDiff 格式） */
     private String diffJson;
 
+    /** 高风险标记 */
+    private Integer highRisk;
+
+    /** 风险等级 */
+    private String riskLevel;
+
     /** 操作人 */
     private String createBy;
 

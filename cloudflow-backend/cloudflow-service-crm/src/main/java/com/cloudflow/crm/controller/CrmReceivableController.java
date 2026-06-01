@@ -84,6 +84,7 @@ public class CrmReceivableController {
     }
 
     @SysLog("绑定CRM回款发票")
+    @RepeatSubmit
     @PostMapping("/{id}/bind-invoice/{invoiceId}")
     @SaCheckPermission("crm:receivable:bind-invoice")
     public R<Void> bindInvoice(@PathVariable("id") Long id, @PathVariable("invoiceId") Long invoiceId) {

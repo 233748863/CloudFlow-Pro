@@ -20,6 +20,7 @@ import com.cloudflow.hr.service.HrPdfRenderer;
 import com.cloudflow.hr.service.IHrTrainingArchiveService;
 import com.cloudflow.hr.service.IHrTrainingCertificateService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -114,6 +115,7 @@ public class HrTrainingCertificateServiceImpl implements IHrTrainingCertificateS
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "撤销培训证书", highRisk = true)
     public void revoke(Long id, String reason) {
         HrTrainingCertificate cert = loadCertificate(id);
         if ("REVOKED".equalsIgnoreCase(cert.getStatus())) {

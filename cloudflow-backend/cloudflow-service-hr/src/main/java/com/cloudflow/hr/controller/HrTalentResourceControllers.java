@@ -82,6 +82,7 @@ class HrTalentReviewController {
     }
 
     @SysLog("新增人才盘点活动")
+    @RepeatSubmit
     @PostMapping("/reviews")
     @SaCheckPermission("hr:talent:review:add")
     public R<Long> create(@Validated @RequestBody HrTalentReviewDTO dto) {
@@ -186,6 +187,7 @@ class HrTalentSuccessionController {
     }
 
     @SysLog("新增继任计划")
+    @RepeatSubmit
     @PostMapping("/succession-plans")
     @SaCheckPermission("hr:talent:succession:add")
     public R<Long> create(@Validated @RequestBody HrTalentSuccessionPlanDTO dto) {
@@ -250,6 +252,7 @@ class HrTalentPoolController {
     }
 
     @SysLog("新增人才池")
+    @RepeatSubmit
     @PostMapping("/pools")
     @SaCheckPermission("hr:talent:pool:add")
     public R<Long> create(@Validated @RequestBody HrTalentPoolDTO dto) {
@@ -312,6 +315,7 @@ class HrTalentDevelopmentController {
     }
 
     @SysLog("新增培养行动")
+    @RepeatSubmit
     @PostMapping("/development")
     @SaCheckPermission("hr:talent:dev:add")
     public R<Long> create(@Validated @RequestBody HrTalentDevelopmentActionDTO dto) {

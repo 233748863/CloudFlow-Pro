@@ -10,6 +10,7 @@ import com.cloudflow.common.log.domain.SysLogEntity;
 import com.cloudflow.common.log.mapper.SysLogMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -101,18 +102,12 @@ public class SysLogController {
     }
 
     /**
-     * 删除操作日志（支持批量）
-     *
-     * @param ids 日志ID列表
+     * 操作日志不可删除。
      */
     @DeleteMapping
     @SaCheckPermission("system:log:remove")
     public R delete(@RequestBody List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return R.fail("请选择要删除的日志");
-        }
-        sysLogMapper.deleteBatchIds(ids);
-        return R.ok("删除成功");
+        return R.fail(HttpStatus.GONE.value(), "操作日志不可删除");
     }
 
     /**

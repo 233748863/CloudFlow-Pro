@@ -9,7 +9,6 @@ import com.cloudflow.common.core.domain.R;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -80,17 +79,7 @@ public class SysDictDataController {
     @DeleteMapping("/{dictCodes}")
     @SaCheckPermission("system:dict:remove")
     public R<?> remove(@PathVariable("dictCodes") Long[] dictCodes) {
-        java.util.Set<String> affectedTypes = new java.util.HashSet<>();
-        for (Long code : dictCodes) {
-            SysDictData d = dictDataMapper.selectById(code);
-            if (d != null && d.getDictType() != null) {
-                affectedTypes.add(d.getDictType());
-            }
-        }
-        dictDataMapper.deleteBatchIds(Arrays.asList(dictCodes));
-        for (String dictType : affectedTypes) {
-            sysDictTypeService.refreshDictCache(dictType);
-        }
+        sysDictTypeService.deleteDictDataByIds(dictCodes);
         return R.ok();
     }
 }

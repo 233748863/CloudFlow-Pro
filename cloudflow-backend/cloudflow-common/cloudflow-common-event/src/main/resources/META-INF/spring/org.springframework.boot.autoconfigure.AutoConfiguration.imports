@@ -1,1 +1,2 @@
 com.cloudflow.common.event.config.EventAutoConfiguration
+com.cloudflow.common.event.config.EventConsumerAutoConfiguration

@@ -362,6 +362,48 @@ function Test-FrontendProcess {
         $Process.CommandLine -like "*vite*"
 }
 
+function Get-StartupFailureHint {
+    param(
+        [string]$OutLog,
+        [string]$ErrLog
+    )
+
+    $logFiles = @($OutLog, $ErrLog) |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path $_) }
+
+    $markers = @(
+        "APPLICATION FAILED TO START",
+        "Error starting ApplicationContext",
+        "UnsatisfiedDependencyException",
+        "No qualifying bean of type",
+        "BUILD FAILURE",
+        "Failed to execute goal"
+    )
+
+    foreach ($logFile in $logFiles) {
+        try {
+            $tail = Get-Content -Path $logFile -Tail 120 -ErrorAction SilentlyContinue
+            if ($null -eq $tail) {
+                continue
+            }
+
+            $text = $tail -join "`n"
+            foreach ($marker in $markers) {
+                if ($text -like "*$marker*") {
+                    return @{
+                        Log = $logFile
+                        Marker = $marker
+                        Tail = $tail
+                    }
+                }
+            }
+        } catch {
+        }
+    }
+
+    return $null
+}
+
 function Stop-ProcessTree {
     param([int]$RootProcessId)
 
@@ -513,6 +555,12 @@ function Start-BackendService {
         Out-Null
 
     Write-Host ("{0,-10} 启动中，端口 {1}" -f $Service.Name, $Service.Port)
+
+    return @{
+        Service = $Service
+        OutLog = $outLog
+        ErrLog = $errLog
+    }
 }
 
 function Start-FrontendService {
@@ -537,6 +585,12 @@ function Start-FrontendService {
         Out-Null
 
     Write-Host ("{0,-10} 启动中，端口 {1}" -f $Service.Name, $Service.Port)
+
+    return @{
+        Service = $Service
+        OutLog = $outLog
+        ErrLog = $errLog
+    }
 }
 
 function Wait-ServiceReady {
@@ -573,6 +627,14 @@ function Wait-AllServicesReady {
         $nextRemaining = @()
 
         foreach ($item in $remaining) {
+            $failureHint = Get-StartupFailureHint -OutLog $item.OutLog -ErrLog $item.ErrLog
+            if ($null -ne $failureHint) {
+                Write-Host ("{0,-10} 启动失败，端口 {1}, 命中 {2}" -f $item.Service.Name, $item.Service.Port, $failureHint.Marker)
+                Write-Host ("{0,-10} 日志：{1}" -f $item.Service.Name, $failureHint.Log)
+                $failed += $item.Service
+                continue
+            }
+
             $process = Get-ListenerProcess -Port $item.Service.Port
             if (& $item.ExpectedProcess $item.Service $process) {
                 Write-Host ("{0,-10} 已就绪，端口 {1}, PID {2}" -f $item.Service.Name, $item.Service.Port, $process.ProcessId)
@@ -588,7 +650,14 @@ function Wait-AllServicesReady {
     }
 
     foreach ($item in $remaining) {
-        Write-Host ("{0,-10} 启动超时，端口 {1}" -f $item.Service.Name, $item.Service.Port)
+        $failureHint = Get-StartupFailureHint -OutLog $item.OutLog -ErrLog $item.ErrLog
+        if ($null -ne $failureHint) {
+            Write-Host ("{0,-10} 启动失败，端口 {1}, 命中 {2}" -f $item.Service.Name, $item.Service.Port, $failureHint.Marker)
+            Write-Host ("{0,-10} 日志：{1}" -f $item.Service.Name, $failureHint.Log)
+        } else {
+            Write-Host ("{0,-10} 启动超时，端口 {1}" -f $item.Service.Name, $item.Service.Port)
+            Write-Host ("{0,-10} 日志：{1}" -f $item.Service.Name, $item.OutLog)
+        }
         $failed += $item.Service
     }
 
@@ -613,16 +682,20 @@ Install-BackendDependencies
 Sync-NacosConfiguration
 
 foreach ($service in $BackendServices) {
-    Start-BackendService -Service $service
+    $started = Start-BackendService -Service $service
     $pending += @{
-        Service = $service
+        Service = $started.Service
+        OutLog = $started.OutLog
+        ErrLog = $started.ErrLog
         ExpectedProcess = ${function:Test-BackendProcess}
     }
 }
 
-Start-FrontendService -Service $FrontendService
+$startedFrontend = Start-FrontendService -Service $FrontendService
 $pending += @{
-    Service = $FrontendService
+    Service = $startedFrontend.Service
+    OutLog = $startedFrontend.OutLog
+    ErrLog = $startedFrontend.ErrLog
     ExpectedProcess = {
         param($service, $process)
         Test-FrontendProcess -Process $process

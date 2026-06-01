@@ -149,6 +149,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除证照借用", highRisk = true)
     public boolean removeBorrows(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -182,7 +183,20 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
                 resolveBorrowTime(borrow.getExpectedBorrowTime()), borrow.getExpectedReturnTime());
         borrow.setStatus(OaBorrowConstants.STATUS_PENDING);
         compensateUserSnapshot(borrow);
+        borrow.setUpdateBy(UserContext.getUserName());
+        borrow.setUpdateTime(LocalDateTime.now());
+        boolean updated = updateById(borrow);
+        if (updated) {
+            startBorrowWorkflowAfterCommit(borrow);
+        }
+        return updated;
+    }
 
+    private void startBorrowWorkflowAfterCommit(OaLicenseBorrow borrow) {
+        OaTransactionHooks.afterCommit(() -> startBorrowWorkflow(borrow));
+    }
+
+    private void startBorrowWorkflow(OaLicenseBorrow borrow) {
         try {
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
             req.setProcessDefKey("license_borrow");
@@ -206,7 +220,10 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
             req.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                borrow.setInstanceId(extractInstanceId(result.getData()));
+                OaLicenseBorrow update = new OaLicenseBorrow();
+                update.setId(borrow.getId());
+                update.setInstanceId(extractInstanceId(result.getData()));
+                updateById(update);
             } else {
                 log.warn("证照借用 {} 工作流启动返回异常: {}", borrow.getBorrowNo(), result != null ? result.getMsg() : "null");
             }
@@ -216,13 +233,11 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
                     OaBusinessTypes.LICENSE_BORROW, borrow.getId(), borrow.getBorrowNo(),
                     borrow.getUserName(), borrow.getUserId(), e);
         }
-        borrow.setUpdateBy(UserContext.getUserName());
-        borrow.setUpdateTime(LocalDateTime.now());
-        return updateById(borrow);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消证照借用", highRisk = true)
     public boolean cancelBorrow(Long id) {
         OaLicenseBorrow borrow = requireBorrow(id);
         if (!OaBorrowConstants.STATUS_DRAFT.equals(borrow.getStatus())

@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
@@ -21,11 +22,11 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrMallItemMapper;
 import com.cloudflow.hr.mapper.HrMallOrderItemMapper;
 import com.cloudflow.hr.mapper.HrMallOrderMapper;
+import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.IHrMallItemService;
 import com.cloudflow.hr.service.IHrMallOrderService;
-import com.cloudflow.hr.service.IHrPointAccountService;
-import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.hr.service.IHrPointAccountService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -120,30 +121,12 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
                 "积分商城兑换-" + order.getOrderNo());
 
         if (totalPoints >= approvalThreshold) {
-            ProcessStartDTO processStartDTO = new ProcessStartDTO();
-            processStartDTO.setTenantId(currentTenantId());
-            processStartDTO.setProcessDefinitionKey(mallOrderProcessKey);
-            processStartDTO.setBusinessType("HR_MALL_ORDER");
-            processStartDTO.setBusinessId(order.getId());
-            processStartDTO.setBusinessNo(order.getOrderNo());
-            processStartDTO.setProcessTitle("积分商城兑换-" + order.getOrderNo());
-            processStartDTO.setStartUserId(UserContext.getUserId());
-            Map<String, Object> vars = new LinkedHashMap<>();
-            vars.put("orderId", order.getId());
-            vars.put("totalPoints", totalPoints);
-            vars.put("employeeId", employeeId);
-            processStartDTO.setVariables(vars);
-            R<String> response = workflowServiceClient.startProcess(processStartDTO);
-            if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
-                String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
-                throw new HrBusinessException("WORKFLOW_START_FAILED", "积分商城订单审批启动失败：" + msg);
-            }
             UpdateWrapper<HrMallOrder> uw = new UpdateWrapper<>();
             uw.eq("id", order.getId()).eq("tenant_id", currentTenantId())
-                    .set("process_instance_id", response.getData())
                     .set("status", "APPROVING")
                     .set("update_time", LocalDateTime.now());
             orderMapper.update(null, uw);
+            HrTransactionHooks.afterCommit(() -> startMallOrderWorkflow(order.getId(), order.getOrderNo(), totalPoints, employeeId));
         } else {
             UpdateWrapper<HrMallOrder> uw = new UpdateWrapper<>();
             uw.eq("id", order.getId()).eq("tenant_id", currentTenantId())
@@ -216,6 +199,7 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消商城订单", highRisk = true)
     public void cancel(Long orderId, String reason) {
         HrMallOrder order = orderMapper.selectById(orderId);
         if (order == null) {
@@ -253,6 +237,32 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
                 .set("completed_at", LocalDateTime.now())
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
+        orderMapper.update(null, uw);
+    }
+
+    private void startMallOrderWorkflow(Long orderId, String orderNo, int totalPoints, Long employeeId) {
+        ProcessStartDTO processStartDTO = new ProcessStartDTO();
+        processStartDTO.setTenantId(currentTenantId());
+        processStartDTO.setProcessDefinitionKey(mallOrderProcessKey);
+        processStartDTO.setBusinessType("HR_MALL_ORDER");
+        processStartDTO.setBusinessId(orderId);
+        processStartDTO.setBusinessNo(orderNo);
+        processStartDTO.setProcessTitle("积分商城兑换-" + orderNo);
+        processStartDTO.setStartUserId(UserContext.getUserId());
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("orderId", orderId);
+        vars.put("totalPoints", totalPoints);
+        vars.put("employeeId", employeeId);
+        processStartDTO.setVariables(vars);
+        R<String> response = workflowServiceClient.startProcess(processStartDTO);
+        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
+            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
+            throw new HrBusinessException("WORKFLOW_START_FAILED", "积分商城订单审批启动失败：" + msg);
+        }
+        UpdateWrapper<HrMallOrder> uw = new UpdateWrapper<>();
+        uw.eq("id", orderId).eq("tenant_id", currentTenantId())
+                .set("process_instance_id", response.getData())
+                .set("update_time", LocalDateTime.now());
         orderMapper.update(null, uw);
     }
 

@@ -115,6 +115,7 @@ class HrDisputeMediationController {
     }
 
     @SysLog("新增争议调解记录")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:dispute:mediation")
     public R<Long> create(@PathVariable Long disputeId, @Validated @RequestBody HrDisputeMediationDTO dto) {
@@ -144,6 +145,7 @@ class HrDisputeArbitrationController {
     }
 
     @SysLog("新增争议仲裁记录")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:dispute:arbitration")
     public R<Long> create(@PathVariable Long disputeId, @Validated @RequestBody HrDisputeArbitrationDTO dto) {

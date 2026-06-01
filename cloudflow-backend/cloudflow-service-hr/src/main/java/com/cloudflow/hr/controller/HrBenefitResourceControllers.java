@@ -81,6 +81,7 @@ class HrBenefitRequestController {
     }
 
     @SysLog("新增福利申领")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:benefit:request:add")
     public R<Long> create(@Validated @RequestBody HrBenefitRequestDTO dto) {
@@ -173,6 +174,7 @@ class HrMallItemController {
     }
 
     @SysLog("新增积分商品")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:benefit:mall:item:manage")
     public R<Long> create(@Validated @RequestBody HrMallItemDTO dto) {

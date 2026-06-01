@@ -2,6 +2,7 @@ package com.cloudflow.common.redis.lock;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.exception.ServiceException;
+import com.cloudflow.common.core.spel.MethodBasedSpelEvaluator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -10,13 +11,6 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.core.DefaultParameterNameDiscoverer;
-import org.springframework.expression.EvaluationContext;
-import org.springframework.expression.Expression;
-import org.springframework.expression.ExpressionParser;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
-import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
@@ -28,35 +22,32 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Aspect
-@Component
 @RequiredArgsConstructor
 public class DistributedLockAspect {
 
     private final RedissonClient redissonClient;
-    private final ExpressionParser parser = new SpelExpressionParser();
-    private final DefaultParameterNameDiscoverer discoverer = new DefaultParameterNameDiscoverer();
 
     @Around("@annotation(distributedLock)")
     public Object around(ProceedingJoinPoint joinPoint, DistributedLock distributedLock) throws Throwable {
-        String lockKey = resolveLockKey(joinPoint, distributedLock.key());
-        RLock lock = redissonClient.getLock(lockKey);
-
+        String resolvedKey = resolveLockKey(joinPoint, distributedLock.key());
+        String finalKey = buildFinalKey(distributedLock, resolvedKey);
+        RLock lock = distributedLock.fair() ? redissonClient.getFairLock(finalKey) : redissonClient.getLock(finalKey);
         boolean acquired = false;
         try {
             acquired = lock.tryLock(distributedLock.waitMs(), distributedLock.leaseMs(), TimeUnit.MILLISECONDS);
             if (!acquired) {
-                log.warn("获取分布式锁失败: key={}, waitMs={}", lockKey, distributedLock.waitMs());
-                throw new ServiceException("ERR.CONCURRENT", 409);
+                log.warn("获取分布式锁失败: key={}, waitMs={}", finalKey, distributedLock.waitMs());
+                throw new ServiceException(distributedLock.message(), distributedLock.errorCode());
             }
-            log.debug("获取分布式锁成功: key={}", lockKey);
+            log.debug("获取分布式锁成功: key={}", finalKey);
             return joinPoint.proceed();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ServiceException("ERR.CONCURRENT", 409);
+            throw new ServiceException(distributedLock.message(), distributedLock.errorCode(), e);
         } finally {
             if (acquired && lock.isHeldByCurrentThread()) {
                 lock.unlock();
-                log.debug("释放分布式锁: key={}", lockKey);
+                log.debug("释放分布式锁: key={}", finalKey);
             }
         }
     }
@@ -64,28 +55,21 @@ public class DistributedLockAspect {
     private String resolveLockKey(ProceedingJoinPoint joinPoint, String keyExpression) {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
-        Object[] args = joinPoint.getArgs();
-
-        // SpEL 上下文
-        EvaluationContext context = new StandardEvaluationContext();
-        String[] paramNames = discoverer.getParameterNames(method);
-        if (paramNames != null) {
-            for (int i = 0; i < paramNames.length; i++) {
-                context.setVariable(paramNames[i], args[i]);
-            }
-        }
-
-        Expression expression = parser.parseExpression(keyExpression);
-        String resolvedKey = expression.getValue(context, String.class);
+        String resolvedKey = MethodBasedSpelEvaluator.evaluateToString(keyExpression, method, joinPoint.getArgs(), joinPoint.getTarget());
         if (resolvedKey == null || resolvedKey.isEmpty()) {
             throw new IllegalArgumentException("@DistributedLock key 解析为空: " + keyExpression);
         }
+        return resolvedKey;
+    }
 
-        // 拼租户前缀（若有）
-        Long tenantId = UserContext.getTenantId();
-        if (tenantId != null) {
-            return tenantId + ":lock:" + resolvedKey;
+    private String buildFinalKey(DistributedLock distributedLock, String resolvedKey) {
+        String prefix = distributedLock.keyPrefix();
+        if (distributedLock.includeTenant()) {
+            Long tenantId = UserContext.getTenantId();
+            if (tenantId != null) {
+                return tenantId + ":" + prefix + ":" + resolvedKey;
+            }
         }
-        return "lock:" + resolvedKey;
+        return prefix + ":" + resolvedKey;
     }
 }

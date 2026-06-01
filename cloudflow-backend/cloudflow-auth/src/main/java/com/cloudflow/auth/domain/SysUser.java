@@ -59,4 +59,5 @@ public class SysUser implements Serializable {
 
     @TableField(exist = false)
     private String tenantName;
+
 }

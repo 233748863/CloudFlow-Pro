@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.auth.domain.SysConfig;
 import com.cloudflow.auth.mapper.SysConfigMapper;
 import com.cloudflow.auth.service.ISysConfigService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -146,6 +147,7 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
      * 删除配置后清除缓存
      */
     @Override
+    @Audit(name = "删除系统配置", highRisk = true)
     public boolean removeById(java.io.Serializable id) {
         SysConfig config = this.getById(id);
         boolean result = super.removeById(id);

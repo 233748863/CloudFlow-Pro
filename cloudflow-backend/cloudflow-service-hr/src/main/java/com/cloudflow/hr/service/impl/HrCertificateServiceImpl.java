@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantContext;
@@ -13,13 +14,12 @@ import com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrCertificateRequestMapper;
 import com.cloudflow.hr.mapper.HrEmployeeMapper;
-import com.cloudflow.hr.service.IHrCertificateService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrFileStorage;
-import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import com.cloudflow.hr.service.HrPdfRenderer;
+import com.cloudflow.hr.service.IHrCertificateService;
+import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import com.cloudflow.hr.service.dto.HrFileDownload;
-import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,16 +36,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * HR 证明开具业务实现。
- *
- * <p>submit 流：插入 hr_certificate_request(status=PENDING) → 走 workflow startProcess
- * 拿到 processInstanceId 回填 → 等待 {@link HrWorkflowCallbackServiceImpl} 回调写 APPROVED →
- * 由 {@link com.cloudflow.hr.service.impl.HrWorkflowCallbackServiceImpl#applySideEffects}
- * 调用 {@link #issuePdf(Long)} 渲染 PDF 并切到 ISSUED。
- *
- * <p>合同签署、培训报名也走同样链路；本类只承担证明这条业务。
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -97,60 +87,28 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         request.setUpdateBy(currentUserName());
         certificateRequestMapper.insert(request);
 
-        ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(tenantId);
-        dto.setProcessDefinitionKey(processDefinitionKey);
-        dto.setBusinessType("HR_CERTIFICATE_REQUEST");
-        dto.setBusinessId(request.getId());
-        dto.setBusinessNo(request.getRequestNo());
-        dto.setProcessTitle("证明开具申请-" + request.getRequestNo());
-        dto.setStartUserId(UserContext.getUserId());
-        Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("certificateType", request.getCertificateType());
-        vars.put("recipientOrg", request.getRecipientOrg());
-        vars.put("copies", request.getCopies());
-        dto.setVariables(vars);
-
-        R<String> response = workflowServiceClient.startProcess(dto);
-        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
-            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
-            throw new HrBusinessException("WORKFLOW_START_FAILED", "证明开具流程启动失败：" + msg);
-        }
-        UpdateWrapper<HrCertificateRequest> wrapper = new UpdateWrapper<>();
-        wrapper.eq("id", request.getId())
-                .eq("tenant_id", tenantId)
-                .set("process_instance_id", response.getData())
-                .set("update_time", LocalDateTime.now());
-        certificateRequestMapper.update(null, wrapper);
-        log.info("证明开具申请已提交，requestNo: {}, employeeId: {}, processInstanceId: {}",
-                request.getRequestNo(), employeeId, response.getData());
+        HrTransactionHooks.afterCommit(() -> startCertificateWorkflow(
+                request.getId(),
+                tenantId,
+                request.getRequestNo(),
+                employeeId,
+                request.getCertificateType(),
+                request.getRecipientOrg(),
+                request.getCopies()));
+        log.info("证明开具申请已提交，requestNo: {}, employeeId: {}", request.getRequestNo(), employeeId);
         return request.getId();
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消证书申请", highRisk = true)
     public void cancel(Long id) {
         HrCertificateRequest request = loadRequest(id);
         essSupport.assertOwner(request.getEmployeeId());
         if (!CANCELABLE_STATUS.contains(String.valueOf(request.getStatus()).toUpperCase())) {
-            throw new HrBusinessException("STATUS_NOT_CANCELABLE",
-                    "当前状态 " + request.getStatus() + " 不允许撤销");
+            throw new HrBusinessException("STATUS_NOT_CANCELABLE", "当前状态 " + request.getStatus() + " 不允许撤销");
         }
-        if (StringUtils.hasText(request.getProcessInstanceId())) {
-            R<Void> cancelResult = workflowServiceClient.cancelProcess(request.getProcessInstanceId());
-            if (cancelResult == null || !cancelResult.isSuccess()) {
-                String msg = cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg();
-                log.warn("撤销流程实例失败，requestNo: {}, processInstanceId: {}, msg: {}",
-                        request.getRequestNo(), request.getProcessInstanceId(), msg);
-            }
-        }
-        UpdateWrapper<HrCertificateRequest> wrapper = new UpdateWrapper<>();
-        wrapper.eq("id", id)
-                .eq("tenant_id", currentTenantId())
-                .set("status", "CANCELLED")
-                .set("update_time", LocalDateTime.now())
-                .set("update_by", currentUserName());
-        certificateRequestMapper.update(null, wrapper);
+        cancelWorkflowIfNeeded(request);
+        markCancelled(id);
     }
 
     @Override
@@ -187,8 +145,7 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         HrCertificateRequest request = loadRequest(id);
         essSupport.assertOwner(request.getEmployeeId());
         if (!"ISSUED".equalsIgnoreCase(request.getStatus()) || request.getPdfFileId() == null) {
-            throw new HrBusinessException("CERTIFICATE_NOT_ISSUED",
-                    "证明尚未生成 PDF，当前状态：" + request.getStatus());
+            throw new HrBusinessException("CERTIFICATE_NOT_ISSUED", "证明尚未生成 PDF，当前状态：" + request.getStatus());
         }
         byte[] bytes = fileStorage.load(request.getPdfFileId());
         HrFileDownload result = new HrFileDownload();
@@ -197,6 +154,60 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         result.setBytes(bytes);
         result.setBusinessNo(request.getRequestNo());
         return result;
+    }
+
+    private void startCertificateWorkflow(Long requestId, Long tenantId, String requestNo, Long employeeId,
+                                          String certificateType, String recipientOrg, Integer copies) {
+        ProcessStartDTO dto = new ProcessStartDTO();
+        dto.setTenantId(tenantId);
+        dto.setProcessDefinitionKey(processDefinitionKey);
+        dto.setBusinessType("HR_CERTIFICATE_REQUEST");
+        dto.setBusinessId(requestId);
+        dto.setBusinessNo(requestNo);
+        dto.setProcessTitle("证明开具申请-" + requestNo);
+        dto.setStartUserId(UserContext.getUserId());
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("certificateType", certificateType);
+        vars.put("recipientOrg", recipientOrg);
+        vars.put("copies", copies);
+        dto.setVariables(vars);
+
+        R<String> response = workflowServiceClient.startProcess(dto);
+        if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
+            String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
+            throw new HrBusinessException("WORKFLOW_START_FAILED", "证明开具流程启动失败：" + msg);
+        }
+        UpdateWrapper<HrCertificateRequest> wrapper = new UpdateWrapper<>();
+        wrapper.eq("id", requestId)
+                .eq("tenant_id", tenantId)
+                .set("process_instance_id", response.getData())
+                .set("update_time", LocalDateTime.now());
+        certificateRequestMapper.update(null, wrapper);
+        log.info("证明开具申请已提交，requestNo: {}, employeeId: {}, processInstanceId: {}",
+                requestNo, employeeId, response.getData());
+    }
+
+    private void cancelWorkflowIfNeeded(HrCertificateRequest request) {
+        if (!StringUtils.hasText(request.getProcessInstanceId())) {
+            return;
+        }
+        R<Void> cancelResult = workflowServiceClient.cancelProcess(request.getProcessInstanceId());
+        if (cancelResult == null || !cancelResult.isSuccess()) {
+            String msg = cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg();
+            log.warn("撤销流程实例失败，requestNo: {}, processInstanceId: {}, msg: {}",
+                    request.getRequestNo(), request.getProcessInstanceId(), msg);
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    protected void markCancelled(Long id) {
+        UpdateWrapper<HrCertificateRequest> wrapper = new UpdateWrapper<>();
+        wrapper.eq("id", id)
+                .eq("tenant_id", currentTenantId())
+                .set("status", "CANCELLED")
+                .set("update_time", LocalDateTime.now())
+                .set("update_by", currentUserName());
+        certificateRequestMapper.update(null, wrapper);
     }
 
     private HrCertificateRequest loadRequest(Long id) {
@@ -219,8 +230,7 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         vars.put("issueDate", LocalDate.now().format(ISSUE_DATE));
 
         HrEmployee employee = employeeMapper.selectById(request.getEmployeeId());
-        HrEmployeeSummaryVO summary = integrationQueryService.findEmployee(request.getEmployeeId())
-                .orElse(null);
+        HrEmployeeSummaryVO summary = integrationQueryService.findEmployee(request.getEmployeeId()).orElse(null);
         vars.put("employeeName", employee == null ? "" : nullSafe(employee.getName()));
         vars.put("employeeNo", employee == null ? "" : nullSafe(employee.getEmployeeNo()));
         vars.put("deptName", summary == null ? "" : nullSafe(summary.getDeptName()));

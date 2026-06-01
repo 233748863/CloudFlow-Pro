@@ -8,6 +8,7 @@ import com.cloudflow.hr.mapper.HrAttendanceAppealMapper;
 import com.cloudflow.hr.mapper.HrAttendanceRecordMapper;
 import com.cloudflow.hr.mapper.HrAuditLogMapper;
 import com.cloudflow.hr.service.IHrAttendanceAppealService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -106,6 +107,7 @@ public class HrAttendanceAppealServiceImpl implements IHrAttendanceAppealService
     }
 
     @Override
+    @Audit(name = "取消考勤申诉", highRisk = true)
     public void cancel(Long id) {
         HrAttendanceAppeal appeal = appealMapper.selectById(id);
         if (appeal == null) {

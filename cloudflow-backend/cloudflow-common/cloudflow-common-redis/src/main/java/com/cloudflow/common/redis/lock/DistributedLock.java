@@ -47,4 +47,29 @@ public @interface DistributedLock {
      * 默认 10000ms = 10s，适合大部分业务方法。若方法执行超过 leaseMs，锁会自动释放，可能导致并发问题。
      */
     long leaseMs() default 10000;
+
+    /**
+     * 获取锁失败时的业务提示。
+     */
+    String message() default "当前资源正在处理中，请稍后再试";
+
+    /**
+     * 获取锁失败时返回码。
+     */
+    int errorCode() default 409;
+
+    /**
+     * 锁 key 前缀。
+     */
+    String keyPrefix() default "lock";
+
+    /**
+     * 是否拼接租户前缀。
+     */
+    boolean includeTenant() default true;
+
+    /**
+     * 是否使用公平锁。
+     */
+    boolean fair() default false;
 }

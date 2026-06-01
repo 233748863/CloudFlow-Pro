@@ -261,6 +261,11 @@ CREATE TABLE sys_audit_log (
   audit_field       VARCHAR(255)    DEFAULT '' COMMENT '变更字段名',
   before_val        TEXT            COMMENT '变更前值',
   after_val         TEXT            COMMENT '变更后值',
+  before_json       TEXT            COMMENT '变更前完整 JSON',
+  after_json        TEXT            COMMENT '变更后完整 JSON',
+  diff_json         TEXT            COMMENT 'JSON diff',
+  high_risk         TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '是否高风险',
+  risk_level        VARCHAR(20)     NOT NULL DEFAULT 'NORMAL' COMMENT '风险等级',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '操作人',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (audit_id),
@@ -268,6 +273,32 @@ CREATE TABLE sys_audit_log (
   KEY idx_audit_name (audit_name),
   KEY idx_audit_create_time (create_time)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
+
+-- 13. Outbox 事件表
+DROP TABLE IF EXISTS outbox_event;
+CREATE TABLE outbox_event (
+  id              BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+  aggregate_type  VARCHAR(100) NOT NULL COMMENT '聚合根类型',
+  aggregate_id    BIGINT NOT NULL COMMENT '聚合根 ID',
+  event_id        VARCHAR(64) NOT NULL COMMENT '业务事件唯一ID',
+  event_type      VARCHAR(100) NOT NULL COMMENT '事件类型',
+  payload_json    LONGTEXT NOT NULL COMMENT '事件负载 JSON',
+  status          VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '状态',
+  retry_count     INT NOT NULL DEFAULT 0 COMMENT '重试次数',
+  next_retry_at   DATETIME NOT NULL COMMENT '下次重试时间',
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  published_at    DATETIME NULL COMMENT '发布成功时间',
+  last_error      VARCHAR(500) NULL COMMENT '最后错误信息',
+  tenant_id       BIGINT NULL COMMENT '租户 ID',
+  locked_by       VARCHAR(64) NULL COMMENT '抢占实例标识',
+  locked_until    DATETIME NULL COMMENT '抢占过期时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_outbox_event_id (event_id),
+  KEY idx_status_retry (status, next_retry_at, locked_until),
+  KEY idx_aggregate (aggregate_type, aggregate_id),
+  KEY idx_owner_status (locked_by, status),
+  KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Outbox 事件表';
 
 -- =========================================================
 -- 七、字典管理

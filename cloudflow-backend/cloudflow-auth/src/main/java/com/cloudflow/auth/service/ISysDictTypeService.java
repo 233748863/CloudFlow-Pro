@@ -50,6 +50,11 @@ public interface ISysDictTypeService extends IService<SysDictType> {
     void deleteDictTypeByIds(Long[] dictIds);
 
     /**
+     * 删除字典数据。
+     */
+    void deleteDictDataByIds(Long[] dictCodes);
+
+    /**
      * 刷新指定字典类型在 Redis 中的缓存（增删改字典数据后调用）
      */
     void refreshDictCache(String dictType);

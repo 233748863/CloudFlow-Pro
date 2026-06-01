@@ -173,6 +173,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除合同", highRisk = true)
     public boolean removeContracts(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -213,33 +214,10 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setUpdateBy(resolveUserName());
         contract.setUpdateTime(LocalDateTime.now());
 
-        try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
-            req.setProcessDefKey("biz_contract");
-            req.setBusinessKey("CONTRACT:" + contract.getContractId());
-            Map<String, Object> variables = buildWorkflowVariables(contract);
-            WorkflowCallbackConstants.applyCallbackMetadata(
-                    variables,
-                    OaBusinessTypes.CONTRACT,
-                    contract.getContractId(),
-                    contract.getContractNo(),
-                    "workflow:stream:approval-callback:oa"
-            );
-            req.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcess(req);
-            if (result != null && result.getCode() == 200 && result.getData() != null) {
-                contract.setInstanceId(extractInstanceId(result.getData()));
-            } else {
-                log.warn("合同 {} 工作流启动返回异常: {}", contract.getContractNo(), result != null ? result.getMsg() : "null");
-            }
-        } catch (Exception e) {
-            log.error("合同 {} 启动工作流失败，但提交状态已更新", contract.getContractNo(), e);
-            workflowFailureHelper.handleWorkflowStartFailure(
-                    OaBusinessTypes.CONTRACT, contract.getContractId(), contract.getContractNo(),
-                    contract.getOwnerName(), contract.getOwnerId(), e);
-        }
-
         boolean updated = updateById(contract);
+        if (updated) {
+            OaTransactionHooks.afterCommit(() -> startContractWorkflow(contract));
+        }
         oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
                 OaContractConstants.BUSINESS_TYPE_APPROVAL, id, "CONTRACT_SUBMITTED",
                 "合同提交审批", contract.getContractNo() + " 已进入审批",
@@ -274,8 +252,45 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         return updated;
     }
 
+    private void startContractWorkflow(OaContract contract) {
+        try {
+            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            req.setProcessDefKey("biz_contract");
+            req.setBusinessKey("CONTRACT:" + contract.getContractId());
+            Map<String, Object> variables = buildWorkflowVariables(contract);
+            WorkflowCallbackConstants.applyCallbackMetadata(
+                    variables,
+                    OaBusinessTypes.CONTRACT,
+                    contract.getContractId(),
+                    contract.getContractNo(),
+                    "workflow:stream:approval-callback:oa"
+            );
+            req.setVariables(variables);
+            R<?> result = remoteWorkflowService.startProcess(req);
+            if (result != null && result.getCode() == 200 && result.getData() != null) {
+                String instanceId = extractInstanceId(result.getData());
+                if (StringUtils.hasText(instanceId)) {
+                    OaContract update = new OaContract();
+                    update.setContractId(contract.getContractId());
+                    update.setInstanceId(instanceId);
+                    update.setUpdateBy(resolveUserName());
+                    update.setUpdateTime(LocalDateTime.now());
+                    updateById(update);
+                }
+            } else {
+                log.warn("合同 {} 工作流启动返回异常: {}", contract.getContractNo(), result != null ? result.getMsg() : "null");
+            }
+        } catch (Exception e) {
+            log.error("合同 {} 启动工作流失败，但提交状态已更新", contract.getContractNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.CONTRACT, contract.getContractId(), contract.getContractNo(),
+                    contract.getOwnerName(), contract.getOwnerId(), e);
+        }
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消合同", highRisk = true)
     public boolean cancelContract(Long id) {
         OaContract contract = requireContract(id);
         if (!OaContractConstants.CONTRACT_STATUS_DRAFT.equals(contract.getStatus())

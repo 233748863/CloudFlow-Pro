@@ -184,6 +184,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除证照", highRisk = true)
     public boolean removeLicenses(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;

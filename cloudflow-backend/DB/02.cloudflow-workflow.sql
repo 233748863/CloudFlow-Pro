@@ -22,6 +22,7 @@ CREATE TABLE wf_process_definition (
   process_name      VARCHAR(64)     NOT NULL COMMENT '流程名称',
   process_key       VARCHAR(64)     NOT NULL COMMENT '流程Key',
   version           INT             DEFAULT 1 COMMENT '版本号',
+  lock_version      INT             DEFAULT 1 COMMENT '乐观锁版本号',
   form_id           VARCHAR(64)     DEFAULT NULL COMMENT '表单ID',
   model_json        LONGTEXT COMMENT '流程模型JSON',
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态',
@@ -89,6 +90,7 @@ CREATE TABLE wf_form_definition (
   form_schema       LONGTEXT COMMENT '表单Schema',
   status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态',
   version           INT             DEFAULT 1 COMMENT '版本号',
+  lock_version      INT             DEFAULT 1 COMMENT '乐观锁版本号',
   version_lock      INT             DEFAULT 0 COMMENT '版本锁',
   is_latest         TINYINT(1)      DEFAULT 1 COMMENT '是否最新版本',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
@@ -109,6 +111,7 @@ CREATE TABLE wf_process_instance (
   definition_id     VARCHAR(64)     DEFAULT NULL COMMENT '流程定义ID',
   business_key      VARCHAR(64)     NOT NULL COMMENT '业务主键',
   title             VARCHAR(255)    DEFAULT NULL COMMENT '标题',
+  lock_version      INT             DEFAULT 1 COMMENT '乐观锁版本号',
   start_user_id     BIGINT(20)      NOT NULL COMMENT '发起人ID',
   start_user_name   VARCHAR(64)     DEFAULT NULL COMMENT '发起人姓名',
   status            VARCHAR(20)     DEFAULT 'RUNNING' COMMENT '状态',
@@ -151,6 +154,7 @@ CREATE TABLE wf_task (
   proxy_user_id     BIGINT(20)      DEFAULT NULL COMMENT '代理人ID',
   candidate_roles   VARCHAR(255)    DEFAULT NULL COMMENT '候选角色',
   status            VARCHAR(20)     DEFAULT 'TODO' COMMENT '状态',
+  lock_version      INT             DEFAULT 1 COMMENT '乐观锁版本号',
   priority          VARCHAR(20)     DEFAULT 'NORMAL' COMMENT '优先级',
   is_timeout        TINYINT(1)      DEFAULT 0 COMMENT '是否超时',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
@@ -1059,4 +1063,3 @@ CREATE TABLE wf_reconcile_alert (
   UNIQUE KEY uk_instance (process_instance_id),
   KEY idx_alert_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程业务状态对账告警';
-

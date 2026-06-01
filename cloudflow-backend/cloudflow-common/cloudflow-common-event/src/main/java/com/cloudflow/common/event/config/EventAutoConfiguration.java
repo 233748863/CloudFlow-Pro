@@ -2,9 +2,11 @@ package com.cloudflow.common.event.config;
 
 import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.event.outbox.OutboxScheduler;
+import com.cloudflow.common.event.outbox.OutboxEventMapper;
 import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -27,6 +29,7 @@ import jakarta.annotation.PostConstruct;
 @EnableScheduling
 @EnableConfigurationProperties(OutboxProperties.class)
 @ComponentScan(basePackages = "com.cloudflow.common.event")
+@MapperScan(basePackageClasses = OutboxEventMapper.class)
 @ConditionalOnProperty(prefix = "cloudflow.outbox", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class EventAutoConfiguration {
 

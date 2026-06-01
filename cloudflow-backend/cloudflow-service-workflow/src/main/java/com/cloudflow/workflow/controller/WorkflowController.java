@@ -162,6 +162,7 @@ public class WorkflowController {
      * 保存流程定义
      * 仅管理员可操作
      */
+    @RepeatSubmit
     @PostMapping("/definition/save")
     @SaCheckPermission("workflow:definition:add")
     public R<?> saveProcessDefinition(@RequestBody WfProcessDefinition definition) {
@@ -172,6 +173,7 @@ public class WorkflowController {
      * 发布流程定义
      * 仅管理员可操作
      */
+    @RepeatSubmit
     @PostMapping("/definition/deploy/{definitionId}")
     @SaCheckPermission("workflow:definition:deploy")
     public R<?> deployProcessDefinition(@PathVariable("definitionId") String definitionId) {
@@ -182,6 +184,7 @@ public class WorkflowController {
      * 保存表单定义
      * 仅管理员可操作
      */
+    @RepeatSubmit
     @PostMapping("/form/save")
     @SaCheckPermission("workflow:form:add")
     public R<?> saveFormDefinition(@RequestBody WfFormDefinition definition) {
@@ -313,6 +316,7 @@ public class WorkflowController {
      * 暂停流程
      * 仅管理员可操作
      */
+    @RepeatSubmit
     @PostMapping("/pause")
     @SaCheckPermission("workflow:process:pause")
     public R<?> pauseProcess(@RequestBody InstanceIdRequest dto) {
@@ -327,6 +331,7 @@ public class WorkflowController {
      * 恢复流程
      * 仅管理员可操作
      */
+    @RepeatSubmit
     @PostMapping("/resume")
     @SaCheckPermission("workflow:process:resume")
     public R<?> resumeProcess(@RequestBody InstanceIdRequest dto) {
@@ -422,6 +427,7 @@ public class WorkflowController {
      *             - reason: 终止原因（必填）
      * @return 终止结果
      */
+    @RepeatSubmit
     @PostMapping("/instance/terminate")
     @SaCheckPermission("workflow:process:terminate")
     public R<?> terminateProcess(@RequestBody TerminateProcessRequest dto) {

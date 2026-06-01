@@ -433,10 +433,21 @@ public class ArchiveServiceImpl implements IArchiveService {
         // 按租户过滤归档记录，避免跨租户数据泄露
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null) {
-            queryWrapper.inSql(
-                WfProcessArchive::getWorkflowId,
-                "SELECT definition_id FROM wf_process_definition WHERE tenant_id = " + currentTenantId
-            );
+            List<String> tenantWorkflowIds = definitionMapper.selectList(
+                    new LambdaQueryWrapper<WfProcessDefinition>()
+                            .select(WfProcessDefinition::getDefinitionId)
+                            .eq(WfProcessDefinition::getTenantId, currentTenantId)
+                    )
+                    .stream()
+                    .map(WfProcessDefinition::getDefinitionId)
+                    .collect(Collectors.toList());
+            if (tenantWorkflowIds.isEmpty()) {
+                Page<ArchivedWorkflowDTO> emptyPage = new Page<>(pageNum, pageSize);
+                emptyPage.setTotal(0);
+                emptyPage.setRecords(List.of());
+                return emptyPage;
+            }
+            queryWrapper.in(WfProcessArchive::getWorkflowId, tenantWorkflowIds);
         }
         
         // 关键词搜索（流程名称或归档原因）
@@ -481,6 +492,7 @@ public class ArchiveServiceImpl implements IArchiveService {
      * 永久删除流程
      */
     @Override
+    @Audit(name = "永久删除流程", highRisk = true)
     public BatchOperationResultDTO permanentDeleteWorkflow(String workflowId) {
         List<String> workflowIds = new ArrayList<>();
         workflowIds.add(workflowId);
@@ -491,6 +503,7 @@ public class ArchiveServiceImpl implements IArchiveService {
      * 批量永久删除流程
      */
     @Override
+    @Audit(name = "批量永久删除流程", highRisk = true)
     public BatchOperationResultDTO permanentDeleteWorkflows(List<String> workflowIds) {
         log.info("开始批量永久删除流程, workflowCount={}", workflowIds.size());
 
@@ -530,6 +543,7 @@ public class ArchiveServiceImpl implements IArchiveService {
      * 永久删除单个流程（使用独立事务）
      * 级联删除流程定义、版本历史和归档记录
      */
+    @Audit(name = "永久删除单个流程", highRisk = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public OperationDetailDTO permanentDeleteSingleWorkflow(String workflowId) {
         try {

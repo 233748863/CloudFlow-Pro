@@ -62,6 +62,7 @@ class HrShiftController {
     }
 
     @SysLog("新增HR班次")
+    @RepeatSubmit
     @PostMapping("/shifts")
     @SaCheckPermission("hr:attendance:add")
     public R<Long> createShift(@RequestBody HrShiftPayload payload) {
@@ -102,6 +103,7 @@ class HrAttendanceRuleController {
     }
 
     @SysLog("新增HR考勤规则")
+    @RepeatSubmit
     @PostMapping("/rules")
     @SaCheckPermission("hr:attendance:add")
     public R<Long> createRule(@RequestBody HrAttendanceRulePayload payload) {
@@ -142,6 +144,7 @@ class HrScheduleAssignmentController {
     }
 
     @SysLog("新增HR排班")
+    @RepeatSubmit
     @PostMapping("/schedules")
     @SaCheckPermission("hr:attendance:add")
     public R<Long> createSchedule(@RequestBody HrScheduleAssignmentPayload payload) {
@@ -182,6 +185,7 @@ class HrAttendanceRecordController {
     }
 
     @SysLog("新增HR考勤记录")
+    @RepeatSubmit
     @PostMapping("/records")
     @SaCheckPermission("hr:attendance:add")
     public R<Long> createRecord(@RequestBody HrAttendanceRecordPayload payload) {
@@ -223,6 +227,7 @@ class HrLeaveTypeController {
     }
 
     @SysLog("新增HR假期类型")
+    @RepeatSubmit
     @PostMapping("/leave-types")
     @SaCheckPermission("hr:attendance:add")
     public R<Long> createLeaveType(@RequestBody HrLeaveTypePayload payload) {
@@ -247,6 +252,7 @@ class HrLeaveQuotaController {
     }
 
     @SysLog("新增HR假期额度")
+    @RepeatSubmit
     @PostMapping("/leave-quotas")
     @SaCheckPermission("hr:attendance:add")
     public R<Long> createLeaveQuota(@RequestBody HrLeaveQuotaPayload payload) {
@@ -279,6 +285,7 @@ class HrTimeRequestController {
     }
 
     @SysLog("新增HR时间申请")
+    @RepeatSubmit
     @PostMapping("/time-requests")
     @SaCheckPermission("hr:attendance:add")
     public R<Long> createTimeRequest(@RequestBody HrTimeRequestPayload payload) {

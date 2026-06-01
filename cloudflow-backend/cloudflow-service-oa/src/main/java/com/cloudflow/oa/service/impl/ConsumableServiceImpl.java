@@ -127,6 +127,7 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
     }
 
     @Override
+    @Audit(name = "校验耗材删除", highRisk = true)
     public boolean canDelete(Long consumableId) {
         if (consumableId == null) {
             return false;

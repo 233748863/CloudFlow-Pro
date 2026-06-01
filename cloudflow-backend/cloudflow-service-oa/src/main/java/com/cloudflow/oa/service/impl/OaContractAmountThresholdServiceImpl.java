@@ -95,6 +95,7 @@ public class OaContractAmountThresholdServiceImpl implements IOaContractAmountTh
 
     @Override
     @Transactional
+    @Audit(name = "删除合同金额阈值", highRisk = true)
     public boolean remove(Long id) {
         if (id == null) {
             return false;

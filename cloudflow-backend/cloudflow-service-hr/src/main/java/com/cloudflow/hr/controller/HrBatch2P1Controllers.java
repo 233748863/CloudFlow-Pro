@@ -52,6 +52,7 @@ class HrResumeParseController {
     private final ObjectMapper objectMapper;
 
     @SysLog("触发HR简历解析")
+    @RepeatSubmit
     @PostMapping("/parse")
     @SaCheckPermission("hr:recruitment:edit")
     public R<Long> parseResume(@Validated @RequestBody HrResumeParseDTO dto) {
@@ -131,6 +132,7 @@ class HrPerformanceInterviewController {
     }
 
     @SysLog("新增HR绩效面谈记录")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:performance:edit")
     public R<Long> createInterview(@RequestBody HrPerformanceInterviewPayload payload) {

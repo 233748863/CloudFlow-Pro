@@ -4,7 +4,6 @@ import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
 import com.cloudflow.auth.service.ISysFileService;
 import com.cloudflow.auth.service.ISysTenantService;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
@@ -43,7 +42,7 @@ public class SysFileController {
     }
 
     @GetMapping("/access")
-    @SaCheckLogin
+    @SaCheckPermission("system:file:list")
     public void access(@RequestParam("path") String path, HttpServletResponse response) {
         sysFileService.accessFile(path, response);
     }

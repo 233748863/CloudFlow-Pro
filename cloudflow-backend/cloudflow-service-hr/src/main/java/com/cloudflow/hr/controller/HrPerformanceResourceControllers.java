@@ -69,6 +69,7 @@ class HrPerformanceObjectiveCrudController {
     }
 
     @SysLog("新增HR绩效目标")
+    @RepeatSubmit
     @PostMapping("/objectives")
     @SaCheckPermission("hr:performance:add")
     public R<Long> createPerformanceObjective(@RequestBody HrPerformanceObjectivePayload payload) {
@@ -102,6 +103,7 @@ class HrPerformanceAssignmentController {
     }
 
     @SysLog("新增HR绩效分解")
+    @RepeatSubmit
     @PostMapping("/assignments")
     @SaCheckPermission("hr:performance:add")
     public R<Long> createPerformanceAssignment(@RequestBody HrPerformanceAssignmentPayload payload) {
@@ -109,6 +111,7 @@ class HrPerformanceAssignmentController {
     }
 
     @SysLog("保存HR绩效分解子任务")
+    @RepeatSubmit
     @PostMapping("/assignment/{parentId}/children")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> savePerformanceAssignmentChildren(@PathVariable Long parentId, @RequestBody HrPerformanceSplitPayload payload) {
@@ -135,6 +138,7 @@ class HrPerformanceResultController {
     }
 
     @SysLog("新增HR绩效结果")
+    @RepeatSubmit
     @PostMapping("/results")
     @SaCheckPermission("hr:performance:add")
     public R<Long> createPerformanceResult(@RequestBody HrPerformanceResultPayload payload) {
@@ -142,6 +146,7 @@ class HrPerformanceResultController {
     }
 
     @SysLog("更新HR绩效实绩")
+    @RepeatSubmit
     @PostMapping("/result")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> updatePerformanceResultV2(@RequestBody HrPerformanceResultUpdatePayload payload) {
@@ -168,6 +173,7 @@ class HrPerformanceSalaryAdjustmentController {
     }
 
     @SysLog("新增HR绩效调薪记录")
+    @RepeatSubmit
     @PostMapping("/salary-adjustments")
     @SaCheckPermission("hr:performance:add")
     public R<Long> createPerformanceSalaryAdjustment(@RequestBody HrPerformanceSalaryAdjustmentPayload payload) {
@@ -175,6 +181,7 @@ class HrPerformanceSalaryAdjustmentController {
     }
 
     @SysLog("创建HR绩效调薪申请")
+    @RepeatSubmit
     @PostMapping("/objective/{id}/salary-adjustment")
     @SaCheckPermission("hr:performance:edit")
     public R<Long> createPerformanceSalaryAdjustmentV2(@PathVariable Long id, @RequestBody HrPerformanceSalaryAdjustmentRequest payload) {
@@ -190,6 +197,7 @@ class HrPerformanceObjectiveController {
     private final IHrPerformanceService hrPerformanceService;
 
     @SysLog("新增HR绩效目标树")
+    @RepeatSubmit
     @PostMapping("/objective")
     @SaCheckPermission("hr:performance:add")
     public R<Long> createPerformanceObjectiveV2(@RequestBody HrPerformanceObjectiveTreePayload payload) {
@@ -317,6 +325,7 @@ class HrPerformanceDistributionController {
     }
 
     @SysLog("保存HR绩效强制分布规则")
+    @RepeatSubmit
     @PostMapping("/rules")
     @SaCheckPermission("hr:performance:edit")
     public R<Long> saveDistributionRule(@RequestBody HrPerfDistributionRulePayload payload) {

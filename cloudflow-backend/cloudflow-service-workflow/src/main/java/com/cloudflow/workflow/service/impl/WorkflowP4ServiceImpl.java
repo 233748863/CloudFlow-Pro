@@ -280,6 +280,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消代理", highRisk = true)
     public R<?> cancelProxy(Long userId) {
         Long effectiveUserId = resolveOperatorId(userId, "cancelProxy");
         Long currentTenantId = UserContext.getTenantId();
@@ -581,6 +582,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     // ==================== P1-5.3: 减签 ====================
 
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "移除会签人员", highRisk = true)
     public R<?> removeSign(String taskId, List<Long> userIds, String reason) {
         log.info("[removeSign] 减签任务, taskId={}, userIds={}", taskId, userIds);
         WfTask originalTask = taskMapper.selectById(taskId);

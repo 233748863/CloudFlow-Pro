@@ -54,6 +54,7 @@ public class CrmHandoverTaskController {
         }
     }
 
+    @RepeatSubmit
     @PostMapping("/{id}/close")
     @SaCheckPermission("crm:handover-task:close")
     public R<Void> close(@PathVariable("id") Long id, @RequestBody(required = false) CrmHandoverCloseDTO dto) {

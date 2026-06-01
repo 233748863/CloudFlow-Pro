@@ -44,6 +44,7 @@ public class DeployEnhancementController {
     }
 
     @Operation(summary = "创建发布窗口配置")
+    @RepeatSubmit
     @PostMapping("/window/save")
     @SaCheckPermission("workflow:deploy:manage")
     public R<?> saveDeployWindow(@RequestBody DeployWindowDTO dto) {
@@ -89,6 +90,7 @@ public class DeployEnhancementController {
     }
 
     @Operation(summary = "重发失败的通知")
+    @RepeatSubmit
     @PostMapping("/notification/resend/{deployId}")
     @SaCheckPermission("workflow:deploy:manage")
     public R<?> resendFailedNotifications(@PathVariable("deployId") Long deployId) {
@@ -98,6 +100,7 @@ public class DeployEnhancementController {
     // ==================== 回滚机制 ====================
 
     @Operation(summary = "执行版本回滚")
+    @RepeatSubmit
     @PostMapping("/rollback")
     @SaCheckPermission("workflow:deploy:manage")
     public R<?> rollbackDeploy(@RequestBody RollbackRequestDTO dto) {

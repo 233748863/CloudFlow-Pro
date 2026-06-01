@@ -6,6 +6,7 @@
         <artifactId>cloudflow-backend</artifactId>
         <groupId>com.cloudflow</groupId>
         <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -32,6 +33,7 @@
         <module>cloudflow-common-workflow-callback</module>
         <module>cloudflow-common-statemachine</module>
         <module>cloudflow-common-event</module>
+        <module>cloudflow-common-static-rules</module>
     </modules>
 
 </project>

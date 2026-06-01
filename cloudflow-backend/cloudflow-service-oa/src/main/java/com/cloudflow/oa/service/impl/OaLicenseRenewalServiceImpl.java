@@ -131,6 +131,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "删除证照续期", highRisk = true)
     public boolean removeRenewals(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -164,7 +165,20 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
         assertNoPendingRenewal(renewal.getLicenseId(), renewal.getId());
         renewal.setStatus(OaBorrowConstants.STATUS_PENDING);
         compensateUserSnapshot(renewal);
+        renewal.setUpdateBy(UserContext.getUserName());
+        renewal.setUpdateTime(LocalDateTime.now());
+        boolean updated = updateById(renewal);
+        if (updated) {
+            startRenewalWorkflowAfterCommit(renewal);
+        }
+        return updated;
+    }
 
+    private void startRenewalWorkflowAfterCommit(OaLicenseRenewal renewal) {
+        OaTransactionHooks.afterCommit(() -> startRenewalWorkflow(renewal));
+    }
+
+    private void startRenewalWorkflow(OaLicenseRenewal renewal) {
         try {
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
             req.setProcessDefKey("license_renewal");
@@ -189,7 +203,10 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
             req.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                renewal.setInstanceId(extractInstanceId(result.getData()));
+                OaLicenseRenewal update = new OaLicenseRenewal();
+                update.setId(renewal.getId());
+                update.setInstanceId(extractInstanceId(result.getData()));
+                updateById(update);
             } else {
                 log.warn("证照续期 {} 工作流启动返回异常: {}", renewal.getRenewalNo(), result != null ? result.getMsg() : "null");
             }
@@ -199,13 +216,11 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
                     OaBusinessTypes.LICENSE_RENEWAL, renewal.getId(), renewal.getRenewalNo(),
                     renewal.getApplicantName(), renewal.getApplicantId(), e);
         }
-        renewal.setUpdateBy(UserContext.getUserName());
-        renewal.setUpdateTime(LocalDateTime.now());
-        return updateById(renewal);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "取消证照续期", highRisk = true)
     public boolean cancelRenewal(Long id) {
         OaLicenseRenewal renewal = requireRenewal(id);
         if (!OaBorrowConstants.STATUS_DRAFT.equals(renewal.getStatus())

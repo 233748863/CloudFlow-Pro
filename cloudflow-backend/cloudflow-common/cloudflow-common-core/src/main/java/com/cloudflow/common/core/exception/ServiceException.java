@@ -14,13 +14,15 @@ public class ServiceException extends RuntimeException {
     /**
      * 错误提示
      */
-    private String message;
+    private final String message;
 
     public ServiceException(String message) {
+        super(message);
         this.message = message;
     }
 
     public ServiceException(String message, Integer code) {
+        super(message);
         this.message = message;
         this.code = code;
     }
@@ -28,6 +30,12 @@ public class ServiceException extends RuntimeException {
     public ServiceException(String message, Throwable e) {
         super(message, e);
         this.message = message;
+    }
+
+    public ServiceException(String message, Integer code, Throwable e) {
+        super(message, e);
+        this.message = message;
+        this.code = code;
     }
 
     @Override

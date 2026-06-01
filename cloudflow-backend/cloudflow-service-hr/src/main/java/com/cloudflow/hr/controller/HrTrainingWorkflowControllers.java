@@ -80,6 +80,7 @@ class HrTrainingEnrollmentController {
     }
 
     @SysLog("发起HR培训报名")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:training:enroll:add")
     public R<Long> enroll(@Validated @RequestBody HrTrainingEnrollDTO dto) {
@@ -137,6 +138,7 @@ class HrExamQuestionBankController {
     }
 
     @SysLog("新增HR考试题目")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:training:exam:add")
     public R<Long> create(@RequestBody HrExamQuestionBankPayload payload) {
@@ -185,6 +187,7 @@ class HrExamPaperController {
     }
 
     @SysLog("保存HR考试试卷")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:training:exam:add")
     public R<Long> save(@RequestBody HrExamPaperPayload payload) {

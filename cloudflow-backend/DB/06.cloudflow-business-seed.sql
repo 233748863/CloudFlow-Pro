@@ -423,6 +423,10 @@ WHERE log_id BETWEEN 91000 AND 99999;
 DELETE FROM cloud_flow_db.sys_audit_log
 WHERE audit_id BETWEEN 91000 AND 99999;
 
+DELETE FROM cloud_flow_db.outbox_event
+WHERE id BETWEEN 91000 AND 91099
+   OR event_id LIKE 'seed_evt_%';
+
 DELETE FROM cloud_flow_db.oa_meeting_room
 WHERE room_id BETWEEN 9000 AND 9999;
 
@@ -7146,10 +7150,28 @@ INSERT IGNORE INTO cloud_flow_db.sys_log (
  '/api/oa/duty/schedule', 'POST', '{"scheduleId":9803}', 420, '数据库连接超时', 'chen', DATE_SUB(NOW(), INTERVAL 20 MINUTE));
 
 INSERT IGNORE INTO cloud_flow_db.sys_audit_log (
-  audit_id, tenant_id, audit_name, audit_field, before_val, after_val, create_by, create_time
+    audit_id, tenant_id, audit_name, audit_field, before_val, after_val,
+    before_json, after_json, diff_json, high_risk, risk_level, create_by, create_time
+  ) VALUES
+  (91001, 100000, '流程模板变更', 'status', 'draft', 'published',
+   JSON_OBJECT('status', 'draft'), JSON_OBJECT('status', 'published'),
+   JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/status', 'from', 'draft', 'value', 'published')),
+   0, 'NORMAL', 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY)),
+  (91002, 100000, '值班安排变更', 'start_time', '09:00:00', '08:30:00',
+   JSON_OBJECT('start_time', '09:00:00'), JSON_OBJECT('start_time', '08:30:00'),
+   JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/start_time', 'from', '09:00:00', 'value', '08:30:00')),
+   0, 'NORMAL', 'admin', DATE_SUB(NOW(), INTERVAL 9 DAY));
+
+INSERT IGNORE INTO cloud_flow_db.outbox_event (
+  id, aggregate_type, aggregate_id, event_id, event_type, payload_json, status,
+  retry_count, next_retry_at, created_at, published_at, last_error, tenant_id, locked_by, locked_until
 ) VALUES
-(91001, 100000, '流程模板变更', 'status', 'draft', 'published', 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY)),
-(91002, 100000, '值班安排变更', 'start_time', '09:00:00', '08:30:00', 'admin', DATE_SUB(NOW(), INTERVAL 9 DAY));
+(91001, 'BizExpenseClaim', 9001, 'seed_evt_expense_9001', 'ExpenseClaimSubmittedEvent',
+ '{"eventId":"seed_evt_expense_9001","aggregateType":"BizExpenseClaim","aggregateId":9001,"eventType":"ExpenseClaimSubmittedEvent","tenantId":100000,"payload":{"claimNo":"BX202603110001","status":"PENDING"}}',
+ 'PUBLISHED', 0, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), NULL, 100000, NULL, NULL),
+(91002, 'OaAnnouncement', 9601, 'seed_evt_announcement_9601', 'AnnouncementPublishedEvent',
+ '{"eventId":"seed_evt_announcement_9601","aggregateType":"OaAnnouncement","aggregateId":9601,"eventType":"AnnouncementPublishedEvent","tenantId":100000,"payload":{"announcementId":9601,"scopeType":"ALL"}}',
+ 'PENDING', 1, DATE_ADD(NOW(), INTERVAL 15 MINUTE), DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL, 'Redis publish timeout on stream cloudflow:events', 100000, 'outbox-scheduler-01', DATE_ADD(NOW(), INTERVAL 2 MINUTE));
 
 -- =========================================================
 -- 三、业务申请表 + 工作流实例联动数据
@@ -7650,18 +7672,25 @@ FROM (
 ) seq;
 
 INSERT IGNORE INTO cloud_flow_db.sys_audit_log (
-  audit_id, tenant_id, audit_name, audit_field, before_val, after_val, create_by, create_time
-)
-SELECT
-  92000 + n,
-  100000,
-  '批量审计记录',
-  'status',
-  'draft',
-  CASE WHEN n % 2 = 0 THEN 'published' ELSE 'archived' END,
-  'admin',
-  DATE_SUB(NOW(), INTERVAL n MINUTE)
-FROM (
+    audit_id, tenant_id, audit_name, audit_field, before_val, after_val,
+    before_json, after_json, diff_json, high_risk, risk_level, create_by, create_time
+  )
+  SELECT
+    92000 + n,
+    100000,
+    '批量审计记录',
+    'status',
+    'draft',
+    CASE WHEN n % 2 = 0 THEN 'published' ELSE 'archived' END,
+    JSON_OBJECT('status', 'draft'),
+    JSON_OBJECT('status', CASE WHEN n % 2 = 0 THEN 'published' ELSE 'archived' END),
+    JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/status', 'from', 'draft', 'value',
+      CASE WHEN n % 2 = 0 THEN 'published' ELSE 'archived' END)),
+    0,
+    'NORMAL',
+    'admin',
+    DATE_SUB(NOW(), INTERVAL n MINUTE)
+  FROM (
   SELECT (a.n * 100 + b.n * 10 + c.n) + 1 AS n
   FROM (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
   CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b
@@ -8814,12 +8843,25 @@ INSERT IGNORE INTO cloud_flow_db.sys_file (
 (93010, 100000, '华东客户培训服务合同.pdf', '/demo/payment/fk202604070012-contract.pdf', 'https://demo.cloudflow.local/files/payment/fk202604070012-contract.pdf', 'LOCAL', 1896420, 'application/pdf', 'wang', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '对应付款申请 9012 的合同附件');
 
 INSERT IGNORE INTO cloud_flow_db.sys_audit_log (
-  audit_id, tenant_id, audit_name, audit_field, before_val, after_val, create_by, create_time
-) VALUES
-(93001, 100000, '编制调整', 'approved_count', '1', '2', 'admin', DATE_SUB(NOW(), INTERVAL 3 DAY)),
-(93002, 100000, '汇报关系调整', 'report_to_id', 'NULL', '1011', 'zhao', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-(93003, 100000, '合同档案补录', 'status', 'DRAFT', 'ACTIVE', 'zhao', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(93004, 100000, '文件归档', 'remark', '未归档', '已归档到交付培训资料库', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 12 HOUR));
+    audit_id, tenant_id, audit_name, audit_field, before_val, after_val,
+    before_json, after_json, diff_json, high_risk, risk_level, create_by, create_time
+  ) VALUES
+  (93001, 100000, '编制调整', 'approved_count', '1', '2',
+   JSON_OBJECT('approved_count', '1'), JSON_OBJECT('approved_count', '2'),
+   JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/approved_count', 'from', '1', 'value', '2')),
+   0, 'NORMAL', 'admin', DATE_SUB(NOW(), INTERVAL 3 DAY)),
+  (93002, 100000, '汇报关系调整', 'report_to_id', 'NULL', '1011',
+   JSON_OBJECT('report_to_id', CAST(NULL AS CHAR)), JSON_OBJECT('report_to_id', '1011'),
+   JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/report_to_id', 'from', NULL, 'value', '1011')),
+   1, 'HIGH', 'zhao', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+  (93003, 100000, '合同档案补录', 'status', 'DRAFT', 'ACTIVE',
+   JSON_OBJECT('status', 'DRAFT'), JSON_OBJECT('status', 'ACTIVE'),
+   JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/status', 'from', 'DRAFT', 'value', 'ACTIVE')),
+   0, 'NORMAL', 'zhao', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+  (93004, 100000, '文件归档', 'remark', '未归档', '已归档到交付培训资料库',
+   JSON_OBJECT('remark', '未归档'), JSON_OBJECT('remark', '已归档到交付培训资料库'),
+   JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/remark', 'from', '未归档', 'value', '已归档到交付培训资料库')),
+   0, 'NORMAL', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 12 HOUR));
 
 -- 8.4 通知配置、消息日志与流程抄送
 INSERT IGNORE INTO cloud_flow_db.wf_notification_config (
@@ -11764,19 +11806,19 @@ INSERT IGNORE INTO cloud_flow_db.hr_audit_log
 
 -- ---------- 15.2 工作流回调死信队列 ----------
 INSERT IGNORE INTO cloud_flow_db.wf_callback_dead_letter
-(id, stream_key, process_instance_id, business_type, business_id, payload_json, retry_count, last_error, status, create_time, update_time) VALUES
-(25100, 'workflow:callback:stream', 'PI-HR-CONTRACT-2025-0050', 'HR_CONTRACT_RENEW', 1104,
- JSON_OBJECT('eventType','APPROVAL_PASSED','processInstanceId','PI-HR-CONTRACT-2025-0050','businessType','HR_CONTRACT_RENEW','businessId',1104,'result','PASS','approver','人事经理','timestamp','2026-01-20 15:30:00'),
- 5, 'OptimisticLockException: hr_employee_contract version mismatch (expected=3 actual=4)',
- 'PENDING',     '2026-01-20 15:30:15', '2026-01-20 15:32:08'),
-(25101, 'workflow:callback:stream', 'PI-HR-RESIGN-2025-0017',   'HR_RESIGNATION',    1041,
- JSON_OBJECT('eventType','APPROVAL_PASSED','processInstanceId','PI-HR-RESIGN-2025-0017','businessType','HR_RESIGNATION','businessId',1041,'result','PASS','approver','总经理','timestamp','2025-12-15 17:00:00'),
- 3, 'DataIntegrityViolationException: hr_resignation row not found for id=1041',
- 'REPLAYED',    '2025-12-15 17:00:30', '2025-12-15 18:45:11'),
-(25102, 'workflow:callback:stream', 'PI-CRM-CONTRACT-2026-0023','CRM_SALES_CONTRACT', 9203,
- JSON_OBJECT('eventType','APPROVAL_REJECTED','processInstanceId','PI-CRM-CONTRACT-2026-0023','businessType','CRM_SALES_CONTRACT','businessId',9203,'result','REJECT','approver','销售总监','rejectReason','金额超限','timestamp','2026-05-10 11:20:00'),
- 8, 'SocketTimeoutException: connect to crm-service:9203 timed out after 5000ms',
- 'DISCARDED',   '2026-05-10 11:20:08', '2026-05-10 11:35:42');
+  (id, tenant_id, stream_key, process_instance_id, business_type, business_id, payload_json, retry_count, last_error, status, create_time, update_time) VALUES
+  (25100, 100000, 'workflow:callback:stream', 'PI-HR-CONTRACT-2025-0050', 'HR_CONTRACT_RENEW', 1104,
+   JSON_OBJECT('eventType','APPROVAL_PASSED','processInstanceId','PI-HR-CONTRACT-2025-0050','businessType','HR_CONTRACT_RENEW','businessId',1104,'result','PASS','approver','人事经理','timestamp','2026-01-20 15:30:00'),
+   5, 'OptimisticLockException: hr_employee_contract version mismatch (expected=3 actual=4)',
+   'PENDING',     '2026-01-20 15:30:15', '2026-01-20 15:32:08'),
+  (25101, 100000, 'workflow:callback:stream', 'PI-HR-RESIGN-2025-0017',   'HR_RESIGNATION',    1041,
+   JSON_OBJECT('eventType','APPROVAL_PASSED','processInstanceId','PI-HR-RESIGN-2025-0017','businessType','HR_RESIGNATION','businessId',1041,'result','PASS','approver','总经理','timestamp','2025-12-15 17:00:00'),
+   3, 'DataIntegrityViolationException: hr_resignation row not found for id=1041',
+   'REPLAYED',    '2025-12-15 17:00:30', '2025-12-15 18:45:11'),
+  (25102, 100000, 'workflow:callback:stream', 'PI-CRM-CONTRACT-2026-0023','CRM_SALES_CONTRACT', 9203,
+   JSON_OBJECT('eventType','APPROVAL_REJECTED','processInstanceId','PI-CRM-CONTRACT-2026-0023','businessType','CRM_SALES_CONTRACT','businessId',9203,'result','REJECT','approver','销售总监','rejectReason','金额超限','timestamp','2026-05-10 11:20:00'),
+   8, 'SocketTimeoutException: connect to crm-service:9203 timed out after 5000ms',
+   'DISCARDED',   '2026-05-10 11:20:08', '2026-05-10 11:35:42');
 
 -- ---------- 15.3 工作流业务对账告警 ----------
 INSERT IGNORE INTO cloud_flow_db.wf_reconcile_alert

@@ -125,7 +125,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     }
 
     @Override
-    @Audit(name = "更新发布窗口")
+    @Audit(name = "更新发布窗口", highRisk = true)
     public R<?> updateDeployWindow(DeployWindowDTO dto) {
         if (dto.getId() == null) {
             return R.fail("窗口ID不能为空");
@@ -763,6 +763,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Override
     @Transactional
+    @Audit(name = "取消发布审批", highRisk = true)
     public R<?> cancelDeployApproval(Long approvalId) {
         Long userId = UserContext.getUserId();
         WfDeployApproval approval = deployApprovalMapper.selectById(approvalId);

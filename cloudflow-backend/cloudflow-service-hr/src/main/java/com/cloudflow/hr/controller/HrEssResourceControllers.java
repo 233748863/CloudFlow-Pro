@@ -123,6 +123,7 @@ class HrBankCardController {
     }
 
     @SysLog("新增HR员工银行卡")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:ess:bankcard:add")
     public R<Long> create(@RequestBody HrBankCardPayload payload) {
@@ -176,6 +177,7 @@ class HrFamilyMemberController {
     }
 
     @SysLog("新增HR员工家属")
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:ess:family:add")
     public R<Long> create(@RequestBody HrFamilyMemberPayload payload) {

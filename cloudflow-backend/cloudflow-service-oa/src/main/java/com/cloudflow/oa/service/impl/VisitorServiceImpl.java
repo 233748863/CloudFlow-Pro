@@ -104,7 +104,7 @@ public class VisitorServiceImpl extends ServiceImpl<VisitorMapper, Visitor>
     }
 
     @Override
-    @Audit(name = "取消访客预约", spel = "#visitorId")
+    @Audit(name = "取消访客预约", spel = "#visitorId", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public boolean cancelVisitor(Long visitorId) {
         Visitor visitor = getById(visitorId);

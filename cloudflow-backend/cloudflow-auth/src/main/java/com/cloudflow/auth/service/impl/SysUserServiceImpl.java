@@ -20,6 +20,7 @@ import com.cloudflow.auth.service.PasswordService;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.audit.annotation.Audit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -350,6 +351,7 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
+    @Audit(name = "删除用户", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public int deleteUserByIds(Long[] userIds) {
         Long tenantId = UserContext.getTenantId();
@@ -381,6 +383,7 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
+    @Audit(name = "重置用户密码", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public int resetPwd(Long userId, String password) {
         Long tenantId = UserContext.getTenantId();

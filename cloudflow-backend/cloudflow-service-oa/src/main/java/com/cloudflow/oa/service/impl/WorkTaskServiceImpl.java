@@ -61,6 +61,7 @@ public class WorkTaskServiceImpl extends ServiceImpl<WorkTaskMapper, WorkTask> i
     }
 
     @Override
+    @Audit(name = "删除项目任务", highRisk = true)
     public boolean removeProjectTasks(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;

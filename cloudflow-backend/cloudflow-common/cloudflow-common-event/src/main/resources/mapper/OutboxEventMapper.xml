@@ -2,13 +2,57 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.common.event.outbox.OutboxEventMapper">
 
-    <select id="selectPendingEvents" resultType="com.cloudflow.common.event.outbox.OutboxEvent">
+    <update id="claimBatch">
+        UPDATE outbox_event
+        SET status = 'PROCESSING',
+            locked_by = #{owner},
+            locked_until = #{lockedUntil}
+        WHERE id IN (
+            SELECT id
+            FROM (
+                SELECT id
+                FROM outbox_event
+                WHERE status IN ('PENDING', 'FAILED')
+                  AND next_retry_at &lt;= #{now}
+                  AND (locked_until IS NULL OR locked_until &lt;= #{now})
+                ORDER BY created_at ASC
+                LIMIT #{limit}
+            ) t
+        )
+    </update>
+
+    <select id="selectClaimedEvents" resultType="com.cloudflow.common.event.outbox.OutboxEvent">
         SELECT *
         FROM outbox_event
-        WHERE status = 'PENDING'
-          AND next_retry_at &lt;= #{now}
+        WHERE locked_by = #{owner}
+          AND status = 'PROCESSING'
         ORDER BY created_at ASC
         LIMIT #{limit}
     </select>
+
+    <update id="markPublished">
+        UPDATE outbox_event
+        SET status = 'PUBLISHED',
+            published_at = #{publishedAt},
+            locked_by = NULL,
+            locked_until = NULL,
+            last_error = NULL
+        WHERE id = #{id}
+          AND status = 'PROCESSING'
+          AND locked_by = #{owner}
+    </update>
+
+    <update id="markFailed">
+        UPDATE outbox_event
+        SET status = #{status},
+            retry_count = #{retryCount},
+            next_retry_at = #{nextRetryAt},
+            last_error = #{lastError},
+            locked_by = NULL,
+            locked_until = NULL
+        WHERE id = #{id}
+          AND status = 'PROCESSING'
+          AND locked_by = #{owner}
+    </update>
 
 </mapper>

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.SysApiRatelimitRule;
 import com.cloudflow.auth.mapper.SysApiRatelimitRuleMapper;
 import com.cloudflow.auth.service.ISysApiRatelimitRuleService;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -102,6 +103,7 @@ public class SysApiRatelimitRuleServiceImpl implements ISysApiRatelimitRuleServi
     }
 
     @Override
+    @Audit(name = "删除API限流规则", highRisk = true)
     @Transactional
     public boolean remove(Long id) {
         if (id == null) {

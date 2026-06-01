@@ -67,6 +67,7 @@ class HrCompComponentController {
     }
 
     @SysLog("新增HR薪酬项")
+    @RepeatSubmit
     @PostMapping("/components")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createComponent(@RequestBody HrCompComponentPayload payload) {
@@ -107,6 +108,7 @@ class HrCompStructureController {
     }
 
     @SysLog("新增HR薪酬结构")
+    @RepeatSubmit
     @PostMapping("/structures")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createStructure(@RequestBody HrCompStructurePayload payload) {
@@ -147,6 +149,7 @@ class HrCompGradeController {
     }
 
     @SysLog("新增HR薪级")
+    @RepeatSubmit
     @PostMapping("/grades")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createGrade(@RequestBody HrCompGradePayload payload) {
@@ -179,6 +182,7 @@ class HrEmployeeCompController {
     }
 
     @SysLog("新增HR员工薪酬")
+    @RepeatSubmit
     @PostMapping("/employee-compensations")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createEmployeeComp(@RequestBody HrEmployeeCompPayload payload) {
@@ -211,6 +215,7 @@ class HrCompChangeController {
     }
 
     @SysLog("新增HR调薪变更")
+    @RepeatSubmit
     @PostMapping("/changes")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createCompChange(@RequestBody HrCompChangePayload payload) {
@@ -243,6 +248,7 @@ class HrBenefitSchemeController {
     }
 
     @SysLog("新增HR福利方案")
+    @RepeatSubmit
     @PostMapping("/benefits")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createBenefit(@RequestBody HrBenefitSchemePayload payload) {
@@ -275,6 +281,7 @@ class HrEmployeeBenefitController {
     }
 
     @SysLog("新增HR员工福利")
+    @RepeatSubmit
     @PostMapping("/employee-benefits")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createEmployeeBenefit(@RequestBody HrEmployeeBenefitPayload payload) {
@@ -299,6 +306,7 @@ class HrTaxProfileController {
     }
 
     @SysLog("新增HR个税档案")
+    @RepeatSubmit
     @PostMapping("/tax-profiles")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createTaxProfile(@RequestBody HrTaxProfilePayload payload) {
@@ -331,6 +339,7 @@ class HrTaxDeductionController {
     }
 
     @SysLog("新增HR个税扣除")
+    @RepeatSubmit
     @PostMapping("/tax-deductions")
     @SaCheckPermission("hr:compensation:add")
     public R<Long> createTaxDeduction(@RequestBody HrTaxDeductionPayload payload) {
