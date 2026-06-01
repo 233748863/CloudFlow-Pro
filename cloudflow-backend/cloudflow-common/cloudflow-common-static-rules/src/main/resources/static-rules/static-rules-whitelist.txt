@@ -1,0 +1,14 @@
+# POST_NO_REPEAT: 认证入口不要求重复提交防护
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/AuthController.java:46
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:33
+
+# AUTH_NO_RATE: 滑块校验与验证码发送由上游网关限流
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/AuthController.java:46
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:33
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:44
+
+# PERMISSION_GUARD: 内部远程调用入口或公开认证接口
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/AuthController.java:46
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/BusinessRuleController.java:43
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:33
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:44

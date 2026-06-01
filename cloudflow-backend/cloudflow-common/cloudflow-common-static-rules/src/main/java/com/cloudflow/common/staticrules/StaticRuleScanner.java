@@ -1,6 +1,7 @@
 package com.cloudflow.common.staticrules;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -21,6 +22,7 @@ public class StaticRuleScanner {
 
     private static final Pattern METHOD_SIGNATURE = Pattern.compile(
             "^(public|protected|private)\\s+.*\\(.*\\)\\s*(\\{|throws\\s+.*)?$");
+    private static final String CLASSPATH_WHITELIST = "static-rules/static-rules-whitelist.txt";
     private static final String[] WRITE_KEYWORDS = {
             "add", "create", "submit", "approve", "reject", "publish", "cancel", "convert",
             "receive", "handover", "save", "update", "delete", "remove", "terminate", "pause",
@@ -157,11 +159,24 @@ public class StaticRuleScanner {
 
     private Set<String> loadWhitelist() throws IOException {
         Set<String> whitelist = new HashSet<>();
-        Path file = root.resolve(".cloudflow-static-rules-whitelist");
-        if (!Files.exists(file)) {
+        try (InputStream inputStream = StaticRuleScanner.class.getClassLoader().getResourceAsStream(CLASSPATH_WHITELIST)) {
+            if (inputStream != null) {
+                for (String line : new String(inputStream.readAllBytes(), StandardCharsets.UTF_8).split("\\R")) {
+                    String trimmed = line.trim();
+                    if (!trimmed.isEmpty() && !trimmed.startsWith("#")) {
+                        whitelist.add(trimmed);
+                    }
+                }
+            }
+        }
+        if (!whitelist.isEmpty()) {
             return whitelist;
         }
-        for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+        Path legacyFile = root.resolve(".cloudflow-static-rules-whitelist");
+        if (!Files.exists(legacyFile)) {
+            return whitelist;
+        }
+        for (String line : Files.readAllLines(legacyFile, StandardCharsets.UTF_8)) {
             String trimmed = line.trim();
             if (!trimmed.isEmpty() && !trimmed.startsWith("#")) {
                 whitelist.add(trimmed);
