@@ -4,12 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.domain.dto.HrCertificateRequestPayload;
 import com.cloudflow.hr.domain.entity.HrCertificateRequest;
 import com.cloudflow.hr.domain.entity.HrEmployee;
+import com.cloudflow.hr.event.HrCertificateRequestSubmittedEvent;
 import com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrCertificateRequestMapper;
@@ -20,6 +23,7 @@ import com.cloudflow.hr.service.HrPdfRenderer;
 import com.cloudflow.hr.service.IHrCertificateService;
 import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import com.cloudflow.hr.service.dto.HrFileDownload;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +56,8 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
     private final HrPdfRenderer pdfRenderer;
     private final HrFileStorage fileStorage;
     private final WorkflowServiceClient workflowServiceClient;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Value("${cloudflow.hr.certificate.company-name:CloudFlow 科技有限公司}")
     private String companyName;
@@ -86,15 +92,11 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         request.setCreateBy(currentUserName());
         request.setUpdateBy(currentUserName());
         certificateRequestMapper.insert(request);
-
-        HrTransactionHooks.afterCommit(() -> startCertificateWorkflow(
-                request.getId(),
-                tenantId,
-                request.getRequestNo(),
-                employeeId,
-                request.getCertificateType(),
-                request.getRecipientOrg(),
-                request.getCopies()));
+        HrCertificateRequestSubmittedEvent event = new HrCertificateRequestSubmittedEvent();
+        event.setRequestId(request.getId());
+        event.setRequestNo(request.getRequestNo());
+        event.setSubmittedAt(LocalDateTime.now());
+        publishCertificateSubmittedEvent(request, event);
         log.info("证明开具申请已提交，requestNo: {}, employeeId: {}", request.getRequestNo(), employeeId);
         return request.getId();
     }
@@ -156,20 +158,19 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         return result;
     }
 
-    private void startCertificateWorkflow(Long requestId, Long tenantId, String requestNo, Long employeeId,
-                                          String certificateType, String recipientOrg, Integer copies) {
+    public void startCertificateWorkflow(HrCertificateRequest request) {
         ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(tenantId);
+        dto.setTenantId(request.getTenantId());
         dto.setProcessDefinitionKey(processDefinitionKey);
         dto.setBusinessType("HR_CERTIFICATE_REQUEST");
-        dto.setBusinessId(requestId);
-        dto.setBusinessNo(requestNo);
-        dto.setProcessTitle("证明开具申请-" + requestNo);
-        dto.setStartUserId(UserContext.getUserId());
+        dto.setBusinessId(request.getId());
+        dto.setBusinessNo(request.getRequestNo());
+        dto.setProcessTitle("证明开具申请-" + request.getRequestNo());
+        dto.setStartUserId(request.getEmployeeId());
         Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("certificateType", certificateType);
-        vars.put("recipientOrg", recipientOrg);
-        vars.put("copies", copies);
+        vars.put("certificateType", request.getCertificateType());
+        vars.put("recipientOrg", request.getRecipientOrg());
+        vars.put("copies", request.getCopies());
         dto.setVariables(vars);
 
         R<String> response = workflowServiceClient.startProcess(dto);
@@ -178,13 +179,13 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
             throw new HrBusinessException("WORKFLOW_START_FAILED", "证明开具流程启动失败：" + msg);
         }
         UpdateWrapper<HrCertificateRequest> wrapper = new UpdateWrapper<>();
-        wrapper.eq("id", requestId)
-                .eq("tenant_id", tenantId)
+        wrapper.eq("id", request.getId())
+                .eq("tenant_id", request.getTenantId())
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         certificateRequestMapper.update(null, wrapper);
         log.info("证明开具申请已提交，requestNo: {}, employeeId: {}, processInstanceId: {}",
-                requestNo, employeeId, response.getData());
+                request.getRequestNo(), request.getEmployeeId(), response.getData());
     }
 
     private void cancelWorkflowIfNeeded(HrCertificateRequest request) {
@@ -279,5 +280,20 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
 
     private String currentUserName() {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+    }
+
+    private void publishCertificateSubmittedEvent(HrCertificateRequest request, HrCertificateRequestSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("HR_CERTIFICATE_REQUEST_SUBMITTED")
+                    .sourceModule("cloudflow-hr")
+                    .sourceId(request.getId())
+                    .tenantId(request.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new HrBusinessException("WORKFLOW_EVENT_PUBLISH_FAILED", "证明开具流程事件发布失败");
+        }
     }
 }

@@ -15,6 +15,7 @@ import com.cloudflow.oa.domain.OaContractAmountThreshold;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.domain.OaTraceEvent;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.OaContractMapper;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
@@ -63,8 +64,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     private final IOaRiskAlertService oaRiskAlertService;
     private final IOaContractAmountThresholdService oaContractAmountThresholdService;
     private final OutboxPublisher outboxPublisher;
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<OaContract> queryPage(OaContract query, PageQuery pageQuery) {
@@ -125,7 +125,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
                     .eventType("CONTRACT_CREATED")
                     .sourceModule("cloudflow-oa")
                     .sourceId(contract.getContractId())
-                    .payload(OBJECT_MAPPER.writeValueAsString(event))
+                    .payload(objectMapper.writeValueAsString(event))
                     .build();
             outboxPublisher.publish(envelope);
         } catch (Exception e) {
@@ -216,15 +216,6 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
         boolean updated = updateById(contract);
         if (updated) {
-            OaTransactionHooks.afterCommit(() -> startContractWorkflow(contract));
-        }
-        oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
-                OaContractConstants.BUSINESS_TYPE_APPROVAL, id, "CONTRACT_SUBMITTED",
-                "合同提交审批", contract.getContractNo() + " 已进入审批",
-                UserContext.getUserId(), resolveUserName(), null);
-
-        // M1-7: 发布事件到 Outbox
-        if (updated) {
             ContractSubmittedEvent event = new ContractSubmittedEvent();
             event.setContractId(contract.getContractId());
             event.setContractNo(contract.getContractNo());
@@ -241,22 +232,29 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
                         .eventType("CONTRACT_SUBMITTED")
                         .sourceModule("cloudflow-oa")
                         .sourceId(contract.getContractId())
-                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .tenantId(contract.getTenantId())
+                        .payload(objectMapper.writeValueAsString(event))
                         .build();
                 outboxPublisher.publish(envelope);
             } catch (Exception e) {
                 log.warn("合同提交事件发布失败, contractId=" + contract.getContractId() + ", error=" + e.getMessage());
             }
         }
+        oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
+                OaContractConstants.BUSINESS_TYPE_APPROVAL, id, "CONTRACT_SUBMITTED",
+                "合同提交审批", contract.getContractNo() + " 已进入审批",
+                UserContext.getUserId(), resolveUserName(), null);
 
         return updated;
     }
 
-    private void startContractWorkflow(OaContract contract) {
+    public void startContractWorkflow(OaContract contract) {
         try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
             req.setProcessDefKey("biz_contract");
             req.setBusinessKey("CONTRACT:" + contract.getContractId());
+            req.setStartUserId(contract.getOwnerId());
+            req.setStartUserName(contract.getOwnerName());
             Map<String, Object> variables = buildWorkflowVariables(contract);
             WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
@@ -266,14 +264,14 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
                     "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcess(req);
+            R<?> result = remoteWorkflowService.startProcessInternal(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (StringUtils.hasText(instanceId)) {
                     OaContract update = new OaContract();
                     update.setContractId(contract.getContractId());
                     update.setInstanceId(instanceId);
-                    update.setUpdateBy(resolveUserName());
+                    update.setUpdateBy("event-consumer");
                     update.setUpdateTime(LocalDateTime.now());
                     updateById(update);
                 }

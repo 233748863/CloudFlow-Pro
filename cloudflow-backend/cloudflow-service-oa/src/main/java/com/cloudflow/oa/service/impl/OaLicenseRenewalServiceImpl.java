@@ -7,11 +7,15 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseRenewal;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.event.LicenseRenewalSubmittedEvent;
 import com.cloudflow.oa.mapper.OaLicenseMapper;
 import com.cloudflow.oa.mapper.OaLicenseRenewalMapper;
 import com.cloudflow.oa.service.IOaLicenseRenewalService;
@@ -19,6 +23,7 @@ import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +49,8 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
     private final OaLicenseMapper licenseMapper;
     private final RemoteWorkflowService remoteWorkflowService;
     private final OaWorkflowFailureHelper workflowFailureHelper;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<OaLicenseRenewal> queryPage(OaLicenseRenewal query, PageQuery pageQuery) {
@@ -169,20 +176,24 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
         renewal.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(renewal);
         if (updated) {
-            startRenewalWorkflowAfterCommit(renewal);
+            LicenseRenewalSubmittedEvent event = new LicenseRenewalSubmittedEvent();
+            event.setRenewalId(renewal.getId());
+            event.setRenewalNo(renewal.getRenewalNo());
+            event.setApplicantId(renewal.getApplicantId());
+            event.setApplicantName(renewal.getApplicantName());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishRenewalSubmittedEvent(renewal, event);
         }
         return updated;
     }
 
-    private void startRenewalWorkflowAfterCommit(OaLicenseRenewal renewal) {
-        OaTransactionHooks.afterCommit(() -> startRenewalWorkflow(renewal));
-    }
-
-    private void startRenewalWorkflow(OaLicenseRenewal renewal) {
+    public void startRenewalWorkflow(OaLicenseRenewal renewal) {
         try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
             req.setProcessDefKey("license_renewal");
             req.setBusinessKey("LICENSE_RENEWAL:" + renewal.getId());
+            req.setStartUserId(renewal.getApplicantId());
+            req.setStartUserName(renewal.getApplicantName());
             Map<String, Object> variables = new HashMap<>();
             variables.put("renewalId", renewal.getId());
             variables.put("renewalNo", renewal.getRenewalNo());
@@ -201,12 +212,17 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
                     "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcess(req);
+            R<?> result = remoteWorkflowService.startProcessInternal(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                OaLicenseRenewal update = new OaLicenseRenewal();
-                update.setId(renewal.getId());
-                update.setInstanceId(extractInstanceId(result.getData()));
-                updateById(update);
+                String instanceId = extractInstanceId(result.getData());
+                if (StringUtils.hasText(instanceId)) {
+                    OaLicenseRenewal update = new OaLicenseRenewal();
+                    update.setId(renewal.getId());
+                    update.setInstanceId(instanceId);
+                    update.setUpdateBy("event-consumer");
+                    update.setUpdateTime(LocalDateTime.now());
+                    updateById(update);
+                }
             } else {
                 log.warn("证照续期 {} 工作流启动返回异常: {}", renewal.getRenewalNo(), result != null ? result.getMsg() : "null");
             }
@@ -215,6 +231,21 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
             workflowFailureHelper.handleWorkflowStartFailure(
                     OaBusinessTypes.LICENSE_RENEWAL, renewal.getId(), renewal.getRenewalNo(),
                     renewal.getApplicantName(), renewal.getApplicantId(), e);
+        }
+    }
+
+    private void publishRenewalSubmittedEvent(OaLicenseRenewal renewal, LicenseRenewalSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("LICENSE_RENEWAL_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(renewal.getId())
+                    .tenantId(renewal.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("证照续期提交事件发布失败, renewalId={}, error={}", renewal.getId(), e.getMessage());
         }
     }
 

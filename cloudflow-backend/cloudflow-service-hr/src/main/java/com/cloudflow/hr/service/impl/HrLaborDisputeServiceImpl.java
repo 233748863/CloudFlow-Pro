@@ -6,6 +6,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -14,6 +16,7 @@ import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeDTO;
 import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeQueryDTO;
 import com.cloudflow.hr.domain.entity.HrDisputeEvidence;
 import com.cloudflow.hr.domain.entity.HrLaborDispute;
+import com.cloudflow.hr.event.HrLaborDisputeSubmittedEvent;
 import com.cloudflow.hr.domain.vo.dispute.HrDisputeEvidenceVO;
 import com.cloudflow.hr.domain.vo.dispute.HrLaborDisputeVO;
 import com.cloudflow.hr.exception.HrBusinessException;
@@ -49,6 +52,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
     private final HrTypedCrudService crudService;
     private final WorkflowServiceClient workflowServiceClient;
     private final ObjectMapper objectMapper;
+    private final OutboxPublisher outboxPublisher;
 
     @Value("${cloudflow.hr.dispute.process-key:wf_hr_labor_dispute}")
     private String disputeProcessKey;
@@ -115,8 +119,11 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
                 .set("status", nextStatus)
                 .set("update_time", LocalDateTime.now());
         disputeMapper.update(null, uw);
-        HrTransactionHooks.afterCommit(() -> startLaborDisputeWorkflow(
-                disputeId, dispute.getDisputeNo(), dispute.getDisputeType(), dispute.getClaimAmount()));
+        HrLaborDisputeSubmittedEvent event = new HrLaborDisputeSubmittedEvent();
+        event.setDisputeId(disputeId);
+        event.setDisputeNo(dispute.getDisputeNo());
+        event.setSubmittedAt(LocalDateTime.now());
+        publishLaborDisputeSubmittedEvent(dispute, event);
         return null;
     }
 
@@ -184,19 +191,19 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
     }
 
-    private void startLaborDisputeWorkflow(Long disputeId, String disputeNo, String disputeType, java.math.BigDecimal claimAmount) {
+    public void startLaborDisputeWorkflow(HrLaborDispute dispute) {
         ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(currentTenantId());
+        dto.setTenantId(dispute.getTenantId());
         dto.setProcessDefinitionKey(disputeProcessKey);
         dto.setBusinessType("HR_LABOR_DISPUTE");
-        dto.setBusinessId(disputeId);
-        dto.setBusinessNo(disputeNo);
-        dto.setProcessTitle("劳动争议-" + disputeNo);
-        dto.setStartUserId(UserContext.getUserId());
+        dto.setBusinessId(dispute.getId());
+        dto.setBusinessNo(dispute.getDisputeNo());
+        dto.setProcessTitle("劳动争议-" + dispute.getDisputeNo());
+        dto.setStartUserId(dispute.getApplicantEmployeeId());
         Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("disputeId", disputeId);
-        vars.put("disputeType", disputeType);
-        vars.put("claimAmount", claimAmount);
+        vars.put("disputeId", dispute.getId());
+        vars.put("disputeType", dispute.getDisputeType());
+        vars.put("claimAmount", dispute.getClaimAmount());
         dto.setVariables(vars);
         R<String> response = workflowServiceClient.startProcess(dto);
         if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
@@ -204,9 +211,24 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
             throw new HrBusinessException("WORKFLOW_START_FAILED", "劳动争议审批启动失败：" + msg);
         }
         UpdateWrapper<HrLaborDispute> uw = new UpdateWrapper<>();
-        uw.eq("id", disputeId).eq("tenant_id", currentTenantId())
+        uw.eq("id", dispute.getId()).eq("tenant_id", dispute.getTenantId())
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         disputeMapper.update(null, uw);
+    }
+
+    private void publishLaborDisputeSubmittedEvent(HrLaborDispute dispute, HrLaborDisputeSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("HR_LABOR_DISPUTE_SUBMITTED")
+                    .sourceModule("cloudflow-hr")
+                    .sourceId(dispute.getId())
+                    .tenantId(dispute.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new HrBusinessException("WORKFLOW_EVENT_PUBLISH_FAILED", "劳动争议流程事件发布失败");
+        }
     }
 }

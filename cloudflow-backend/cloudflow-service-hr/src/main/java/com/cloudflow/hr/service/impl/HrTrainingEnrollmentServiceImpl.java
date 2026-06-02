@@ -5,11 +5,14 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.domain.entity.HrTrainingEnrollment;
 import com.cloudflow.hr.domain.entity.HrTrainingSession;
+import com.cloudflow.hr.event.HrTrainingEnrollmentSubmittedEvent;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTrainingEnrollmentMapper;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
@@ -17,6 +20,7 @@ import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrTrainingArchiveService;
 import com.cloudflow.hr.service.IHrTrainingEnrollmentService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +49,8 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
     private final HrEssSupport essSupport;
     private final WorkflowServiceClient workflowServiceClient;
     private final IHrTrainingArchiveService archiveService;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Value("${cloudflow.hr.training.enrollment-process-key:wf_hr_training_enrollment}")
     private String processDefinitionKey;
@@ -93,9 +99,11 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
         enrollment.setCreateBy(currentUserName());
         enrollment.setUpdateBy(currentUserName());
         enrollmentMapper.insert(enrollment);
-
-        HrTransactionHooks.afterCommit(() -> startTrainingEnrollmentWorkflow(
-                enrollment.getId(), tenantId, sessionId, employeeId, enrollment.getEnrollType()));
+        HrTrainingEnrollmentSubmittedEvent event = new HrTrainingEnrollmentSubmittedEvent();
+        event.setEnrollmentId(enrollment.getId());
+        event.setSessionId(sessionId);
+        event.setSubmittedAt(LocalDateTime.now());
+        publishTrainingEnrollmentSubmittedEvent(enrollment, event);
         log.info("培训报名已提交，enrollmentId: {}, sessionId: {}, employeeId: {}",
                 enrollment.getId(), sessionId, employeeId);
         archiveService.incrementOnEnrollmentChange(employeeId);
@@ -187,20 +195,19 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
         archiveService.incrementOnEnrollmentChange(enrollment.getEmployeeId());
     }
 
-    private void startTrainingEnrollmentWorkflow(Long enrollmentId, Long tenantId, Long sessionId,
-                                                 Long employeeId, String enrollType) {
+    public void startTrainingEnrollmentWorkflow(HrTrainingEnrollment enrollment) {
         ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(tenantId);
+        dto.setTenantId(enrollment.getTenantId());
         dto.setProcessDefinitionKey(processDefinitionKey);
         dto.setBusinessType("HR_TRAINING_ENROLLMENT");
-        dto.setBusinessId(enrollmentId);
-        dto.setBusinessNo(String.valueOf(sessionId));
-        dto.setProcessTitle("培训报名审批-班次 " + sessionId);
-        dto.setStartUserId(UserContext.getUserId());
+        dto.setBusinessId(enrollment.getId());
+        dto.setBusinessNo(String.valueOf(enrollment.getSessionId()));
+        dto.setProcessTitle("培训报名审批-班次 " + enrollment.getSessionId());
+        dto.setStartUserId(enrollment.getEmployeeId());
         Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("sessionId", sessionId);
-        vars.put("employeeId", employeeId);
-        vars.put("enrollType", enrollType);
+        vars.put("sessionId", enrollment.getSessionId());
+        vars.put("employeeId", enrollment.getEmployeeId());
+        vars.put("enrollType", enrollment.getEnrollType());
         dto.setVariables(vars);
 
         R<String> response = workflowServiceClient.startProcess(dto);
@@ -209,13 +216,13 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
             throw new HrBusinessException("WORKFLOW_START_FAILED", "培训报名流程启动失败：" + msg);
         }
         UpdateWrapper<HrTrainingEnrollment> wrapper = new UpdateWrapper<>();
-        wrapper.eq("id", enrollmentId)
-                .eq("tenant_id", tenantId)
+        wrapper.eq("id", enrollment.getId())
+                .eq("tenant_id", enrollment.getTenantId())
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         enrollmentMapper.update(null, wrapper);
         log.info("培训报名已提交，enrollmentId: {}, sessionId: {}, employeeId: {}, processInstanceId: {}",
-                enrollmentId, sessionId, employeeId, response.getData());
+                enrollment.getId(), enrollment.getSessionId(), enrollment.getEmployeeId(), response.getData());
     }
 
     private HrTrainingEnrollment loadEnrollment(Long id) {
@@ -240,5 +247,20 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
 
     private String currentUserName() {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+    }
+
+    private void publishTrainingEnrollmentSubmittedEvent(HrTrainingEnrollment enrollment, HrTrainingEnrollmentSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("HR_TRAINING_ENROLLMENT_SUBMITTED")
+                    .sourceModule("cloudflow-hr")
+                    .sourceId(enrollment.getId())
+                    .tenantId(enrollment.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new HrBusinessException("WORKFLOW_EVENT_PUBLISH_FAILED", "培训报名流程事件发布失败");
+        }
     }
 }

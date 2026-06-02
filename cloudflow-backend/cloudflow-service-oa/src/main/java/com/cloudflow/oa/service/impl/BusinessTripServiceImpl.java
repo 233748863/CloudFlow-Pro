@@ -5,19 +5,19 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BusinessTrip;
-import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.event.BusinessTripSubmittedEvent;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
 import com.cloudflow.oa.service.IBusinessTripService;
-import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.common.statemachine.core.StateMachine;
 import com.cloudflow.common.statemachine.core.StateMachineRegistry;
 import com.cloudflow.oa.enums.BusinessTripStatus;
 import com.cloudflow.oa.enums.BusinessTripEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,9 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * 出差申请 Service 实现类
@@ -38,13 +37,13 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         implements IBusinessTripService {
 
     @Autowired
-    private RemoteWorkflowService remoteWorkflowService;
-
-    @Autowired
-    private OaWorkflowFailureHelper workflowFailureHelper;
-
-    @Autowired
     private StateMachineRegistry stateMachineRegistry;
+
+    @Autowired
+    private OutboxPublisher outboxPublisher;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public IPage<BusinessTrip> queryPage(BusinessTrip query, int pageNum, int pageSize) {
@@ -105,60 +104,24 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         trip.setStatus(newStatus.name());
 
         boolean updated = updateById(trip);
-        startTripWorkflowAfterCommit(trip);
-        return updated;
-    }
-
-    private void startTripWorkflowAfterCommit(BusinessTrip trip) {
-        OaTransactionHooks.afterCommit(() -> startTripWorkflow(trip));
-    }
-
-    private void startTripWorkflow(BusinessTrip trip) {
-        try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
-            req.setProcessDefKey("business_trip");
-            req.setBusinessKey("BUSINESS_TRIP:" + trip.getId());
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("tripId", trip.getId());
-            variables.put("tripNo", trip.getTripNo());
-            variables.put("destination", trip.getDestination());
-            variables.put("tripDays", trip.getTripDays());
-            variables.put("estimatedCost", trip.getEstimatedCost());
-            variables.put("userId", trip.getUserId());
-            variables.put("userName", trip.getUserName());
-            variables.put("startDate", trip.getStartDate() != null
-                    ? DateTimeFormatter.ofPattern("yyyy-MM-dd").format(trip.getStartDate()) : null);
-            variables.put("endDate", trip.getEndDate() != null
-                    ? DateTimeFormatter.ofPattern("yyyy-MM-dd").format(trip.getEndDate()) : null);
-            variables.put("transportType", trip.getTransportType());
-            variables.put("reason", trip.getReason());
-            variables.put("deptName", trip.getDeptName());
-            WorkflowCallbackConstants.applyCallbackMetadata(
-                    variables,
-                    OaBusinessTypes.BUSINESS_TRIP,
-                    trip.getId(),
-                    trip.getTripNo(),
-                    "workflow:stream:approval-callback:oa"
-            );
-            req.setVariables(variables);
-
-            R<?> result = remoteWorkflowService.startProcess(req);
-            if (result != null && result.getCode() == 200 && result.getData() != null) {
-                String instanceId = extractInstanceId(result.getData());
-                if (instanceId != null) {
-                    BusinessTrip update = new BusinessTrip();
-                    update.setId(trip.getId());
-                    update.setInstanceId(instanceId);
-                    updateById(update);
-                }
-                log.info("出差申请 {} 工作流启动成功", trip.getTripNo());
-            }
-        } catch (Exception e) {
-            log.error("出差申请 {} 启动工作流失败", trip.getTripNo(), e);
-            workflowFailureHelper.handleWorkflowStartFailure(
-                    OaBusinessTypes.BUSINESS_TRIP, trip.getId(), trip.getTripNo(),
-                    trip.getUserName(), trip.getUserId(), e);
+        if (updated) {
+            BusinessTripSubmittedEvent event = new BusinessTripSubmittedEvent();
+            event.setTripId(trip.getId());
+            event.setTripNo(trip.getTripNo());
+            event.setUserId(trip.getUserId());
+            event.setUserName(trip.getUserName());
+            event.setDeptName(trip.getDeptName());
+            event.setDestination(trip.getDestination());
+            event.setTripDays(trip.getTripDays());
+            event.setEstimatedCost(trip.getEstimatedCost());
+            event.setStartDate(trip.getStartDate());
+            event.setEndDate(trip.getEndDate());
+            event.setTransportType(trip.getTransportType());
+            event.setReason(trip.getReason());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishTripSubmittedEvent(trip, event);
         }
+        return updated;
     }
 
     @Override
@@ -182,15 +145,18 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
     }
 
     @SuppressWarnings("unchecked")
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map) {
-            Map<String, Object> dataMap = (Map<String, Object>) data;
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
+    private void publishTripSubmittedEvent(BusinessTrip trip, BusinessTripSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("BUSINESS_TRIP_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(trip.getId())
+                    .tenantId(trip.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("出差申请提交事件发布失败, tripId={}, error={}", trip.getId(), e.getMessage());
         }
-        return data instanceof String ? (String) data : null;
     }
 }

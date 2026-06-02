@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaRiskAlert;
@@ -13,6 +15,7 @@ import com.cloudflow.oa.domain.SysVehicle;
 import com.cloudflow.oa.domain.VehicleUsage;
 import com.cloudflow.oa.domain.VehicleViolation;
 import com.cloudflow.oa.domain.dto.VehicleDispatchDTO;
+import com.cloudflow.oa.event.VehicleUsageSubmittedEvent;
 import com.cloudflow.oa.mapper.OaRiskAlertMapper;
 import com.cloudflow.oa.mapper.SysVehicleMapper;
 import com.cloudflow.oa.mapper.VehicleUsageMapper;
@@ -23,6 +26,7 @@ import com.cloudflow.oa.util.OaContractConstants;
 import com.cloudflow.oa.util.VehicleConstants;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.lock.DistributedLock;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +45,8 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
     private final SysVehicleMapper vehicleMapper;
     private final OaRiskAlertMapper riskAlertMapper;
     private final VehicleViolationMapper violationMapper;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<VehicleUsage> queryPage(VehicleUsage usage, PageQuery pageQuery) {
@@ -69,15 +75,15 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
         usage.setStatus(VehicleConstants.USAGE_STATUS_PENDING);
         usage.setDriverMode(usage.getDriverMode() == null ? 0 : usage.getDriverMode());
         this.save(usage);
-        startVehicleWorkflowAfterCommit(usage);
+        VehicleUsageSubmittedEvent event = new VehicleUsageSubmittedEvent();
+        event.setUsageId(usage.getUsageId());
+        event.setApplicantId(usage.getApplicantId());
+        event.setSubmittedAt(LocalDateTime.now());
+        publishVehicleUsageSubmittedEvent(usage, event);
         return R.ok();
     }
 
-    private void startVehicleWorkflowAfterCommit(VehicleUsage usage) {
-        OaTransactionHooks.afterCommit(() -> startVehicleWorkflow(usage));
-    }
-
-    private void startVehicleWorkflow(VehicleUsage usage) {
+    public void startVehicleWorkflow(VehicleUsage usage) {
         Map<String, Object> variables = new HashMap<>();
         variables.put("initiator", usage.getApplicantId());
         variables.put("vehicleInfo", usage.getReason());
@@ -89,15 +95,22 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
                 "workflow:stream:approval-callback:oa"
         );
 
-        R<?> wfResult = workflowService.startProcess("vehicle_approval", usage.getUsageId().toString(), variables);
+        R<?> wfResult = workflowService.startProcess(
+                "vehicle_approval",
+                usage.getUsageId().toString(),
+                usage.getApplicantId(),
+                usage.getApplicantName(),
+                variables);
         if (wfResult.getCode() != 200) {
             throw new RuntimeException("用车工作流启动失败: " + wfResult.getMsg());
         }
 
         String instanceId = extractInstanceId(wfResult.getData());
         if (instanceId != null) {
-            usage.setProcessInstanceId(instanceId);
-            this.updateById(usage);
+            VehicleUsage update = new VehicleUsage();
+            update.setUsageId(usage.getUsageId());
+            update.setProcessInstanceId(instanceId);
+            this.updateById(update);
         }
     }
 
@@ -296,5 +309,20 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
             return instanceId != null ? String.valueOf(instanceId) : null;
         }
         return data instanceof String ? (String) data : null;
+    }
+
+    private void publishVehicleUsageSubmittedEvent(VehicleUsage usage, VehicleUsageSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("VEHICLE_USAGE_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(usage.getUsageId())
+                    .tenantId(usage.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new RuntimeException("用车提交流程事件发布失败", e);
+        }
     }
 }

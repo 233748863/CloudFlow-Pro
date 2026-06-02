@@ -5,21 +5,21 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
-import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
+import com.cloudflow.oa.event.PaymentRequestSubmittedEvent;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
 import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IPaymentRequestService;
-import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.common.redis.lock.DistributedLock;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,9 +29,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 浠樻鐢宠Service瀹炵幇绫? */
@@ -41,16 +39,16 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         implements IPaymentRequestService {
 
     @Autowired
-    private RemoteWorkflowService remoteWorkflowService;
-
-    @Autowired
     private BizPurchaseRequestMapper purchaseRequestMapper;
 
     @Autowired
     private IOaBudgetService oaBudgetService;
 
     @Autowired
-    private OaWorkflowFailureHelper workflowFailureHelper;
+    private OutboxPublisher outboxPublisher;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public Page<BizPaymentRequest> queryPage(Integer pageNum, Integer pageSize, String status, String paymentType, Long userId) {
@@ -116,66 +114,22 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         updatePurchasePaymentStatus(payment.getId(), "PENDING");
         boolean updated = updateById(payment);
         if (updated) {
-            startPaymentWorkflowAfterCommit(payment);
+            PaymentRequestSubmittedEvent event = new PaymentRequestSubmittedEvent();
+            event.setPaymentId(payment.getId());
+            event.setPaymentNo(payment.getPaymentNo());
+            event.setUserId(payment.getUserId());
+            event.setUserName(payment.getUserName());
+            event.setDeptName(payment.getDeptName());
+            event.setAmount(payment.getAmount());
+            event.setPaymentType(payment.getPaymentType());
+            event.setPayeeName(payment.getPayeeName());
+            event.setPayeeAccount(payment.getPayeeAccount());
+            event.setPayeeBank(payment.getPayeeBank());
+            event.setReason(payment.getReason());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishPaymentSubmittedEvent(payment, event);
         }
         return updated;
-    }
-
-    private void startPaymentWorkflowAfterCommit(BizPaymentRequest payment) {
-        OaTransactionHooks.afterCommit(() -> startPaymentWorkflow(payment));
-    }
-
-    private void startPaymentWorkflow(BizPaymentRequest payment) {
-        
-        // start workflow
-        try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
-            req.setProcessDefKey("payment_request");
-            req.setBusinessKey("PAYMENT_REQUEST:" + payment.getId());
-            // 娴佺▼鍙橀噺 - 鍖呭惈瀹屾暣涓氬姟瀛楁锛屼緵瀹℃壒浜哄湪瀹℃壒鍗＄墖鍜岃鎯呬腑鏌ョ湅
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("paymentId", payment.getId());
-            variables.put("paymentNo", payment.getPaymentNo());
-            variables.put("amount", payment.getAmount());
-            variables.put("userId", payment.getUserId());
-            variables.put("userName", payment.getUserName());
-            variables.put("paymentType", payment.getPaymentType());
-            variables.put("payeeName", payment.getPayeeName());
-            variables.put("payeeAccount", payment.getPayeeAccount());
-            variables.put("payeeBank", payment.getPayeeBank());
-            variables.put("reason", payment.getReason());
-            variables.put("deptName", payment.getDeptName());
-            // 鏄惧紡鍐欏叆鍥炶皟鍏冩暟鎹紝瀹℃壒瀹屾垚鍚庣敱 OA 鑷繁閫氳繃 Stream 鍥炲啓涓氬姟鐘舵€併€?            WorkflowCallbackConstants.applyCallbackMetadata(
-            WorkflowCallbackConstants.applyCallbackMetadata(
-                    variables,
-                    OaBusinessTypes.PAYMENT_REQUEST,
-                    payment.getId(),
-                    payment.getPaymentNo(),
-                    "workflow:stream:approval-callback:oa"
-            );
-            req.setVariables(variables);
-            
-            R<?> result = remoteWorkflowService.startProcess(req);
-            if (result != null && result.getCode() == 200 && result.getData() != null) {
-                // 浠庤繑鍥炵粨鏋滀腑鎻愬彇娴佺▼瀹炰緥ID
-                String instanceId = extractInstanceId(result.getData());
-                if (instanceId != null) {
-                    BizPaymentRequest update = new BizPaymentRequest();
-                    update.setId(payment.getId());
-                    update.setInstanceId(instanceId);
-                    updateById(update);
-                }
-                log.info("浠樻鐢宠 {} 宸ヤ綔娴佸惎鍔ㄦ垚鍔燂紝娴佺▼瀹炰緥ID: {}", payment.getPaymentNo(), instanceId);
-            } else {
-                log.warn("浠樻鐢宠 {} 宸ヤ綔娴佸惎鍔ㄨ繑鍥炲紓甯? {}", payment.getPaymentNo(), result != null ? result.getMsg() : "null");
-            }
-        } catch (Exception e) {
-            // 宸ヤ綔娴佸惎鍔ㄥけ璐ヤ笉褰卞搷鎻愪氦锛岀姸鎬佸凡鏇存柊涓篜ENDING
-            log.error("浠樻鐢宠 {} 鍚姩宸ヤ綔娴佸け璐ワ紝浣嗘彁浜ょ姸鎬佸凡鏇存柊", payment.getPaymentNo(), e);
-            workflowFailureHelper.handleWorkflowStartFailure(
-                    OaBusinessTypes.PAYMENT_REQUEST, payment.getId(), payment.getPaymentNo(),
-                    payment.getUserName(), payment.getUserId(), e);
-        }
     }
 
     @Override
@@ -224,20 +178,19 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
      * @param data 宸ヤ綔娴佽繑鍥炵殑鏁版嵁
      * @return 娴佺▼瀹炰緥ID锛屾彁鍙栧け璐ヨ繑鍥瀗ull
      */
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> dataMap = (Map<String, Object>) data;
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
+    private void publishPaymentSubmittedEvent(BizPaymentRequest payment, PaymentRequestSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("PAYMENT_REQUEST_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(payment.getId())
+                    .tenantId(payment.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("付款申请提交事件发布失败, paymentId={}, error={}", payment.getId(), e.getMessage());
         }
-        if (data instanceof String) {
-            return (String) data;
-        }
-        return null;
     }
 
     private void normalizePaymentAttachment(BizPaymentRequest payment) {

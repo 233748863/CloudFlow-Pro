@@ -5,26 +5,33 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmRenewal;
-import com.cloudflow.crm.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.crm.domain.dto.InternalWorkflowStartDTO;
+import com.cloudflow.crm.event.CrmRenewalSubmittedEvent;
 import com.cloudflow.crm.mapper.CrmRenewalMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmRenewalService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
 import com.cloudflow.crm.service.remote.RemoteWorkflowService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, CrmRenewal>
@@ -37,6 +44,8 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
     private final ICrmCustomerService crmCustomerService;
     private final RemoteOaService remoteOaService;
     private final com.cloudflow.common.redis.core.SysDictHelper sysDictHelper;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<CrmRenewal> queryPage(CrmRenewal query, PageQuery pageQuery) {
@@ -121,6 +130,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         return updated;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean submitRenewal(Long renewalId) {
         CrmRenewal renewal = getAccessibleRenewal(renewalId);
@@ -133,11 +143,27 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         renewal.setUpdateBy(currentUserName());
         renewal.setUpdateTime(now());
 
-        WorkflowProcessStartDTO dto = new WorkflowProcessStartDTO();
+        boolean updated = updateById(renewal);
+        if (!updated) {
+            return false;
+        }
+
+        CrmRenewalSubmittedEvent event = new CrmRenewalSubmittedEvent();
+        event.setRenewalId(renewalId);
+        event.setSubmittedAt(now());
+        publishRenewalSubmittedEvent(renewal, event);
+        crmCustomerService.refreshHealth(renewal.getCustomerId());
+        return true;
+    }
+
+    public void startRenewalWorkflow(CrmRenewal renewal) {
+        InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
         dto.setProcessDefKey("customer_renewal_review");
-        dto.setBusinessKey("CRM_RENEWAL:" + renewalId);
+        dto.setBusinessKey("CRM_RENEWAL:" + renewal.getRenewalId());
+        dto.setStartUserId(renewal.getOwnerId());
+        dto.setStartUserName(renewal.getOwnerName());
         Map<String, Object> variables = new HashMap<>();
-        variables.put("renewalId", renewalId);
+        variables.put("renewalId", renewal.getRenewalId());
         variables.put("renewalNo", renewal.getRenewalNo());
         variables.put("renewalName", renewal.getRenewalName());
         variables.put("customerId", renewal.getCustomerId());
@@ -147,25 +173,25 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         WorkflowCallbackConstants.applyCallbackMetadata(
                 variables,
                 CrmBusinessTypes.CRM_RENEWAL,
-                renewalId,
+                renewal.getRenewalId(),
                 renewal.getRenewalNo(),
                 "workflow:stream:approval-callback:crm"
         );
         dto.setVariables(variables);
 
         try {
-            R<?> result = remoteWorkflowService.startProcess(dto);
+            R<?> result = remoteWorkflowService.startProcessInternal(dto);
             if (result != null && result.isSuccess() && result.getData() != null) {
-                renewal.setInstanceId(extractInstanceId(result.getData()));
+                CrmRenewal update = new CrmRenewal();
+                update.setRenewalId(renewal.getRenewalId());
+                update.setInstanceId(extractInstanceId(result.getData()));
+                update.setUpdateBy(StringUtils.hasText(renewal.getOwnerName()) ? renewal.getOwnerName() : "event-consumer");
+                update.setUpdateTime(now());
+                updateById(update);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.warn("启动 CRM 续约流程失败: renewalId={}", renewal.getRenewalId(), e);
         }
-
-        boolean updated = updateById(renewal);
-        if (updated) {
-            crmCustomerService.refreshHealth(renewal.getCustomerId());
-        }
-        return updated;
     }
 
     private void validate(CrmRenewal renewal) {
@@ -223,5 +249,20 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
             return instanceId != null ? String.valueOf(instanceId) : null;
         }
         return data != null ? String.valueOf(data) : null;
+    }
+
+    private void publishRenewalSubmittedEvent(CrmRenewal renewal, CrmRenewalSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("CRM_RENEWAL_SUBMITTED")
+                    .sourceModule("cloudflow-crm")
+                    .sourceId(renewal.getRenewalId())
+                    .tenantId(renewal.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new IllegalStateException("CRM续约提交流程事件发布失败", e);
+        }
     }
 }

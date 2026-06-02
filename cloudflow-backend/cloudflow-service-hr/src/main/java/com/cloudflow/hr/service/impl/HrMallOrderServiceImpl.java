@@ -7,6 +7,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -16,6 +18,7 @@ import com.cloudflow.hr.domain.entity.HrMallItem;
 import com.cloudflow.hr.domain.entity.HrMallOrder;
 import com.cloudflow.hr.domain.entity.HrMallOrderItem;
 import com.cloudflow.hr.domain.entity.HrPointAccount;
+import com.cloudflow.hr.event.HrMallOrderSubmittedEvent;
 import com.cloudflow.hr.domain.vo.benefit.HrMallOrderItemVO;
 import com.cloudflow.hr.domain.vo.benefit.HrMallOrderVO;
 import com.cloudflow.hr.exception.HrBusinessException;
@@ -56,6 +59,7 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
     private final HrTypedCrudService crudService;
     private final WorkflowServiceClient workflowServiceClient;
     private final ObjectMapper objectMapper;
+    private final OutboxPublisher outboxPublisher;
 
     @Value("${cloudflow.hr.mall.order-process-key:wf_hr_mall_order}")
     private String mallOrderProcessKey;
@@ -126,7 +130,11 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
                     .set("status", "APPROVING")
                     .set("update_time", LocalDateTime.now());
             orderMapper.update(null, uw);
-            HrTransactionHooks.afterCommit(() -> startMallOrderWorkflow(order.getId(), order.getOrderNo(), totalPoints, employeeId));
+            HrMallOrderSubmittedEvent event = new HrMallOrderSubmittedEvent();
+            event.setOrderId(order.getId());
+            event.setOrderNo(order.getOrderNo());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishMallOrderSubmittedEvent(order, event);
         } else {
             UpdateWrapper<HrMallOrder> uw = new UpdateWrapper<>();
             uw.eq("id", order.getId()).eq("tenant_id", currentTenantId())
@@ -240,19 +248,19 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
         orderMapper.update(null, uw);
     }
 
-    private void startMallOrderWorkflow(Long orderId, String orderNo, int totalPoints, Long employeeId) {
+    public void startMallOrderWorkflow(HrMallOrder order) {
         ProcessStartDTO processStartDTO = new ProcessStartDTO();
-        processStartDTO.setTenantId(currentTenantId());
+        processStartDTO.setTenantId(order.getTenantId());
         processStartDTO.setProcessDefinitionKey(mallOrderProcessKey);
         processStartDTO.setBusinessType("HR_MALL_ORDER");
-        processStartDTO.setBusinessId(orderId);
-        processStartDTO.setBusinessNo(orderNo);
-        processStartDTO.setProcessTitle("积分商城兑换-" + orderNo);
-        processStartDTO.setStartUserId(UserContext.getUserId());
+        processStartDTO.setBusinessId(order.getId());
+        processStartDTO.setBusinessNo(order.getOrderNo());
+        processStartDTO.setProcessTitle("积分商城兑换-" + order.getOrderNo());
+        processStartDTO.setStartUserId(order.getEmployeeId());
         Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("orderId", orderId);
-        vars.put("totalPoints", totalPoints);
-        vars.put("employeeId", employeeId);
+        vars.put("orderId", order.getId());
+        vars.put("totalPoints", order.getTotalPoints());
+        vars.put("employeeId", order.getEmployeeId());
         processStartDTO.setVariables(vars);
         R<String> response = workflowServiceClient.startProcess(processStartDTO);
         if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
@@ -260,7 +268,7 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
             throw new HrBusinessException("WORKFLOW_START_FAILED", "积分商城订单审批启动失败：" + msg);
         }
         UpdateWrapper<HrMallOrder> uw = new UpdateWrapper<>();
-        uw.eq("id", orderId).eq("tenant_id", currentTenantId())
+        uw.eq("id", order.getId()).eq("tenant_id", order.getTenantId())
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         orderMapper.update(null, uw);
@@ -290,5 +298,20 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
 
     private String currentUserName() {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+    }
+
+    private void publishMallOrderSubmittedEvent(HrMallOrder order, HrMallOrderSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("HR_MALL_ORDER_SUBMITTED")
+                    .sourceModule("cloudflow-hr")
+                    .sourceId(order.getId())
+                    .tenantId(order.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new HrBusinessException("WORKFLOW_EVENT_PUBLISH_FAILED", "积分商城订单流程事件发布失败");
+        }
     }
 }

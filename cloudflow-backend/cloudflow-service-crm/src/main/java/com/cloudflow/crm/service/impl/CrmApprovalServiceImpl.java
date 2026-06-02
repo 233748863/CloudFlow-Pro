@@ -2,6 +2,8 @@ package com.cloudflow.crm.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.constant.CrmConstants;
@@ -9,7 +11,8 @@ import com.cloudflow.crm.domain.CrmApproval;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.CrmReceivable;
-import com.cloudflow.crm.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.crm.domain.dto.InternalWorkflowStartDTO;
+import com.cloudflow.crm.event.CrmApprovalSubmittedEvent;
 import com.cloudflow.crm.mapper.CrmApprovalMapper;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
@@ -22,8 +25,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -46,6 +47,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
     private final CrmReceivableMapper receivableMapper;
     private final RemoteWorkflowService remoteWorkflowService;
     private final ObjectMapper objectMapper;
+    private final OutboxPublisher outboxPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -65,7 +67,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 customer.getCustomerName(),
                 payload,
                 remark);
-        startWorkflowAfterCommit(approval, "customer_claim_review");
+        publishApprovalSubmittedEvent(approval, "customer_claim_review");
         return approval.getApprovalId();
     }
 
@@ -90,7 +92,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 customer.getCustomerName(),
                 payload,
                 remark);
-        startWorkflowAfterCommit(approval, "customer_level_change");
+        publishApprovalSubmittedEvent(approval, "customer_level_change");
         return approval.getApprovalId();
     }
 
@@ -116,7 +118,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 opportunity.getOpportunityName(),
                 payload,
                 lostReason);
-        startWorkflowAfterCommit(approval, "opportunity_downgrade_review");
+        publishApprovalSubmittedEvent(approval, "opportunity_downgrade_review");
         return approval.getApprovalId();
     }
 
@@ -152,7 +154,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 receivable.getReceivableName(),
                 payload,
                 reason);
-        startWorkflowAfterCommit(approval, "crm_refund_review");
+        publishApprovalSubmittedEvent(approval, "crm_refund_review");
         return approval.getApprovalId();
     }
 
@@ -191,10 +193,12 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
         return approval;
     }
 
-    private void startWorkflow(CrmApproval approval, String processDefKey) {
-        WorkflowProcessStartDTO dto = new WorkflowProcessStartDTO();
+    public void startWorkflow(CrmApproval approval, String processDefKey) {
+        InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
         dto.setProcessDefKey(processDefKey);
         dto.setBusinessKey(approval.getBusinessType() + ":" + approval.getApprovalId());
+        dto.setStartUserId(approval.getApplicantId());
+        dto.setStartUserName(approval.getApplicantName());
         Map<String, Object> variables = new HashMap<>();
         variables.put("approvalId", approval.getApprovalId());
         variables.put("approvalNo", approval.getApprovalNo());
@@ -207,10 +211,14 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 "workflow:stream:approval-callback:crm");
         dto.setVariables(variables);
         try {
-            R<?> result = remoteWorkflowService.startProcess(dto);
+            R<?> result = remoteWorkflowService.startProcessInternal(dto);
             if (result != null && result.isSuccess() && result.getData() != null) {
-                approval.setInstanceId(extractInstanceId(result.getData()));
-                approvalMapper.updateById(approval);
+                CrmApproval update = new CrmApproval();
+                update.setApprovalId(approval.getApprovalId());
+                update.setInstanceId(extractInstanceId(result.getData()));
+                update.setUpdateBy(approval.getApplicantName());
+                update.setUpdateTime(LocalDateTime.now());
+                approvalMapper.updateById(update);
             }
         } catch (Exception ex) {
             log.warn("启动 CRM 审批流程失败: approvalId={}, processDefKey={}",
@@ -218,17 +226,23 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
         }
     }
 
-    private void startWorkflowAfterCommit(CrmApproval approval, String processDefKey) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            startWorkflow(approval, processDefKey);
-            return;
+    private void publishApprovalSubmittedEvent(CrmApproval approval, String processDefKey) {
+        CrmApprovalSubmittedEvent event = new CrmApprovalSubmittedEvent();
+        event.setApprovalId(approval.getApprovalId());
+        event.setProcessDefKey(processDefKey);
+        event.setSubmittedAt(LocalDateTime.now());
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("CRM_APPROVAL_SUBMITTED")
+                    .sourceModule("cloudflow-crm")
+                    .sourceId(approval.getApprovalId())
+                    .tenantId(approval.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new IllegalStateException("CRM审批提交流程事件发布失败", e);
         }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                startWorkflow(approval, processDefKey);
-            }
-        });
     }
 
     private String extractInstanceId(Object data) {

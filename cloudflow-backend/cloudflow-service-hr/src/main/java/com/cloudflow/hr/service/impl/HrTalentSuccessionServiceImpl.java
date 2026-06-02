@@ -7,6 +7,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -15,6 +17,7 @@ import com.cloudflow.hr.domain.dto.talent.HrTalentSuccessionPlanQueryDTO;
 import com.cloudflow.hr.domain.dto.talent.HrTalentSuccessorDTO;
 import com.cloudflow.hr.domain.entity.HrTalentSuccessionPlan;
 import com.cloudflow.hr.domain.entity.HrTalentSuccessor;
+import com.cloudflow.hr.event.HrTalentSuccessionSubmittedEvent;
 import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanListVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessorVO;
@@ -48,6 +51,7 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
     private final HrTypedCrudService crudService;
     private final ObjectMapper objectMapper;
     private final WorkflowServiceClient workflowServiceClient;
+    private final OutboxPublisher outboxPublisher;
 
     @Value("${cloudflow.hr.talent.succession-process-key:wf_hr_talent_succession}")
     private String successionProcessKey;
@@ -147,25 +151,28 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
         uw.eq("id", planId).eq("tenant_id", currentTenantId())
                 .set("update_time", LocalDateTime.now());
         planMapper.update(null, uw);
-        HrTransactionHooks.afterCommit(() -> startTalentSuccessionWorkflow(
-                planId, plan.getPlanNo(), plan.getPlanName(), plan.getPositionId()));
+        HrTalentSuccessionSubmittedEvent event = new HrTalentSuccessionSubmittedEvent();
+        event.setPlanId(planId);
+        event.setPlanNo(plan.getPlanNo());
+        event.setSubmittedAt(LocalDateTime.now());
+        publishTalentSuccessionSubmittedEvent(plan, event);
         log.info("继任计划发布已提交，planId={}", planId);
         return null;
     }
 
-    private void startTalentSuccessionWorkflow(Long planId, String planNo, String planName, Long positionId) {
+    public void startTalentSuccessionWorkflow(HrTalentSuccessionPlan plan) {
         ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(currentTenantId());
+        dto.setTenantId(plan.getTenantId());
         dto.setProcessDefinitionKey(successionProcessKey);
         dto.setBusinessType("HR_TALENT_SUCCESSION");
-        dto.setBusinessId(planId);
-        dto.setBusinessNo(planNo);
-        dto.setProcessTitle("继任计划发布-" + planName);
-        dto.setStartUserId(UserContext.getUserId());
+        dto.setBusinessId(plan.getId());
+        dto.setBusinessNo(plan.getPlanNo());
+        dto.setProcessTitle("继任计划发布-" + plan.getPlanName());
+        dto.setStartUserId(plan.getOwnerId());
         Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("planId", planId);
-        vars.put("planName", planName);
-        vars.put("positionId", positionId);
+        vars.put("planId", plan.getId());
+        vars.put("planName", plan.getPlanName());
+        vars.put("positionId", plan.getPositionId());
         dto.setVariables(vars);
         R<String> response = workflowServiceClient.startProcess(dto);
         if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
@@ -173,11 +180,11 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
             throw new HrBusinessException("WORKFLOW_START_FAILED", "继任计划发布流程启动失败：" + msg);
         }
         UpdateWrapper<HrTalentSuccessionPlan> uw = new UpdateWrapper<>();
-        uw.eq("id", planId).eq("tenant_id", currentTenantId())
+        uw.eq("id", plan.getId()).eq("tenant_id", plan.getTenantId())
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         planMapper.update(null, uw);
-        log.info("继任计划发布已提交，planId={}, processInstanceId={}", planId, response.getData());
+        log.info("继任计划发布已提交，planId={}, processInstanceId={}", plan.getId(), response.getData());
     }
 
     private long currentTenantId() {
@@ -191,5 +198,20 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
 
     private String currentUserName() {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+    }
+
+    private void publishTalentSuccessionSubmittedEvent(HrTalentSuccessionPlan plan, HrTalentSuccessionSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("HR_TALENT_SUCCESSION_SUBMITTED")
+                    .sourceModule("cloudflow-hr")
+                    .sourceId(plan.getId())
+                    .tenantId(plan.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new HrBusinessException("WORKFLOW_EVENT_PUBLISH_FAILED", "继任计划流程事件发布失败");
+        }
     }
 }

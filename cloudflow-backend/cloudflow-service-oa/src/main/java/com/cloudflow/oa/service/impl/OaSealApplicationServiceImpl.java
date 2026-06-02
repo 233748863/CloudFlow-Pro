@@ -9,6 +9,8 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaContract;
@@ -16,7 +18,9 @@ import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaSeal;
 import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.domain.OaSealHandoverLog;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.event.SealApplicationSubmittedEvent;
 import com.cloudflow.oa.mapper.OaContractMapper;
 import com.cloudflow.oa.mapper.OaBorrowReminderLogMapper;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
@@ -31,6 +35,7 @@ import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.lock.DistributedLock;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -61,6 +66,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
     private final OaWorkflowFailureHelper workflowFailureHelper;
     private final IOaTraceEventService oaTraceEventService;
     private final ISysNoticeService sysNoticeService;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<OaSealApplication> queryPage(OaSealApplication query, PageQuery pageQuery) {
@@ -205,18 +212,26 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(application);
         if (updated) {
-            OaTransactionHooks.afterCommit(() -> startSealApplicationWorkflow(application));
+            SealApplicationSubmittedEvent event = new SealApplicationSubmittedEvent();
+            event.setApplicationId(application.getId());
+            event.setApplicationNo(application.getApplicationNo());
+            event.setUserId(application.getUserId());
+            event.setUserName(application.getUserName());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishSealApplicationSubmittedEvent(application, event);
         }
         updateLinkedContractStatus(application, OaContractConstants.CONTRACT_STATUS_SEALING);
         traceSeal(application, "SEAL_APPLICATION_SUBMITTED", "用印提交审批", application.getApplicationNo());
         return updated;
     }
 
-    private void startSealApplicationWorkflow(OaSealApplication application) {
+    public void startSealApplicationWorkflow(OaSealApplication application) {
         try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
             req.setProcessDefKey("seal_application");
             req.setBusinessKey("SEAL_APPLICATION:" + application.getId());
+            req.setStartUserId(application.getUserId());
+            req.setStartUserName(application.getUserName());
             Map<String, Object> variables = new HashMap<>();
             variables.put("applicationId", application.getId());
             variables.put("applicationNo", application.getApplicationNo());
@@ -239,14 +254,14 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
                     "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcess(req);
+            R<?> result = remoteWorkflowService.startProcessInternal(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (StringUtils.hasText(instanceId)) {
                     OaSealApplication update = new OaSealApplication();
                     update.setId(application.getId());
                     update.setInstanceId(instanceId);
-                    update.setUpdateBy(UserContext.getUserName());
+                    update.setUpdateBy("event-consumer");
                     update.setUpdateTime(LocalDateTime.now());
                     updateById(update);
                 }
@@ -566,6 +581,21 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         contract.setUpdateBy(StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "seal-service");
         contract.setUpdateTime(LocalDateTime.now());
         contractMapper.updateById(contract);
+    }
+
+    private void publishSealApplicationSubmittedEvent(OaSealApplication application, SealApplicationSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("SEAL_APPLICATION_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(application.getId())
+                    .tenantId(application.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("用印申请提交事件发布失败, applicationId={}, error={}", application.getId(), e.getMessage());
+        }
     }
 
     private void traceSeal(OaSealApplication application, String eventType, String title, String content) {

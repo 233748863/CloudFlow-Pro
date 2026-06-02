@@ -28,6 +28,9 @@ public interface IWfInstanceService {
      */
     R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables);
 
+    R<?> startProcessInternal(String processDefKey, String businessKey, Long startUserId,
+                              String startUserName, Map<String, Object> variables);
+
     /**
      * 撤回流程
      *

@@ -91,7 +91,8 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     @Autowired
     private OutboxPublisher outboxPublisher;
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public Page<BizExpenseClaim> queryPage(Integer pageNum, Integer pageSize, String status, String category, Long userId) {
@@ -219,9 +220,6 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         claim.setStatus(newStatus.name());
         
         boolean updated = updateById(claim);
-        if (updated) {
-            OaTransactionHooks.afterCommit(() -> startExpenseClaimWorkflow(claim, exceedResult));
-        }
 
         // M1-7: 发布事件到 Outbox
         if (updated) {
@@ -232,9 +230,12 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             event.setUserName(claim.getUserName());
             event.setTotalAmount(claim.getTotalAmount());
             event.setCategory(claim.getCategory());
+            event.setDescription(claim.getDescription());
             event.setDeptName(claim.getDeptName());
             event.setExceededStandard(claim.getExceededStandard() != null && claim.getExceededStandard() == 1);
+            event.setExceededAmount(exceedResult != null ? exceedResult.getTotalExceededAmount() : BigDecimal.ZERO);
             event.setBudgetExceeded(claim.getBudgetExceeded() != null && claim.getBudgetExceeded() == 1);
+            event.setBudgetExceededAmount(claim.getBudgetExceededAmount() != null ? claim.getBudgetExceededAmount() : BigDecimal.ZERO);
             event.setSubmittedAt(LocalDateTime.now());
 
             try {
@@ -242,7 +243,8 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                         .eventType("EXPENSE_CLAIM_SUBMITTED")
                         .sourceModule("cloudflow-oa")
                         .sourceId(claim.getId())
-                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .tenantId(claim.getTenantId())
+                        .payload(objectMapper.writeValueAsString(event))
                         .build();
                 outboxPublisher.publish(envelope);
             } catch (Exception e) {
@@ -251,62 +253,6 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         }
 
         return updated;
-    }
-
-    private void startExpenseClaimWorkflow(BizExpenseClaim claim, OaExpenseExceedResultVO exceedResult) {
-        try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
-            req.setProcessDefKey("expense_claim");
-            req.setBusinessKey("EXPENSE_CLAIM:" + claim.getId());
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("claimId", claim.getId());
-            variables.put("claimNo", claim.getClaimNo());
-            variables.put("totalAmount", claim.getTotalAmount());
-            variables.put("userId", claim.getUserId());
-            variables.put("userName", claim.getUserName());
-            variables.put("category", claim.getCategory());
-            variables.put("description", claim.getDescription());
-            variables.put("deptName", claim.getDeptName());
-            if (exceedResult != null) {
-                variables.put("exceededStandard", exceedResult.isExceeded());
-                variables.put("exceededAmount", exceedResult.getTotalExceededAmount());
-            } else {
-                variables.put("exceededStandard", false);
-            }
-            boolean budgetExceeded = claim.getBudgetExceeded() != null && claim.getBudgetExceeded() == 1;
-            variables.put("budgetExceeded", budgetExceeded);
-            variables.put("budgetExceededAmount", claim.getBudgetExceededAmount() != null
-                    ? claim.getBudgetExceededAmount() : BigDecimal.ZERO);
-            WorkflowCallbackConstants.applyCallbackMetadata(
-                    variables,
-                    OaBusinessTypes.EXPENSE_CLAIM,
-                    claim.getId(),
-                    claim.getClaimNo(),
-                    "workflow:stream:approval-callback:oa"
-            );
-            req.setVariables(variables);
-
-            R<?> result = remoteWorkflowService.startProcess(req);
-            if (result != null && result.getCode() == 200 && result.getData() != null) {
-                String instanceId = extractInstanceId(result.getData());
-                if (instanceId != null) {
-                    BizExpenseClaim update = new BizExpenseClaim();
-                    update.setId(claim.getId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateTime(LocalDateTime.now());
-                    update.setUpdateBy(UserContext.getUserName());
-                    updateById(update);
-                }
-                log.info("报销申请 {} 工作流启动成功，流程实例ID: {}", claim.getClaimNo(), instanceId);
-            } else {
-                log.warn("报销申请 {} 工作流启动返回异常: {}", claim.getClaimNo(), result != null ? result.getMsg() : "null");
-            }
-        } catch (Exception e) {
-            log.error("报销申请 {} 启动工作流失败，但提交状态已更新", claim.getClaimNo(), e);
-            workflowFailureHelper.handleWorkflowStartFailure(
-                    OaBusinessTypes.EXPENSE_CLAIM, claim.getId(), claim.getClaimNo(),
-                    claim.getUserName(), claim.getUserId(), e);
-        }
     }
 
     @Override
@@ -344,7 +290,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                         .eventType("EXPENSE_CLAIM_PAID")
                         .sourceModule("cloudflow-oa")
                         .sourceId(claim.getId())
-                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .payload(objectMapper.writeValueAsString(event))
                         .build();
                 outboxPublisher.publish(envelope);
             } catch (Exception e) {
@@ -516,7 +462,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         List<OaExpenseExceedDetailVO> details = result.getDetails();
         if (exceeded && details != null && !details.isEmpty()) {
             try {
-                claim.setExceededDetail(OBJECT_MAPPER.writeValueAsString(details));
+                claim.setExceededDetail(objectMapper.writeValueAsString(details));
             } catch (Exception e) {
                 log.warn("超标明细 JSON 序列化失败, claimId={}", claim.getId(), e);
             }

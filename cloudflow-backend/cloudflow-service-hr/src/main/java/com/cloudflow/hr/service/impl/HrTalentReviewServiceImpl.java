@@ -8,6 +8,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -20,6 +22,7 @@ import com.cloudflow.hr.domain.entity.HrPerformanceResult;
 import com.cloudflow.hr.domain.entity.HrTalentCalibrationSession;
 import com.cloudflow.hr.domain.entity.HrTalentReview;
 import com.cloudflow.hr.domain.entity.HrTalentReviewParticipant;
+import com.cloudflow.hr.event.HrTalentReviewSubmittedEvent;
 import com.cloudflow.hr.domain.vo.talent.HrTalentCalibrationSessionVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentParticipantVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentReviewListVO;
@@ -63,6 +66,7 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
     private final HrTypedCrudService crudService;
     private final ObjectMapper objectMapper;
     private final WorkflowServiceClient workflowServiceClient;
+    private final OutboxPublisher outboxPublisher;
 
     @Value("${cloudflow.hr.talent.review-process-key:wf_hr_talent_review}")
     private String reviewProcessKey;
@@ -233,8 +237,11 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
                 .set("status", "CALIBRATING")
                 .set("update_time", LocalDateTime.now());
         reviewMapper.update(null, uw);
-        HrTransactionHooks.afterCommit(() -> startTalentReviewWorkflow(
-                reviewId, review.getReviewNo(), review.getReviewName(), review.getScopeType()));
+        HrTalentReviewSubmittedEvent event = new HrTalentReviewSubmittedEvent();
+        event.setReviewId(reviewId);
+        event.setReviewNo(review.getReviewNo());
+        event.setSubmittedAt(LocalDateTime.now());
+        publishTalentReviewSubmittedEvent(review, event);
         log.info("人才盘点发布已提交，reviewId={}", reviewId);
         return null;
     }
@@ -291,19 +298,19 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
                 MapConverters.toMap(dto, objectMapper));
     }
 
-    private void startTalentReviewWorkflow(Long reviewId, String reviewNo, String reviewName, String scopeType) {
+    public void startTalentReviewWorkflow(HrTalentReview review) {
         ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(currentTenantId());
+        dto.setTenantId(review.getTenantId());
         dto.setProcessDefinitionKey(reviewProcessKey);
         dto.setBusinessType("HR_TALENT_REVIEW");
-        dto.setBusinessId(reviewId);
-        dto.setBusinessNo(reviewNo);
-        dto.setProcessTitle("人才盘点发布-" + reviewName);
-        dto.setStartUserId(UserContext.getUserId());
+        dto.setBusinessId(review.getId());
+        dto.setBusinessNo(review.getReviewNo());
+        dto.setProcessTitle("人才盘点发布-" + review.getReviewName());
+        dto.setStartUserId(review.getOwnerId());
         Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("reviewId", reviewId);
-        vars.put("reviewName", reviewName);
-        vars.put("scopeType", scopeType);
+        vars.put("reviewId", review.getId());
+        vars.put("reviewName", review.getReviewName());
+        vars.put("scopeType", review.getScopeType());
         dto.setVariables(vars);
         R<String> response = workflowServiceClient.startProcess(dto);
         if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
@@ -311,11 +318,11 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
             throw new HrBusinessException("WORKFLOW_START_FAILED", "盘点发布流程启动失败：" + msg);
         }
         UpdateWrapper<HrTalentReview> uw = new UpdateWrapper<>();
-        uw.eq("id", reviewId).eq("tenant_id", currentTenantId())
+        uw.eq("id", review.getId()).eq("tenant_id", review.getTenantId())
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         reviewMapper.update(null, uw);
-        log.info("人才盘点发布已提交，reviewId={}, processInstanceId={}", reviewId, response.getData());
+        log.info("人才盘点发布已提交，reviewId={}, processInstanceId={}", review.getId(), response.getData());
     }
 
     private void applyParticipantPayload(HrTalentReviewParticipant target, HrTalentParticipantDTO dto) {
@@ -420,5 +427,20 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
 
     private String currentUserName() {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+    }
+
+    private void publishTalentReviewSubmittedEvent(HrTalentReview review, HrTalentReviewSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("HR_TALENT_REVIEW_SUBMITTED")
+                    .sourceModule("cloudflow-hr")
+                    .sourceId(review.getId())
+                    .tenantId(review.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new HrBusinessException("WORKFLOW_EVENT_PUBLISH_FAILED", "人才盘点流程事件发布失败");
+        }
     }
 }

@@ -4,18 +4,22 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.domain.dto.HrContractSignaturePayload;
 import com.cloudflow.hr.domain.entity.HrContractSignature;
 import com.cloudflow.hr.domain.entity.HrEmployeeContract;
+import com.cloudflow.hr.event.HrContractSignatureSubmittedEvent;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrContractSignatureMapper;
 import com.cloudflow.hr.mapper.HrEmployeeContractMapper;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +43,8 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
     private final HrEmployeeContractMapper employeeContractMapper;
     private final HrEssSupport essSupport;
     private final WorkflowServiceClient workflowServiceClient;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Value("${cloudflow.hr.contract.sign-process-key:wf_hr_contract_sign}")
     private String processDefinitionKey;
@@ -81,9 +87,11 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
                 .set("sign_status", "SIGNING")
                 .set("update_time", LocalDateTime.now());
         employeeContractMapper.update(null, contractWrapper);
-
-        HrTransactionHooks.afterCommit(() -> startContractSignatureWorkflow(
-                signature.getId(), contractId, tenantId, employeeId, signature.getSignMethod(), contract.getContractType()));
+        HrContractSignatureSubmittedEvent event = new HrContractSignatureSubmittedEvent();
+        event.setSignatureId(signature.getId());
+        event.setContractId(contractId);
+        event.setSubmittedAt(LocalDateTime.now());
+        publishContractSignatureSubmittedEvent(signature, event);
         log.info("合同签署申请已发起，contractId: {}, signatureId: {}", contractId, signature.getId());
         return signature.getId();
     }
@@ -154,21 +162,21 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
         log.info("合同签署完成回写，signatureId: {}, contractId: {}", id, signature.getContractId());
     }
 
-    private void startContractSignatureWorkflow(Long signatureId, Long contractId, Long tenantId,
-                                                Long employeeId, String signMethod, String contractType) {
+    public void startContractSignatureWorkflow(HrContractSignature signature) {
+        HrEmployeeContract contract = employeeContractMapper.selectById(signature.getContractId());
         ProcessStartDTO dto = new ProcessStartDTO();
-        dto.setTenantId(tenantId);
+        dto.setTenantId(signature.getTenantId());
         dto.setProcessDefinitionKey(processDefinitionKey);
         dto.setBusinessType("HR_CONTRACT_SIGN");
-        dto.setBusinessId(signatureId);
-        dto.setBusinessNo(String.valueOf(contractId));
-        dto.setProcessTitle("员工电子合同签署-合同 " + contractId);
-        dto.setStartUserId(UserContext.getUserId());
+        dto.setBusinessId(signature.getId());
+        dto.setBusinessNo(String.valueOf(signature.getContractId()));
+        dto.setProcessTitle("员工电子合同签署-合同 " + signature.getContractId());
+        dto.setStartUserId(signature.getSignerId());
         Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("contractId", contractId);
-        vars.put("contractType", contractType);
-        vars.put("employeeId", employeeId);
-        vars.put("signMethod", signMethod);
+        vars.put("contractId", signature.getContractId());
+        vars.put("contractType", contract == null ? null : contract.getContractType());
+        vars.put("employeeId", signature.getSignerId());
+        vars.put("signMethod", signature.getSignMethod());
         dto.setVariables(vars);
 
         R<String> response = workflowServiceClient.startProcess(dto);
@@ -177,13 +185,13 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
             throw new HrBusinessException("WORKFLOW_START_FAILED", "合同签署流程启动失败：" + msg);
         }
         UpdateWrapper<HrContractSignature> wrapper = new UpdateWrapper<>();
-        wrapper.eq("id", signatureId)
-                .eq("tenant_id", tenantId)
+        wrapper.eq("id", signature.getId())
+                .eq("tenant_id", signature.getTenantId())
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         contractSignatureMapper.update(null, wrapper);
         log.info("合同签署申请已发起，contractId: {}, signatureId: {}, processInstanceId: {}",
-                contractId, signatureId, response.getData());
+                signature.getContractId(), signature.getId(), response.getData());
     }
 
     private HrContractSignature loadSignature(Long id) {
@@ -208,5 +216,20 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
 
     private String currentUserName() {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+    }
+
+    private void publishContractSignatureSubmittedEvent(HrContractSignature signature, HrContractSignatureSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("HR_CONTRACT_SIGNATURE_SUBMITTED")
+                    .sourceModule("cloudflow-hr")
+                    .sourceId(signature.getId())
+                    .tenantId(signature.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new HrBusinessException("WORKFLOW_EVENT_PUBLISH_FAILED", "合同签署流程事件发布失败");
+        }
     }
 }

@@ -6,6 +6,8 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.constant.CrmConstants;
@@ -13,7 +15,8 @@ import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmProduct;
 import com.cloudflow.crm.domain.CrmQuote;
 import com.cloudflow.crm.domain.CrmQuoteLine;
-import com.cloudflow.crm.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.crm.domain.dto.InternalWorkflowStartDTO;
+import com.cloudflow.crm.event.CrmQuoteSubmittedEvent;
 import com.cloudflow.crm.mapper.CrmProductMapper;
 import com.cloudflow.crm.mapper.CrmQuoteLineMapper;
 import com.cloudflow.crm.mapper.CrmQuoteMapper;
@@ -22,7 +25,9 @@ import com.cloudflow.crm.service.ICrmQuoteService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
 import com.cloudflow.crm.service.remote.RemoteWorkflowService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -33,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQuote>
@@ -46,6 +52,8 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     private final RemoteOaService remoteOaService;
     private final CrmProductMapper productMapper;
     private final CrmQuoteLineMapper quoteLineMapper;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<CrmQuote> queryPage(CrmQuote query, PageQuery pageQuery) {
@@ -132,6 +140,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         return true;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean submitQuote(Long quoteId) {
         CrmQuote quote = getAccessibleQuote(quoteId);
@@ -144,11 +153,26 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         quote.setUpdateBy(currentUserName());
         quote.setUpdateTime(now());
 
-        WorkflowProcessStartDTO dto = new WorkflowProcessStartDTO();
+        boolean updated = updateById(quote);
+        if (!updated) {
+            return false;
+        }
+
+        CrmQuoteSubmittedEvent event = new CrmQuoteSubmittedEvent();
+        event.setQuoteId(quoteId);
+        event.setSubmittedAt(now());
+        publishQuoteSubmittedEvent(quote, event);
+        return true;
+    }
+
+    public void startQuoteWorkflow(CrmQuote quote) {
+        InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
         dto.setProcessDefKey("quote_approval");
-        dto.setBusinessKey("CRM_QUOTE:" + quoteId);
+        dto.setBusinessKey("CRM_QUOTE:" + quote.getQuoteId());
+        dto.setStartUserId(quote.getOwnerId());
+        dto.setStartUserName(quote.getOwnerName());
         Map<String, Object> variables = new HashMap<>();
-        variables.put("quoteId", quoteId);
+        variables.put("quoteId", quote.getQuoteId());
         variables.put("quoteNo", quote.getQuoteNo());
         variables.put("quoteName", quote.getQuoteName());
         variables.put("customerId", quote.getCustomerId());
@@ -157,21 +181,25 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         WorkflowCallbackConstants.applyCallbackMetadata(
                 variables,
                 CrmBusinessTypes.CRM_QUOTE,
-                quoteId,
+                quote.getQuoteId(),
                 quote.getQuoteNo(),
                 "workflow:stream:approval-callback:crm"
         );
         dto.setVariables(variables);
 
         try {
-            R<?> result = remoteWorkflowService.startProcess(dto);
+            R<?> result = remoteWorkflowService.startProcessInternal(dto);
             if (result != null && result.isSuccess() && result.getData() != null) {
-                quote.setInstanceId(extractInstanceId(result.getData()));
+                CrmQuote update = new CrmQuote();
+                update.setQuoteId(quote.getQuoteId());
+                update.setInstanceId(extractInstanceId(result.getData()));
+                update.setUpdateBy(StringUtils.hasText(quote.getOwnerName()) ? quote.getOwnerName() : "event-consumer");
+                update.setUpdateTime(now());
+                updateById(update);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.warn("启动 CRM 报价流程失败: quoteId={}", quote.getQuoteId(), e);
         }
-
-        return updateById(quote);
     }
 
     @Override
@@ -453,5 +481,20 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
             return instanceId != null ? String.valueOf(instanceId) : null;
         }
         return data != null ? String.valueOf(data) : null;
+    }
+
+    private void publishQuoteSubmittedEvent(CrmQuote quote, CrmQuoteSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("CRM_QUOTE_SUBMITTED")
+                    .sourceModule("cloudflow-crm")
+                    .sourceId(quote.getQuoteId())
+                    .tenantId(quote.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new IllegalStateException("CRM报价提交流程事件发布失败", e);
+        }
     }
 }

@@ -6,8 +6,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizPaymentRequest;
@@ -18,7 +19,7 @@ import com.cloudflow.oa.domain.SysConsumable;
 import com.cloudflow.oa.domain.SysSupplier;
 import com.cloudflow.oa.domain.dto.PurchaseFromSuggestionDTO;
 import com.cloudflow.oa.domain.dto.PurchaseReceiptDTO;
-import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.event.PurchaseRequestSubmittedEvent;
 import com.cloudflow.oa.mapper.BizPurchaseItemMapper;
 import com.cloudflow.oa.mapper.BizPurchaseReceiptMapper;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
@@ -27,13 +28,13 @@ import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import com.cloudflow.oa.service.IPurchaseRequestService;
 import com.cloudflow.oa.service.ISupplierService;
-import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.common.redis.lock.DistributedLock;
 import com.cloudflow.common.statemachine.core.StateMachine;
 import com.cloudflow.common.statemachine.core.StateMachineRegistry;
 import com.cloudflow.oa.enums.PurchaseRequestStatus;
 import com.cloudflow.oa.enums.PurchaseRequestEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -72,10 +73,10 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private final ISupplierService supplierService;
     private final IConsumableService consumableService;
     private final IPaymentRequestService paymentRequestService;
-    private final RemoteWorkflowService remoteWorkflowService;
     private final IOaBudgetService oaBudgetService;
-    private final OaWorkflowFailureHelper workflowFailureHelper;
     private final StateMachineRegistry stateMachineRegistry;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public Page<BizPurchaseRequest> queryPage(Integer pageNum, Integer pageSize, String status, Long supplierId, Long userId) {
@@ -173,59 +174,20 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
 
         boolean updated = updateById(purchase);
         if (updated) {
-            startPurchaseWorkflowAfterCommit(purchase);
+            PurchaseRequestSubmittedEvent event = new PurchaseRequestSubmittedEvent();
+            event.setPurchaseId(purchase.getId());
+            event.setPurchaseNo(purchase.getPurchaseNo());
+            event.setUserId(purchase.getUserId());
+            event.setUserName(purchase.getUserName());
+            event.setDeptName(purchase.getDeptName());
+            event.setSupplierName(purchase.getSupplierName());
+            event.setTotalAmount(purchase.getTotalAmount());
+            event.setReason(purchase.getReason());
+            event.setItemSummary(buildItemSummary(purchase.getItems()));
+            event.setSubmittedAt(LocalDateTime.now());
+            publishPurchaseSubmittedEvent(purchase, event);
         }
         return updated;
-    }
-
-    private void startPurchaseWorkflowAfterCommit(BizPurchaseRequest purchase) {
-        OaTransactionHooks.afterCommit(() -> startPurchaseWorkflow(purchase));
-    }
-
-    private void startPurchaseWorkflow(BizPurchaseRequest purchase) {
-        try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
-            req.setProcessDefKey("purchase_request");
-            req.setBusinessKey("PURCHASE_REQUEST:" + purchase.getId());
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("purchaseId", purchase.getId());
-            variables.put("purchaseNo", purchase.getPurchaseNo());
-            variables.put("amount", purchase.getTotalAmount());
-            variables.put("totalAmount", purchase.getTotalAmount());
-            variables.put("supplierName", purchase.getSupplierName());
-            variables.put("userId", purchase.getUserId());
-            variables.put("userName", purchase.getUserName());
-            variables.put("deptName", purchase.getDeptName());
-            variables.put("reason", purchase.getReason());
-            variables.put("itemSummary", buildItemSummary(purchase.getItems()));
-            WorkflowCallbackConstants.applyCallbackMetadata(
-                    variables,
-                    OaBusinessTypes.PURCHASE_REQUEST,
-                    purchase.getId(),
-                    purchase.getPurchaseNo(),
-                    "workflow:stream:approval-callback:oa"
-            );
-            req.setVariables(variables);
-
-            R<?> result = remoteWorkflowService.startProcess(req);
-            if (result != null && result.getCode() == 200 && result.getData() != null) {
-                String instanceId = extractInstanceId(result.getData());
-                if (instanceId != null) {
-                    BizPurchaseRequest update = new BizPurchaseRequest();
-                    update.setId(purchase.getId());
-                    update.setInstanceId(instanceId);
-                    updateById(update);
-                }
-                log.info("采购申请 {} 工作流启动成功，流程实例ID: {}", purchase.getPurchaseNo(), instanceId);
-            } else {
-                log.warn("采购申请 {} 工作流启动返回异常: {}", purchase.getPurchaseNo(), result != null ? result.getMsg() : "null");
-            }
-        } catch (Exception e) {
-            log.error("采购申请 {} 启动工作流失败，但提交状态已更新", purchase.getPurchaseNo(), e);
-            workflowFailureHelper.handleWorkflowStartFailure(
-                    OaBusinessTypes.PURCHASE_REQUEST, purchase.getId(), purchase.getPurchaseNo(),
-                    purchase.getUserName(), purchase.getUserId(), e);
-        }
     }
 
     @Override
@@ -564,20 +526,19 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         return value == null ? 0 : value;
     }
 
-    private String extractInstanceId(Object data) {
-        if (data instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> dataMap = (Map<String, Object>) data;
-            Object instanceId = dataMap.get("processInstanceId");
-            if (instanceId == null) {
-                instanceId = dataMap.get("instanceId");
-            }
-            return instanceId != null ? String.valueOf(instanceId) : null;
+    private void publishPurchaseSubmittedEvent(BizPurchaseRequest purchase, PurchaseRequestSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("PURCHASE_REQUEST_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(purchase.getId())
+                    .tenantId(purchase.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("采购申请提交事件发布失败, purchaseId={}, error={}", purchase.getId(), e.getMessage());
         }
-        if (data instanceof String) {
-            return (String) data;
-        }
-        return null;
     }
 
     private void reserveBudget(BizPurchaseRequest purchase) {

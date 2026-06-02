@@ -7,6 +7,8 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.statemachine.core.StateMachine;
 import com.cloudflow.common.statemachine.core.StateMachineRegistry;
 import com.cloudflow.common.tenant.TenantContext;
@@ -15,6 +17,7 @@ import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestQueryDTO;
 import com.cloudflow.hr.domain.entity.HrBenefitRequest;
+import com.cloudflow.hr.event.HrBenefitRequestSubmittedEvent;
 import com.cloudflow.hr.domain.vo.benefit.HrBenefitRequestVO;
 import com.cloudflow.hr.enums.BenefitRequestEvent;
 import com.cloudflow.hr.enums.BenefitRequestStatus;
@@ -47,6 +50,7 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
     private final WorkflowServiceClient workflowServiceClient;
     private final ObjectMapper objectMapper;
     private final StateMachineRegistry stateMachineRegistry;
+    private final OutboxPublisher outboxPublisher;
 
     @Value("${cloudflow.hr.benefit.request-process-key:wf_hr_benefit_request}")
     private String benefitProcessKey;
@@ -120,13 +124,11 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
                 .set("status", newStatus.name())
                 .set("update_time", LocalDateTime.now());
         requestMapper.update(null, uw);
-
-        HrTransactionHooks.afterCommit(() -> startBenefitWorkflow(
-                requestId,
-                request.getRequestNo(),
-                request.getAmount(),
-                request.getPointAmount(),
-                request.getRequestType()));
+        HrBenefitRequestSubmittedEvent event = new HrBenefitRequestSubmittedEvent();
+        event.setRequestId(requestId);
+        event.setRequestNo(request.getRequestNo());
+        event.setSubmittedAt(LocalDateTime.now());
+        publishBenefitSubmittedEvent(request, event);
         return null;
     }
 
@@ -153,21 +155,20 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
         requestMapper.update(null, uw);
     }
 
-    private void startBenefitWorkflow(Long requestId, String requestNo, BigDecimal amount,
-                                      Integer pointAmount, String requestType) {
+    public void startBenefitWorkflow(HrBenefitRequest request) {
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(currentTenantId());
         dto.setProcessDefinitionKey(benefitProcessKey);
         dto.setBusinessType("HR_BENEFIT_REQUEST");
-        dto.setBusinessId(requestId);
-        dto.setBusinessNo(requestNo);
-        dto.setProcessTitle("福利申领-" + requestNo);
-        dto.setStartUserId(UserContext.getUserId());
+        dto.setBusinessId(request.getId());
+        dto.setBusinessNo(request.getRequestNo());
+        dto.setProcessTitle("福利申领-" + request.getRequestNo());
+        dto.setStartUserId(request.getEmployeeId());
         Map<String, Object> vars = new LinkedHashMap<>();
-        vars.put("requestId", requestId);
-        vars.put("amount", amount);
-        vars.put("pointAmount", pointAmount);
-        vars.put("requestType", requestType);
+        vars.put("requestId", request.getId());
+        vars.put("amount", request.getAmount());
+        vars.put("pointAmount", request.getPointAmount());
+        vars.put("requestType", request.getRequestType());
         dto.setVariables(vars);
         R<String> response = workflowServiceClient.startProcess(dto);
         if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
@@ -175,10 +176,25 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
             throw new HrBusinessException("WORKFLOW_START_FAILED", "福利申领审批启动失败：" + msg);
         }
         UpdateWrapper<HrBenefitRequest> uw = new UpdateWrapper<>();
-        uw.eq("id", requestId).eq("tenant_id", currentTenantId())
+        uw.eq("id", request.getId()).eq("tenant_id", currentTenantId())
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         requestMapper.update(null, uw);
+    }
+
+    private void publishBenefitSubmittedEvent(HrBenefitRequest request, HrBenefitRequestSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("HR_BENEFIT_REQUEST_SUBMITTED")
+                    .sourceModule("cloudflow-hr")
+                    .sourceId(request.getId())
+                    .tenantId(request.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new HrBusinessException("WORKFLOW_EVENT_PUBLISH_FAILED", "福利申领流程事件发布失败");
+        }
     }
 
     private long currentTenantId() {

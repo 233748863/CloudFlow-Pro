@@ -29,14 +29,23 @@ public class ExpenseClaimSubmittedEvent {
     /** 报销类别 */
     private String category;
 
+    /** 报销说明 */
+    private String description;
+
     /** 部门名称 */
     private String deptName;
 
     /** 是否超标 */
     private Boolean exceededStandard;
 
+    /** 超标金额 */
+    private BigDecimal exceededAmount;
+
     /** 是否超预算 */
     private Boolean budgetExceeded;
+
+    /** 超预算金额 */
+    private BigDecimal budgetExceededAmount;
 
     /** 提交时间 */
     private LocalDateTime submittedAt;

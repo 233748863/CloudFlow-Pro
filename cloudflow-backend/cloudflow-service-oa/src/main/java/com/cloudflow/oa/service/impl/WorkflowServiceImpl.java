@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowTaskCompleteDTO;
 import com.cloudflow.oa.service.IWorkflowService;
@@ -25,7 +26,26 @@ public class WorkflowServiceImpl implements IWorkflowService {
 
     @Override
     public R<?> startProcess(String processDefinitionKey, String businessKey, Map<String, Object> variables) {
+        return startProcess(processDefinitionKey, businessKey, null, null, variables);
+    }
+
+    @Override
+    public R<?> startProcess(String processDefinitionKey, String businessKey, Long startUserId,
+                             String startUserName, Map<String, Object> variables) {
         try {
+            if (startUserId != null) {
+                InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+                req.setProcessDefKey(processDefinitionKey);
+                req.setBusinessKey(businessKey);
+                req.setStartUserId(startUserId);
+                req.setStartUserName(startUserName);
+                req.setVariables(variables);
+                R<?> result = remoteWorkflowService.startProcessInternal(req);
+                log.info("工作流内部启动成功，流程定义Key: {}, 业务Key: {}, 发起人: {}",
+                        processDefinitionKey, businessKey, startUserId);
+                return result;
+            }
+
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
             req.setProcessDefKey(processDefinitionKey);
             req.setBusinessKey(businessKey);

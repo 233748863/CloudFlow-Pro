@@ -7,11 +7,15 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaSeal;
 import com.cloudflow.oa.domain.OaSealRenewal;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.event.SealRenewalSubmittedEvent;
 import com.cloudflow.oa.mapper.OaSealMapper;
 import com.cloudflow.oa.mapper.OaSealRenewalMapper;
 import com.cloudflow.oa.service.IOaSealRenewalService;
@@ -20,12 +24,11 @@ import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.lock.DistributedLock;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
@@ -47,6 +50,8 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
     private final OaSealMapper sealMapper;
     private final RemoteWorkflowService remoteWorkflowService;
     private final OaWorkflowFailureHelper workflowFailureHelper;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<OaSealRenewal> queryPage(OaSealRenewal query, PageQuery pageQuery) {
@@ -172,29 +177,24 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
         renewal.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(renewal);
         if (updated) {
-            startRenewalWorkflowAfterCommit(renewal);
+            SealRenewalSubmittedEvent event = new SealRenewalSubmittedEvent();
+            event.setRenewalId(renewal.getId());
+            event.setRenewalNo(renewal.getRenewalNo());
+            event.setApplicantId(renewal.getApplicantId());
+            event.setApplicantName(renewal.getApplicantName());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishRenewalSubmittedEvent(renewal, event);
         }
         return updated;
     }
 
-    private void startRenewalWorkflowAfterCommit(OaSealRenewal renewal) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            startRenewalWorkflow(renewal);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                startRenewalWorkflow(renewal);
-            }
-        });
-    }
-
-    private void startRenewalWorkflow(OaSealRenewal renewal) {
+    public void startRenewalWorkflow(OaSealRenewal renewal) {
         try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
             req.setProcessDefKey("seal_renewal");
             req.setBusinessKey("SEAL_RENEWAL:" + renewal.getId());
+            req.setStartUserId(renewal.getApplicantId());
+            req.setStartUserName(renewal.getApplicantName());
             Map<String, Object> variables = new HashMap<>();
             variables.put("renewalId", renewal.getId());
             variables.put("renewalNo", renewal.getRenewalNo());
@@ -213,12 +213,17 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
                     "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcess(req);
+            R<?> result = remoteWorkflowService.startProcessInternal(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                OaSealRenewal update = new OaSealRenewal();
-                update.setId(renewal.getId());
-                update.setInstanceId(extractInstanceId(result.getData()));
-                updateById(update);
+                String instanceId = extractInstanceId(result.getData());
+                if (StringUtils.hasText(instanceId)) {
+                    OaSealRenewal update = new OaSealRenewal();
+                    update.setId(renewal.getId());
+                    update.setInstanceId(instanceId);
+                    update.setUpdateBy("event-consumer");
+                    update.setUpdateTime(LocalDateTime.now());
+                    updateById(update);
+                }
             } else {
                 log.warn("印章续期 {} 工作流启动返回异常: {}", renewal.getRenewalNo(), result != null ? result.getMsg() : "null");
             }
@@ -227,6 +232,21 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
             workflowFailureHelper.handleWorkflowStartFailure(
                     OaBusinessTypes.SEAL_RENEWAL, renewal.getId(), renewal.getRenewalNo(),
                     renewal.getApplicantName(), renewal.getApplicantId(), e);
+        }
+    }
+
+    private void publishRenewalSubmittedEvent(OaSealRenewal renewal, SealRenewalSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("SEAL_RENEWAL_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(renewal.getId())
+                    .tenantId(renewal.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("印章续期提交事件发布失败, renewalId={}, error={}", renewal.getId(), e.getMessage());
         }
     }
 

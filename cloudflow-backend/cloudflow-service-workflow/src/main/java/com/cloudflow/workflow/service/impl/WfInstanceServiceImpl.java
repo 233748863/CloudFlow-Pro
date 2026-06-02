@@ -13,6 +13,7 @@ import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+import com.cloudflow.workflow.domain.vo.UserBriefVO;
 import com.cloudflow.workflow.event.WorkflowEventPublisher;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
@@ -92,145 +93,32 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Autowired
     private WorkflowGraphModelResolver workflowGraphModelResolver;
 
+    @Autowired
+    private IWorkflowCacheService workflowCacheService;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables) {
-        Long currentUserId = UserContext.getUserId();
-        String currentUserName = UserContext.getUserName();
-        Long currentTenantId = UserContext.getTenantId();
-        log.info("[startProcess] 开始发起流程, processDefKey={}, userId={}", processDefKey, currentUserId);
+        return doStartProcess(processDefKey, businessKey, UserContext.getUserId(), UserContext.getUserName(),
+                UserContext.getTenantId(), variables, false);
+    }
 
-        if (!StringUtils.hasText(processDefKey)) {
-            throw WorkflowException.validationError("流程定义Key不能为空");
-        }
-
-        rateLimiterService.checkStartProcessLimit(currentUserId != null ? currentUserId : 0L);
-
-        // 查找已发布的最新版本
-        LambdaQueryWrapper<WfProcessDefinition> startDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
-            .eq(WfProcessDefinition::getProcessKey, processDefKey)
-            .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-            .orderByDesc(WfProcessDefinition::getVersion)
-            .last("LIMIT 1");
-        if (currentTenantId != null) {
-            startDefQuery.eq(WfProcessDefinition::getTenantId, currentTenantId);
-        }
-        WfProcessDefinition def = processDefinitionMapper.selectOne(startDefQuery);
-        if (def == null) {
-            throw WorkflowException.processNotFound(processDefKey);
-        }
-
-        // 严格执行流程发起权限配置，避免“仅存储不校验”的越权风险
-        if (!permissionService.canStartProcess(
-                currentUserId,
-                def.getStartPermissionType(),
-                def.getStartPermissionValue())) {
-            throw new PermissionDeniedException("您没有权限发起该流程");
-        }
-
-        // 创建流程实例
-        // 流程绑定表单时，发起前必须校验表单仍然存在，避免产生脏数据
-        if (StringUtils.hasText(def.getFormId())) {
-            WfFormDefinition boundForm = formDefinitionMapper.selectById(def.getFormId());
-            if (boundForm == null) {
-                throw WorkflowException.validationError("流程绑定的表单不存在或已被删除，无法发起");
-            }
-            // 租户隔离：流程定义租户、当前租户、绑定表单租户必须一致
-            if (def.getTenantId() != null && !Objects.equals(def.getTenantId(), boundForm.getTenantId())) {
-                throw WorkflowException.validationError("流程绑定的表单不属于当前租户，无法发起");
-            }
-            if (currentTenantId != null && !Objects.equals(currentTenantId, boundForm.getTenantId())) {
-                throw WorkflowException.validationError("流程绑定的表单租户不匹配，无法发起");
-            }
-        }
-
-        WfProcessInstance instance = new WfProcessInstance();
-        instance.setInstanceId(UUID.randomUUID().toString());
-        instance.setProcessDefKey(processDefKey);
-        instance.setDefinitionId(def.getDefinitionId());
-        instance.setBusinessKey(businessKey);
-        instance.setStartUserId(currentUserId);
-        instance.setStartUserName(currentUserName);
-        instance.setTenantId(currentTenantId != null ? currentTenantId : def.getTenantId());
-        instance.setStatus(WfProcessStatus.RUNNING.getCode());
-        instance.setStartTime(LocalDateTime.now());
-
-        // 生成流程编号
-        String processNo = generateProcessNo(processDefKey);
-        instance.setProcessNo(processNo);
-
-        // 设置标题
-        String title = def.getProcessName();
-        if (variables != null && variables.containsKey("_title")) {
-            title = String.valueOf(variables.get("_title"));
-        }
-        instance.setTitle(securityUtils.sanitizeXss(title));
-
-        // 序列化变量
-        if (variables != null && !variables.isEmpty()) {
-            try {
-                instance.setVariables(objectMapper.writeValueAsString(variables));
-            } catch (Exception e) {
-                log.warn("[startProcess] 序列化变量失败: {}", e.getMessage());
-            }
-        }
-
-        processInstanceMapper.insert(instance);
-
-        // 记录流程监控
-        try {
-            processMonitorService.recordProcessStart(
-                instance.getInstanceId(),
-                def.getDefinitionId(),
-                processDefKey,
-                def.getProcessName(),
-                businessKey,
-                currentUserId,
-                currentUserName
-            );
-        } catch (Exception e) {
-            log.warn("[startProcess] 记录流程监控失败: {}", e.getMessage());
-        }
-
-        // 发布流程启动事件
-        workflowEventPublisher.publishProcessStarted(instance);
-
-        // P2-9: 全局监听器 — 流程创建阶段回调（在第一个节点执行前）
-        globalListenerDispatcher.fireCreate(instance, variables);
-
-        // 解析流程模型并执行第一个节点
-        try {
-            if (StringUtils.hasText(def.getModelJson())) {
-                WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
-                WorkflowRuntimeGraph runtimeGraph = workflowGraphModelResolver.resolveRuntimeGraph(root);
-                String firstNodeId = runtimeGraph != null
-                        ? runtimeGraph.getFirstExecutableNodeId()
-                        : workflowGraphModelResolver.resolveFirstExecutableNodeId(def.getModelJson());
-                WfNodeConfig firstNode = StringUtils.hasText(firstNodeId)
-                        ? nodeExecutionService.findNode(root, firstNodeId)
-                        : root;
-                if (firstNode == null) {
-                    throw WorkflowException.validationError("流程启动失败：未找到首个可执行节点");
-                }
-                nodeExecutionService.runNode(instance, firstNode, variables != null ? variables : new HashMap<>(), 0, root);
-            }
-        } catch (WorkflowException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("[startProcess] 流程启动失败: {}", e.getMessage(), e);
-            throw new WorkflowException("START_FAILED", "流程启动失败: " + e.getMessage(), e);
-        }
-
-        auditService.log(WorkflowAuditService.AuditAction.PROCESS_START, instance.getInstanceId(),
-            "processDefKey=" + processDefKey + ", processNo=" + processNo);
-
-        Map<String, String> result = new HashMap<>();
-        result.put("instanceId", instance.getInstanceId());
-        result.put("processNo", processNo);
-        return R.ok(result);
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> startProcessInternal(String processDefKey, String businessKey, Long startUserId,
+                                     String startUserName, Map<String, Object> variables) {
+        Long tenantId = UserContext.getTenantId();
+        UserBriefVO user = resolveStartUser(startUserId);
+        Long effectiveUserId = user != null && user.getUserId() != null ? user.getUserId() : startUserId;
+        String effectiveUserName = StringUtils.hasText(startUserName)
+                ? startUserName
+                : user != null && StringUtils.hasText(user.getNickName()) ? user.getNickName()
+                : user != null ? user.getUsername() : null;
+        return doStartProcess(processDefKey, businessKey, effectiveUserId, effectiveUserName, tenantId,
+                variables, false);
     }
 
     @Override
@@ -1054,6 +942,161 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null && !Objects.equals(currentTenantId, instance.getTenantId())) {
             throw new PermissionDeniedException("无权" + operation + "该租户流程实例");
+        }
+    }
+
+    private R<?> doStartProcess(String processDefKey, String businessKey, Long currentUserId,
+                                String currentUserName, Long currentTenantId, Map<String, Object> variables,
+                                boolean skipPermissionCheck) {
+        log.info("[startProcess] 开始发起流程, processDefKey={}, userId={}", processDefKey, currentUserId);
+
+        if (!StringUtils.hasText(processDefKey)) {
+            throw WorkflowException.validationError("流程定义Key不能为空");
+        }
+        if (currentUserId == null) {
+            throw WorkflowException.validationError("发起人不能为空");
+        }
+
+        rateLimiterService.checkStartProcessLimit(currentUserId);
+
+        LambdaQueryWrapper<WfProcessDefinition> startDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+                .eq(WfProcessDefinition::getProcessKey, processDefKey)
+                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
+                .orderByDesc(WfProcessDefinition::getVersion)
+                .last("LIMIT 1");
+        if (currentTenantId != null) {
+            startDefQuery.eq(WfProcessDefinition::getTenantId, currentTenantId);
+        }
+        WfProcessDefinition def = processDefinitionMapper.selectOne(startDefQuery);
+        if (def == null) {
+            throw WorkflowException.processNotFound(processDefKey);
+        }
+
+        if (!skipPermissionCheck
+                && !permissionService.canStartProcess(currentUserId, def.getStartPermissionType(), def.getStartPermissionValue())) {
+            throw new PermissionDeniedException("您没有权限发起该流程");
+        }
+
+        if (StringUtils.hasText(def.getFormId())) {
+            WfFormDefinition boundForm = formDefinitionMapper.selectById(def.getFormId());
+            if (boundForm == null) {
+                throw WorkflowException.validationError("流程绑定的表单不存在或已被删除，无法发起");
+            }
+            if (def.getTenantId() != null && !Objects.equals(def.getTenantId(), boundForm.getTenantId())) {
+                throw WorkflowException.validationError("流程绑定的表单不属于当前租户，无法发起");
+            }
+            if (currentTenantId != null && !Objects.equals(currentTenantId, boundForm.getTenantId())) {
+                throw WorkflowException.validationError("流程绑定的表单租户不匹配，无法发起");
+            }
+        }
+
+        WfProcessInstance instance = new WfProcessInstance();
+        instance.setInstanceId(UUID.randomUUID().toString());
+        instance.setProcessDefKey(processDefKey);
+        instance.setDefinitionId(def.getDefinitionId());
+        instance.setBusinessKey(businessKey);
+        instance.setStartUserId(currentUserId);
+        instance.setStartUserName(StringUtils.hasText(currentUserName) ? currentUserName : String.valueOf(currentUserId));
+        instance.setTenantId(currentTenantId != null ? currentTenantId : def.getTenantId());
+        instance.setStatus(WfProcessStatus.RUNNING.getCode());
+        instance.setStartTime(LocalDateTime.now());
+
+        String processNo = generateProcessNo(processDefKey);
+        instance.setProcessNo(processNo);
+
+        String title = def.getProcessName();
+        if (variables != null && variables.containsKey("_title")) {
+            title = String.valueOf(variables.get("_title"));
+        }
+        instance.setTitle(securityUtils.sanitizeXss(title));
+
+        if (variables != null && !variables.isEmpty()) {
+            try {
+                instance.setVariables(objectMapper.writeValueAsString(variables));
+            } catch (Exception e) {
+                log.warn("[startProcess] 序列化变量失败: {}", e.getMessage());
+            }
+        }
+
+        processInstanceMapper.insert(instance);
+
+        try {
+            processMonitorService.recordProcessStart(
+                    instance.getInstanceId(),
+                    def.getDefinitionId(),
+                    processDefKey,
+                    def.getProcessName(),
+                    businessKey,
+                    currentUserId,
+                    instance.getStartUserName()
+            );
+        } catch (Exception e) {
+            log.warn("[startProcess] 记录流程监控失败: {}", e.getMessage());
+        }
+
+        withWorkflowUserContext(currentUserId, instance.getStartUserName(), instance.getTenantId(), () -> {
+            workflowEventPublisher.publishProcessStarted(instance);
+            globalListenerDispatcher.fireCreate(instance, variables);
+            runFirstNode(def, instance, variables);
+            auditService.log(WorkflowAuditService.AuditAction.PROCESS_START, instance.getInstanceId(),
+                    "processDefKey=" + processDefKey + ", processNo=" + processNo);
+        });
+
+        Map<String, String> result = new HashMap<>();
+        result.put("instanceId", instance.getInstanceId());
+        result.put("processNo", processNo);
+        return R.ok(result);
+    }
+
+    private void runFirstNode(WfProcessDefinition def, WfProcessInstance instance, Map<String, Object> variables) {
+        try {
+            if (StringUtils.hasText(def.getModelJson())) {
+                WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
+                WorkflowRuntimeGraph runtimeGraph = workflowGraphModelResolver.resolveRuntimeGraph(root);
+                String firstNodeId = runtimeGraph != null
+                        ? runtimeGraph.getFirstExecutableNodeId()
+                        : workflowGraphModelResolver.resolveFirstExecutableNodeId(def.getModelJson());
+                WfNodeConfig firstNode = StringUtils.hasText(firstNodeId)
+                        ? nodeExecutionService.findNode(root, firstNodeId)
+                        : root;
+                if (firstNode == null) {
+                    throw WorkflowException.validationError("流程启动失败：未找到首个可执行节点");
+                }
+                nodeExecutionService.runNode(instance, firstNode, variables != null ? variables : new HashMap<>(), 0, root);
+            }
+        } catch (WorkflowException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("[startProcess] 流程启动失败: {}", e.getMessage(), e);
+            throw new WorkflowException("START_FAILED", "流程启动失败: " + e.getMessage(), e);
+        }
+    }
+
+    private UserBriefVO resolveStartUser(Long startUserId) {
+        if (startUserId == null) {
+            return null;
+        }
+        try {
+            return workflowCacheService.getUser(startUserId);
+        } catch (Exception e) {
+            log.warn("[startProcessInternal] 获取发起人信息失败, userId={}", startUserId, e);
+            return null;
+        }
+    }
+
+    private void withWorkflowUserContext(Long userId, String userName, Long tenantId, Runnable runnable) {
+        Long originalUserId = UserContext.getUserId();
+        String originalUserName = UserContext.getUserName();
+        Long originalTenantId = UserContext.getTenantId();
+        try {
+            UserContext.setUserId(userId);
+            UserContext.setUserName(userName);
+            UserContext.setTenantId(tenantId);
+            runnable.run();
+        } finally {
+            UserContext.setUserId(originalUserId);
+            UserContext.setUserName(originalUserName);
+            UserContext.setTenantId(originalTenantId);
         }
     }
 

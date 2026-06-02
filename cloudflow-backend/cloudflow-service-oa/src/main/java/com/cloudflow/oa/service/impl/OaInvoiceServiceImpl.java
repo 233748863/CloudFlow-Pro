@@ -45,8 +45,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
     private final OaContractMapper contractMapper;
     private final RemoteCrmService remoteCrmService;
     private final OutboxPublisher outboxPublisher;
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<OaInvoice> queryPage(OaInvoice query, PageQuery pageQuery) {
@@ -147,7 +146,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
                         .eventType("INVOICE_BOUND")
                         .sourceModule("cloudflow-oa")
                         .sourceId(invoice.getInvoiceId())
-                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .payload(objectMapper.writeValueAsString(event))
                         .build();
                 outboxPublisher.publish(envelope);
             } catch (Exception e) {
@@ -204,7 +203,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
                         .eventType("INVOICE_WRITEOFF")
                         .sourceModule("cloudflow-oa")
                         .sourceId(invoice.getInvoiceId())
-                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .payload(objectMapper.writeValueAsString(event))
                         .build();
                 outboxPublisher.publish(envelope);
             } catch (Exception e) {
@@ -244,7 +243,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
                         .eventType("INVOICE_VOID")
                         .sourceModule("cloudflow-oa")
                         .sourceId(invoice.getInvoiceId())
-                        .payload(OBJECT_MAPPER.writeValueAsString(event))
+                        .payload(objectMapper.writeValueAsString(event))
                         .build();
                 outboxPublisher.publish(envelope);
             } catch (Exception e) {

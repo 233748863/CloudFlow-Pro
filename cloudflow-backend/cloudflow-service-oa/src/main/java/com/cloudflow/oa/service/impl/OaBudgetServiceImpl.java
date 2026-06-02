@@ -8,6 +8,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaBudgetAdjustment;
@@ -17,7 +19,10 @@ import com.cloudflow.oa.domain.OaBudgetPlan;
 import com.cloudflow.oa.domain.OaBudgetSubject;
 import com.cloudflow.oa.domain.dto.BusinessRuleDTO;
 import com.cloudflow.oa.domain.dto.BusinessRuleHitRecordDTO;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.event.BudgetAdjustmentSubmittedEvent;
+import com.cloudflow.oa.event.BudgetPlanSubmittedEvent;
 import com.cloudflow.oa.domain.vo.BudgetExecutionSummaryVO;
 import com.cloudflow.oa.mapper.OaBudgetAdjustmentMapper;
 import com.cloudflow.oa.mapper.OaBudgetLedgerMapper;
@@ -28,6 +33,7 @@ import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.remote.RemoteBusinessRuleService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -60,6 +66,8 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     private final RemoteWorkflowService remoteWorkflowService;
     private final RemoteBusinessRuleService remoteBusinessRuleService;
     private final OaWorkflowFailureHelper workflowFailureHelper;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<OaBudgetPlan> queryBudgetPage(OaBudgetPlan query, PageQuery pageQuery) {
@@ -233,17 +241,15 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
         budget.setStatus("PENDING");
         budget.setUpdateBy(resolveUserName());
         budget.setUpdateTime(LocalDateTime.now());
-        startBudgetWorkflow("budget_plan_approval", "BUDGET_PLAN:" + budgetId,
-                OaBusinessTypes.BUDGET_PLAN, budgetId, budget.getBudgetNo(),
-                Map.of(
-                        "budgetId", budgetId,
-                        "budgetNo", budget.getBudgetNo(),
-                        "budgetName", budget.getBudgetName(),
-                        "targetType", budget.getTargetType(),
-                        "targetName", budget.getTargetName(),
-                        "totalAmount", budget.getTotalAmount()
-                ), budget);
-        return updateById(budget);
+        boolean updated = updateById(budget);
+        if (updated) {
+            BudgetPlanSubmittedEvent event = new BudgetPlanSubmittedEvent();
+            event.setBudgetId(budgetId);
+            event.setBudgetNo(budget.getBudgetNo());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishBudgetPlanSubmittedEvent(budget, event);
+        }
+        return updated;
     }
 
     @Override
@@ -259,8 +265,15 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
         adjustment.setStatus("PENDING");
         adjustment.setUpdateBy(resolveUserName());
         adjustment.setUpdateTime(LocalDateTime.now());
-        startAdjustmentWorkflow(adjustment);
-        return budgetAdjustmentMapper.updateById(adjustment) > 0;
+        boolean updated = budgetAdjustmentMapper.updateById(adjustment) > 0;
+        if (updated) {
+            BudgetAdjustmentSubmittedEvent event = new BudgetAdjustmentSubmittedEvent();
+            event.setAdjustmentId(adjustment.getAdjustmentId());
+            event.setAdjustmentNo(adjustment.getAdjustmentNo());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishBudgetAdjustmentSubmittedEvent(adjustment, event);
+        }
+        return updated;
     }
 
     @Override
@@ -624,39 +637,53 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
         return resolveThresholdStatus(ratio, warn, alert, block);
     }
 
-    private void startBudgetWorkflow(String processDefKey, String businessKey, String businessType,
-                                     Long businessId, String businessNo, Map<String, Object> variables, OaBudgetPlan budget) {
+    public void startBudgetWorkflow(OaBudgetPlan budget) {
         try {
-            WorkflowProcessStartDTO dto = new WorkflowProcessStartDTO();
-            dto.setProcessDefKey(processDefKey);
-            dto.setBusinessKey(businessKey);
-            Map<String, Object> payload = new HashMap<>(variables);
-            WorkflowCallbackConstants.applyCallbackMetadata(payload, businessType, businessId, businessNo,
+            InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
+            dto.setProcessDefKey("budget_plan_approval");
+            dto.setBusinessKey("BUDGET_PLAN:" + budget.getBudgetId());
+            dto.setStartUserId(budget.getOwnerId());
+            dto.setStartUserName(budget.getOwnerName());
+            Map<String, Object> payload = new HashMap<>(Map.of(
+                    "budgetId", budget.getBudgetId(),
+                    "budgetNo", budget.getBudgetNo(),
+                    "budgetName", budget.getBudgetName(),
+                    "targetType", budget.getTargetType(),
+                    "targetName", budget.getTargetName(),
+                    "totalAmount", budget.getTotalAmount()
+            ));
+            WorkflowCallbackConstants.applyCallbackMetadata(payload, OaBusinessTypes.BUDGET_PLAN, budget.getBudgetId(), budget.getBudgetNo(),
                     "workflow:stream:approval-callback:oa");
             dto.setVariables(payload);
-            R<?> result = remoteWorkflowService.startProcess(dto);
+            R<?> result = remoteWorkflowService.startProcessInternal(dto);
             if (result != null && result.isSuccess() && result.getData() instanceof Map<?, ?> resultMap) {
                 Object instanceId = resultMap.get("processInstanceId");
                 if (instanceId == null) {
                     instanceId = resultMap.get("instanceId");
                 }
                 if (instanceId != null) {
-                    budget.setInstanceId(String.valueOf(instanceId));
+                    OaBudgetPlan update = new OaBudgetPlan();
+                    update.setBudgetId(budget.getBudgetId());
+                    update.setInstanceId(String.valueOf(instanceId));
+                    update.setUpdateBy("event-consumer");
+                    update.setUpdateTime(LocalDateTime.now());
+                    updateById(update);
                 }
             }
         } catch (Exception e) {
-            log.error("预算 {} 启动工作流失败", businessNo, e);
+            log.error("预算 {} 启动工作流失败", budget.getBudgetNo(), e);
             workflowFailureHelper.handleWorkflowStartFailure(
-                    businessType, businessId, businessNo,
+                    OaBusinessTypes.BUDGET_PLAN, budget.getBudgetId(), budget.getBudgetNo(),
                     resolveUserName(), null, e);
         }
     }
 
-    private void startAdjustmentWorkflow(OaBudgetAdjustment adjustment) {
+    public void startAdjustmentWorkflow(OaBudgetAdjustment adjustment) {
         try {
-            WorkflowProcessStartDTO dto = new WorkflowProcessStartDTO();
+            InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
             dto.setProcessDefKey("budget_adjustment_approval");
             dto.setBusinessKey("BUDGET_ADJUSTMENT:" + adjustment.getAdjustmentId());
+            dto.setStartUserName(resolveUserName());
             Map<String, Object> variables = new HashMap<>();
             variables.put("adjustmentId", adjustment.getAdjustmentId());
             variables.put("adjustmentNo", adjustment.getAdjustmentNo());
@@ -673,14 +700,19 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
                     "workflow:stream:approval-callback:oa"
             );
             dto.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcess(dto);
+            R<?> result = remoteWorkflowService.startProcessInternal(dto);
             if (result != null && result.isSuccess() && result.getData() instanceof Map<?, ?> resultMap) {
                 Object instanceId = resultMap.get("processInstanceId");
                 if (instanceId == null) {
                     instanceId = resultMap.get("instanceId");
                 }
                 if (instanceId != null) {
-                    adjustment.setInstanceId(String.valueOf(instanceId));
+                    OaBudgetAdjustment update = new OaBudgetAdjustment();
+                    update.setAdjustmentId(adjustment.getAdjustmentId());
+                    update.setInstanceId(String.valueOf(instanceId));
+                    update.setUpdateBy("event-consumer");
+                    update.setUpdateTime(LocalDateTime.now());
+                    budgetAdjustmentMapper.updateById(update);
                 }
             }
         } catch (Exception e) {
@@ -734,6 +766,40 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     private String resolveUserName() {
         return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+    }
+
+    public OaBudgetAdjustment getAdjustmentById(Long adjustmentId) {
+        return budgetAdjustmentMapper.selectById(adjustmentId);
+    }
+
+    private void publishBudgetPlanSubmittedEvent(OaBudgetPlan budget, BudgetPlanSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("BUDGET_PLAN_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(budget.getBudgetId())
+                    .tenantId(budget.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("预算提交流程事件发布失败");
+        }
+    }
+
+    private void publishBudgetAdjustmentSubmittedEvent(OaBudgetAdjustment adjustment, BudgetAdjustmentSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("BUDGET_ADJUSTMENT_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(adjustment.getAdjustmentId())
+                    .tenantId(adjustment.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("预算调整提交流程事件发布失败");
+        }
     }
 
     private BigDecimal defaultDecimal(BigDecimal value) {

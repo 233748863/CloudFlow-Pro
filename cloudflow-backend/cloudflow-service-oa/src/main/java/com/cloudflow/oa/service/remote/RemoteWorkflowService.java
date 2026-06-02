@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.remote;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowRecallDTO;
 import com.cloudflow.oa.domain.dto.WorkflowTaskCompleteDTO;
@@ -26,6 +27,9 @@ public interface RemoteWorkflowService {
 
     @PostMapping("/wf/start")
     R<?> startProcess(@RequestBody WorkflowProcessStartDTO req);
+
+    @PostMapping("/inner/workflow/process/start")
+    R<?> startProcessInternal(@RequestBody InternalWorkflowStartDTO req);
 
     @PostMapping("/wf/complete")
     R<?> completeTask(@RequestBody WorkflowTaskCompleteDTO req);

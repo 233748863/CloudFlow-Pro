@@ -27,4 +27,14 @@ public class WorkflowStartRequest implements Serializable {
      * 流程变量
      */
     private Map<String, Object> variables;
+
+    /**
+     * 发起人ID
+     */
+    private Long startUserId;
+
+    /**
+     * 发起人姓名
+     */
+    private String startUserName;
 }

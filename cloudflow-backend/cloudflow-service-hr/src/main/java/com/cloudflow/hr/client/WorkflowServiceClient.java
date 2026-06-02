@@ -56,6 +56,8 @@ public interface WorkflowServiceClient {
         WorkflowStartRequest request = new WorkflowStartRequest();
         request.setProcessDefKey(dto.getProcessDefinitionKey());
         request.setBusinessKey(dto.getBusinessType() + ":" + dto.getBusinessId());
+        request.setStartUserId(dto.getStartUserId());
+        request.setStartUserName(null);
         request.setVariables(variables);
 
         R<Map<String, String>> response = startProcessInternal(request);
@@ -77,7 +79,7 @@ public interface WorkflowServiceClient {
     /**
      * workflow 原生启动接口
      */
-    @PostMapping("/wf/start")
+    @PostMapping("/inner/workflow/process/start")
     R<Map<String, String>> startProcessInternal(@RequestBody WorkflowStartRequest request);
 
     /**

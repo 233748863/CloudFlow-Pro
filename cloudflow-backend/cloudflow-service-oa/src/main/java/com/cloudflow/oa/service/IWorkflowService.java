@@ -20,6 +20,9 @@ public interface IWorkflowService {
      */
     R<?> startProcess(String processDefinitionKey, String businessKey, Map<String, Object> variables);
 
+    R<?> startProcess(String processDefinitionKey, String businessKey, Long startUserId,
+                      String startUserName, Map<String, Object> variables);
+
     /**
      * 完成任务
      *

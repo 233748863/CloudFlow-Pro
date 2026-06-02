@@ -7,6 +7,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
@@ -22,7 +24,9 @@ import com.cloudflow.oa.domain.OaProjectMilestone;
 import com.cloudflow.oa.domain.OaProjectRisk;
 import com.cloudflow.oa.domain.WorkTask;
 import com.cloudflow.oa.domain.dto.ProjectWbsTreeNodeDTO;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.event.ProjectSubmittedEvent;
 import com.cloudflow.oa.domain.vo.ProjectCostSummaryVO;
 import com.cloudflow.oa.domain.vo.ProjectDetailVO;
 import com.cloudflow.oa.domain.vo.ProjectKpiVO;
@@ -42,6 +46,7 @@ import com.cloudflow.oa.service.IOaProjectService;
 import com.cloudflow.oa.service.IWorkTaskService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -77,6 +82,8 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     private final BizExpenseClaimMapper expenseClaimMapper;
     private final BizPurchaseRequestMapper purchaseRequestMapper;
     private final BizPaymentRequestMapper paymentRequestMapper;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<OaProject> queryPage(OaProject query, PageQuery pageQuery) {
@@ -173,20 +180,24 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             }
             refreshProjectActualCost(projectId);
             syncProjectRiskLevel(projectId);
-            startProjectWorkflowAfterCommit(project);
+            ProjectSubmittedEvent event = new ProjectSubmittedEvent();
+            event.setProjectId(project.getProjectId());
+            event.setProjectNo(project.getProjectNo());
+            event.setOwnerId(project.getOwnerId());
+            event.setOwnerName(project.getOwnerName());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishProjectSubmittedEvent(project, event);
         }
         return updated;
     }
 
-    private void startProjectWorkflowAfterCommit(OaProject project) {
-        OaTransactionHooks.afterCommit(() -> startProjectWorkflow(project));
-    }
-
-    private void startProjectWorkflow(OaProject project) {
+    public void startProjectWorkflow(OaProject project) {
         try {
-            WorkflowProcessStartDTO dto = new WorkflowProcessStartDTO();
+            InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
             dto.setProcessDefKey("project_approval");
             dto.setBusinessKey("PROJECT:" + project.getProjectId());
+            dto.setStartUserId(project.getOwnerId());
+            dto.setStartUserName(project.getOwnerName());
             Map<String, Object> variables = new HashMap<>();
             variables.put("projectId", project.getProjectId());
             variables.put("projectNo", project.getProjectNo());
@@ -202,12 +213,17 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
                     "workflow:stream:approval-callback:oa"
             );
             dto.setVariables(variables);
-            var result = remoteWorkflowService.startProcess(dto);
+            var result = remoteWorkflowService.startProcessInternal(dto);
             if (result != null && result.isSuccess() && result.getData() != null) {
-                OaProject update = new OaProject();
-                update.setProjectId(project.getProjectId());
-                update.setInstanceId(extractInstanceId(result.getData()));
-                updateById(update);
+                String instanceId = extractInstanceId(result.getData());
+                if (StringUtils.hasText(instanceId)) {
+                    OaProject update = new OaProject();
+                    update.setProjectId(project.getProjectId());
+                    update.setInstanceId(instanceId);
+                    update.setUpdateBy("event-consumer");
+                    update.setUpdateTime(LocalDateTime.now());
+                    updateById(update);
+                }
             }
         } catch (Exception e) {
             log.error("项目 {} 启动工作流失败: {}", project.getProjectNo(), e.getMessage(), e);
@@ -670,6 +686,21 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             return instanceId != null ? String.valueOf(instanceId) : null;
         }
         return data != null ? String.valueOf(data) : null;
+    }
+
+    private void publishProjectSubmittedEvent(OaProject project, ProjectSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("PROJECT_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(project.getProjectId())
+                    .tenantId(project.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("项目提交事件发布失败, projectId={}, error={}", project.getProjectId(), e.getMessage());
+        }
     }
 
     private void refreshProjectActualCost(Long projectId) {

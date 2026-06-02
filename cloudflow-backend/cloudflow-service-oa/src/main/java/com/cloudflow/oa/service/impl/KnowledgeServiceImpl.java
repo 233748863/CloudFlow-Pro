@@ -7,18 +7,23 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.KnowledgeDocument;
 import com.cloudflow.oa.domain.KnowledgeRead;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowRecallDTO;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
+import com.cloudflow.oa.event.KnowledgeDocumentSubmittedEvent;
 import com.cloudflow.oa.mapper.KnowledgeDocumentMapper;
 import com.cloudflow.oa.mapper.KnowledgeReadMapper;
 import com.cloudflow.oa.service.IKnowledgeService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,11 +49,17 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
 
     private final KnowledgeReadMapper readMapper;
     private final RemoteWorkflowService remoteWorkflowService;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     public KnowledgeServiceImpl(KnowledgeReadMapper readMapper,
-                                RemoteWorkflowService remoteWorkflowService) {
+                                RemoteWorkflowService remoteWorkflowService,
+                                OutboxPublisher outboxPublisher,
+                                ObjectMapper objectMapper) {
         this.readMapper = readMapper;
         this.remoteWorkflowService = remoteWorkflowService;
+        this.outboxPublisher = outboxPublisher;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -176,42 +187,18 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
             throw new IllegalArgumentException("只有草稿或已驳回文档可以提交审批");
         }
         normalizeDocument(document);
-        String instanceId;
-        try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
-            req.setProcessDefKey("knowledge_publish");
-            req.setBusinessKey("KNOWLEDGE_DOCUMENT:" + document.getDocumentId());
-
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("documentId", document.getDocumentId());
-            variables.put("title", document.getTitle());
-            variables.put("category", document.getCategory());
-            variables.put("summary", document.getSummary());
-            variables.put("scopeType", document.getScopeType());
-            variables.put("scopeValue", document.getScopeValue());
-            variables.put("submitterId", document.getSubmitterId());
-            variables.put("submitterName", document.getSubmitterName());
-            variables.put("deptName", document.getDeptName());
-            WorkflowCallbackConstants.applyCallbackMetadata(
-                    variables,
-                    OaBusinessTypes.KNOWLEDGE_DOCUMENT,
-                    document.getDocumentId(),
-                    document.getTitle(),
-                    "workflow:stream:approval-callback:oa"
-            );
-            req.setVariables(variables);
-
-            R<?> result = remoteWorkflowService.startProcess(req);
-            instanceId = requireWorkflowInstanceId(document, result);
-        } catch (Exception e) {
-            log.error("知识库文档 {} 启动工作流失败，保持原状态 {}", document.getDocumentId(), document.getStatus(), e);
-            if (e instanceof IllegalArgumentException) {
-                throw (IllegalArgumentException) e;
-            }
-            throw new IllegalArgumentException("流程启动失败，请稍后重试");
+        boolean updated = markSubmitted(document, null);
+        if (!updated) {
+            return false;
         }
-
-        return markSubmitted(document, instanceId);
+        KnowledgeDocumentSubmittedEvent event = new KnowledgeDocumentSubmittedEvent();
+        event.setDocumentId(document.getDocumentId());
+        event.setTitle(document.getTitle());
+        event.setSubmitterId(document.getSubmitterId());
+        event.setSubmitterName(document.getSubmitterName());
+        event.setSubmittedAt(LocalDateTime.now());
+        publishKnowledgeSubmittedEvent(document, event);
+        return true;
     }
 
     @Override
@@ -242,6 +229,42 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         document.setUpdateBy(UserContext.getUserName());
         document.setUpdateTime(now);
         return updateById(document);
+    }
+
+    public void startPublishWorkflow(KnowledgeDocument document) throws Exception {
+        InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+        req.setProcessDefKey("knowledge_publish");
+        req.setBusinessKey("KNOWLEDGE_DOCUMENT:" + document.getDocumentId());
+        req.setStartUserId(document.getSubmitterId());
+        req.setStartUserName(document.getSubmitterName());
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("documentId", document.getDocumentId());
+        variables.put("title", document.getTitle());
+        variables.put("category", document.getCategory());
+        variables.put("summary", document.getSummary());
+        variables.put("scopeType", document.getScopeType());
+        variables.put("scopeValue", document.getScopeValue());
+        variables.put("submitterId", document.getSubmitterId());
+        variables.put("submitterName", document.getSubmitterName());
+        variables.put("deptName", document.getDeptName());
+        WorkflowCallbackConstants.applyCallbackMetadata(
+                variables,
+                OaBusinessTypes.KNOWLEDGE_DOCUMENT,
+                document.getDocumentId(),
+                document.getTitle(),
+                "workflow:stream:approval-callback:oa"
+        );
+        req.setVariables(variables);
+
+        R<?> result = remoteWorkflowService.startProcessInternal(req);
+        String instanceId = requireWorkflowInstanceId(document, result);
+        KnowledgeDocument update = new KnowledgeDocument();
+        update.setDocumentId(document.getDocumentId());
+        update.setInstanceId(instanceId);
+        update.setUpdateBy("event-consumer");
+        update.setUpdateTime(LocalDateTime.now());
+        updateById(update);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -442,6 +465,21 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         }
         log.info("知识库文档 {} 工作流启动成功，流程实例ID: {}", document.getDocumentId(), instanceId);
         return instanceId;
+    }
+
+    private void publishKnowledgeSubmittedEvent(KnowledgeDocument document, KnowledgeDocumentSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("KNOWLEDGE_DOCUMENT_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(document.getDocumentId())
+                    .tenantId(document.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("流程提交事件发布失败");
+        }
     }
 
     private List<String> parseScopeValues(String scopeValue) {

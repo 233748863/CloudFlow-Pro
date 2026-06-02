@@ -8,13 +8,17 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseBorrow;
 import com.cloudflow.oa.domain.OaLicenseHandoverLog;
+import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.event.LicenseBorrowSubmittedEvent;
 import com.cloudflow.oa.mapper.OaBorrowReminderLogMapper;
 import com.cloudflow.oa.mapper.OaLicenseBorrowMapper;
 import com.cloudflow.oa.mapper.OaLicenseHandoverLogMapper;
@@ -25,6 +29,7 @@ import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,6 +58,8 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
     private final RemoteWorkflowService remoteWorkflowService;
     private final ISysNoticeService sysNoticeService;
     private final OaWorkflowFailureHelper workflowFailureHelper;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<OaLicenseBorrow> queryPage(OaLicenseBorrow query, PageQuery pageQuery) {
@@ -187,20 +194,24 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         borrow.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(borrow);
         if (updated) {
-            startBorrowWorkflowAfterCommit(borrow);
+            LicenseBorrowSubmittedEvent event = new LicenseBorrowSubmittedEvent();
+            event.setBorrowId(borrow.getId());
+            event.setBorrowNo(borrow.getBorrowNo());
+            event.setUserId(borrow.getUserId());
+            event.setUserName(borrow.getUserName());
+            event.setSubmittedAt(LocalDateTime.now());
+            publishBorrowSubmittedEvent(borrow, event);
         }
         return updated;
     }
 
-    private void startBorrowWorkflowAfterCommit(OaLicenseBorrow borrow) {
-        OaTransactionHooks.afterCommit(() -> startBorrowWorkflow(borrow));
-    }
-
-    private void startBorrowWorkflow(OaLicenseBorrow borrow) {
+    public void startBorrowWorkflow(OaLicenseBorrow borrow) {
         try {
-            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
             req.setProcessDefKey("license_borrow");
             req.setBusinessKey("LICENSE_BORROW:" + borrow.getId());
+            req.setStartUserId(borrow.getUserId());
+            req.setStartUserName(borrow.getUserName());
             Map<String, Object> variables = new HashMap<>();
             variables.put("borrowId", borrow.getId());
             variables.put("borrowNo", borrow.getBorrowNo());
@@ -218,12 +229,17 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
                     "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
-            R<?> result = remoteWorkflowService.startProcess(req);
+            R<?> result = remoteWorkflowService.startProcessInternal(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {
-                OaLicenseBorrow update = new OaLicenseBorrow();
-                update.setId(borrow.getId());
-                update.setInstanceId(extractInstanceId(result.getData()));
-                updateById(update);
+                String instanceId = extractInstanceId(result.getData());
+                if (StringUtils.hasText(instanceId)) {
+                    OaLicenseBorrow update = new OaLicenseBorrow();
+                    update.setId(borrow.getId());
+                    update.setInstanceId(instanceId);
+                    update.setUpdateBy("event-consumer");
+                    update.setUpdateTime(LocalDateTime.now());
+                    updateById(update);
+                }
             } else {
                 log.warn("证照借用 {} 工作流启动返回异常: {}", borrow.getBorrowNo(), result != null ? result.getMsg() : "null");
             }
@@ -232,6 +248,21 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
             workflowFailureHelper.handleWorkflowStartFailure(
                     OaBusinessTypes.LICENSE_BORROW, borrow.getId(), borrow.getBorrowNo(),
                     borrow.getUserName(), borrow.getUserId(), e);
+        }
+    }
+
+    private void publishBorrowSubmittedEvent(OaLicenseBorrow borrow, LicenseBorrowSubmittedEvent event) {
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("LICENSE_BORROW_SUBMITTED")
+                    .sourceModule("cloudflow-oa")
+                    .sourceId(borrow.getId())
+                    .tenantId(borrow.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (Exception e) {
+            log.warn("证照借用提交事件发布失败, borrowId={}, error={}", borrow.getId(), e.getMessage());
         }
     }
 
