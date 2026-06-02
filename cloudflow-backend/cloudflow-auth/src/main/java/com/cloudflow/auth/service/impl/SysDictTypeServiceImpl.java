@@ -40,6 +40,8 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     public void loadDictDataToRedis() {
+        clearLegacyDictCaches();
+
         List<SysDictData> all = dictDataMapper.selectList(new LambdaQueryWrapper<SysDictData>()
                 .eq(SysDictData::getStatus, "0")
                 .orderByAsc(SysDictData::getDictType)
@@ -61,6 +63,12 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
             sysDictHelper.setDictDataCache(dictType, items);
         }
         log.info("dict cache warmup completed, dictTypeCount={}, itemCount={}", dictTypes.size(), all.size());
+    }
+
+    private void clearLegacyDictCaches() {
+        for (String key : sysDictHelper.keys(SysDictHelper.DICT_DATA_PREFIX + "*")) {
+            sysDictHelper.deleteRawCacheKey(key);
+        }
     }
 
     private SysDictHelper.DictItem toDictItem(SysDictData data) {

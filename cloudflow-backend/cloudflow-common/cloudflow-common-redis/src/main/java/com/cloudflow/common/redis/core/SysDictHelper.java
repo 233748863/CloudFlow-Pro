@@ -1,12 +1,11 @@
 package com.cloudflow.common.redis.core;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -134,10 +133,24 @@ public class SysDictHelper {
         emptyHitLogged.remove(dictType);
     }
 
+    public Set<String> keys(String pattern) {
+        Collection<String> keys = redisCache.keys(pattern);
+        if (keys == null || keys.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return Set.copyOf(keys);
+    }
+
+    public void deleteRawCacheKey(String key) {
+        if (key == null || key.isEmpty()) {
+            return;
+        }
+        redisCache.redisTemplate.delete(key);
+    }
+
     /**
      * 字典项 POJO，避免耦合 cloudflow-auth 的 SysDictData 实体
      */
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class DictItem {
         private Integer sort;
         private String label;
