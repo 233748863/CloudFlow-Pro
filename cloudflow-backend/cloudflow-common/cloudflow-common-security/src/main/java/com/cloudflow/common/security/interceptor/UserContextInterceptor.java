@@ -1,6 +1,8 @@
 package com.cloudflow.common.security.interceptor;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.context.UserDataScopeSnapshot;
+import com.cloudflow.common.redis.core.UserDataScopeStore;
 import com.cloudflow.common.security.core.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -29,6 +31,9 @@ public class UserContextInterceptor implements HandlerInterceptor {
     @Autowired
     private TokenService tokenService;
 
+    @Autowired(required = false)
+    private UserDataScopeStore userDataScopeStore;
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         if (UserContext.getUserId() != null) {
@@ -39,6 +44,7 @@ public class UserContextInterceptor implements HandlerInterceptor {
         if (StringUtils.hasText(token)) {
             Map<String, Object> loginUser = tokenService.verifyToken(token);
             if (loginUser != null) {
+                refreshDynamicDataScope(loginUser);
                 fillContext(loginUser, token);
                 fillTenant(loginUser, request);
                 return true;
@@ -47,6 +53,30 @@ public class UserContextInterceptor implements HandlerInterceptor {
 
         fillTenantFromHeader(request);
         return true;
+    }
+
+    private void refreshDynamicDataScope(Map<String, Object> loginUser) {
+        if (userDataScopeStore == null || loginUser == null) {
+            return;
+        }
+        Long userId = toLong(loginUser.get("userId"));
+        Long tenantId = toLong(loginUser.get("tenantId"));
+        if (userId == null || tenantId == null) {
+            return;
+        }
+        UserDataScopeSnapshot snapshot = userDataScopeStore.get(tenantId, userId);
+        if (snapshot == null) {
+            return;
+        }
+        if (snapshot.getDsType() != null) {
+            loginUser.put("dsType", snapshot.getDsType());
+        }
+        if (snapshot.getDsDeptIds() != null) {
+            loginUser.put("dsDeptIds", snapshot.getDsDeptIds());
+        }
+        if (snapshot.getTenantId() != null) {
+            loginUser.put("tenantId", snapshot.getTenantId());
+        }
     }
 
     private String resolveToken(HttpServletRequest request) {

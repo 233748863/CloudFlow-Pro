@@ -20,6 +20,7 @@ public class RedisCache {
         "login_tokens:",          // 登录令牌缓存
         "user_tokens:",           // 用户令牌集合缓存
         "user_menus:",            // 用户菜单树缓存
+        "user:datascope:",        // 用户动态数据权限快照（key 内自带 tenantId）
         "sys:config:global:",     // 全局系统配置（不受租户隔离）
         "sys:dict:data:"          // 字典数据（不受租户隔离）
         // 注意：租户级配置使用 "sys:config:tenant:" 前缀，走租户隔离

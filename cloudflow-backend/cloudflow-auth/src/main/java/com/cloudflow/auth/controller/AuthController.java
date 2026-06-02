@@ -19,7 +19,9 @@ import com.cloudflow.auth.service.PasswordService;
 import com.cloudflow.auth.service.ILoginLogService;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.auth.service.ForcePasswordChangeService;
+import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.context.UserDataScopeSnapshot;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
 import com.cloudflow.common.ratelimiter.enums.LimitType;
@@ -97,6 +99,9 @@ public class AuthController {
 
     @Autowired
     private ForcePasswordChangeService forcePasswordChangeService;
+
+    @Autowired
+    private UserDataScopeService userDataScopeService;
 
     @Autowired
     private com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
@@ -250,9 +255,11 @@ public class AuthController {
         boolean forcePasswordChange = forcePasswordChangeService.isRequired(user);
         loginUser.put("forcePasswordChange", forcePasswordChange);
 
-        Map<String, Object> dsInfo = calcDataScopeInfo(user.getUserId(), user.getDeptId());
-        loginUser.put("dsType", dsInfo.get("dsType"));
-        loginUser.put("dsDeptIds", dsInfo.get("dsDeptIds"));
+        UserDataScopeSnapshot dataScopeSnapshot = userDataScopeService.refresh(user.getUserId());
+        if (dataScopeSnapshot != null) {
+            loginUser.put("dsType", dataScopeSnapshot.getDsType());
+            loginUser.put("dsDeptIds", dataScopeSnapshot.getDsDeptIds());
+        }
 
         String token = tokenService.createToken(loginUser);
         loginLogService.recordLoginSuccess(
@@ -849,110 +856,4 @@ public class AuthController {
         }
     }
 
-    /**
-     * 计算用户的数据权限信息（登录时一次性算好存入 Redis）
-     * 下游服务通过 RedisDataScopeHandle 从 UserContext 读取，无需查 auth 库
-     * 
-     * @param userId 用户ID
-     * @param deptId 用户部门ID
-     * @return dsType（权限类型）和 dsDeptIds（可访问部门列表）
-     */
-    private Map<String, Object> calcDataScopeInfo(Long userId, Long deptId) {
-        Map<String, Object> result = new HashMap<>();
-        
-        try {
-            // 1. 查询用户角色关联
-            LambdaQueryWrapper<com.cloudflow.auth.domain.SysUserRole> urWrapper = new LambdaQueryWrapper<>();
-            urWrapper.eq(com.cloudflow.auth.domain.SysUserRole::getUserId, userId);
-            List<com.cloudflow.auth.domain.SysUserRole> userRoles = sysUserRoleMapper.selectList(urWrapper);
-            
-            if (userRoles == null || userRoles.isEmpty()) {
-                // 无角色，默认仅本人权限
-                result.put("dsType", 4);
-                result.put("dsDeptIds", Collections.emptyList());
-                return result;
-            }
-            
-            // 2. 查询角色信息
-            List<Long> roleIds = userRoles.stream()
-                .map(com.cloudflow.auth.domain.SysUserRole::getRoleId)
-                .collect(Collectors.toList());
-            List<com.cloudflow.auth.domain.SysRole> roles = sysRoleMapper.selectBatchIds(roleIds);
-            
-            if (roles == null || roles.isEmpty()) {
-                result.put("dsType", 4);
-                result.put("dsDeptIds", Collections.emptyList());
-                return result;
-            }
-            
-            // 3. 取权限最大的角色（数值最小 = 权限最大：0全部 < 1自定义 < 2本级及下级 < 3本级 < 4本人）
-            int dsType = roles.stream()
-                .map(com.cloudflow.auth.domain.SysRole::getDsType)
-                .filter(Objects::nonNull)
-                .min(Integer::compareTo)
-                .orElse(4);
-            
-            result.put("dsType", dsType);
-            
-            // 4. 根据权限类型计算可访问的部门ID列表
-            List<Long> dsDeptIds = new ArrayList<>();
-            
-            switch (dsType) {
-                case 0: // 全部数据权限，不需要部门列表
-                    break;
-                case 1: // 自定义权限，合并所有角色的 ds_scope
-                    String dsScope = roles.stream()
-                        .map(com.cloudflow.auth.domain.SysRole::getDsScope)
-                        .filter(s -> s != null && !s.trim().isEmpty())
-                        .collect(Collectors.joining(","));
-                    if (!dsScope.isEmpty()) {
-                        dsDeptIds = Arrays.stream(dsScope.split(","))
-                            .map(String::trim)
-                            .filter(s -> !s.isEmpty())
-                            .map(Long::parseLong)
-                            .distinct()
-                            .collect(Collectors.toList());
-                    }
-                    break;
-                case 2: // 本级及下级
-                    if (deptId != null) {
-                        dsDeptIds.add(deptId);
-                        dsDeptIds.addAll(getDescendantDeptIds(deptId));
-                    }
-                    break;
-                case 3: // 本级
-                    if (deptId != null) {
-                        dsDeptIds.add(deptId);
-                    }
-                    break;
-                case 4: // 本人，不需要部门列表（通过 username 过滤）
-                    break;
-            }
-            
-            result.put("dsDeptIds", dsDeptIds);
-            
-        } catch (Exception e) {
-            // 计算失败时默认仅本人权限，保证安全
-            result.put("dsType", 4);
-            result.put("dsDeptIds", Collections.emptyList());
-        }
-        
-        return result;
-    }
-    
-    /**
-     * 获取指定部门的所有下级部门ID（通过 ancestors 字段快速查询）
-     */
-    private List<Long> getDescendantDeptIds(Long deptId) {
-        List<com.cloudflow.auth.domain.SysDept> allDepts = sysDeptMapper.selectList(null);
-        if (allDepts == null || allDepts.isEmpty()) {
-            return Collections.emptyList();
-        }
-        return allDepts.stream()
-            .filter(dept -> dept.getAncestors() != null &&
-                           (dept.getAncestors().contains("," + deptId + ",") ||
-                            dept.getAncestors().endsWith("," + deptId)))
-            .map(com.cloudflow.auth.domain.SysDept::getDeptId)
-            .collect(Collectors.toList());
-    }
 }

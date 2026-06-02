@@ -18,6 +18,7 @@ import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.auth.service.PasswordService;
 import com.cloudflow.auth.service.UserSessionRevoker;
+import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
@@ -85,6 +86,9 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Autowired
     private UserDeletionGuardRegistry userDeletionGuardRegistry;
+
+    @Autowired
+    private UserDataScopeService userDataScopeService;
 
     @Autowired
     private OutboxPublisher outboxPublisher;
@@ -324,6 +328,7 @@ public class SysUserServiceImpl implements ISysUserService {
 
         // 同时清除用户菜单树缓存
         sysMenuService.evictUserMenuCache(user.getUserId());
+        userDataScopeService.refresh(user.getUserId());
         publishUserDisabledEventIfNeeded(persisted, user);
         revokeSessionIfNeeded(persisted, user);
 
@@ -387,6 +392,7 @@ public class SysUserServiceImpl implements ISysUserService {
                 evictUserInfoCache(existingUser.getUserName(), existingUser.getTenantId());
                 sysMenuService.evictUserMenuCache(userId);
                 userSessionRevoker.revokeByUserId(userId);
+                userDataScopeService.clear(existingUser.getTenantId(), userId);
             }
 
             LambdaQueryWrapper<SysUser> userWrapper = new LambdaQueryWrapper<>();

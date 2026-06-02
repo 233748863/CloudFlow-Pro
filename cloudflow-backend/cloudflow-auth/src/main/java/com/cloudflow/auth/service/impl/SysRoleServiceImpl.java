@@ -9,6 +9,7 @@ import com.cloudflow.auth.mapper.SysRoleMenuMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysRoleService;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.constant.CacheConstants;
@@ -44,6 +45,9 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Autowired
     private UserSessionRevoker userSessionRevoker;
+
+    @Autowired
+    private UserDataScopeService userDataScopeService;
 
     @Override
     public List<SysRole> selectRoleList(SysRole role) {
@@ -109,6 +113,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
         // 插入新的角色-菜单关联
         insertRoleMenu(role);
         revokeSessionsByRole(role.getRoleId());
+        userDataScopeService.refreshByRoleId(role.getRoleId());
         // 注意：@CacheEvict 会自动清除缓存，不需要手动调用 clearMenuCache()
         return rows;
     }
@@ -164,6 +169,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
             LambdaQueryWrapper<SysRoleMenu> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(SysRoleMenu::getRoleId, roleId);
             roleMenuMapper.delete(wrapper);
+            userDataScopeService.refreshByRoleId(roleId);
         }
         // 注意：@CacheEvict 会自动清除缓存，不需要手动调用 clearMenuCache()
         return roleIds.length;

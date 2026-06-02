@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.mapper.SysDeptMapper;
+import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,9 @@ public class SysDeptController {
 
     @Autowired
     private SysDeptMapper sysDeptMapper;
+
+    @Autowired
+    private UserDataScopeService userDataScopeService;
 
     /**
      * 获取部门树
@@ -119,7 +123,11 @@ public class SysDeptController {
         if (dept.getStatus() == null) {
             dept.setStatus("0");
         }
-        return R.ok(sysDeptMapper.insert(dept) > 0);
+        boolean success = sysDeptMapper.insert(dept) > 0;
+        if (success) {
+            userDataScopeService.refreshByDeptId(dept.getDeptId());
+        }
+        return R.ok(success);
     }
 
     /**
@@ -138,7 +146,14 @@ public class SysDeptController {
         } else {
             dept.setAncestors("0");
         }
-        return R.ok(sysDeptMapper.updateById(dept) > 0);
+        boolean success = sysDeptMapper.updateById(dept) > 0;
+        if (success) {
+            userDataScopeService.refreshByDeptId(dept.getDeptId());
+            if (dept.getParentId() != null) {
+                userDataScopeService.refreshByDeptId(dept.getParentId());
+            }
+        }
+        return R.ok(success);
     }
 
     /**
@@ -153,6 +168,10 @@ public class SysDeptController {
         if (childCount > 0) {
             return R.fail("存在子部门，不允许删除");
         }
-        return R.ok(sysDeptMapper.deleteById(deptId) > 0);
+        boolean success = sysDeptMapper.deleteById(deptId) > 0;
+        if (success) {
+            userDataScopeService.refreshByDeptId(deptId);
+        }
+        return R.ok(success);
     }
 }
