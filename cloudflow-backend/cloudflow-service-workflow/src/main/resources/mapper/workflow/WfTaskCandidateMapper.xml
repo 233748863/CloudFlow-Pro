@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfTaskCandidateMapper">
+
+    <select id="selectBatchByTaskIds" resultType="com.cloudflow.workflow.domain.WfTaskCandidate">
+        SELECT
+            candidate_id,
+            tenant_id,
+            task_id,
+            instance_id,
+            user_id,
+            user_name,
+            candidate_type,
+            status,
+            create_time,
+            version,
+            claim_time
+        FROM wf_task_candidate
+        WHERE task_id IN
+        <foreach collection="taskIds" item="taskId" open="(" separator="," close=")">
+            #{taskId}
+        </foreach>
+          AND status = 'PENDING'
+        ORDER BY create_time ASC
+    </select>
+
+</mapper>

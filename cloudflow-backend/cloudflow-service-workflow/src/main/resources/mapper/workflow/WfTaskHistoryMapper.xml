@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfTaskHistoryMapper">
+
+    <select id="selectBatchByInstanceIds" resultType="com.cloudflow.workflow.domain.vo.TaskDetailVO">
+        SELECT
+            h.task_id AS taskId,
+            h.node_name AS taskName,
+            h.instance_id AS instanceId,
+            i.process_def_key AS processDefKey,
+            d.process_name AS processDefName,
+            h.operator_id AS assigneeId,
+            h.operator_name AS assigneeName,
+            h.create_time AS createTime,
+            NULL AS dueDate,
+            NULL AS priority,
+            h.action AS status
+        FROM wf_task_history h
+        LEFT JOIN wf_process_instance i ON i.instance_id = h.instance_id
+        LEFT JOIN wf_process_definition d ON d.process_def_key = i.process_def_key
+        WHERE h.instance_id IN
+        <foreach collection="instanceIds" item="instanceId" open="(" separator="," close=")">
+            #{instanceId}
+        </foreach>
+        ORDER BY h.create_time DESC
+    </select>
+
+</mapper>

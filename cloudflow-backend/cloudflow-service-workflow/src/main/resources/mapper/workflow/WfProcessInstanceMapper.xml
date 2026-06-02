@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfProcessInstanceMapper">
+
+    <select id="selectBatchWithDefinition" resultType="com.cloudflow.workflow.domain.vo.ProcessInstanceVO">
+        SELECT
+            i.instance_id AS instanceId,
+            i.definition_id AS processDefId,
+            i.process_def_key AS processDefKey,
+            d.process_name AS processDefName,
+            i.business_key AS businessKey,
+            i.start_user_id AS startUserId,
+            i.start_user_name AS startUserName,
+            i.start_time AS startTime,
+            i.end_time AS endTime,
+            i.status AS status,
+            (
+                SELECT t.node_name
+                FROM wf_task t
+                WHERE t.instance_id = i.instance_id
+                  AND t.status = 'TODO'
+                ORDER BY t.create_time ASC
+                LIMIT 1
+            ) AS currentNode
+        FROM wf_process_instance i
+        LEFT JOIN wf_process_definition d ON d.process_def_key = i.process_def_key
+        WHERE i.instance_id IN
+        <foreach collection="instanceIds" item="instanceId" open="(" separator="," close=")">
+            #{instanceId}
+        </foreach>
+        ORDER BY i.start_time DESC
+    </select>
+
+</mapper>
