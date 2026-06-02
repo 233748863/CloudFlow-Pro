@@ -24,11 +24,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * 字典类型 Service 实现
- *
- * @author CloudFlow
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -37,56 +32,47 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     private final SysDictDataMapper dictDataMapper;
     private final SysDictHelper sysDictHelper;
+    private final DictReferenceRegistry dictReferenceRegistry;
 
-    /**
-     * 应用启动时，将所有字典数据按 dictType 分组写入 Redis，
-     * 后续业务通过 {@link SysDictHelper#getDictData(String)} 读取。
-     */
     @PostConstruct
     public void init() {
         loadDictDataToRedis();
     }
 
-    /**
-     * 全量预热字典缓存
-     */
     public void loadDictDataToRedis() {
         List<SysDictData> all = dictDataMapper.selectList(new LambdaQueryWrapper<SysDictData>()
                 .eq(SysDictData::getStatus, "0")
                 .orderByAsc(SysDictData::getDictType)
                 .orderByAsc(SysDictData::getDictSort));
         if (all == null || all.isEmpty()) {
-            log.info("字典数据缓存预热完成，0 条数据");
+            log.info("dict cache warmup completed, no records");
             return;
         }
-        // 按 dictType 分组写入
+
         Set<String> dictTypes = new HashSet<>();
-        for (SysDictData d : all) {
-            dictTypes.add(d.getDictType());
+        for (SysDictData data : all) {
+            dictTypes.add(data.getDictType());
         }
         for (String dictType : dictTypes) {
             List<SysDictHelper.DictItem> items = all.stream()
-                    .filter(d -> dictType.equals(d.getDictType()))
+                    .filter(data -> dictType.equals(data.getDictType()))
                     .map(this::toDictItem)
                     .collect(Collectors.toCollection(ArrayList::new));
             sysDictHelper.setDictDataCache(dictType, items);
         }
-        log.info("字典数据缓存预热完成，{} 个字典类型，共 {} 条数据", dictTypes.size(), all.size());
+        log.info("dict cache warmup completed, dictTypeCount={}, itemCount={}", dictTypes.size(), all.size());
     }
 
-    private SysDictHelper.DictItem toDictItem(SysDictData d) {
+    private SysDictHelper.DictItem toDictItem(SysDictData data) {
         return new SysDictHelper.DictItem(
-                d.getDictSort(),
-                d.getDictLabel(),
-                d.getDictValue(),
-                d.getListClass(),
-                d.getCssClass()
+                data.getDictSort(),
+                data.getDictLabel(),
+                data.getDictValue(),
+                data.getListClass(),
+                data.getCssClass()
         );
     }
 
-    /**
-     * 重新加载单个字典类型的缓存
-     */
     @Override
     public void refreshDictCache(String dictType) {
         if (dictType == null || dictType.isEmpty()) {
@@ -104,7 +90,6 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     @Override
     public List<SysDictType> selectDictTypeAll() {
-        // 查询所有正常状态的字典类型
         return list(new LambdaQueryWrapper<SysDictType>()
                 .eq(SysDictType::getStatus, "0")
                 .orderByAsc(SysDictType::getDictId));
@@ -112,25 +97,23 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     @Override
     public List<SysDictData> selectDictDataByType(String dictType) {
-        // Redis 优先：启动时已预热到 sys:dict:data:{dictType}
-        // 命中则直接拼回 SysDictData 形态（仅含前端依赖字段）返回，避免每次都打 MySQL
         List<SysDictHelper.DictItem> cached = sysDictHelper.getDictData(dictType);
         if (cached != null && !cached.isEmpty()) {
             List<SysDictData> result = new ArrayList<>(cached.size());
             for (SysDictHelper.DictItem item : cached) {
-                SysDictData d = new SysDictData();
-                d.setDictType(dictType);
-                d.setDictSort(item.getSort());
-                d.setDictLabel(item.getLabel());
-                d.setDictValue(item.getValue());
-                d.setListClass(item.getListClass());
-                d.setCssClass(item.getCssClass());
-                d.setStatus("0");
-                result.add(d);
+                SysDictData data = new SysDictData();
+                data.setDictType(dictType);
+                data.setDictSort(item.getSort());
+                data.setDictLabel(item.getLabel());
+                data.setDictValue(item.getValue());
+                data.setListClass(item.getListClass());
+                data.setCssClass(item.getCssClass());
+                data.setStatus("0");
+                result.add(data);
             }
             return result;
         }
-        // 降级：缓存未命中（启动顺序、字典刚被清空等）回查 DB，并补一次缓存
+
         List<SysDictData> list = dictDataMapper.selectList(new LambdaQueryWrapper<SysDictData>()
                 .eq(SysDictData::getDictType, dictType)
                 .eq(SysDictData::getStatus, "0")
@@ -146,10 +129,8 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     @Override
     public boolean checkDictTypeUnique(SysDictType dictType) {
-        // 校验字典类型标识是否已存在
         LambdaQueryWrapper<SysDictType> wrapper = new LambdaQueryWrapper<SysDictType>()
                 .eq(SysDictType::getDictType, dictType.getDictType());
-        // 编辑时排除自身
         if (dictType.getDictId() != null) {
             wrapper.ne(SysDictType::getDictId, dictType.getDictId());
         }
@@ -164,16 +145,14 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateDictType(SysDictType dictType) {
-        // 查询旧的字典类型标识
         SysDictType oldDict = getById(dictType.getDictId());
         if (oldDict != null && !oldDict.getDictType().equals(dictType.getDictType())) {
-            // 如果字典类型标识变更，同步更新字典数据表中的 dict_type
+            assertDictTypeRenameAllowed(oldDict.getDictType());
             SysDictData updateData = new SysDictData();
             updateData.setDictType(dictType.getDictType());
             dictDataMapper.update(updateData, new LambdaQueryWrapper<SysDictData>()
                     .eq(SysDictData::getDictType, oldDict.getDictType()));
-            log.info("字典类型标识变更: {} -> {}, 已同步更新字典数据", oldDict.getDictType(), dictType.getDictType());
-            // 旧 dictType 缓存清除，新 dictType 缓存重建
+            log.info("dict type code changed, old={}, new={}", oldDict.getDictType(), dictType.getDictType());
             sysDictHelper.removeDictDataCache(oldDict.getDictType());
             refreshDictCache(dictType.getDictType());
         }
@@ -192,7 +171,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
             sysDictHelper.removeDictDataCache(dictType.getDictType());
         }
         removeByIds(Arrays.asList(dictIds));
-        log.info("删除字典类型: {} 条，关联字典数据已清理", dictIds.length);
+        log.info("dict types deleted, count={}", dictIds.length);
     }
 
     @Override
@@ -217,20 +196,91 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     private void assertDictTypeNotReferenced(String dictType) {
-        long count = dictDataMapper.selectCount(new LambdaQueryWrapper<SysDictData>()
-                .eq(SysDictData::getDictType, dictType)
-                .eq(SysDictData::getStatus, "0"));
-        if (count > 0) {
-            throw new ServiceException("字典类型 " + dictType + " 仍存在 " + count + " 条字典数据，禁止删除",
+        List<DictReferenceCheckResult> findings = findDictValueReferences(dictType, null);
+        if (!findings.isEmpty()) {
+            throw new ServiceException("字典类型 " + dictType + " 已被引用: " + summarizeReferences(findings),
+                    ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
+        if (dictReferenceRegistry.isProtected(dictType)) {
+            throw new ServiceException("字典类型 " + dictType + " 已被 " +
+                    dictReferenceRegistry.protectedReason(dictType).orElse("状态机枚举") + " 绑定，禁止删除",
                     ErrorCodeConstants.CONCURRENT_MODIFICATION);
         }
     }
 
     private void assertDictValueNotReferenced(String dictType, String dictValue) {
-        if (!"sys_yes_no".equals(dictType) && !"sys_normal_disable".equals(dictType)) {
+        List<DictReferenceCheckResult> findings = findDictValueReferences(dictType, dictValue);
+        if (!findings.isEmpty()) {
+            throw new ServiceException("字典值 " + dictType + ":" + dictValue + " 已被引用: " + summarizeReferences(findings),
+                    ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
+        if (dictReferenceRegistry.isProtected(dictType)) {
+            throw new ServiceException("字典值 " + dictType + ":" + dictValue + " 已被 " +
+                    dictReferenceRegistry.protectedReason(dictType).orElse("状态机枚举") + " 绑定，禁止删除",
+                    ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
+    }
+
+    private void assertDictTypeRenameAllowed(String dictType) {
+        List<DictReferenceCheckResult> findings = findDictValueReferences(dictType, null);
+        if (!findings.isEmpty()) {
+            throw new ServiceException("字典类型 " + dictType + " 已被引用: " + summarizeReferences(findings),
+                    ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
+        if (!dictReferenceRegistry.isProtected(dictType)) {
             return;
         }
-        throw new ServiceException("字典值 " + dictType + ":" + dictValue + " 为系统保留值，禁止删除",
+        throw new ServiceException("字典类型 " + dictType + " 已被 " +
+                dictReferenceRegistry.protectedReason(dictType).orElse("状态机枚举") + " 绑定，禁止改名",
                 ErrorCodeConstants.CONCURRENT_MODIFICATION);
+    }
+
+    private List<DictReferenceCheckResult> findDictValueReferences(String dictType, String dictValue) {
+        List<DictReferenceRegistry.DictReferenceBinding> bindings = dictReferenceRegistry.bindings(dictType);
+        if (bindings.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> values;
+        if (dictValue != null) {
+            values = List.of(dictValue);
+        } else {
+            values = dictDataMapper.selectList(new LambdaQueryWrapper<SysDictData>()
+                            .select(SysDictData::getDictValue)
+                            .eq(SysDictData::getDictType, dictType))
+                    .stream()
+                    .map(SysDictData::getDictValue)
+                    .filter(value -> value != null && !value.isBlank())
+                    .distinct()
+                    .toList();
+        }
+        if (values.isEmpty()) {
+            return List.of();
+        }
+
+        List<DictReferenceCheckResult> findings = new ArrayList<>();
+        for (DictReferenceRegistry.DictReferenceBinding binding : bindings) {
+            for (String value : values) {
+                Long refCount = dictDataMapper.countDictReferences(binding.tableName(), binding.columnName(), value);
+                long count = refCount == null ? 0L : refCount;
+                if (count > 0) {
+                    findings.add(new DictReferenceCheckResult(
+                            dictType,
+                            value,
+                            binding.tableName(),
+                            binding.columnName(),
+                            binding.label(),
+                            count
+                    ));
+                }
+            }
+        }
+        return findings;
+    }
+
+    private String summarizeReferences(List<DictReferenceCheckResult> findings) {
+        return findings.stream()
+                .map(DictReferenceCheckResult::summary)
+                .collect(Collectors.joining("; "));
     }
 }

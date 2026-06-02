@@ -9,6 +9,7 @@ import com.cloudflow.auth.domain.dto.TenantStatisticsDTO;
 import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -57,6 +58,7 @@ public class SysTenantController {
     }
 
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:tenant:add")
     public R<Void> add(@RequestBody SysTenant tenant) {
         normalizeTenantCode(tenant);
@@ -93,6 +95,7 @@ public class SysTenantController {
     }
 
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:tenant:edit")
     public R<Void> edit(@RequestBody SysTenant tenant) {
         if (tenant.getTenantId() == null) {
@@ -152,6 +155,7 @@ public class SysTenantController {
     }
 
     @PutMapping("/{tenantId}/status")
+    @RepeatSubmit
     @SaCheckPermission("system:tenant:edit")
     public R<Void> updateStatus(@PathVariable Long tenantId, @RequestParam String status) {
         if (tenantId == defaultTenantId()) {
@@ -178,6 +182,7 @@ public class SysTenantController {
     }
 
     @PostMapping("/{tenantId}/storage/refresh")
+    @RepeatSubmit
     @SaCheckPermission("system:tenant:edit")
     public R<TenantStorageSummaryDTO> refreshTenantStorage(@PathVariable Long tenantId) {
         SysTenant tenant = sysTenantService.getById(tenantId);

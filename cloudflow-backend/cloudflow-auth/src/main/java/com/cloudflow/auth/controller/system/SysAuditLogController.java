@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.auth.service.LogImmutabilityGuardService;
 import com.cloudflow.common.audit.domain.SysAuditLogEntity;
 import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
 import com.cloudflow.common.core.domain.R;
@@ -32,6 +33,9 @@ public class SysAuditLogController {
 
     @Autowired
     private SysAuditLogMapper sysAuditLogMapper;
+
+    @Autowired
+    private LogImmutabilityGuardService logImmutabilityGuardService;
 
     /**
      * 分页查询审计日志
@@ -106,6 +110,7 @@ public class SysAuditLogController {
     @SaCheckPermission("system:audit:remove")
     @ResponseStatus(HttpStatus.GONE)
     public R delete(@RequestBody List<Long> ids) {
+        logImmutabilityGuardService.rejectAuditLogDeletion();
         return R.fail(HttpStatus.GONE.value(), "审计日志不可删除");
     }
 }

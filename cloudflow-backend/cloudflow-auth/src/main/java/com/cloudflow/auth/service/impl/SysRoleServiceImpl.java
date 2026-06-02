@@ -8,6 +8,8 @@ import com.cloudflow.auth.mapper.SysRoleMapper;
 import com.cloudflow.auth.mapper.SysRoleMenuMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysRoleService;
+import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.constant.CacheConstants;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 /**
@@ -35,6 +38,12 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Autowired
     private ISysMenuService sysMenuService;
+
+    @Autowired
+    private ISysUserService sysUserService;
+
+    @Autowired
+    private UserSessionRevoker userSessionRevoker;
 
     @Override
     public List<SysRole> selectRoleList(SysRole role) {
@@ -99,6 +108,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
         roleMenuMapper.delete(wrapper);
         // 插入新的角色-菜单关联
         insertRoleMenu(role);
+        revokeSessionsByRole(role.getRoleId());
         // 注意：@CacheEvict 会自动清除缓存，不需要手动调用 clearMenuCache()
         return rows;
     }
@@ -149,6 +159,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     @Audit(name = "删除角色", highRisk = true)
     public int deleteRoleByIds(Long[] roleIds) {
         for (Long roleId : roleIds) {
+            revokeSessionsByRole(roleId);
             roleMapper.deleteById(roleId);
             LambdaQueryWrapper<SysRoleMenu> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(SysRoleMenu::getRoleId, roleId);
@@ -156,5 +167,17 @@ public class SysRoleServiceImpl implements ISysRoleService {
         }
         // 注意：@CacheEvict 会自动清除缓存，不需要手动调用 clearMenuCache()
         return roleIds.length;
+    }
+
+    private void revokeSessionsByRole(Long roleId) {
+        if (roleId == null) {
+            return;
+        }
+        sysUserService.selectUserList(new com.cloudflow.auth.domain.SysUser()).stream()
+                .filter(user -> user.getRoleIds() != null)
+                .filter(user -> Arrays.stream(user.getRoleIds()).anyMatch(roleId::equals))
+                .map(com.cloudflow.auth.domain.SysUser::getUserId)
+                .distinct()
+                .forEach(userSessionRevoker::revokeByUserId);
     }
 }

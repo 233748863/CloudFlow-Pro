@@ -9,6 +9,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,7 @@ public class SysFileController {
     private final ISysTenantService sysTenantService;
 
     @PostMapping("/upload")
+    @RepeatSubmit
     @SaCheckPermission("system:file:upload")
     public R<SysFile> upload(@RequestParam("file") MultipartFile file) {
         try {
@@ -58,6 +60,7 @@ public class SysFileController {
     }
 
     @PostMapping("/storage/refresh")
+    @RepeatSubmit
     @SaCheckPermission("system:file:edit")
     public R<TenantStorageSummaryDTO> refreshStorageSummary() {
         Long tenantId = UserContext.getTenantId();

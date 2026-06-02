@@ -5,6 +5,7 @@ import com.cloudflow.auth.domain.SysMenu;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,6 +53,7 @@ public class SysMenuController {
      * 新增菜单
      */
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:menu:add")
     public R<?> add(@RequestBody SysMenu menu) {
         return R.ok(sysMenuService.insertMenu(menu));
@@ -61,6 +63,7 @@ public class SysMenuController {
      * 修改菜单
      */
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:menu:edit")
     public R<?> edit(@RequestBody SysMenu menu) {
         return R.ok(sysMenuService.updateMenu(menu));

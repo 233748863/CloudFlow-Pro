@@ -5,6 +5,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.mapper.SysDeptMapper;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -102,6 +103,7 @@ public class SysDeptController {
      * 新增部门
      */
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:dept:add")
     public R<Boolean> add(@RequestBody SysDept dept) {
         // 设置ancestors
@@ -124,6 +126,7 @@ public class SysDeptController {
      * 修改部门
      */
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:dept:edit")
     public R<Boolean> edit(@RequestBody SysDept dept) {
         // 更新ancestors

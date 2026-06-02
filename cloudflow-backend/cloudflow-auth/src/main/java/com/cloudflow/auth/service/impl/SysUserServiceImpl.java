@@ -17,10 +17,14 @@ import com.cloudflow.auth.service.InitialPasswordService;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.auth.service.PasswordService;
+import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.exception.ServiceException;
+import com.cloudflow.common.core.exception.ErrorCodeConstants;
+import com.cloudflow.common.core.security.UserDeletionGuardRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -71,6 +75,12 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Autowired
     private InitialPasswordService initialPasswordService;
+
+    @Autowired
+    private UserSessionRevoker userSessionRevoker;
+
+    @Autowired
+    private UserDeletionGuardRegistry userDeletionGuardRegistry;
 
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
@@ -276,6 +286,7 @@ public class SysUserServiceImpl implements ISysUserService {
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
     public int updateUser(SysUser user) {
+        SysUser persisted = sysUserMapper.selectById(user.getUserId());
         Long tenantId = UserContext.getTenantId();
         if (tenantId != null) {
             LambdaQueryWrapper<SysUser> checkWrapper = new LambdaQueryWrapper<>();
@@ -303,6 +314,7 @@ public class SysUserServiceImpl implements ISysUserService {
 
         // 同时清除用户菜单树缓存
         sysMenuService.evictUserMenuCache(user.getUserId());
+        revokeSessionIfNeeded(persisted, user);
 
         return rows;
     }
@@ -360,8 +372,10 @@ public class SysUserServiceImpl implements ISysUserService {
             // 先查出用户名用于清除缓存
             SysUser existingUser = sysUserMapper.selectById(userId);
             if (existingUser != null) {
+                assertDeletionAllowed(userId);
                 evictUserInfoCache(existingUser.getUserName(), existingUser.getTenantId());
                 sysMenuService.evictUserMenuCache(userId);
+                userSessionRevoker.revokeByUserId(userId);
             }
 
             LambdaQueryWrapper<SysUser> userWrapper = new LambdaQueryWrapper<>();
@@ -380,6 +394,25 @@ public class SysUserServiceImpl implements ISysUserService {
             sysUserPostMapper.delete(postWrapper);
         }
         return userIds.length;
+    }
+
+    private void assertDeletionAllowed(Long userId) {
+        List<String> blockingRefs = userDeletionGuardRegistry.findBlockingReferences(userId);
+        if (!blockingRefs.isEmpty()) {
+            throw new ServiceException("用户仍存在业务关联，禁止删除: " + String.join("; ", blockingRefs),
+                    ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
+    }
+
+    private void revokeSessionIfNeeded(SysUser persisted, SysUser incoming) {
+        if (persisted == null || incoming == null) {
+            return;
+        }
+        boolean disabledNow = "1".equals(incoming.getStatus()) && !"1".equals(persisted.getStatus());
+        boolean roleChanged = incoming.getRoleIds() != null;
+        if (disabledNow || roleChanged) {
+            userSessionRevoker.revokeByUserId(incoming.getUserId());
+        }
     }
 
     @Override

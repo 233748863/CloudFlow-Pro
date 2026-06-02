@@ -5,11 +5,23 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmHandoverTask;
+import com.cloudflow.crm.domain.CrmLead;
 import com.cloudflow.crm.domain.CrmOpportunity;
+import com.cloudflow.crm.domain.CrmQuote;
+import com.cloudflow.crm.domain.CrmReceivable;
+import com.cloudflow.crm.domain.CrmRenewal;
+import com.cloudflow.crm.domain.CrmServiceTicket;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmHandoverTaskMapper;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
+import com.cloudflow.crm.mapper.CrmLeadMapper;
+import com.cloudflow.crm.mapper.CrmQuoteMapper;
+import com.cloudflow.crm.mapper.CrmReceivableMapper;
+import com.cloudflow.crm.mapper.CrmRenewalMapper;
+import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
 import com.cloudflow.crm.service.ICrmHandoverTaskService;
+import com.cloudflow.crm.service.remote.RemoteHrService;
+import com.cloudflow.crm.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,14 +47,25 @@ public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
     private static final long DEFAULT_TENANT_ID = 100000L;
 
     private final CrmHandoverTaskMapper handoverTaskMapper;
+    private final CrmLeadMapper leadMapper;
     private final CrmCustomerMapper customerMapper;
     private final CrmOpportunityMapper opportunityMapper;
+    private final CrmQuoteMapper quoteMapper;
+    private final CrmReceivableMapper receivableMapper;
+    private final CrmRenewalMapper renewalMapper;
+    private final CrmServiceTicketMapper serviceTicketMapper;
+    private final RemoteHrService remoteHrService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public int generateForEmployeeLeft(Long fromOwnerUserId, String fromOwnerName, Long fromDeptId, String eventId) {
+    public int generateForEmployeeLeft(Long fromOwnerUserId, String fromOwnerName, Long fromDeptId, String eventId,
+                                       Long successorUserId) {
         if (fromOwnerUserId == null) {
             return 0;
+        }
+        String successorOwnerName = resolveSuccessorName(successorUserId);
+        if (successorUserId != null && StringUtils.hasText(successorOwnerName)) {
+            return autoReassignAll(fromOwnerUserId, fromOwnerName, fromDeptId, eventId, successorUserId, successorOwnerName);
         }
         List<CrmHandoverTask> pending = new ArrayList<>();
 
@@ -76,6 +99,72 @@ public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
         log.info("员工离职交接任务已生成: userId={}, 客户 {} 条, 商机 {} 条, 新增 {} 条",
                 fromOwnerUserId, customers.size(), opportunities.size(), created);
         return created;
+    }
+
+    private int autoReassignAll(Long fromOwnerUserId, String fromOwnerName, Long fromDeptId, String eventId,
+                                Long successorUserId, String successorOwnerName) {
+        int updated = 0;
+        updated += updateOwner(leadMapper, new LambdaUpdateWrapper<CrmLead>()
+                .eq(CrmLead::getOwnerId, fromOwnerUserId)
+                .eq(CrmLead::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .set(CrmLead::getOwnerId, successorUserId)
+                .set(CrmLead::getOwnerName, successorOwnerName)
+                .set(CrmLead::getUpdateTime, LocalDateTime.now())
+                .set(CrmLead::getUpdateBy, "hr-employee-left"));
+        updated += updateOwner(customerMapper, new LambdaUpdateWrapper<CrmCustomer>()
+                .eq(CrmCustomer::getOwnerId, fromOwnerUserId)
+                .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .set(CrmCustomer::getOwnerId, successorUserId)
+                .set(CrmCustomer::getOwnerName, successorOwnerName)
+                .set(CrmCustomer::getUpdateTime, LocalDateTime.now())
+                .set(CrmCustomer::getUpdateBy, "hr-employee-left"));
+        updated += updateOwner(opportunityMapper, new LambdaUpdateWrapper<CrmOpportunity>()
+                .eq(CrmOpportunity::getOwnerId, fromOwnerUserId)
+                .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .notIn(CrmOpportunity::getStage, CrmConstants.OpportunityStage.WON, CrmConstants.OpportunityStage.LOST)
+                .set(CrmOpportunity::getOwnerId, successorUserId)
+                .set(CrmOpportunity::getOwnerName, successorOwnerName)
+                .set(CrmOpportunity::getUpdateTime, LocalDateTime.now())
+                .set(CrmOpportunity::getUpdateBy, "hr-employee-left"));
+        updated += updateOwner(quoteMapper, new LambdaUpdateWrapper<CrmQuote>()
+                .eq(CrmQuote::getOwnerId, fromOwnerUserId)
+                .eq(CrmQuote::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .set(CrmQuote::getOwnerId, successorUserId)
+                .set(CrmQuote::getOwnerName, successorOwnerName)
+                .set(CrmQuote::getUpdateTime, LocalDateTime.now())
+                .set(CrmQuote::getUpdateBy, "hr-employee-left"));
+        updated += updateOwner(receivableMapper, new LambdaUpdateWrapper<CrmReceivable>()
+                .eq(CrmReceivable::getOwnerId, fromOwnerUserId)
+                .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .set(CrmReceivable::getOwnerId, successorUserId)
+                .set(CrmReceivable::getOwnerName, successorOwnerName)
+                .set(CrmReceivable::getUpdateTime, LocalDateTime.now())
+                .set(CrmReceivable::getUpdateBy, "hr-employee-left"));
+        updated += updateOwner(renewalMapper, new LambdaUpdateWrapper<CrmRenewal>()
+                .eq(CrmRenewal::getOwnerId, fromOwnerUserId)
+                .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .set(CrmRenewal::getOwnerId, successorUserId)
+                .set(CrmRenewal::getOwnerName, successorOwnerName)
+                .set(CrmRenewal::getUpdateTime, LocalDateTime.now())
+                .set(CrmRenewal::getUpdateBy, "hr-employee-left"));
+        updated += updateOwner(serviceTicketMapper, new LambdaUpdateWrapper<CrmServiceTicket>()
+                .eq(CrmServiceTicket::getOwnerId, fromOwnerUserId)
+                .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .set(CrmServiceTicket::getOwnerId, successorUserId)
+                .set(CrmServiceTicket::getOwnerName, successorOwnerName)
+                .set(CrmServiceTicket::getUpdateTime, LocalDateTime.now())
+                .set(CrmServiceTicket::getUpdateBy, "hr-employee-left"));
+
+        CrmHandoverTask task = buildTask("AUTO_REASSIGN", 0L, "员工离职自动交接",
+                fromOwnerUserId, fromOwnerName, fromDeptId, eventId);
+        task.setStatus("REASSIGNED");
+        task.setToOwnerId(successorUserId);
+        task.setToOwnerName(successorOwnerName);
+        task.setRemark("离职事件自动交接，共处理 " + updated + " 条业务记录");
+        handoverTaskMapper.insert(task);
+        log.info("员工离职自动交接完成: fromUserId={}, toUserId={}, updated={}",
+                fromOwnerUserId, successorUserId, updated);
+        return updated;
     }
 
     @Override
@@ -158,6 +247,24 @@ public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
                 .eq(CrmHandoverTask::getFromOwnerId, fromOwnerId)
                 .eq(CrmHandoverTask::getStatus, "PENDING")
                 .eq(CrmHandoverTask::getDeleted, CrmConstants.DelFlag.NORMAL)) > 0;
+    }
+
+    private <T> int updateOwner(com.baomidou.mybatisplus.core.mapper.BaseMapper<T> mapper,
+                                LambdaUpdateWrapper<T> wrapper) {
+        return mapper.update(null, wrapper);
+    }
+
+    private String resolveSuccessorName(Long successorUserId) {
+        if (successorUserId == null) {
+            return null;
+        }
+        try {
+            HrEmployeeSummaryVO employee = remoteHrService.getEmployeeByUserId(successorUserId).getData();
+            return employee == null ? null : employee.getEmployeeName();
+        } catch (Exception ex) {
+            log.warn("查询离职接替人失败: successorUserId={}", successorUserId, ex);
+            return null;
+        }
     }
 
     private CrmHandoverTask buildTask(String businessType, Long businessId, String businessName,

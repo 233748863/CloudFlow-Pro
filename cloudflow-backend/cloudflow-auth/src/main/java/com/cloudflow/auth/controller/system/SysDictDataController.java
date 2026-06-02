@@ -6,6 +6,7 @@ import com.cloudflow.auth.domain.SysDictData;
 import com.cloudflow.auth.mapper.SysDictDataMapper;
 import com.cloudflow.auth.service.ISysDictTypeService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -54,6 +55,7 @@ public class SysDictDataController {
 
     /** 新增字典数据 */
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:dict:add")
     public R<?> add(@RequestBody SysDictData dictData) {
         dictDataMapper.insert(dictData);
@@ -63,6 +65,7 @@ public class SysDictDataController {
 
     /** 修改字典数据 */
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:dict:edit")
     public R<?> edit(@RequestBody SysDictData dictData) {
         SysDictData old = dictDataMapper.selectById(dictData.getDictCode());

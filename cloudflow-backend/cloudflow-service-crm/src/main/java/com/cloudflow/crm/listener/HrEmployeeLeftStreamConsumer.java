@@ -32,12 +32,13 @@ public class HrEmployeeLeftStreamConsumer implements StreamListener<String, MapR
             String employeeName = normalize(body.get("employeeName"));
             Long deptId = parseLong(body.get("deptId"));
             Long tenantId = parseLong(body.get("tenantId"));
+            Long successorUserId = parseLong(body.get("successorUserId"));
             if (userId == null) {
                 log.warn("跳过离职事件（userId 为空）: msgId={}, body={}", msgId, body);
             } else {
                 // Stream 消费线程必须显式补租户上下文，避免 generateForEmployeeLeft 内部 SQL 跨租户裸跑。
                 TenantBroker.runAs(tenantId, tid ->
-                        handoverTaskService.generateForEmployeeLeft(userId, employeeName, deptId, msgId));
+                        handoverTaskService.generateForEmployeeLeft(userId, employeeName, deptId, msgId, successorUserId));
             }
             redisStreamUtil.ackGlobal(
                     HrEventStreamConstants.EMPLOYEE_LEFT_STREAM_KEY,

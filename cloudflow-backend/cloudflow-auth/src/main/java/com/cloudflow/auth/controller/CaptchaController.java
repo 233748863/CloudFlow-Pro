@@ -23,6 +23,7 @@ public class CaptchaController {
     private CaptchaService captchaService;
 
     @GetMapping("/slider")
+    @RateLimiter(count = 20, time = 60, limitType = LimitType.IP, message = "验证码获取过于频繁，请稍后再试")
     public R<DynamicMapVO> getSliderCaptcha(HttpServletRequest request) {
         try {
             String ip = IpUtils.getIpAddr(request);

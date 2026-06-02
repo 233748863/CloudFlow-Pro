@@ -5,6 +5,7 @@ import com.cloudflow.auth.domain.SysRole;
 import com.cloudflow.auth.domain.dto.RoleOptionDTO;
 import com.cloudflow.auth.service.ISysRoleService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,12 +37,14 @@ public class SysRoleController {
     }
 
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:role:add")
     public R<?> add(@RequestBody SysRole role) {
         return R.ok(sysRoleService.insertRole(role));
     }
 
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:role:edit")
     public R<?> edit(@RequestBody SysRole role) {
         return R.ok(sysRoleService.updateRole(role));

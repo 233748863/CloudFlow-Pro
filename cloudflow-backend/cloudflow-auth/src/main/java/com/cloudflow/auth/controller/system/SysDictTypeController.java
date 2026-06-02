@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysDictType;
 import com.cloudflow.auth.service.ISysDictTypeService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,6 +38,7 @@ public class SysDictTypeController {
 
     /** 新增字典类型 */
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:dict:add")
     public R<?> add(@RequestBody SysDictType dictType) {
         if (!sysDictTypeService.checkDictTypeUnique(dictType)) {
@@ -47,6 +49,7 @@ public class SysDictTypeController {
 
     /** 修改字典类型 */
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:dict:edit")
     public R<?> edit(@RequestBody SysDictType dictType) {
         if (!sysDictTypeService.checkDictTypeUnique(dictType)) {

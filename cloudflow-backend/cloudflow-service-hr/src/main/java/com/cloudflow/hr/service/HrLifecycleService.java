@@ -1,6 +1,8 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
+import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.domain.dto.HrLifecycleApplicationPayload;
 import com.cloudflow.hr.domain.dto.HrLifecycleStatusChangePayload;
 import com.cloudflow.hr.domain.dto.HrLifecycleTaskPayload;
@@ -32,6 +34,7 @@ public class HrLifecycleService {
     private final HrTypedCrudService crudService;
     private final HrViewSupport viewSupport;
     private final HrEventPublisher hrEventPublisher;
+    private final AuthServiceClient authServiceClient;
     private final ObjectMapper objectMapper;
 
     public List<HrLifecycleApplicationVO> listApplications(HrLifecycleCommonQueryDTO query) {
@@ -235,6 +238,30 @@ public class HrLifecycleService {
         String deptName = employee.get("deptName") != null
                 ? String.valueOf(employee.get("deptName"))
                 : (application.get("deptName") != null ? String.valueOf(application.get("deptName")) : null);
-        hrEventPublisher.publishEmployeeLeft(employeeId, userId, employeeName, deptId, deptName);
+        Map<String, Object> detail = readLifecycleDetail(applicationId);
+        Long successorUserId = resolveSuccessorUserId(detail);
+        disableAuthUserIfPresent(userId);
+        hrEventPublisher.publishEmployeeLeft(employeeId, userId, employeeName, deptId, deptName, successorUserId);
+    }
+
+    private void disableAuthUserIfPresent(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        R<Void> result = authServiceClient.disableUser(userId);
+        if (result == null || !result.isSuccess()) {
+            throw new IllegalStateException("离职联动禁用账号失败: userId=" + userId);
+        }
+    }
+
+    private Long resolveSuccessorUserId(Map<String, Object> detail) {
+        if (detail == null || detail.isEmpty()) {
+            return null;
+        }
+        return viewSupport.toLong(viewSupport.firstValue(detail,
+                "successorUserId",
+                "handoverOwnerId",
+                "successorId",
+                "ownerId"));
     }
 }

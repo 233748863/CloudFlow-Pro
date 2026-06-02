@@ -5,6 +5,7 @@ import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.dto.ResetPasswordDTO;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -43,6 +44,7 @@ public class SysUserController {
      * 新增用户
      */
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:user:add")
     public R<?> add(@RequestBody SysUser user) {
         try {
@@ -57,6 +59,7 @@ public class SysUserController {
      * 修改用户
      */
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:user:edit")
     public R<?> edit(@RequestBody SysUser user) {
         return R.ok(sysUserService.updateUser(user));
@@ -66,6 +69,7 @@ public class SysUserController {
      * 管理员重置用户密码
      */
     @PutMapping("/{userId}/password")
+    @RepeatSubmit
     @SaCheckPermission("system:user:edit")
     public R<?> resetPassword(@PathVariable("userId") Long userId, @RequestBody ResetPasswordDTO dto) {
         String password = dto.getPassword() == null ? "" : dto.getPassword().trim();

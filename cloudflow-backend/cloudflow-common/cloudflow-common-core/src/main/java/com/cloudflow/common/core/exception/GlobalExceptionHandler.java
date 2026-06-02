@@ -6,9 +6,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -22,7 +25,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 
-import java.nio.file.AccessDeniedException;
+import java.sql.SQLException;
 import java.util.UUID;
 
 /**
@@ -31,6 +34,7 @@ import java.util.UUID;
  * 处理通用异常，不包含 Spring Security 相关异常（由各模块自行处理）
  */
 @RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -136,37 +140,58 @@ public class GlobalExceptionHandler {
                 .body(R.fail(ErrorCodeConstants.CONCURRENT_MODIFICATION, "数据已被其他请求更新，请刷新后重试"));
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<R<?>> handleAccessDeniedException(AccessDeniedException e, HttpServletRequest request) {
-        log.warn("请求地址'{}',访问被拒绝: {}", request.getRequestURI(), e.getMessage());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源"));
+    @ExceptionHandler({SQLException.class, DataAccessException.class})
+    public ResponseEntity<R<?>> handleDatabaseException(Exception e, HttpServletRequest request) {
+        log.error("请求地址'{}',发生数据库异常.", request.getRequestURI(), e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "服务异常，请联系管理员，traceId=" + traceId()));
     }
 
-    /**
-     * 拦截未知的运行时异常
-     */
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(UnsupportedOperationException.class)
+    public ResponseEntity<R<?>> handleUnsupportedOperationException(UnsupportedOperationException e, HttpServletRequest request) {
+        if (e.getMessage() != null && e.getMessage().contains("ERR.AUDIT_IMMUTABLE")) {
+            log.warn("请求地址'{}',命中日志不可变保护: {}", request.getRequestURI(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(R.fail(HttpStatus.GONE.value(), "日志不可删除"));
+        }
+        log.error("请求地址'{}',发生不支持操作异常.", request.getRequestURI(), e);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(R.fail(HttpStatus.BAD_REQUEST.value(), "当前操作不被支持"));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public R<?> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
+        if (isRateLimitException(e)) {
+            throw e;
+        }
         log.error("请求地址'{}',发生未知异常.", request.getRequestURI(), e);
-        if ("org.springframework.security.access.AccessDeniedException".equals(e.getClass().getName())) {
+        if (isAccessDenied(e)) {
             return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
         }
-        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "系统异常，请联系管理员，traceId=" + traceId());
+        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "服务异常，请联系管理员，traceId=" + traceId());
     }
 
-    /**
-     * 系统异常
-     */
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)
     public R<?> handleException(Exception e, HttpServletRequest request) {
+        if (isRateLimitException(e)) {
+            throw new RuntimeException(e);
+        }
         log.error("请求地址'{}',发生系统异常.", request.getRequestURI(), e);
-        if ("org.springframework.security.access.AccessDeniedException".equals(e.getClass().getName())) {
+        if (isAccessDenied(e)) {
             return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
         }
-        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "系统异常，请联系管理员，traceId=" + traceId());
+        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "服务异常，请联系管理员，traceId=" + traceId());
+    }
+
+    @ExceptionHandler(Throwable.class)
+    public ResponseEntity<R<?>> handleRateLimitThrowable(Throwable e, HttpServletRequest request) throws Throwable {
+        if (!isRateLimitException(e)) {
+            throw e;
+        }
+        log.warn("请求地址'{}',触发限流: {}", request.getRequestURI(), e.getMessage());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", "1")
+                .body(R.fail(HttpStatus.TOO_MANY_REQUESTS.value(), e.getMessage()));
     }
 
     private int resolveHttpStatus(Integer code, int defaultStatus) {
@@ -179,5 +204,15 @@ public class GlobalExceptionHandler {
     private String traceId() {
         String traceId = MDC.get("traceId");
         return traceId != null && !traceId.isBlank() ? traceId : UUID.randomUUID().toString();
+    }
+
+    private boolean isAccessDenied(Throwable throwable) {
+        return throwable != null
+                && "org.springframework.security.access.AccessDeniedException".equals(throwable.getClass().getName());
+    }
+
+    private boolean isRateLimitException(Throwable throwable) {
+        return throwable != null
+                && "com.cloudflow.common.ratelimiter.aspectj.RateLimiterAspect$RateLimitException".equals(throwable.getClass().getName());
     }
 }

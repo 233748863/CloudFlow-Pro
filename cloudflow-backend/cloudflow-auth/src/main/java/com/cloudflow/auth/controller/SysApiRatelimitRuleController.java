@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.SysApiRatelimitRule;
 import com.cloudflow.auth.service.ISysApiRatelimitRuleService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -53,6 +54,7 @@ public class SysApiRatelimitRuleController {
 
     @SysLog("新增API限流规则")
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:apiRateLimit:add")
     public R<Void> add(@RequestBody SysApiRatelimitRule rule) {
         try {
@@ -64,6 +66,7 @@ public class SysApiRatelimitRuleController {
 
     @SysLog("修改API限流规则")
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:apiRateLimit:edit")
     public R<Void> edit(@RequestBody SysApiRatelimitRule rule) {
         try {
@@ -82,6 +85,7 @@ public class SysApiRatelimitRuleController {
 
     @SysLog("启停API限流规则")
     @PostMapping("/{id}/status")
+    @RepeatSubmit
     @SaCheckPermission("system:apiRateLimit:edit")
     public R<Void> toggle(@PathVariable Long id, @RequestParam String status) {
         return sysApiRatelimitRuleService.toggleStatus(id, status) ? R.ok() : R.fail("操作失败");
@@ -89,6 +93,7 @@ public class SysApiRatelimitRuleController {
 
     @SysLog("手动重发API限流规则到网关")
     @PostMapping("/republish")
+    @RepeatSubmit
     @SaCheckPermission("system:apiRateLimit:edit")
     public R<Void> republish() {
         sysApiRatelimitRuleService.publishAllToGateway();

@@ -6,6 +6,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.auth.domain.SysConfig;
 import com.cloudflow.auth.service.ISysConfigService;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -67,6 +68,7 @@ public class SysConfigController {
      * 新增参数配置
      */
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:config:add")
     public R<Void> add(@RequestBody SysConfig config) {
         if (!sysConfigService.checkConfigKeyUnique(config)) {
@@ -81,6 +83,7 @@ public class SysConfigController {
      * 修改参数配置
      */
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:config:edit")
     public R<Void> edit(@RequestBody SysConfig config) {
         if (!sysConfigService.checkConfigKeyUnique(config)) {

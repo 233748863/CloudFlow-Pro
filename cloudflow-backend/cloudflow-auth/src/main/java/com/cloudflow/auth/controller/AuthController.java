@@ -320,6 +320,7 @@ public class AuthController {
     }
 
     @GetMapping("/tenant/options")
+    @RateLimiter(count = 30, time = 60, limitType = LimitType.IP, message = "租户列表获取过于频繁，请稍后再试")
     public R<List<TenantOption>> tenantOptions() {
         List<SysTenant> tenants = TenantBroker.applyWithoutTenant(ignored ->
                 sysTenantService.list(

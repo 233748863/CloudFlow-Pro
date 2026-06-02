@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.SysUserBlacklist;
 import com.cloudflow.auth.service.ISysUserBlacklistService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,6 +45,7 @@ public class SysUserBlacklistController {
 
     @SysLog("拉黑用户")
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:userBlacklist:add")
     public R<Void> ban(@RequestBody SysUserBlacklist rule) {
         try {
@@ -55,6 +57,7 @@ public class SysUserBlacklistController {
 
     @SysLog("修改用户黑名单")
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:userBlacklist:edit")
     public R<Void> edit(@RequestBody SysUserBlacklist rule) {
         try {
@@ -66,6 +69,7 @@ public class SysUserBlacklistController {
 
     @SysLog("解除拉黑")
     @PostMapping("/{id}/unban")
+    @RepeatSubmit
     @SaCheckPermission("system:userBlacklist:edit")
     public R<Void> unban(@PathVariable Long id) {
         return sysUserBlacklistService.unban(id) ? R.ok() : R.fail("解除失败");

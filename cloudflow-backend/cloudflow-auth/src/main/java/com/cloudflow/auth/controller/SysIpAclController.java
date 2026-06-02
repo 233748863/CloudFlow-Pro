@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.SysIpAcl;
 import com.cloudflow.auth.service.ISysIpAclService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -53,6 +54,7 @@ public class SysIpAclController {
 
     @SysLog("新增IP黑白名单")
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:ipAcl:add")
     public R<Void> add(@RequestBody SysIpAcl rule) {
         try {
@@ -64,6 +66,7 @@ public class SysIpAclController {
 
     @SysLog("修改IP黑白名单")
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:ipAcl:edit")
     public R<Void> edit(@RequestBody SysIpAcl rule) {
         try {
@@ -82,6 +85,7 @@ public class SysIpAclController {
 
     @SysLog("启停IP黑白名单")
     @PostMapping("/{id}/status")
+    @RepeatSubmit
     @SaCheckPermission("system:ipAcl:edit")
     public R<Void> toggle(@PathVariable Long id, @RequestParam String status) {
         return sysIpAclService.toggleStatus(id, status) ? R.ok() : R.fail("操作失败");
@@ -89,6 +93,7 @@ public class SysIpAclController {
 
     @SysLog("手动重发IP黑白名单到网关")
     @PostMapping("/republish")
+    @RepeatSubmit
     @SaCheckPermission("system:ipAcl:edit")
     public R<Void> republish() {
         sysIpAclService.publishAllToGateway();

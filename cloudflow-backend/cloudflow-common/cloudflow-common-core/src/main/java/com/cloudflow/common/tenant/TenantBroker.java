@@ -1,5 +1,6 @@
 package com.cloudflow.common.tenant;
 
+import com.cloudflow.common.core.context.UserContext;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,9 +44,11 @@ public class TenantBroker {
      */
     public void runAs(Long tenantId, Consumer<Long> consumer) {
         Long originalTenantId = TenantContext.getTenantId();
+        Long originalUserTenantId = UserContext.getTenantId();
         try {
             log.debug("租户切换: {} -> {}", originalTenantId, tenantId);
             TenantContext.setTenantId(tenantId);
+            UserContext.setTenantId(tenantId);
             consumer.accept(tenantId);
         } finally {
             // 恢复原租户上下文
@@ -54,6 +57,7 @@ public class TenantBroker {
             } else {
                 TenantContext.clear();
             }
+            UserContext.setTenantId(originalUserTenantId);
             log.debug("租户恢复: {}", originalTenantId);
         }
     }
@@ -69,9 +73,11 @@ public class TenantBroker {
      */
     public <T> T applyAs(Long tenantId, Function<Long, T> function) {
         Long originalTenantId = TenantContext.getTenantId();
+        Long originalUserTenantId = UserContext.getTenantId();
         try {
             log.debug("租户切换: {} -> {}", originalTenantId, tenantId);
             TenantContext.setTenantId(tenantId);
+            UserContext.setTenantId(tenantId);
             return function.apply(tenantId);
         } finally {
             // 恢复原租户上下文
@@ -80,6 +86,7 @@ public class TenantBroker {
             } else {
                 TenantContext.clear();
             }
+            UserContext.setTenantId(originalUserTenantId);
             log.debug("租户恢复: {}", originalTenantId);
         }
     }

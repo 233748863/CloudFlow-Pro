@@ -6,10 +6,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.vo.DynamicMapVO;
 import com.cloudflow.auth.service.ILoginLogService;
+import com.cloudflow.auth.service.LogImmutabilityGuardService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.domain.SysLogEntity;
 import com.cloudflow.common.log.mapper.SysLogMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +37,7 @@ public class SysLoginLogController {
 
     private final SysLogMapper sysLogMapper;
     private final ILoginLogService loginLogService;
+    private final LogImmutabilityGuardService logImmutabilityGuardService;
 
     @GetMapping("/page")
     @SaCheckPermission("system:login-log:list")
@@ -83,15 +86,10 @@ public class SysLoginLogController {
 
     @DeleteMapping
     @SaCheckPermission("system:login-log:remove")
+    @ResponseStatus(HttpStatus.GONE)
     public R delete(@RequestBody List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return R.fail("请选择要删除的登录日志");
-        }
-        LambdaQueryWrapper<SysLogEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(SysLogEntity::getLogId, ids)
-            .eq(SysLogEntity::getRequestUri, "/login");
-        sysLogMapper.delete(wrapper);
-        return R.ok("删除成功");
+        logImmutabilityGuardService.rejectLoginLogDeletion();
+        return R.fail(HttpStatus.GONE.value(), "登录日志不可删除");
     }
 
     @GetMapping("/trend")

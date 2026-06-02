@@ -6,6 +6,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.auth.domain.SysPost;
 import com.cloudflow.auth.service.ISysPostService;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -65,6 +66,7 @@ public class SysPostController {
      * 新增岗位
      */
     @PostMapping
+    @RepeatSubmit
     @SaCheckPermission("system:post:add")
     public R<Void> add(@RequestBody SysPost post) {
         if (!sysPostService.checkPostCodeUnique(post)) {
@@ -79,6 +81,7 @@ public class SysPostController {
      * 修改岗位
      */
     @PutMapping
+    @RepeatSubmit
     @SaCheckPermission("system:post:edit")
     public R<Void> edit(@RequestBody SysPost post) {
         if (!sysPostService.checkPostCodeUnique(post)) {

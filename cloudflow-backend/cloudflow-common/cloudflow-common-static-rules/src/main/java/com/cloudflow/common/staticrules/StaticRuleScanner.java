@@ -23,6 +23,7 @@ public class StaticRuleScanner {
     private static final Pattern METHOD_SIGNATURE = Pattern.compile(
             "^(public|protected|private)\\s+.*\\(.*\\)\\s*(\\{|throws\\s+.*)?$");
     private static final String CLASSPATH_WHITELIST = "static-rules/static-rules-whitelist.txt";
+    private static final String AUDIT_IMMUTABLE_MARKER = "ERR.AUDIT_IMMUTABLE";
     private static final String[] WRITE_KEYWORDS = {
             "add", "create", "submit", "approve", "reject", "publish", "cancel", "convert",
             "receive", "handover", "save", "update", "delete", "remove", "terminate", "pause",
@@ -66,9 +67,10 @@ public class StaticRuleScanner {
         List<String> findings = new ArrayList<>();
         List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
         String lowerPath = file.toString().toLowerCase(Locale.ROOT);
-        boolean isAuthModule = lowerPath.contains("\\auth\\") || lowerPath.contains("/auth/");
         boolean authSensitiveController = lowerPath.endsWith("authcontroller.java")
                 || lowerPath.endsWith("captchacontroller.java");
+        boolean explicitPublicController = lowerPath.endsWith("healthcontroller.java")
+                || lowerPath.endsWith("workflowcontroller.java");
         boolean controllerSource = lowerPath.contains("\\controller\\")
                 || lowerPath.contains("/controller/")
                 || lowerPath.endsWith("controller.java")
@@ -107,15 +109,20 @@ public class StaticRuleScanner {
                 boolean hasRepeatDisabled = pendingAnnotations.stream().anyMatch(s -> s.contains("@RepeatSubmit.Disabled"));
                 boolean hasRate = pendingAnnotations.stream().anyMatch(s -> s.contains("@RateLimiter"));
                 boolean writeSemantic = isWriteSemantic(trimmed, pendingAnnotations);
+                boolean publicReadEndpoint = isPublicReadEndpoint(lowerPath, trimmed, pendingAnnotations, hasPost, hasRate, hasRepeatDisabled);
                 if (controllerSource && !feignLike && hasMapping && !hasPermissionGuard
+                        && !publicReadEndpoint
                         && !isWhitelisted(whitelist, file, i + 1)) {
                     findings.add(format(file, i + 1, "PERMISSION_GUARD", trimmed));
                 }
-                if (controllerSource && !feignLike && hasPost && !isAuthModule && writeSemantic && !hasRepeat && !hasRepeatDisabled
+                if (controllerSource && !feignLike && !authSensitiveController && hasPost && writeSemantic && !hasRepeat && !hasRepeatDisabled
                         && !isWhitelisted(whitelist, file, i + 1)) {
                     findings.add(format(file, i + 1, "POST_NO_REPEAT", trimmed));
                 }
-                if (controllerSource && !feignLike && authSensitiveController && hasPost && !hasRate && !isWhitelisted(whitelist, file, i + 1)) {
+                if (controllerSource && !feignLike && authSensitiveController
+                        && (hasPost || publicReadEndpoint)
+                        && !hasRate
+                        && !isWhitelisted(whitelist, file, i + 1)) {
                     findings.add(format(file, i + 1, "AUTH_NO_RATE", trimmed));
                 }
                 inTransactionalMethod = classTransactional || hasAnnotation(pendingAnnotations, "@Transactional");
@@ -132,6 +139,9 @@ public class StaticRuleScanner {
             if ((line.contains("SELECT ") || line.contains("UPDATE ") || line.contains("DELETE ") || line.contains("INSERT "))
                     && line.contains("+")) {
                 findings.add(format(file, i + 1, "SQL_CONCAT", line.trim()));
+            }
+            if (isImmutableLogDeletion(file, line) && !isWhitelisted(whitelist, file, i + 1)) {
+                findings.add(format(file, i + 1, "AUDIT_LOG_DELETE_CALL", line.trim()));
             }
             if (inTransactionalMethod && !methodSignature) {
                 transactionalMethodDepth += braceDelta(line);
@@ -253,6 +263,26 @@ public class StaticRuleScanner {
         return false;
     }
 
+    private boolean isPublicReadEndpoint(String lowerPath, String methodSignature, List<String> annotations,
+                                         boolean hasPost, boolean hasRate, boolean hasRepeatDisabled) {
+        String methodName = extractMethodName(methodSignature).toLowerCase(Locale.ROOT);
+        if (lowerPath.endsWith("authcontroller.java")) {
+            return ("login".equals(methodName) || "register".equals(methodName) || "tenantoptions".equals(methodName))
+                    && (!hasPost || hasRate || hasRepeatDisabled || "tenantoptions".equals(methodName));
+        }
+        if (lowerPath.endsWith("captchacontroller.java")) {
+            return ("getslidercaptcha".equals(methodName) || "checkcaptcha".equals(methodName))
+                    && (!hasPost || hasRate || hasRepeatDisabled);
+        }
+        if (lowerPath.endsWith("healthcontroller.java")) {
+            return "health".equals(methodName) || "info".equals(methodName);
+        }
+        if (lowerPath.endsWith("workflowcontroller.java")) {
+            return "listbusinesstypes".equals(methodName);
+        }
+        return false;
+    }
+
     private String extractMethodName(String methodSignature) {
         int leftParen = methodSignature.indexOf('(');
         if (leftParen < 0) {
@@ -281,5 +311,18 @@ public class StaticRuleScanner {
 
     private String format(Path file, int line, String rule, String snippet) {
         return file + ":" + line + " [" + rule + "] " + snippet;
+    }
+
+    private boolean isImmutableLogDeletion(Path file, String line) {
+        String lowerPath = file.toString().toLowerCase(Locale.ROOT);
+        if (lowerPath.contains("cloudflow-common-static-rules")) {
+            return false;
+        }
+        boolean referencesImmutableLogMapper = line.contains("SysLogMapper")
+                || line.contains("SysAuditLogMapper")
+                || line.contains("sysLogMapper.delete")
+                || line.contains("sysAuditLogMapper.delete");
+        boolean referencesGuardedDelete = line.contains(AUDIT_IMMUTABLE_MARKER);
+        return referencesImmutableLogMapper && line.contains("delete") && !referencesGuardedDelete;
     }
 }
