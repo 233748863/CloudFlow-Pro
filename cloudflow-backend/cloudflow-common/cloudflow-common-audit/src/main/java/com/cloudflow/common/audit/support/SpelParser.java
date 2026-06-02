@@ -5,6 +5,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.util.StringUtils;
 
 /**
  * SPEL 表达式解析器
@@ -25,6 +26,9 @@ public class SpelParser implements ApplicationContextAware {
      * @return 表达式计算结果
      */
     public static Object parser(ProceedingJoinPoint joinPoint, String spel) {
+        if (!StringUtils.hasText(spel)) {
+            return null;
+        }
         return MethodBasedSpelEvaluator.evaluate(spel, joinPoint);
     }
 

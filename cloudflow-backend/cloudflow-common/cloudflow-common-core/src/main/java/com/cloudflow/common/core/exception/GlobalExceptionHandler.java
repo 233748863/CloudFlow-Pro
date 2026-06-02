@@ -164,10 +164,15 @@ public class GlobalExceptionHandler {
         if (isRateLimitException(e)) {
             throw e;
         }
-        log.error("请求地址'{}',发生未知异常.", request.getRequestURI(), e);
-        if (isAccessDenied(e)) {
+        if (isNotLoginException(e)) {
+            log.warn("请求地址'{}',登录态失效: {}", request.getRequestURI(), e.getMessage());
+            return R.fail(HttpStatus.UNAUTHORIZED.value(), "登录状态已失效，请重新登录");
+        }
+        if (isSaTokenForbidden(e) || isAccessDenied(e)) {
+            log.warn("请求地址'{}',权限校验失败: {}", request.getRequestURI(), e.getMessage());
             return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
         }
+        log.error("请求地址'{}',发生未知异常.", request.getRequestURI(), e);
         return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "服务异常，请联系管理员，traceId=" + traceId());
     }
 
@@ -209,6 +214,20 @@ public class GlobalExceptionHandler {
     private boolean isAccessDenied(Throwable throwable) {
         return throwable != null
                 && "org.springframework.security.access.AccessDeniedException".equals(throwable.getClass().getName());
+    }
+
+    private boolean isNotLoginException(Throwable throwable) {
+        return throwable != null
+                && "cn.dev33.satoken.exception.NotLoginException".equals(throwable.getClass().getName());
+    }
+
+    private boolean isSaTokenForbidden(Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+        String className = throwable.getClass().getName();
+        return "cn.dev33.satoken.exception.NotPermissionException".equals(className)
+                || "cn.dev33.satoken.exception.NotRoleException".equals(className);
     }
 
     private boolean isRateLimitException(Throwable throwable) {

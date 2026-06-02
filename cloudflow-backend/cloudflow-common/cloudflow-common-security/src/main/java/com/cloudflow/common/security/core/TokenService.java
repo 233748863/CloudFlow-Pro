@@ -229,6 +229,16 @@ public class TokenService {
     }
 
     /**
+     * 按登录 ID 查询该账号的全部 Token。
+     */
+    public List<String> getTokenValueListByLoginId(Object loginId) {
+        if (loginId == null) {
+            return List.of();
+        }
+        return StpUtil.getTokenValueListByLoginId(loginId);
+    }
+
+    /**
      * 获取当前请求上下文中的 Token。
      */
     public String getCurrentTokenValue() {
