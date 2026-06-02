@@ -1,8 +1,7 @@
 package com.cloudflow.common.cache;
 
 import cn.hutool.core.util.StrUtil;
-import com.cloudflow.common.core.constant.CacheConstants;
-import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.common.redis.support.RuntimeContextBridge;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.cache.Cache;
@@ -33,6 +32,8 @@ import java.util.Map;
  */
 @Slf4j
 public class TenantRedisCacheManager extends RedisCacheManager {
+
+    private static final String GLOBAL_CACHE_PREFIX = "GLOBALLY";
 
     /**
      * TTL 分隔符：cacheName#ttl
@@ -88,12 +89,12 @@ public class TenantRedisCacheManager extends RedisCacheManager {
     @Override
     public Cache getCache(String name) {
         // 全局缓存不加租户前缀
-        if (name.startsWith(CacheConstants.GLOBALLY)) {
+        if (name.startsWith(GLOBAL_CACHE_PREFIX)) {
             return super.getCache(name);
         }
 
         // 获取当前租户ID
-        Long tenantId = TenantContext.getTenantId();
+        Long tenantId = RuntimeContextBridge.getTenantId();
         if (tenantId == null) {
             // 未设置租户ID时，不加前缀（兼容未登录场景）
             return super.getCache(name);

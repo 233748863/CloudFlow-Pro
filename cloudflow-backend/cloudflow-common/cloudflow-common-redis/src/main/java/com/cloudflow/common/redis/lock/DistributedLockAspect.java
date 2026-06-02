@@ -1,8 +1,6 @@
 package com.cloudflow.common.redis.lock;
 
-import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.core.exception.ServiceException;
-import com.cloudflow.common.core.spel.MethodBasedSpelEvaluator;
+import com.cloudflow.common.redis.support.RuntimeContextBridge;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -37,13 +35,13 @@ public class DistributedLockAspect {
             acquired = lock.tryLock(distributedLock.waitMs(), distributedLock.leaseMs(), TimeUnit.MILLISECONDS);
             if (!acquired) {
                 log.warn("获取分布式锁失败: key={}, waitMs={}", finalKey, distributedLock.waitMs());
-                throw new ServiceException(distributedLock.message(), distributedLock.errorCode());
+                throw RuntimeContextBridge.newServiceException(distributedLock.message(), distributedLock.errorCode());
             }
             log.debug("获取分布式锁成功: key={}", finalKey);
             return joinPoint.proceed();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ServiceException(distributedLock.message(), distributedLock.errorCode(), e);
+            throw RuntimeContextBridge.newServiceException(distributedLock.message(), distributedLock.errorCode(), e);
         } finally {
             if (acquired && lock.isHeldByCurrentThread()) {
                 lock.unlock();
@@ -55,7 +53,7 @@ public class DistributedLockAspect {
     private String resolveLockKey(ProceedingJoinPoint joinPoint, String keyExpression) {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
-        String resolvedKey = MethodBasedSpelEvaluator.evaluateToString(keyExpression, method, joinPoint.getArgs(), joinPoint.getTarget());
+        String resolvedKey = LockMethodSpelEvaluator.evaluateToString(keyExpression, method, joinPoint.getArgs(), joinPoint.getTarget());
         if (resolvedKey == null || resolvedKey.isEmpty()) {
             throw new IllegalArgumentException("@DistributedLock key 解析为空: " + keyExpression);
         }
@@ -65,7 +63,7 @@ public class DistributedLockAspect {
     private String buildFinalKey(DistributedLock distributedLock, String resolvedKey) {
         String prefix = distributedLock.keyPrefix();
         if (distributedLock.includeTenant()) {
-            Long tenantId = UserContext.getTenantId();
+            Long tenantId = RuntimeContextBridge.getTenantId();
             if (tenantId != null) {
                 return tenantId + ":" + prefix + ":" + resolvedKey;
             }

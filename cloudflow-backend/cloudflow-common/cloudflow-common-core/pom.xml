@@ -46,12 +46,6 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
-        <!-- 敏感信息脱敏模块 -->
-        <dependency>
-            <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common-sensitive</artifactId>
-        </dependency>
-
         <!-- Spring Cloud Context（@RefreshScope） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

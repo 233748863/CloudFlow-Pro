@@ -1,6 +1,6 @@
 package com.cloudflow.common.redis.core;
 
-import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.redis.support.RuntimeContextBridge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ public class RedisStreamUtil {
     private RedisTemplate<String, Object> redisTemplate;
 
     private String getTenantKey(String key) {
-        Long tenantId = UserContext.getTenantId();
+        Long tenantId = RuntimeContextBridge.getTenantId();
         if (tenantId != null) {
             return tenantId + ":" + key;
         }

@@ -1,6 +1,6 @@
 package com.cloudflow.common.redis.core;
 
-import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.redis.support.RuntimeContextBridge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -214,7 +214,7 @@ public class SysConfigHelper {
      */
     public String getTenantValue(String configKey) {
         // 如果没有租户上下文，直接返回 null（由调用方回退到全局配置）
-        Long tenantId = UserContext.getTenantId();
+        Long tenantId = RuntimeContextBridge.getTenantId();
         if (tenantId == null) {
             return null;
         }

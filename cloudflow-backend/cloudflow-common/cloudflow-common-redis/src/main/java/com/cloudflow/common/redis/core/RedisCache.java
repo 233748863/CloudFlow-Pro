@@ -1,6 +1,6 @@
 package com.cloudflow.common.redis.core;
 
-import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.redis.support.RuntimeContextBridge;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -37,7 +37,7 @@ public class RedisCache {
         }
         
         // 2. 检查租户上下文
-        Long tenantId = UserContext.getTenantId();
+        Long tenantId = RuntimeContextBridge.getTenantId();
         if (tenantId != null) {
             return tenantId + ":" + key;
         }
