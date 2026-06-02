@@ -19,6 +19,8 @@ import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.auth.service.PasswordService;
 import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.auth.service.UserDataScopeService;
+import com.cloudflow.auth.service.remote.NoticeSendRequest;
+import com.cloudflow.auth.service.remote.RemoteOaNoticeService;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
@@ -29,12 +31,17 @@ import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.security.UserDeletionGuardRegistry;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.core.utils.IpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.time.LocalDateTime;
@@ -53,6 +60,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class SysUserServiceImpl implements ISysUserService {
+
+    private static final Logger log = LoggerFactory.getLogger(SysUserServiceImpl.class);
 
     @Autowired
     private SysUserMapper sysUserMapper;
@@ -95,6 +104,9 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired(required = false)
+    private RemoteOaNoticeService remoteOaNoticeService;
 
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
@@ -484,7 +496,11 @@ public class SysUserServiceImpl implements ISysUserService {
         user.setUserId(userId);
         user.setPassword(passwordService.encodePassword(password));
         user.setPwdResetRequired(ForcePasswordChangeService.REQUIRED);
-        return sysUserMapper.updateById(user);
+        int rows = sysUserMapper.updateById(user);
+        if (rows > 0 && existingUser != null) {
+            notifyPasswordReset(existingUser);
+        }
+        return rows;
     }
 
     @Override
@@ -550,5 +566,36 @@ public class SysUserServiceImpl implements ISysUserService {
         }
         
         return sysUserMapper.selectBatchIds(userIds);
+    }
+
+    private void notifyPasswordReset(SysUser user) {
+        if (user == null || user.getUserId() == null || remoteOaNoticeService == null) {
+            return;
+        }
+        try {
+            NoticeSendRequest request = new NoticeSendRequest();
+            request.setRecipientId(user.getUserId());
+            request.setTitle("密码已被管理员重置");
+            request.setContent(buildPasswordResetNoticeContent());
+            request.setType("1");
+            request.setSenderId(UserContext.getUserId());
+            request.setSenderName(StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system");
+            remoteOaNoticeService.sendNotice(request);
+        } catch (Exception e) {
+            // 通知失败不影响主事务，只保留日志便于追踪
+            log.warn("发送密码重置通知失败, userId={}", user.getUserId(), e);
+        }
+    }
+
+    private String buildPasswordResetNoticeContent() {
+        String operator = StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+        String clientIp = "unknown";
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null && attributes.getRequest() != null) {
+            clientIp = IpUtils.getIpAddr(attributes.getRequest());
+        }
+        return "您的账号密码已被管理员重置。操作人：" + operator
+                + "，操作IP：" + clientIp
+                + "。系统已强制您下次登录修改密码，如非本人知悉请立即联系管理员。";
     }
 }
