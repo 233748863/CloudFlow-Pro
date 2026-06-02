@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.WfTaskCandidate;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
@@ -28,6 +29,7 @@ public class WfUserDisabledCleanupService {
     private final IAnomalyDetectionService anomalyDetectionService;
     private final WfCandidateOffboardService candidateOffboardService;
 
+    @Audit(name = "停用用户释放工作流待办", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public void cleanupDisabledUserTasks(Long userId, String sourceEventId) {
         if (userId == null) {

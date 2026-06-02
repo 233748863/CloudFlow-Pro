@@ -1,5 +1,6 @@
 ﻿param(
-    [int]$TimeoutSeconds = 180
+[int]$TimeoutSeconds = 180,
+[string]$BackendBuildThreads = "1C"
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,37 +16,43 @@ $BackendServices = @(
     @{
         Name = "gateway"
         Port = 9000
+        ManagementPort = 9100
         Module = "cloudflow-gateway"
         MainClass = "com.cloudflow.gateway.GatewayApplication"
     },
     @{
         Name = "auth"
         Port = 9001
+        ManagementPort = 9101
         Module = "cloudflow-auth"
         MainClass = "com.cloudflow.auth.AuthApplication"
-        ExtraPorts = @(9101, 19001, 19101)
+        ExtraPorts = @(19001, 19101)
     },
     @{
         Name = "workflow"
         Port = 9002
+        ManagementPort = 9102
         Module = "cloudflow-service-workflow"
         MainClass = "com.cloudflow.workflow.WorkflowApplication"
     },
     @{
         Name = "oa"
         Port = 9003
+        ManagementPort = 9103
         Module = "cloudflow-service-oa"
         MainClass = "com.cloudflow.oa.OaApplication"
     },
     @{
         Name = "crm"
         Port = 9004
+        ManagementPort = 9104
         Module = "cloudflow-service-crm"
         MainClass = "com.cloudflow.crm.CrmApplication"
     },
     @{
         Name = "hr"
         Port = 9005
+        ManagementPort = 9105
         Module = "cloudflow-service-hr"
         MainClass = "com.cloudflow.hr.HrServiceApplication"
     }
@@ -345,6 +352,18 @@ function Get-ListenerProcess {
     return Get-CimInstance Win32_Process -Filter "ProcessId=$($connection.OwningProcess)" -ErrorAction SilentlyContinue
 }
 
+function Get-ServiceManagementPort {
+    param([object]$Service)
+
+    if ($Service.PSObject.Properties.Name -contains "ManagementPort" -and
+        $Service.ManagementPort -is [int] -and
+        $Service.ManagementPort -gt 0) {
+        return [int]$Service.ManagementPort
+    }
+
+    return $null
+}
+
 function Test-BackendProcess {
     param(
         [object]$Service,
@@ -361,6 +380,40 @@ function Test-FrontendProcess {
     return $null -ne $Process -and
         $Process.CommandLine -like "*cloudflow-frontend*" -and
         $Process.CommandLine -like "*vite*"
+}
+
+function Test-BackendHealth {
+    param([object]$Service)
+
+    $managementPort = Get-ServiceManagementPort -Service $Service
+    if ($null -eq $managementPort) {
+        return $true
+    }
+
+    if ($null -eq (Get-ListenerProcess -Port $managementPort)) {
+        return $false
+    }
+
+    try {
+        $response = Invoke-RestMethod `
+            -Uri ("http://127.0.0.1:{0}/actuator/health" -f $managementPort) `
+            -Method Get `
+            -TimeoutSec 3 `
+            -ErrorAction Stop
+        return $null -ne $response -and $response.status -eq "UP"
+    } catch {
+        return $false
+    }
+}
+
+function Test-BackendReady {
+    param(
+        [object]$Service,
+        [object]$Process
+    )
+
+    return (Test-BackendProcess -Service $Service -Process $Process) -and
+        (Test-BackendHealth -Service $Service)
 }
 
 function Get-StartupFailureHint {
@@ -443,6 +496,10 @@ function Get-ServicePorts {
     param([object]$Service)
 
     $ports = @($Service.Port)
+    $managementPort = Get-ServiceManagementPort -Service $Service
+    if ($null -ne $managementPort) {
+        $ports += $managementPort
+    }
     if ($Service.PSObject.Properties.Name -contains "ExtraPorts" -and $null -ne $Service.ExtraPorts) {
         $ports += $Service.ExtraPorts
     }
@@ -517,6 +574,8 @@ function Install-BackendDependencies {
     $errLog = Join-Path $LogRoot "backend-install-$stamp.err.log"
     $mvnArgs = @(
         "clean",
+        "-T",
+        $BackendBuildThreads,
         "-pl",
         "cloudflow-gateway,cloudflow-auth,cloudflow-service-workflow,cloudflow-service-oa,cloudflow-service-crm,cloudflow-service-hr",
         "-am",
@@ -526,7 +585,7 @@ function Install-BackendDependencies {
         "install"
     )
 
-    Write-Host "backend    编译并安装内部依赖..."
+    Write-Host ("backend    并行编译并安装内部依赖，线程 {0}..." -f $BackendBuildThreads)
     $process = Start-Process `
         -FilePath "mvn.cmd" `
         -ArgumentList $mvnArgs `
@@ -537,16 +596,17 @@ function Install-BackendDependencies {
         -Wait `
         -PassThru
 
-    if (($null -eq $process.ExitCode) -or ($process.ExitCode -ne 0)) {
-        Write-Host "backend    编译失败，查看日志：$outLog"
-        if (Test-Path $errLog) {
-            Write-Host "backend    错误日志：$errLog"
-        }
-        exit $process.ExitCode
+    $exitCode = if ($null -eq $process.ExitCode) { 1 } else { $process.ExitCode }
+
+    return @{
+        Success = ($exitCode -eq 0)
+        ExitCode = $exitCode
+        OutLog = $outLog
+        ErrLog = $errLog
     }
 }
 
-function Sync-NacosConfiguration {
+function Start-NacosConfigurationSync {
     $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
     if ($null -eq $pythonCommand) {
         $pythonCommand = Get-Command py -ErrorAction SilentlyContinue
@@ -554,7 +614,7 @@ function Sync-NacosConfiguration {
 
     if ($null -eq $pythonCommand) {
         Write-Host "nacos      跳过配置同步，未找到 python/py"
-        return
+        return $null
     }
 
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -574,11 +634,33 @@ function Sync-NacosConfiguration {
         -WindowStyle Hidden `
         -RedirectStandardOutput $outLog `
         -RedirectStandardError $errLog `
-        -Wait `
         -PassThru
 
+    return @{
+        Process = $process
+        OutLog = $outLog
+        ErrLog = $errLog
+    }
+}
+
+function Wait-NacosConfigurationSync {
+    param($SyncJob)
+
+    if ($null -eq $SyncJob) {
+        return
+    }
+
+    $process = $SyncJob.Process
+    if ($null -eq $process) {
+        return
+    }
+
+    $process.WaitForExit()
     if (($null -eq $process.ExitCode) -or ($process.ExitCode -ne 0)) {
-        Write-Host "nacos      配置同步失败，继续启动。日志：$outLog"
+        Write-Host "nacos      配置同步失败，继续启动。日志：$($SyncJob.OutLog)"
+        if (Test-Path $SyncJob.ErrLog) {
+            Write-Host "nacos      错误日志：$($SyncJob.ErrLog)"
+        }
     }
 }
 
@@ -606,7 +688,12 @@ function Start-BackendService {
         -PassThru |
         Out-Null
 
-    Write-Host ("{0,-10} 启动中，端口 {1}" -f $Service.Name, $Service.Port)
+    $managementPort = Get-ServiceManagementPort -Service $Service
+    if ($null -ne $managementPort) {
+        Write-Host ("{0,-10} 启动中，端口 {1}，健康检查 {2}" -f $Service.Name, $Service.Port, $managementPort)
+    } else {
+        Write-Host ("{0,-10} 启动中，端口 {1}" -f $Service.Name, $Service.Port)
+    }
 
     return @{
         Service = $Service
@@ -615,50 +702,36 @@ function Start-BackendService {
     }
 }
 
-function Start-BackendServiceWithRetry {
+function Retry-BackendServicesConcurrently {
     param(
-        [object]$Service,
-        [datetime]$Deadline,
-        [int]$MaxAttempts = 2
+        [object[]]$Services,
+        [datetime]$Deadline
     )
 
-    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
-        $started = Start-BackendService -Service $Service
+    $retryTargets = @($Services | Where-Object { $null -ne $_ } | Sort-Object Name -Unique)
+    if ($retryTargets.Count -eq 0) {
+        return @()
+    }
 
-        while ((Get-Date) -lt $Deadline) {
-            $failureHint = Get-StartupFailureHint -OutLog $started.OutLog -ErrLog $started.ErrLog
-            if ($null -ne $failureHint) {
-                Write-Host ("{0,-10} 第 {1} 次启动失败，命中 {2}" -f $Service.Name, $attempt, $failureHint.Marker)
-                Write-Host ("{0,-10} 日志：{1}" -f $Service.Name, $failureHint.Log)
-                break
-            }
+    foreach ($service in $retryTargets) {
+        Write-Host ("{0,-10} 准备并行重试启动，第 2/2 次" -f $service.Name)
+        Stop-BackendModuleProcesses -Service $service
+        Stop-PortListeners -Service $service
+    }
 
-            $process = Get-ListenerProcess -Port $Service.Port
-            if (Test-BackendProcess -Service $Service -Process $process) {
-                Write-Host ("{0,-10} 已就绪，端口 {1}, PID {2}" -f $Service.Name, $Service.Port, $process.ProcessId)
-                return @{
-                    Success = $true
-                    Service = $Service
-                }
-            }
+    Start-Sleep -Seconds 2
 
-            Start-Sleep -Seconds 3
-        }
-
-        if ($attempt -lt $MaxAttempts) {
-            Write-Host ("{0,-10} 准备重试启动，第 {1}/{2} 次" -f $Service.Name, ($attempt + 1), $MaxAttempts)
-            Stop-BackendModuleProcesses -Service $Service
-            Stop-PortListeners -Service $Service
-            Start-Sleep -Seconds 2
-            continue
+    $restartedServices = @()
+    foreach ($service in $retryTargets) {
+        $started = Start-BackendService -Service $service
+        $restartedServices += @{
+            Service = $started.Service
+            OutLog = $started.OutLog
+            ErrLog = $started.ErrLog
         }
     }
 
-    Write-Host ("{0,-10} 启动失败，端口 {1}" -f $Service.Name, $Service.Port)
-    return @{
-        Success = $false
-        Service = $Service
-    }
+    return @(Wait-BackendServicesReady -PendingServices $restartedServices -Deadline $Deadline)
 }
 
 function Wait-BackendServicesReady {
@@ -683,8 +756,13 @@ function Wait-BackendServicesReady {
             }
 
             $process = Get-ListenerProcess -Port $item.Service.Port
-            if (Test-BackendProcess -Service $item.Service -Process $process) {
-                Write-Host ("{0,-10} 已就绪，端口 {1}, PID {2}" -f $item.Service.Name, $item.Service.Port, $process.ProcessId)
+            if (Test-BackendReady -Service $item.Service -Process $process) {
+                $managementPort = Get-ServiceManagementPort -Service $item.Service
+                if ($null -ne $managementPort) {
+                    Write-Host ("{0,-10} 已就绪，端口 {1}，健康检查 {2}, PID {3}" -f $item.Service.Name, $item.Service.Port, $managementPort, $process.ProcessId)
+                } else {
+                    Write-Host ("{0,-10} 已就绪，端口 {1}, PID {2}" -f $item.Service.Name, $item.Service.Port, $process.ProcessId)
+                }
             } else {
                 $nextRemaining += $item
             }
@@ -821,12 +899,7 @@ foreach ($service in $BackendServices) {
 Stop-PortListeners -Service $FrontendService
 Start-Sleep -Seconds 2
 
-Install-BackendDependencies
-Sync-NacosConfiguration
-
-$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-$failed = @()
-
+$nacosSync = Start-NacosConfigurationSync
 $startedFrontend = Start-FrontendService -Service $FrontendService
 $pending += @{
     Service = $startedFrontend.Service
@@ -837,6 +910,21 @@ $pending += @{
         Test-FrontendProcess -Process $process
     }
 }
+
+$installResult = Install-BackendDependencies
+if (-not $installResult.Success) {
+    Stop-PortListeners -Service $FrontendService
+    Write-Host "backend    编译失败，查看日志：$($installResult.OutLog)"
+    if (Test-Path $installResult.ErrLog) {
+        Write-Host "backend    错误日志：$($installResult.ErrLog)"
+    }
+    exit $installResult.ExitCode
+}
+
+Wait-NacosConfigurationSync -SyncJob $nacosSync
+
+$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+$failed = @()
 
 $startedBackends = @()
 foreach ($service in $BackendServices) {
@@ -849,12 +937,7 @@ foreach ($service in $BackendServices) {
 }
 
 $initialFailed = @(Wait-BackendServicesReady -PendingServices $startedBackends -Deadline $deadline)
-foreach ($service in $initialFailed) {
-    $result = Start-BackendServiceWithRetry -Service $service -Deadline $deadline
-    if (-not $result.Success) {
-        $failed += $service
-    }
-}
+$failed += @(Retry-BackendServicesConcurrently -Services $initialFailed -Deadline $deadline)
 
 $failed += @(Wait-AllServicesReady -PendingServices $pending -Deadline $deadline)
 

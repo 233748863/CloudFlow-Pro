@@ -25,7 +25,7 @@ public class RateLimiterAutoConfiguration {
         return script;
     }
 
-    @Bean
+    @Bean("cloudflowRateLimiterAspect")
     public RateLimiterAspect rateLimiterAspect(StringRedisTemplate redisTemplate, RedisScript<Long> rateLimiterScript) {
         return new RateLimiterAspect(redisTemplate, rateLimiterScript);
     }

@@ -26,7 +26,7 @@ CloudFlow Pro 是一个面向企业办公、流程审批、人力资源和客户
 | Controller | 业务服务 84+ 个，公共 SSE 1 个 |
 | 前端页面 | `src/pages` 下 94 个 TSX 页面组件 |
 | 数据库结构 | `01`-`04` 脚本合计 135 张结构表 |
-| 本地一键启动 | `start-cloudflow.ps1` 启动 6 个后端服务和前端 |
+| 本地一键启动 | `start-cloudflow.ps1` 并行编译并启动 6 个后端服务和前端 |
 | Docker Compose | 已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、CRM、HR、Prometheus、Grafana、前端 |
 
 ## ✨ 核心能力
@@ -213,8 +213,8 @@ cd ..
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\start-cloudflow.ps1
 ```
 
-脚本会编译并安装后端内部依赖，启动网关、认证、工作流、OA、CRM、HR 和前端；运行日志写入 `.cloudflow-runtime/logs/`。
-根级 `start-cloudflow.ps1` 仍只启动 React 开发端；Vue 前端通过 `pnpm typecheck` 与 `pnpm build` 纳入 CI 和发布验收。
+脚本会并行编译并安装后端内部依赖，随后并行拉起网关、认证、工作流、OA、CRM、HR 和前端；运行日志写入 `.cloudflow-runtime/logs/`，后端以 actuator 健康检查 `UP` 作为就绪判定。
+可选参数：`-TimeoutSeconds 240` 调整整体验收超时，`-BackendBuildThreads 1C` 调整 Maven 并行编译线程。
 
 ### 🌐 6. 访问入口
 
