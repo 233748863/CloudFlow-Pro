@@ -94,6 +94,10 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-statemachine</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-event</artifactId>
+        </dependency>
 
         <!-- 文件存储模块（本地存储/MinIO/阿里云 OSS） -->
         <dependency>

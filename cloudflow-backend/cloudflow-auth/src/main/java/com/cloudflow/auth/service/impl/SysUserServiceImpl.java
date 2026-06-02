@@ -21,10 +21,13 @@ import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.event.UserDisabledEvent;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.security.UserDeletionGuardRegistry;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -34,7 +37,8 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -81,6 +85,12 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Autowired
     private UserDeletionGuardRegistry userDeletionGuardRegistry;
+
+    @Autowired
+    private OutboxPublisher outboxPublisher;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
@@ -314,6 +324,7 @@ public class SysUserServiceImpl implements ISysUserService {
 
         // 同时清除用户菜单树缓存
         sysMenuService.evictUserMenuCache(user.getUserId());
+        publishUserDisabledEventIfNeeded(persisted, user);
         revokeSessionIfNeeded(persisted, user);
 
         return rows;
@@ -412,6 +423,34 @@ public class SysUserServiceImpl implements ISysUserService {
         boolean roleChanged = incoming.getRoleIds() != null;
         if (disabledNow || roleChanged) {
             userSessionRevoker.revokeByUserId(incoming.getUserId());
+        }
+    }
+
+    private void publishUserDisabledEventIfNeeded(SysUser persisted, SysUser incoming) {
+        if (persisted == null || incoming == null || incoming.getUserId() == null) {
+            return;
+        }
+        if (!"1".equals(incoming.getStatus()) || "1".equals(persisted.getStatus())) {
+            return;
+        }
+
+        UserDisabledEvent event = new UserDisabledEvent();
+        event.setUserId(incoming.getUserId());
+        event.setUserName(StringUtils.hasText(incoming.getNickName()) ? incoming.getNickName() : incoming.getUserName());
+        event.setDeptId(incoming.getDeptId() != null ? incoming.getDeptId() : persisted.getDeptId());
+        event.setDisabledAt(LocalDateTime.now());
+
+        try {
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("USER_DISABLED")
+                    .sourceModule("cloudflow-auth")
+                    .sourceId(incoming.getUserId())
+                    .tenantId(incoming.getTenantId() != null ? incoming.getTenantId() : persisted.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("用户停用事件序列化失败", e);
         }
     }
 

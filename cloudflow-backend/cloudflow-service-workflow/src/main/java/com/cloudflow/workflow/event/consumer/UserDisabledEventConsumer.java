@@ -1,0 +1,31 @@
+package com.cloudflow.workflow.event.consumer;
+
+import com.cloudflow.common.core.event.UserDisabledEvent;
+import com.cloudflow.common.event.core.BusinessEventConsumer;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.workflow.service.impl.WfUserDisabledCleanupService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class UserDisabledEventConsumer implements BusinessEventConsumer {
+
+    private final ObjectMapper objectMapper;
+    private final WfUserDisabledCleanupService userDisabledCleanupService;
+
+    @Override
+    public String eventType() {
+        return "USER_DISABLED";
+    }
+
+    @Override
+    public void consume(BusinessEventEnvelope envelope) throws Exception {
+        UserDisabledEvent event = objectMapper.readValue(envelope.getPayload(), UserDisabledEvent.class);
+        if (event.getUserId() == null) {
+            return;
+        }
+        userDisabledCleanupService.cleanupDisabledUserTasks(event.getUserId(), envelope.getEventId());
+    }
+}
