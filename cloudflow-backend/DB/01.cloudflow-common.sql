@@ -314,7 +314,7 @@ CREATE TABLE outbox_event (
 DROP TABLE IF EXISTS `sys_dict_type`;
 CREATE TABLE `sys_dict_type` (
     `dict_id`     BIGINT       NOT NULL AUTO_INCREMENT COMMENT '字典主键',
-    `tenant_id`   BIGINT       DEFAULT NULL COMMENT '租户ID',
+    `tenant_id`   BIGINT       DEFAULT 100000 COMMENT '租户ID',
     `dict_name`   VARCHAR(100) NOT NULL COMMENT '字典名称',
     `dict_type`   VARCHAR(100) NOT NULL COMMENT '字典类型（唯一标识）',
     `status`      CHAR(1)      DEFAULT '0' COMMENT '状态（0正常 1停用）',
@@ -332,7 +332,7 @@ CREATE TABLE `sys_dict_type` (
 DROP TABLE IF EXISTS `sys_dict_data`;
 CREATE TABLE `sys_dict_data` (
     `dict_code`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '字典编码',
-    `tenant_id`   BIGINT       DEFAULT NULL COMMENT '租户ID',
+    `tenant_id`   BIGINT       DEFAULT 100000 COMMENT '租户ID',
     `dict_sort`   INT          DEFAULT 0 COMMENT '字典排序',
     `dict_label`  VARCHAR(100) NOT NULL COMMENT '字典标签',
     `dict_value`  VARCHAR(100) NOT NULL COMMENT '字典键值',
@@ -351,6 +351,24 @@ CREATE TABLE `sys_dict_data` (
     KEY `idx_dict_type` (`dict_type`),
     KEY `idx_dict_data_tenant_type` (`tenant_id`, `dict_type`, `dict_value`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典数据表';
+
+-- 14.1 字典隐式引用告警表
+DROP TABLE IF EXISTS sys_dict_orphan_alert;
+CREATE TABLE sys_dict_orphan_alert (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    dict_type VARCHAR(100) NOT NULL COMMENT '字典类型编码',
+    reason VARCHAR(255) NOT NULL COMMENT '告警原因',
+    binding_summary VARCHAR(2000) NOT NULL COMMENT '绑定摘要',
+    binding_count INT NOT NULL DEFAULT 0 COMMENT '绑定数量',
+    create_by VARCHAR(64) DEFAULT NULL COMMENT '创建人',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_by VARCHAR(64) DEFAULT NULL COMMENT '更新人',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_sys_dict_orphan_alert_tenant_type (tenant_id, dict_type),
+    KEY idx_sys_dict_orphan_alert_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='字典隐式引用告警表';
 
 -- =========================================================
 -- 八、系统参数配置
@@ -526,6 +544,47 @@ CREATE TABLE sys_user_blacklist (
   KEY idx_user_blacklist_user (user_id, deleted),
   KEY idx_user_blacklist_status (tenant_id, status, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户黑名单(GOV-P0-1)';
+
+DROP TRIGGER IF EXISTS trg_sys_log_no_delete;
+DROP TRIGGER IF EXISTS trg_sys_log_no_update;
+DROP TRIGGER IF EXISTS trg_sys_audit_log_no_delete;
+DROP TRIGGER IF EXISTS trg_sys_audit_log_no_update;
+
+DELIMITER $$
+
+CREATE TRIGGER trg_sys_log_no_delete
+BEFORE DELETE ON sys_log
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'ERR.AUDIT_IMMUTABLE: sys_log delete is forbidden';
+END$$
+
+CREATE TRIGGER trg_sys_log_no_update
+BEFORE UPDATE ON sys_log
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'ERR.AUDIT_IMMUTABLE: sys_log update is forbidden';
+END$$
+
+CREATE TRIGGER trg_sys_audit_log_no_delete
+BEFORE DELETE ON sys_audit_log
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'ERR.AUDIT_IMMUTABLE: sys_audit_log delete is forbidden';
+END$$
+
+CREATE TRIGGER trg_sys_audit_log_no_update
+BEFORE UPDATE ON sys_audit_log
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'ERR.AUDIT_IMMUTABLE: sys_audit_log update is forbidden';
+END$$
+
+DELIMITER ;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

@@ -116,6 +116,7 @@ CREATE TABLE wf_process_instance (
   start_user_id     BIGINT(20)      NOT NULL COMMENT '发起人ID',
   start_user_name   VARCHAR(64)     DEFAULT NULL COMMENT '发起人姓名',
   status            VARCHAR(20)     DEFAULT 'RUNNING' COMMENT '状态',
+  starter_left      TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '发起人是否已离职(0否 1是)',
   start_time        DATETIME        DEFAULT NULL COMMENT '开始时间',
   end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
   variables         JSON            DEFAULT NULL COMMENT '流程变量',
@@ -134,6 +135,7 @@ CREATE TABLE wf_process_instance (
   KEY idx_business_key (business_key),
   KEY idx_proc_inst_tenant (tenant_id),
   KEY idx_start_user_status (start_user_id, status),
+  KEY idx_start_user_status_left (start_user_id, status, starter_left),
   KEY idx_process_key_status (process_def_key, status),
   KEY idx_start_time (start_time),
   KEY idx_dept_id (dept_id),
@@ -272,11 +274,11 @@ CREATE TABLE wf_task_candidate (
   task_id           VARCHAR(64)     NOT NULL COMMENT '任务ID',
   candidate_type    VARCHAR(20)     NOT NULL COMMENT '候选人类型',
   candidate_id      VARCHAR(64)     NOT NULL COMMENT '候选人ID',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   KEY idx_task_id (task_id),
   KEY idx_candidate (candidate_type, candidate_id)
-  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务候选人表';
 
 --
