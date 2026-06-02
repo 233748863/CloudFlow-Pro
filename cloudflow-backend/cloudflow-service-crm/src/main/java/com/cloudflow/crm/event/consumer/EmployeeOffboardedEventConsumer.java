@@ -24,6 +24,7 @@ public class EmployeeOffboardedEventConsumer implements BusinessEventConsumer {
     public void consume(BusinessEventEnvelope envelope) throws Exception {
         EmployeeOffboardEvent event = objectMapper.readValue(envelope.getPayload(), EmployeeOffboardEvent.class);
         handoverTaskService.generateForEmployeeLeft(
+                envelope.getTenantId(),
                 event.getUserId(),
                 event.getEmployeeName(),
                 event.getDeptId(),

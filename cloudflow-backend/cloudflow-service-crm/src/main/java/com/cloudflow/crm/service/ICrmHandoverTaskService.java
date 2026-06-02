@@ -18,7 +18,7 @@ public interface ICrmHandoverTaskService {
      * @param eventId         Redis Stream 消息 ID，用于幂等去重
      * @return 生成的任务数量
      */
-    int generateForEmployeeLeft(Long fromOwnerUserId, String fromOwnerName, Long fromDeptId, String eventId,
+    int generateForEmployeeLeft(Long tenantId, Long fromOwnerUserId, String fromOwnerName, Long fromDeptId, String eventId,
                                 Long successorUserId);
 
     List<CrmHandoverTask> listPending(Long fromOwnerId);
