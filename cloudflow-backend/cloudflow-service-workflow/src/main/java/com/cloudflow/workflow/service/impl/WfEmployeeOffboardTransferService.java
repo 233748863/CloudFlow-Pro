@@ -39,10 +39,24 @@ public class WfEmployeeOffboardTransferService {
 
     @Transactional(rollbackFor = Exception.class)
     public void transferTodoTasksForEmployeeLeft(Long userId, String employeeName, Long successorUserId, String sourceEventId) {
-        SysUser successor = sysUserMapper.selectById(successorUserId);
-        if (successor == null || Integer.valueOf(1).equals(successor.getDeleted()) || "1".equals(successor.getStatus())) {
-            log.warn("skip workflow offboard transfer because successor is unavailable, eventId={}, userId={}, successorUserId={}",
-                    sourceEventId, userId, successorUserId);
+        List<WfProcessInstance> runningInstances = processInstanceMapper.selectList(new LambdaQueryWrapper<WfProcessInstance>()
+                .eq(WfProcessInstance::getStartUserId, userId)
+                .eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode()));
+
+        for (WfProcessInstance instance : runningInstances) {
+            instance.setStarterLeft(1);
+            processInstanceMapper.updateById(instance);
+        }
+
+        if (!runningInstances.isEmpty()) {
+            log.warn("employee-left workflow transfer marked running starter instances, eventId={}, userId={}, instanceCount={}, instanceIds={}",
+                    sourceEventId, userId, runningInstances.size(), summarizeInstanceIds(runningInstances));
+        }
+
+        SysUser successor = resolveAvailableSuccessor(successorUserId);
+        if (successor == null) {
+            log.warn("workflow offboard transfer skipped todo reassignment because successor is unavailable, eventId={}, userId={}, successorUserId={}, runningInstanceCount={}",
+                    sourceEventId, userId, successorUserId, runningInstances.size());
             return;
         }
 
@@ -61,22 +75,22 @@ public class WfEmployeeOffboardTransferService {
             updateTaskMonitor(task, now);
         }
 
-        List<WfProcessInstance> runningInstances = processInstanceMapper.selectList(new LambdaQueryWrapper<WfProcessInstance>()
-                .eq(WfProcessInstance::getStartUserId, userId)
-                .eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode()));
-
-        for (WfProcessInstance instance : runningInstances) {
-            instance.setStarterLeft(1);
-            processInstanceMapper.updateById(instance);
-        }
-
-        if (!runningInstances.isEmpty()) {
-            log.warn("employee-left workflow transfer marked running starter instances, eventId={}, userId={}, instanceCount={}, instanceIds={}",
-                    sourceEventId, userId, runningInstances.size(), summarizeInstanceIds(runningInstances));
-        }
-
         log.info("employee-left workflow transfer completed, eventId={}, userId={}, successorUserId={}, transferredTaskCount={}, runningInstanceCount={}",
                 sourceEventId, userId, successorUserId, todoTasks.size(), runningInstances.size());
+    }
+
+    private SysUser resolveAvailableSuccessor(Long successorUserId) {
+        if (successorUserId == null) {
+            return null;
+        }
+        SysUser successor = sysUserMapper.selectById(successorUserId);
+        if (successor == null) {
+            return null;
+        }
+        if (Integer.valueOf(1).equals(successor.getDeleted()) || "1".equals(successor.getStatus())) {
+            return null;
+        }
+        return successor;
     }
 
     private void insertDelegationRecord(WfTask task,

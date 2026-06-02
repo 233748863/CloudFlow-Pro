@@ -23,7 +23,7 @@ public class EmployeeOffboardedEventConsumer implements BusinessEventConsumer {
     @Override
     public void consume(BusinessEventEnvelope envelope) throws Exception {
         EmployeeOffboardEvent event = objectMapper.readValue(envelope.getPayload(), EmployeeOffboardEvent.class);
-        if (event.getUserId() == null || event.getSuccessorUserId() == null) {
+        if (event.getUserId() == null) {
             return;
         }
         offboardTransferService.transferTodoTasksForEmployeeLeft(

@@ -35,9 +35,6 @@ public class HrEmployeeLeftStreamConsumer implements StreamListener<String, MapR
                 log.warn("skip employee-left event without userId, msgId={}, body={}", msgId, body);
             } else if (tenantId == null) {
                 log.warn("skip employee-left event without tenantId, msgId={}, userId={}, body={}", msgId, userId, body);
-            } else if (successorUserId == null) {
-                log.warn("skip employee-left transfer without successorUserId, msgId={}, tenantId={}, userId={}",
-                        msgId, tenantId, userId);
             } else if (Objects.equals(userId, successorUserId)) {
                 log.warn("skip employee-left transfer with same successor, msgId={}, tenantId={}, userId={}",
                         msgId, tenantId, userId);
