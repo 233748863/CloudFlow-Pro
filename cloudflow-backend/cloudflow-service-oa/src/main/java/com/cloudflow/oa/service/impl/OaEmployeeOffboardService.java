@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
+import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.BizPurchaseItem;
 import com.cloudflow.oa.domain.BusinessTrip;
@@ -13,6 +14,7 @@ import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.domain.VehicleUsage;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
+import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
 import com.cloudflow.oa.mapper.OaLicenseBorrowMapper;
@@ -39,6 +41,7 @@ public class OaEmployeeOffboardService {
 
     private final BusinessTripMapper businessTripMapper;
     private final BizExpenseClaimMapper bizExpenseClaimMapper;
+    private final BizPaymentRequestMapper bizPaymentRequestMapper;
     private final BizPurchaseRequestMapper bizPurchaseRequestMapper;
     private final OaSealApplicationMapper oaSealApplicationMapper;
     private final OaLicenseBorrowMapper oaLicenseBorrowMapper;
@@ -55,15 +58,16 @@ public class OaEmployeeOffboardService {
         int licenseCount = cancelLicenseBorrows(tenantId, userId);
         int vehicleCount = cancelVehicleUsages(tenantId, userId);
         int expenseCount = cancelExpenseClaims(tenantId, userId);
+        int paymentCount = cancelPaymentRequests(tenantId, userId);
         int purchaseCount = cancelPurchaseRequests(tenantId, userId);
 
-        if (expenseCount > 0 || purchaseCount > 0) {
-            log.info("oa employee-left auto-cancel completed for additional business forms, eventId={}, tenantId={}, userId={}, expenseCount={}, purchaseCount={}",
-                    sourceEventId, tenantId, userId, expenseCount, purchaseCount);
+        if (expenseCount > 0 || paymentCount > 0 || purchaseCount > 0) {
+            log.info("oa employee-left auto-cancel completed for additional business forms, eventId={}, tenantId={}, userId={}, expenseCount={}, paymentCount={}, purchaseCount={}",
+                    sourceEventId, tenantId, userId, expenseCount, paymentCount, purchaseCount);
         }
 
-        log.info("oa employee-left auto-cancel completed, eventId={}, tenantId={}, userId={}, tripCount={}, sealCount={}, licenseCount={}, vehicleCount={}, untouchedExpenseCount={}, untouchedPurchaseCount={}",
-                sourceEventId, tenantId, userId, tripCount, sealCount, licenseCount, vehicleCount, expenseCount, purchaseCount);
+        log.info("oa employee-left auto-cancel completed, eventId={}, tenantId={}, userId={}, tripCount={}, sealCount={}, licenseCount={}, vehicleCount={}, expenseCount={}, paymentCount={}, purchaseCount={}",
+                sourceEventId, tenantId, userId, tripCount, sealCount, licenseCount, vehicleCount, expenseCount, paymentCount, purchaseCount);
     }
 
     private int cancelTrips(Long tenantId, Long userId) {
@@ -136,6 +140,32 @@ public class OaEmployeeOffboardService {
         return count;
     }
 
+    private int cancelPaymentRequests(Long tenantId, Long userId) {
+        List<BizPaymentRequest> payments = bizPaymentRequestMapper.selectList(new LambdaQueryWrapper<BizPaymentRequest>()
+                .eq(BizPaymentRequest::getTenantId, tenantId)
+                .eq(BizPaymentRequest::getUserId, userId)
+                .eq(BizPaymentRequest::getDeleted, 0)
+                .in(BizPaymentRequest::getStatus, List.of("DRAFT", "PENDING")));
+        int count = 0;
+        for (BizPaymentRequest payment : payments) {
+            if ("PENDING".equals(payment.getStatus())) {
+                releasePaymentBudget(payment);
+            }
+            int updated = bizPaymentRequestMapper.update(null, new LambdaUpdateWrapper<BizPaymentRequest>()
+                    .eq(BizPaymentRequest::getTenantId, tenantId)
+                    .eq(BizPaymentRequest::getId, payment.getId())
+                    .eq(BizPaymentRequest::getDeleted, 0)
+                    .in(BizPaymentRequest::getStatus, List.of("DRAFT", "PENDING"))
+                    .set(BizPaymentRequest::getStatus, "CANCELLED")
+                    .set(BizPaymentRequest::getUpdateBy, AUTO_CANCEL_OPERATOR)
+                    .set(BizPaymentRequest::getUpdateTime, java.time.LocalDateTime.now()));
+            if (updated > 0) {
+                count += updated;
+            }
+        }
+        return count;
+    }
+
     private int cancelPurchaseRequests(Long tenantId, Long userId) {
         List<BizPurchaseRequest> purchases = bizPurchaseRequestMapper.selectList(new LambdaQueryWrapper<BizPurchaseRequest>()
                 .eq(BizPurchaseRequest::getTenantId, tenantId)
@@ -200,5 +230,24 @@ public class OaEmployeeOffboardService {
                     "申请人离职自动撤回释放预算"
             );
         }
+    }
+
+    private void releasePaymentBudget(BizPaymentRequest payment) {
+        if (payment == null) {
+            return;
+        }
+        oaBudgetService.releaseBudget(
+                OaBusinessTypes.PAYMENT_REQUEST,
+                payment.getId(),
+                payment.getPaymentNo(),
+                payment.getDeptId(),
+                payment.getDeptName(),
+                payment.getProjectId(),
+                payment.getProjectName(),
+                payment.getBudgetSubjectCode(),
+                payment.getBudgetSubjectName(),
+                payment.getAmount(),
+                "申请人离职自动撤回释放预算"
+        );
     }
 }
