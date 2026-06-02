@@ -661,6 +661,50 @@ function Start-BackendServiceWithRetry {
     }
 }
 
+function Wait-BackendServicesReady {
+    param(
+        [object[]]$PendingServices,
+        [datetime]$Deadline
+    )
+
+    $remaining = @($PendingServices)
+    $failed = @()
+
+    while ($remaining.Count -gt 0 -and (Get-Date) -lt $Deadline) {
+        $nextRemaining = @()
+
+        foreach ($item in $remaining) {
+            $failureHint = Get-StartupFailureHint -OutLog $item.OutLog -ErrLog $item.ErrLog
+            if ($null -ne $failureHint) {
+                Write-Host ("{0,-10} 首次启动失败，命中 {1}" -f $item.Service.Name, $failureHint.Marker)
+                Write-Host ("{0,-10} 日志：{1}" -f $item.Service.Name, $failureHint.Log)
+                $failed += $item.Service
+                continue
+            }
+
+            $process = Get-ListenerProcess -Port $item.Service.Port
+            if (Test-BackendProcess -Service $item.Service -Process $process) {
+                Write-Host ("{0,-10} 已就绪，端口 {1}, PID {2}" -f $item.Service.Name, $item.Service.Port, $process.ProcessId)
+            } else {
+                $nextRemaining += $item
+            }
+        }
+
+        $remaining = $nextRemaining
+        if ($remaining.Count -gt 0) {
+            Start-Sleep -Seconds 3
+        }
+    }
+
+    foreach ($item in $remaining) {
+        Write-Host ("{0,-10} 首次启动超时，端口 {1}" -f $item.Service.Name, $item.Service.Port)
+        Write-Host ("{0,-10} 日志：{1}" -f $item.Service.Name, $item.OutLog)
+        $failed += $item.Service
+    }
+
+    return $failed
+}
+
 function Start-FrontendService {
     param([object]$Service)
 
@@ -783,13 +827,6 @@ Sync-NacosConfiguration
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $failed = @()
 
-foreach ($service in $BackendServices) {
-    $result = Start-BackendServiceWithRetry -Service $service -Deadline $deadline
-    if (-not $result.Success) {
-        $failed += $service
-    }
-}
-
 $startedFrontend = Start-FrontendService -Service $FrontendService
 $pending += @{
     Service = $startedFrontend.Service
@@ -798,6 +835,24 @@ $pending += @{
     ExpectedProcess = {
         param($service, $process)
         Test-FrontendProcess -Process $process
+    }
+}
+
+$startedBackends = @()
+foreach ($service in $BackendServices) {
+    $started = Start-BackendService -Service $service
+    $startedBackends += @{
+        Service = $started.Service
+        OutLog = $started.OutLog
+        ErrLog = $started.ErrLog
+    }
+}
+
+$initialFailed = @(Wait-BackendServicesReady -PendingServices $startedBackends -Deadline $deadline)
+foreach ($service in $initialFailed) {
+    $result = Start-BackendServiceWithRetry -Service $service -Deadline $deadline
+    if (-not $result.Success) {
+        $failed += $service
     }
 }
 
