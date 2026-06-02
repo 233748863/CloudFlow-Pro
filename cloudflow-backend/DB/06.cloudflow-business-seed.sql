@@ -347,10 +347,6 @@ WHERE id BETWEEN 98001 AND 98007;
 DELETE FROM cloud_flow_db.wf_deploy_record
 WHERE id BETWEEN 98001 AND 98007;
 
-DELETE FROM cloud_flow_db.wf_audit_log
-WHERE id LIKE 'demo_audit_%'
-   OR id LIKE 'seed_audit_%';
-
 DELETE FROM cloud_flow_db.wf_template_version
 WHERE id LIKE 'demo_%'
    OR id LIKE 'seed_%';
@@ -419,9 +415,6 @@ WHERE file_id BETWEEN 91000 AND 99999;
 
 DELETE FROM cloud_flow_db.sys_log
 WHERE log_id BETWEEN 91000 AND 99999;
-
-DELETE FROM cloud_flow_db.sys_audit_log
-WHERE audit_id BETWEEN 91000 AND 99999;
 
 DELETE FROM cloud_flow_db.outbox_event
 WHERE id BETWEEN 91000 AND 91099
@@ -1537,7 +1530,6 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 (973,  '字典删除',       611,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dict:remove',            '#', 'admin', NOW(), '', NULL, '字典删除权限'),
 (974,  '缓存清理',       610,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:cache:remove',           '#', 'admin', NOW(), '', NULL, '缓存清理权限'),
 (975,  '日志删除',       606,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:log:remove',             '#', 'admin', NOW(), '', NULL, '日志删除权限'),
-(976,  '审计删除',       607,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:audit:remove',           '#', 'admin', NOW(), '', NULL, '审计删除权限'),
 (977,  '登录日志删除',   616,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:login-log:remove',       '#', 'admin', NOW(), '', NULL, '登录日志删除权限'),
 (978,  '部门查询',       500,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dept:query',             '#', 'admin', NOW(), '', NULL, '部门查询权限'),
 (979,  '部门新增',       500,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dept:add',               '#', 'admin', NOW(), '', NULL, '部门新增权限'),
@@ -1574,7 +1566,6 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 (1009, '任务统计',       100, 10, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:statistics',      '#', 'admin', NOW(), '', NULL, '任务统计权限'),
 (1010, '任务分组',       100, 11, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:groups',          '#', 'admin', NOW(), '', NULL, '任务分组权限'),
 (1011, '流程审计查看',   400,  8, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:audit:list',           '#', 'admin', NOW(), '', NULL, '流程审计查看权限'),
-(1012, '流程审计删除',   400,  9, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:audit:remove',         '#', 'admin', NOW(), '', NULL, '流程审计删除权限'),
 
 -- HR ESS 按钮级权限
 (1013, '工资条生成',     729,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:ess:slip:generate',          '#', 'admin', NOW(), '', NULL, '工资条月度生成权限'),
@@ -6638,8 +6629,6 @@ DELETE FROM cloud_flow_db.wf_template_version WHERE id IN ('demo_tpl_vehicle_001
 
 DELETE FROM cloud_flow_db.wf_template_archive WHERE id IN ('demo_archive_001');
 
-DELETE FROM cloud_flow_db.wf_audit_log WHERE id IN ('demo_audit_001');
-
 DELETE FROM cloud_flow_db.wf_template WHERE id IN ('demo_tpl_vehicle_001');
 
 DELETE FROM cloud_flow_db.wf_task_history WHERE history_id IN (
@@ -6683,13 +6672,9 @@ DELETE FROM cloud_flow_db.sys_file WHERE file_id IN (91001,91002,91003,91004);
 
 DELETE FROM cloud_flow_db.sys_log WHERE log_id IN (91001,91002,91003,91004);
 
-DELETE FROM cloud_flow_db.sys_audit_log WHERE audit_id IN (91001,91002);
-
 DELETE FROM cloud_flow_db.sys_file WHERE file_id BETWEEN 92000 AND 92300;
 
 DELETE FROM cloud_flow_db.sys_log WHERE log_id BETWEEN 92000 AND 92300;
-
-DELETE FROM cloud_flow_db.sys_audit_log WHERE audit_id BETWEEN 92000 AND 92300;
 
 DELETE FROM cloud_flow_db.oa_work_task WHERE task_id IN (9401,9402,9403,9404,9405,9406,9407,9408,9409,9410,9411,9412,9413,9414);
 
@@ -8806,9 +8791,6 @@ WHERE config_id IN ('seed_notify_003', 'seed_notify_004', 'seed_notify_005');
 DELETE FROM cloud_flow_db.wf_template_archive
 WHERE id IN ('seed_archive_001', 'seed_archive_002');
 
-DELETE FROM cloud_flow_db.wf_audit_log
-WHERE id IN ('seed_audit_002', 'seed_audit_003');
-
 DELETE FROM cloud_flow_db.wf_notice
 WHERE notice_id BETWEEN 9917 AND 9924
    OR remark IN (
@@ -8824,9 +8806,6 @@ WHERE notice_id BETWEEN 9917 AND 9924
 
 DELETE FROM cloud_flow_db.sys_file
 WHERE file_id IN (93001,93002,93003,93004,93005,93006,93007,93008,93009,93010);
-
-DELETE FROM cloud_flow_db.sys_audit_log
-WHERE audit_id IN (93001,93002,93003,93004);
 
 -- 8.3 文件归档与审计记录
 INSERT IGNORE INTO cloud_flow_db.sys_file (
@@ -9486,9 +9465,6 @@ WHERE id IN (
 
 DELETE FROM cloud_flow_db.wf_template_archive
 WHERE id IN ('seed_archive_003');
-
-DELETE FROM cloud_flow_db.wf_audit_log
-WHERE id IN ('seed_audit_004', 'seed_audit_005', 'seed_audit_006');
 
 DELETE FROM cloud_flow_db.wf_template
 WHERE id IN ('seed_tpl_delivery_change_001', 'seed_tpl_customer_renewal_001');

@@ -649,21 +649,10 @@ public class ArchiveServiceImpl implements IArchiveService {
             int archiveCount = archiveMapper.delete(archiveQuery);
             log.debug("删除归档记录: workflowId={}, count={}", workflowId, archiveCount);
 
-            // 7. 删除流程历史审计日志（按 workflowId + targetType 级联清理）
-            int workflowAuditLogCount = auditLogService.deleteByTarget(TargetType.WORKFLOW, workflowId);
-
-            // 8. 额外清理关联版本的审计日志，避免残留 VERSION 目标类型的孤儿记录
-            int versionAuditLogCount = 0;
-            for (String versionId : versionIds) {
-                versionAuditLogCount += auditLogService.deleteByTarget(TargetType.VERSION, versionId);
-            }
-            log.debug("删除流程历史审计日志: workflowId={}, workflowLogCount={}, versionLogCount={}",
-                workflowId, workflowAuditLogCount, versionAuditLogCount);
-
-            // 9. 真正物理删除流程定义，避免逻辑删除残留在主表中。
+            // 7. 真正物理删除流程定义，避免逻辑删除残留在主表中。
             definitionMapper.deletePhysicalById(workflowId);
 
-            // 10. 记录审计日志
+            // 8. 记录审计日志
             auditLogService.log(
                 OperationType.WORKFLOW_DELETE,
                 TargetType.WORKFLOW,

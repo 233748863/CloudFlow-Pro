@@ -76,20 +76,4 @@ public interface IAuditLogService {
      */
     AuditLogDTO getAuditLog(String id);
 
-    /**
-     * 删除过期的审计日志
-     * 
-     * @param daysToKeep 保留天数
-     * @return 删除的记录数
-     */
-    int deleteExpiredLogs(int daysToKeep);
-
-    /**
-     * 按目标对象删除历史审计日志
-     *
-     * @param targetType 目标类型
-     * @param targetId 目标对象 ID
-     * @return 删除的记录数
-     */
-    int deleteByTarget(TargetType targetType, String targetId);
 }

@@ -1048,6 +1048,29 @@ CREATE TABLE wf_audit_log (
     INDEX idx_operator_time (operator_id, operation_time DESC) COMMENT '操作人时间索引'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流审计日志表';
 
+DROP TRIGGER IF EXISTS trg_wf_audit_log_no_delete;
+DROP TRIGGER IF EXISTS trg_wf_audit_log_no_update;
+
+DELIMITER $$
+
+CREATE TRIGGER trg_wf_audit_log_no_delete
+BEFORE DELETE ON wf_audit_log
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'ERR.AUDIT_IMMUTABLE: wf_audit_log delete is forbidden';
+END$$
+
+CREATE TRIGGER trg_wf_audit_log_no_update
+BEFORE UPDATE ON wf_audit_log
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'ERR.AUDIT_IMMUTABLE: wf_audit_log update is forbidden';
+END$$
+
+DELIMITER ;
+
 -- P0-2: 回调死信队列
 -- tenant_id 用于运维侧按租户筛选死信，但本表纳入 cloudflow.tenant.ignore-tables，
 -- 由消费者从消息载荷显式取 tenantId 写入；MP 不会自动追加 WHERE 条件，跨租户排障可直接列出。

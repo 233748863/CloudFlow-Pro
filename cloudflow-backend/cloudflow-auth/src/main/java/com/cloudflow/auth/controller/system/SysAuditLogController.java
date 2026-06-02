@@ -4,24 +4,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import com.cloudflow.auth.service.LogImmutabilityGuardService;
 import com.cloudflow.common.audit.domain.SysAuditLogEntity;
 import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
 import com.cloudflow.common.core.domain.R;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
-
 /**
  * 审计日志查询控制器
  * <p>
- * 提供审计日志的分页查询、详情查看、删除等接口。
+ * 提供审计日志的分页查询、详情查看接口。
  * 归属于系统管理模块，由 auth 服务承载。
  * </p>
  *
@@ -33,9 +29,6 @@ public class SysAuditLogController {
 
     @Autowired
     private SysAuditLogMapper sysAuditLogMapper;
-
-    @Autowired
-    private LogImmutabilityGuardService logImmutabilityGuardService;
 
     /**
      * 分页查询审计日志
@@ -101,16 +94,5 @@ public class SysAuditLogController {
             return R.fail("审计日志不存在");
         }
         return R.ok(log);
-    }
-
-    /**
-     * 审计日志不可删除。
-     */
-    @DeleteMapping
-    @SaCheckPermission("system:audit:remove")
-    @ResponseStatus(HttpStatus.GONE)
-    public R delete(@RequestBody List<Long> ids) {
-        logImmutabilityGuardService.rejectAuditLogDeletion();
-        return R.fail(HttpStatus.GONE.value(), "审计日志不可删除");
     }
 }

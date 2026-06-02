@@ -166,53 +166,6 @@ public class AuditLogServiceImpl implements IAuditLogService {
     }
 
     /**
-     * 删除过期的审计日志
-     */
-    @Override
-    @Audit(name = "删除过期日志", diff = true, highRisk = true)
-    public int deleteExpiredLogs(int daysToKeep) {
-        log.info("删除过期的审计日志: daysToKeep={}", daysToKeep);
-        
-        LocalDateTime expireTime = LocalDateTime.now().minusDays(daysToKeep);
-        
-        LambdaQueryWrapper<WfAuditLog> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.lt(WfAuditLog::getOperationTime, expireTime);
-        Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null) {
-            queryWrapper.eq(WfAuditLog::getTenantId, currentTenantId);
-        }
-        
-        int count = auditLogMapper.delete(queryWrapper);
-        
-        log.info("删除过期审计日志完成: count={}", count);
-        return count;
-    }
-
-    /**
-     * 按目标对象删除历史审计日志
-     */
-    @Override
-    @Audit(name = "删除审计日志", diff = true, highRisk = true)
-    public int deleteByTarget(TargetType targetType, String targetId) {
-        if (targetType == null || !StringUtils.hasText(targetId)) {
-            return 0;
-        }
-
-        LambdaQueryWrapper<WfAuditLog> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(WfAuditLog::getTargetType, targetType.name())
-            .eq(WfAuditLog::getTargetId, targetId);
-        Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null) {
-            queryWrapper.eq(WfAuditLog::getTenantId, currentTenantId);
-        }
-
-        int count = auditLogMapper.delete(queryWrapper);
-        log.info("按目标删除审计日志完成: targetType={}, targetId={}, count={}",
-            targetType, targetId, count);
-        return count;
-    }
-
-    /**
      * 构建审计日志对象
      */
     private WfAuditLog buildAuditLog(OperationType operationType, TargetType targetType,
