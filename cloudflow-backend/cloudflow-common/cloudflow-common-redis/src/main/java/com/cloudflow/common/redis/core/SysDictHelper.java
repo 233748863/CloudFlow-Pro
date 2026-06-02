@@ -1,5 +1,6 @@
 package com.cloudflow.common.redis.core;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -136,6 +137,7 @@ public class SysDictHelper {
     /**
      * 字典项 POJO，避免耦合 cloudflow-auth 的 SysDictData 实体
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class DictItem {
         private Integer sort;
         private String label;

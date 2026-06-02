@@ -23,6 +23,7 @@ $BackendServices = @(
         Port = 9001
         Module = "cloudflow-auth"
         MainClass = "com.cloudflow.auth.AuthApplication"
+        ExtraPorts = @(9101, 19001, 19101)
     },
     @{
         Name = "workflow"
@@ -438,23 +439,74 @@ function Stop-ProcessTree {
         ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
 }
 
+function Get-ServicePorts {
+    param([object]$Service)
+
+    $ports = @($Service.Port)
+    if ($Service.PSObject.Properties.Name -contains "ExtraPorts" -and $null -ne $Service.ExtraPorts) {
+        $ports += $Service.ExtraPorts
+    }
+
+    return $ports |
+        Where-Object { $_ -is [int] -and $_ -gt 0 } |
+        Sort-Object -Unique
+}
+
+function Stop-BackendModuleProcesses {
+    param([object]$Service)
+
+    $patterns = @(
+        $Service.Module,
+        $Service.MainClass,
+        ("{0}\target\" -f $Service.Module)
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+    $matchedProcesses = @()
+    foreach ($process in Get-CimInstance Win32_Process -ErrorAction SilentlyContinue) {
+        if ($null -eq $process -or [string]::IsNullOrWhiteSpace($process.CommandLine)) {
+            continue
+        }
+
+        $matched = $false
+        foreach ($pattern in $patterns) {
+            if ($process.CommandLine -like "*$pattern*") {
+                $matched = $true
+                break
+            }
+        }
+
+        if ($matched) {
+            $matchedProcesses += $process
+        }
+    }
+
+    $matchedProcesses |
+        Sort-Object ProcessId -Unique |
+        ForEach-Object {
+            Write-Host ("{0,-10} 清理残留进程 PID {1}" -f $Service.Name, $_.ProcessId)
+            Stop-ProcessTree -RootProcessId $_.ProcessId
+        }
+}
+
 function Stop-PortListeners {
     param([object]$Service)
 
-    $connections = Get-NetTCPConnection -LocalPort $Service.Port -State Listen -ErrorAction SilentlyContinue
-    if ($null -eq $connections) {
-        return
-    }
+    foreach ($port in Get-ServicePorts -Service $Service) {
+        $connections = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+        if ($null -eq $connections) {
+            continue
+        }
 
-    $processIds = $connections |
-        Select-Object -ExpandProperty OwningProcess -Unique |
-        Where-Object { $_ -gt 0 }
+        $processIds = $connections |
+            Select-Object -ExpandProperty OwningProcess -Unique |
+            Where-Object { $_ -gt 0 }
 
-    foreach ($processId in $processIds) {
-        $process = Get-CimInstance Win32_Process -Filter "ProcessId=$processId" -ErrorAction SilentlyContinue
-        if ($null -ne $process) {
-            Write-Host ("{0,-10} 清理端口 {1}, PID {2}" -f $Service.Name, $Service.Port, $process.ProcessId)
-            Stop-ProcessTree -RootProcessId $process.ProcessId
+        foreach ($processId in $processIds) {
+            $process = Get-CimInstance Win32_Process -Filter "ProcessId=$processId" -ErrorAction SilentlyContinue
+            if ($null -ne $process) {
+                Write-Host ("{0,-10} 清理端口 {1}, PID {2}" -f $Service.Name, $port, $process.ProcessId)
+                Stop-ProcessTree -RootProcessId $process.ProcessId
+            }
         }
     }
 }
@@ -560,6 +612,52 @@ function Start-BackendService {
         Service = $Service
         OutLog = $outLog
         ErrLog = $errLog
+    }
+}
+
+function Start-BackendServiceWithRetry {
+    param(
+        [object]$Service,
+        [datetime]$Deadline,
+        [int]$MaxAttempts = 2
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $started = Start-BackendService -Service $Service
+
+        while ((Get-Date) -lt $Deadline) {
+            $failureHint = Get-StartupFailureHint -OutLog $started.OutLog -ErrLog $started.ErrLog
+            if ($null -ne $failureHint) {
+                Write-Host ("{0,-10} 第 {1} 次启动失败，命中 {2}" -f $Service.Name, $attempt, $failureHint.Marker)
+                Write-Host ("{0,-10} 日志：{1}" -f $Service.Name, $failureHint.Log)
+                break
+            }
+
+            $process = Get-ListenerProcess -Port $Service.Port
+            if (Test-BackendProcess -Service $Service -Process $process) {
+                Write-Host ("{0,-10} 已就绪，端口 {1}, PID {2}" -f $Service.Name, $Service.Port, $process.ProcessId)
+                return @{
+                    Success = $true
+                    Service = $Service
+                }
+            }
+
+            Start-Sleep -Seconds 3
+        }
+
+        if ($attempt -lt $MaxAttempts) {
+            Write-Host ("{0,-10} 准备重试启动，第 {1}/{2} 次" -f $Service.Name, ($attempt + 1), $MaxAttempts)
+            Stop-BackendModuleProcesses -Service $Service
+            Stop-PortListeners -Service $Service
+            Start-Sleep -Seconds 2
+            continue
+        }
+    }
+
+    Write-Host ("{0,-10} 启动失败，端口 {1}" -f $Service.Name, $Service.Port)
+    return @{
+        Success = $false
+        Service = $Service
     }
 }
 
@@ -673,6 +771,7 @@ Write-Host "启动 CloudFlow 前后端..."
 
 $pending = @()
 foreach ($service in $BackendServices) {
+    Stop-BackendModuleProcesses -Service $service
     Stop-PortListeners -Service $service
 }
 Stop-PortListeners -Service $FrontendService
@@ -681,13 +780,13 @@ Start-Sleep -Seconds 2
 Install-BackendDependencies
 Sync-NacosConfiguration
 
+$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+$failed = @()
+
 foreach ($service in $BackendServices) {
-    $started = Start-BackendService -Service $service
-    $pending += @{
-        Service = $started.Service
-        OutLog = $started.OutLog
-        ErrLog = $started.ErrLog
-        ExpectedProcess = ${function:Test-BackendProcess}
+    $result = Start-BackendServiceWithRetry -Service $service -Deadline $deadline
+    if (-not $result.Success) {
+        $failed += $service
     }
 }
 
@@ -702,8 +801,7 @@ $pending += @{
     }
 }
 
-$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-$failed = @(Wait-AllServicesReady -PendingServices $pending -Deadline $deadline)
+$failed += @(Wait-AllServicesReady -PendingServices $pending -Deadline $deadline)
 
 if ($failed.Count -gt 0) {
     Write-Host "启动未完成，查看日志：$LogRoot"

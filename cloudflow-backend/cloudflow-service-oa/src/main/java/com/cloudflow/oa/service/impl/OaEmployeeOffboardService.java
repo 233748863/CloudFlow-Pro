@@ -2,6 +2,7 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
@@ -46,6 +47,7 @@ public class OaEmployeeOffboardService {
     private final IPurchaseRequestService purchaseRequestService;
     private final IOaBudgetService oaBudgetService;
 
+    @Audit(name = "离职自动撤销 OA 单据", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public void cancelPendingDocumentsForEmployeeLeft(Long tenantId, Long userId, String sourceEventId) {
         int tripCount = cancelTrips(tenantId, userId);
