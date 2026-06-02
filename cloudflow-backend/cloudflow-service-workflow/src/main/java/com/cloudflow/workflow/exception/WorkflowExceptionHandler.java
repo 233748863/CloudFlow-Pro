@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.exception;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.exception.SafeErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -28,7 +29,7 @@ public class WorkflowExceptionHandler {
     @ExceptionHandler(WorkflowException.class)
     public R<?> handleWorkflowException(WorkflowException e) {
         log.warn("工作流业务异常 [{}]: {}", e.getCode(), e.getMessage());
-        return R.fail(e.getCode() + ": " + e.getMessage());
+        return R.fail(HttpStatus.BAD_REQUEST.value(), "工作流操作失败，请检查输入或状态后重试");
     }
 
     /**
@@ -65,7 +66,7 @@ public class WorkflowExceptionHandler {
             log.debug("业务异常附加数据: {}", e.getData());
         }
         
-        return R.fail(e.getCode() + ": " + e.getMessage());
+        return R.fail(HttpStatus.BAD_REQUEST.value(), "业务处理失败，请检查当前状态后重试");
     }
 
     /**
@@ -76,7 +77,7 @@ public class WorkflowExceptionHandler {
     @ExceptionHandler(NotFoundException.class)
     public R<?> handleNotFoundException(NotFoundException e) {
         log.warn("资源不存在 [{}]: {}", e.getCode(), e.getMessage());
-        return R.fail(HttpStatus.NOT_FOUND.value(), e.getMessage());
+        return R.fail(HttpStatus.NOT_FOUND.value(), "请求的资源不存在");
     }
 
     /**
@@ -88,7 +89,7 @@ public class WorkflowExceptionHandler {
     public R<?> handlePermissionDeniedException(PermissionDeniedException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.warn("权限不足 - 请求地址: {}, 错误信息: {}", requestURI, e.getMessage());
-        return R.fail(HttpStatus.FORBIDDEN.value(), "权限不足: " + e.getMessage());
+        return R.fail(HttpStatus.FORBIDDEN.value(), "权限不足");
     }
 
     /**
@@ -99,5 +100,13 @@ public class WorkflowExceptionHandler {
     public R<?> handleRateLimitException(RateLimitException e) {
         log.warn("请求限流: {}", e.getMessage());
         return R.fail(HttpStatus.TOO_MANY_REQUESTS.value(), "操作过于频繁，请稍后再试");
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public R<?> handleUnhandledException(Exception e, HttpServletRequest request) {
+        log.error("工作流未处理异常, uri={}", request.getRequestURI(), e);
+        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                SafeErrorResponse.withTraceId("工作流服务异常，请联系管理员"));
     }
 }

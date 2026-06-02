@@ -1,7 +1,6 @@
 package com.cloudflow.common.core.exception;
 
 import com.cloudflow.common.core.domain.R;
-import org.slf4j.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -26,8 +25,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 
 import java.sql.SQLException;
-import java.util.UUID;
-
 /**
  * 全局异常处理器
  * 仅在 Servlet 环境下生效（排除 WebFlux 网关等响应式应用）
@@ -144,7 +141,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<R<?>> handleDatabaseException(Exception e, HttpServletRequest request) {
         log.error("请求地址'{}',发生数据库异常.", request.getRequestURI(), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "服务异常，请联系管理员，traceId=" + traceId()));
+                .body(R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), SafeErrorResponse.withTraceId("服务异常，请联系管理员")));
     }
 
     @ExceptionHandler(UnsupportedOperationException.class)
@@ -173,7 +170,7 @@ public class GlobalExceptionHandler {
             return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
         }
         log.error("请求地址'{}',发生未知异常.", request.getRequestURI(), e);
-        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "服务异常，请联系管理员，traceId=" + traceId());
+        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), SafeErrorResponse.withTraceId("服务异常，请联系管理员"));
     }
 
     @ExceptionHandler(Exception.class)
@@ -185,7 +182,7 @@ public class GlobalExceptionHandler {
         if (isAccessDenied(e)) {
             return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
         }
-        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "服务异常，请联系管理员，traceId=" + traceId());
+        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), SafeErrorResponse.withTraceId("服务异常，请联系管理员"));
     }
 
     @ExceptionHandler(Throwable.class)
@@ -204,11 +201,6 @@ public class GlobalExceptionHandler {
             return defaultStatus;
         }
         return HttpStatus.resolve(code) != null ? code : defaultStatus;
-    }
-
-    private String traceId() {
-        String traceId = MDC.get("traceId");
-        return traceId != null && !traceId.isBlank() ? traceId : UUID.randomUUID().toString();
     }
 
     private boolean isAccessDenied(Throwable throwable) {

@@ -267,7 +267,7 @@ public class WorkflowController {
             java.time.LocalDateTime end = parseDateTimeParam(endTime, true);
             return R.ok(taskStatisticsService.getTaskStatistics(userId, start, end));
         } catch (IllegalArgumentException ex) {
-            return R.fail(ex.getMessage());
+            return R.fail("时间参数格式错误，请使用 yyyy-MM-dd 或 yyyy-MM-ddTHH:mm:ss");
         }
     }
 

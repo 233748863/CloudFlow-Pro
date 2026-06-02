@@ -53,7 +53,7 @@ public class TemplateController {
             return R.ok(result);
         } catch (Exception e) {
             log.error("查询模板列表失败", e);
-            return R.fail("查询模板列表失败: " + e.getMessage());
+            return R.fail("查询模板列表失败");
         }
     }
 
@@ -64,7 +64,7 @@ public class TemplateController {
             return R.ok(templateService.listRecommendedTags(limit));
         } catch (Exception e) {
             log.error("查询模板推荐标签失败", e);
-            return R.fail("查询模板推荐标签失败: " + e.getMessage());
+            return R.fail("查询模板推荐标签失败");
         }
     }
 
@@ -76,7 +76,7 @@ public class TemplateController {
             return R.ok(template);
         } catch (Exception e) {
             log.error("获取模板详情失败, templateId={}", id, e);
-            return R.fail("获取模板详情失败: " + e.getMessage());
+            return R.fail("获取模板详情失败");
         }
     }
 
@@ -89,7 +89,7 @@ public class TemplateController {
             return R.ok(template);
         } catch (Exception e) {
             log.error("创建模板失败, templateName={}", request.getName(), e);
-            return R.fail("创建模板失败: " + e.getMessage());
+            return R.fail("创建模板失败");
         }
     }
 
@@ -103,7 +103,7 @@ public class TemplateController {
             return R.ok(template);
         } catch (Exception e) {
             log.error("更新模板失败, templateId={}", id, e);
-            return R.fail("更新模板失败: " + e.getMessage());
+            return R.fail("更新模板失败");
         }
     }
 
@@ -115,7 +115,7 @@ public class TemplateController {
             return R.ok();
         } catch (Exception e) {
             log.error("删除模板失败, templateId={}", id, e);
-            return R.fail("删除模板失败: " + e.getMessage());
+            return R.fail("删除模板失败");
         }
     }
 
@@ -129,7 +129,7 @@ public class TemplateController {
             return R.ok(workflow);
         } catch (Exception e) {
             log.error("从模板创建流程失败, templateId={}", id, e);
-            return R.fail("从模板创建流程失败: " + e.getMessage());
+            return R.fail("从模板创建流程失败");
         }
     }
 
@@ -141,7 +141,7 @@ public class TemplateController {
             return R.ok(categories);
         } catch (Exception e) {
             log.error("查询模板分类树失败", e);
-            return R.fail("查询模板分类树失败: " + e.getMessage());
+            return R.fail("查询模板分类树失败");
         }
     }
 
@@ -153,7 +153,7 @@ public class TemplateController {
             return R.ok(category);
         } catch (Exception e) {
             log.error("获取模板分类详情失败, categoryId={}", id, e);
-            return R.fail("获取模板分类详情失败: " + e.getMessage());
+            return R.fail("获取模板分类详情失败");
         }
     }
 
@@ -167,7 +167,7 @@ public class TemplateController {
             return R.ok(saved);
         } catch (Exception e) {
             log.error("创建模板分类失败, categoryName={}", request.getName(), e);
-            return R.fail("创建模板分类失败: " + e.getMessage());
+            return R.fail("创建模板分类失败");
         }
     }
 
@@ -184,7 +184,7 @@ public class TemplateController {
             return R.ok(updated);
         } catch (Exception e) {
             log.error("更新模板分类失败, categoryId={}", id, e);
-            return R.fail("更新模板分类失败: " + e.getMessage());
+            return R.fail("更新模板分类失败");
         }
     }
 
@@ -196,7 +196,7 @@ public class TemplateController {
             return R.ok();
         } catch (Exception e) {
             log.error("删除模板分类失败, categoryId={}", id, e);
-            return R.fail("删除模板分类失败: " + e.getMessage());
+            return R.fail("删除模板分类失败");
         }
     }
 

@@ -95,7 +95,7 @@ public class BatchOperationController {
             archivedAfterDateTime = parseDateTime(archivedAfter, false);
             archivedBeforeDateTime = parseDateTime(archivedBefore, true);
         } catch (IllegalArgumentException ex) {
-            return R.fail(ex.getMessage());
+            return R.fail("归档时间格式错误，支持 yyyy-MM-dd HH:mm:ss、ISO 或 yyyy-MM-dd");
         }
 
         Page<ArchivedWorkflowDTO> page = archiveService.listArchivedWorkflows(

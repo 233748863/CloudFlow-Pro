@@ -196,7 +196,7 @@ public class ImportExportController {
             return R.ok(buildInvalidValidation(e.getMessage()));
         } catch (Exception e) {
             log.error("校验导入文件失败", e);
-            return R.fail("校验失败: " + e.getMessage());
+            return R.fail("校验失败，请检查导入文件格式");
         }
     }
 
@@ -248,7 +248,7 @@ public class ImportExportController {
         } catch (Exception e) {
             log.error("导入流程失败", e);
             String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
-            ImportResultDTO failedResult = ImportResultDTO.failure(fileName, "导入失败：" + e.getMessage());
+            ImportResultDTO failedResult = ImportResultDTO.failure(fileName, "导入失败：服务异常，请联系管理员");
             return R.ok(failedResult);
         }
     }
@@ -285,7 +285,7 @@ public class ImportExportController {
                     invalidResults.add(ImportResultDTO.failure(fileName, "导入失败: " + e.getMessage()));
                 } catch (Exception e) {
                     log.error("解析导入文件失败, fileName={}", fileName, e);
-                    invalidResults.add(ImportResultDTO.failure(fileName, "导入失败: " + e.getMessage()));
+                    invalidResults.add(ImportResultDTO.failure(fileName, "导入失败: 服务异常，请联系管理员"));
                 }
             }
 
@@ -306,7 +306,7 @@ public class ImportExportController {
             return R.ok(results);
         } catch (Exception e) {
             log.error("批量导入流程失败", e);
-            return R.fail("批量导入失败: " + e.getMessage());
+            return R.fail("批量导入失败，请联系管理员");
         }
     }
 
@@ -494,4 +494,3 @@ public class ImportExportController {
         }
     }
 }
-

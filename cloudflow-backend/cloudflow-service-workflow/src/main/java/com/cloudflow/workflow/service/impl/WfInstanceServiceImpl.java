@@ -1362,7 +1362,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             return R.fail("操作被中断");
         } catch (Exception e) {
             log.error("终止流程失败: instanceId={}, error={}", instanceId, e.getMessage(), e);
-            return R.fail("终止流程失败: " + e.getMessage());
+            return R.fail("终止流程失败，请联系管理员");
         } finally {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
