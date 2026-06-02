@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -79,6 +80,9 @@ public class BizPurchaseRequest implements Serializable {
 
     @TableField(fill = FieldFill.INSERT)
     private Integer deleted;
+
+    @Version
+    private Integer version;
 
     @TableField(fill = FieldFill.INSERT)
     private String createBy;

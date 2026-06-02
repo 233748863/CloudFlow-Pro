@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.Version;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.LocalDateTime;
@@ -37,6 +38,8 @@ public class WfProcessInstance implements Serializable {
 
     /** 状态 (RUNNING, COMPLETED, CANCELLED) */
     private String status;
+
+    private Integer starterLeft;
 
     /** 开始时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -86,6 +89,9 @@ public class WfProcessInstance implements Serializable {
     @TableField(fill = FieldFill.INSERT)
     private Integer deleted;
 
+    @TableField("lock_version")
+    @Version
+    private Integer version;
     @TableField(exist = false)
     private String formId;
 
@@ -281,6 +287,14 @@ public class WfProcessInstance implements Serializable {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Integer getStarterLeft() {
+        return starterLeft;
+    }
+
+    public void setStarterLeft(Integer starterLeft) {
+        this.starterLeft = starterLeft;
     }
 
     public LocalDateTime getStartTime() {

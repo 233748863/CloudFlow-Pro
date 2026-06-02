@@ -3,6 +3,7 @@ package com.cloudflow.hr.domain.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -34,6 +35,8 @@ public class HrPerfEvaluator {
     private String createBy;
     private String updateBy;
     private Integer deleted;
+    @Version
+    private Integer version;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

@@ -3,6 +3,7 @@ package com.cloudflow.hr.domain.dto;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.cloudflow.common.encrypt.annotation.EncryptField;
 import lombok.Data;
 
@@ -38,5 +39,6 @@ public class HrMallOrderPayload {
     private String createBy;
     private String updateBy;
     private Integer deleted;
+    @Version
     private Integer version;
 }

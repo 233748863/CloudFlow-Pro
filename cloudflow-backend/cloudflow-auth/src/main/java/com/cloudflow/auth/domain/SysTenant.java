@@ -1,6 +1,7 @@
 package com.cloudflow.auth.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -87,6 +88,8 @@ public class SysTenant {
     @TableField(fill = FieldFill.INSERT)
     private Integer deleted;
 
+    @Version
+    private Integer version;
     /**
      * 创建者
      */

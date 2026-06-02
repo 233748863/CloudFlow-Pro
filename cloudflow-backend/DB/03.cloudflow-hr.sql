@@ -150,6 +150,7 @@ CREATE TABLE hr_employee_contract (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_contract_no (tenant_id, contract_no),
   KEY idx_hr_contract_employee (tenant_id, employee_id)
@@ -200,6 +201,7 @@ CREATE TABLE hr_position_family (
   description VARCHAR(500) DEFAULT NULL COMMENT '说明',
   sort_order INT DEFAULT 0 COMMENT '排序号',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -215,6 +217,7 @@ CREATE TABLE hr_job_level (
   level_rank INT NOT NULL COMMENT '职级数值排序',
   description VARCHAR(500) DEFAULT NULL COMMENT '说明',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -233,6 +236,7 @@ CREATE TABLE hr_position (
   job_description TEXT DEFAULT NULL COMMENT '岗位职责描述',
   requirements TEXT DEFAULT NULL COMMENT '任职要求',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -280,6 +284,7 @@ CREATE TABLE hr_recruitment_requisition (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_requisition_no (tenant_id, requisition_no),
   KEY idx_hr_requisition_status (tenant_id, status)
@@ -304,6 +309,7 @@ CREATE TABLE hr_candidate (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_candidate_req (tenant_id, requisition_id),
   KEY idx_hr_candidate_status (tenant_id, status),
@@ -330,6 +336,7 @@ CREATE TABLE hr_interview (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_interview_candidate (tenant_id, candidate_id),
   KEY idx_hr_interview_time (tenant_id, interview_time)
@@ -352,6 +359,7 @@ CREATE TABLE hr_offer (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_offer_no (tenant_id, offer_no),
   KEY idx_hr_offer_candidate (tenant_id, candidate_id),
@@ -378,6 +386,7 @@ CREATE TABLE hr_lifecycle_application (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_lifecycle_no (tenant_id, application_no),
   KEY idx_hr_lifecycle_type (tenant_id, type, status),
@@ -405,6 +414,7 @@ CREATE TABLE hr_lifecycle_task (
   owner_id BIGINT DEFAULT NULL COMMENT '任务负责人用户ID',
   due_date DATE DEFAULT NULL COMMENT '任务截止日期',
   status VARCHAR(30) NOT NULL DEFAULT 'PENDING' COMMENT '任务状态(PENDING/IN_PROGRESS/DONE/CANCELLED)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
   completed_time DATETIME DEFAULT NULL COMMENT '任务完成时间',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -425,6 +435,7 @@ CREATE TABLE hr_shift (
   work_minutes INT NOT NULL DEFAULT 480 COMMENT '工作时长(分钟)',
   color VARCHAR(20) DEFAULT '#0891b2' COMMENT '日历显示颜色',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -442,6 +453,7 @@ CREATE TABLE hr_attendance_rule (
   check_methods JSON DEFAULT NULL COMMENT '打卡方式配置(JSON)',
   config_json JSON DEFAULT NULL COMMENT '其它配置(JSON)',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -460,6 +472,7 @@ CREATE TABLE hr_schedule_assignment (
   effective_start DATE DEFAULT NULL COMMENT '生效起始日期',
   effective_end DATE DEFAULT NULL COMMENT '生效结束日期',
   status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE' COMMENT '排班状态(ACTIVE/CANCELLED)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -486,6 +499,7 @@ CREATE TABLE hr_attendance_record (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_att_record_employee (tenant_id, employee_id, attendance_date),
   KEY idx_hr_att_record_status (tenant_id, status)
@@ -506,6 +520,7 @@ CREATE TABLE hr_attendance_monthly (
   overtime_hours DECIMAL(8,2) NOT NULL DEFAULT 0 COMMENT '加班小时数',
   attendance_rate DECIMAL(6,2) NOT NULL DEFAULT 0 COMMENT '出勤率(%)',
   status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' COMMENT '统计单状态(DRAFT/CONFIRMED)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -522,6 +537,7 @@ CREATE TABLE hr_leave_type (
   unit VARCHAR(20) NOT NULL DEFAULT 'DAY' COMMENT '请假单位(DAY/HOUR)',
   quota_rule JSON DEFAULT NULL COMMENT '额度计算规则(JSON)',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -567,6 +583,7 @@ CREATE TABLE hr_time_request (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_time_request_no (tenant_id, request_no),
   KEY idx_hr_time_request_employee (tenant_id, employee_id, request_type, status)
@@ -582,6 +599,7 @@ CREATE TABLE hr_comp_component (
   taxable TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否计税(1=是,0=否)',
   sort_order INT DEFAULT 0 COMMENT '排序号',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -596,6 +614,7 @@ CREATE TABLE hr_comp_structure (
   component_config JSON DEFAULT NULL COMMENT '薪资项组成配置(JSON)',
   description VARCHAR(500) DEFAULT NULL COMMENT '说明',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -613,6 +632,7 @@ CREATE TABLE hr_comp_grade (
   max_salary VARCHAR(255) NOT NULL COMMENT '薪级上限(加密存储)',
   currency VARCHAR(10) NOT NULL DEFAULT 'CNY' COMMENT '币种',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -634,6 +654,7 @@ CREATE TABLE hr_employee_comp (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_employee_comp (tenant_id, employee_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR员工薪资';
@@ -656,6 +677,7 @@ CREATE TABLE hr_comp_change (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_comp_change_no (tenant_id, change_no),
   KEY idx_hr_comp_change_employee (tenant_id, employee_id, status)
@@ -670,6 +692,7 @@ CREATE TABLE hr_benefit_scheme (
   benefit_config JSON NOT NULL COMMENT '福利项配置(JSON,含险种/比例/基数上下限)',
   effective_date DATE NOT NULL COMMENT '生效日期',
   status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '启用状态(1=启用,0=停用)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -689,6 +712,7 @@ CREATE TABLE hr_employee_benefit (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_employee_benefit (tenant_id, employee_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR员工福利方案';
@@ -701,6 +725,7 @@ CREATE TABLE hr_tax_profile (
   threshold VARCHAR(255) NOT NULL DEFAULT '5000' COMMENT '起征点(加密存储)',
   tax_config JSON DEFAULT NULL COMMENT '个税专项配置(JSON)',
   status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE' COMMENT '档案状态(ACTIVE/CLOSED)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -722,6 +747,7 @@ CREATE TABLE hr_tax_deduction (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_tax_deduction_employee (tenant_id, employee_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR专项扣除';
@@ -744,6 +770,7 @@ CREATE TABLE hr_performance_objective (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_perf_objective_no (tenant_id, objective_no),
   KEY idx_hr_perf_objective_status (tenant_id, status)
@@ -761,6 +788,7 @@ CREATE TABLE hr_performance_assignment (
   actual_value DECIMAL(18,4) DEFAULT 0 COMMENT '实际值',
   weight DECIMAL(8,2) DEFAULT 100 COMMENT '权重(%)',
   status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' COMMENT '分解节点状态(DRAFT/IN_PROGRESS/COMPLETED)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -778,6 +806,7 @@ CREATE TABLE hr_performance_result (
   grade VARCHAR(20) DEFAULT NULL COMMENT '绩效等级(S/A/B/C/D)',
   summary TEXT DEFAULT NULL COMMENT '评估总结',
   status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' COMMENT '结果状态(DRAFT/CONFIRMED/PUBLISHED)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -793,6 +822,7 @@ CREATE TABLE hr_performance_salary_adjustment (
   adjustment_amount VARCHAR(255) NOT NULL COMMENT '调整金额(加密存储)',
   reason VARCHAR(800) DEFAULT NULL COMMENT '调整原因',
   status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' COMMENT '联动调薪状态(DRAFT/SUBMITTED/APPLIED)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -839,6 +869,7 @@ CREATE TABLE hr_salary_slip (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_salary_slip (tenant_id, employee_id, period_month),
   KEY idx_hr_salary_slip_period (tenant_id, period_month, status)
@@ -864,6 +895,7 @@ CREATE TABLE hr_certificate_request (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_cert_request_no (tenant_id, request_no),
   KEY idx_hr_cert_req_employee (tenant_id, employee_id, status)
@@ -884,6 +916,7 @@ CREATE TABLE hr_bank_card (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_bank_card_employee (tenant_id, employee_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='ESS员工银行卡';
@@ -926,6 +959,7 @@ CREATE TABLE hr_benefit_payment (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_benefit_pay (tenant_id, employee_id, scheme_id, period_month),
   KEY idx_hr_benefit_pay_period (tenant_id, period_month, status)
@@ -992,6 +1026,7 @@ CREATE TABLE hr_training_plan (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_train_plan_no (tenant_id, plan_no),
   KEY idx_hr_train_plan_status (tenant_id, status)
@@ -1009,6 +1044,7 @@ CREATE TABLE hr_training_category (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_train_cat_parent (tenant_id, parent_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='培训课程分类';
@@ -1029,6 +1065,7 @@ CREATE TABLE hr_training_instructor (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_train_instructor_emp (tenant_id, employee_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='培训讲师';
@@ -1052,6 +1089,7 @@ CREATE TABLE hr_training_course (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_train_course (tenant_id, course_code),
   KEY idx_hr_train_course_cat (tenant_id, category_id, status)
@@ -1076,6 +1114,7 @@ CREATE TABLE hr_training_session (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_train_session_no (tenant_id, session_no),
   KEY idx_hr_train_session_course (tenant_id, course_id, status)
@@ -1099,6 +1138,7 @@ CREATE TABLE hr_training_enrollment (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_train_enroll (tenant_id, session_id, employee_id),
   KEY idx_hr_training_enrollment_completion (tenant_id, employee_id, completion_status)
@@ -1121,6 +1161,7 @@ CREATE TABLE hr_exam_question_bank (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_exam_qbank_cat (tenant_id, category_id, question_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='考试题库';
@@ -1143,6 +1184,7 @@ CREATE TABLE hr_exam_paper (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_exam_paper_course (tenant_id, course_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='考试试卷';
@@ -1159,6 +1201,7 @@ CREATE TABLE hr_exam_attempt (
   pass_flag TINYINT(1) DEFAULT NULL COMMENT '是否通过(1=是,0=否)',
   answers JSON DEFAULT NULL COMMENT '[{questionId,answer,score}]',
   status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS' COMMENT 'IN_PROGRESS/SUBMITTED/GRADED',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -1179,6 +1222,7 @@ CREATE TABLE hr_training_certificate_template (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_train_cert_tpl (tenant_id, template_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='培训证书模板';
@@ -1201,6 +1245,7 @@ CREATE TABLE hr_training_certificate (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_train_cert_no (tenant_id, cert_no),
   KEY idx_hr_train_cert_emp (tenant_id, employee_id, status)
@@ -1231,6 +1276,7 @@ CREATE TABLE hr_talent_review (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_talent_review_no (tenant_id, review_no),
   KEY idx_hr_talent_review_status (tenant_id, status, review_year)
@@ -1279,6 +1325,7 @@ CREATE TABLE hr_talent_calibration_session (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_talent_calib_no (tenant_id, session_no),
   KEY idx_hr_talent_calib_review (tenant_id, review_id, status)
@@ -1304,6 +1351,7 @@ CREATE TABLE hr_talent_succession_plan (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_talent_succession_no (tenant_id, plan_no),
   KEY idx_hr_talent_succession_pos (tenant_id, position_id, status)
@@ -1326,6 +1374,7 @@ CREATE TABLE hr_talent_successor (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_talent_successor (tenant_id, plan_id, employee_id),
   KEY idx_hr_talent_successor_emp (tenant_id, employee_id, status)
@@ -1345,6 +1394,7 @@ CREATE TABLE hr_talent_pool (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_talent_pool_no (tenant_id, pool_no),
   KEY idx_hr_talent_pool_type (tenant_id, pool_type, status)
@@ -1366,6 +1416,7 @@ CREATE TABLE hr_talent_pool_member (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_talent_pool_member (tenant_id, pool_id, employee_id, status),
   KEY idx_hr_talent_pool_member_emp (tenant_id, employee_id, status)
@@ -1393,6 +1444,7 @@ CREATE TABLE hr_talent_development_action (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_talent_dev_emp (tenant_id, employee_id, status),
   KEY idx_hr_talent_dev_source (tenant_id, source_review_id, action_type)
@@ -1684,6 +1736,7 @@ CREATE TABLE hr_work_injury_rehabilitation (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_work_injury_rehab (tenant_id, injury_id, status),
   KEY idx_hr_work_injury_rehab_emp (tenant_id, employee_id)
@@ -1808,6 +1861,7 @@ CREATE TABLE hr_perf_evaluator (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_perf_evaluator_relation (tenant_id, objective_id, evaluatee_id, evaluator_id, evaluator_source),
   KEY idx_hr_perf_evaluator_evaluatee (tenant_id, evaluatee_id, status),
@@ -1854,6 +1908,7 @@ CREATE TABLE hr_perf_distribution_rule (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_perf_distribution_obj (tenant_id, objective_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR绩效强制分布规则';
@@ -1882,6 +1937,7 @@ CREATE TABLE hr_recruitment_channel (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_recruitment_channel_code (tenant_id, channel_code),
   KEY idx_hr_recruitment_channel_status (tenant_id, status, channel_type)
@@ -1948,6 +2004,7 @@ CREATE TABLE hr_performance_interview (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_perf_interview_result (tenant_id, result_id),
   KEY idx_hr_perf_interview_obj (tenant_id, objective_id, evaluatee_id)
@@ -1987,6 +2044,7 @@ CREATE TABLE hr_attendance_appeal (
   create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   PRIMARY KEY (id),
   KEY idx_hr_attendance_appeal_emp (tenant_id, employee_id, attendance_date),
   KEY idx_hr_attendance_appeal_status (tenant_id, status, attendance_date)

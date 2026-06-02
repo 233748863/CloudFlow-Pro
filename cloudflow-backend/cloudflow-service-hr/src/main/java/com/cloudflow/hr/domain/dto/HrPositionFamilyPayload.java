@@ -3,6 +3,7 @@ package com.cloudflow.hr.domain.dto;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -21,5 +22,7 @@ public class HrPositionFamilyPayload {
     private Integer sortOrder;
     private Integer status;
     private LocalDateTime createTime;
+    @Version
+    private Integer version;
     private LocalDateTime updateTime;
 }

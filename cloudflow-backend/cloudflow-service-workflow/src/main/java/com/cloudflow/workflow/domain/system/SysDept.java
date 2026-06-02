@@ -2,6 +2,7 @@ package com.cloudflow.workflow.domain.system;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 @Data
@@ -15,6 +16,8 @@ public class SysDept {
     private String leader; // Leader name, but usually we need ID. The mock data has 'admin' etc. 
     private String status;
     private Integer deleted;
+    @Version
+    private Integer version;
     // For real system, leader should be user ID. But based on SQL, it's varchar 'admin'.
     // We might need to look up user by username if leader stores username.
 }

@@ -3,6 +3,7 @@ package com.cloudflow.crm.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -32,6 +33,8 @@ public class CrmAssignmentRule implements Serializable {
     private LocalDate effectiveEnd;
     private String remark;
     private Integer deleted;
+    @Version
+    private Integer version;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

@@ -37,6 +37,10 @@
             <groupId>org.redisson</groupId>
             <artifactId>redisson-spring-boot-starter</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+        </dependency>
 
         <!-- Spring AOP（@DistributedLock 切面需要） -->
         <dependency>

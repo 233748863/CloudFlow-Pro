@@ -3,6 +3,7 @@ package com.cloudflow.auth.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -24,4 +25,8 @@ public class SysDept {
     
     @TableField(exist = false)
     private List<SysDept> children = new ArrayList<>();
+
+
+    @Version
+    private Integer version;
 }

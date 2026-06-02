@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.cloudflow.common.encrypt.annotation.EncryptField;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
@@ -33,6 +34,8 @@ public class HrPerformanceSalaryAdjustmentPayload {
     private String reason;
     private String status;
     private LocalDateTime createTime;
+    @Version
+    private Integer version;
     private LocalDateTime updateTime;
 
     public BigDecimal getAdjustmentAmount() {

@@ -3,6 +3,7 @@ package com.cloudflow.oa.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -95,6 +96,8 @@ public class Visitor implements Serializable {
     /** 删除标志 */
     private Integer deleted;
 
+    @Version
+    private Integer version;
     /** 创建者 */
     private String createBy;
 

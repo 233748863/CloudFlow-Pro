@@ -1,6 +1,7 @@
 package com.cloudflow.auth.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -64,4 +65,6 @@ public class SysRole {
     @TableLogic
     @TableField(fill = FieldFill.INSERT)
     private Integer deleted;
+    @Version
+    private Integer version;
 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
@@ -25,6 +26,8 @@ public class HrAttendanceRulePayload {
     private Long shiftId;
     private Integer status;
     private LocalDateTime createTime;
+    @Version
+    private Integer version;
     private LocalDateTime updateTime;
 
     @TableField(typeHandler = JacksonTypeHandler.class)

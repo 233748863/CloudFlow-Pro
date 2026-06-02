@@ -1,6 +1,7 @@
 package com.cloudflow.auth.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -36,6 +37,8 @@ public class SysDictType {
     @TableField(fill = FieldFill.INSERT)
     private String createBy;
 
+    @Version
+    private Integer version;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

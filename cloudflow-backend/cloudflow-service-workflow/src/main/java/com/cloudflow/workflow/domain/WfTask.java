@@ -1,8 +1,10 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
@@ -43,6 +45,10 @@ public class WfTask implements Serializable {
 
     private LocalDateTime createTime;
 
+    @TableField("lock_version")
+    @Version
+
+    private Integer version;
     /** 截止时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
 

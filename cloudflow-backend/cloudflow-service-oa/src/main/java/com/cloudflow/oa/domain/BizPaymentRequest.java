@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -98,6 +99,10 @@ public class BizPaymentRequest implements Serializable {
     /** 删除标志 */
     @TableField(fill = FieldFill.INSERT)
     private Integer deleted;
+
+    /** 乐观锁版本号 */
+    @Version
+    private Integer version;
 
     /** 创建者 */
     @TableField(fill = FieldFill.INSERT)

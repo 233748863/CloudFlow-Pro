@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.Version;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -55,6 +56,8 @@ public class WfProcessDefinition implements Serializable {
     private String tags;
 
     /** 1.B: 乐观锁版本号 */
+    @TableField("lock_version")
+    @Version
     private Integer versionLock;
 
     /** 12.A: 是否最新版本 (0-否, 1-是) */

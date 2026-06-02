@@ -52,6 +52,12 @@
             <artifactId>cloudflow-common-core</artifactId>
         </dependency>
 
+        <!-- Auth 源码里直接使用了 SensitiveUtils -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-sensitive</artifactId>
+        </dependency>
+
         <!-- Auth 源码里直接使用了 Redis 相关公共工具 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
@@ -83,6 +89,10 @@
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-idempotent</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-statemachine</artifactId>
         </dependency>
 
         <!-- 文件存储模块（本地存储/MinIO/阿里云 OSS） -->

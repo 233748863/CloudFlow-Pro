@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -171,4 +172,8 @@ public class WorkflowTemplate implements Serializable {
     public void setTenantId(Long tenantId) {
         this.tenantId = tenantId;
     }
+
+
+    @Version
+    private Integer version;
 }

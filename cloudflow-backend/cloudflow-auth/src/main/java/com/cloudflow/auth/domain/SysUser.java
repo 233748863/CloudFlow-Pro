@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -26,6 +27,8 @@ public class SysUser implements Serializable {
     private String password;
     private String status;
     private Integer deleted;
+    @Version
+    private Integer version;
     private String pwdResetRequired;
     private String loginIp;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

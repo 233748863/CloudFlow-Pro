@@ -3,6 +3,7 @@ package com.cloudflow.workflow.domain;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -59,4 +60,8 @@ public class WfTaskDelegation {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
 
     private LocalDateTime createTime;
+
+    @Version
+
+    private Integer version;
 }

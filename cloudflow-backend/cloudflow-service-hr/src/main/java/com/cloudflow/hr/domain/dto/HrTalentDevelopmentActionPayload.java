@@ -3,6 +3,7 @@ package com.cloudflow.hr.domain.dto;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -36,4 +37,6 @@ public class HrTalentDevelopmentActionPayload {
     private String createBy;
     private String updateBy;
     private Integer deleted;
+    @Version
+    private Integer version;
 }
