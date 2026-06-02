@@ -3,6 +3,7 @@ package com.cloudflow.workflow.event.consumer;
 import com.cloudflow.common.core.event.EmployeeOffboardEvent;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.workflow.service.impl.WfCandidateOffboardService;
 import com.cloudflow.workflow.service.impl.WfEmployeeOffboardTransferService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ public class EmployeeOffboardedEventConsumer implements BusinessEventConsumer {
 
     private final ObjectMapper objectMapper;
     private final WfEmployeeOffboardTransferService offboardTransferService;
+    private final WfCandidateOffboardService candidateOffboardService;
 
     @Override
     public String eventType() {
@@ -26,6 +28,7 @@ public class EmployeeOffboardedEventConsumer implements BusinessEventConsumer {
         if (event.getUserId() == null) {
             return;
         }
+        candidateOffboardService.deactivatePendingCandidatesForEmployeeLeft(event.getUserId(), envelope.getEventId());
         offboardTransferService.transferTodoTasksForEmployeeLeft(
                 event.getUserId(),
                 event.getEmployeeName(),
