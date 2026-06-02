@@ -269,16 +269,22 @@ CREATE TABLE wf_task_delegation (
 --
 DROP TABLE IF EXISTS wf_task_candidate;
 CREATE TABLE wf_task_candidate (
-  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  candidate_id      VARCHAR(64)     NOT NULL COMMENT '候选记录ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   task_id           VARCHAR(64)     NOT NULL COMMENT '任务ID',
+  instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '候选用户ID',
+  user_name         VARCHAR(100)    DEFAULT NULL COMMENT '候选用户姓名',
   candidate_type    VARCHAR(20)     NOT NULL COMMENT '候选人类型',
-  candidate_id      VARCHAR(64)     NOT NULL COMMENT '候选人ID',
-  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'PENDING' COMMENT '状态 PENDING/CLAIMED/CANCELLED',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  PRIMARY KEY (id),
+  version           INT             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+  claim_time        DATETIME        DEFAULT NULL COMMENT '认领时间',
+  PRIMARY KEY (candidate_id),
   KEY idx_task_id (task_id),
-  KEY idx_candidate (candidate_type, candidate_id)
+  KEY idx_instance_id (instance_id),
+  KEY idx_user_status (tenant_id, user_id, status),
+  KEY idx_task_status (tenant_id, task_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务候选人表';
 
 --

@@ -7452,11 +7452,12 @@ INSERT IGNORE INTO cloud_flow_db.wf_task_attachment (
 ('demo_att_007', 100000, 'demo_task_011', 'demo_inst_004', '采购报销清单.pdf', '/demo/workflow/history/office-expense-list.pdf', 221100, 'application/pdf', 3, DATE_SUB(NOW(), INTERVAL 8 DAY)),
 ('demo_att_008', 100000, 'demo_task_014', 'demo_inst_006', '显示设备采购发票.pdf', '/demo/workflow/history/display-invoice.pdf', 401231, 'application/pdf', 3, DATE_SUB(NOW(), INTERVAL 9 DAY));
 
-INSERT IGNORE INTO cloud_flow_db.wf_task_candidate (tenant_id, task_id, candidate_type, candidate_id, create_time) VALUES
-(100000, 'demo_task_002', 'ROLE', 'finance', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
-(100000, 'demo_task_004', 'ROLE', 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-(100000, 'demo_task_011', 'ROLE', 'admin', DATE_SUB(NOW(), INTERVAL 8 DAY)),
-(100000, 'demo_task_014', 'ROLE', 'finance', DATE_SUB(NOW(), INTERVAL 8 DAY));
+INSERT IGNORE INTO cloud_flow_db.wf_task_candidate
+(candidate_id, tenant_id, task_id, instance_id, user_id, user_name, candidate_type, status, create_time, version, claim_time) VALUES
+('cand_demo_task_002_finance', 100000, 'demo_task_002', 'demo_inst_002', 3, 'wang', 'ROLE', 'PENDING', DATE_SUB(NOW(), INTERVAL 5 HOUR), 0, NULL),
+('cand_demo_task_004_admin',   100000, 'demo_task_004', 'demo_inst_005', 1, 'Admin',  'ROLE', 'PENDING', DATE_SUB(NOW(), INTERVAL 2 HOUR), 0, NULL),
+('cand_demo_task_011_admin',   100000, 'demo_task_011', 'demo_inst_004', 1, 'Admin',  'ROLE', 'PENDING', DATE_SUB(NOW(), INTERVAL 8 DAY), 0, NULL),
+('cand_demo_task_014_finance', 100000, 'demo_task_014', 'demo_inst_006', 3, 'wang', 'ROLE', 'PENDING', DATE_SUB(NOW(), INTERVAL 8 DAY), 0, NULL);
 
 INSERT IGNORE INTO cloud_flow_db.wf_task_delegation (
   delegation_id, tenant_id, task_id, instance_id, from_user_id, from_user_name, to_user_id, to_user_name,
