@@ -226,6 +226,11 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                     CrmConstants.HealthLevel.RED,
                     "/office/crm/customer/" + customerId + "#ticket"));
         }
+        if (CrmHealthCalculator.hasOverdueOpenTicket(serviceTicketMapper, customerId, LocalDateTime.now())) {
+            reasons.add(buildReason("TICKET", "SLA_OVERDUE", "存在SLA已超时未关闭工单",
+                    CrmConstants.HealthLevel.RED,
+                    "/office/crm/customer/" + customerId + "#ticket"));
+        }
         if (customer.getLastFollowUpTime() == null
                 || ChronoUnit.DAYS.between(customer.getLastFollowUpTime().toLocalDate(), today) >= 30) {
             reasons.add(buildReason("FOLLOW_UP", "STALE_FOLLOW_UP", "30天未跟进",

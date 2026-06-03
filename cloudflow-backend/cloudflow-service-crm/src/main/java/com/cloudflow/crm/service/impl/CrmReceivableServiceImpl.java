@@ -9,6 +9,7 @@ import com.cloudflow.common.redis.core.SysDictHelper;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmReceivable;
+import com.cloudflow.crm.domain.dto.CrmReceivableWriteoffDTO;
 import com.cloudflow.crm.domain.dto.ReceivableInvoiceSyncDTO;
 import com.cloudflow.crm.domain.vo.CrmReceivableAgingBucketVO;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
@@ -120,6 +121,50 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         receivable.setOutstandingAmount(BigDecimal.ZERO);
         receivable.setReceivedDate(receivable.getReceivedDate() == null ? java.time.LocalDate.now() : receivable.getReceivedDate());
         receivable.setStatus(CrmConstants.ReceivableStatus.RECEIVED);
+        receivable.setUpdateBy(currentUserName());
+        receivable.setUpdateTime(now());
+        boolean updated = updateById(receivable);
+        if (updated) {
+            crmCustomerService.refreshHealth(receivable.getCustomerId());
+        }
+        return updated;
+    }
+
+    @Override
+    public boolean writeoffReceivable(Long receivableId, CrmReceivableWriteoffDTO writeoffDTO) {
+        CrmReceivable receivable = getAccessibleReceivable(receivableId);
+        if (writeoffDTO == null || writeoffDTO.getAmount() == null) {
+            throw new IllegalArgumentException("核销金额不能为空");
+        }
+        BigDecimal writeoffAmount = zeroIfNull(writeoffDTO.getAmount());
+        if (writeoffAmount.signum() <= 0) {
+            throw new IllegalArgumentException("核销金额必须大于 0");
+        }
+        BigDecimal plannedAmount = zeroIfNull(receivable.getPlannedAmount());
+        BigDecimal currentReceived = zeroIfNull(receivable.getReceivedAmount());
+        BigDecimal outstandingAmount = zeroIfNull(receivable.getOutstandingAmount());
+        if (outstandingAmount.signum() <= 0) {
+            throw new IllegalArgumentException("当前应收款已全部核销");
+        }
+        if (writeoffAmount.compareTo(outstandingAmount) > 0) {
+            throw new IllegalArgumentException("核销金额不能超过剩余未收金额");
+        }
+
+        BigDecimal nextReceived = currentReceived.add(writeoffAmount);
+        LocalDate writeoffDate = writeoffDTO.getWriteoffDate() != null ? writeoffDTO.getWriteoffDate() : LocalDate.now();
+        applyReceivableAmounts(receivable, nextReceived, writeoffDate);
+        if (receivable.getInvoiceId() != null) {
+            receivable.setInvoiceStatus(receivable.getOutstandingAmount().signum() == 0
+                    ? CrmConstants.InvoiceStatus.WRITEOFF_FULL
+                    : CrmConstants.InvoiceStatus.WRITEOFF_PARTIAL);
+        }
+        if (StringUtils.hasText(writeoffDTO.getRemark())) {
+            String existingRemark = receivable.getRemark();
+            String writeoffRemark = "writeoff[" + writeoffAmount + "@" + writeoffDate + "] " + writeoffDTO.getRemark();
+            receivable.setRemark(StringUtils.hasText(existingRemark)
+                    ? existingRemark + "\n" + writeoffRemark
+                    : writeoffRemark);
+        }
         receivable.setUpdateBy(currentUserName());
         receivable.setUpdateTime(now());
         boolean updated = updateById(receivable);

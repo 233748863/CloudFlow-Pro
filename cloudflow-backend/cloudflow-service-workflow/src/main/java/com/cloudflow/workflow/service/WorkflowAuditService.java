@@ -1,12 +1,18 @@
 package com.cloudflow.workflow.service;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.utils.IpUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.common.redis.core.SysConfigHelper;
@@ -98,6 +104,7 @@ public class WorkflowAuditService {
         try {
             Long userId = UserContext.getUserId();
             String userName = UserContext.getUserName();
+            String clientIp = getClientIp();
             
             Map<String, Object> auditEntry = new HashMap<>();
             auditEntry.put("timestamp", LocalDateTime.now());
@@ -107,11 +114,11 @@ public class WorkflowAuditService {
             auditEntry.put("userName", userName);
             auditEntry.put("targetId", targetId);
             auditEntry.put("detail", detail);
-            auditEntry.put("ip", getClientIp());
+            auditEntry.put("ip", clientIp);
             
             // 1. 写入结构化日志（可被 ELK/Loki 等日志系统采集）
             auditLog.info("AUDIT|{}|{}|{}|{}|{}|{}", 
-                action.name(), userId, userName, targetId, detail, getClientIp());
+                action.name(), userId, userName, targetId, detail, clientIp);
             
             // 2. 写入 Redis 最近操作记录（保留最近1000条，用于监控大屏）
             String redisKey = "sys:wf:audit:recent";
@@ -188,15 +195,22 @@ public class WorkflowAuditService {
     }
 
     /**
-     * 获取客户端IP（简化实现）
+     * 获取客户端IP
      */
     private String getClientIp() {
-        try {
-            // 实际项目中应从 HttpServletRequest 获取
-            // 这里返回占位值
-            return "unknown";
-        } catch (Exception e) {
-            return "unknown";
+        HttpServletRequest request = getCurrentRequest();
+        if (request == null) {
+            return "UNKNOWN";
         }
+        String ip = IpUtils.getIpAddr(request);
+        return StringUtils.hasText(ip) ? ip : "UNKNOWN";
+    }
+
+    private HttpServletRequest getCurrentRequest() {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        if (requestAttributes instanceof ServletRequestAttributes servletRequestAttributes) {
+            return servletRequestAttributes.getRequest();
+        }
+        return null;
     }
 }

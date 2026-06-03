@@ -7,10 +7,12 @@ import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WorkflowVersion;
 import com.cloudflow.workflow.domain.dto.VersionDTO;
 import com.cloudflow.workflow.domain.dto.VersionDetailDTO;
+import com.cloudflow.workflow.domain.system.SysUser;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
+import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.util.VersionNumberGenerator;
@@ -21,11 +23,14 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -54,6 +59,9 @@ public class VersionServiceImpl implements IVersionService {
 
     @Autowired
     private INotificationService notificationService;
+
+    @Autowired
+    private SysUserMapper sysUserMapper;
 
     /**
      * 创建新版本
@@ -139,8 +147,12 @@ public class VersionServiceImpl implements IVersionService {
         List<WorkflowVersion> versions = versionMapper.selectList(wrapper);
 
         // 转换为 DTO
+        Map<String, String> creatorNameMap = resolveUserNameMap(versions.stream()
+            .map(WorkflowVersion::getCreatedBy)
+            .collect(Collectors.toList()));
+
         List<VersionDTO> dtoList = versions.stream()
-            .map(this::convertToDTO)
+            .map(version -> convertToDTO(version, creatorNameMap))
             .collect(Collectors.toList());
 
         log.info("查询到 {} 个版本记录", dtoList.size());
@@ -160,7 +172,7 @@ public class VersionServiceImpl implements IVersionService {
         }
         requireWorkflowAndTenantAccess(version.getWorkflowId(), "查询版本详情");
 
-        return convertToDetailDTO(version);
+        return convertToDetailDTO(version, resolveUserName(version.getCreatedBy()));
     }
 
     /**
@@ -219,19 +231,18 @@ public class VersionServiceImpl implements IVersionService {
     /**
      * 转换为 VersionDTO
      */
-    private VersionDTO convertToDTO(WorkflowVersion version) {
+    private VersionDTO convertToDTO(WorkflowVersion version, Map<String, String> userNameMap) {
         VersionDTO dto = new VersionDTO();
         BeanUtils.copyProperties(version, dto);
         dto.setIsRollback(version.getIsRollback() == 1);
-        // TODO: 查询创建者名称
-        dto.setCreatedByName(version.getCreatedBy());
+        dto.setCreatedByName(resolveUserDisplayName(version.getCreatedBy(), userNameMap));
         return dto;
     }
 
     /**
      * 转换为 VersionDetailDTO
      */
-    private VersionDetailDTO convertToDetailDTO(WorkflowVersion version) {
+    private VersionDetailDTO convertToDetailDTO(WorkflowVersion version, String createdByName) {
         VersionDetailDTO dto = new VersionDetailDTO();
         BeanUtils.copyProperties(version, dto);
         dto.setIsRollback(version.getIsRollback() == 1);
@@ -245,8 +256,7 @@ public class VersionServiceImpl implements IVersionService {
             dto.setDefinition(version.getDefinition());
         }
         
-        // TODO: 查询创建者名称
-        dto.setCreatedByName(version.getCreatedBy());
+        dto.setCreatedByName(createdByName);
         return dto;
     }
 
@@ -337,7 +347,7 @@ public class VersionServiceImpl implements IVersionService {
             // 发送回滚通知
             WfProcessDefinition processDefinition = definitionMapper.selectById(workflowId);
             if (processDefinition != null && processDefinition.getCreateBy() != null) {
-                String operatorName = "管理员"; // 可以从用户上下文获取
+                String operatorName = StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "管理员";
                 
                 // 将 createBy 从 String 转换为 Long
                 Long createById = null;
@@ -420,5 +430,76 @@ public class VersionServiceImpl implements IVersionService {
             throw WorkflowException.permissionDenied(operation);
         }
         return definition;
+    }
+
+    private Map<String, String> resolveUserNameMap(List<String> rawUserIds) {
+        Map<String, String> result = new HashMap<>();
+        List<Long> userIds = rawUserIds.stream()
+            .filter(StringUtils::hasText)
+            .map(this::parseUserId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+        if (userIds.isEmpty()) {
+            return result;
+        }
+
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<SysUser>()
+            .in(SysUser::getUserId, userIds);
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            wrapper.eq(SysUser::getTenantId, currentTenantId);
+        }
+
+        for (SysUser user : sysUserMapper.selectList(wrapper)) {
+            result.put(String.valueOf(user.getUserId()), displayNameOf(user));
+        }
+        return result;
+    }
+
+    private String resolveUserName(String rawUserId) {
+        if (!StringUtils.hasText(rawUserId)) {
+            return rawUserId;
+        }
+        Long userId = parseUserId(rawUserId);
+        if (userId == null) {
+            return rawUserId;
+        }
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<SysUser>()
+            .eq(SysUser::getUserId, userId);
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            wrapper.eq(SysUser::getTenantId, currentTenantId);
+        }
+        SysUser user = sysUserMapper.selectOne(wrapper);
+        return user != null ? displayNameOf(user) : rawUserId;
+    }
+
+    private String resolveUserDisplayName(String rawUserId, Map<String, String> userNameMap) {
+        if (!StringUtils.hasText(rawUserId)) {
+            return rawUserId;
+        }
+        return userNameMap.getOrDefault(rawUserId, rawUserId);
+    }
+
+    private Long parseUserId(String rawUserId) {
+        try {
+            return StringUtils.hasText(rawUserId) ? Long.valueOf(rawUserId) : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private String displayNameOf(SysUser user) {
+        if (user == null) {
+            return null;
+        }
+        if (StringUtils.hasText(user.getNickName())) {
+            return user.getNickName();
+        }
+        if (StringUtils.hasText(user.getUserName())) {
+            return user.getUserName();
+        }
+        return String.valueOf(user.getUserId());
     }
 }

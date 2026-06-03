@@ -41,6 +41,7 @@ public class HrSalarySlipPayload {
     private LocalDateTime updateTime;
     private String createBy;
     private String updateBy;
+    private String digestSha256;
     private Integer deleted;
     @Version
     private Integer version;

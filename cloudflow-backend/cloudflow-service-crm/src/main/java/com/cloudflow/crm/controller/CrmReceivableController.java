@@ -6,6 +6,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmReceivable;
+import com.cloudflow.crm.domain.dto.CrmReceivableWriteoffDTO;
 import com.cloudflow.crm.domain.vo.CrmReceivableAgingBucketVO;
 import com.cloudflow.crm.service.ICrmReceivableService;
 import lombok.RequiredArgsConstructor;
@@ -78,6 +79,18 @@ public class CrmReceivableController {
     public R<Void> confirm(@PathVariable("id") Long id) {
         try {
             return R.result(crmReceivableService.confirmReceipt(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("核销CRM应收款")
+    @RepeatSubmit
+    @PostMapping("/{id}/writeoff")
+    @SaCheckPermission("crm:receivable:confirm")
+    public R<Void> writeoff(@PathVariable("id") Long id, @RequestBody CrmReceivableWriteoffDTO dto) {
+        try {
+            return R.result(crmReceivableService.writeoffReceivable(id, dto));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

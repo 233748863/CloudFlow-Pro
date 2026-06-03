@@ -4,12 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.common.tenant.support.TenantIterator;
+import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.monitor.AnomalyAlert;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
 import com.cloudflow.workflow.mapper.AnomalyAlertMapper;
 import com.cloudflow.workflow.mapper.ProcessMonitorMapper;
+import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
+import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.monitor.IAnomalyDetectionService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
@@ -32,9 +35,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
 
+    private static final String EVENT_WORKFLOW_ANOMALY = "WORKFLOW_ANOMALY";
+
     private final AnomalyAlertMapper anomalyAlertMapper;
     private final ProcessMonitorMapper processMonitorMapper;
     private final WfTaskMapper taskMapper;
+    private final WfProcessInstanceMapper processInstanceMapper;
+    private final INotificationService notificationService;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
     private final TenantIterator tenantIterator;
     private final SysConfigHelper sysConfigHelper;
@@ -225,18 +232,24 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     @Override
     public void sendAnomalyAlert(AnomalyAlert alert) {
         try {
+            Long recipientId = resolveRecipientId(alert);
+            if (recipientId == null) {
+                log.warn("异常告警未找到通知接收人: alertId={}, instanceId={}", alert.getId(), alert.getInstanceId());
+                return;
+            }
+
             // 构建告警消息
             String message = buildAlertMessage(alert);
 
             // 记录告警日志
             log.error("[异常告警] {}", message);
 
-            // 当前已实现：系统通知、数据库记录、日志记录
-            // 扩展点：外部通知渠道（钉钉、企业微信、邮件、短信）
-            // 示例：if (notificationConfig.isDingTalkEnabled()) { dingTalkService.sendAlert(...); }
-            // 2. 发送邮件
-            // 3. 发送钉钉/企业微信通知
-            // 4. 严重级别发送短信
+            notificationService.sendNotification(
+                    recipientId,
+                    buildAlertTitle(alert),
+                    buildAlertNoticeContent(alert),
+                    EVENT_WORKFLOW_ANOMALY
+            );
 
             // 更新通知状态
             alert.setNotificationSent("Y");
@@ -248,6 +261,36 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
         } catch (Exception e) {
             log.error("发送异常告警失败: alertId={}", alert.getId(), e);
         }
+    }
+
+    private Long resolveRecipientId(AnomalyAlert alert) {
+        if (alert.getInstanceId() == null) {
+            return null;
+        }
+        WfProcessInstance instance = processInstanceMapper.selectById(alert.getInstanceId());
+        return instance == null ? null : instance.getStartUserId();
+    }
+
+    private String buildAlertTitle(AnomalyAlert alert) {
+        return "流程异常提醒";
+    }
+
+    private String buildAlertNoticeContent(AnomalyAlert alert) {
+        return String.format("流程【%s】发生%s异常，严重程度 %s。原因：%s",
+                alert.getProcessName(),
+                resolveAnomalyTypeLabel(alert.getAnomalyType()),
+                alert.getSeverity(),
+                alert.getErrorMessage());
+    }
+
+    private String resolveAnomalyTypeLabel(String anomalyType) {
+        return switch (anomalyType) {
+            case "EXECUTION_FAILED" -> "执行失败";
+            case "NO_ASSIGNEE" -> "无人认领";
+            case "DEADLOCK" -> "死锁";
+            case "DATA_INCONSISTENCY" -> "数据不一致";
+            default -> anomalyType;
+        };
     }
 
     @Override

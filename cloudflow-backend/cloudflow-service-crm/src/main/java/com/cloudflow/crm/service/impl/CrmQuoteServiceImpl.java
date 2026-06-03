@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -295,6 +296,30 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
             crmCustomerService.refreshHealth(quote.getCustomerId());
         }
         return updated;
+    }
+
+    public int expireDueQuotes() {
+        List<CrmQuote> dueQuotes = baseMapper.selectList(new LambdaQueryWrapper<CrmQuote>()
+                .eq(CrmQuote::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .isNotNull(CrmQuote::getValidUntil)
+                .lt(CrmQuote::getValidUntil, LocalDate.now())
+                .in(CrmQuote::getStatus,
+                        CrmConstants.QuoteStatus.DRAFT,
+                        CrmConstants.QuoteStatus.PENDING,
+                        CrmConstants.QuoteStatus.APPROVED,
+                        CrmConstants.QuoteStatus.REJECTED,
+                        CrmConstants.QuoteStatus.SENT));
+        int expired = 0;
+        for (CrmQuote quote : dueQuotes) {
+            quote.setStatus(CrmConstants.QuoteStatus.EXPIRED);
+            quote.setUpdateBy("system");
+            quote.setUpdateTime(now());
+            if (updateById(quote)) {
+                crmCustomerService.refreshHealth(quote.getCustomerId());
+                expired++;
+            }
+        }
+        return expired;
     }
 
     private void prepareQuoteForSave(CrmQuote quote) {

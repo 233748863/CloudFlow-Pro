@@ -12,6 +12,7 @@ import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -81,6 +82,17 @@ final class CrmHealthCalculator {
                 .in(CrmServiceTicket::getSeverity,
                         CrmConstants.TicketSeverity.HIGH,
                         CrmConstants.TicketSeverity.CRITICAL)
+                .notIn(CrmServiceTicket::getStatus,
+                        CrmConstants.TicketStatus.RESOLVED,
+                        CrmConstants.TicketStatus.CLOSED)) > 0;
+    }
+
+    static boolean hasOverdueOpenTicket(CrmServiceTicketMapper mapper, Long customerId, LocalDateTime now) {
+        return mapper.selectCount(new LambdaQueryWrapper<CrmServiceTicket>()
+                .eq(CrmServiceTicket::getCustomerId, customerId)
+                .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .isNotNull(CrmServiceTicket::getDueTime)
+                .lt(CrmServiceTicket::getDueTime, now)
                 .notIn(CrmServiceTicket::getStatus,
                         CrmConstants.TicketStatus.RESOLVED,
                         CrmConstants.TicketStatus.CLOSED)) > 0;

@@ -185,6 +185,10 @@ public class HrTypedCrudService {
             return;
         }
         Map<String, Object> before = toResponseMap(entity);
+        if (isImmutableSalarySlip(tableInfo.getTableName(), before)) {
+            throw new HrBusinessException("SALARY_SLIP_IMMUTABLE",
+                    "已归档或已发布工资条禁止删除，记录ID：" + id);
+        }
         if (hasProperty(tableInfo, "deleted")) {
             setProperty(entity, "deleted", 1);
             setProperty(entity, "updateBy", currentUserName());
@@ -249,6 +253,10 @@ public class HrTypedCrudService {
             return;
         }
         Map<String, Object> before = toResponseMap(entity);
+        if (isImmutableSalarySlip(tableInfo.getTableName(), before)) {
+            throw new HrBusinessException("SALARY_SLIP_IMMUTABLE",
+                    "已归档或已发布工资条禁止修改，记录ID：" + id);
+        }
         Map<String, Object> payloadMap = toMap(payload);
         if (payloadMap.isEmpty()) {
             return;
@@ -266,6 +274,14 @@ public class HrTypedCrudService {
         }
         mapper.update(entity, wrapper);
         writeAuditLog(tableInfo.getTableName(), id, operationType, before, getAuditRow(entityClass, id));
+    }
+
+    private boolean isImmutableSalarySlip(String tableName, Map<String, Object> row) {
+        if (!"hr_salary_slip".equals(tableName) || row == null) {
+            return false;
+        }
+        Object status = row.get("status");
+        return Objects.equals("ARCHIVED", status) || Objects.equals("RELEASED", status);
     }
 
     private <T> QueryWrapper<T> buildQueryWrapper(Class<T> entityClass, Map<String, ?> query, boolean includePagination) {

@@ -24,11 +24,15 @@ import { normalizeRows, formatDateValue, formatDateTimeValue, enumLabel, hasWork
 
 const signStatusLabel: Record<string, string> = {
   PENDING: '待签署',
+  SIGNING: '审批中',
   SIGNED: '已签署',
   REJECTED: '已驳回',
   EXPIRED: '已过期',
   CANCELLED: '已取消',
 };
+
+const REQUESTABLE_SIGN_STATUS = new Set(['', 'UNSIGNED', 'REJECTED', 'EXPIRED', 'CANCELLED']);
+const BLOCKED_CONTRACT_STATUS = new Set(['EXPIRED', 'TERMINATED']);
 
 export const HrEssContractPage: React.FC = () => {
   const [contracts, setContracts] = useState<HrRecord[]>([]);
@@ -70,6 +74,23 @@ export const HrEssContractPage: React.FC = () => {
     }
   };
 
+  const canRequestSign = (row: any) => {
+    const contractStatus = String(row?.status || '').trim().toUpperCase();
+    const signStatus = String(row?.signStatus || '').trim().toUpperCase();
+    if (BLOCKED_CONTRACT_STATUS.has(contractStatus)) {
+      return false;
+    }
+    if (row?.endDate) {
+      const endDate = new Date(`${row.endDate}T00:00:00`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (!Number.isNaN(endDate.getTime()) && endDate < today) {
+        return false;
+      }
+    }
+    return REQUESTABLE_SIGN_STATUS.has(signStatus);
+  };
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center gap-2 text-xl font-semibold text-slate-900 dark:text-slate-50">
@@ -107,7 +128,7 @@ export const HrEssContractPage: React.FC = () => {
                     <TableCell>{formatDateValue(row.endDate)}</TableCell>
                     <TableCell>{enumLabel(signStatusLabel, row.signStatus) || row.status || '-'}</TableCell>
                     <TableCell>
-                      {!row.signStatus || row.signStatus === 'UNSIGNED' || row.signStatus === 'PENDING' ? (
+                      {canRequestSign(row) ? (
                         <Button size="sm" variant="outline" onClick={() => void handleRequestSign(row.id)}>
                           <Send className="mr-1 h-3 w-3" />发起签署
                         </Button>

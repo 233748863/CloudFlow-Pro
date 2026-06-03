@@ -5,6 +5,7 @@ import com.cloudflow.workflow.domain.monitor.AnomalyAlert;
 import com.cloudflow.workflow.domain.monitor.TimeoutAlert;
 import com.cloudflow.workflow.mapper.AnomalyAlertMapper;
 import com.cloudflow.workflow.mapper.TimeoutAlertMapper;
+import com.cloudflow.workflow.service.IWorkflowMonitorService;
 import com.cloudflow.workflow.service.monitor.IAnomalyDetectionService;
 import com.cloudflow.workflow.service.monitor.ITimeoutDetectionService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class AlertController {
     private final TimeoutAlertMapper timeoutAlertMapper;
     private final AnomalyAlertMapper anomalyAlertMapper;
     private final ITimeoutDetectionService timeoutDetectionService;
+    private final IWorkflowMonitorService workflowMonitorService;
     private final IAnomalyDetectionService anomalyDetectionService;
 
     /**
@@ -86,7 +88,7 @@ public class AlertController {
     @SaCheckPermission("workflow:alert:handle")
     @PutMapping("/timeout/{alertId}/escalate")
     public R<Void> escalateTimeoutAlert(@PathVariable Long alertId) {
-        timeoutDetectionService.escalateTimeoutAlert(alertId);
+        workflowMonitorService.handleTimeoutAlert(alertId, "escalate");
         return R.ok();
     }
 
@@ -170,4 +172,3 @@ public class AlertController {
         return R.ok();
     }
 }
-

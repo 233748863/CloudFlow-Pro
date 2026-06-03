@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.crm.domain.CrmReceivable;
+import com.cloudflow.crm.domain.dto.CrmReceivableWriteoffDTO;
 import com.cloudflow.crm.domain.dto.ReceivableInvoiceSyncDTO;
 import com.cloudflow.crm.domain.vo.CrmReceivableAgingBucketVO;
 
@@ -20,6 +21,8 @@ public interface ICrmReceivableService extends IService<CrmReceivable> {
     boolean updateReceivable(CrmReceivable receivable);
 
     boolean confirmReceipt(Long receivableId);
+
+    boolean writeoffReceivable(Long receivableId, CrmReceivableWriteoffDTO writeoffDTO);
 
     boolean bindInvoice(Long receivableId, Long invoiceId);
 

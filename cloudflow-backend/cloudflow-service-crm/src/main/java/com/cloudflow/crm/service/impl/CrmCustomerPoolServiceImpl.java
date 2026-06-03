@@ -158,6 +158,10 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
         return released;
     }
 
+    public int autoReleaseExpiredCustomers() {
+        return triggerAutoRelease();
+    }
+
     @Override
     public PageResult<CrmCustomerPoolLog> listLogs(Long customerId, PageQuery pageQuery) {
         LambdaQueryWrapper<CrmCustomerPoolLog> wrapper = new LambdaQueryWrapper<>();

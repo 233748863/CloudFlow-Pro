@@ -3,12 +3,17 @@ package com.cloudflow.workflow.service.monitor.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.tenant.support.TenantIterator;
+import com.cloudflow.workflow.domain.WfProcessInstance;
+import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.monitor.TimeoutAlert;
 import com.cloudflow.workflow.mapper.ProcessMonitorMapper;
 import com.cloudflow.workflow.mapper.TaskMonitorMapper;
 import com.cloudflow.workflow.mapper.TimeoutAlertMapper;
+import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
+import com.cloudflow.workflow.mapper.WfTaskMapper;
+import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.monitor.ITimeoutDetectionService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
@@ -35,9 +40,15 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
 
+    private static final String EVENT_TIMEOUT_TASK = "WORKFLOW_TIMEOUT_TASK";
+    private static final String EVENT_TIMEOUT_PROCESS = "WORKFLOW_TIMEOUT_PROCESS";
+
     private final TaskMonitorMapper taskMonitorMapper;
     private final ProcessMonitorMapper processMonitorMapper;
     private final TimeoutAlertMapper timeoutAlertMapper;
+    private final WfTaskMapper wfTaskMapper;
+    private final WfProcessInstanceMapper processInstanceMapper;
+    private final INotificationService notificationService;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
     private final TenantIterator tenantIterator;
 
@@ -155,6 +166,8 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
                 alert.setTimeoutLevel(level);
                 alert.setTimeoutDuration(duration);
                 alert.setThreshold(getThresholdByLevel(level));
+                alert.setAssigneeId(process.getStartUserId());
+                alert.setAssigneeName(process.getStartUserName());
                 alert.setAlertTime(LocalDateTime.now());
                 alert.setNotificationSent("N");
                 alert.setEscalated("N");
@@ -177,11 +190,23 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     @Override
     public void sendTimeoutAlert(TimeoutAlert alert) {
         try {
+            Long recipientId = resolveRecipientId(alert);
+            if (recipientId == null) {
+                log.warn("超时告警未找到通知接收人: alertId={}, type={}, targetId={}",
+                        alert.getId(), alert.getAlertType(), alert.getTargetId());
+                return;
+            }
+
             String message = buildAlertMessage(alert);
             log.warn("[超时告警] {}", message);
 
-            // 当前已实现：系统通知、数据库记录、日志记录。
-            // 如需扩展，可在这里对接钉钉、企业微信、邮件、短信等通知渠道。
+            notificationService.sendNotification(
+                    recipientId,
+                    buildAlertTitle(alert),
+                    buildAlertNoticeContent(alert),
+                    resolveEventType(alert)
+            );
+
             alert.setNotificationSent("Y");
             alert.setUpdateTime(LocalDateTime.now());
             timeoutAlertMapper.updateById(alert);
@@ -430,6 +455,53 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
         long hours = alert.getTimeoutDuration() / 3600000;
         sb.append(", 超时时长=").append(hours).append("小时");
         return sb.toString();
+    }
+
+    private String buildAlertTitle(TimeoutAlert alert) {
+        return "TASK".equals(alert.getAlertType()) ? "任务超时提醒" : "流程超时提醒";
+    }
+
+    private String buildAlertNoticeContent(TimeoutAlert alert) {
+        return String.format("%s【%s】已达到%s级超时，当前超时时长 %s，请尽快处理。",
+                "TASK".equals(alert.getAlertType()) ? "任务" : "流程",
+                alert.getTargetName(),
+                resolveLevelLabel(alert.getTimeoutLevel()),
+                formatDuration(alert.getTimeoutDuration()));
+    }
+
+    private String resolveEventType(TimeoutAlert alert) {
+        return "TASK".equals(alert.getAlertType()) ? EVENT_TIMEOUT_TASK : EVENT_TIMEOUT_PROCESS;
+    }
+
+    private String resolveLevelLabel(String level) {
+        return switch (level) {
+            case "CRITICAL" -> "严重";
+            case "WARNING" -> "警告";
+            case "REMIND" -> "提醒";
+            default -> level;
+        };
+    }
+
+    private Long resolveRecipientId(TimeoutAlert alert) {
+        if (alert.getAssigneeId() != null) {
+            return alert.getAssigneeId();
+        }
+        if ("TASK".equals(alert.getAlertType())) {
+            WfTask task = wfTaskMapper.selectById(alert.getTargetId());
+            if (task != null && task.getAssignee() != null) {
+                alert.setAssigneeId(task.getAssignee());
+                alert.setAssigneeName(task.getAssigneeName());
+                return task.getAssignee();
+            }
+            return null;
+        }
+        WfProcessInstance instance = processInstanceMapper.selectById(alert.getTargetId());
+        if (instance != null && instance.getStartUserId() != null) {
+            alert.setAssigneeId(instance.getStartUserId());
+            alert.setAssigneeName(instance.getStartUserName());
+            return instance.getStartUserId();
+        }
+        return null;
     }
 
     /**

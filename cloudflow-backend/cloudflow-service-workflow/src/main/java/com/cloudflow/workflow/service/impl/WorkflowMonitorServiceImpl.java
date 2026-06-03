@@ -22,6 +22,7 @@ import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.IWorkflowMonitorService;
+import com.cloudflow.workflow.service.monitor.ITimeoutDetectionService;
 import com.cloudflow.workflow.service.monitor.impl.PerformanceStatsRefreshService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +67,7 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final INotificationService notificationService;
+    private final ITimeoutDetectionService timeoutDetectionService;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
     private final SysConfigHelper sysConfigHelper;
 
@@ -212,9 +214,11 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
         checkTenantAccess(alert.getTenantId());
         
         if (ACTION_NOTIFY.equals(action)) {
-            alert.setNotificationSent("Y");
-            alert.setUpdateTime(LocalDateTime.now());
-            timeoutAlertMapper.updateById(alert);
+            timeoutDetectionService.sendTimeoutAlert(alert);
+            TimeoutAlert refreshed = timeoutAlertMapper.selectById(alertId);
+            if (refreshed == null || !"Y".equals(refreshed.getNotificationSent())) {
+                throw new BusinessException("ALERT_NOTIFICATION_FAILED", "未找到可接收通知的用户");
+            }
             log.info("已发送超时告警通知: alertId={}", alertId);
             return new TimeoutAlertHandleResult(alertId, action, null, null, null, "已发送通知");
         }

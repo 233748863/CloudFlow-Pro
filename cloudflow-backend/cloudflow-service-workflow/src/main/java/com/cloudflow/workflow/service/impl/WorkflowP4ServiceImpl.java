@@ -16,6 +16,7 @@ import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
+import com.cloudflow.workflow.service.INotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -49,11 +50,10 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Autowired private WfTaskCandidateMapper candidateMapper;
     @Autowired private WfTaskAttachmentMapper attachmentMapper;
     @Autowired private WfDeployRecordMapper deployRecordMapper;
-    @Autowired private WfNotificationConfigMapper notificationConfigMapper;
-    @Autowired private WfNotificationLogMapper notificationLogMapper;
     @Autowired private WfUrgeEffectMapper urgeEffectMapper;
     @Autowired private TaskMonitorMapper taskMonitorMapper;
     @Autowired private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
+    @Autowired private INotificationService notificationService;
     @Autowired private RedissonClient redissonClient;
     @Autowired private WorkflowTaskSecurityProperties taskSecurityProperties;
     @Autowired private com.cloudflow.common.redis.core.SysDictHelper sysDictHelper;
@@ -1245,27 +1245,9 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     public void sendNotification(String eventType, Long recipientId, String title, String content) {
         log.info("[sendNotification] 发送通知, eventType={}, recipientId={}", eventType, recipientId);
-        
-        // 查询通知配置
-        List<WfNotificationConfig> configs = notificationConfigMapper.selectList(
-                new LambdaQueryWrapper<WfNotificationConfig>()
-                        .eq(WfNotificationConfig::getEventType, eventType)
-                        .eq(WfNotificationConfig::getEnabled, 1));
-        
-        for (WfNotificationConfig config : configs) {
-            WfNotificationLog log = new WfNotificationLog();
-            log.setLogId(UUID.randomUUID().toString());
-            log.setEventType(eventType);
-            log.setNotifyChannel(config.getNotifyChannel());
-            log.setRecipientId(recipientId);
-            log.setTitle(title);
-            log.setContent(content);
-            log.setStatus("PENDING");
-            log.setCreateTime(LocalDateTime.now());
-            notificationLogMapper.insert(log);
-            
-            // 根据渠道发送通知（站内信、邮件、短信、WebSocket）
-            // 实际发送逻辑由消息队列异步处理
+        if (recipientId == null) {
+            return;
         }
+        notificationService.sendNotification(recipientId, title, content, eventType);
     }
 }

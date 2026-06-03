@@ -1,5 +1,8 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
@@ -37,6 +40,7 @@ import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -45,6 +49,9 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -81,6 +88,7 @@ public class HrEssServiceImpl implements IHrEssService {
     private final HrContractSignatureMapper contractSignatureMapper;
     private final HrCertificateRequestMapper certificateRequestMapper;
     private final HrSelfServiceMessageMapper selfServiceMessageMapper;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -123,6 +131,7 @@ public class HrEssServiceImpl implements IHrEssService {
             throw new HrBusinessException("SLIP_NOT_FOUND", "工资条不存在：" + slipId);
         }
         essSupport.assertOwner(slip.getEmployeeId());
+        assertDigestValid(slip);
         UpdateWrapper<HrSalarySlip> wrapper = new UpdateWrapper<>();
         wrapper.eq("id", slipId)
                 .eq("tenant_id", currentTenantId())
@@ -130,6 +139,38 @@ public class HrEssServiceImpl implements IHrEssService {
                 .set("confirmed_time", LocalDateTime.now())
                 .set("update_time", LocalDateTime.now());
         salarySlipMapper.update(null, wrapper);
+    }
+
+    @Override
+    public PageResult<HrSalarySlip> pageMySalarySlips(PageQuery pageQuery, String periodMonth, String status) {
+        QueryWrapper<HrSalarySlip> wrapper = new QueryWrapper<>();
+        wrapper.eq("tenant_id", currentTenantId())
+                .eq("employee_id", essSupport.currentEmployeeId())
+                .eq("deleted", 0)
+                .orderByDesc("period_month");
+        if (StringUtils.hasText(periodMonth)) {
+            wrapper.eq("period_month", periodMonth);
+        }
+        if (StringUtils.hasText(status)) {
+            wrapper.eq("status", status);
+        }
+        Page<HrSalarySlip> page = salarySlipMapper.selectPage(pageQuery.build(), wrapper);
+        page.getRecords().forEach(this::assertDigestValid);
+        return PageResult.build(page);
+    }
+
+    @Override
+    public HrSalarySlip getMySalarySlip(Long slipId) {
+        if (slipId == null) {
+            throw new HrBusinessException("INVALID_PARAMETER", "工资条 ID 不能为空");
+        }
+        HrSalarySlip slip = salarySlipMapper.selectById(slipId);
+        if (slip == null || !Objects.equals(slip.getDeleted(), 0)) {
+            throw new HrBusinessException("SLIP_NOT_FOUND", "工资条不存在：" + slipId);
+        }
+        essSupport.assertOwner(slip.getEmployeeId());
+        assertDigestValid(slip);
+        return slip;
     }
 
     @Override
@@ -201,7 +242,9 @@ public class HrEssServiceImpl implements IHrEssService {
                 .eq("deleted", 0)
                 .orderByDesc("period_month")
                 .last("LIMIT " + Math.max(1, Math.min(limit, 36)));
-        return salarySlipMapper.selectList(wrapper);
+        List<HrSalarySlip> rows = salarySlipMapper.selectList(wrapper);
+        rows.forEach(this::assertDigestValid);
+        return rows;
     }
 
     @Override
@@ -283,7 +326,12 @@ public class HrEssServiceImpl implements IHrEssService {
                 .orderByDesc("period_month")
                 .last("LIMIT 1");
         List<HrSalarySlip> rows = salarySlipMapper.selectList(wrapper);
-        return rows.isEmpty() ? null : rows.get(0);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        HrSalarySlip slip = rows.get(0);
+        assertDigestValid(slip);
+        return slip;
     }
 
     private List<Map<String, Object>> buildPendingContracts(Long tenantId, Long employeeId) {
@@ -291,6 +339,7 @@ public class HrEssServiceImpl implements IHrEssService {
         wrapper.eq("tenant_id", tenantId)
                 .eq("employee_id", employeeId)
                 .eq("deleted", 0)
+                .notIn("status", "EXPIRED", "TERMINATED")
                 .ne("sign_status", "SIGNED")
                 .orderByDesc("update_time");
         List<HrEmployeeContract> contracts = employeeContractMapper.selectList(wrapper);
@@ -401,7 +450,53 @@ public class HrEssServiceImpl implements IHrEssService {
         slip.setDeleted(0);
         slip.setCreateBy(currentUserName());
         slip.setUpdateBy(currentUserName());
+        slip.setDigestSha256(computeDigest(slip));
         return slip;
+    }
+
+    private void assertDigestValid(HrSalarySlip slip) {
+        if (slip == null) {
+            return;
+        }
+        String actual = computeDigest(slip);
+        if (!StringUtils.hasText(slip.getDigestSha256())) {
+            UpdateWrapper<HrSalarySlip> wrapper = new UpdateWrapper<>();
+            wrapper.eq("id", slip.getId())
+                    .eq("tenant_id", slip.getTenantId())
+                    .set("digest_sha256", actual)
+                    .set("update_time", LocalDateTime.now());
+            salarySlipMapper.update(null, wrapper);
+            slip.setDigestSha256(actual);
+            return;
+        }
+        if (!actual.equalsIgnoreCase(slip.getDigestSha256())) {
+            throw new HrBusinessException("SLIP_TAMPERED", "工资条摘要校验失败，记录ID：" + slip.getId());
+        }
+    }
+
+    private String computeDigest(HrSalarySlip slip) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("tenantId", slip.getTenantId());
+            payload.put("employeeId", slip.getEmployeeId());
+            payload.put("periodMonth", slip.getPeriodMonth());
+            payload.put("grossTotal", slip.getGrossTotal());
+            payload.put("deductionTotal", slip.getDeductionTotal());
+            payload.put("netTotal", slip.getNetTotal());
+            payload.put("taxAmount", slip.getTaxAmount());
+            payload.put("benefitAmount", slip.getBenefitAmount());
+            payload.put("components", slip.getComponents());
+            payload.put("payDate", slip.getPayDate());
+            byte[] hash = digest.digest(objectMapper.writeValueAsString(payload).getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                builder.append(String.format("%02x", b));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException | com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new HrBusinessException("SLIP_DIGEST_ERROR", "工资条摘要生成失败");
+        }
     }
 
     private BigDecimal sumPersonalBenefit(Long tenantId, Long employeeId, String periodMonth) {

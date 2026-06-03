@@ -24,4 +24,9 @@ public interface IHrContractSignatureService {
      * 工作流回调链路在 APPROVED 之后调用，写 sign_time / 同步 hr_employee_contract。
      */
     void onSigned(Long id);
+
+    /**
+     * 工作流回调把签署单状态写回主合同，避免 hr_employee_contract 卡在旧状态。
+     */
+    void syncContractSignStatus(Long id, String signStatus);
 }

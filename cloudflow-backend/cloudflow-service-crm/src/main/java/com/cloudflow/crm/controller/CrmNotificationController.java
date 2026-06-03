@@ -54,4 +54,13 @@ public class CrmNotificationController {
     public R<Integer> dispatchOpportunity() {
         return R.ok(crmNotificationService.dispatchStalledOpportunity());
     }
+
+    @SysLog("触发CRM工单SLA通知")
+    // M0-8: 防重复提交
+    @RepeatSubmit
+    @PostMapping("/dispatch/ticket-sla")
+    @SaCheckPermission("crm:notification:dispatch")
+    public R<Integer> dispatchTicketSla() {
+        return R.ok(crmNotificationService.dispatchTicketSlaDue());
+    }
 }

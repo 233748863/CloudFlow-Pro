@@ -179,6 +179,12 @@ export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
 
     if (nodeType === NodeType.SCRIPT) {
       const scriptType = props.scriptType || "API";
+      if (scriptType === "JAVASCRIPT") {
+        pushError(
+          '脚本节点"' + nodeTitle + '"当前不支持 JavaScript，请改用 Groovy 或 API 调用',
+          [nodeId],
+        );
+      }
       if (scriptType === "API" && !props.apiUrl) {
         pushError(
           '脚本节点"' + nodeTitle + '"选择了 API 调用模式，但未配置 API URL',

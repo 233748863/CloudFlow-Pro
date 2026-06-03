@@ -4,10 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessInstance;
+import com.cloudflow.workflow.domain.system.SysDept;
 import com.cloudflow.workflow.domain.system.SysRole;
+import com.cloudflow.workflow.domain.system.SysUser;
 import com.cloudflow.workflow.domain.system.SysUserRole;
 import com.cloudflow.workflow.handler.INodeHandler;
+import com.cloudflow.workflow.mapper.system.SysDeptMapper;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
+import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.service.ISysNoticeService;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +21,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 通知节点处理器
@@ -36,6 +42,8 @@ public class NotificationNodeHandler implements INodeHandler {
     private final ISysNoticeService sysNoticeService;
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
+    private final SysUserMapper sysUserMapper;
+    private final SysDeptMapper sysDeptMapper;
 
     @Override
     public String getNodeType() {
@@ -90,21 +98,28 @@ public class NotificationNodeHandler implements INodeHandler {
      * 解析通知接收人
      */
     private List<Long> resolveRecipients(String recipientType, Map<String, Object> props, WfProcessInstance instance) {
-        List<Long> recipientIds = new ArrayList<>();
+        Set<Long> recipientIds = new LinkedHashSet<>();
+        Long tenantId = instance.getTenantId();
 
         if ("INITIATOR".equals(recipientType)) {
-            recipientIds.add(instance.getStartUserId());
+            addActiveUser(recipientIds, tenantId, instance.getStartUserId());
         } else if ("ROLE".equals(recipientType)) {
             String roleKey = (String) props.get("recipientValue");
             if (StringUtils.hasText(roleKey)) {
                 String normalizedRoleKey = roleKey.trim().toLowerCase(Locale.ROOT);
                 SysRole role = sysRoleMapper.selectOne(
-                        new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, normalizedRoleKey));
+                        new LambdaQueryWrapper<SysRole>()
+                                .eq(SysRole::getTenantId, tenantId)
+                                .eq(SysRole::getRoleKey, normalizedRoleKey)
+                                .eq(SysRole::getStatus, "0")
+                                .eq(SysRole::getDeleted, 0));
                 if (role != null) {
                     List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
-                            new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
+                            new LambdaQueryWrapper<SysUserRole>()
+                                    .eq(SysUserRole::getTenantId, tenantId)
+                                    .eq(SysUserRole::getRoleId, role.getRoleId()));
                     for (SysUserRole ur : userRoles) {
-                        recipientIds.add(ur.getUserId());
+                        addActiveUser(recipientIds, tenantId, ur.getUserId());
                     }
                 }
             }
@@ -112,13 +127,60 @@ public class NotificationNodeHandler implements INodeHandler {
             String userIdStr = (String) props.get("recipientValue");
             if (StringUtils.hasText(userIdStr)) {
                 try {
-                    recipientIds.add(Long.valueOf(userIdStr));
+                    addActiveUser(recipientIds, tenantId, Long.valueOf(userIdStr));
                 } catch (NumberFormatException e) {
                     log.warn("[NotificationNodeHandler] 无效的用户ID: {}", userIdStr);
                 }
             }
+        } else if ("DEPT".equals(recipientType)) {
+            String deptIdStr = (String) props.get("recipientValue");
+            if (StringUtils.hasText(deptIdStr)) {
+                try {
+                    Long deptId = Long.valueOf(deptIdStr);
+                    SysDept dept = sysDeptMapper.selectOne(new LambdaQueryWrapper<SysDept>()
+                            .eq(SysDept::getTenantId, tenantId)
+                            .eq(SysDept::getDeptId, deptId)
+                            .eq(SysDept::getStatus, "0")
+                            .eq(SysDept::getDeleted, 0));
+                    if (dept != null) {
+                        List<SysUser> users = sysUserMapper.selectList(activeUserQuery(tenantId)
+                                .eq(SysUser::getDeptId, deptId));
+                        for (SysUser user : users) {
+                            recipientIds.add(user.getUserId());
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    log.warn("[NotificationNodeHandler] 无效的部门ID: {}", deptIdStr);
+                }
+            }
+        } else if ("ALL".equals(recipientType)) {
+            List<SysUser> users = sysUserMapper.selectList(activeUserQuery(tenantId));
+            for (SysUser user : users) {
+                recipientIds.add(user.getUserId());
+            }
         }
 
-        return recipientIds;
+        return new ArrayList<>(recipientIds);
+    }
+
+    private void addActiveUser(Set<Long> recipientIds, Long tenantId, Long userId) {
+        if (userId == null) {
+            return;
+        }
+        SysUser user = sysUserMapper.selectOne(activeUserQuery(tenantId)
+                .eq(SysUser::getUserId, userId));
+        if (user != null) {
+            recipientIds.add(user.getUserId());
+        }
+    }
+
+    private LambdaQueryWrapper<SysUser> activeUserQuery(Long tenantId) {
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getStatus, "0")
+                .eq(SysUser::getDeleted, 0);
+        if (tenantId != null) {
+            wrapper.eq(SysUser::getTenantId, tenantId);
+        }
+        return wrapper;
     }
 }

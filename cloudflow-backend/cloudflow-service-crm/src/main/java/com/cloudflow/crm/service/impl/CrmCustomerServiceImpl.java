@@ -172,6 +172,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
         LocalDate renewalWindowDate = CrmHealthCalculator.resolveRenewalWindowDate(renewalMapper, customerId);
         int overdueDays = CrmHealthCalculator.resolveMaxOverdueDays(receivableMapper, customerId, today);
         boolean hasHighSeverityOpenTicket = CrmHealthCalculator.hasHighSeverityOpenTicket(serviceTicketMapper, customerId);
+        boolean hasOverdueOpenTicket = CrmHealthCalculator.hasOverdueOpenTicket(serviceTicketMapper, customerId, currentTime);
 
         List<String> redReasons = new ArrayList<>();
         List<String> yellowReasons = new ArrayList<>();
@@ -193,6 +194,9 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
 
         if (hasHighSeverityOpenTicket) {
             redReasons.add("存在高严重度未关闭工单");
+        }
+        if (hasOverdueOpenTicket) {
+            redReasons.add("存在SLA已超时未关闭工单");
         }
 
         if (lastFollowUpTime == null

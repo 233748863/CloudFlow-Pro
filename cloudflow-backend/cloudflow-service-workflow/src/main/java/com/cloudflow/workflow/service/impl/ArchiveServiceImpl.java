@@ -15,6 +15,7 @@ import com.cloudflow.workflow.domain.dto.ArchivedWorkflowDTO;
 import com.cloudflow.workflow.domain.dto.BatchOperationResultDTO;
 import com.cloudflow.workflow.domain.dto.OperationDetailDTO;
 import com.cloudflow.workflow.domain.dto.SafetyCheckResultDTO;
+import com.cloudflow.workflow.domain.system.SysUser;
 import com.cloudflow.workflow.enums.OperationType;
 import com.cloudflow.workflow.enums.TargetType;
 import com.cloudflow.workflow.exception.WorkflowException;
@@ -28,6 +29,7 @@ import com.cloudflow.workflow.mapper.WfDeployRecordMapper;
 import com.cloudflow.workflow.mapper.WfDeployRollbackHistoryMapper;
 import com.cloudflow.workflow.mapper.WfProcessVersionSnapshotMapper;
 import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
+import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.service.IArchiveService;
 import com.cloudflow.workflow.service.IAuditLogService;
 import com.cloudflow.workflow.service.INotificationService;
@@ -87,6 +89,9 @@ public class ArchiveServiceImpl implements IArchiveService {
 
     @Autowired
     private WfDeployNotificationMapper deployNotificationMapper;
+
+    @Autowired
+    private SysUserMapper sysUserMapper;
 
     @Autowired
     private SafetyChecker safetyChecker;
@@ -478,8 +483,14 @@ public class ArchiveServiceImpl implements IArchiveService {
         Page<ArchivedWorkflowDTO> resultPage = new Page<>(pageNum, pageSize);
         resultPage.setTotal(archivePage.getTotal());
         
+        java.util.Map<String, String> archivedByNameMap = resolveUserNameMap(
+            archivePage.getRecords().stream()
+                .map(WfProcessArchive::getArchivedBy)
+                .collect(Collectors.toList())
+        );
+
         List<ArchivedWorkflowDTO> dtoList = archivePage.getRecords().stream()
-            .map(this::convertToDTO)
+            .map(archive -> convertToDTO(archive, archivedByNameMap))
             .collect(Collectors.toList());
         
         resultPage.setRecords(dtoList);
@@ -684,17 +695,70 @@ public class ArchiveServiceImpl implements IArchiveService {
     /**
      * 转换归档记录为 DTO
      */
-    private ArchivedWorkflowDTO convertToDTO(WfProcessArchive archive) {
+    private ArchivedWorkflowDTO convertToDTO(WfProcessArchive archive, java.util.Map<String, String> userNameMap) {
         return ArchivedWorkflowDTO.builder()
             .id(archive.getId())
             .workflowId(archive.getWorkflowId())
             .workflowName(archive.getWorkflowName())
             .archivedBy(archive.getArchivedBy())
-            .archivedByName(archive.getArchivedBy()) // TODO: 查询用户名称
+            .archivedByName(resolveUserDisplayName(archive.getArchivedBy(), userNameMap))
             .archivedAt(archive.getArchivedAt())
             .archiveReason(archive.getArchiveReason())
             .canRestore(archive.getCanRestore() == 1)
             .build();
+    }
+
+    private java.util.Map<String, String> resolveUserNameMap(List<String> rawUserIds) {
+        java.util.Map<String, String> result = new java.util.HashMap<>();
+        List<Long> userIds = rawUserIds.stream()
+            .filter(StringUtils::hasText)
+            .map(this::parseUserId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+        if (userIds.isEmpty()) {
+            return result;
+        }
+
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<SysUser>()
+            .in(SysUser::getUserId, userIds);
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            wrapper.eq(SysUser::getTenantId, currentTenantId);
+        }
+
+        for (SysUser user : sysUserMapper.selectList(wrapper)) {
+            result.put(String.valueOf(user.getUserId()), displayNameOf(user));
+        }
+        return result;
+    }
+
+    private String resolveUserDisplayName(String rawUserId, java.util.Map<String, String> userNameMap) {
+        if (!StringUtils.hasText(rawUserId)) {
+            return rawUserId;
+        }
+        return userNameMap.getOrDefault(rawUserId, rawUserId);
+    }
+
+    private Long parseUserId(String rawUserId) {
+        try {
+            return StringUtils.hasText(rawUserId) ? Long.valueOf(rawUserId) : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private String displayNameOf(SysUser user) {
+        if (user == null) {
+            return null;
+        }
+        if (StringUtils.hasText(user.getNickName())) {
+            return user.getNickName();
+        }
+        if (StringUtils.hasText(user.getUserName())) {
+            return user.getUserName();
+        }
+        return String.valueOf(user.getUserId());
     }
 
     private void ensureWorkflowTenantAccess(WfProcessDefinition definition, String operation) {

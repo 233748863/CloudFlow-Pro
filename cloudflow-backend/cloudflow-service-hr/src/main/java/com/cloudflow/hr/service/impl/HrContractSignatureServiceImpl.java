@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -38,6 +39,8 @@ import java.util.Set;
 public class HrContractSignatureServiceImpl implements IHrContractSignatureService {
 
     private static final Set<String> CANCELABLE_STATUS = Set.of("PENDING", "APPROVING");
+    private static final Set<String> REQUESTABLE_SIGN_STATUS = Set.of("UNSIGNED", "REJECTED", "EXPIRED", "CANCELLED");
+    private static final Set<String> CLOSED_CONTRACT_STATUS = Set.of("EXPIRED", "TERMINATED");
 
     private final HrContractSignatureMapper contractSignatureMapper;
     private final HrEmployeeContractMapper employeeContractMapper;
@@ -63,6 +66,7 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
             throw new HrBusinessException("CONTRACT_NOT_FOUND", "合同不存在：" + contractId);
         }
         essSupport.assertOwner(contract.getEmployeeId());
+        assertRequestable(contract);
         Long tenantId = currentTenantId();
         Long employeeId = contract.getEmployeeId();
 
@@ -84,7 +88,7 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
         UpdateWrapper<HrEmployeeContract> contractWrapper = new UpdateWrapper<>();
         contractWrapper.eq("id", contractId)
                 .eq("tenant_id", tenantId)
-                .set("sign_status", "SIGNING")
+                .set("sign_status", "PENDING")
                 .set("update_time", LocalDateTime.now());
         employeeContractMapper.update(null, contractWrapper);
         HrContractSignatureSubmittedEvent event = new HrContractSignatureSubmittedEvent();
@@ -162,6 +166,19 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
         log.info("合同签署完成回写，signatureId: {}, contractId: {}", id, signature.getContractId());
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void syncContractSignStatus(Long id, String signStatus) {
+        HrContractSignature signature = loadSignature(id);
+        String normalizedStatus = normalizeStatus(signStatus);
+        UpdateWrapper<HrEmployeeContract> contractWrapper = new UpdateWrapper<>();
+        contractWrapper.eq("id", signature.getContractId())
+                .eq("tenant_id", currentTenantId())
+                .set("sign_status", normalizedStatus)
+                .set("update_time", LocalDateTime.now());
+        employeeContractMapper.update(null, contractWrapper);
+    }
+
     public void startContractSignatureWorkflow(HrContractSignature signature) {
         HrEmployeeContract contract = employeeContractMapper.selectById(signature.getContractId());
         ProcessStartDTO dto = new ProcessStartDTO();
@@ -203,6 +220,24 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
             throw new HrBusinessException("CONTRACT_SIGNATURE_NOT_FOUND", "签署记录不存在：" + id);
         }
         return signature;
+    }
+
+    private void assertRequestable(HrEmployeeContract contract) {
+        String contractStatus = normalizeStatus(contract.getStatus());
+        if (CLOSED_CONTRACT_STATUS.contains(contractStatus)
+                || (contract.getEndDate() != null && contract.getEndDate().isBefore(LocalDate.now()))) {
+            throw new HrBusinessException("CONTRACT_EXPIRED",
+                    "合同已到期或终止，不允许发起签署：" + contract.getId());
+        }
+        String signStatus = normalizeStatus(contract.getSignStatus());
+        if (StringUtils.hasText(signStatus) && !REQUESTABLE_SIGN_STATUS.contains(signStatus)) {
+            throw new HrBusinessException("CONTRACT_SIGN_STATUS_INVALID",
+                    "当前签署状态不允许重新发起：" + signStatus);
+        }
+    }
+
+    private String normalizeStatus(String value) {
+        return StringUtils.hasText(value) ? value.trim().toUpperCase() : "";
     }
 
     private Long currentTenantId() {

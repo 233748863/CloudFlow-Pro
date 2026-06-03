@@ -1,19 +1,28 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.service.WorkflowCallbackService;
+import com.cloudflow.hr.client.AuthServiceClient;
+import com.cloudflow.hr.client.dto.UserCreateDTO;
+import com.cloudflow.hr.client.vo.UserVO;
 import com.cloudflow.hr.domain.entity.HrBenefitRequest;
+import com.cloudflow.hr.domain.entity.HrCandidate;
 import com.cloudflow.hr.domain.entity.HrCertificateRequest;
 import com.cloudflow.hr.domain.entity.HrCompChange;
 import com.cloudflow.hr.domain.entity.HrContractSignature;
+import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrLaborDispute;
 import com.cloudflow.hr.domain.entity.HrLifecycleApplication;
 import com.cloudflow.hr.domain.entity.HrMallOrder;
 import com.cloudflow.hr.domain.entity.HrOffer;
 import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
+import com.cloudflow.hr.domain.entity.HrPosition;
 import com.cloudflow.hr.domain.entity.HrRecruitmentRequisition;
 import com.cloudflow.hr.domain.entity.HrTalentReview;
 import com.cloudflow.hr.domain.entity.HrTalentReviewParticipant;
@@ -23,7 +32,12 @@ import com.cloudflow.hr.domain.entity.HrTimeRequest;
 import com.cloudflow.hr.domain.entity.HrTrainingEnrollment;
 import com.cloudflow.hr.domain.entity.HrWorkInjury;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.mapper.HrCandidateMapper;
+import com.cloudflow.hr.mapper.HrEmployeeMapper;
 import com.cloudflow.hr.mapper.HrMallOrderMapper;
+import com.cloudflow.hr.mapper.HrOfferMapper;
+import com.cloudflow.hr.mapper.HrPositionMapper;
+import com.cloudflow.hr.mapper.HrRecruitmentRequisitionMapper;
 import com.cloudflow.hr.mapper.HrSelfServiceMessageMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewParticipantMapper;
 import com.cloudflow.hr.mapper.HrTalentSuccessorMapper;
@@ -41,7 +55,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -64,6 +80,12 @@ import java.util.Map;
 public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
 
     private final HrTypedCrudService crudService;
+    private final AuthServiceClient authServiceClient;
+    private final HrOfferMapper hrOfferMapper;
+    private final HrCandidateMapper hrCandidateMapper;
+    private final HrRecruitmentRequisitionMapper hrRecruitmentRequisitionMapper;
+    private final HrPositionMapper hrPositionMapper;
+    private final HrEmployeeMapper hrEmployeeMapper;
     private final HrTrainingEnrollmentMapper trainingEnrollmentMapper;
     private final HrTrainingSessionMapper trainingSessionMapper;
     private final IHrCertificateService certificateService;
@@ -191,9 +213,18 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             certificateService.issuePdf(dto.getBusinessId());
             return;
         }
-        if (target.entityClass() == HrContractSignature.class && "SIGNED".equals(status)) {
-            // 合同签署通过 → 写 sign_time，同步 hr_employee_contract.sign_status = SIGNED。
-            contractSignatureService.onSigned(dto.getBusinessId());
+        if (target.entityClass() == HrOffer.class && "APPROVED".equals(status)) {
+            autoCreateEmployeeFromOffer(dto.getBusinessId(), dto.getTenantId());
+            return;
+        }
+        if (target.entityClass() == HrContractSignature.class) {
+            if ("SIGNED".equals(status)) {
+                // 合同签署通过 → 写 sign_time，同步 hr_employee_contract.sign_status = SIGNED。
+                contractSignatureService.onSigned(dto.getBusinessId());
+            } else {
+                // 驳回等非通过态仍要同步主合同，避免 hr_employee_contract 卡在 PENDING/SIGNING。
+                contractSignatureService.syncContractSignStatus(dto.getBusinessId(), status);
+            }
             return;
         }
         if (target.entityClass() == HrTalentReview.class && "PUBLISHED".equals(status)) {
@@ -276,6 +307,208 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             }
             log.info("工伤认定回调完成，injuryId={}", injuryId);
         }
+    }
+
+    private void autoCreateEmployeeFromOffer(Long offerId, Long tenantId) {
+        HrOffer offer = hrOfferMapper.selectById(offerId);
+        if (offer == null) {
+            throw new HrBusinessException("OFFER_NOT_FOUND", "Offer 不存在：" + offerId);
+        }
+        if (offer.getCandidateId() == null) {
+            throw new HrBusinessException("INVALID_PARAMETER", "Offer 缺少 candidateId：" + offerId);
+        }
+
+        HrCandidate candidate = hrCandidateMapper.selectById(offer.getCandidateId());
+        if (candidate == null) {
+            throw new HrBusinessException("CANDIDATE_NOT_FOUND", "候选人不存在：" + offer.getCandidateId());
+        }
+
+        HrRecruitmentRequisition requisition = candidate.getRequisitionId() == null
+                ? null
+                : hrRecruitmentRequisitionMapper.selectById(candidate.getRequisitionId());
+        Long positionId = offer.getPositionId() != null
+                ? offer.getPositionId()
+                : (requisition == null ? null : requisition.getPositionId());
+        HrPosition position = positionId == null ? null : hrPositionMapper.selectById(positionId);
+
+        Long userId = ensureUserAccount(tenantId, offer, candidate, requisition, position);
+        HrEmployee employee = ensureEmployeeProfile(tenantId, offer, candidate, requisition, position, userId);
+
+        boolean candidateWasHired = "HIRED".equalsIgnoreCase(candidate.getStatus());
+        UpdateWrapper<HrCandidate> candidateUpdate = new UpdateWrapper<>();
+        candidateUpdate.eq("id", candidate.getId())
+                .eq("tenant_id", tenantId)
+                .set("status", "HIRED")
+                .set("update_by", WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
+                .set("update_time", LocalDateTime.now());
+        hrCandidateMapper.update(null, candidateUpdate);
+
+        if (!candidateWasHired && requisition != null) {
+            UpdateWrapper<HrRecruitmentRequisition> requisitionUpdate = new UpdateWrapper<>();
+            requisitionUpdate.eq("id", requisition.getId())
+                    .eq("tenant_id", tenantId)
+                    .setSql("hired_count = IFNULL(hired_count, 0) + 1")
+                    .set("update_by", WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
+                    .set("update_time", LocalDateTime.now());
+            hrRecruitmentRequisitionMapper.update(null, requisitionUpdate);
+        }
+
+        log.info("Offer 自动入职完成，offerId={}, candidateId={}, employeeId={}, userId={}",
+                offerId, candidate.getId(), employee.getId(), userId);
+    }
+
+    private Long ensureUserAccount(Long tenantId,
+                                   HrOffer offer,
+                                   HrCandidate candidate,
+                                   HrRecruitmentRequisition requisition,
+                                   HrPosition position) {
+        String userName = buildUserName(offer, candidate);
+        R<UserVO> existingUserResp = authServiceClient.getUserByUserName(userName);
+        if (existingUserResp != null && existingUserResp.isSuccess()
+                && existingUserResp.getData() != null && existingUserResp.getData().getUserId() != null) {
+            return existingUserResp.getData().getUserId();
+        }
+
+        UserCreateDTO createDTO = new UserCreateDTO();
+        createDTO.setTenantId(tenantId);
+        createDTO.setDeptId(requisition == null ? null : requisition.getDeptId());
+        createDTO.setUserName(userName);
+        createDTO.setNickName(candidate.getName());
+        createDTO.setEmail(candidate.getEmail());
+        createDTO.setPhonenumber(candidate.getPhone());
+        createDTO.setSex(toUserSex(candidate.getGender()));
+        if (position != null && position.getPostId() != null) {
+            List<Long> postIds = new ArrayList<>();
+            postIds.add(position.getPostId());
+            createDTO.setPostIds(postIds);
+        }
+
+        R<Long> createResp = authServiceClient.createUser(createDTO);
+        if (createResp == null || !createResp.isSuccess() || createResp.getData() == null) {
+            String msg = createResp == null ? "Auth 服务无响应" : createResp.getMsg();
+            throw new HrBusinessException("AUTO_CREATE_USER_FAILED", "Offer 自动建号失败：" + msg);
+        }
+        return createResp.getData();
+    }
+
+    private HrEmployee ensureEmployeeProfile(Long tenantId,
+                                             HrOffer offer,
+                                             HrCandidate candidate,
+                                             HrRecruitmentRequisition requisition,
+                                             HrPosition position,
+                                             Long userId) {
+        HrEmployee existing = hrEmployeeMapper.selectOne(new LambdaQueryWrapper<HrEmployee>()
+                .eq(HrEmployee::getTenantId, tenantId)
+                .eq(HrEmployee::getUserId, userId)
+                .eq(HrEmployee::getDeleted, 0)
+                .last("LIMIT 1"));
+        if (existing != null) {
+            return existing;
+        }
+
+        if (candidate.getEmail() != null && !candidate.getEmail().isBlank()) {
+            existing = hrEmployeeMapper.selectOne(new LambdaQueryWrapper<HrEmployee>()
+                    .eq(HrEmployee::getTenantId, tenantId)
+                    .eq(HrEmployee::getEmail, candidate.getEmail())
+                    .eq(HrEmployee::getDeleted, 0)
+                    .last("LIMIT 1"));
+        }
+        if (existing == null && candidate.getPhone() != null && !candidate.getPhone().isBlank()) {
+            existing = hrEmployeeMapper.selectOne(new LambdaQueryWrapper<HrEmployee>()
+                    .eq(HrEmployee::getTenantId, tenantId)
+                    .eq(HrEmployee::getPhone, candidate.getPhone())
+                    .eq(HrEmployee::getDeleted, 0)
+                    .last("LIMIT 1"));
+        }
+        if (existing != null) {
+            if (existing.getUserId() == null && userId != null) {
+                UpdateWrapper<HrEmployee> update = new UpdateWrapper<>();
+                update.eq("id", existing.getId())
+                        .eq("tenant_id", tenantId)
+                        .set("user_id", userId)
+                        .set("update_by", WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
+                        .set("update_time", LocalDateTime.now());
+                hrEmployeeMapper.update(null, update);
+                existing.setUserId(userId);
+            }
+            return existing;
+        }
+
+        HrEmployee employee = new HrEmployee();
+        employee.setTenantId(tenantId);
+        employee.setEmployeeNo(generateEmployeeNo(tenantId));
+        employee.setName(candidate.getName());
+        employee.setGender(normalizeEmployeeGender(candidate.getGender()));
+        employee.setPhone(candidate.getPhone());
+        employee.setEmail(candidate.getEmail());
+        employee.setDeptId(requisition == null ? null : requisition.getDeptId());
+        employee.setPostId(position == null ? null : position.getPostId());
+        employee.setPositionId(offer.getPositionId() != null ? offer.getPositionId()
+                : (requisition == null ? null : requisition.getPositionId()));
+        employee.setEmployeeType("FULL_TIME");
+        employee.setEmployeeStatus("PROBATION");
+        employee.setHireDate(offer.getExpectedArrivalDate() != null ? offer.getExpectedArrivalDate() : LocalDate.now());
+        employee.setUserId(userId);
+        employee.setDeleted(0);
+        employee.setCreateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
+        employee.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
+        hrEmployeeMapper.insert(employee);
+        return employee;
+    }
+
+    private String buildUserName(HrOffer offer, HrCandidate candidate) {
+        String seed = offer.getOfferNo();
+        if (seed == null || seed.isBlank()) {
+            seed = candidate.getEmail();
+        }
+        if (seed == null || seed.isBlank()) {
+            seed = candidate.getPhone();
+        }
+        if (seed == null || seed.isBlank()) {
+            seed = "offer_" + offer.getId();
+        }
+        String normalized = seed.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "_");
+        if (normalized.isBlank()) {
+            normalized = "offer_" + offer.getId();
+        }
+        return normalized;
+    }
+
+    private String toUserSex(String gender) {
+        if (gender == null) {
+            return "2";
+        }
+        String normalized = gender.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "M", "MALE", "MAN", "男", "0" -> "0";
+            case "F", "FEMALE", "WOMAN", "女", "1" -> "1";
+            default -> "2";
+        };
+    }
+
+    private String normalizeEmployeeGender(String gender) {
+        if (gender == null || gender.isBlank()) {
+            return "UNKNOWN";
+        }
+        String normalized = gender.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "M", "MALE", "MAN", "男", "0" -> "MALE";
+            case "F", "FEMALE", "WOMAN", "女", "1" -> "FEMALE";
+            default -> gender;
+        };
+    }
+
+    private String generateEmployeeNo(Long tenantId) {
+        for (int i = 0; i < 5; i++) {
+            String employeeNo = "EMP" + System.currentTimeMillis() + i;
+            Long exists = hrEmployeeMapper.selectCount(new LambdaQueryWrapper<HrEmployee>()
+                    .eq(HrEmployee::getTenantId, tenantId)
+                    .eq(HrEmployee::getEmployeeNo, employeeNo));
+            if (exists == null || exists == 0) {
+                return employeeNo;
+            }
+        }
+        return "EMP" + System.nanoTime();
     }
 
     private String normalizeBusinessType(String businessType) {

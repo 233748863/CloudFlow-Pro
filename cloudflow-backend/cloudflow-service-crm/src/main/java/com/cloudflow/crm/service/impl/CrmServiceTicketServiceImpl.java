@@ -4,6 +4,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmServiceTicket;
 import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
@@ -11,8 +12,11 @@ import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmServiceTicketService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +27,18 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
     private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
 
     private final ICrmCustomerService crmCustomerService;
+
+    @Value("${cloudflow.crm.ticket.sla.low-hours:72}")
+    private int lowSeveritySlaHours;
+
+    @Value("${cloudflow.crm.ticket.sla.medium-hours:24}")
+    private int mediumSeveritySlaHours;
+
+    @Value("${cloudflow.crm.ticket.sla.high-hours:8}")
+    private int highSeveritySlaHours;
+
+    @Value("${cloudflow.crm.ticket.sla.critical-hours:4}")
+    private int criticalSeveritySlaHours;
 
     @Override
     public PageResult<CrmServiceTicket> queryPage(CrmServiceTicket query, PageQuery pageQuery) {
@@ -62,6 +78,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         if (ticket.getOpenedTime() == null) {
             ticket.setOpenedTime(now());
         }
+        applySlaDeadline(ticket, null);
         Localize.fillCommonAudit(ticket, currentTenantId(), currentUserName(), now());
         boolean saved = save(ticket);
         if (saved) {
@@ -91,6 +108,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         if (!StringUtils.hasText(ticket.getOwnerName())) {
             ticket.setOwnerName(persisted.getOwnerName());
         }
+        applySlaDeadline(ticket, persisted);
         ticket.setUpdateBy(currentUserName());
         ticket.setUpdateTime(now());
         boolean updated = updateById(ticket);
@@ -146,7 +164,13 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
             ticket.setIssueType("OTHER");
         }
         if (!StringUtils.hasText(ticket.getStatus())) {
-            ticket.setStatus("OPEN");
+            ticket.setStatus(CrmConstants.TicketStatus.OPEN);
+        }
+        if (ticket.getDueTime() != null) {
+            LocalDateTime openedTime = ticket.getOpenedTime();
+            if (openedTime != null && ticket.getDueTime().isBefore(openedTime)) {
+                throw new IllegalArgumentException("工单SLA截止时间不能早于创建时间");
+            }
         }
     }
 
@@ -156,5 +180,37 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         }
         CrmCustomer customer = crmCustomerService.getAccessibleCustomer(ticket.getCustomerId());
         ticket.setCustomerName(customer.getCustomerName());
+    }
+
+    private void applySlaDeadline(CrmServiceTicket ticket, CrmServiceTicket persisted) {
+        if (ticket == null || ticket.getDueTime() != null) {
+            return;
+        }
+        if (persisted != null && persisted.getDueTime() != null) {
+            ticket.setDueTime(persisted.getDueTime());
+            return;
+        }
+        LocalDateTime openedTime = ticket.getOpenedTime();
+        if (openedTime == null && persisted != null) {
+            openedTime = persisted.getOpenedTime();
+        }
+        if (openedTime == null) {
+            openedTime = now();
+            ticket.setOpenedTime(openedTime);
+        }
+        ticket.setDueTime(openedTime.plusHours(resolveSlaHours(ticket.getSeverity())));
+    }
+
+    private int resolveSlaHours(String severity) {
+        if (CrmConstants.TicketSeverity.CRITICAL.equalsIgnoreCase(severity)) {
+            return criticalSeveritySlaHours;
+        }
+        if (CrmConstants.TicketSeverity.HIGH.equalsIgnoreCase(severity)) {
+            return highSeveritySlaHours;
+        }
+        if (CrmConstants.TicketSeverity.MEDIUM.equalsIgnoreCase(severity)) {
+            return mediumSeveritySlaHours;
+        }
+        return lowSeveritySlaHours;
     }
 }

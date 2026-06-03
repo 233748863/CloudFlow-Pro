@@ -11,6 +11,9 @@ public interface ICrmNotificationService {
     /** 扫描商机停滞 N 天，发布OA通知。 */
     int dispatchStalledOpportunity();
 
+    /** 扫描工单SLA即将到期/已超时，发布OA通知。 */
+    int dispatchTicketSlaDue();
+
     /** 三合一执行一次扫描。 */
     int dispatchAll();
 }

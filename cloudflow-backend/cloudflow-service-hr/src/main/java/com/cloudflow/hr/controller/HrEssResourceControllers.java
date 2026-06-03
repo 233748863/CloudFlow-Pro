@@ -62,23 +62,20 @@ class HrSalarySlipController {
     @GetMapping
     @SaCheckPermission("hr:ess:slip:view")
     public R<PageResult<HrSalarySlipVO>> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
-        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
-        if (normalized.get("employeeId") == null) {
-            normalized.put("employeeId", essSupport.currentEmployeeId());
-        }
-        return R.ok(MapConverters.toPageResult(
-                crudService.page(HrSalarySlip.class, normalized),
-                HrSalarySlipVO.class, objectMapper));
+        PageResult<HrSalarySlip> raw = hrEssService.pageMySalarySlips(query, query.getPeriodMonth(), query.getStatus());
+        PageResult<HrSalarySlipVO> result = new PageResult<>();
+        result.setRows(MapConverters.toVOList(raw.getRows(), HrSalarySlipVO.class, objectMapper));
+        result.setTotal(raw.getTotal());
+        result.setPageNum(raw.getPageNum());
+        result.setPageSize(raw.getPageSize());
+        return R.ok(result);
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:ess:slip:view")
     public R<HrSalarySlipVO> get(@PathVariable Long id) {
-        Map<String, Object> row = crudService.get(HrSalarySlip.class, id);
-        Object employeeId = row == null ? null : row.get("employeeId");
-        if (employeeId instanceof Number num) {
-            essSupport.assertOwner(num.longValue());
-        }
+        HrSalarySlip slip = hrEssService.getMySalarySlip(id);
+        Map<String, Object> row = slip == null ? Map.of() : crudService.toMap(slip);
         return R.ok(MapConverters.toVO(row, HrSalarySlipVO.class, objectMapper));
     }
 

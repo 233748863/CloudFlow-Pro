@@ -7,13 +7,19 @@ import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.dto.*;
 import com.cloudflow.workflow.domain.enums.DeployEnums.*;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+import com.cloudflow.workflow.domain.system.SysUser;
+import com.cloudflow.workflow.domain.system.SysUserRole;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
+import com.cloudflow.workflow.mapper.system.SysUserMapper;
+import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.service.IDeployEnhancementService;
+import com.cloudflow.workflow.service.ISysNoticeService;
 import com.cloudflow.workflow.service.ScriptExecutionPolicy;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -75,6 +81,15 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Autowired
     private ScriptExecutionPolicy scriptExecutionPolicy;
+
+    @Autowired
+    private ISysNoticeService sysNoticeService;
+
+    @Autowired
+    private SysUserMapper sysUserMapper;
+
+    @Autowired
+    private SysUserRoleMapper sysUserRoleMapper;
 
     // ==================== 发布窗口管理 ====================
 
@@ -200,19 +215,23 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         }
 
         // 异步发送通知
+        int successCount = 0;
+        int failedCount = 0;
         for (WfDeployNotification notification : notifications) {
             try {
                 doSendNotification(notification);
                 deployNotificationMapper.updateSendStatus(
                         notification.getId(), SendStatus.SUCCESS.getCode(), null);
+                successCount++;
             } catch (Exception e) {
                 log.error("发送通知失败, notificationId={}", notification.getId(), e);
                 deployNotificationMapper.updateSendStatus(
                         notification.getId(), SendStatus.FAILED.getCode(), e.getMessage());
+                failedCount++;
             }
         }
 
-        return R.ok("发布通知已发送");
+        return R.ok("发布通知发送完成，成功 " + successCount + " 条，失败 " + failedCount + " 条");
     }
 
     @Override
@@ -245,6 +264,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
                 .collect(Collectors.toList());
 
         int successCount = 0;
+        int failedCount = 0;
         for (WfDeployNotification notification : failedList) {
             try {
                 doSendNotification(notification);
@@ -255,10 +275,11 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
                 log.error("重发通知失败, notificationId={}", notification.getId(), e);
                 deployNotificationMapper.updateSendStatus(
                         notification.getId(), SendStatus.FAILED.getCode(), e.getMessage());
+                failedCount++;
             }
         }
 
-        return R.ok("重发完成，成功 " + successCount + " 条，失败 " + (failedList.size() - successCount) + " 条");
+        return R.ok("重发完成，成功 " + successCount + " 条，失败 " + failedCount + " 条");
     }
 
     /**
@@ -268,28 +289,113 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         String type = notification.getNotificationType();
         switch (type) {
             case "WEBSOCKET":
-                // 通过WebSocket发送站内信
-                log.info("发送站内信通知: title={}, recipientType={}", 
-                        notification.getNotificationTitle(), notification.getRecipientType());
+                sendInternalDeployNotification(notification);
                 break;
             case "EMAIL":
-                // 发送邮件通知
-                log.info("发送邮件通知: title={}, recipientType={}", 
-                        notification.getNotificationTitle(), notification.getRecipientType());
-                break;
+                throw WorkflowException.validationError("EMAIL 通知渠道当前未接通");
             case "SMS":
-                // 发送短信通知
-                log.info("发送短信通知: title={}, recipientType={}", 
-                        notification.getNotificationTitle(), notification.getRecipientType());
-                break;
+                throw WorkflowException.validationError("SMS 通知渠道当前未接通");
             case "WECHAT":
-                // 发送微信通知
-                log.info("发送微信通知: title={}, recipientType={}", 
-                        notification.getNotificationTitle(), notification.getRecipientType());
-                break;
+                throw WorkflowException.validationError("WECHAT 通知渠道当前未接通");
             default:
-                log.warn("未知的通知类型: {}", type);
+                throw WorkflowException.validationError("未知的通知类型: " + type);
         }
+    }
+
+    private void sendInternalDeployNotification(WfDeployNotification notification) {
+        List<Long> recipientIds = resolveNotificationRecipients(notification);
+        if (recipientIds.isEmpty()) {
+            throw WorkflowException.validationError("未解析到通知接收人");
+        }
+        for (Long recipientId : recipientIds) {
+            sysNoticeService.sendNotice(
+                    recipientId,
+                    notification.getNotificationTitle(),
+                    notification.getNotificationContent(),
+                    "1",
+                    UserContext.getUserId(),
+                    StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system"
+            );
+        }
+    }
+
+    private List<Long> resolveNotificationRecipients(WfDeployNotification notification) {
+        Long tenantId = resolveTenantId(notification.getTenantId());
+        Set<Long> recipientIds = new LinkedHashSet<>();
+        List<Long> rawIds = parseRecipientIds(notification.getRecipientIds());
+        String recipientType = StringUtils.hasText(notification.getRecipientType())
+                ? notification.getRecipientType().trim().toUpperCase(Locale.ROOT)
+                : "USER";
+        switch (recipientType) {
+            case "USER" -> rawIds.forEach(userId -> addActiveUser(recipientIds, tenantId, userId));
+            case "ROLE" -> rawIds.forEach(roleId -> addUsersByRole(recipientIds, tenantId, roleId));
+            case "DEPT" -> rawIds.forEach(deptId -> addUsersByDept(recipientIds, tenantId, deptId));
+            case "ALL" -> addAllActiveUsers(recipientIds, tenantId);
+            default -> throw WorkflowException.validationError("不支持的接收人类型: " + recipientType);
+        }
+        return new ArrayList<>(recipientIds);
+    }
+
+    private List<Long> parseRecipientIds(String json) {
+        if (!StringUtils.hasText(json)) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<Long>>() {});
+        } catch (Exception e) {
+            throw WorkflowException.validationError("解析通知接收人失败: " + e.getMessage());
+        }
+    }
+
+    private void addUsersByRole(Set<Long> recipientIds, Long tenantId, Long roleId) {
+        if (roleId == null) {
+            return;
+        }
+        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                .eq(SysUserRole::getTenantId, tenantId)
+                .eq(SysUserRole::getRoleId, roleId));
+        for (SysUserRole userRole : userRoles) {
+            addActiveUser(recipientIds, tenantId, userRole.getUserId());
+        }
+    }
+
+    private void addUsersByDept(Set<Long> recipientIds, Long tenantId, Long deptId) {
+        if (deptId == null) {
+            return;
+        }
+        List<SysUser> users = sysUserMapper.selectList(activeUserQuery(tenantId)
+                .eq(SysUser::getDeptId, deptId));
+        for (SysUser user : users) {
+            recipientIds.add(user.getUserId());
+        }
+    }
+
+    private void addAllActiveUsers(Set<Long> recipientIds, Long tenantId) {
+        List<SysUser> users = sysUserMapper.selectList(activeUserQuery(tenantId));
+        for (SysUser user : users) {
+            recipientIds.add(user.getUserId());
+        }
+    }
+
+    private void addActiveUser(Set<Long> recipientIds, Long tenantId, Long userId) {
+        if (userId == null) {
+            return;
+        }
+        SysUser user = sysUserMapper.selectOne(activeUserQuery(tenantId)
+                .eq(SysUser::getUserId, userId));
+        if (user != null) {
+            recipientIds.add(user.getUserId());
+        }
+    }
+
+    private LambdaQueryWrapper<SysUser> activeUserQuery(Long tenantId) {
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getStatus, "0")
+                .eq(SysUser::getDeleted, 0);
+        if (tenantId != null) {
+            wrapper.eq(SysUser::getTenantId, tenantId);
+        }
+        return wrapper;
     }
 
     // ==================== 回滚机制 ====================

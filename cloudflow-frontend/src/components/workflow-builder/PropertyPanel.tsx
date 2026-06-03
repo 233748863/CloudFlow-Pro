@@ -493,24 +493,18 @@ export const PropertyPanel = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="GROOVY">Groovy 脚本</SelectItem>
-                    <SelectItem value="JAVASCRIPT">JavaScript 脚本</SelectItem>
                     <SelectItem value="API">HTTP API 调用</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              {(formData.props?.scriptType === "GROOVY" ||
-                formData.props?.scriptType === "JAVASCRIPT") && (
+              {formData.props?.scriptType === "GROOVY" && (
                 <div>
                   <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     脚本内容
                   </span>
                   <LazyTextarea
                     className="min-h-[112px] font-mono text-[11px]"
-                    placeholder={
-                      formData.props?.scriptType === "GROOVY"
-                        ? "def result = amount * 1.1\nreturn result"
-                        : "const result = amount * 1.1;\nreturn result;"
-                    }
+                    placeholder="def result = amount * 1.1\nreturn result"
                     value={formData.props?.scriptContent || ""}
                     onChange={(val: any) =>
                       handleChange("props", {

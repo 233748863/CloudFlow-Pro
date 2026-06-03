@@ -1,5 +1,7 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.hr.domain.entity.HrSalarySlip;
 
 import java.util.List;
@@ -27,6 +29,10 @@ public interface IHrEssService {
      * 员工确认工资条。仅允许工资条 owner 本人切换 employeeConfirmed → true。
      */
     void confirmSalarySlip(Long slipId);
+
+    PageResult<HrSalarySlip> pageMySalarySlips(PageQuery pageQuery, String periodMonth, String status);
+
+    HrSalarySlip getMySalarySlip(Long slipId);
 
     /**
      * 月度福利明细生成（社保 / 公积金等）。基于 {@code hr_employee_benefit} 在档员工 × 在档方案

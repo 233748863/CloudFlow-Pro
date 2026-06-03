@@ -15,6 +15,8 @@ public class ScriptExecutionPolicy {
 
     private static final String SCRIPT_DISABLED_MESSAGE =
             "脚本节点进程内执行已禁用，请改用 API 类型或启用隔离脚本执行器";
+    private static final String JAVASCRIPT_UNSUPPORTED_MESSAGE =
+            "脚本节点当前不支持 JavaScript，请改用 Groovy 或 API 类型";
     private static final String SCRIPT_TIMEOUT_MESSAGE =
             "脚本节点执行超时，请缩短脚本逻辑或改用 API 类型";
 
@@ -40,6 +42,10 @@ public class ScriptExecutionPolicy {
     }
 
     public void assertInProcessScriptAllowed(String scriptType) {
+        String normalized = normalizeScriptType(scriptType);
+        if ("JAVASCRIPT".equals(normalized)) {
+            throw new WorkflowException("SCRIPT_TYPE_UNSUPPORTED", JAVASCRIPT_UNSUPPORTED_MESSAGE);
+        }
         if (isInProcessScriptType(scriptType) && !isInProcessScriptEnabled()) {
             throw new WorkflowException("SCRIPT_DISABLED", SCRIPT_DISABLED_MESSAGE);
         }
@@ -64,6 +70,11 @@ public class ScriptExecutionPolicy {
                 }
                 JsonNode props = node.path("props");
                 String scriptType = normalizeScriptType(props.path("scriptType").asText(null));
+                if ("JAVASCRIPT".equals(scriptType)) {
+                    String nodeName = firstText(node.path("title").asText(null), node.path("label").asText(null), node.path("id").asText(null), "未命名脚本节点");
+                    throw new WorkflowException("SCRIPT_TYPE_UNSUPPORTED",
+                            "脚本节点 [" + nodeName + "] 使用 JAVASCRIPT，" + JAVASCRIPT_UNSUPPORTED_MESSAGE);
+                }
                 if (isInProcessScriptType(scriptType)) {
                     String nodeName = firstText(node.path("title").asText(null), node.path("label").asText(null), node.path("id").asText(null), "未命名脚本节点");
                     throw new WorkflowException("SCRIPT_DISABLED", "脚本节点 [" + nodeName + "] 使用 " + scriptType
