@@ -16,12 +16,17 @@ import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.auth.service.PasswordService;
+import com.cloudflow.auth.service.PasswordPolicyService;
 import com.cloudflow.auth.service.ILoginLogService;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.auth.service.ForcePasswordChangeService;
+import com.cloudflow.auth.service.LoginRiskNoticeService;
+import com.cloudflow.auth.service.UserLoginHistoryService;
 import com.cloudflow.auth.service.UserDataScopeService;
-import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserDataScopeSnapshot;
+import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.exception.ErrorCodeConstants;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
 import com.cloudflow.common.ratelimiter.enums.LimitType;
@@ -98,10 +103,19 @@ public class AuthController {
     private PasswordService passwordService;
 
     @Autowired
+    private PasswordPolicyService passwordPolicyService;
+
+    @Autowired
     private ForcePasswordChangeService forcePasswordChangeService;
 
     @Autowired
     private UserDataScopeService userDataScopeService;
+
+    @Autowired
+    private LoginRiskNoticeService loginRiskNoticeService;
+
+    @Autowired
+    private UserLoginHistoryService userLoginHistoryService;
 
     @Autowired
     private com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
@@ -213,9 +227,12 @@ public class AuthController {
         }
 
         String loginIp = getClientIp(request);
+        LocalDateTime loginTime = LocalDateTime.now();
+        UserLoginHistoryService.LoginRiskContext loginRiskContext = userLoginHistoryService.recordLogin(user, loginIp, loginTime);
         user.setLoginIp(loginIp);
-        user.setLoginDate(LocalDateTime.now());
+        user.setLoginDate(loginTime);
         sysUserMapper.updateById(user);
+        loginRiskNoticeService.notifyIfLocationChanged(user, loginRiskContext);
         if (passwordMatchResult.legacyPlaintextMatch()) {
             SysUser passwordUpgrade = new SysUser();
             passwordUpgrade.setUserId(user.getUserId());
@@ -311,6 +328,7 @@ public class AuthController {
         SysUser user = new SysUser();
         user.setUserName(username);
         user.setNickName(username);
+        passwordPolicyService.validateOrThrow(registerBody.getPassword(), user);
         user.setPassword(registerBody.getPassword());
         user.setEmail(registerBody.getEmail());
         user.setStatus("0");
@@ -351,10 +369,7 @@ public class AuthController {
     @GetMapping("/info")
     @SaCheckPermission("system:auth:info")
     public R<DynamicMapVO> info(HttpServletRequest request) {
-        Map<String, Object> userMap = resolveLoginUser(request);
-        if (userMap == null) {
-            return R.fail(401, "Token已过期或无效");
-        }
+        Map<String, Object> userMap = requireLoginUser(request);
 
         Long userId = toLong(userMap.get("userId"));
         String username = extractUsername(userMap, userId);
@@ -366,13 +381,13 @@ public class AuthController {
                         : null
         );
         if (userInfo == null) {
-            return R.fail(401, "用户信息不存在");
+            throw new ServiceException("用户信息不存在", ErrorCodeConstants.UNAUTHORIZED);
         }
 
         SysUser cachedUser = userInfo.getSysUser();
         SysUser latestUser = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(cachedUser.getUserId()));
         if (latestUser == null) {
-            return R.fail(401, "用户信息不存在");
+            throw new ServiceException("用户信息不存在", ErrorCodeConstants.UNAUTHORIZED);
         }
         boolean forcePasswordChange = forcePasswordChangeService.isRequired(latestUser);
 
@@ -417,25 +432,15 @@ public class AuthController {
     @PutMapping("/profile")
     @SaCheckPermission("system:user:profile:edit")
     public R<?> updateProfile(@RequestBody ProfileUpdateDTO dto, HttpServletRequest request) {
-        Map<String, Object> userMap = resolveLoginUser(request);
-        if (userMap == null) {
-            return R.fail(401, "Token已过期或无效");
-        }
-
-        Long userId = toLong(userMap.get("userId"));
-        if (userId == null) {
-            return R.fail(401, "登录用户信息异常");
-        }
+        Map<String, Object> userMap = requireLoginUser(request);
+        Long userId = requireUserId(userMap);
 
         String nickName = trimValue(dto.getNickName());
         if (!StringUtils.hasText(nickName)) {
-            return R.fail("显示名称不能为空");
+            throw new ServiceException("显示名称不能为空", ErrorCodeConstants.BAD_REQUEST);
         }
 
-        SysUser existing = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
-        if (existing == null) {
-            return R.fail(404, "用户不存在");
-        }
+        SysUser existing = requireExistingUser(userId);
 
         SysUser update = new SysUser();
         update.setUserId(userId);
@@ -453,33 +458,24 @@ public class AuthController {
     @PutMapping("/profile/password")
     @SaCheckPermission("system:user:profile:password")
     public R<?> changeProfilePassword(@RequestBody ChangePasswordDTO dto, HttpServletRequest request) {
-        Map<String, Object> userMap = resolveLoginUser(request);
-        if (userMap == null) {
-            return R.fail(401, "Token已过期或无效");
-        }
-
-        Long userId = toLong(userMap.get("userId"));
-        if (userId == null) {
-            return R.fail(401, "登录用户信息异常");
-        }
+        Map<String, Object> userMap = requireLoginUser(request);
+        Long userId = requireUserId(userMap);
 
         String oldPassword = trimValue(dto.getOldPassword());
         String newPassword = trimValue(dto.getNewPassword());
         if (!StringUtils.hasText(oldPassword) || !StringUtils.hasText(newPassword)) {
-            return R.fail("密码不能为空");
+            throw new ServiceException("密码不能为空", ErrorCodeConstants.BAD_REQUEST);
         }
         if (oldPassword.equals(newPassword)) {
-            return R.fail("新密码不能与当前密码相同");
+            throw new ServiceException("新密码不能与当前密码相同", ErrorCodeConstants.BAD_REQUEST);
         }
 
-        SysUser existing = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
-        if (existing == null) {
-            return R.fail(404, "用户不存在");
-        }
+        SysUser existing = requireExistingUser(userId);
 
         if (!passwordService.matchesPassword(oldPassword, existing.getPassword()).matched()) {
-            return R.fail("当前密码错误");
+            throw new ServiceException("当前密码错误", ErrorCodeConstants.BAD_REQUEST);
         }
+        passwordPolicyService.validateOrThrow(newPassword, existing);
 
         SysUser update = new SysUser();
         update.setUserId(userId);
@@ -498,15 +494,8 @@ public class AuthController {
     @GetMapping("/getRouters")
     @SaCheckPermission("system:auth:router")
     public R<?> getRouters(HttpServletRequest request) {
-        Map<String, Object> userMap = resolveLoginUser(request);
-        if (userMap == null) {
-            return R.fail(401, "Token已过期或无效");
-        }
-
-        Long userId = toLong(userMap.get("userId"));
-        if (userId == null) {
-            return R.fail(401, "登录用户信息异常");
-        }
+        Map<String, Object> userMap = requireLoginUser(request);
+        Long userId = requireUserId(userMap);
 
         List<SysMenu> menus = TenantBroker.applyWithoutTenant(ignored ->
                 sysMenuService.selectMenuTreeByUserId(userId)
@@ -541,6 +530,7 @@ public class AuthController {
 
             if (userId != null) {
                 sysMenuService.evictUserMenuCache(userId);
+                userDataScopeService.clear(tenantId, userId);
             }
         }
 
@@ -555,6 +545,30 @@ public class AuthController {
 
     private Map<String, Object> resolveLoginUser(HttpServletRequest request) {
         return tokenService.verifyToken(resolveRawToken(request));
+    }
+
+    private Map<String, Object> requireLoginUser(HttpServletRequest request) {
+        Map<String, Object> userMap = resolveLoginUser(request);
+        if (userMap == null) {
+            throw new ServiceException("Token已过期或无效", ErrorCodeConstants.UNAUTHORIZED);
+        }
+        return userMap;
+    }
+
+    private Long requireUserId(Map<String, Object> userMap) {
+        Long userId = toLong(userMap.get("userId"));
+        if (userId == null) {
+            throw new ServiceException("登录用户信息异常", ErrorCodeConstants.UNAUTHORIZED);
+        }
+        return userId;
+    }
+
+    private SysUser requireExistingUser(Long userId) {
+        SysUser existing = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
+        if (existing == null) {
+            throw new ServiceException("用户不存在", ErrorCodeConstants.NOT_FOUND);
+        }
+        return existing;
     }
 
     private String resolveRawToken(HttpServletRequest request) {
@@ -774,27 +788,31 @@ public class AuthController {
         String rawToken = resolveRawToken(request);
         Map<String, Object> userMap = tokenService.verifyToken(rawToken);
         if (userMap == null) {
-            return R.fail(401, "Token已过期或无效");
+            throw new ServiceException("Token已过期或无效", ErrorCodeConstants.UNAUTHORIZED);
         }
 
         if (!hasAdminRole(userMap.get("roles"))) {
-            return R.fail(403, "只有超级管理员才能切换租户");
+            throw new ServiceException("只有超级管理员才能切换租户", ErrorCodeConstants.FORBIDDEN);
         }
 
         Long targetTenantId = dto.getTenantId();
         if (targetTenantId == null) {
-            return R.fail("租户ID不能为空");
+            throw new ServiceException("租户ID不能为空", ErrorCodeConstants.BAD_REQUEST);
         }
 
         SysTenant targetTenant = resolveTenantById(targetTenantId);
         String tenantError = validateTenantAvailable(targetTenant, false);
         if (tenantError != null) {
-            return R.fail(tenantError);
+            throw new ServiceException(tenantError, ErrorCodeConstants.BAD_REQUEST);
         }
 
         userMap.put("tenantId", targetTenant.getTenantId());
         userMap.put("tenantCode", targetTenant.getTenantCode());
         userMap.put("tenantName", targetTenant.getTenantName());
+        userMap.put("dsType", 0);
+        userMap.put("dsDeptIds", List.of());
+        userMap.put("deptId", null);
+        userMap.put("deptName", null);
 
         if (StringUtils.hasText(rawToken)) {
             tokenService.deleteToken(rawToken);

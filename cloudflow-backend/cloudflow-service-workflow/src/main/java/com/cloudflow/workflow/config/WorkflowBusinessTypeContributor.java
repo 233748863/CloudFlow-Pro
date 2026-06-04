@@ -120,5 +120,11 @@ public class WorkflowBusinessTypeContributor implements BusinessTypeContributor 
         registry.register(BusinessTypeDef.builder()
                 .code("CRM_RENEWAL").module("crm").businessTable("crm_renewal")
                 .displayName("续约审批").build());
+
+        // ===== AUTH =====
+        registry.register(BusinessTypeDef.builder()
+                .code("AUTH_DICT_CHANGE").module("auth").businessTable("sys_dict_change_approval")
+                .idField("approval_id").processInstanceIdField("instance_id")
+                .displayName("高风险字典变更审批").build());
     }
 }

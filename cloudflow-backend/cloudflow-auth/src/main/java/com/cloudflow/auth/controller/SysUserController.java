@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.dto.ResetPasswordDTO;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.PasswordPolicyService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,9 @@ public class SysUserController {
 
     @Autowired
     private ISysUserService sysUserService;
+
+    @Autowired
+    private PasswordPolicyService passwordPolicyService;
 
     /**
      * 获取用户列表
@@ -76,6 +80,11 @@ public class SysUserController {
         if (!StringUtils.hasText(password)) {
             return R.fail("密码不能为空");
         }
+        SysUser target = sysUserService.selectUserById(userId);
+        if (target == null) {
+            return R.fail("用户不存在");
+        }
+        passwordPolicyService.validateOrThrow(password, target);
         return R.ok(sysUserService.resetPwd(userId, password));
     }
 

@@ -1,6 +1,7 @@
 package com.cloudflow.auth.handler;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.ratelimiter.aspectj.RateLimiterAspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,6 @@ public class AuthExceptionHandler {
         log.warn("请求限流: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header("Retry-After", "1")
-                .body(R.fail(HttpStatus.TOO_MANY_REQUESTS.value(), e.getMessage()));
+                .body(R.fail(ErrorCodeConstants.TOO_MANY_REQUESTS, e.getMessage()));
     }
 }

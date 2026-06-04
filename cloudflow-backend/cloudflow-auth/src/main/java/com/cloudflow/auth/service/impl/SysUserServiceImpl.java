@@ -17,13 +17,14 @@ import com.cloudflow.auth.service.InitialPasswordService;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.auth.service.PasswordService;
+import com.cloudflow.auth.service.PasswordPolicyService;
+import com.cloudflow.auth.service.RoleMutexService;
 import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.auth.service.UserDataScopeService;
-import com.cloudflow.auth.service.remote.NoticeSendRequest;
-import com.cloudflow.auth.service.remote.RemoteOaNoticeService;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.event.PasswordResetByAdminEvent;
 import com.cloudflow.common.core.event.UserDisabledEvent;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.exception.ServiceException;
@@ -88,6 +89,9 @@ public class SysUserServiceImpl implements ISysUserService {
     private PasswordService passwordService;
 
     @Autowired
+    private PasswordPolicyService passwordPolicyService;
+
+    @Autowired
     private InitialPasswordService initialPasswordService;
 
     @Autowired
@@ -100,13 +104,13 @@ public class SysUserServiceImpl implements ISysUserService {
     private UserDataScopeService userDataScopeService;
 
     @Autowired
+    private RoleMutexService roleMutexService;
+
+    @Autowired
     private OutboxPublisher outboxPublisher;
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @Autowired(required = false)
-    private RemoteOaNoticeService remoteOaNoticeService;
 
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
@@ -273,9 +277,11 @@ public class SysUserServiceImpl implements ISysUserService {
         if (targetTenantId != null && tenantService.isUserLimitReached(targetTenantId)) {
             throw new IllegalStateException("当前租户用户数已达上限，无法新增用户");
         }
+        roleMutexService.assertNoConflict(user.getRoleIds(), targetTenantId);
 
         boolean forcePasswordChange = false;
         if (StringUtils.hasText(user.getPassword())) {
+            passwordPolicyService.validateOrThrow(user.getPassword(), user);
             user.setPassword(passwordService.encodePassword(user.getPassword()));
         } else {
             user.setPassword(passwordService.encodePassword(initialPasswordService.requireInitialPassword(targetTenantId)));
@@ -309,6 +315,7 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
+    @Audit(name = "更新用户", spel = "#user", oldVal = "@sysUserServiceImpl.selectUserAuditSnapshot(#user.userId)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
     public int updateUser(SysUser user) {
@@ -324,10 +331,13 @@ public class SysUserServiceImpl implements ISysUserService {
         }
 
         if (StringUtils.hasText(user.getPassword())) {
+            SysUser passwordContext = persisted != null ? persisted : user;
+            passwordPolicyService.validateOrThrow(user.getPassword(), passwordContext);
             user.setPassword(passwordService.encodePassword(user.getPassword()));
         } else {
             user.setPassword(null);
         }
+        roleMutexService.assertNoConflict(user.getRoleIds(), persisted != null ? persisted.getTenantId() : UserContext.getTenantId());
 
         int rows = sysUserMapper.updateById(user);
 
@@ -425,6 +435,10 @@ public class SysUserServiceImpl implements ISysUserService {
         return userIds.length;
     }
 
+    public SysUser selectUserAuditSnapshot(Long userId) {
+        return selectUserById(userId);
+    }
+
     private void assertDeletionAllowed(Long userId) {
         List<String> blockingRefs = userDeletionGuardRegistry.findBlockingReferences(userId);
         if (!blockingRefs.isEmpty()) {
@@ -498,7 +512,7 @@ public class SysUserServiceImpl implements ISysUserService {
         user.setPwdResetRequired(ForcePasswordChangeService.REQUIRED);
         int rows = sysUserMapper.updateById(user);
         if (rows > 0 && existingUser != null) {
-            notifyPasswordReset(existingUser);
+            publishPasswordResetEvent(existingUser);
         }
         return rows;
     }
@@ -568,34 +582,39 @@ public class SysUserServiceImpl implements ISysUserService {
         return sysUserMapper.selectBatchIds(userIds);
     }
 
-    private void notifyPasswordReset(SysUser user) {
-        if (user == null || user.getUserId() == null || remoteOaNoticeService == null) {
+    private void publishPasswordResetEvent(SysUser user) {
+        if (user == null || user.getUserId() == null) {
             return;
         }
         try {
-            NoticeSendRequest request = new NoticeSendRequest();
-            request.setRecipientId(user.getUserId());
-            request.setTitle("密码已被管理员重置");
-            request.setContent(buildPasswordResetNoticeContent());
-            request.setType("1");
-            request.setSenderId(UserContext.getUserId());
-            request.setSenderName(StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system");
-            remoteOaNoticeService.sendNotice(request);
-        } catch (Exception e) {
-            // 通知失败不影响主事务，只保留日志便于追踪
-            log.warn("发送密码重置通知失败, userId={}", user.getUserId(), e);
+            PasswordResetByAdminEvent event = new PasswordResetByAdminEvent();
+            event.setUserId(user.getUserId());
+            event.setUserName(user.getUserName());
+            event.setTenantId(user.getTenantId());
+            event.setOperatorId(UserContext.getUserId());
+            event.setOperatorName(StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system");
+            event.setOperatorIp(resolveClientIp());
+            event.setResetAt(LocalDateTime.now());
+
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("PASSWORD_RESET_BY_ADMIN")
+                    .sourceModule("cloudflow-auth")
+                    .sourceId(user.getUserId())
+                    .tenantId(user.getTenantId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("密码重置事件序列化失败", e);
         }
     }
 
-    private String buildPasswordResetNoticeContent() {
-        String operator = StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
-        String clientIp = "unknown";
+    private String resolveClientIp() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes != null && attributes.getRequest() != null) {
-            clientIp = IpUtils.getIpAddr(attributes.getRequest());
+            return IpUtils.getIpAddr(attributes.getRequest());
         }
-        return "您的账号密码已被管理员重置。操作人：" + operator
-                + "，操作IP：" + clientIp
-                + "。系统已强制您下次登录修改密码，如非本人知悉请立即联系管理员。";
+        return "unknown";
     }
+
 }

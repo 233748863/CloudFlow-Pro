@@ -6,6 +6,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.common.redis.core.SysDictHelper;
+import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmReceivable;
@@ -13,6 +14,7 @@ import com.cloudflow.crm.domain.dto.CrmReceivableWriteoffDTO;
 import com.cloudflow.crm.domain.dto.ReceivableInvoiceSyncDTO;
 import com.cloudflow.crm.domain.vo.CrmReceivableAgingBucketVO;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
+import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmReceivableService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
@@ -28,6 +30,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +43,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
     private final ICrmCustomerService crmCustomerService;
     private final RemoteOaService remoteOaService;
     private final SysDictHelper sysDictHelper;
+    private final CrmEventPublisher crmEventPublisher;
 
     @Override
     public PageResult<CrmReceivable> queryPage(CrmReceivable query, PageQuery pageQuery) {
@@ -90,21 +94,24 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         if (receivable == null || receivable.getReceivableId() == null) {
             throw new IllegalArgumentException("回款ID不能为空");
         }
+        CrmReceivable persisted = getAccessibleReceivable(receivable.getReceivableId());
+        validateProtectedSettlementFields(persisted, receivable);
         fillBindingSnapshot(receivable);
         validate(receivable);
-        CrmReceivable persisted = getAccessibleReceivable(receivable.getReceivableId());
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(persisted, CrmReceivable::getOwnerId, "应收款");
         receivable.setTenantId(persisted.getTenantId());
         if (!StringUtils.hasText(receivable.getReceivableNo())) {
             receivable.setReceivableNo(persisted.getReceivableNo());
         }
-        if (receivable.getOwnerId() == null) {
-            receivable.setOwnerId(persisted.getOwnerId());
-        }
-        if (!StringUtils.hasText(receivable.getOwnerName())) {
-            receivable.setOwnerName(persisted.getOwnerName());
-        }
+        receivable.setOwnerId(persisted.getOwnerId());
+        receivable.setOwnerName(persisted.getOwnerName());
+        receivable.setReceivedAmount(persisted.getReceivedAmount());
+        receivable.setOutstandingAmount(persisted.getOutstandingAmount());
+        receivable.setReceivedDate(persisted.getReceivedDate());
+        receivable.setStatus(persisted.getStatus());
+        receivable.setInvoiceStatus(persisted.getInvoiceStatus());
+        receivable.setInvoiceId(persisted.getInvoiceId());
         receivable.setUpdateBy(currentUserName());
         receivable.setUpdateTime(now());
         boolean updated = updateById(receivable);
@@ -126,6 +133,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         boolean updated = updateById(receivable);
         if (updated) {
             crmCustomerService.refreshHealth(receivable.getCustomerId());
+            publishReceivableConfirmed(receivable);
         }
         return updated;
     }
@@ -304,6 +312,65 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         if (!StringUtils.hasText(receivable.getStatus())) {
             receivable.setStatus("PLANNED");
         }
+    }
+
+    private void validateProtectedSettlementFields(CrmReceivable persisted, CrmReceivable input) {
+        if (persisted == null || input == null) {
+            return;
+        }
+        if (input.getOwnerId() != null && !Objects.equals(input.getOwnerId(), persisted.getOwnerId())) {
+            throw new IllegalArgumentException("回款负责人变更请走归属调整流程");
+        }
+        if (input.getReceivedAmount() != null && compareAmount(input.getReceivedAmount(), persisted.getReceivedAmount()) != 0) {
+            throw new IllegalArgumentException("回款确认、核销或退款请走专用流程");
+        }
+        if (input.getOutstandingAmount() != null && compareAmount(input.getOutstandingAmount(), persisted.getOutstandingAmount()) != 0) {
+            throw new IllegalArgumentException("回款确认、核销或退款请走专用流程");
+        }
+        if (input.getReceivedDate() != null && !Objects.equals(input.getReceivedDate(), persisted.getReceivedDate())) {
+            throw new IllegalArgumentException("回款确认、核销或退款请走专用流程");
+        }
+        if (StringUtils.hasText(input.getStatus()) && !Objects.equals(input.getStatus(), persisted.getStatus())) {
+            throw new IllegalArgumentException("回款确认、核销或退款请走专用流程");
+        }
+        if (StringUtils.hasText(input.getInvoiceStatus()) && !Objects.equals(input.getInvoiceStatus(), persisted.getInvoiceStatus())) {
+            throw new IllegalArgumentException("发票状态请通过开票/核销链路同步");
+        }
+        if (input.getInvoiceId() != null && !Objects.equals(input.getInvoiceId(), persisted.getInvoiceId())) {
+            throw new IllegalArgumentException("发票绑定请使用绑定发票操作");
+        }
+    }
+
+    private int compareAmount(BigDecimal left, BigDecimal right) {
+        return zeroIfNull(left).compareTo(zeroIfNull(right));
+    }
+
+    private void publishReceivableConfirmed(CrmReceivable receivable) {
+        Long tenantId = receivable.getTenantId();
+        String customerName = receivable.getCustomerName();
+        if ((!StringUtils.hasText(customerName) || tenantId == null) && receivable.getCustomerId() != null) {
+            CrmCustomer customer = crmCustomerService.getAccessibleCustomer(receivable.getCustomerId());
+            if (!StringUtils.hasText(customerName)) {
+                customerName = customer.getCustomerName();
+            }
+            if (tenantId == null) {
+                tenantId = customer.getTenantId();
+            }
+        }
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("receivableId", receivable.getReceivableId());
+        fields.put("receivableNo", receivable.getReceivableNo());
+        fields.put("receivableName", receivable.getReceivableName());
+        fields.put("customerId", receivable.getCustomerId());
+        fields.put("customerName", customerName);
+        fields.put("contractId", receivable.getContractId());
+        fields.put("contractNo", receivable.getContractNo());
+        fields.put("invoiceId", receivable.getInvoiceId());
+        fields.put("plannedAmount", receivable.getPlannedAmount());
+        fields.put("receivedAmount", receivable.getReceivedAmount());
+        fields.put("receivedDate", receivable.getReceivedDate());
+        crmEventPublisher.publish(CrmEventStreamConstants.EVENT_RECEIVABLE_CONFIRMED,
+                tenantId != null ? tenantId : UserContext.getTenantId(), fields);
     }
 
     private void applyReceivableAmounts(CrmReceivable receivable, BigDecimal receivedAmount, LocalDate receivedDate) {

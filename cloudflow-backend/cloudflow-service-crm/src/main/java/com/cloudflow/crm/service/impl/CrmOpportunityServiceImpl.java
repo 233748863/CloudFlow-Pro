@@ -12,6 +12,7 @@ import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.CrmQuote;
+import com.cloudflow.crm.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardCardVO;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardColumnVO;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
@@ -20,6 +21,7 @@ import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmOpportunityService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
+import com.cloudflow.crm.service.remote.RemoteHrService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -46,6 +49,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
     private final ICrmCustomerService crmCustomerService;
     private final CrmQuoteMapper quoteMapper;
     private final RemoteOaService remoteOaService;
+    private final RemoteHrService remoteHrService;
     private final CrmEventPublisher crmEventPublisher;
 
     @Override
@@ -72,11 +76,12 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
 
     @Override
     public boolean createOpportunity(CrmOpportunity opportunity) {
-        fillCustomerSnapshot(opportunity);
-        validate(opportunity);
         if (opportunity.getOwnerId() == null) {
             opportunity.setOwnerId(UserContext.getUserId());
         }
+        enrichOwnerFromHr(opportunity);
+        fillCustomerSnapshot(opportunity);
+        validate(opportunity);
         if (!StringUtils.hasText(opportunity.getOwnerName())) {
             opportunity.setOwnerName(currentUserName());
         }
@@ -90,14 +95,26 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         if (opportunity == null || opportunity.getOpportunityId() == null) {
             throw new IllegalArgumentException("商机ID不能为空");
         }
-        fillCustomerSnapshot(opportunity);
-        validate(opportunity);
         CrmOpportunity persisted = getAccessibleOpportunity(opportunity.getOpportunityId());
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(persisted, CrmOpportunity::getOwnerId, "商机");
+        validateEditStageTransition(persisted, opportunity.getStage());
+        if (StringUtils.hasText(opportunity.getStatus()) && !Objects.equals(opportunity.getStatus(), persisted.getStatus())) {
+            throw new IllegalArgumentException("商机关闭请走审批流程，赢单请使用赢单操作");
+        }
         opportunity.setTenantId(persisted.getTenantId());
         opportunity.setOwnerId(opportunity.getOwnerId() == null ? persisted.getOwnerId() : opportunity.getOwnerId());
-        opportunity.setOwnerName(StringUtils.hasText(opportunity.getOwnerName()) ? opportunity.getOwnerName() : persisted.getOwnerName());
+        enrichOwnerFromHr(opportunity);
+        fillCustomerSnapshot(opportunity);
+        validate(opportunity);
+        if (!StringUtils.hasText(opportunity.getOwnerName())) {
+            opportunity.setOwnerName(persisted.getOwnerName());
+        }
+        if (opportunity.getDeptId() == null) {
+            opportunity.setDeptId(persisted.getDeptId());
+            opportunity.setDeptName(persisted.getDeptName());
+        }
+        opportunity.setStatus(persisted.getStatus());
         opportunity.setUpdateBy(currentUserName());
         opportunity.setUpdateTime(now());
         return updateById(opportunity);
@@ -131,7 +148,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
             if (existingQuote != null && existingQuote.getContractId() != null) {
                 return existingQuote.getContractId();
             }
-            RemoteOaService.ContractDraftRequest request = buildContractDraftRequest(opportunity);
+            RemoteOaService.ContractDraftRequest request = buildContractDraftRequest(opportunity, existingQuote);
             R<Long> response = remoteOaService.createContract("true", CrmConstants.SERVICE_NAME, request);
             if (response == null || !response.isSuccess() || response.getData() == null) {
                 log.warn("商机赢单自动建合同失败: opportunityId={}, msg={}",
@@ -167,22 +184,34 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         return quotes.isEmpty() ? null : quotes.get(0);
     }
 
-    private RemoteOaService.ContractDraftRequest buildContractDraftRequest(CrmOpportunity opportunity) {
+    private RemoteOaService.ContractDraftRequest buildContractDraftRequest(CrmOpportunity opportunity, CrmQuote quote) {
         RemoteOaService.ContractDraftRequest request = new RemoteOaService.ContractDraftRequest();
-        request.setContractName(opportunity.getOpportunityName() + " 合同");
+        request.setContractName(StringUtils.hasText(quote != null ? quote.getQuoteName() : null)
+                ? quote.getQuoteName()
+                : opportunity.getOpportunityName() + " 合同");
         request.setCounterpartyName(opportunity.getCustomerName());
         request.setContractType("SALES");
-        request.setAmount(opportunity.getExpectedAmount() == null ? BigDecimal.ZERO : opportunity.getExpectedAmount());
-        request.setCurrency("CNY");
+        request.setAmount(quote != null && quote.getTotalAmount() != null
+                ? quote.getTotalAmount()
+                : opportunity.getExpectedAmount() == null ? BigDecimal.ZERO : opportunity.getExpectedAmount());
+        request.setCurrency(StringUtils.hasText(quote != null ? quote.getCurrency() : null)
+                ? quote.getCurrency()
+                : "CNY");
         request.setOwnerId(opportunity.getOwnerId());
         request.setOwnerName(opportunity.getOwnerName());
         request.setDeptId(opportunity.getDeptId());
         request.setDeptName(opportunity.getDeptName());
         request.setCustomerId(opportunity.getCustomerId());
         request.setCustomerName(opportunity.getCustomerName());
-        request.setSourceType("CRM_OPPORTUNITY");
-        request.setSourceId(opportunity.getOpportunityId());
-        request.setRemark("由 CRM 商机赢单 #" + opportunity.getOpportunityId() + " 自动生成");
+        if (quote != null && quote.getQuoteId() != null) {
+            request.setSourceType("CRM_QUOTE");
+            request.setSourceId(quote.getQuoteId());
+            request.setRemark("由 CRM 报价 " + quote.getQuoteNo() + " / 商机赢单 #" + opportunity.getOpportunityId() + " 自动生成");
+        } else {
+            request.setSourceType("CRM_OPPORTUNITY");
+            request.setSourceId(opportunity.getOpportunityId());
+            request.setRemark("由 CRM 商机赢单 #" + opportunity.getOpportunityId() + " 自动生成");
+        }
         return request;
     }
 
@@ -355,6 +384,73 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
             opportunity.setDeptId(customer.getDeptId());
             opportunity.setDeptName(customer.getDeptName());
         }
+    }
+
+    /**
+     * 商机归属保护：ownerId 对应的员工必须在职；同时补齐 ownerName / dept 快照。
+     */
+    private void enrichOwnerFromHr(CrmOpportunity opportunity) {
+        if (opportunity == null || opportunity.getOwnerId() == null) {
+            return;
+        }
+        try {
+            R<HrEmployeeSummaryVO> response = remoteHrService.getEmployeeByUserId(opportunity.getOwnerId());
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                return;
+            }
+            HrEmployeeSummaryVO employee = response.getData();
+            if (!employee.isActive()) {
+                throw new IllegalArgumentException("商机归属员工已离职，请选择其它员工");
+            }
+            if (!StringUtils.hasText(opportunity.getOwnerName())) {
+                opportunity.setOwnerName(employee.getEmployeeName());
+            }
+            if (opportunity.getDeptId() == null && employee.getDeptId() != null) {
+                opportunity.setDeptId(employee.getDeptId());
+                opportunity.setDeptName(employee.getDeptName());
+            }
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.warn("enrichOpportunityOwnerFromHr failed, ownerId={}, error={}",
+                    opportunity.getOwnerId(), ex.getMessage());
+        }
+    }
+
+    private void validateEditStageTransition(CrmOpportunity persisted, String targetStage) {
+        if (persisted == null || !StringUtils.hasText(targetStage)) {
+            return;
+        }
+        String current = normalizeStage(persisted.getStage());
+        String target = normalizeStage(targetStage);
+        if (target == null || target.equals(current)) {
+            return;
+        }
+        if (CrmConstants.OpportunityStage.WON.equals(target)) {
+            throw new IllegalArgumentException("商机赢单请使用赢单操作");
+        }
+        if (CrmConstants.OpportunityStage.LOST.equals(target) || stageOrder(target) < stageOrder(current)) {
+            throw new IllegalArgumentException("商机降级/输单请走审批流程");
+        }
+    }
+
+    private String normalizeStage(String stage) {
+        return StringUtils.hasText(stage) ? stage.trim().toUpperCase() : null;
+    }
+
+    private int stageOrder(String stage) {
+        if (stage == null) {
+            return Integer.MAX_VALUE;
+        }
+        return switch (stage) {
+            case CrmConstants.OpportunityStage.LEAD -> 1;
+            case CrmConstants.OpportunityStage.QUALIFIED -> 2;
+            case CrmConstants.OpportunityStage.PROPOSAL -> 3;
+            case CrmConstants.OpportunityStage.NEGOTIATION -> 4;
+            case CrmConstants.OpportunityStage.WON -> 5;
+            case CrmConstants.OpportunityStage.LOST -> 6;
+            default -> Integer.MAX_VALUE;
+        };
     }
 
     private String resolveStageLabel(String stage) {

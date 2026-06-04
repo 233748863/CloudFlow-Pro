@@ -46,7 +46,7 @@ export const OpportunityTab: React.FC = () => {
                         { label: '客户360', icon: <Handshake size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
                         { label: '编辑商机', icon: <Target size={14} />, onClick: () => openDialog({ type: 'opportunity', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:opportunity:edit' },
                         { label: '赢单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'winOpportunity', item }), semantic: 'process', permissionKey: 'crm:opportunity:win' },
-                        { label: '输单', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } }), semantic: 'disable', permissionKey: 'crm:opportunity:lose' },
+                        { label: '输单审批', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } }), semantic: 'disable', permissionKey: 'crm:approval:opportunity-downgrade' },
                         {
                           label: '转项目',
                           icon: <FolderKanban size={14} />,

@@ -46,6 +46,11 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
+
         <!-- Spring Cloud Context（@RefreshScope） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

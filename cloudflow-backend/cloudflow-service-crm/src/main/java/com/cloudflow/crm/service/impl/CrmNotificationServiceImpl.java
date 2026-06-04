@@ -1,7 +1,9 @@
 package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.event.SystemNoticeDispatchEvent;
+import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.tenant.support.TenantIterator;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
@@ -14,7 +16,7 @@ import com.cloudflow.crm.mapper.CrmReceivableMapper;
 import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmNotificationService;
-import com.cloudflow.crm.service.remote.RemoteOaService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,8 +38,9 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     private final CrmOpportunityMapper opportunityMapper;
     private final CrmServiceTicketMapper serviceTicketMapper;
     private final ICrmCustomerService crmCustomerService;
-    private final RemoteOaService remoteOaService;
     private final TenantIterator tenantIterator;
+    private final OutboxPublisher outboxPublisher;
+    private final ObjectMapper objectMapper;
 
     @Value("${cloudflow.crm.notification.follow-up-inactive-days:14}")
     private int followUpInactiveDays;
@@ -56,15 +59,17 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
                                       CrmOpportunityMapper opportunityMapper,
                                       CrmServiceTicketMapper serviceTicketMapper,
                                       ICrmCustomerService crmCustomerService,
-                                      RemoteOaService remoteOaService,
-                                      TenantIterator tenantIterator) {
+                                      TenantIterator tenantIterator,
+                                      OutboxPublisher outboxPublisher,
+                                      ObjectMapper objectMapper) {
         this.customerMapper = customerMapper;
         this.receivableMapper = receivableMapper;
         this.opportunityMapper = opportunityMapper;
         this.serviceTicketMapper = serviceTicketMapper;
         this.crmCustomerService = crmCustomerService;
-        this.remoteOaService = remoteOaService;
         this.tenantIterator = tenantIterator;
+        this.outboxPublisher = outboxPublisher;
+        this.objectMapper = objectMapper;
     }
 
     /** 每天 09:00 触发跟进逾期 / 回款到期 / 商机停滞通知。 */
@@ -216,21 +221,30 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     }
 
     private boolean publish(String title, String content, String type, String priority, Long tenantId, Long ownerId) {
+        if (ownerId == null) {
+            return false;
+        }
         try {
-            RemoteOaService.AnnouncementPublishRequest request = new RemoteOaService.AnnouncementPublishRequest();
-            request.setTitle(title);
-            request.setContent(content);
-            request.setType(type);
-            request.setPriority(priority);
-            request.setScopeType("ALL");
-            request.setTenantId(tenantId);
-            request.setSenderId(ownerId);
-            request.setCreateBy("crm-system");
-            request.setExpireTime(LocalDateTime.now().plusDays(7));
-            R<Long> response = remoteOaService.publishAnnouncement("true", CrmConstants.SERVICE_NAME, request);
-            return response != null && response.isSuccess();
+            SystemNoticeDispatchEvent event = new SystemNoticeDispatchEvent();
+            event.setTenantId(tenantId);
+            event.setRecipientId(ownerId);
+            event.setSenderId(null);
+            event.setSenderName("crm-system");
+            event.setTitle(title);
+            event.setContent(content);
+            event.setType(type);
+
+            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
+                    .eventType("SYSTEM_NOTICE_DISPATCH")
+                    .sourceModule("cloudflow-crm")
+                    .sourceId(ownerId)
+                    .tenantId(tenantId)
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build();
+            outboxPublisher.publish(envelope);
+            return true;
         } catch (Exception e) {
-            log.warn("CRM publish announcement failed: {} - {}", title, e.getMessage());
+            log.warn("CRM publish owner notice failed: {} - {}", title, e.getMessage());
             return false;
         }
     }

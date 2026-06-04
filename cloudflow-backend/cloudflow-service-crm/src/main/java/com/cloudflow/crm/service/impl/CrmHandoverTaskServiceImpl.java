@@ -3,6 +3,7 @@ package com.cloudflow.crm.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmHandoverTask;
@@ -21,6 +22,7 @@ import com.cloudflow.crm.mapper.CrmQuoteMapper;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
 import com.cloudflow.crm.mapper.CrmRenewalMapper;
 import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
+import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmHandoverTaskService;
 import com.cloudflow.crm.service.remote.RemoteHrService;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +33,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -49,6 +53,7 @@ public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
     private final CrmRenewalMapper renewalMapper;
     private final CrmServiceTicketMapper serviceTicketMapper;
     private final RemoteHrService remoteHrService;
+    private final CrmEventPublisher crmEventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -149,6 +154,9 @@ public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
     private int autoReassignAll(Long tenantId, Long fromOwnerUserId, String fromOwnerName, Long fromDeptId,
                                 String eventId, Long successorUserId, String successorOwnerName) {
         int updated = 0;
+        List<CrmCustomer> reassignedCustomers = customerMapper.selectList(new LambdaQueryWrapper<CrmCustomer>()
+                .eq(CrmCustomer::getOwnerId, fromOwnerUserId)
+                .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL));
         updated += updateOwner(leadMapper, new LambdaUpdateWrapper<CrmLead>()
                 .eq(CrmLead::getOwnerId, fromOwnerUserId)
                 .eq(CrmLead::getDeleted, CrmConstants.DelFlag.NORMAL)
@@ -164,6 +172,8 @@ public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
                 .set(CrmCustomer::getOwnerName, successorOwnerName)
                 .set(CrmCustomer::getUpdateTime, LocalDateTime.now())
                 .set(CrmCustomer::getUpdateBy, "hr-employee-left"));
+        publishCustomerOwnerChangedBatch(tenantId, reassignedCustomers, fromOwnerUserId, fromOwnerName,
+                successorUserId, successorOwnerName, "AUTO_REASSIGN");
         updated += updateOwner(opportunityMapper, new LambdaUpdateWrapper<CrmOpportunity>()
                 .eq(CrmOpportunity::getOwnerId, fromOwnerUserId)
                 .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
@@ -292,13 +302,18 @@ public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
                     .set(CrmLead::getUpdateBy, "crm-handover"));
         }
         if ("CRM_CUSTOMER".equals(businessType)) {
-            return customerMapper.update(null, new LambdaUpdateWrapper<CrmCustomer>()
+            int updated = customerMapper.update(null, new LambdaUpdateWrapper<CrmCustomer>()
                     .eq(CrmCustomer::getCustomerId, task.getBusinessId())
                     .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
                     .set(CrmCustomer::getOwnerId, toOwnerUserId)
                     .set(CrmCustomer::getOwnerName, toOwnerName)
                     .set(CrmCustomer::getUpdateTime, now)
                     .set(CrmCustomer::getUpdateBy, "crm-handover"));
+            if (updated > 0) {
+                publishCustomerOwnerChanged(task.getTenantId(), task.getBusinessId(), task.getBusinessName(),
+                        task.getFromOwnerId(), task.getFromOwnerName(), toOwnerUserId, toOwnerName, "HANDOVER");
+            }
+            return updated;
         }
         if ("CRM_OPPORTUNITY".equals(businessType)) {
             return opportunityMapper.update(null, new LambdaUpdateWrapper<CrmOpportunity>()
@@ -411,5 +426,35 @@ public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
             return contextTenantId;
         }
         return FALLBACK_TENANT_ID;
+    }
+
+    private void publishCustomerOwnerChangedBatch(Long tenantId, List<CrmCustomer> customers,
+                                                  Long fromOwnerId, String fromOwnerName,
+                                                  Long toOwnerId, String toOwnerName, String action) {
+        if (customers == null || customers.isEmpty()) {
+            return;
+        }
+        for (CrmCustomer customer : customers) {
+            publishCustomerOwnerChanged(resolveTenantId(customer.getTenantId() != null ? customer.getTenantId() : tenantId),
+                    customer.getCustomerId(), customer.getCustomerName(), fromOwnerId, fromOwnerName, toOwnerId, toOwnerName, action);
+        }
+    }
+
+    private void publishCustomerOwnerChanged(Long tenantId, Long customerId, String customerName,
+                                             Long fromOwnerId, String fromOwnerName,
+                                             Long toOwnerId, String toOwnerName, String action) {
+        if (customerId == null) {
+            return;
+        }
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("customerId", customerId);
+        fields.put("customerName", customerName);
+        fields.put("action", action);
+        fields.put("fromOwnerId", fromOwnerId);
+        fields.put("fromOwnerName", fromOwnerName);
+        fields.put("toOwnerId", toOwnerId);
+        fields.put("toOwnerName", toOwnerName);
+        crmEventPublisher.publish(CrmEventStreamConstants.EVENT_CUSTOMER_OWNER_CHANGED,
+                resolveTenantId(tenantId), fields);
     }
 }

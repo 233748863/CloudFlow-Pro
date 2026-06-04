@@ -105,4 +105,11 @@ public class RedisStreamUtil {
     public Long deleteGlobal(String key, String... recordIds) {
         return redisTemplate.opsForStream().delete(getGlobalKey(key), recordIds);
     }
+
+    /**
+     * 裁剪全局 Stream 长度，避免消息无限堆积。
+     */
+    public Long trimGlobal(String key, long count, boolean approximateTrimming) {
+        return redisTemplate.opsForStream().trim(getGlobalKey(key), count, approximateTrimming);
+    }
 }

@@ -9,6 +9,7 @@ import com.cloudflow.auth.mapper.SysRoleMenuMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysRoleService;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.RoleMutexService;
 import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -48,6 +49,9 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Autowired
     private UserDataScopeService userDataScopeService;
+
+    @Autowired
+    private RoleMutexService roleMutexService;
 
     @Override
     public List<SysRole> selectRoleList(SysRole role) {
@@ -102,6 +106,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     }
 
     @Override
+    @Audit(name = "更新角色", spel = "#role", oldVal = "@sysRoleServiceImpl.selectRoleAuditSnapshot(#role.roleId)", diff = true, highRisk = true)
     @Transactional
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
     public int updateRole(SysRole role) {
@@ -163,6 +168,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
     @Audit(name = "删除角色", highRisk = true)
     public int deleteRoleByIds(Long[] roleIds) {
+        roleMutexService.removeRulesByRoleIds(roleIds);
         for (Long roleId : roleIds) {
             revokeSessionsByRole(roleId);
             roleMapper.deleteById(roleId);
@@ -173,6 +179,10 @@ public class SysRoleServiceImpl implements ISysRoleService {
         }
         // 注意：@CacheEvict 会自动清除缓存，不需要手动调用 clearMenuCache()
         return roleIds.length;
+    }
+
+    public SysRole selectRoleAuditSnapshot(Long roleId) {
+        return selectRoleById(roleId);
     }
 
     private void revokeSessionsByRole(Long roleId) {

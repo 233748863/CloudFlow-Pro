@@ -111,7 +111,8 @@ WHERE dict_type IN (
   'announcement_type',
   'announcement_priority',
   'workflow_status',
-  'workflow_definition_status'
+  'workflow_definition_status',
+  'sys_audit_action_risk_level'
 );
 
 DELETE FROM cloud_flow_db.sys_dict_type
@@ -137,8 +138,13 @@ WHERE dict_type IN (
   'announcement_type',
   'announcement_priority',
   'workflow_status',
-  'workflow_definition_status'
+  'workflow_definition_status',
+  'sys_audit_action_risk_level'
 );
+
+DELETE FROM cloud_flow_db.sys_dict_change_approval
+WHERE tenant_id = 100000
+   OR approval_id BETWEEN 91000 AND 91999;
 
 DELETE FROM cloud_flow_db.sys_config
 WHERE config_id BETWEEN 1 AND 92;
@@ -198,6 +204,7 @@ WHERE definition_id IN (
   'wf_business_trip',
   'wf_vehicle_approval',
   'wf_knowledge_publish',
+  'wf_dict_change_approval',
   'wf_seal_application',
   'wf_seal_renewal',
   'wf_license_borrow',
@@ -607,6 +614,9 @@ INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_k
 INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(10, 100000, 'CRM_OPS', 'crm_ops', 10, '3', 4, NULL, '0', '0', 'admin', NOW(), '', null, 'CRM运营，负责产品、价目表、分配规则与通知配置');
 INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type, ds_scope, status, deleted, create_by, create_time, update_by, update_time, remark) VALUES(11, 100000, 'CUSTOMER_SUCCESS', 'customer_success', 11, '3', 4, NULL, '0', '0', 'admin', NOW(), '', null, '客户成功，负责续约、回款跟进与服务工单协调');
 
+INSERT IGNORE INTO cloud_flow_db.sys_role_mutex (id, tenant_id, role_id_1, role_id_2, create_by, create_time)
+VALUES (1, 100000, 1, 5, 'admin', NOW());
+
 -- 4. 初始化用户数据 (密码统一为: 123456, 存储格式为 BCrypt(SHA256(明文密码)))
 INSERT IGNORE INTO cloud_flow_db.sys_user (user_id, tenant_id, dept_id, user_name, nick_name, email, phonenumber, sex, password, status, deleted, pwd_reset_required, login_ip, login_date, create_by, create_time, update_by, update_time, remark, avatar) VALUES(1,  100000, 100, 'admin', 'Admin', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '超级管理员', '');
 
@@ -995,7 +1005,6 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(831, '商机编辑',   801, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:opportunity:edit', '#', 'admin', NOW(), '', null, '编辑商机');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(832, '商机删除',   801, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:opportunity:remove', '#', 'admin', NOW(), '', null, '删除商机');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(833, '商机赢单',   801, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:opportunity:win', '#', 'admin', NOW(), '', null, '商机赢单');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(834, '商机输单',   801, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:opportunity:lose', '#', 'admin', NOW(), '', null, '商机输单');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(835, '报价新增',   802, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:quote:add', '#', 'admin', NOW(), '', null, '新增报价');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(836, '报价编辑',   802, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:quote:edit', '#', 'admin', NOW(), '', null, '编辑报价');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(837, '报价删除',   802, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:quote:remove', '#', 'admin', NOW(), '', null, '删除报价');
@@ -1030,8 +1039,6 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(866, '销售目标新增', 810, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:sales-target:add', '#', 'admin', NOW(), '', null, '新增销售目标');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(867, '销售目标编辑', 810, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:sales-target:edit', '#', 'admin', NOW(), '', null, '编辑销售目标');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(868, '销售目标删除', 810, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:sales-target:remove', '#', 'admin', NOW(), '', null, '删除销售目标');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(869, '公海释放',   811, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:customer-pool:release', '#', 'admin', NOW(), '', null, '释放客户到公海');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(870, '公海抢单',   811, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:customer-pool:claim', '#', 'admin', NOW(), '', null, '公海抢单');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(871, '公海指派',   811, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:customer-pool:assign', '#', 'admin', NOW(), '', null, '公海指派负责人');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(872, '自动回收',   811, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:customer-pool:auto-release', '#', 'admin', NOW(), '', null, '触发自动回收');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(873, '规则新增',   812, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'crm:assignment-rule:add', '#', 'admin', NOW(), '', null, '新增分配规则');
@@ -1528,6 +1535,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 (971,  '字典新增',       611,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dict:add',               '#', 'admin', NOW(), '', NULL, '字典新增权限'),
 (972,  '字典编辑',       611,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dict:edit',              '#', 'admin', NOW(), '', NULL, '字典编辑权限'),
 (973,  '字典删除',       611,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dict:remove',            '#', 'admin', NOW(), '', NULL, '字典删除权限'),
+(1101, '系统字典审批提交', 611, 5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dict:edit:system',      '#', 'admin', NOW(), '', NULL, '高风险系统字典提交审批权限'),
 (974,  '缓存清理',       610,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:cache:remove',           '#', 'admin', NOW(), '', NULL, '缓存清理权限'),
 (975,  '日志删除',       606,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:log:remove',             '#', 'admin', NOW(), '', NULL, '日志删除权限'),
 (977,  '登录日志删除',   616,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:login-log:remove',       '#', 'admin', NOW(), '', NULL, '登录日志删除权限'),
@@ -1907,7 +1915,6 @@ INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 829, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 830, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 831, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 833, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 834, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 835, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 836, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 838, 100000);
@@ -1960,7 +1967,6 @@ INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 829, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 830, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 831, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 833, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 834, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 835, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 836, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 838, 100000);
@@ -1999,8 +2005,6 @@ INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 865, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 866, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 867, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 868, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 869, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 870, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 871, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 872, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 873, 100000);
@@ -2010,6 +2014,22 @@ INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 881, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 882, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 883, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 884, 100000);
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 877, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 878, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 879, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 880, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(3, 880, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 877, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 878, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 879, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 880, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 877, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 878, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 879, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 880, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 877, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(11, 880, 100000);
 
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(11, 1, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(11, 2, 100000);
@@ -2276,6 +2296,11 @@ WHERE rm.menu_id = 613;
 
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
 SELECT role_id, 991, tenant_id
+FROM cloud_flow_db.sys_role
+WHERE role_key = 'admin';
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 1101, tenant_id
 FROM cloud_flow_db.sys_role
 WHERE role_key = 'admin';
 
@@ -2607,6 +2632,29 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (1, '草稿',   'DRAFT',     'workflow_definition_status', 'default', '草稿'),
 (2, '已发布', 'PUBLISHED', 'workflow_definition_status', 'success', '已发布'),
 (3, '已归档', 'ARCHIVED',  'workflow_definition_status', 'default', '已归档');
+
+INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
+('审计动作风险等级', 'sys_audit_action_risk_level', '系统审计高风险动作分级');
+
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`, `risk_level`) VALUES
+(1, '低风险', 'LOW',  'sys_audit_action_risk_level', 'info',    '低风险审计动作', 'LOW'),
+(2, '中风险', 'MID',  'sys_audit_action_risk_level', 'warning', '中风险审计动作', 'LOW'),
+(3, '高风险', 'HIGH', 'sys_audit_action_risk_level', 'danger',  '高风险审计动作', 'LOW');
+
+UPDATE cloud_flow_db.sys_dict_data
+SET risk_level = 'HIGH'
+WHERE dict_type IN (
+  'sys_normal_disable',
+  'request_status',
+  'contract_status',
+  'invoice_status',
+  'salary_slip_status',
+  'crm_lead_status',
+  'employee_status',
+  'announcement_status',
+  'workflow_status',
+  'workflow_definition_status'
+);
 
 -- 12. 初始化系统参数数据
 -- config_scope: 0=全局（所有租户共享） 1=租户（每个租户可独立配置）
@@ -3077,6 +3125,9 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_n
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_knowledge_publish', '知识库发布审批', 'knowledge_publish', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交知识文档"},{"id":"n1","type":"APPROVAL","title":"直属领导审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"管理员/HR发布审批","approverType":"ROLE","approverValue":"admin,hr","signType":"ANY"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+
+INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_dict_change_approval', '高风险字典变更审批流程', 'dict_change_approval', 1, 'PUBLISHED', 1, 'AUTH', '{"nodes":[{"id":"root","type":"START","title":"提交高风险字典变更"},{"id":"n1","type":"APPROVAL","title":"系统管理员审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 UPDATE cloud_flow_db.wf_process_definition
 SET form_id = CASE definition_id

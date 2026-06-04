@@ -20,6 +20,7 @@ import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 import org.springframework.data.redis.stream.Subscription;
+import org.springframework.core.env.Environment;
 
 import java.time.Duration;
 import java.util.List;
@@ -73,13 +74,17 @@ public class EventConsumerAutoConfiguration {
             DeadLetterPublisher deadLetterPublisher,
             BusinessEventIdempotentStore callbackIdempotentStore,
             ObjectMapper objectMapper,
-            OutboxProperties properties) {
-        redisStreamUtil.createGlobalGroup(properties.getStreamKey(), properties.getConsumerGroup());
-        String consumerName = properties.getConsumerPrefix() + "-" + UUID.randomUUID().toString().substring(0, 8);
+            OutboxProperties properties,
+            Environment environment) {
+        String applicationName = environment.getProperty("spring.application.name", "application");
+        String consumerGroup = resolveConsumerGroup(properties, applicationName);
+        redisStreamUtil.createGlobalGroup(properties.getStreamKey(), consumerGroup);
+        String consumerName = properties.getConsumerPrefix() + "-" + applicationName + "-" + UUID.randomUUID().toString().substring(0, 8);
         return businessEventContainer.receive(
-                Consumer.from(properties.getConsumerGroup(), consumerName),
+                Consumer.from(consumerGroup, consumerName),
                 StreamOffset.create(properties.getStreamKey(), ReadOffset.lastConsumed()),
-                message -> onMessage(message, dispatcher, deadLetterPublisher, callbackIdempotentStore, objectMapper, properties, redisStreamUtil)
+                message -> onMessage(message, dispatcher, deadLetterPublisher, callbackIdempotentStore,
+                        objectMapper, properties, redisStreamUtil, consumerGroup, applicationName)
         );
     }
 
@@ -89,25 +94,31 @@ public class EventConsumerAutoConfiguration {
                            BusinessEventIdempotentStore callbackIdempotentStore,
                            ObjectMapper objectMapper,
                            OutboxProperties properties,
-                           com.cloudflow.common.redis.core.RedisStreamUtil redisStreamUtil) {
+                           com.cloudflow.common.redis.core.RedisStreamUtil redisStreamUtil,
+                           String consumerGroup,
+                           String applicationName) {
         String msgId = message.getId().getValue();
         try {
             Map<String, String> body = message.getValue();
             BusinessEventEnvelope envelope = objectMapper.readValue(body.get("payload"), BusinessEventEnvelope.class);
-            if (!callbackIdempotentStore.acquire(envelope.getEventId(), Duration.ofHours(properties.getIdempotentTtlHours()))) {
-                redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getConsumerGroup(), msgId);
-                redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
+            if (!callbackIdempotentStore.acquire(consumerGroup, envelope.getEventId(),
+                    Duration.ofHours(properties.getIdempotentTtlHours()))) {
+                redisStreamUtil.ackGlobal(properties.getStreamKey(), consumerGroup, msgId);
                 return;
             }
+            final boolean[] handled = {false};
             TenantBroker.runAs(envelope.getTenantId(), ignored -> {
                 try {
-                    dispatcher.dispatch(envelope);
+                    handled[0] = dispatcher.dispatch(envelope);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             });
-            redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getConsumerGroup(), msgId);
-            redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
+            if (!handled[0]) {
+                log.debug("当前应用未注册该事件消费者，直接确认消息: app={}, eventType={}, msgId={}",
+                        applicationName, envelope.getEventType(), msgId);
+            }
+            redisStreamUtil.ackGlobal(properties.getStreamKey(), consumerGroup, msgId);
         } catch (Exception ex) {
             log.error("业务事件消费失败: msgId={}", msgId, ex);
             try {
@@ -116,8 +127,15 @@ public class EventConsumerAutoConfiguration {
             } catch (Exception ignored) {
                 log.error("业务事件写入 DLQ 失败: msgId={}", msgId, ignored);
             }
-            redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getConsumerGroup(), msgId);
-            redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
+            redisStreamUtil.ackGlobal(properties.getStreamKey(), consumerGroup, msgId);
         }
+    }
+
+    private String resolveConsumerGroup(OutboxProperties properties, String applicationName) {
+        String configured = properties.getConsumerGroup();
+        if (configured == null || configured.isBlank() || "cloudflow-event-consumer-group".equals(configured)) {
+            return "cloudflow-event-consumer-group:" + applicationName;
+        }
+        return configured;
     }
 }

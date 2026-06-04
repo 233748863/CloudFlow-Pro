@@ -13,7 +13,9 @@ import com.cloudflow.crm.domain.dto.CrmCustomerAssignDTO;
 import com.cloudflow.crm.mapper.CrmAssignmentRuleMapper;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmCustomerPoolLogMapper;
+import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmCustomerPoolService;
+import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.lock.DistributedLock;
 import org.springframework.stereotype.Service;
@@ -22,7 +24,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
@@ -30,13 +34,16 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
     private final CrmCustomerMapper customerMapper;
     private final CrmCustomerPoolLogMapper poolLogMapper;
     private final CrmAssignmentRuleMapper assignmentRuleMapper;
+    private final CrmEventPublisher crmEventPublisher;
 
     public CrmCustomerPoolServiceImpl(CrmCustomerMapper customerMapper,
                                       CrmCustomerPoolLogMapper poolLogMapper,
-                                      CrmAssignmentRuleMapper assignmentRuleMapper) {
+                                      CrmAssignmentRuleMapper assignmentRuleMapper,
+                                      CrmEventPublisher crmEventPublisher) {
         this.customerMapper = customerMapper;
         this.poolLogMapper = poolLogMapper;
         this.assignmentRuleMapper = assignmentRuleMapper;
+        this.crmEventPublisher = crmEventPublisher;
     }
 
     @Override
@@ -81,6 +88,8 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
         customerMapper.update(null, update);
         writeLog(customer, CrmConstants.PoolAction.RELEASE, customer.getOwnerId(), customer.getOwnerName(),
                 null, null, null, reason);
+        publishOwnerChanged(customer, CrmConstants.PoolAction.RELEASE,
+                customer.getOwnerId(), customer.getOwnerName(), null, null);
         return true;
     }
 
@@ -111,6 +120,8 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
                 .set(CrmCustomer::getUpdateTime, now);
         customerMapper.update(null, update);
         writeLog(customer, CrmConstants.PoolAction.CLAIM, null, null, userId, userName, null, reason);
+        publishOwnerChanged(customer, CrmConstants.PoolAction.CLAIM,
+                customer.getOwnerId(), customer.getOwnerName(), userId, userName);
         return true;
     }
 
@@ -141,6 +152,8 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
         customerMapper.update(null, update);
         writeLog(customer, CrmConstants.PoolAction.ASSIGN, customer.getOwnerId(), customer.getOwnerName(),
                 assignDTO.getOwnerId(), assignDTO.getOwnerName(), null, assignDTO.getReason());
+        publishOwnerChanged(customer, CrmConstants.PoolAction.ASSIGN,
+                customer.getOwnerId(), customer.getOwnerName(), assignDTO.getOwnerId(), assignDTO.getOwnerName());
         return true;
     }
 
@@ -243,6 +256,8 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
                 writeLog(customer, CrmConstants.PoolAction.AUTO_RELEASE,
                         customer.getOwnerId(), customer.getOwnerName(),
                         null, null, rule.getRuleId(), reason);
+                publishOwnerChanged(customer, CrmConstants.PoolAction.AUTO_RELEASE,
+                        customer.getOwnerId(), customer.getOwnerName(), null, null);
                 released++;
             }
         }
@@ -292,6 +307,25 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
         Long tenantId = customer.getTenantId() == null ? 100000L : customer.getTenantId();
         Localize.fillCommonAudit(log, tenantId, currentUserName(), LocalDateTime.now());
         poolLogMapper.insert(log);
+    }
+
+    private void publishOwnerChanged(CrmCustomer customer, String action,
+                                     Long fromOwnerId, String fromOwnerName,
+                                     Long toOwnerId, String toOwnerName) {
+        if (customer == null || customer.getCustomerId() == null) {
+            return;
+        }
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("customerId", customer.getCustomerId());
+        fields.put("customerName", customer.getCustomerName());
+        fields.put("action", action);
+        fields.put("fromOwnerId", fromOwnerId);
+        fields.put("fromOwnerName", fromOwnerName);
+        fields.put("toOwnerId", toOwnerId);
+        fields.put("toOwnerName", toOwnerName);
+        crmEventPublisher.publish(CrmEventStreamConstants.EVENT_CUSTOMER_OWNER_CHANGED,
+                customer.getTenantId() == null ? 100000L : customer.getTenantId(),
+                fields);
     }
 
     private String currentUserName() {

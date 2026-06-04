@@ -45,4 +45,7 @@ public class OutboxProperties {
 
     /** 幂等 TTL 小时 */
     private long idempotentTtlHours = 24;
+
+    /** Stream 保留的最大长度，0 表示不主动 trim */
+    private long streamMaxLen = 200000;
 }

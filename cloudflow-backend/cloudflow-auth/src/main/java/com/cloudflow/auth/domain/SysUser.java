@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
+import org.javers.core.metamodel.annotation.DiffIgnore;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
@@ -24,6 +25,7 @@ public class SysUser implements Serializable {
     private String phonenumber;
     private String sex;
     @JsonIgnore
+    @DiffIgnore
     private String password;
     private String status;
     private Integer deleted;

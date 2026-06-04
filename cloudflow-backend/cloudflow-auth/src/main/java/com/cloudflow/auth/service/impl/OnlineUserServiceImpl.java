@@ -3,6 +3,7 @@ package com.cloudflow.auth.service.impl;
 import com.cloudflow.auth.domain.dto.OnlineUserDTO;
 import com.cloudflow.auth.domain.dto.OnlineUserQuery;
 import com.cloudflow.auth.service.IOnlineUserService;
+import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.utils.SecurityUtils;
@@ -38,6 +39,7 @@ public class OnlineUserServiceImpl implements IOnlineUserService {
     private static final long MILLIS_SECOND = 1000L;
 
     private final TokenService tokenService;
+    private final UserDataScopeService userDataScopeService;
 
     @Override
     public PageResult<OnlineUserDTO> selectOnlineUserPage(OnlineUserQuery query, PageQuery pageQuery) {
@@ -102,10 +104,18 @@ public class OnlineUserServiceImpl implements IOnlineUserService {
                 continue;
             }
 
+            clearDataScopeSnapshot(onlineUser);
             tokenService.deleteToken(token);
             successCount++;
         }
         return successCount;
+    }
+
+    private void clearDataScopeSnapshot(OnlineUserDTO onlineUser) {
+        if (onlineUser == null || onlineUser.getTenantId() == null || onlineUser.getUserId() == null) {
+            return;
+        }
+        userDataScopeService.clear(onlineUser.getTenantId(), onlineUser.getUserId());
     }
 
     /**

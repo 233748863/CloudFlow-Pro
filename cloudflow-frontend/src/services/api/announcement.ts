@@ -6,13 +6,17 @@ export interface ReadUser {
   userId: number;
   userName: string;
   nickName?: string;
+  deptName?: string;
   readTime?: string;
 }
 
 /** 阅读统计响应 */
 export interface ReadStatsResponse {
+  expectedCount: number;
   readCount: number;
+  unreadCount: number;
   readUsers: ReadUser[];
+  unreadUsers: ReadUser[];
 }
 
 /** 管理列表分页响应 */

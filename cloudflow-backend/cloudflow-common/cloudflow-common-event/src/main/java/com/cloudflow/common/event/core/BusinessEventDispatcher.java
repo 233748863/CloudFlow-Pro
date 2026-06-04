@@ -1,8 +1,5 @@
 package com.cloudflow.common.event.core;
 
-import com.cloudflow.common.core.exception.ErrorCodeConstants;
-import com.cloudflow.common.core.exception.ServiceException;
-
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -19,11 +16,12 @@ public class BusinessEventDispatcher {
         this.consumers = consumers.stream().collect(Collectors.toMap(BusinessEventConsumer::eventType, Function.identity()));
     }
 
-    public void dispatch(BusinessEventEnvelope envelope) throws Exception {
+    public boolean dispatch(BusinessEventEnvelope envelope) throws Exception {
         BusinessEventConsumer consumer = consumers.get(envelope.getEventType());
         if (consumer == null) {
-            throw new ServiceException("未找到事件消费者: " + envelope.getEventType(), ErrorCodeConstants.BAD_REQUEST);
+            return false;
         }
         consumer.consume(envelope);
+        return true;
     }
 }

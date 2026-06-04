@@ -73,4 +73,10 @@ public class AuditAutoConfiguration {
     public HighRiskAuditVerifier highRiskAuditVerifier(ApplicationContext applicationContext) {
         return new HighRiskAuditVerifier(applicationContext);
     }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SensitiveDiffAuditVerifier sensitiveDiffAuditVerifier(ApplicationContext applicationContext) {
+        return new SensitiveDiffAuditVerifier(applicationContext);
+    }
 }

@@ -173,8 +173,8 @@ export const ProfilePage: React.FC = () => {
       toast.error('两次输入的新密码不一致');
       return;
     }
-    if (passwordForm.newPassword.length < 6) {
-      toast.error('新密码至少 6 位');
+    if (!/^[A-Za-z0-9]+$/.test(passwordForm.newPassword)) {
+      toast.error('新密码只能包含字母或数字');
       return;
     }
 

@@ -13,13 +13,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         AND (a.expire_time IS NULL OR a.expire_time > NOW())
         AND (
            a.scope_type = 'ALL' 
-           OR (a.scope_type = 'DEPT' AND a.scope_value = #{deptId}) 
+           OR (a.scope_type = 'DEPT' AND FIND_IN_SET(#{deptId}, REPLACE(a.scope_value, ' ', '')) > 0) 
            OR (a.scope_type = 'ROLE' AND 
                <if test='roleIds != null and !roleIds.isEmpty()'>
-                   a.scope_value IN 
-                   <foreach item='role' collection='roleIds' open='(' separator=',' close=')'>
-                       #{role}
+                   (
+                   <foreach item='role' collection='roleIds' separator=' OR '>
+                       FIND_IN_SET(#{role}, REPLACE(a.scope_value, ' ', '')) > 0
                    </foreach>
+                   )
                </if>
                <if test='roleIds == null or roleIds.isEmpty()'>
                    1 = 0
@@ -28,5 +29,45 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ) 
         ORDER BY a.is_top DESC, a.priority DESC, a.create_time DESC
     </select>
-    
+
+    <select id="selectExpectedReaders" resultType="java.util.HashMap">
+        SELECT DISTINCT
+               u.user_id AS userId,
+               u.user_name AS userName,
+               COALESCE(NULLIF(u.nick_name, ''), u.user_name) AS nickName,
+               d.dept_name AS deptName
+        FROM sys_user u
+        <if test="scopeType == 'ROLE'">
+            INNER JOIN sys_user_role ur
+                ON u.user_id = ur.user_id
+            INNER JOIN sys_role r
+                ON ur.role_id = r.role_id
+        </if>
+        LEFT JOIN sys_dept d
+            ON u.dept_id = d.dept_id
+        WHERE u.deleted = '0'
+          AND u.status = '0'
+          <if test="tenantId != null">
+              AND u.tenant_id = #{tenantId}
+          </if>
+          <if test="scopeType == 'DEPT'">
+              AND u.dept_id IN
+              <foreach item="scopeValue" collection="scopeValues" open="(" separator="," close=")">
+                  #{scopeValue}
+              </foreach>
+          </if>
+          <if test="scopeType == 'ROLE'">
+              AND r.deleted = '0'
+              AND r.status = '0'
+              <if test="tenantId != null">
+                  AND ur.tenant_id = #{tenantId}
+                  AND r.tenant_id = #{tenantId}
+              </if>
+              AND r.role_key IN
+              <foreach item="scopeValue" collection="scopeValues" open="(" separator="," close=")">
+                  #{scopeValue}
+              </foreach>
+          </if>
+        ORDER BY u.user_id ASC
+    </select>
 </mapper>

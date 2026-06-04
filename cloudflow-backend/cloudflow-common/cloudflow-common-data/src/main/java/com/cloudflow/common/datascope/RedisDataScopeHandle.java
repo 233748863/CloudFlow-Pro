@@ -1,6 +1,9 @@
 package com.cloudflow.common.datascope;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.context.UserDataScopeSnapshot;
+import com.cloudflow.common.redis.core.UserDataScopeStore;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -9,8 +12,8 @@ import java.util.List;
 /**
  * 基于 Redis 缓存的数据权限处理器
  * 
- * 直接从 UserContext 读取登录时已计算好的 dsType 和 dsDeptIds，
- * 不依赖任何 auth 模块的 Mapper，所有微服务都可以使用。
+ * 每次计算时优先从 Redis 中的 user:datascope:{tenantId}:{userId} 快照读取，
+ * 角色/部门变更后无需重新登录即可生效；若 Redis 不可用或未命中，再回退到 UserContext。
  * 
  * 数据权限类型说明：
  *   0 = 全部数据权限（不过滤）
@@ -24,7 +27,10 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class RedisDataScopeHandle implements DataScopeHandle {
+
+    private final UserDataScopeStore userDataScopeStore;
 
     @Override
     public Boolean calcScope(DataScope dataScope) {
@@ -45,9 +51,13 @@ public class RedisDataScopeHandle implements DataScopeHandle {
                 return false;
             }
 
-            // 从 UserContext 读取登录时计算好的数据权限信息
-            Integer dsType = UserContext.getDsType();
-            List<Long> dsDeptIds = UserContext.getDsDeptIds();
+            UserDataScopeSnapshot snapshot = loadSnapshot(userId);
+            Integer dsType = snapshot != null && snapshot.getDsType() != null
+                    ? snapshot.getDsType()
+                    : UserContext.getDsType();
+            List<Long> dsDeptIds = snapshot != null && snapshot.getDsDeptIds() != null
+                    ? snapshot.getDsDeptIds()
+                    : UserContext.getDsDeptIds();
 
             // 未配置数据权限类型，默认仅本人
             if (dsType == null) {
@@ -108,6 +118,19 @@ public class RedisDataScopeHandle implements DataScopeHandle {
                 dataScope.setUserId(userId);
             }
             return false;
+        }
+    }
+
+    private UserDataScopeSnapshot loadSnapshot(Long userId) {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null || userId == null) {
+            return null;
+        }
+        try {
+            return userDataScopeStore.get(tenantId, userId);
+        } catch (Exception e) {
+            log.warn("读取 Redis 数据权限快照失败, tenantId={}, userId={}", tenantId, userId, e);
+            return null;
         }
     }
 }

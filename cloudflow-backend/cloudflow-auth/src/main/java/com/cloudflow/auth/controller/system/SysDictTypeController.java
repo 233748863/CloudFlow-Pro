@@ -2,6 +2,7 @@ package com.cloudflow.auth.controller.system;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysDictType;
+import com.cloudflow.auth.domain.SysDictVersion;
 import com.cloudflow.auth.service.ISysDictTypeService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
@@ -63,6 +64,20 @@ public class SysDictTypeController {
     @SaCheckPermission("system:dict:remove")
     public R<?> remove(@PathVariable("dictIds") Long[] dictIds) {
         sysDictTypeService.deleteDictTypeByIds(dictIds);
+        return R.ok();
+    }
+
+    @GetMapping("/{dictType}/version/list")
+    @SaCheckPermission("system:dict:list")
+    public R<List<SysDictVersion>> versionList(@PathVariable String dictType) {
+        return R.ok(sysDictTypeService.listDictVersions(dictType));
+    }
+
+    @PostMapping("/version/{versionId}/rollback")
+    @RepeatSubmit
+    @SaCheckPermission("system:dict:edit")
+    public R<?> rollback(@PathVariable Long versionId) {
+        sysDictTypeService.rollbackDictVersion(versionId);
         return R.ok();
     }
 

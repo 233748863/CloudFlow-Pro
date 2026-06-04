@@ -118,6 +118,15 @@ export interface CrmManagementContextValue {
 
 const CrmManagementContext = createContext<CrmManagementContextValue | null>(null);
 
+const OPPORTUNITY_STAGE_ORDER: Record<string, number> = {
+  LEAD: 1,
+  QUALIFIED: 2,
+  PROPOSAL: 3,
+  NEGOTIATION: 4,
+  WON: 5,
+  LOST: 6,
+};
+
 export const useCrmManagement = () => {
   const ctx = useContext(CrmManagementContext);
   if (!ctx) throw new Error('useCrmManagement must be used within CrmManagementProvider');
@@ -490,16 +499,24 @@ export const CrmManagementProvider: React.FC<{ children: React.ReactNode }> = ({
   const executeConfirm = useCallback(async () => {
     if (!confirm) return;
     try {
+      let successMessage = '操作成功';
       if (confirm.action === 'submitQuote') await crmApi.submitQuote(confirm.item.quoteId);
       if (confirm.action === 'sendQuote') await crmApi.sendQuote(confirm.item.quoteId);
       if (confirm.action === 'acceptQuote') await crmApi.acceptQuote(confirm.item.quoteId);
       if (confirm.action === 'expireQuote') await crmApi.expireQuote(confirm.item.quoteId);
       if (confirm.action === 'winOpportunity') await crmApi.winOpportunity(confirm.item.opportunityId);
-      if (confirm.action === 'loseOpportunity') await crmApi.loseOpportunity(confirm.item.opportunityId, confirm.item.lostReason);
+      if (confirm.action === 'loseOpportunity') {
+        await crmApi.submitOpportunityDowngrade({
+          opportunityId: confirm.item.opportunityId,
+          action: 'CLOSE',
+          lostReason: confirm.item.lostReason,
+        });
+        successMessage = '已提交输单审批';
+      }
       if (confirm.action === 'confirmReceivable') await crmApi.confirmReceivable(confirm.item.receivableId);
       if (confirm.action === 'resolveTicket') await crmApi.resolveTicket(confirm.item.ticketId, confirm.item.solution);
       if (confirm.action === 'closeTicket') await crmApi.closeTicket(confirm.item.ticketId);
-      toast.success('操作成功');
+      toast.success(successMessage);
       setConfirm(null);
       await load();
     } catch (error) {
@@ -540,6 +557,21 @@ export const CrmManagementProvider: React.FC<{ children: React.ReactNode }> = ({
     const opportunity = opportunities.find((item) => item.opportunityId === opportunityId);
     if (!opportunity || opportunity.stage === stage) return;
     try {
+      const currentOrder = OPPORTUNITY_STAGE_ORDER[String(opportunity.stage || '').toUpperCase()] ?? Number.MAX_SAFE_INTEGER;
+      const targetOrder = OPPORTUNITY_STAGE_ORDER[String(stage || '').toUpperCase()] ?? Number.MAX_SAFE_INTEGER;
+      if (String(stage).toUpperCase() === 'LOST' || targetOrder < currentOrder) {
+        await crmApi.submitOpportunityDowngrade({
+          opportunityId,
+          action: String(stage).toUpperCase() === 'LOST' ? 'CLOSE' : 'DOWNGRADE',
+          targetStage: String(stage).toUpperCase() === 'LOST' ? undefined : stage,
+          lostReason: String(stage).toUpperCase() === 'LOST'
+            ? (opportunity.lostReason || '拖拽至输单列')
+            : `拖拽申请降级至 ${stage}`,
+        });
+        toast.success(String(stage).toUpperCase() === 'LOST' ? '已提交输单审批' : '已提交商机降级审批');
+        await load();
+        return;
+      }
       await crmApi.updateOpportunityStage({
         opportunityId,
         stage,

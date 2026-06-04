@@ -18,7 +18,13 @@ public class BusinessEventIdempotentStore {
     }
 
     public boolean acquire(String eventId, Duration ttl) {
-        Boolean result = stringRedisTemplate.opsForValue().setIfAbsent(KEY_PREFIX + eventId, "1", ttl);
+        return acquire("global", eventId, ttl);
+    }
+
+    public boolean acquire(String scope, String eventId, Duration ttl) {
+        String namespacedScope = (scope == null || scope.isBlank()) ? "global" : scope.trim();
+        Boolean result = stringRedisTemplate.opsForValue()
+                .setIfAbsent(KEY_PREFIX + namespacedScope + ":" + eventId, "1", ttl);
         return Boolean.TRUE.equals(result);
     }
 }

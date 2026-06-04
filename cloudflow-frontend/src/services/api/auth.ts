@@ -54,6 +54,25 @@ export interface RoleOption {
   roleKey: string;
 }
 
+export interface RoleMutexRule {
+  id: number;
+  tenantId?: number;
+  roleId1: number;
+  roleId2: number;
+  createBy?: string;
+  createTime?: string;
+}
+
+export interface RoleMutexRequest {
+  roleId1: number;
+  roleId2: number;
+}
+
+export interface DeptMigrateRequest {
+  sourceDeptId: number;
+  targetDeptId: number;
+}
+
 /** 系统菜单数据 */
 export interface SysMenu {
   menuId?: number;
@@ -235,6 +254,10 @@ export const updateDept = (data: SysDept) => {
   return request.put('/auth/system/dept', data);
 };
 
+export const migrateDeptUsers = (data: DeptMigrateRequest) => {
+  return request.post<number>('/auth/system/dept/migrate', data);
+};
+
 export const deleteDept = (deptId: number) => {
   return request.delete(`/auth/system/dept/${deptId}`);
 };
@@ -288,6 +311,18 @@ export const updateRole = (data: SysRole) => {
 
 export const deleteRole = (roleIds: number[]) => {
   return request.delete(`/auth/system/role/${roleIds.join(',')}`);
+};
+
+export const getRoleMutexRules = () => {
+  return request.get<RoleMutexRule[]>('/auth/system/role/mutex/list');
+};
+
+export const addRoleMutexRule = (data: RoleMutexRequest) => {
+  return request.post<number>('/auth/system/role/mutex', data);
+};
+
+export const deleteRoleMutexRule = (id: number) => {
+  return request.delete<number>(`/auth/system/role/mutex/${id}`);
 };
 
 // Menu APIs

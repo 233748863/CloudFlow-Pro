@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCheck, RefreshCw, Search } from 'lucide-react';
+import { CheckCheck, RefreshCw, Search, Users } from 'lucide-react';
 import type { ReadStatsResponse } from '@/services/api/announcement';
 import { BaseDialog, Pagination } from '@/components/common';
 import {
@@ -49,20 +49,24 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
 }) => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<'read' | 'unread'>('read');
   const pageSize = 10;
 
   useEffect(() => {
     if (open) {
       setSearch('');
       setPage(1);
+      setView('read');
     }
   }, [announcementId, open]);
 
   const filteredUsers = useMemo(() => {
-    const readUsers = statsData?.readUsers ?? [];
+    const sourceUsers = view === 'read'
+      ? (statsData?.readUsers ?? [])
+      : (statsData?.unreadUsers ?? []);
     const keyword = search.trim().toLowerCase();
 
-    const sortedUsers = [...readUsers].sort((left, right) => {
+    const sortedUsers = [...sourceUsers].sort((left, right) => {
       const leftTime = left.readTime ? new Date(left.readTime).getTime() : 0;
       const rightTime = right.readTime ? new Date(right.readTime).getTime() : 0;
       return rightTime - leftTime;
@@ -73,10 +77,10 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
     }
 
     return sortedUsers.filter((user) => {
-      const tokens = [String(user.userId), user.userName || '', user.nickName || ''];
+      const tokens = [String(user.userId), user.userName || '', user.nickName || '', user.deptName || ''];
       return tokens.some((token) => token.toLowerCase().includes(keyword));
     });
-  }, [search, statsData]);
+  }, [search, statsData, view]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -120,8 +124,34 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
       }
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="text-xs text-slate-500 dark:text-slate-400">
-          {`${announcementTitle ? `${announcementTitle} · ` : ''}已读 ${statsData?.readCount ?? 0} 人 · 筛选结果 ${filteredUsers.length} 人`}
+        <div className="space-y-2">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            {`${announcementTitle ? `${announcementTitle} · ` : ''}应读 ${statsData?.expectedCount ?? 0} 人 · 已读 ${statsData?.readCount ?? 0} 人 · 未读 ${statsData?.unreadCount ?? 0} 人`}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant={view === 'read' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setView('read');
+                setPage(1);
+              }}
+            >
+              已读
+            </Button>
+            <Button
+              type="button"
+              variant={view === 'unread' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setView('unread');
+                setPage(1);
+              }}
+            >
+              未读
+            </Button>
+          </div>
         </div>
 
         <div className="relative w-full lg:w-80">
@@ -133,7 +163,7 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
               setPage(1);
             }}
             className="h-10 pl-10"
-            placeholder="搜索用户 ID、账号或显示名称"
+            placeholder="搜索用户 ID、账号、姓名或部门"
           />
         </div>
       </div>
@@ -143,10 +173,15 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
           <InlineState title="正在加载阅读明细..." className="py-14" />
         ) : pagedUsers.length === 0 ? (
           <InlineState
-            title={statsData?.readUsers?.length ? '未找到匹配用户' : '暂无阅读记录'}
+            title={view === 'read'
+              ? ((statsData?.readUsers?.length ?? 0) > 0 ? '未找到匹配用户' : '暂无阅读记录')
+              : ((statsData?.unreadUsers?.length ?? 0) > 0 ? '未找到匹配用户' : '全部已读')}
             description={
-              statsData?.readUsers?.length ? '请尝试调整搜索条件。' : '这条公告还没有被任何用户读取。'
+              view === 'read'
+                ? ((statsData?.readUsers?.length ?? 0) > 0 ? '请尝试调整搜索条件。' : '这条公告还没有被任何用户读取。')
+                : ((statsData?.unreadUsers?.length ?? 0) > 0 ? '请尝试调整搜索条件。' : '目标范围内的用户已全部阅读。')
             }
+            icon={view === 'unread' ? <Users className="h-4 w-4" /> : undefined}
             className="py-14"
           />
         ) : (
@@ -158,12 +193,13 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
                     <TableHead>用户 ID</TableHead>
                     <TableHead>登录账号</TableHead>
                     <TableHead>显示名称</TableHead>
-                    <TableHead>阅读时间</TableHead>
+                    <TableHead>所属部门</TableHead>
+                    <TableHead>{view === 'read' ? '阅读时间' : '状态'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pagedUsers.map((user) => (
-                    <TableRow key={`${user.userId}-${user.readTime || 'unknown'}`}>
+                    <TableRow key={`${view}-${user.userId}-${user.readTime || 'unknown'}`}>
                       <TableCell className="py-3 text-sm text-slate-600 dark:text-slate-300">
                         {user.userId}
                       </TableCell>
@@ -174,7 +210,12 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
                         {user.nickName || '-'}
                       </TableCell>
                       <TableCell className="py-3 text-sm text-slate-500 dark:text-slate-400">
-                        {user.readTime ? new Date(user.readTime).toLocaleString() : '-'}
+                        {user.deptName || '-'}
+                      </TableCell>
+                      <TableCell className="py-3 text-sm text-slate-500 dark:text-slate-400">
+                        {view === 'read'
+                          ? (user.readTime ? new Date(user.readTime).toLocaleString() : '-')
+                          : '未读'}
                       </TableCell>
                     </TableRow>
                   ))}

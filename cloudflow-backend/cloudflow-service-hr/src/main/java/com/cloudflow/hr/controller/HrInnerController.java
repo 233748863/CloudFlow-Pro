@@ -24,7 +24,7 @@ import java.util.List;
 public class HrInnerController {
 
     private static final String INTERNAL_CALLERS =
-            "${cloudflow.security.inner.hr.integration-callers:cloudflow-service-crm,cloudflow-service-oa,cloudflow-service-workflow}";
+            "${cloudflow.security.inner.hr.integration-callers:cloudflow-service-crm,cloudflow-service-oa,cloudflow-service-workflow,cloudflow-auth}";
 
     private final IHrIntegrationQueryService hrIntegrationQueryService;
 

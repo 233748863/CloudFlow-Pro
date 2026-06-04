@@ -1,10 +1,11 @@
 package com.cloudflow.auth.service.impl;
 
-import com.cloudflow.common.statemachine.annotation.DictBound;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -17,6 +18,8 @@ import java.util.TreeMap;
 
 @Component
 public class DictReferenceRegistry implements SmartInitializingSingleton {
+
+    private static final String DICT_BOUND_ANNOTATION = "com.cloudflow.common.statemachine.annotation.DictBound";
 
     private static final Map<String, String> MANUAL_PROTECTED_DICT_TYPES = new LinkedHashMap<>();
     private static final Map<String, List<DictReferenceBinding>> MANUAL_BINDINGS = new LinkedHashMap<>();
@@ -101,12 +104,22 @@ public class DictReferenceRegistry implements SmartInitializingSingleton {
     private void registerAnnotatedType(String className) {
         try {
             Class<?> type = Class.forName(className);
-            DictBound dictBound = type.getAnnotation(DictBound.class);
-            if (dictBound != null) {
-                protectedDictTypes.put(dictBound.value(), type.getSimpleName());
-                annotatedDictTypes.add(dictBound.value());
+            Class<?> annotationClass = Class.forName(DICT_BOUND_ANNOTATION);
+            if (!Annotation.class.isAssignableFrom(annotationClass)) {
+                return;
             }
-        } catch (ClassNotFoundException ignored) {
+            @SuppressWarnings("unchecked")
+            Class<? extends Annotation> dictBoundClass = (Class<? extends Annotation>) annotationClass;
+            Annotation dictBound = type.getAnnotation(dictBoundClass);
+            if (dictBound != null) {
+                Method valueMethod = annotationClass.getMethod("value");
+                Object value = valueMethod.invoke(dictBound);
+                if (value instanceof String dictType && StringUtils.hasText(dictType)) {
+                    protectedDictTypes.put(dictType, type.getSimpleName());
+                    annotatedDictTypes.add(dictType);
+                }
+            }
+        } catch (ReflectiveOperationException ignored) {
             // Optional business module not present on current classpath.
         }
     }

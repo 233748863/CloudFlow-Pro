@@ -14,6 +14,7 @@ import java.util.List;
 public class SysDept {
     @TableId
     private Long deptId;
+    private Long tenantId;
     private Long parentId;
     private String ancestors;
     private String deptName;

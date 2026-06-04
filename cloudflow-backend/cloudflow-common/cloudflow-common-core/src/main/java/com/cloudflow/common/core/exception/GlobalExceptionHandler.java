@@ -1,8 +1,11 @@
 package com.cloudflow.common.core.exception;
 
 import com.cloudflow.common.core.domain.R;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataAccessException;
@@ -36,6 +39,9 @@ import java.sql.SQLException;
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @Autowired(required = false)
+    private MeterRegistry meterRegistry;
+
     /**
      * 业务异常
      */
@@ -44,6 +50,7 @@ public class GlobalExceptionHandler {
         log.error("业务异常: {}", e.getMessage());
         Integer code = e.getCode();
         int status = resolveHttpStatus(code, HttpStatus.BAD_REQUEST.value());
+        incrementExceptionCounter("ServiceException", code != null ? String.valueOf(code) : String.valueOf(status));
         R<?> body = R.fail(code != null ? code : status, e.getMessage());
         return ResponseEntity.status(status).body(body);
     }
@@ -56,6 +63,7 @@ public class GlobalExceptionHandler {
     public R<?> handleMethodArgumentNotValidException(org.springframework.web.bind.MethodArgumentNotValidException e) {
         log.error(e.getMessage());
         String message = e.getBindingResult().getFieldError().getDefaultMessage();
+        incrementExceptionCounter("MethodArgumentNotValidException", String.valueOf(HttpStatus.BAD_REQUEST.value()));
         return R.fail(HttpStatus.BAD_REQUEST.value(), message);
     }
 
@@ -69,6 +77,7 @@ public class GlobalExceptionHandler {
         String message = e.getBindingResult().getFieldError() != null
                 ? e.getBindingResult().getFieldError().getDefaultMessage()
                 : "请求参数错误";
+        incrementExceptionCounter("BindException", String.valueOf(HttpStatus.BAD_REQUEST.value()));
         return R.fail(HttpStatus.BAD_REQUEST.value(), message);
     }
 
@@ -83,6 +92,7 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(violation -> violation.getMessage())
                 .orElse("请求参数错误");
+        incrementExceptionCounter("ConstraintViolationException", String.valueOf(HttpStatus.BAD_REQUEST.value()));
         return R.fail(HttpStatus.BAD_REQUEST.value(), message);
     }
 
@@ -94,6 +104,7 @@ public class GlobalExceptionHandler {
     public R<?> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
         log.error(e.getMessage());
         String message = "参数 " + e.getName() + " 类型错误";
+        incrementExceptionCounter("MethodArgumentTypeMismatchException", String.valueOf(HttpStatus.BAD_REQUEST.value()));
         return R.fail(HttpStatus.BAD_REQUEST.value(), message);
     }
 
@@ -104,6 +115,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public R<?> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
         log.error(e.getMessage());
+        incrementExceptionCounter("HttpMessageNotReadableException", String.valueOf(HttpStatus.BAD_REQUEST.value()));
         return R.fail(HttpStatus.BAD_REQUEST.value(), "请求体格式错误");
     }
 
@@ -122,6 +134,7 @@ public class GlobalExceptionHandler {
         String message = allowedMethods.isEmpty()
             ? "请求方法不支持"
             : "请求方法不支持，请使用: " + allowedMethods;
+        incrementExceptionCounter("HttpRequestMethodNotSupportedException", String.valueOf(HttpStatus.METHOD_NOT_ALLOWED.value()));
         return R.fail(HttpStatus.METHOD_NOT_ALLOWED.value(), message);
     }
 
@@ -133,6 +146,7 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<R<?>> handleConcurrentException(Exception e, HttpServletRequest request) {
         log.warn("请求地址'{}',发生并发冲突: {}", request.getRequestURI(), e.getMessage());
+        incrementExceptionCounter(e.getClass().getSimpleName(), String.valueOf(ErrorCodeConstants.CONCURRENT_MODIFICATION));
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(R.fail(ErrorCodeConstants.CONCURRENT_MODIFICATION, "数据已被其他请求更新，请刷新后重试"));
     }
@@ -140,6 +154,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({SQLException.class, DataAccessException.class})
     public ResponseEntity<R<?>> handleDatabaseException(Exception e, HttpServletRequest request) {
         log.error("请求地址'{}',发生数据库异常.", request.getRequestURI(), e);
+        incrementExceptionCounter(e.getClass().getSimpleName(), String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()));
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), SafeErrorResponse.withTraceId("服务异常，请联系管理员")));
     }
@@ -148,41 +163,53 @@ public class GlobalExceptionHandler {
     public ResponseEntity<R<?>> handleUnsupportedOperationException(UnsupportedOperationException e, HttpServletRequest request) {
         if (e.getMessage() != null && e.getMessage().contains("ERR.AUDIT_IMMUTABLE")) {
             log.warn("请求地址'{}',命中日志不可变保护: {}", request.getRequestURI(), e.getMessage());
+            incrementExceptionCounter("UnsupportedOperationException", String.valueOf(HttpStatus.GONE.value()));
             return ResponseEntity.status(HttpStatus.GONE)
                     .body(R.fail(HttpStatus.GONE.value(), "日志不可删除"));
         }
         log.error("请求地址'{}',发生不支持操作异常.", request.getRequestURI(), e);
+        incrementExceptionCounter("UnsupportedOperationException", String.valueOf(HttpStatus.BAD_REQUEST.value()));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(R.fail(HttpStatus.BAD_REQUEST.value(), "当前操作不被支持"));
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public R<?> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
+    public ResponseEntity<R<?>> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
         if (isRateLimitException(e)) {
             throw e;
         }
         if (isNotLoginException(e)) {
             log.warn("请求地址'{}',登录态失效: {}", request.getRequestURI(), e.getMessage());
-            return R.fail(HttpStatus.UNAUTHORIZED.value(), "登录状态已失效，请重新登录");
+            incrementExceptionCounter("NotLoginException", String.valueOf(ErrorCodeConstants.UNAUTHORIZED));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(R.fail(ErrorCodeConstants.UNAUTHORIZED, "登录状态已失效，请重新登录"));
         }
         if (isSaTokenForbidden(e) || isAccessDenied(e)) {
             log.warn("请求地址'{}',权限校验失败: {}", request.getRequestURI(), e.getMessage());
-            return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
+            incrementExceptionCounter("AccessDeniedException", String.valueOf(ErrorCodeConstants.FORBIDDEN));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源"));
         }
         log.error("请求地址'{}',发生未知异常.", request.getRequestURI(), e);
-        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), SafeErrorResponse.withTraceId("服务异常，请联系管理员"));
+        incrementExceptionCounter("RuntimeException", String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), SafeErrorResponse.withTraceId("服务异常，请联系管理员")));
     }
 
     @ExceptionHandler(Exception.class)
-    public R<?> handleException(Exception e, HttpServletRequest request) {
+    public ResponseEntity<R<?>> handleException(Exception e, HttpServletRequest request) {
         if (isRateLimitException(e)) {
             throw new RuntimeException(e);
         }
         log.error("请求地址'{}',发生系统异常.", request.getRequestURI(), e);
         if (isAccessDenied(e)) {
-            return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
+            incrementExceptionCounter("AccessDeniedException", String.valueOf(ErrorCodeConstants.FORBIDDEN));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源"));
         }
-        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), SafeErrorResponse.withTraceId("服务异常，请联系管理员"));
+        incrementExceptionCounter(e.getClass().getSimpleName(), String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), SafeErrorResponse.withTraceId("服务异常，请联系管理员")));
     }
 
     @ExceptionHandler(Throwable.class)
@@ -191,9 +218,21 @@ public class GlobalExceptionHandler {
             throw e;
         }
         log.warn("请求地址'{}',触发限流: {}", request.getRequestURI(), e.getMessage());
+        incrementExceptionCounter("RateLimitException", String.valueOf(HttpStatus.TOO_MANY_REQUESTS.value()));
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header("Retry-After", "1")
                 .body(R.fail(HttpStatus.TOO_MANY_REQUESTS.value(), e.getMessage()));
+    }
+
+    private void incrementExceptionCounter(String type, String code) {
+        if (meterRegistry == null) {
+            return;
+        }
+        Counter.builder("exception.count")
+                .tag("type", type == null ? "UNKNOWN" : type)
+                .tag("code", code == null ? "UNKNOWN" : code)
+                .register(meterRegistry)
+                .increment();
     }
 
     private int resolveHttpStatus(Integer code, int defaultStatus) {

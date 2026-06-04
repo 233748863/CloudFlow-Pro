@@ -19,7 +19,7 @@ import { toast } from 'sonner';
  */
 export interface ApiErrorResponse {
   /** 错误代码 */
-  code: string;
+  code: string | number;
   /** 错误消息 */
   message?: string;
   /** 兼容 R 响应错误消息 */
@@ -261,10 +261,10 @@ function handleUnsupportedNodeTypesError(errorData: ApiErrorResponse | undefined
  * 处理一般错误
  * 显示标准的错误提示
  */
-function handleGeneralError(message: string, code?: string): void {
+function handleGeneralError(message: string, code?: string | number): void {
   toast.error(message, {
     duration: 4000,
-    description: code ? `错误代码：${code}` : undefined,
+    description: code != null ? `错误代码：${code}` : undefined,
   });
 }
 

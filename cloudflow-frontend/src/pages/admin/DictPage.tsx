@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Edit, Plus, RefreshCw, RotateCcw, Search, Tag, Trash2 } from 'lucide-react';
+import { Edit, Eye, Plus, RefreshCw, RotateCcw, Search, Tag, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { DictApprovalDialog } from '@/components/admin/DictApprovalDialog';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
@@ -23,7 +24,7 @@ import {
   TableRow,
   Textarea,
 } from '@/components/common';
-import { dictDataApi, dictTypeApi, type SysDictData, type SysDictType } from '../../services/api/dict';
+import { dictDataApi, dictTypeApi, type DictChangeResult, type SysDictData, type SysDictType } from '../../services/api/dict';
 import { queryClient, queryKeys } from '@/lib/queryClient';
 import { cn } from '@/utils/cn';
 
@@ -46,6 +47,7 @@ interface DictDataFormState {
   listClass: string;
   isDefault: string;
   status: string;
+  riskLevel: string;
   remark: string;
 }
 
@@ -71,6 +73,7 @@ const createDataForm = (): DictDataFormState => ({
   listClass: DEFAULT_LIST_CLASS_VALUE,
   isDefault: 'N',
   status: '0',
+  riskLevel: 'LOW',
   remark: '',
 });
 
@@ -117,6 +120,33 @@ const getDefaultBadgeClassName = (isDefault: string) =>
   isDefault === 'Y'
     ? 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
     : 'border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+
+const getRiskLevelBadgeClassName = (riskLevel: string) => {
+  switch (riskLevel) {
+    case 'HIGH':
+      return 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
+    case 'MID':
+    case 'MEDIUM':
+      return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
+    default:
+      return 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200';
+  }
+};
+
+const getRiskLevelLabel = (riskLevel: string) => {
+  switch (riskLevel) {
+    case 'HIGH':
+      return '高风险';
+    case 'MID':
+    case 'MEDIUM':
+      return '中风险';
+    default:
+      return '低风险';
+  }
+};
+
+const getDictChangeSuccessMessage = (result: DictChangeResult | undefined, fallback: string) =>
+  result?.message || fallback;
 
 const InlineState: React.FC<{
   title: string;
@@ -179,6 +209,8 @@ export const DictPage: React.FC = () => {
   const [typeForm, setTypeForm] = useState<DictTypeFormState>(createTypeForm);
   const [dataForm, setDataForm] = useState<DictDataFormState>(createDataForm);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [latestPendingResult, setLatestPendingResult] = useState<DictChangeResult | null>(null);
 
   const selectedType = useMemo(
     () => dictTypes.find((item) => item.dictId === selectedTypeId) ?? null,
@@ -209,6 +241,7 @@ export const DictPage: React.FC = () => {
     if (!selectedType?.dictType) {
       setDictDataList([]);
       setDataError(null);
+      setLatestPendingResult(null);
       return;
     }
 
@@ -343,6 +376,7 @@ export const DictPage: React.FC = () => {
         listClass: item.listClass || DEFAULT_LIST_CLASS_VALUE,
         isDefault: item.isDefault || 'N',
         status: item.status || '0',
+        riskLevel: item.riskLevel || 'LOW',
         remark: item.remark || '',
       });
     } else {
@@ -357,6 +391,14 @@ export const DictPage: React.FC = () => {
     setDataModalOpen(false);
     setEditingData(null);
     setDataForm(createDataForm());
+  };
+
+  const openApprovalDialog = () => {
+    if (!selectedType) {
+      toast.error('请先选择字典类型');
+      return;
+    }
+    setApprovalDialogOpen(true);
   };
 
   const handleSaveType = async (event: React.FormEvent) => {
@@ -426,22 +468,27 @@ export const DictPage: React.FC = () => {
       listClass: dataForm.listClass,
       isDefault: dataForm.isDefault,
       status: dataForm.status,
+      riskLevel: dataForm.riskLevel,
       remark: dataForm.remark.trim(),
     };
 
     try {
-      if (editingData) {
-        await dictDataApi.edit(payload);
-        toast.success('字典数据已更新');
-      } else {
-        await dictDataApi.add(payload);
-        toast.success('字典数据已创建');
-      }
-
-      // 失效该字典类型的缓存，业务页面下次渲染会重新拉取
-      void queryClient.invalidateQueries({ queryKey: queryKeys.dict(currentType) });
+      const result = editingData
+        ? await dictDataApi.edit(payload)
+        : await dictDataApi.add(payload);
+      toast.success(getDictChangeSuccessMessage(
+        result,
+        editingData ? '字典数据已更新' : '字典数据已创建',
+      ));
       closeDataModal();
-      await loadDictData(currentType);
+      if (!result?.approvalRequired) {
+        setLatestPendingResult(null);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.dict(currentType) });
+        await loadDictData(currentType);
+      } else {
+        setLatestPendingResult(result);
+        setApprovalDialogOpen(true);
+      }
     } catch (error) {
       console.error('保存字典数据失败:', error);
       toast.error(getErrorMessage(error, '保存字典数据失败'));
@@ -465,10 +512,16 @@ export const DictPage: React.FC = () => {
       }
 
       if (deleteTarget.type === 'dictData' && deleteTarget.item.dictCode) {
-        await dictDataApi.remove([deleteTarget.item.dictCode]);
-        toast.success('字典数据已删除');
-        void queryClient.invalidateQueries({ queryKey: queryKeys.dict(deleteTarget.item.dictType) });
-        await loadDictData(deleteTarget.item.dictType);
+        const result = await dictDataApi.remove([deleteTarget.item.dictCode]);
+        toast.success(getDictChangeSuccessMessage(result, '字典数据已删除'));
+        if (!result?.approvalRequired) {
+          setLatestPendingResult(null);
+          void queryClient.invalidateQueries({ queryKey: queryKeys.dict(deleteTarget.item.dictType) });
+          await loadDictData(deleteTarget.item.dictType);
+        } else {
+          setLatestPendingResult(result);
+          setApprovalDialogOpen(true);
+        }
       }
     } catch (error) {
       console.error('删除字典内容失败:', error);
@@ -552,6 +605,11 @@ export const DictPage: React.FC = () => {
               <Button size="sm" onClick={() => openDataModal()} disabled={!selectedType}>
                 <Tag size={15} />
                 新增数据
+              </Button>
+
+              <Button variant="outline" size="sm" onClick={openApprovalDialog} disabled={!selectedType}>
+                <Eye size={15} />
+                审批记录
               </Button>
             </div>
           </div>
@@ -669,6 +727,7 @@ export const DictPage: React.FC = () => {
                           <TableHead>键值</TableHead>
                           <TableHead>样式</TableHead>
                           <TableHead>默认</TableHead>
+                          <TableHead>风险</TableHead>
                           <TableHead>状态</TableHead>
                           <TableHead>备注</TableHead>
                           <TableActionHead className="w-28">操作</TableActionHead>
@@ -676,11 +735,11 @@ export const DictPage: React.FC = () => {
                       </TableHeader>
                       <TableBody>
                         {dataLoading ? (
-                          <TableStateRow colSpan={8} title="正在加载字典数据..." loading />
+                          <TableStateRow colSpan={9} title="正在加载字典数据..." loading />
                         ) : dataError ? (
-                          <TableStateRow colSpan={8} title="字典数据加载失败" />
+                          <TableStateRow colSpan={9} title="字典数据加载失败" />
                         ) : dictDataList.length === 0 ? (
-                          <TableStateRow colSpan={8} title="暂无字典数据" />
+                          <TableStateRow colSpan={9} title="暂无字典数据" />
                         ) : (
                           dictDataList.map((item) => (
                             <TableRow key={item.dictCode}>
@@ -720,6 +779,16 @@ export const DictPage: React.FC = () => {
                                   )}
                                 >
                                   {item.isDefault === 'Y' ? '是' : '否'}
+                                </span>
+                              </TableCell>
+                              <TableCell className="py-4">
+                                <span
+                                  className={cn(
+                                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                                    getRiskLevelBadgeClassName(item.riskLevel || 'LOW'),
+                                  )}
+                                >
+                                  {getRiskLevelLabel(item.riskLevel || 'LOW')}
                                 </span>
                               </TableCell>
                               <TableCell className="py-4">
@@ -946,6 +1015,25 @@ export const DictPage: React.FC = () => {
             </div>
 
             <div>
+              <label className={fieldLabelClassName}>风险等级</label>
+              <Select
+                value={dataForm.riskLevel}
+                onValueChange={(value) =>
+                  setDataForm((current) => ({ ...current, riskLevel: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择风险等级" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LOW">低风险</SelectItem>
+                  <SelectItem value="MID">中风险</SelectItem>
+                  <SelectItem value="HIGH">高风险</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <label className={fieldLabelClassName}>默认</label>
               <Select
                 value={dataForm.isDefault}
@@ -977,6 +1065,18 @@ export const DictPage: React.FC = () => {
           </div>
         </form>
       </BaseDialog>
+
+      <DictApprovalDialog
+        open={approvalDialogOpen}
+        dictType={selectedType?.dictType}
+        dictName={selectedType?.dictName}
+        pendingResult={latestPendingResult}
+        initialApprovalId={latestPendingResult?.approvalId ?? null}
+        onClose={() => {
+          setApprovalDialogOpen(false);
+          setLatestPendingResult(null);
+        }}
+      />
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}

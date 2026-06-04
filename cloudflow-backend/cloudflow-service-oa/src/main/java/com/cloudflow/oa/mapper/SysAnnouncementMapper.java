@@ -5,6 +5,7 @@ import com.cloudflow.oa.domain.SysAnnouncement;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Mapper
@@ -16,4 +17,8 @@ public interface SysAnnouncementMapper extends BaseMapper<SysAnnouncement> {
     List<SysAnnouncement> getMyAnnouncements(@Param("userId") Long userId, 
                                            @Param("deptId") String deptId, 
                                            @Param("roleIds") Set<String> roleIds);
+
+    List<Map<String, Object>> selectExpectedReaders(@Param("tenantId") Long tenantId,
+                                                    @Param("scopeType") String scopeType,
+                                                    @Param("scopeValues") List<String> scopeValues);
 }

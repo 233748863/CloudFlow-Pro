@@ -36,8 +36,7 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
     private final CrmCustomerMapper customerMapper;
     private final StateMachineRegistry stateMachineRegistry;
     private final OutboxPublisher outboxPublisher;
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<CrmLead> queryPage(CrmLead query, PageQuery pageQuery) {
@@ -160,7 +159,7 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
                     .eventType("LEAD_CONVERTED")
                     .sourceModule("cloudflow-crm")
                     .sourceId(lead.getLeadId())
-                    .payload(OBJECT_MAPPER.writeValueAsString(event))
+                    .payload(objectMapper.writeValueAsString(event))
                     .build();
             outboxPublisher.publish(envelope);
         } catch (Exception e) {

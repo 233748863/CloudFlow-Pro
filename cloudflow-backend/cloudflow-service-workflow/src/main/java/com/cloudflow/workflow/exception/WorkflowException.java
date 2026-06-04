@@ -65,6 +65,6 @@ public class WorkflowException extends RuntimeException {
     }
     
     public static WorkflowException validationError(String message) {
-        return new WorkflowException("VALIDATION_ERROR", message);
+        return new WorkflowException("INVALID_REQUEST", message);
     }
 }

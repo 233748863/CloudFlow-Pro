@@ -17,6 +17,16 @@ export interface ApiResponse<T = any> {
   data: T;
 }
 
+function hasStructuredErrorPayload(data: unknown): data is ApiErrorResponse {
+  if (!data || typeof data !== 'object') {
+    return false;
+  }
+  const record = data as Record<string, unknown>;
+  return typeof record.code === 'string'
+    || typeof record.message === 'string'
+    || Array.isArray(record.errors);
+}
+
 function getResponseErrorMessage(data: unknown, fallback = '网络请求失败') {
   if (data && typeof data === 'object') {
     const record = data as Record<string, unknown>;
@@ -245,22 +255,17 @@ request.interceptors.response.use(
        // 服务不可用 - 微服务未启动，静默处理不弹 toast
        console.warn(`[API] 服务暂时不可用: ${error.config?.url}`);
     } else if (error.response) {
-       // 使用统一的错误处理器
-       // 检查响应数据是否包含标准化的错误格式（有 code 字段）
        const responseData = error.response.data;
-       if (responseData && typeof responseData === 'object' && 'code' in responseData) {
-         // 标准化错误响应，使用增强的错误处理器
+       if (hasStructuredErrorPayload(responseData)) {
          handleApiError(error as AxiosError<ApiErrorResponse>, { silent: isSilent });
          const msg = getResponseErrorMessage(responseData, error.message || '网络请求失败');
          return Promise.reject(new Error(msg));
-       } else {
-         // 旧格式的错误响应，使用原有的处理方式
-         const msg = getResponseErrorMessage(responseData, error.message || '网络请求失败');
-         if (!isSilent) {
-           toast.error(msg);
-         }
-         return Promise.reject(new Error(msg));
        }
+       const msg = getResponseErrorMessage(responseData, error.message || '网络请求失败');
+       if (!isSilent) {
+         toast.error(msg);
+       }
+       return Promise.reject(new Error(msg));
     } else {
        // 其他错误
        if (!isSilent) {

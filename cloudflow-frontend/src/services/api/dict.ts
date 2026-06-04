@@ -23,8 +23,53 @@ export interface SysDictData {
   listClass?: string;
   isDefault?: string;
   status?: string;
+  riskLevel?: string;
   remark?: string;
   createTime?: string;
+}
+
+export interface DictChangeResult {
+  applied: boolean;
+  approvalRequired: boolean;
+  approvalId?: number | null;
+  approvalNo?: string | null;
+  status?: string;
+  message?: string;
+}
+
+export interface DictChangeApprovalPayload {
+  changeScope?: string;
+  actionType?: string;
+  dictType?: string;
+  oldDictType?: SysDictType | null;
+  newDictType?: SysDictType | null;
+  oldDictDataList?: SysDictData[];
+  newDictDataList?: SysDictData[];
+}
+
+export interface DictChangeApprovalSummary {
+  approvalId: number;
+  approvalNo: string;
+  dictType: string;
+  changeScope?: string;
+  actionType?: string;
+  riskLevel?: string;
+  targetSummary?: string;
+  applicantId?: number;
+  applicantName?: string;
+  deptId?: number;
+  deptName?: string;
+  status?: string;
+  instanceId?: string;
+  approvalComment?: string;
+  remark?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface DictChangeApprovalDetail extends DictChangeApprovalSummary {
+  payloadJson?: string;
+  payload?: DictChangeApprovalPayload | null;
 }
 
 /** 字典类型管理 API */
@@ -70,13 +115,21 @@ export const dictDataApi = {
 
   /** 新增字典数据 */
   add: (data: SysDictData) =>
-    request.post('/auth/system/dict/data', data),
+    request.post('/auth/system/dict/data', data) as Promise<DictChangeResult>,
 
   /** 修改字典数据 */
   edit: (data: SysDictData) =>
-    request.put('/auth/system/dict/data', data),
+    request.put('/auth/system/dict/data', data) as Promise<DictChangeResult>,
 
   /** 删除字典数据 */
   remove: (dictCodes: number[]) =>
-    request.delete(`/auth/system/dict/data/${dictCodes.join(',')}`),
+    request.delete(`/auth/system/dict/data/${dictCodes.join(',')}`) as Promise<DictChangeResult>,
+
+  /** 查询字典审批单列表 */
+  approvalList: (dictType?: string) =>
+    request.get('/auth/system/dict/data/approval/list', { params: { dictType } }) as Promise<DictChangeApprovalSummary[]>,
+
+  /** 查询字典审批单详情 */
+  approvalDetail: (approvalId: number) =>
+    request.get(`/auth/system/dict/data/approval/${approvalId}`) as Promise<DictChangeApprovalDetail>,
 };

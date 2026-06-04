@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class WorkflowInnerController {
 
     private static final String INTERNAL_START_CALLERS =
-            "${cloudflow.security.inner.workflow.start-callers:cloudflow-service-oa,cloudflow-service-hr,cloudflow-service-crm}";
+            "${cloudflow.security.inner.workflow.start-callers:cloudflow-service-oa,cloudflow-service-hr,cloudflow-service-crm,cloudflow-auth}";
 
     private final IWfInstanceService wfInstanceService;
 

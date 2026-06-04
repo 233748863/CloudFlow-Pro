@@ -2,6 +2,8 @@ package com.cloudflow.hr.domain.vo;
 
 import lombok.Data;
 
+import java.time.LocalDate;
+
 /**
  * 提供给 CRM 等外部模块查员工归属与在职状态的视图。
  */
@@ -30,4 +32,6 @@ public class HrEmployeeSummaryVO {
 
     /** 是否在职。 */
     private boolean active;
+
+    private LocalDate birthDate;
 }

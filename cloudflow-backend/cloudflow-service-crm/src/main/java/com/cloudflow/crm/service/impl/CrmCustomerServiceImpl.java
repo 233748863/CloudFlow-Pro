@@ -7,10 +7,12 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmFollowUp;
 import com.cloudflow.crm.domain.vo.HrEmployeeSummaryVO;
+import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmFollowUpMapper;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
@@ -30,7 +32,9 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -51,6 +55,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
     private final CrmReceivableMapper receivableMapper;
     private final CrmServiceTicketMapper serviceTicketMapper;
     private final RemoteHrService remoteHrService;
+    private final CrmEventPublisher crmEventPublisher;
 
     @Override
     public PageResult<CrmCustomer> queryPage(CrmCustomer query, PageQuery pageQuery) {
@@ -82,6 +87,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
         Localize.fillCustomerDefaults(customer, currentTenantId(), currentUserName(), now());
         boolean saved = save(customer);
         if (saved) {
+            publishCustomerCreated(customer);
             refreshHealth(customer.getCustomerId());
         }
         return saved;
@@ -94,11 +100,39 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
             throw new IllegalArgumentException("客户ID不能为空");
         }
         validate(customer);
-        enrichOwnerFromHr(customer);
         CrmCustomer persisted = requireById(customer.getCustomerId(), "客户不存在");
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(persisted, CrmCustomer::getOwnerId, "客户");
+        if (customer.getPoolFlag() != null && !Objects.equals(customer.getPoolFlag(), persisted.getPoolFlag())) {
+            throw new IllegalArgumentException("客户公海状态变更请走客户领取/公海释放流程");
+        }
+        if (StringUtils.hasText(customer.getStatus())
+                && !Objects.equals(customer.getStatus(), persisted.getStatus())
+                && ("POOL".equalsIgnoreCase(customer.getStatus()) || "POOL".equalsIgnoreCase(persisted.getStatus()))) {
+            throw new IllegalArgumentException("客户公海状态变更请走客户领取/公海释放流程");
+        }
+        if (customer.getOwnerId() != null && !Objects.equals(customer.getOwnerId(), persisted.getOwnerId())) {
+            throw new IllegalArgumentException("客户归属变更请走客户领取/公海指派流程");
+        }
+        if (StringUtils.hasText(customer.getLevelCode())
+                && !Objects.equals(customer.getLevelCode(), persisted.getLevelCode())) {
+            throw new IllegalArgumentException("客户分级变更请走审批流程");
+        }
         customer.setTenantId(persisted.getTenantId());
+        customer.setOwnerId(persisted.getOwnerId());
+        customer.setOwnerName(persisted.getOwnerName());
+        customer.setDeptId(customer.getDeptId() == null ? persisted.getDeptId() : customer.getDeptId());
+        customer.setDeptName(StringUtils.hasText(customer.getDeptName()) ? customer.getDeptName() : persisted.getDeptName());
+        customer.setPoolFlag(persisted.getPoolFlag());
+        customer.setPooledTime(persisted.getPooledTime());
+        customer.setOriginalOwnerId(persisted.getOriginalOwnerId());
+        customer.setOriginalOwnerName(persisted.getOriginalOwnerName());
+        if (!StringUtils.hasText(customer.getLevelCode())) {
+            customer.setLevelCode(persisted.getLevelCode());
+        }
+        if (!StringUtils.hasText(customer.getStatus())) {
+            customer.setStatus(persisted.getStatus());
+        }
         customer.setUpdateBy(currentUserName());
         customer.setUpdateTime(now());
         boolean updated = updateById(customer);
@@ -257,5 +291,23 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
                 .distinct()
                 .reduce((left, right) -> left + "," + right)
                 .orElse(null);
+    }
+
+    private void publishCustomerCreated(CrmCustomer customer) {
+        if (customer == null || customer.getCustomerId() == null) {
+            return;
+        }
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("customerId", customer.getCustomerId());
+        fields.put("customerCode", customer.getCustomerCode());
+        fields.put("customerName", customer.getCustomerName());
+        fields.put("ownerId", customer.getOwnerId());
+        fields.put("ownerName", customer.getOwnerName());
+        fields.put("deptId", customer.getDeptId());
+        fields.put("deptName", customer.getDeptName());
+        fields.put("levelCode", customer.getLevelCode());
+        fields.put("source", customer.getSource());
+        crmEventPublisher.publish(CrmEventStreamConstants.EVENT_CUSTOMER_CREATED,
+                customer.getTenantId(), fields);
     }
 }

@@ -3,6 +3,10 @@ package com.cloudflow.auth.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.auth.domain.SysDictData;
 import com.cloudflow.auth.domain.SysDictType;
+import com.cloudflow.auth.domain.SysDictVersion;
+import com.cloudflow.auth.domain.dto.DictChangeResult;
+import com.cloudflow.auth.domain.vo.DictChangeApprovalDetailVO;
+import com.cloudflow.auth.domain.vo.DictChangeApprovalSummaryVO;
 
 import java.util.List;
 
@@ -52,10 +56,22 @@ public interface ISysDictTypeService extends IService<SysDictType> {
     /**
      * 删除字典数据。
      */
-    void deleteDictDataByIds(Long[] dictCodes);
+    DictChangeResult deleteDictDataByIds(Long[] dictCodes);
 
     /**
      * 刷新指定字典类型在 Redis 中的缓存（增删改字典数据后调用）
      */
     void refreshDictCache(String dictType);
+
+    DictChangeResult saveDictData(SysDictData dictData);
+
+    DictChangeResult updateDictData(SysDictData dictData);
+
+    List<SysDictVersion> listDictVersions(String dictType);
+
+    void rollbackDictVersion(Long versionId);
+
+    List<DictChangeApprovalSummaryVO> listDictChangeApprovals(String dictType);
+
+    DictChangeApprovalDetailVO getDictChangeApprovalDetail(Long approvalId);
 }

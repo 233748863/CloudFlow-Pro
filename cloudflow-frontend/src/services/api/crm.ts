@@ -15,6 +15,7 @@ import * as contact from './crm/contact';
 import * as opportunity from './crm/opportunity';
 import * as service from './crm/service';
 import * as pool from './crm/pool';
+import * as approval from './crm/approval';
 
 export const crmApi = {
   // 线索
@@ -106,6 +107,12 @@ export const crmApi = {
   resolveTicket: service.resolveTicket,
   closeTicket: service.closeTicket,
   removeTicket: service.removeTicket,
+
+  // 审批
+  submitCustomerClaim: approval.submitCustomerClaim,
+  submitCustomerLevelChange: approval.submitCustomerLevelChange,
+  submitOpportunityDowngrade: approval.submitOpportunityDowngrade,
+  submitRefund: approval.submitRefund,
 
   // 公海池 + 分配规则
   listCustomerPool: pool.listCustomerPool,

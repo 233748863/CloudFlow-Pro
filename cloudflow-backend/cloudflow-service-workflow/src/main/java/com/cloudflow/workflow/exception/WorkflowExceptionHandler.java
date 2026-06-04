@@ -1,15 +1,14 @@
 package com.cloudflow.workflow.exception;
 
-import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.exception.SafeErrorResponse;
+import com.cloudflow.workflow.domain.dto.ErrorResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 工作流模块异常处理器
@@ -27,30 +26,20 @@ public class WorkflowExceptionHandler {
      * 工作流业务异常
      */
     @ExceptionHandler(WorkflowException.class)
-    public R<?> handleWorkflowException(WorkflowException e) {
+    public ResponseEntity<ErrorResponse> handleWorkflowException(WorkflowException e, HttpServletRequest request) {
         log.warn("工作流业务异常 [{}]: {}", e.getCode(), e.getMessage());
-        return R.fail(HttpStatus.BAD_REQUEST.value(), "工作流操作失败，请检查输入或状态后重试");
+        HttpStatus status = resolveWorkflowExceptionStatus(e.getCode());
+        return buildResponse(status, e.getCode(), e.getMessage(), null, null, request);
     }
 
     /**
      * 验证异常
      * 返回标准化错误响应格式，包含字段级别的错误信息
      */
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(ValidationException.class)
-    public R<?> handleValidationException(ValidationException e) {
+    public ResponseEntity<ErrorResponse> handleValidationException(ValidationException e, HttpServletRequest request) {
         log.warn("验证异常 [{}]: {}", e.getCode(), e.getMessage());
-        
-        // 构建包含字段错误信息的消息
-        StringBuilder message = new StringBuilder(e.getMessage());
-        if (e.getFieldErrors() != null && !e.getFieldErrors().isEmpty()) {
-            message.append(" - 字段错误: ");
-            e.getFieldErrors().forEach(error -> 
-                message.append(error.getField()).append(": ").append(error.getMessage()).append("; ")
-            );
-        }
-        
-        return R.fail(HttpStatus.BAD_REQUEST.value(), message.toString());
+        return buildResponse(HttpStatus.BAD_REQUEST, e.getCode(), e.getMessage(), e.getFieldErrors(), e.getData(), request);
     }
 
     /**
@@ -58,55 +47,115 @@ public class WorkflowExceptionHandler {
      * 返回标准化错误响应格式
      */
     @ExceptionHandler(BusinessException.class)
-    public R<?> handleBusinessException(BusinessException e) {
+    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e, HttpServletRequest request) {
         log.warn("业务异常 [{}]: {}", e.getCode(), e.getMessage());
-        
-        // 如果有附加数据，记录到日志中
         if (e.getData() != null) {
             log.debug("业务异常附加数据: {}", e.getData());
         }
-        
-        return R.fail(HttpStatus.BAD_REQUEST.value(), "业务处理失败，请检查当前状态后重试");
+        HttpStatus status = resolveBusinessExceptionStatus(e.getCode());
+        return buildResponse(status, e.getCode(), e.getMessage(), null, e.getData(), request);
     }
 
     /**
      * 资源不存在异常
      * 返回 404 状态码
      */
-    @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(NotFoundException.class)
-    public R<?> handleNotFoundException(NotFoundException e) {
+    public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException e, HttpServletRequest request) {
         log.warn("资源不存在 [{}]: {}", e.getCode(), e.getMessage());
-        return R.fail(HttpStatus.NOT_FOUND.value(), "请求的资源不存在");
+        return buildResponse(HttpStatus.NOT_FOUND, e.getCode(), e.getMessage(), null, null, request);
     }
 
     /**
      * 权限不足异常（自定义异常）
      * 返回 403 状态码和明确的权限错误提示
      */
-    @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(PermissionDeniedException.class)
-    public R<?> handlePermissionDeniedException(PermissionDeniedException e, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handlePermissionDeniedException(PermissionDeniedException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.warn("权限不足 - 请求地址: {}, 错误信息: {}", requestURI, e.getMessage());
-        return R.fail(HttpStatus.FORBIDDEN.value(), "权限不足");
+        return buildResponse(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", e.getMessage(), null, null, request);
     }
 
     /**
      * 限流异常
      */
-    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     @ExceptionHandler(RateLimitException.class)
-    public R<?> handleRateLimitException(RateLimitException e) {
+    public ResponseEntity<ErrorResponse> handleRateLimitException(RateLimitException e, HttpServletRequest request) {
         log.warn("请求限流: {}", e.getMessage());
-        return R.fail(HttpStatus.TOO_MANY_REQUESTS.value(), "操作过于频繁，请稍后再试");
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", "1")
+                .body(ErrorResponse.builder()
+                        .code("RATE_LIMIT_EXCEEDED")
+                        .message(e.getMessage())
+                        .path(request.getRequestURI())
+                        .build());
     }
 
     @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<?> handleUnhandledException(Exception e, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleUnhandledException(Exception e, HttpServletRequest request) {
         log.error("工作流未处理异常, uri={}", request.getRequestURI(), e);
-        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                SafeErrorResponse.withTraceId("工作流服务异常，请联系管理员"));
+        return buildResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "WORKFLOW_INTERNAL_ERROR",
+                SafeErrorResponse.withTraceId("工作流服务异常，请联系管理员"),
+                null,
+                null,
+                request
+        );
+    }
+
+    private ResponseEntity<ErrorResponse> buildResponse(
+            HttpStatus status,
+            String code,
+            String message,
+            java.util.List<ErrorResponse.FieldError> errors,
+            java.util.Map<String, Object> data,
+            HttpServletRequest request
+    ) {
+        ErrorResponse body = ErrorResponse.builder()
+                .code(code == null || code.isBlank() ? defaultCode(status) : code)
+                .message(message)
+                .errors(errors)
+                .data(data)
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(status).body(body);
+    }
+
+    private HttpStatus resolveWorkflowExceptionStatus(String code) {
+        if (code == null || code.isBlank()) {
+            return HttpStatus.BAD_REQUEST;
+        }
+        if (code.endsWith("_NOT_FOUND")) {
+            return HttpStatus.NOT_FOUND;
+        }
+        return switch (code) {
+            case "PERMISSION_DENIED" -> HttpStatus.FORBIDDEN;
+            case "RATE_LIMIT_EXCEEDED" -> HttpStatus.TOO_MANY_REQUESTS;
+            case "SYSTEM_BUSY", "INVALID_STATE" -> HttpStatus.CONFLICT;
+            default -> HttpStatus.BAD_REQUEST;
+        };
+    }
+
+    private HttpStatus resolveBusinessExceptionStatus(String code) {
+        if (code == null || code.isBlank()) {
+            return HttpStatus.BAD_REQUEST;
+        }
+        return switch (code) {
+            case "RUNNING_INSTANCES_WARNING", "RESOURCE_CONFLICT", "TEMPLATE_IN_USE", "INVALID_STATE" -> HttpStatus.CONFLICT;
+            case "PERMISSION_DENIED" -> HttpStatus.FORBIDDEN;
+            default -> code.endsWith("_NOT_FOUND") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+        };
+    }
+
+    private String defaultCode(HttpStatus status) {
+        return switch (status) {
+            case NOT_FOUND -> "RESOURCE_NOT_FOUND";
+            case FORBIDDEN -> "PERMISSION_DENIED";
+            case TOO_MANY_REQUESTS -> "RATE_LIMIT_EXCEEDED";
+            case INTERNAL_SERVER_ERROR -> "WORKFLOW_INTERNAL_ERROR";
+            default -> "INVALID_REQUEST";
+        };
     }
 }

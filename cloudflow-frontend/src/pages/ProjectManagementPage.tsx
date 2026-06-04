@@ -843,7 +843,7 @@ export default function ProjectManagementPage() {
                       <div key={item.milestoneId} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
                         <div>
                           <div>{item.milestoneName}</div>
-                          <div className="text-xs text-slate-500">计划 {item.plannedDate || '-'} / 基线 {item.baselineDate || '-'} / {item.status || '-'}</div>
+                          <div className="text-xs text-slate-500">计划 {item.plannedDate || '-'} / 基线 {item.baselineDate || '-'} / 实际 {item.actualDate || '-'} / {item.status || '-'}</div>
                         </div>
                         <TableRowActions actions={[
                           { label: '编辑里程碑', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'milestone', item }), semantic: 'edit', isPrimary: true, permissionKey: 'oa:project:edit' },
@@ -1008,6 +1008,10 @@ export default function ProjectManagementPage() {
               <Label className={fieldLabelClassName}>计划日期</Label>
               <DatePicker value={toDateInput(milestoneForm.plannedDate)} onChange={(e) => setMilestoneForm((prev) => ({ ...prev, plannedDate: e.target.value }))} />
             </div>
+            <div>
+              <Label className={fieldLabelClassName}>实际完成日期</Label>
+              <DatePicker value={toDateInput(milestoneForm.actualDate)} onChange={(e) => setMilestoneForm((prev) => ({ ...prev, actualDate: e.target.value || undefined }))} />
+            </div>
           </div>
         ) : null}
 
@@ -1152,5 +1156,4 @@ export default function ProjectManagementPage() {
     </div>
   );
 }
-
 

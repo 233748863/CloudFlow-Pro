@@ -32,7 +32,7 @@ import {
   TableRow,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-import { addDept, deleteDept, getDeptTree, getUserList, updateDept, updateUser, deleteUser } from '../services/api/auth';
+import { addDept, deleteDept, getDeptTree, getUserList, migrateDeptUsers, updateDept, updateUser, deleteUser } from '../services/api/auth';
 import { cn } from '@/utils/cn';
 
 // ============================================================
@@ -807,6 +807,97 @@ const ChangeDeptDialog: React.FC<{
   );
 };
 
+const MigrateDeptDialog: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (sourceDeptId: number, targetDeptId: number) => void;
+  sourceDept: DeptItem | null;
+  deptTree: DeptItem[];
+}> = ({ open, onClose, onSubmit, sourceDept, deptTree }) => {
+  const [targetDeptId, setTargetDeptId] = useState<number | undefined>(undefined);
+  const targetDept = useMemo(
+    () => findDeptById(deptTree, targetDeptId ?? null),
+    [deptTree, targetDeptId],
+  );
+
+  useEffect(() => {
+    if (!open) {
+      setTargetDeptId(undefined);
+    }
+  }, [open]);
+
+  return (
+    <BaseDialog
+      open={open}
+      onClose={onClose}
+      title="部门迁移"
+      maxWidthClassName="w-full sm:max-w-4xl"
+      bodyClassName="pb-10"
+      footer={
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>
+            取消
+          </Button>
+          <Button
+            onClick={() => {
+              if (!sourceDept?.deptId || !targetDeptId) {
+                toast.error('请选择目标部门');
+                return;
+              }
+              if (sourceDept.deptId === targetDeptId) {
+                toast.error('源部门和目标部门不能相同');
+                return;
+              }
+              onSubmit(sourceDept.deptId, targetDeptId);
+            }}
+          >
+            确认迁移
+          </Button>
+        </div>
+      }
+    >
+      {sourceDept ? (
+        <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="space-y-4">
+            <div className="rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-3 dark:border-dark-700/50 dark:bg-dark-800/50">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+                源部门
+              </div>
+              <div className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {sourceDept.deptName}
+              </div>
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                迁移后该部门下现有成员将整体移动到目标部门。
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 dark:border-dark-700/50 dark:bg-dark-800/50">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+                目标部门
+              </div>
+              <div className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {targetDept?.deptName || '未选择'}
+              </div>
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {targetDept?.leader ? `负责人 ${targetDept.leader}` : '从右侧列表选择目标部门'}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className={fieldLabelClassName}>目标部门</label>
+            <DepartmentPickerList
+              value={targetDeptId}
+              onChange={setTargetDeptId}
+              deptTree={deptTree.filter((dept) => dept.deptId !== sourceDept.deptId)}
+            />
+          </div>
+        </div>
+      ) : null}
+    </BaseDialog>
+  );
+};
+
 // ============================================================
 // 主组件导出
 // ============================================================
@@ -830,6 +921,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
   const [defaultParentId, setDefaultParentId] = useState(0);
   const [detailUser, setDetailUser] = useState<UserItem | null>(null);
   const [changeDeptUser, setChangeDeptUser] = useState<UserItem | null>(null);
+  const [migrateDeptSource, setMigrateDeptSource] = useState<DeptItem | null>(null);
   const [pendingDeleteDept, setPendingDeleteDept] = useState<DeptItem | null>(null);
   const [pendingDeleteUser, setPendingDeleteUser] = useState<UserItem | null>(null);
 
@@ -1014,6 +1106,17 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
     }
   };
 
+  const handleDeptMigrate = async (sourceDeptId: number, targetDeptId: number) => {
+    try {
+      const moved = await migrateDeptUsers({ sourceDeptId, targetDeptId });
+      toast.success(`部门迁移成功，共迁移 ${Number(moved || 0)} 名成员`);
+      setMigrateDeptSource(null);
+      await Promise.all([fetchDepts(), fetchUsers(selectedDeptId)]);
+    } catch (error: any) {
+      toast.error(error?.message || '部门迁移失败');
+    }
+  };
+
   const handleUserDelete = async () => {
     if (!pendingDeleteUser) return;
 
@@ -1086,7 +1189,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                     {(selectedDept.status || '0') === '0' ? '正常' : '停用'}
                   </span>
                 </div>
-                <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <Button variant="outline" size="sm" className="px-2" onClick={() => openCreateDeptDialog(selectedDept.deptId)}>
                     <Plus size={14} />
                     子部门
@@ -1094,6 +1197,10 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                   <Button variant="outline" size="sm" className="px-2" onClick={() => openEditDeptDialog(selectedDept)}>
                     <Edit3 size={14} />
                     编辑
+                  </Button>
+                  <Button variant="outline" size="sm" className="px-2" onClick={() => setMigrateDeptSource(selectedDept)}>
+                    <ArrowRightLeft size={14} />
+                    迁移成员
                   </Button>
                   <Button variant="outline" size="sm" className="px-2 text-rose-600 hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200" onClick={() => setPendingDeleteDept(selectedDept)}>
                     <Trash2 size={14} />
@@ -1293,6 +1400,14 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
         onClose={() => setChangeDeptUser(null)}
         onSubmit={handleUserDeptChange}
         user={changeDeptUser}
+        deptTree={deptTree}
+      />
+
+      <MigrateDeptDialog
+        open={Boolean(migrateDeptSource)}
+        onClose={() => setMigrateDeptSource(null)}
+        onSubmit={handleDeptMigrate}
+        sourceDept={migrateDeptSource}
         deptTree={deptTree}
       />
 

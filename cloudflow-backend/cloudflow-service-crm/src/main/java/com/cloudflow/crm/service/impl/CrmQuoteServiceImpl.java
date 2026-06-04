@@ -258,6 +258,8 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         request.setOwnerName(quote.getOwnerName());
         request.setCustomerId(quote.getCustomerId());
         request.setCustomerName(quote.getCustomerName());
+        request.setSourceType("CRM_QUOTE");
+        request.setSourceId(quote.getQuoteId());
         request.setRemark("由CRM报价 " + quote.getQuoteNo() + " 生成");
 
         R<Long> response = remoteOaService.createContract("true", "cloudflow-service-crm", request);

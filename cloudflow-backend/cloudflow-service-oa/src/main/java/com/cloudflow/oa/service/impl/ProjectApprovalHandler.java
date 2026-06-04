@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 public class ProjectApprovalHandler implements ApprovalResultHandler {
 
     private final OaProjectMapper projectMapper;
+    private final ProjectExecutionStateService projectExecutionStateService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -28,6 +29,7 @@ public class ProjectApprovalHandler implements ApprovalResultHandler {
     @Override
     public void handleApproved(ApprovalResultDTO dto) {
         updateStatus(dto, "APPROVED");
+        projectExecutionStateService.syncProjectStatus(dto.getBusinessId(), WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
     }
 
     @Override

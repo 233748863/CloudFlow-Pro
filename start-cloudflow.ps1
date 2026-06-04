@@ -537,8 +537,17 @@ function Stop-BackendModuleProcesses {
         }
     }
 
-    $matchedProcesses |
-        Sort-Object ProcessId -Unique |
+    $matchedProcessIds = @(
+        $matchedProcesses |
+            Select-Object -ExpandProperty ProcessId -Unique |
+            ForEach-Object { [int]$_ }
+    )
+
+    $rootProcesses = $matchedProcesses |
+        Where-Object { $matchedProcessIds -notcontains [int]$_.ParentProcessId } |
+        Sort-Object ProcessId -Unique
+
+    $rootProcesses |
         ForEach-Object {
             Write-Host ("{0,-10} 清理残留进程 PID {1}" -f $Service.Name, $_.ProcessId)
             Stop-ProcessTree -RootProcessId $_.ProcessId
@@ -547,6 +556,8 @@ function Stop-BackendModuleProcesses {
 
 function Stop-PortListeners {
     param([object]$Service)
+
+    $portsByProcess = @{}
 
     foreach ($port in Get-ServicePorts -Service $Service) {
         $connections = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
@@ -559,11 +570,20 @@ function Stop-PortListeners {
             Where-Object { $_ -gt 0 }
 
         foreach ($processId in $processIds) {
-            $process = Get-CimInstance Win32_Process -Filter "ProcessId=$processId" -ErrorAction SilentlyContinue
-            if ($null -ne $process) {
-                Write-Host ("{0,-10} 清理端口 {1}, PID {2}" -f $Service.Name, $port, $process.ProcessId)
-                Stop-ProcessTree -RootProcessId $process.ProcessId
+            $processKey = [string]$processId
+            if (-not $portsByProcess.ContainsKey($processKey)) {
+                $portsByProcess[$processKey] = @()
             }
+            $portsByProcess[$processKey] += $port
+        }
+    }
+
+    foreach ($processKey in ($portsByProcess.Keys | Sort-Object { [int]$_ })) {
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId=$processKey" -ErrorAction SilentlyContinue
+        if ($null -ne $process) {
+            $ports = ($portsByProcess[$processKey] | Sort-Object -Unique) -join ","
+            Write-Host ("{0,-10} 清理端口 {1}, PID {2}" -f $Service.Name, $ports, $process.ProcessId)
+            Stop-ProcessTree -RootProcessId $process.ProcessId
         }
     }
 }

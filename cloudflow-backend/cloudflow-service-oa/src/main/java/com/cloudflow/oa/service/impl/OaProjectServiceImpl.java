@@ -84,6 +84,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     private final BizPaymentRequestMapper paymentRequestMapper;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
+    private final ProjectExecutionStateService projectExecutionStateService;
 
     @Override
     public PageResult<OaProject> queryPage(OaProject query, PageQuery pageQuery) {
@@ -156,6 +157,9 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         project.setRiskLevel(StringUtils.hasText(project.getRiskLevel()) ? project.getRiskLevel() : persisted.getRiskLevel());
         project.setSourceName(StringUtils.hasText(project.getSourceName()) ? project.getSourceName() : persisted.getSourceName());
         project.setBaselineVersion(project.getBaselineVersion() == null ? persisted.getBaselineVersion() : project.getBaselineVersion());
+        project.setStatus(persisted.getStatus());
+        project.setActualStartDate(persisted.getActualStartDate());
+        project.setActualEndDate(persisted.getActualEndDate());
         project.setUpdateBy(UserContext.getUserName());
         project.setUpdateTime(LocalDateTime.now());
         return updateById(project);
@@ -376,13 +380,17 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         milestone.setProgress(milestone.getProgress() == null ? BigDecimal.ZERO : milestone.getProgress());
         milestone.setBaselineDate(milestone.getBaselineDate() == null ? milestone.getPlannedDate() : milestone.getBaselineDate());
         milestone.setSortOrder(milestone.getSortOrder() == null ? nextMilestoneSortOrder(milestone.getProjectId()) : milestone.getSortOrder());
-        milestone.setStatus(StringUtils.hasText(milestone.getStatus()) ? milestone.getStatus() : "PLANNED");
+        normalizeMilestoneState(milestone, null);
         milestone.setDeleted(0);
         milestone.setCreateBy(resolveUserName());
         milestone.setCreateTime(now);
         milestone.setUpdateBy(resolveUserName());
         milestone.setUpdateTime(now);
-        return projectMilestoneMapper.insert(milestone) > 0;
+        boolean inserted = projectMilestoneMapper.insert(milestone) > 0;
+        if (inserted) {
+            projectExecutionStateService.syncProjectStatus(milestone.getProjectId(), resolveUserName());
+        }
+        return inserted;
     }
 
     @Override
@@ -392,11 +400,14 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             throw new IllegalArgumentException("项目里程碑ID不能为空");
         }
         requireProject(milestone.getProjectId());
+        OaProjectMilestone persisted = projectMilestoneMapper.selectById(milestone.getMilestoneId());
+        normalizeMilestoneState(milestone, persisted);
         milestone.setUpdateBy(resolveUserName());
         milestone.setUpdateTime(LocalDateTime.now());
         boolean updated = projectMilestoneMapper.updateById(milestone) > 0;
         if (updated) {
             syncProjectRiskLevel(milestone.getProjectId());
+            projectExecutionStateService.syncProjectStatus(milestone.getProjectId(), resolveUserName());
         }
         return updated;
     }
@@ -415,7 +426,10 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
                 .set(OaProjectMilestone::getUpdateTime, LocalDateTime.now());
         boolean updated = projectMilestoneMapper.update(null, wrapper) > 0;
         if (updated) {
-            milestones.stream().map(OaProjectMilestone::getProjectId).distinct().forEach(this::syncProjectRiskLevel);
+            milestones.stream().map(OaProjectMilestone::getProjectId).distinct().forEach(projectId -> {
+                syncProjectRiskLevel(projectId);
+                projectExecutionStateService.syncProjectStatus(projectId, resolveUserName());
+            });
         }
         return updated;
     }
@@ -507,7 +521,11 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         task.setUpdateBy(resolveUserName());
         task.setUpdateTime(now);
         task.setDeleted(0);
-        return workTaskService.save(task);
+        boolean saved = workTaskService.save(task);
+        if (saved) {
+            projectExecutionStateService.syncProjectStatus(task.getProjectId(), resolveUserName());
+        }
+        return saved;
     }
 
     @Override
@@ -517,9 +535,20 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             throw new IllegalArgumentException("WBS任务ID不能为空");
         }
         requireProject(task.getProjectId());
+        WorkTask persisted = workTaskService.getById(task.getTaskId());
+        if (persisted != null) {
+            task.setStatus(persisted.getStatus());
+            task.setActualStartTime(persisted.getActualStartTime());
+            task.setActualEndTime(persisted.getActualEndTime());
+            task.setProgress(task.getProgress() == null ? persisted.getProgress() : task.getProgress());
+        }
         task.setUpdateBy(resolveUserName());
         task.setUpdateTime(LocalDateTime.now());
-        return workTaskService.updateById(task);
+        boolean updated = workTaskService.updateById(task);
+        if (updated) {
+            projectExecutionStateService.syncProjectStatus(task.getProjectId(), resolveUserName());
+        }
+        return updated;
     }
 
     @Override
@@ -544,7 +573,22 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     @Override
     @Audit(name = "删除WBS任务", highRisk = true)
     public boolean removeWbsTasks(List<Long> ids) {
-        return workTaskService.removeProjectTasks(ids);
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<WorkTask> tasks = ids.stream()
+                .map(workTaskService::getById)
+                .filter(Objects::nonNull)
+                .toList();
+        boolean removed = workTaskService.removeProjectTasks(ids);
+        if (removed) {
+            tasks.stream()
+                    .map(WorkTask::getProjectId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .forEach(projectId -> projectExecutionStateService.syncProjectStatus(projectId, resolveUserName()));
+        }
+        return removed;
     }
 
     @Override
@@ -623,8 +667,9 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
 
     @Override
     public boolean archiveProject(Long projectId) {
+        projectExecutionStateService.syncProjectStatus(projectId, resolveUserName());
         OaProject project = requireProject(projectId);
-        if (!List.of("COMPLETED", "CANCELLED", "APPROVED", "IN_PROGRESS").contains(project.getStatus())) {
+        if (!List.of("COMPLETED", "CANCELLED").contains(project.getStatus())) {
             throw new IllegalArgumentException("当前项目状态不允许归档");
         }
         LambdaUpdateWrapper<OaProject> wrapper = new LambdaUpdateWrapper<>();
@@ -686,6 +731,32 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             return instanceId != null ? String.valueOf(instanceId) : null;
         }
         return data != null ? String.valueOf(data) : null;
+    }
+
+    private void normalizeMilestoneState(OaProjectMilestone milestone, OaProjectMilestone persisted) {
+        if (milestone == null) {
+            return;
+        }
+        if (milestone.getProgress() == null) {
+            milestone.setProgress(persisted != null && persisted.getProgress() != null ? persisted.getProgress() : BigDecimal.ZERO);
+        }
+        if (milestone.getActualDate() != null) {
+            milestone.setStatus("COMPLETED");
+            milestone.setProgress(BigDecimal.valueOf(100));
+            return;
+        }
+        if (!StringUtils.hasText(milestone.getStatus())) {
+            milestone.setStatus(persisted != null && StringUtils.hasText(persisted.getStatus()) ? persisted.getStatus() : "PLANNED");
+        }
+        if (milestone.getProgress() != null && milestone.getProgress().compareTo(BigDecimal.valueOf(100)) >= 0) {
+            milestone.setStatus("COMPLETED");
+            if (milestone.getActualDate() == null && persisted != null) {
+                milestone.setActualDate(persisted.getActualDate());
+            }
+            if (milestone.getActualDate() == null) {
+                milestone.setActualDate(LocalDate.now());
+            }
+        }
     }
 
     private void publishProjectSubmittedEvent(OaProject project, ProjectSubmittedEvent event) {

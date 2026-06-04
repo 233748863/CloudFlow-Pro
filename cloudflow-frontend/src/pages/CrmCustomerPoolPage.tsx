@@ -69,11 +69,15 @@ export default function CrmCustomerPoolPage() {
   const handleClaim = async (customer: CrmCustomer) => {
     if (!customer.customerId) return;
     try {
-      await crmApi.claimCustomer(customer.customerId, '公海抢单');
-      toast.success('抢单成功');
+      await crmApi.submitCustomerClaim({
+        customerId: customer.customerId,
+        action: 'CLAIM',
+        remark: '公海抢单',
+      });
+      toast.success('已提交客户领取审批');
       await load();
     } catch (error) {
-      toast.error(getErrorMessage(error, '抢单失败'));
+      toast.error(getErrorMessage(error, '提交客户领取审批失败'));
     }
   };
 
@@ -180,7 +184,7 @@ export default function CrmCustomerPoolPage() {
                           align="end"
                           overflowLabel="更多"
                           actions={[
-                            { label: '抢单', icon: <HandCoins size={14} />, onClick: () => void handleClaim(row), semantic: 'confirm', isPrimary: true, permissionKey: 'crm:customer-pool:claim' },
+                            { label: '申请领取', icon: <HandCoins size={14} />, onClick: () => void handleClaim(row), semantic: 'confirm', isPrimary: true, permissionKey: 'crm:approval:customer-claim' },
                             { label: '指派负责人', icon: <Gavel size={14} />, onClick: () => { setAssignDialog(row); setAssignForm({ ownerId: '', ownerName: '', reason: '' }); }, permissionKey: 'crm:customer-pool:assign' },
                             { label: '查看日志', icon: <History size={14} />, onClick: () => void openLogs(row) },
                           ]}

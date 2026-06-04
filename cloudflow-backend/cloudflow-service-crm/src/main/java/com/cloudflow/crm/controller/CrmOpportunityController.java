@@ -8,10 +8,12 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.dto.CrmOpportunityStageUpdateDTO;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardColumnVO;
+import com.cloudflow.crm.service.ICrmApprovalService;
 import com.cloudflow.crm.service.ICrmOpportunityService;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +25,7 @@ import java.util.List;
 public class CrmOpportunityController {
 
     private final ICrmOpportunityService crmOpportunityService;
+    private final ICrmApprovalService crmApprovalService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:opportunity:list")
@@ -83,10 +86,14 @@ public class CrmOpportunityController {
 
     @SysLog("CRM商机输单")
     @PostMapping("/{id}/lose")
-    @SaCheckPermission("crm:opportunity:lose")
-    public R<Void> lose(@PathVariable("id") Long id, @RequestBody(required = false) CrmOpportunity payload) {
+    @SaCheckPermission("crm:approval:opportunity-downgrade")
+    public R<Long> lose(@PathVariable("id") Long id, @RequestBody(required = false) CrmOpportunity payload) {
         try {
-            return R.result(crmOpportunityService.loseOpportunity(id, payload != null ? payload.getLostReason() : null));
+            return R.ok(crmApprovalService.submitOpportunityDowngrade(
+                    id,
+                    "CLOSE",
+                    null,
+                    payload != null ? payload.getLostReason() : null));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -97,6 +104,10 @@ public class CrmOpportunityController {
     @SaCheckPermission("crm:opportunity:edit")
     public R<Void> updateStage(@RequestBody CrmOpportunityStageUpdateDTO request) {
         try {
+            CrmOpportunity opportunity = crmOpportunityService.getAccessibleOpportunity(request.getOpportunityId());
+            if (requiresDowngradeApproval(opportunity, request.getStage())) {
+                return R.fail("商机降级/输单已切换为审批流程，请调用 /crm/approval/opportunity-downgrade");
+            }
             return R.result(crmOpportunityService.updateStage(request.getOpportunityId(), request.getStage(), request.getLostReason()));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
@@ -131,5 +142,27 @@ public class CrmOpportunityController {
             crmOpportunityService.updateById(opportunity);
         }
         return R.ok();
+    }
+
+    private boolean requiresDowngradeApproval(CrmOpportunity current, String targetStage) {
+        if (current == null || !StringUtils.hasText(targetStage)) {
+            return false;
+        }
+        if ("LOST".equalsIgnoreCase(targetStage)) {
+            return true;
+        }
+        return stageOrder(targetStage) < stageOrder(current.getStage());
+    }
+
+    private int stageOrder(String stage) {
+        return switch (stage == null ? "" : stage.toUpperCase()) {
+            case "LEAD" -> 1;
+            case "QUALIFIED" -> 2;
+            case "PROPOSAL" -> 3;
+            case "NEGOTIATION" -> 4;
+            case "WON" -> 5;
+            case "LOST" -> 6;
+            default -> Integer.MAX_VALUE;
+        };
     }
 }

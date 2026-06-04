@@ -3,6 +3,10 @@ package com.cloudflow.auth.controller.system;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysDictData;
+import com.cloudflow.auth.domain.SysDictVersion;
+import com.cloudflow.auth.domain.dto.DictChangeResult;
+import com.cloudflow.auth.domain.vo.DictChangeApprovalDetailVO;
+import com.cloudflow.auth.domain.vo.DictChangeApprovalSummaryVO;
 import com.cloudflow.auth.mapper.SysDictDataMapper;
 import com.cloudflow.auth.service.ISysDictTypeService;
 import com.cloudflow.common.core.domain.R;
@@ -58,9 +62,7 @@ public class SysDictDataController {
     @RepeatSubmit
     @SaCheckPermission("system:dict:add")
     public R<?> add(@RequestBody SysDictData dictData) {
-        dictDataMapper.insert(dictData);
-        sysDictTypeService.refreshDictCache(dictData.getDictType());
-        return R.ok();
+        return R.ok(sysDictTypeService.saveDictData(dictData));
     }
 
     /** 修改字典数据 */
@@ -68,21 +70,39 @@ public class SysDictDataController {
     @RepeatSubmit
     @SaCheckPermission("system:dict:edit")
     public R<?> edit(@RequestBody SysDictData dictData) {
-        SysDictData old = dictDataMapper.selectById(dictData.getDictCode());
-        dictDataMapper.updateById(dictData);
-        // 旧 dictType 与新 dictType 都要刷新（dictType 可能被改）
-        if (old != null && old.getDictType() != null && !old.getDictType().equals(dictData.getDictType())) {
-            sysDictTypeService.refreshDictCache(old.getDictType());
-        }
-        sysDictTypeService.refreshDictCache(dictData.getDictType());
-        return R.ok();
+        return R.ok(sysDictTypeService.updateDictData(dictData));
     }
 
     /** 删除字典数据 */
     @DeleteMapping("/{dictCodes}")
     @SaCheckPermission("system:dict:remove")
-    public R<?> remove(@PathVariable("dictCodes") Long[] dictCodes) {
-        sysDictTypeService.deleteDictDataByIds(dictCodes);
+    public R<DictChangeResult> remove(@PathVariable("dictCodes") Long[] dictCodes) {
+        return R.ok(sysDictTypeService.deleteDictDataByIds(dictCodes));
+    }
+
+    @GetMapping("/version/{dictType}")
+    @SaCheckPermission("system:dict:list")
+    public R<List<SysDictVersion>> versions(@PathVariable String dictType) {
+        return R.ok(sysDictTypeService.listDictVersions(dictType));
+    }
+
+    @GetMapping("/approval/list")
+    @SaCheckPermission("system:dict:list")
+    public R<List<DictChangeApprovalSummaryVO>> approvalList(@RequestParam(required = false) String dictType) {
+        return R.ok(sysDictTypeService.listDictChangeApprovals(dictType));
+    }
+
+    @GetMapping("/approval/{approvalId}")
+    @SaCheckPermission("system:dict:query")
+    public R<DictChangeApprovalDetailVO> approvalDetail(@PathVariable Long approvalId) {
+        return R.ok(sysDictTypeService.getDictChangeApprovalDetail(approvalId));
+    }
+
+    @PostMapping("/version/{versionId}/rollback")
+    @RepeatSubmit
+    @SaCheckPermission("system:dict:edit")
+    public R<?> rollback(@PathVariable Long versionId) {
+        sysDictTypeService.rollbackDictVersion(versionId);
         return R.ok();
     }
 }

@@ -65,6 +65,9 @@ public class OutboxScheduler {
         content.put("tenantId", event.getTenantId());
 
         String msgId = redisStreamUtil.publishGlobal(properties.getStreamKey(), content);
+        if (properties.getStreamMaxLen() > 0) {
+            redisStreamUtil.trimGlobal(properties.getStreamKey(), properties.getStreamMaxLen(), true);
+        }
         log.info("Outbox 事件已发布到 Redis Stream: eventType={}, msgId={}, outboxId={}",
                 event.getEventType(), msgId, event.getId());
     }

@@ -15,11 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class InnerNoticeController {
 
-    private static final String AUTH_CALLERS = "${cloudflow.security.inner.oa.auth-callers:cloudflow-auth}";
+    private static final String INTERNAL_CALLERS = "${cloudflow.security.inner.oa.notice-callers:cloudflow-auth,cloudflow-service-workflow}";
 
     private final ISysNoticeService sysNoticeService;
 
-    @Inner(allowedServices = {AUTH_CALLERS})
+    @Inner(allowedServices = {INTERNAL_CALLERS})
     @PostMapping("/send")
     public R<Void> send(@RequestBody NoticeSendRequest request) {
         sysNoticeService.sendNotice(

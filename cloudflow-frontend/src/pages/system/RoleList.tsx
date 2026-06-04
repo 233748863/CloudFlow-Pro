@@ -36,11 +36,17 @@ import {
 } from '@/components/common';
 import {
   addRole,
+  addRoleMutexRule,
+  deleteRoleMutexRule,
   deleteRole,
   getDeptTree,
   getMenuList,
   getRole,
   getRoleList,
+  getRoleMutexRules,
+  getRoleOptions,
+  type RoleMutexRule,
+  type RoleOption,
   updateRole,
 } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
@@ -80,6 +86,7 @@ type RoleQuery = {
 };
 
 const DEFAULT_TENANT_VALUE = '__DEFAULT_TENANT__';
+const EMPTY_SELECT_VALUE = '__EMPTY__';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const dsTypeMap: Record<number, string> = {
@@ -222,6 +229,7 @@ const TreeCheckboxList: React.FC<{
 export const RoleList = () => {
   const { user } = useAuth();
   const [roles, setRoles] = useState<RoleRecord[]>([]);
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [total, setTotal] = useState(0);
   const [menuTree, setMenuTree] = useState<TreeNode[]>([]);
   const [flatMenus, setFlatMenus] = useState<TreeNode[]>([]);
@@ -241,9 +249,17 @@ export const RoleList = () => {
     roleKey: '',
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMutexDialogOpen, setIsMutexDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
   const [pendingDeleteRole, setPendingDeleteRole] = useState<RoleRecord | null>(null);
+  const [pendingDeleteMutexRule, setPendingDeleteMutexRule] = useState<RoleMutexRule | null>(null);
   const roleDetailRequestRef = useRef(0);
+  const [mutexRules, setMutexRules] = useState<RoleMutexRule[]>([]);
+  const [mutexLoading, setMutexLoading] = useState(false);
+  const [mutexForm, setMutexForm] = useState({
+    roleId1: EMPTY_SELECT_VALUE,
+    roleId2: EMPTY_SELECT_VALUE,
+  });
   const [formData, setFormData] = useState({
     roleName: '',
     roleKey: '',
@@ -354,6 +370,31 @@ export const RoleList = () => {
     }
   };
 
+  const fetchRoleOptions = async () => {
+    try {
+      const response = await getRoleOptions();
+      setRoleOptions(Array.isArray(response) ? response : []);
+    } catch (fetchError) {
+      console.error(fetchError);
+      toast.error(getErrorMessage(fetchError, '加载角色选项失败'));
+      setRoleOptions([]);
+    }
+  };
+
+  const fetchMutexRules = async () => {
+    setMutexLoading(true);
+    try {
+      const response = await getRoleMutexRules();
+      setMutexRules(Array.isArray(response) ? response : []);
+    } catch (fetchError) {
+      console.error(fetchError);
+      toast.error(getErrorMessage(fetchError, '加载互斥规则失败'));
+      setMutexRules([]);
+    } finally {
+      setMutexLoading(false);
+    }
+  };
+
   useEffect(() => {
     void fetchRoles();
   }, [query]);
@@ -362,6 +403,7 @@ export const RoleList = () => {
     void fetchMenus();
     void fetchDepts();
     void fetchTenants();
+    void fetchRoleOptions();
   }, []);
 
   const hasActiveFilters = Boolean(query.roleName || query.roleKey);
@@ -372,12 +414,23 @@ export const RoleList = () => {
   const canAddRole = hasRolePermission('system:role:add');
   const canEditRole = hasRolePermission('system:role:edit');
   const canRemoveRole = hasRolePermission('system:role:remove');
+  const roleNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    roleOptions.forEach((item) => {
+      map.set(item.roleId, item.roleName);
+    });
+    return map;
+  }, [roleOptions]);
 
   const handleRefresh = () => {
     void fetchRoles();
     void fetchMenus();
     void fetchDepts();
     void fetchTenants();
+    void fetchRoleOptions();
+    if (isMutexDialogOpen) {
+      void fetchMutexRules();
+    }
   };
 
   const handleSearch = (event: React.FormEvent) => {
@@ -482,6 +535,24 @@ export const RoleList = () => {
       dsScope: '',
       tenantId: undefined,
     });
+  };
+
+  const handleOpenMutexDialog = () => {
+    if (!canEditRole) {
+      toast.error('没有维护角色互斥规则权限');
+      return;
+    }
+    setIsMutexDialogOpen(true);
+    void Promise.all([fetchRoleOptions(), fetchMutexRules()]);
+  };
+
+  const handleCloseMutexDialog = () => {
+    setIsMutexDialogOpen(false);
+    setMutexForm({
+      roleId1: EMPTY_SELECT_VALUE,
+      roleId2: EMPTY_SELECT_VALUE,
+    });
+    setPendingDeleteMutexRule(null);
   };
 
   const collectChildIds = (id: number): number[] => {
@@ -595,6 +666,51 @@ export const RoleList = () => {
     }
   };
 
+  const handleAddMutexRule = async () => {
+    if (!canEditRole) {
+      toast.error('没有维护角色互斥规则权限');
+      return;
+    }
+    if (mutexForm.roleId1 === EMPTY_SELECT_VALUE || mutexForm.roleId2 === EMPTY_SELECT_VALUE) {
+      toast.error('请选择两条角色规则');
+      return;
+    }
+    if (mutexForm.roleId1 === mutexForm.roleId2) {
+      toast.error('互斥规则不能引用同一角色');
+      return;
+    }
+    try {
+      await addRoleMutexRule({
+        roleId1: Number(mutexForm.roleId1),
+        roleId2: Number(mutexForm.roleId2),
+      });
+      toast.success('互斥规则已添加');
+      setMutexForm({
+        roleId1: EMPTY_SELECT_VALUE,
+        roleId2: EMPTY_SELECT_VALUE,
+      });
+      await fetchMutexRules();
+    } catch (submitError) {
+      console.error(submitError);
+      toast.error(getErrorMessage(submitError, '保存互斥规则失败'));
+    }
+  };
+
+  const handleDeleteMutexRule = async () => {
+    if (!pendingDeleteMutexRule) {
+      return;
+    }
+    try {
+      await deleteRoleMutexRule(pendingDeleteMutexRule.id);
+      toast.success('互斥规则已删除');
+      setPendingDeleteMutexRule(null);
+      await fetchMutexRules();
+    } catch (deleteError) {
+      console.error(deleteError);
+      toast.error(getErrorMessage(deleteError, '删除互斥规则失败'));
+    }
+  };
+
   const tenantNameById = (tenantId?: number) =>
     tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || '默认租户';
 
@@ -650,6 +766,12 @@ export const RoleList = () => {
                 <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
                 刷新
               </Button>
+              {canEditRole ? (
+                <Button variant="outline" size="sm" onClick={handleOpenMutexDialog}>
+                  <Shield size={15} />
+                  互斥规则
+                </Button>
+              ) : null}
               {canAddRole ? (
                 <Button size="sm" onClick={() => handleOpenModal()}>
                   <Plus size={15} />
@@ -973,6 +1095,124 @@ export const RoleList = () => {
         </form>
       </BaseDialog>
 
+      <BaseDialog
+        open={isMutexDialogOpen}
+        title="角色互斥规则"
+        onClose={handleCloseMutexDialog}
+        maxWidthClassName="max-w-4xl"
+        footer={
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={handleCloseMutexDialog}>
+              关闭
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">新增互斥规则</div>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <div>
+                <label className={fieldLabelClassName}>角色 A</label>
+                <Select
+                  value={mutexForm.roleId1}
+                  onValueChange={(value) => setMutexForm((current) => ({ ...current, roleId1: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择角色 A" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_SELECT_VALUE}>请选择角色 A</SelectItem>
+                    {roleOptions.map((role) => (
+                      <SelectItem key={`mutex-role-1-${role.roleId}`} value={String(role.roleId)}>
+                        {role.roleName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className={fieldLabelClassName}>角色 B</label>
+                <Select
+                  value={mutexForm.roleId2}
+                  onValueChange={(value) => setMutexForm((current) => ({ ...current, roleId2: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择角色 B" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_SELECT_VALUE}>请选择角色 B</SelectItem>
+                    {roleOptions.map((role) => (
+                      <SelectItem key={`mutex-role-2-${role.roleId}`} value={String(role.roleId)}>
+                        {role.roleName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                <Button onClick={handleAddMutexRule} disabled={mutexLoading}>
+                  <Plus size={15} />
+                  添加规则
+                </Button>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              互斥角色 = 不能同时授予同一用户的角色组合。
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+            <Table className="min-w-[680px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>角色 A</TableHead>
+                  <TableHead>角色 B</TableHead>
+                  <TableHead>创建时间</TableHead>
+                  <TableActionHead className="w-24">操作</TableActionHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mutexLoading ? (
+                  <TableStateRow colSpan={4} title="正在加载互斥规则..." loading />
+                ) : mutexRules.length === 0 ? (
+                  <TableStateRow colSpan={4} title="暂无互斥规则" description="当前租户还没有配置角色互斥约束。" />
+                ) : (
+                  mutexRules.map((rule) => (
+                    <TableRow key={rule.id}>
+                      <TableCell className="text-sm text-slate-700 dark:text-slate-200">
+                        {roleNameById.get(rule.roleId1) || `角色 #${rule.roleId1}`}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-700 dark:text-slate-200">
+                        {roleNameById.get(rule.roleId2) || `角色 #${rule.roleId2}`}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-500 dark:text-slate-400">
+                        {rule.createTime || '-'}
+                      </TableCell>
+                      <TableCell>
+                        <TableRowActions
+                          align="end"
+                          actions={[
+                            {
+                              label: '删除规则',
+                              icon: <Trash2 size={15} />,
+                              onClick: () => setPendingDeleteMutexRule(rule),
+                              tone: 'danger',
+                            },
+                          ]}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </BaseDialog>
+
       <ConfirmDialog
         open={Boolean(pendingDeleteRole)}
         title="删除角色"
@@ -987,9 +1227,23 @@ export const RoleList = () => {
         onCancel={() => setPendingDeleteRole(null)}
         onConfirm={() => void handleDelete()}
       />
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteMutexRule)}
+        title="删除互斥规则"
+        message={
+          pendingDeleteMutexRule
+            ? `确定删除互斥规则“${roleNameById.get(pendingDeleteMutexRule.roleId1) || pendingDeleteMutexRule.roleId1} / ${roleNameById.get(pendingDeleteMutexRule.roleId2) || pendingDeleteMutexRule.roleId2}”吗？`
+            : ''
+        }
+        confirmText="确认删除"
+        cancelText="取消"
+        danger
+        onCancel={() => setPendingDeleteMutexRule(null)}
+        onConfirm={() => void handleDeleteMutexRule()}
+      />
     </>
   );
 };
 
 export default RoleList;
-

@@ -103,6 +103,22 @@ CREATE TABLE sys_user (
   UNIQUE KEY uk_user_name_tenant (user_name, tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='用户信息表';
 
+DROP TABLE IF EXISTS sys_user_login_history;
+CREATE TABLE sys_user_login_history (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '用户ID',
+  login_ip          VARCHAR(128)    DEFAULT '' COMMENT '登录IP',
+  network_segment   VARCHAR(128)    DEFAULT '' COMMENT '网络指纹',
+  location_label    VARCHAR(128)    DEFAULT '' COMMENT '登录位置标签',
+  login_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '登录时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_login_history_user_time (tenant_id, user_id, login_time),
+  KEY idx_login_history_segment (tenant_id, network_segment)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户登录历史表';
+
 -- =========================================================
 -- 三、权限管理
 -- =========================================================
@@ -174,6 +190,20 @@ CREATE TABLE sys_role_menu (
   tenant_id BIGINT(20) DEFAULT 100000 COMMENT '租户ID',
   PRIMARY KEY (role_id, menu_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色和菜单关联表';
+
+DROP TABLE IF EXISTS sys_role_mutex;
+CREATE TABLE sys_role_mutex (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  role_id_1         BIGINT(20)      NOT NULL COMMENT '互斥角色ID 1',
+  role_id_2         BIGINT(20)      NOT NULL COMMENT '互斥角色ID 2',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_role_mutex_pair (tenant_id, role_id_1, role_id_2),
+  KEY idx_role_mutex_role1 (role_id_1),
+  KEY idx_role_mutex_role2 (role_id_2)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色互斥规则表';
 
 -- =========================================================
 -- 四、岗位管理
@@ -341,6 +371,7 @@ CREATE TABLE `sys_dict_data` (
     `list_class`  VARCHAR(100) DEFAULT NULL COMMENT '表格回显样式（如 success/warning/danger）',
     `is_default`  CHAR(1)      DEFAULT 'N' COMMENT '是否默认（Y是 N否）',
     `status`      CHAR(1)      DEFAULT '0' COMMENT '状态（0正常 1停用）',
+    `risk_level`  VARCHAR(20)  NOT NULL DEFAULT 'LOW' COMMENT '风险等级（LOW/MID/HIGH）',
     version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
     `remark`      VARCHAR(500) DEFAULT NULL COMMENT '备注',
     `create_by`   VARCHAR(64)  DEFAULT NULL COMMENT '创建者',
@@ -351,6 +382,51 @@ CREATE TABLE `sys_dict_data` (
     KEY `idx_dict_type` (`dict_type`),
     KEY `idx_dict_data_tenant_type` (`tenant_id`, `dict_type`, `dict_value`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典数据表';
+
+DROP TABLE IF EXISTS `sys_dict_version`;
+CREATE TABLE `sys_dict_version` (
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '版本ID',
+    `tenant_id`     BIGINT       DEFAULT 100000 COMMENT '租户ID',
+    `dict_type`     VARCHAR(100) NOT NULL COMMENT '字典类型',
+    `version_no`    INT          NOT NULL COMMENT '版本号',
+    `snapshot_json` LONGTEXT     NOT NULL COMMENT '快照JSON',
+    `published_by`  VARCHAR(64)  DEFAULT NULL COMMENT '发布人',
+    `published_at`  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_dict_version` (`tenant_id`, `dict_type`, `version_no`),
+    KEY `idx_dict_version_type` (`dict_type`, `published_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典版本快照表';
+
+DROP TABLE IF EXISTS `sys_dict_change_approval`;
+CREATE TABLE `sys_dict_change_approval` (
+    `approval_id`     BIGINT       NOT NULL AUTO_INCREMENT COMMENT '审批单ID',
+    `tenant_id`       BIGINT       DEFAULT 100000 COMMENT '租户ID',
+    `approval_no`     VARCHAR(50)  NOT NULL COMMENT '审批单号',
+    `dict_type`       VARCHAR(100) NOT NULL COMMENT '字典类型',
+    `change_scope`    VARCHAR(32)  NOT NULL COMMENT '变更范围（DICT_DATA）',
+    `action_type`     VARCHAR(32)  NOT NULL COMMENT '动作类型（ADD/UPDATE/DELETE）',
+    `risk_level`      VARCHAR(20)  NOT NULL DEFAULT 'HIGH' COMMENT '风险等级',
+    `target_ids`      VARCHAR(500) DEFAULT NULL COMMENT '目标主键列表',
+    `target_summary`  VARCHAR(255) DEFAULT NULL COMMENT '目标摘要',
+    `payload_json`    LONGTEXT     NOT NULL COMMENT '审批快照载荷',
+    `applicant_id`    BIGINT       DEFAULT NULL COMMENT '申请人ID',
+    `applicant_name`  VARCHAR(64)  DEFAULT NULL COMMENT '申请人姓名',
+    `dept_id`         BIGINT       DEFAULT NULL COMMENT '申请部门ID',
+    `dept_name`       VARCHAR(64)  DEFAULT NULL COMMENT '申请部门名称',
+    `status`          VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT '审批状态',
+    `instance_id`     VARCHAR(64)  DEFAULT NULL COMMENT '流程实例ID',
+    `approval_comment` VARCHAR(500) DEFAULT NULL COMMENT '审批意见',
+    `remark`          VARCHAR(500) DEFAULT NULL COMMENT '备注',
+    `version`         INT          NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    `create_by`       VARCHAR(64)  DEFAULT NULL COMMENT '创建者',
+    `create_time`     DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by`       VARCHAR(64)  DEFAULT NULL COMMENT '更新者',
+    `update_time`     DATETIME     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`approval_id`),
+    UNIQUE KEY `uk_dict_change_approval_no` (`tenant_id`, `approval_no`),
+    KEY `idx_dict_change_type_status` (`tenant_id`, `dict_type`, `status`),
+    KEY `idx_dict_change_instance` (`instance_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='高风险字典变更审批表';
 
 -- 14.1 字典隐式引用告警表
 DROP TABLE IF EXISTS sys_dict_orphan_alert;

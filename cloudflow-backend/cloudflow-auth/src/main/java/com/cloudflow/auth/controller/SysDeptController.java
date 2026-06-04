@@ -3,7 +3,9 @@ package com.cloudflow.auth.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysDept;
+import com.cloudflow.auth.domain.dto.DeptMigrateRequest;
 import com.cloudflow.auth.mapper.SysDeptMapper;
+import com.cloudflow.auth.service.SysDeptAdminService;
 import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
@@ -24,6 +26,9 @@ public class SysDeptController {
 
     @Autowired
     private UserDataScopeService userDataScopeService;
+
+    @Autowired
+    private SysDeptAdminService sysDeptAdminService;
 
     /**
      * 获取部门树
@@ -156,22 +161,19 @@ public class SysDeptController {
         return R.ok(success);
     }
 
+    @PostMapping("/migrate")
+    @RepeatSubmit
+    @SaCheckPermission("system:dept:edit")
+    public R<Integer> migrate(@RequestBody DeptMigrateRequest request) {
+        return R.ok(sysDeptAdminService.migrateUsers(request.getSourceDeptId(), request.getTargetDeptId()));
+    }
+
     /**
      * 删除部门
      */
     @DeleteMapping("/{deptId}")
     @SaCheckPermission("system:dept:remove")
     public R<Boolean> remove(@PathVariable Long deptId) {
-        // 检查是否有子部门
-        Long childCount = sysDeptMapper.selectCount(new LambdaQueryWrapper<SysDept>()
-                .eq(SysDept::getParentId, deptId));
-        if (childCount > 0) {
-            return R.fail("存在子部门，不允许删除");
-        }
-        boolean success = sysDeptMapper.deleteById(deptId) > 0;
-        if (success) {
-            userDataScopeService.refreshByDeptId(deptId);
-        }
-        return R.ok(success);
+        return R.ok(sysDeptAdminService.removeDept(deptId));
     }
 }

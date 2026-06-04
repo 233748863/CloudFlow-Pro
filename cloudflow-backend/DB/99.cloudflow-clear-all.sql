@@ -52,7 +52,11 @@ BEGIN
             LEAVE clear_loop;
         END IF;
 
-        SET @clear_sql = CONCAT('DELETE FROM `', REPLACE(v_table_name, '`', '``'), '`');
+        IF v_table_name IN ('sys_log', 'sys_audit_log', 'wf_audit_log') THEN
+            SET @clear_sql = CONCAT('TRUNCATE TABLE `', REPLACE(v_table_name, '`', '``'), '`');
+        ELSE
+            SET @clear_sql = CONCAT('DELETE FROM `', REPLACE(v_table_name, '`', '``'), '`');
+        END IF;
         PREPARE stmt FROM @clear_sql;
         EXECUTE stmt;
         DEALLOCATE PREPARE stmt;

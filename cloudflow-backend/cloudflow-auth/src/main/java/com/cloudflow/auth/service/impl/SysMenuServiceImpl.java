@@ -109,6 +109,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
     }
 
     @Override
+    @Audit(name = "更新菜单", spel = "#menu", oldVal = "@sysMenuServiceImpl.selectMenuById(#menu.menuId)", diff = true, highRisk = true)
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int updateMenu(SysMenu menu) {
         return menuMapper.updateById(menu);

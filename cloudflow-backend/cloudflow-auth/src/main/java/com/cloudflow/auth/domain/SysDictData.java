@@ -46,6 +46,9 @@ public class SysDictData {
     /** 状态（0正常 1停用） */
     private String status;
 
+    /** 风险等级（LOW/MID/HIGH） */
+    private String riskLevel;
+
     /** 备注 */
     private String remark;
 
