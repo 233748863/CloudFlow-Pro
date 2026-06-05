@@ -87,6 +87,12 @@ const STRATEGY_BADGE: Record<RateLimitStrategy, string> = {
     'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200',
 };
 
+const STRATEGY_LABEL: Record<RateLimitStrategy, string> = {
+  REJECT: '直接拒绝',
+  LOG: '仅记录',
+  QUEUE: '排队',
+};
+
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const TableStateRow: React.FC<{
@@ -445,7 +451,7 @@ export const ApiRateLimitPage = () => {
                                 STRATEGY_BADGE[rule.rejectStrategy],
                               )}
                             >
-                              {rule.rejectStrategy}
+                              {STRATEGY_LABEL[rule.rejectStrategy] || rule.rejectStrategy}
                             </span>
                           </TableCell>
                           <TableCell>
