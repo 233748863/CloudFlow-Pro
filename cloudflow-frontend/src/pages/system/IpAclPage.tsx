@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Plus, RefreshCw, RotateCcw, Search, Zap } from 'lucide-react';
+import { Edit, Plus, Power, RefreshCw, RotateCcw, Search, Trash2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
 import {
   pageIpAcl,
   createIpAcl,
@@ -20,6 +21,7 @@ import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   LoadingSpinner,
   Select,
@@ -205,7 +207,7 @@ export const IpAclPage = () => {
         ipPattern: formData.ipPattern.trim(),
         reason: formData.reason?.trim() || '',
         priority: Number(formData.priority || 100),
-        expireAt: formData.expireAt?.trim() || undefined,
+        expireAt: formData.expireAt?.trim() ? toBackendDateString(formData.expireAt) : undefined,
       };
       if (editing?.id) {
         await updateIpAcl({ ...payload, id: editing.id });
@@ -424,7 +426,7 @@ export const IpAclPage = () => {
                           <TableCell className="text-center">{rule.priority}</TableCell>
                           <TableCell>
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {rule.expireAt || '—'}
+                              {formatDateTimeDisplay(rule.expireAt)}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -439,24 +441,25 @@ export const IpAclPage = () => {
                           </TableCell>
                           <TableCell>
                             <TableRowActions
+                              align="end"
                               actions={[
                                 {
-                                  key: 'toggle',
-                                  label: rule.status === 'ACTIVE' ? '停用' : '启用',
-                                  semantic: rule.status === 'ACTIVE' ? 'disable' : 'enable',
+                                  label: rule.status === 'ACTIVE' ? '停用规则' : '启用规则',
+                                  icon: <Power size={15} />,
                                   onClick: () => handleToggle(rule),
+                                  tone: rule.status === 'ACTIVE' ? 'warning' : 'success',
                                 },
                                 {
-                                  key: 'edit',
-                                  label: '编辑',
-                                  semantic: 'edit',
+                                  label: '编辑规则',
+                                  icon: <Edit size={15} />,
                                   onClick: () => handleOpenModal(rule),
+                                  tone: 'neutral',
                                 },
                                 {
-                                  key: 'delete',
-                                  label: '删除',
-                                  semantic: 'delete',
+                                  label: '删除规则',
+                                  icon: <Trash2 size={15} />,
                                   onClick: () => setPendingDelete(rule),
+                                  tone: 'danger',
                                 },
                               ]}
                             />
@@ -565,13 +568,13 @@ export const IpAclPage = () => {
             </div>
             <div>
               <label className={fieldLabelClassName}>过期时间 (可选)</label>
-              <Input
+              <DatePicker
                 type="datetime-local"
-                value={formData.expireAt ? formData.expireAt.replace(' ', 'T').slice(0, 16) : ''}
+                value={formData.expireAt ? toLocalDatetimeString(formData.expireAt) : ''}
                 onChange={(e) =>
                   setFormData((c) => ({
                     ...c,
-                    expireAt: e.target.value ? e.target.value.replace('T', ' ') + ':00' : '',
+                    expireAt: e.target.value ? toBackendDateString(e.target.value) : '',
                   }))
                 }
               />

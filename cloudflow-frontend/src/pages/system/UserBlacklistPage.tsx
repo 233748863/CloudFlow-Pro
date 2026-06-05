@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Plus, RefreshCw, RotateCcw, Search, UserX } from 'lucide-react';
+import { Edit, Plus, RefreshCw, RotateCcw, ShieldOff, Search, Trash2, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
 import {
   pageUserBlacklist,
   banUser,
@@ -17,6 +18,7 @@ import { BaseDialog, ConfirmDialog, Pagination, UserSelector } from '@/component
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   LoadingSpinner,
   Select,
@@ -170,7 +172,7 @@ export const UserBlacklistPage = () => {
         ...formData,
         userId: Number(formData.userId),
         reason: formData.reason?.trim() || '',
-        expireAt: formData.expireAt?.trim() || undefined,
+        expireAt: formData.expireAt?.trim() ? toBackendDateString(formData.expireAt) : undefined,
       };
       if (editing?.id) {
         await updateUserBlacklist({ ...payload, id: editing.id });
@@ -321,7 +323,7 @@ export const UserBlacklistPage = () => {
                           </TableCell>
                           <TableCell>
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {row.expireAt || '长期'}
+                              {row.expireAt ? formatDateTimeDisplay(row.expireAt) : '长期'}
                             </span>
                           </TableCell>
                           <TableCell className="text-xs text-slate-500 dark:text-slate-400">
@@ -339,28 +341,29 @@ export const UserBlacklistPage = () => {
                           </TableCell>
                           <TableCell>
                             <TableRowActions
+                              align="end"
                               actions={[
                                 ...(row.status === 'ACTIVE'
                                   ? [
                                       {
-                                        key: 'unban',
                                         label: '解除拉黑',
-                                        semantic: 'enable' as const,
+                                        icon: <ShieldOff size={15} />,
                                         onClick: () => handleUnban(row),
+                                        tone: 'success' as const,
                                       },
                                     ]
                                   : []),
                                 {
-                                  key: 'edit',
-                                  label: '编辑',
-                                  semantic: 'edit',
+                                  label: '编辑记录',
+                                  icon: <Edit size={15} />,
                                   onClick: () => handleOpenModal(row),
+                                  tone: 'neutral',
                                 },
                                 {
-                                  key: 'delete',
-                                  label: '删除',
-                                  semantic: 'delete',
+                                  label: '删除记录',
+                                  icon: <Trash2 size={15} />,
                                   onClick: () => setPendingDelete(row),
+                                  tone: 'danger',
                                 },
                               ]}
                             />
@@ -408,13 +411,13 @@ export const UserBlacklistPage = () => {
           </div>
           <div>
             <label className={fieldLabelClassName}>过期时间 (可选, 留空= 长期)</label>
-            <Input
+            <DatePicker
               type="datetime-local"
-              value={formData.expireAt ? formData.expireAt.replace(' ', 'T').slice(0, 16) : ''}
+              value={formData.expireAt ? toLocalDatetimeString(formData.expireAt) : ''}
               onChange={(e) =>
                 setFormData((c) => ({
                   ...c,
-                  expireAt: e.target.value ? e.target.value.replace('T', ' ') + ':00' : '',
+                  expireAt: e.target.value ? toBackendDateString(e.target.value) : '',
                 }))
               }
             />
