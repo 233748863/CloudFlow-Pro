@@ -2,6 +2,7 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
@@ -699,11 +700,11 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         if (project == null || !StringUtils.hasText(project.getSourceType()) || project.getSourceId() == null) {
             return null;
         }
-        return getOne(new LambdaQueryWrapper<OaProject>()
+        return page(new Page<>(1, 1, false), new LambdaQueryWrapper<OaProject>()
                 .eq(OaProject::getDeleted, "0")
                 .eq(OaProject::getSourceType, project.getSourceType())
-                .eq(OaProject::getSourceId, project.getSourceId())
-                .last("limit 1"), false);
+                .eq(OaProject::getSourceId, project.getSourceId()))
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     private OaProject requireProject(Long projectId) {

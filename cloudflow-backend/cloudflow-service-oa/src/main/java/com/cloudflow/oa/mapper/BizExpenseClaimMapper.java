@@ -7,7 +7,6 @@ import com.cloudflow.common.datascope.DataScope;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 import java.util.Map;
@@ -37,8 +36,6 @@ public interface BizExpenseClaimMapper extends BaseMapper<BizExpenseClaim> {
     /**
      * 获取今日报销单号最大序号
      */
-    @Select("SELECT MAX(CAST(SUBSTRING(claim_no, 11) AS UNSIGNED)) FROM biz_expense_claim " +
-            "WHERE claim_no LIKE CONCAT('BX', DATE_FORMAT(NOW(), '%Y%m%d'), '%')")
     Integer getTodayMaxSeq();
 
     /**

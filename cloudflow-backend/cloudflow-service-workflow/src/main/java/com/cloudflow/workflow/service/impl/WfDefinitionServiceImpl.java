@@ -173,12 +173,12 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         // 查找当前Key的最大版本
         LambdaQueryWrapper<WfProcessDefinition> lastDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
             .eq(WfProcessDefinition::getProcessKey, definition.getProcessKey())
-            .orderByDesc(WfProcessDefinition::getVersion)
-            .last("LIMIT 1");
+            .orderByDesc(WfProcessDefinition::getVersion);
         if (definition.getTenantId() != null) {
             lastDefQuery.eq(WfProcessDefinition::getTenantId, definition.getTenantId());
         }
-        WfProcessDefinition lastDef = processDefinitionMapper.selectOne(lastDefQuery);
+        WfProcessDefinition lastDef = processDefinitionMapper.selectPage(new Page<>(1, 1, false), lastDefQuery)
+                .getRecords().stream().findFirst().orElse(null);
 
         // 乐观锁冲突检测
         if (lastDef != null && definition.getVersionLock() != null) {

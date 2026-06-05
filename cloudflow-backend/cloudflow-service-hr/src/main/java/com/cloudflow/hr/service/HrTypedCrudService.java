@@ -423,13 +423,12 @@ public class HrTypedCrudService {
             if (position == null || position.getLevelId() == null) {
                 return;
             }
-            List<HrCompGrade> grades = compGradeMapper.selectList(
+            List<HrCompGrade> grades = compGradeMapper.selectPage(new Page<>(1, 1, false),
                     new LambdaQueryWrapper<HrCompGrade>()
                             .eq(HrCompGrade::getLevelId, position.getLevelId())
                             .eq(HrCompGrade::getTenantId, tenantId)
                             .eq(HrCompGrade::getStatus, 1)
-                            .orderByAsc(HrCompGrade::getId)
-                            .last("LIMIT 1"));
+                            .orderByAsc(HrCompGrade::getId)).getRecords();
             if (grades.isEmpty()) {
                 return;
             }

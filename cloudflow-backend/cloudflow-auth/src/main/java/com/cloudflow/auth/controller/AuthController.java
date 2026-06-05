@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.LoginBody;
 import com.cloudflow.auth.domain.RegisterBody;
 import com.cloudflow.auth.domain.SysMenu;
@@ -654,11 +655,10 @@ public class AuthController {
         }
 
         return TenantBroker.applyWithoutTenant(ignored ->
-                sysTenantMapper.selectOne(
+                sysTenantMapper.selectPage(new Page<>(1, 1, false),
                         new LambdaQueryWrapper<SysTenant>()
-                                .eq(SysTenant::getTenantCode, normalizedCode)
-                                .last("LIMIT 1")
-                )
+                                .eq(SysTenant::getTenantCode, normalizedCode))
+                        .getRecords().stream().findFirst().orElse(null)
         );
     }
 

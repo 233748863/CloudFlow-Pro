@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaLicenseRenewalMapper">
+
+    <select id="getTodayRenewalMaxSeq" resultType="java.lang.Integer">
+        SELECT MAX(CAST(SUBSTRING(renewal_no, 11) AS UNSIGNED))
+        FROM oa_license_renewal
+        WHERE renewal_no LIKE CONCAT('XQ', DATE_FORMAT(NOW(), '%Y%m%d'), '%')
+    </select>
+
+</mapper>

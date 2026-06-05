@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.entity.HrBenefitRequest;
@@ -50,8 +51,8 @@ public class HrBenefitMineServiceImpl implements IHrBenefitMineService {
 
         QueryWrapper<HrEmployeeBenefit> beQw = new QueryWrapper<>();
         beQw.eq("tenant_id", currentTenantId()).eq("employee_id", userId).eq("deleted", 0)
-                .orderByDesc("create_time").last("LIMIT 50");
-        List<HrEmployeeBenefit> benefits = employeeBenefitMapper.selectList(beQw);
+                .orderByDesc("create_time");
+        List<HrEmployeeBenefit> benefits = employeeBenefitMapper.selectPage(new Page<>(1, 50, false), beQw).getRecords();
         result.setActiveBenefits(toVOList(benefits, HrEmployeeBenefitVO.class));
 
         result.setPointAccount(pointAccountService.getEmployeeAccount(userId));
@@ -59,14 +60,14 @@ public class HrBenefitMineServiceImpl implements IHrBenefitMineService {
         QueryWrapper<HrMallOrder> orderQw = new QueryWrapper<>();
         orderQw.eq("tenant_id", currentTenantId()).eq("employee_id", userId).eq("deleted", 0)
                 .in("status", Arrays.asList("PENDING", "APPROVING", "APPROVED", "SHIPPED"))
-                .orderByDesc("create_time").last("LIMIT 20");
-        List<HrMallOrder> orders = orderMapper.selectList(orderQw);
+                .orderByDesc("create_time");
+        List<HrMallOrder> orders = orderMapper.selectPage(new Page<>(1, 20, false), orderQw).getRecords();
         result.setInFlightOrders(toVOList(orders, HrMallOrderVO.class));
 
         QueryWrapper<HrBenefitRequest> reqQw = new QueryWrapper<>();
         reqQw.eq("tenant_id", currentTenantId()).eq("employee_id", userId).eq("deleted", 0)
-                .orderByDesc("create_time").last("LIMIT 20");
-        List<HrBenefitRequest> requests = requestMapper.selectList(reqQw);
+                .orderByDesc("create_time");
+        List<HrBenefitRequest> requests = requestMapper.selectPage(new Page<>(1, 20, false), reqQw).getRecords();
         result.setRecentRequests(toVOList(requests, HrBenefitRequestVO.class));
 
         return result;

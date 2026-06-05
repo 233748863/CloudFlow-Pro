@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.hr.domain.dto.HrPerfDistributionCheckPayload;
@@ -145,23 +146,23 @@ public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistr
         }
 
         // 选规则：优先目标专属规则，其次全局规则(objective_id IS NULL)
-        HrPerfDistributionRule rule = distributionRuleMapper.selectOne(
+        HrPerfDistributionRule rule = distributionRuleMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrPerfDistributionRule>()
                         .eq(HrPerfDistributionRule::getTenantId, TENANT_ID)
                         .eq(HrPerfDistributionRule::getDeleted, 0)
                         .eq(HrPerfDistributionRule::getStatus, "ACTIVE")
                         .eq(HrPerfDistributionRule::getObjectiveId, payload.getObjectiveId())
-                        .orderByDesc(HrPerfDistributionRule::getId)
-                        .last("LIMIT 1"));
+                        .orderByDesc(HrPerfDistributionRule::getId))
+                .getRecords().stream().findFirst().orElse(null);
         if (rule == null) {
-            rule = distributionRuleMapper.selectOne(
+            rule = distributionRuleMapper.selectPage(new Page<>(1, 1, false),
                     new LambdaQueryWrapper<HrPerfDistributionRule>()
                             .eq(HrPerfDistributionRule::getTenantId, TENANT_ID)
                             .eq(HrPerfDistributionRule::getDeleted, 0)
                             .eq(HrPerfDistributionRule::getStatus, "ACTIVE")
                             .isNull(HrPerfDistributionRule::getObjectiveId)
-                            .orderByDesc(HrPerfDistributionRule::getId)
-                            .last("LIMIT 1"));
+                            .orderByDesc(HrPerfDistributionRule::getId))
+                    .getRecords().stream().findFirst().orElse(null);
         }
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("total", total);

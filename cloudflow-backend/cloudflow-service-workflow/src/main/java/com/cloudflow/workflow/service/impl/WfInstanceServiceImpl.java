@@ -962,12 +962,12 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         LambdaQueryWrapper<WfProcessDefinition> startDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
                 .eq(WfProcessDefinition::getProcessKey, processDefKey)
                 .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                .orderByDesc(WfProcessDefinition::getVersion)
-                .last("LIMIT 1");
+                .orderByDesc(WfProcessDefinition::getVersion);
         if (currentTenantId != null) {
             startDefQuery.eq(WfProcessDefinition::getTenantId, currentTenantId);
         }
-        WfProcessDefinition def = processDefinitionMapper.selectOne(startDefQuery);
+        WfProcessDefinition def = processDefinitionMapper.selectPage(new Page<>(1, 1, false), startDefQuery)
+                .getRecords().stream().findFirst().orElse(null);
         if (def == null) {
             throw WorkflowException.processNotFound(processDefKey);
         }

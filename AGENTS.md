@@ -1,10 +1,13 @@
 <output_contract>
+
+回复一律使用简体中文
+
 回答长度控制：
 
 - 事实性问题：≤3句
 - 解释性问题：≤1段，不分节
 - 对比类问题：1-2句说明差异，不展开每一方
-</output_contract>
+  </output_contract>
 
 <verbosity_controls>
 详细程度控制：

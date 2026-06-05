@@ -13,6 +13,7 @@ import com.cloudflow.auth.service.RoleMutexService;
 import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.audit.annotation.HighRiskAction;
 import com.cloudflow.common.core.constant.CacheConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -106,6 +107,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "更新角色", spel = "#role", oldVal = "@sysRoleServiceImpl.selectRoleAuditSnapshot(#role.roleId)", diff = true, highRisk = true)
     @Transactional
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
@@ -164,6 +166,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     }
 
     @Override
+    @HighRiskAction
     @Transactional
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
     @Audit(name = "删除角色", highRisk = true)

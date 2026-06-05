@@ -240,9 +240,10 @@ public class HrEssServiceImpl implements IHrEssService {
         wrapper.eq("tenant_id", currentTenantId())
                 .eq("employee_id", employeeId)
                 .eq("deleted", 0)
-                .orderByDesc("period_month")
-                .last("LIMIT " + Math.max(1, Math.min(limit, 36)));
-        List<HrSalarySlip> rows = salarySlipMapper.selectList(wrapper);
+                .orderByDesc("period_month");
+        List<HrSalarySlip> rows = salarySlipMapper
+                .selectPage(new Page<>(1, Math.max(1, Math.min(limit, 36)), false), wrapper)
+                .getRecords();
         rows.forEach(this::assertDigestValid);
         return rows;
     }
@@ -323,9 +324,8 @@ public class HrEssServiceImpl implements IHrEssService {
         wrapper.eq("tenant_id", tenantId)
                 .eq("employee_id", employeeId)
                 .eq("deleted", 0)
-                .orderByDesc("period_month")
-                .last("LIMIT 1");
-        List<HrSalarySlip> rows = salarySlipMapper.selectList(wrapper);
+                .orderByDesc("period_month");
+        List<HrSalarySlip> rows = salarySlipMapper.selectPage(new Page<>(1, 1, false), wrapper).getRecords();
         if (rows.isEmpty()) {
             return null;
         }
@@ -383,9 +383,8 @@ public class HrEssServiceImpl implements IHrEssService {
         wrapper.eq("tenant_id", tenantId)
                 .eq("employee_id", employeeId)
                 .eq("deleted", 0)
-                .orderByDesc("update_time")
-                .last("LIMIT 5");
-        return certificateRequestMapper.selectList(wrapper);
+                .orderByDesc("update_time");
+        return certificateRequestMapper.selectPage(new Page<>(1, 5, false), wrapper).getRecords();
     }
 
     private Map<String, Object> buildUnreadMessages(Long tenantId, Long employeeId) {
@@ -393,9 +392,8 @@ public class HrEssServiceImpl implements IHrEssService {
         wrapper.eq("tenant_id", tenantId)
                 .eq("employee_id", employeeId)
                 .eq("read_flag", false)
-                .orderByDesc("create_time")
-                .last("LIMIT 10");
-        List<HrSelfServiceMessage> messages = selfServiceMessageMapper.selectList(wrapper);
+                .orderByDesc("create_time");
+        List<HrSelfServiceMessage> messages = selfServiceMessageMapper.selectPage(new Page<>(1, 10, false), wrapper).getRecords();
         QueryWrapper<HrSelfServiceMessage> countWrapper = new QueryWrapper<>();
         countWrapper.eq("tenant_id", tenantId)
                 .eq("employee_id", employeeId)

@@ -297,10 +297,11 @@ public class BusinessRuleServiceImpl extends ServiceImpl<BusinessRuleMapper, Bus
     }
 
     private Integer nextVersionNo(Long ruleId) {
-        BusinessRuleVersion latest = versionMapper.selectOne(new LambdaQueryWrapper<BusinessRuleVersion>()
+        BusinessRuleVersion latest = versionMapper.selectPage(new Page<>(1, 1, false),
+                new LambdaQueryWrapper<BusinessRuleVersion>()
                 .eq(BusinessRuleVersion::getRuleId, ruleId)
-                .orderByDesc(BusinessRuleVersion::getVersionNo)
-                .last("LIMIT 1"));
+                .orderByDesc(BusinessRuleVersion::getVersionNo))
+                .getRecords().stream().findFirst().orElse(null);
         return latest == null || latest.getVersionNo() == null ? 1 : latest.getVersionNo() + 1;
     }
 

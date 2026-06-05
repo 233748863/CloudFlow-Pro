@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrLookupMapper">
+
+    <select id="findDeptName" resultType="java.lang.String">
+        SELECT dept_name
+        FROM sys_dept
+        WHERE dept_id = #{deptId}
+          AND (tenant_id = #{tenantId} OR tenant_id IS NULL)
+        LIMIT 1
+    </select>
+
+    <select id="findPostName" resultType="java.lang.String">
+        SELECT post_name
+        FROM sys_post
+        WHERE post_id = #{postId}
+          AND (tenant_id = #{tenantId} OR tenant_id IS NULL)
+        LIMIT 1
+    </select>
+
+</mapper>

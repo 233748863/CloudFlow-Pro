@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.core.utils.IdUtils;
@@ -278,10 +279,11 @@ public class HotUpdateServiceImpl implements IHotUpdateService {
         if (request.getTargetVersion() != null) {
             wrapper.eq(WfProcessDefinition::getVersion, request.getTargetVersion());
         } else {
-            wrapper.orderByDesc(WfProcessDefinition::getVersion).last("LIMIT 1");
+            wrapper.orderByDesc(WfProcessDefinition::getVersion);
         }
 
-        return definitionMapper.selectOne(wrapper);
+        return definitionMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     private List<WfProcessInstance> findRunningInstances(HotUpdateRequest request, String excludeDefinitionId) {
@@ -301,9 +303,9 @@ public class HotUpdateServiceImpl implements IHotUpdateService {
         LambdaQueryWrapper<WfTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WfTask::getInstanceId, instance.getInstanceId())
                .in(WfTask::getStatus, WfTaskStatus.TODO.getCode(), "PENDING")
-               .orderByAsc(WfTask::getCreateTime)
-               .last("LIMIT 1");
-        WfTask task = taskMapper.selectOne(wrapper);
+               .orderByAsc(WfTask::getCreateTime);
+        WfTask task = taskMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
         return task != null ? task.getNodeKey() : null;
     }
 

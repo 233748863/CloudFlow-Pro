@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.common.job.annotation.DistributedJob;
@@ -232,14 +233,13 @@ public class TransactionConsistencyService {
                     // 平台级跨租户扫描：wf_transaction_message 全表扫待重试，
                     // 单条重试根据消息自带 tenantId 再切租户上下文。
                     List<WfTransactionMessage> pendingMessages = TenantBroker.applyWithoutTenant(v ->
-                        messageMapper.selectList(
+                        messageMapper.selectPage(new Page<>(1, 100, false),
                             new LambdaQueryWrapper<WfTransactionMessage>()
                                 .eq(WfTransactionMessage::getStatus, "PENDING")
                                 .le(WfTransactionMessage::getNextRetryTime, LocalDateTime.now())
                                 .lt(WfTransactionMessage::getRetryCount, maxRetry())
                                 .orderByAsc(WfTransactionMessage::getCreateTime)
-                                .last("LIMIT 100")
-                        )
+                        ).getRecords()
                     );
 
                     if (pendingMessages.isEmpty()) {

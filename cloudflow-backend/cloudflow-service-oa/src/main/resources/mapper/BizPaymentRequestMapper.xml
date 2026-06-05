@@ -38,6 +38,12 @@
         ORDER BY create_time DESC
     </select>
 
+    <select id="getTodayMaxSeq" resultType="java.lang.Integer">
+        SELECT MAX(CAST(SUBSTRING(payment_no, 11) AS UNSIGNED))
+        FROM biz_payment_request
+        WHERE payment_no LIKE CONCAT('FK', DATE_FORMAT(NOW(), '%Y%m%d'), '%')
+    </select>
+
     <select id="selectMonthlyPaymentByDept" resultType="map">
         SELECT 
             dept_name,

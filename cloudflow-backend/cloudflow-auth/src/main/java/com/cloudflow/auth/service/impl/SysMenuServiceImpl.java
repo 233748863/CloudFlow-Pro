@@ -5,8 +5,10 @@ import com.cloudflow.auth.domain.SysMenu;
 import com.cloudflow.auth.mapper.SysMenuMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.audit.annotation.HighRiskAction;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -34,12 +36,14 @@ public class SysMenuServiceImpl implements ISysMenuService {
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
     @Override
+    @DistributedLock(key = "'cache:menu:role:' + #roleId", waitMs = 500, leaseMs = 10000)
     @Cacheable(value = CacheConstants.MENU_DETAILS, key = "#roleId", unless = "#result.isEmpty()")
     public List<SysMenu> findMenuByRoleId(Long roleId) {
         return menuMapper.selectMenusByRoleId(roleId);
     }
 
     @Override
+    @DistributedLock(key = "'cache:menu:perms:' + #roleId", waitMs = 500, leaseMs = 10000)
     @Cacheable(value = CacheConstants.MENU_DETAILS, key = "'perms:' + #roleId", unless = "#result.isEmpty()")
     public List<String> findPermsByRoleId(Long roleId) {
         return menuMapper.selectMenuPermsByRoleId(roleId);
@@ -73,6 +77,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
     }
 
     @Override
+    @DistributedLock(key = "'cache:user:menus:' + #userId", waitMs = 500, leaseMs = 10000)
     @Cacheable(value = CacheConstants.USER_MENUS, key = "#userId", unless = "#result.isEmpty()")
     public List<SysMenu> selectMenuTreeByUserId(Long userId) {
         if (SecurityUtils.isAdmin(userId)) {
@@ -109,6 +114,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "更新菜单", spel = "#menu", oldVal = "@sysMenuServiceImpl.selectMenuById(#menu.menuId)", diff = true, highRisk = true)
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int updateMenu(SysMenu menu) {
@@ -116,6 +122,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "删除菜单", highRisk = true)
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int deleteMenuById(Long menuId) {

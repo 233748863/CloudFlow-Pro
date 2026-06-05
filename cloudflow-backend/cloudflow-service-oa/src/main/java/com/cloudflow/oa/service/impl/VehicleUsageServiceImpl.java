@@ -280,12 +280,12 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
     }
 
     private void clearOpenRisk(Long vehicleId, String riskCode) {
-        OaRiskAlert risk = riskAlertMapper.selectOne(new LambdaQueryWrapper<OaRiskAlert>()
+        OaRiskAlert risk = riskAlertMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<OaRiskAlert>()
                 .eq(OaRiskAlert::getBusinessType, VehicleConstants.BUSINESS_TYPE_VEHICLE)
                 .eq(OaRiskAlert::getBusinessId, vehicleId)
                 .eq(OaRiskAlert::getRiskCode, riskCode)
-                .in(OaRiskAlert::getRiskStatus, OaContractConstants.RISK_STATUS_OPEN, OaContractConstants.RISK_STATUS_HANDLING)
-                .last("LIMIT 1"));
+                .in(OaRiskAlert::getRiskStatus, OaContractConstants.RISK_STATUS_OPEN, OaContractConstants.RISK_STATUS_HANDLING))
+                .getRecords().stream().findFirst().orElse(null);
         if (risk != null) {
             risk.setRiskStatus(OaContractConstants.RISK_STATUS_CLOSED);
             risk.setHandledTime(LocalDateTime.now());

@@ -5,6 +5,7 @@ import com.cloudflow.common.audit.annotation.Audit;
 
 import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.system.SysUser;
@@ -553,13 +554,12 @@ public class CountersignServiceImpl implements ICountersignService {
      * 查询指定实例和节点的会签任务
      */
     public WfCountersignTask getCountersignByNode(String instanceId, String nodeKey) {
-        return countersignTaskMapper.selectOne(
+        return countersignTaskMapper.selectPage(new Page<>(1, 1, false),
             new LambdaQueryWrapper<WfCountersignTask>()
                 .eq(WfCountersignTask::getInstanceId, instanceId)
                 .eq(WfCountersignTask::getNodeKey, nodeKey)
-                .eq(WfCountersignTask::getStatus, "VOTING")
-                .last("LIMIT 1")
-        );
+                .eq(WfCountersignTask::getStatus, "VOTING"))
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     // ==================== 加签/减签辅助方法 ====================
@@ -569,13 +569,12 @@ public class CountersignServiceImpl implements ICountersignService {
      */
     @Override
     public WfCountersignTask getCountersignTask(String instanceId, String nodeKey) {
-        return countersignTaskMapper.selectOne(
+        return countersignTaskMapper.selectPage(new Page<>(1, 1, false),
             new LambdaQueryWrapper<WfCountersignTask>()
                 .eq(WfCountersignTask::getInstanceId, instanceId)
                 .eq(WfCountersignTask::getNodeKey, nodeKey)
-                .orderByDesc(WfCountersignTask::getCreateTime)
-                .last("LIMIT 1")
-        );
+                .orderByDesc(WfCountersignTask::getCreateTime))
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     /**

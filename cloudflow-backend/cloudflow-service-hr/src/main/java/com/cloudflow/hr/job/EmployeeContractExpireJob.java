@@ -106,8 +106,7 @@ public class EmployeeContractExpireJob {
                 .eq(HrSelfServiceMessage::getTenantId, tenantId)
                 .eq(HrSelfServiceMessage::getEmployeeId, employeeId)
                 .eq(HrSelfServiceMessage::getCategory, category)
-                .eq(HrSelfServiceMessage::getRelatedId, relatedId)
-                .last("LIMIT 1"));
+                .eq(HrSelfServiceMessage::getRelatedId, relatedId));
         if (exists != null && exists > 0) {
             return;
         }

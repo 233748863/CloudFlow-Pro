@@ -2,7 +2,8 @@ package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.domain.PageResult;
-import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
+import com.cloudflow.workflow.domain.WfReconcileAlert;
 import com.cloudflow.workflow.domain.monitor.*;
 import com.cloudflow.workflow.service.IWorkflowMonitorService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -175,6 +176,27 @@ public class WorkflowMonitorController {
             @RequestBody ResolveAlertRequest request) {
         workflowMonitorService.resolveAnomalyAlert(alertId, request.getResolveNote());
         return R.ok("解决成功");
+    }
+
+    // ==================== 流程-业务状态对账告警 ====================
+
+    @Operation(summary = "获取对账告警列表", description = "分页查询流程实例与业务单据状态不一致告警")
+    @SaCheckPermission("workflow:alert:list")
+    @GetMapping("/reconcile/list")
+    public R<PageResult<WfReconcileAlert>> getReconcileAlerts(
+            @RequestParam(required = false) String bizModule,
+            @RequestParam(required = false) Boolean resolved,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        return R.ok(workflowMonitorService.getReconcileAlerts(bizModule, resolved, pageNum, pageSize));
+    }
+
+    @Operation(summary = "关闭对账告警", description = "人工核验并处理业务状态后标记对账告警为已处理")
+    @SaCheckPermission("workflow:alert:resolve")
+    @RepeatSubmit(interval = 3000)
+    @PostMapping("/reconcile/{alertId}/resolve")
+    public R<WfReconcileAlert> resolveReconcileAlert(@PathVariable Long alertId) {
+        return R.ok(workflowMonitorService.resolveReconcileAlert(alertId));
     }
 
     // ==================== 性能统计 ====================

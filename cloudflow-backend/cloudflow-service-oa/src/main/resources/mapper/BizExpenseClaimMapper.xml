@@ -95,6 +95,12 @@
         WHERE c.id = #{id} AND c.deleted = '0'
     </select>
 
+    <select id="getTodayMaxSeq" resultType="java.lang.Integer">
+        SELECT MAX(CAST(SUBSTRING(claim_no, 11) AS UNSIGNED))
+        FROM biz_expense_claim
+        WHERE claim_no LIKE CONCAT('BX', DATE_FORMAT(NOW(), '%Y%m%d'), '%')
+    </select>
+
     <select id="selectMonthlyExpenseByDept" resultType="map">
         SELECT 
             dept_name,

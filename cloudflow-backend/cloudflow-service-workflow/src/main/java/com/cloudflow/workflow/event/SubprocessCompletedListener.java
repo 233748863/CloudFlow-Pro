@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.event;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -98,13 +99,12 @@ public class SubprocessCompletedListener {
 
             // 如果通过 definitionId 找不到，尝试通过 processDefKey 找最新已发布版本
             if (parentDef == null && StringUtils.hasText(parentInstance.getProcessDefKey())) {
-                parentDef = processDefinitionMapper.selectOne(
+                parentDef = processDefinitionMapper.selectPage(new Page<>(1, 1, false),
                         new LambdaQueryWrapper<WfProcessDefinition>()
                                 .eq(WfProcessDefinition::getProcessKey, parentInstance.getProcessDefKey())
                                 .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                                .orderByDesc(WfProcessDefinition::getVersion)
-                                .last("LIMIT 1")
-                );
+                                .orderByDesc(WfProcessDefinition::getVersion))
+                        .getRecords().stream().findFirst().orElse(null);
             }
 
             if (parentDef == null) {

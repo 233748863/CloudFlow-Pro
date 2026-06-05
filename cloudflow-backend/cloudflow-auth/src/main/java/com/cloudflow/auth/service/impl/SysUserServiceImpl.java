@@ -1,6 +1,7 @@
 package com.cloudflow.auth.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.domain.SysRole;
 import com.cloudflow.auth.domain.SysUser;
@@ -27,6 +28,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.event.PasswordResetByAdminEvent;
 import com.cloudflow.common.core.event.UserDisabledEvent;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.audit.annotation.HighRiskAction;
 import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.security.UserDeletionGuardRegistry;
@@ -36,6 +38,7 @@ import com.cloudflow.common.core.utils.IpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -51,7 +54,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import com.cloudflow.common.redis.lock.DistributedLock;
 
 /**
  * 用户服务实现
@@ -112,6 +117,9 @@ public class SysUserServiceImpl implements ISysUserService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
     @Override
@@ -120,14 +128,20 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
+    @DistributedLock(key = "'cache:userinfo:' + #tenantId + ':' + #username", waitMs = 500, leaseMs = 10000)
     @Cacheable(value = CacheConstants.USER_DETAILS, key = "#tenantId + ':' + #username", unless = "#result == null")
     public UserInfo findUserInfo(String username, Long tenantId) {
+        String nullKey = userInfoNullKey(username, tenantId);
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(nullKey))) {
+            return null;
+        }
         // 查询用户
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysUser::getUserName, username);
         wrapper.eq(tenantId != null, SysUser::getTenantId, tenantId);
         SysUser user = sysUserMapper.selectOne(wrapper);
         if (user == null) {
+            stringRedisTemplate.opsForValue().set(nullKey, "1", 30, TimeUnit.SECONDS);
             return null;
         }
 
@@ -161,6 +175,10 @@ public class SysUserServiceImpl implements ISysUserService {
         }
 
         return new UserInfo(user, roleKeys, permissions);
+    }
+
+    private String userInfoNullKey(String username, Long tenantId) {
+        return "cache:null:userinfo:" + (tenantId == null ? "global" : tenantId) + ":" + username;
     }
 
     @Override
@@ -292,12 +310,11 @@ public class SysUserServiceImpl implements ISysUserService {
         int result = sysUserMapper.insert(user);
 
         if (result > 0) {
-            SysRole defaultRole = sysRoleMapper.selectOne(
+            SysRole defaultRole = sysRoleMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<SysRole>()
                     .eq(SysRole::getRoleKey, "common")
-                    .eq(targetTenantId != null, SysRole::getTenantId, targetTenantId)
-                    .last("LIMIT 1")
-            );
+                    .eq(targetTenantId != null, SysRole::getTenantId, targetTenantId))
+                    .getRecords().stream().findFirst().orElse(null);
 
             if (defaultRole != null) {
                 SysUserRole userRole = new SysUserRole();
@@ -315,6 +332,7 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "更新用户", spel = "#user", oldVal = "@sysUserServiceImpl.selectUserAuditSnapshot(#user.userId)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
@@ -401,6 +419,7 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "删除用户", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public int deleteUserByIds(Long[] userIds) {
@@ -487,6 +506,7 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "重置用户密码", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public int resetPwd(Long userId, String password) {

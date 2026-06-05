@@ -103,4 +103,10 @@
         WHERE r.id = #{id} AND r.deleted = '0'
     </select>
 
+    <select id="getTodayMaxSeq" resultType="java.lang.Integer">
+        SELECT MAX(CAST(SUBSTRING(purchase_no, 11) AS UNSIGNED))
+        FROM biz_purchase_request
+        WHERE purchase_no LIKE CONCAT('CG', DATE_FORMAT(NOW(), '%Y%m%d'), '%')
+    </select>
+
 </mapper>

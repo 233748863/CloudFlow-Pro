@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
@@ -30,8 +31,10 @@ public class VehicleMaintenanceServiceImpl extends ServiceImpl<VehicleMaintenanc
     public List<VehicleMaintenance> listByVehicleId(Long vehicleId, Integer limit) {
         LambdaQueryWrapper<VehicleMaintenance> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(vehicleId != null, VehicleMaintenance::getVehicleId, vehicleId)
-                .orderByDesc(VehicleMaintenance::getMaintenanceDate)
-                .last(limit != null && limit > 0, "LIMIT " + limit);
+                .orderByDesc(VehicleMaintenance::getMaintenanceDate);
+        if (limit != null && limit > 0) {
+            return page(new Page<>(1, limit, false), wrapper).getRecords();
+        }
         return list(wrapper);
     }
 }

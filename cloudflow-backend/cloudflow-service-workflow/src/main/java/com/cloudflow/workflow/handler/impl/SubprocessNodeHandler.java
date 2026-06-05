@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.handler.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
@@ -100,13 +101,12 @@ public class SubprocessNodeHandler implements INodeHandler {
         }
 
         // 查找子流程定义（取最新已发布版本）
-        WfProcessDefinition subDef = processDefinitionMapper.selectOne(
+        WfProcessDefinition subDef = processDefinitionMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<WfProcessDefinition>()
                         .eq(WfProcessDefinition::getProcessKey, subprocessId)
                         .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                        .orderByDesc(WfProcessDefinition::getVersion)
-                        .last("LIMIT 1")
-        );
+                        .orderByDesc(WfProcessDefinition::getVersion))
+                .getRecords().stream().findFirst().orElse(null);
 
         if (subDef == null) {
             log.error("[SubprocessNodeHandler] 未找到已发布的子流程定义, subprocessId={}, nodeKey={}",

@@ -7186,17 +7186,27 @@ INSERT IGNORE INTO cloud_flow_db.sys_log (
  '/api/oa/duty/schedule', 'POST', '{"scheduleId":9803}', 420, '数据库连接超时', 'chen', DATE_SUB(NOW(), INTERVAL 20 MINUTE));
 
 INSERT IGNORE INTO cloud_flow_db.sys_audit_log (
-    audit_id, tenant_id, audit_name, audit_field, before_val, after_val,
+    audit_id, tenant_id, biz_module, audit_name, audit_field, before_val, after_val,
     before_json, after_json, diff_json, high_risk, risk_level, create_by, create_time
   ) VALUES
-  (91001, 100000, '流程模板变更', 'status', 'draft', 'published',
+  (91001, 100000, 'workflow', '流程模板变更', 'status', 'draft', 'published',
    JSON_OBJECT('status', 'draft'), JSON_OBJECT('status', 'published'),
    JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/status', 'from', 'draft', 'value', 'published')),
    0, 'NORMAL', 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY)),
-  (91002, 100000, '值班安排变更', 'start_time', '09:00:00', '08:30:00',
+  (91002, 100000, 'oa', '值班安排变更', 'start_time', '09:00:00', '08:30:00',
    JSON_OBJECT('start_time', '09:00:00'), JSON_OBJECT('start_time', '08:30:00'),
    JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/start_time', 'from', '09:00:00', 'value', '08:30:00')),
    0, 'NORMAL', 'admin', DATE_SUB(NOW(), INTERVAL 9 DAY));
+
+INSERT IGNORE INTO cloud_flow_db.sys_audit_archive_policy (
+  biz_module, retain_days, archive_table, status, create_by, create_time
+) VALUES
+('auth', 90, 'sys_audit_log_auth_archive', 'ACTIVE', 'system', NOW()),
+('workflow', 90, 'sys_audit_log_workflow_archive', 'ACTIVE', 'system', NOW()),
+('oa', 90, 'sys_audit_log_oa_archive', 'ACTIVE', 'system', NOW()),
+('crm', 90, 'sys_audit_log_crm_archive', 'ACTIVE', 'system', NOW()),
+('hr', 90, 'sys_audit_log_hr_archive', 'ACTIVE', 'system', NOW()),
+('system', 90, 'sys_audit_log_system_archive', 'ACTIVE', 'system', NOW());
 
 INSERT IGNORE INTO cloud_flow_db.outbox_event (
   id, aggregate_type, aggregate_id, event_id, event_type, payload_json, status,
@@ -7709,12 +7719,13 @@ FROM (
 ) seq;
 
 INSERT IGNORE INTO cloud_flow_db.sys_audit_log (
-    audit_id, tenant_id, audit_name, audit_field, before_val, after_val,
+    audit_id, tenant_id, biz_module, audit_name, audit_field, before_val, after_val,
     before_json, after_json, diff_json, high_risk, risk_level, create_by, create_time
   )
   SELECT
     92000 + n,
     100000,
+    'workflow',
     '批量审计记录',
     'status',
     'draft',
@@ -8874,22 +8885,22 @@ INSERT IGNORE INTO cloud_flow_db.sys_file (
 (93010, 100000, '华东客户培训服务合同.pdf', '/demo/payment/fk202604070012-contract.pdf', 'https://demo.cloudflow.local/files/payment/fk202604070012-contract.pdf', 'LOCAL', 1896420, 'application/pdf', 'wang', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '对应付款申请 9012 的合同附件');
 
 INSERT IGNORE INTO cloud_flow_db.sys_audit_log (
-    audit_id, tenant_id, audit_name, audit_field, before_val, after_val,
+    audit_id, tenant_id, biz_module, audit_name, audit_field, before_val, after_val,
     before_json, after_json, diff_json, high_risk, risk_level, create_by, create_time
   ) VALUES
-  (93001, 100000, '编制调整', 'approved_count', '1', '2',
+  (93001, 100000, 'hr', '编制调整', 'approved_count', '1', '2',
    JSON_OBJECT('approved_count', '1'), JSON_OBJECT('approved_count', '2'),
    JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/approved_count', 'from', '1', 'value', '2')),
    0, 'NORMAL', 'admin', DATE_SUB(NOW(), INTERVAL 3 DAY)),
-  (93002, 100000, '汇报关系调整', 'report_to_id', 'NULL', '1011',
+  (93002, 100000, 'hr', '汇报关系调整', 'report_to_id', 'NULL', '1011',
    JSON_OBJECT('report_to_id', CAST(NULL AS CHAR)), JSON_OBJECT('report_to_id', '1011'),
    JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/report_to_id', 'from', NULL, 'value', '1011')),
    1, 'HIGH', 'zhao', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-  (93003, 100000, '合同档案补录', 'status', 'DRAFT', 'ACTIVE',
+  (93003, 100000, 'oa', '合同档案补录', 'status', 'DRAFT', 'ACTIVE',
    JSON_OBJECT('status', 'DRAFT'), JSON_OBJECT('status', 'ACTIVE'),
    JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/status', 'from', 'DRAFT', 'value', 'ACTIVE')),
    0, 'NORMAL', 'zhao', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-  (93004, 100000, '文件归档', 'remark', '未归档', '已归档到交付培训资料库',
+  (93004, 100000, 'oa', '文件归档', 'remark', '未归档', '已归档到交付培训资料库',
    JSON_OBJECT('remark', '未归档'), JSON_OBJECT('remark', '已归档到交付培训资料库'),
    JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/remark', 'from', '未归档', 'value', '已归档到交付培训资料库')),
    0, 'NORMAL', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 12 HOUR));
@@ -10166,6 +10177,8 @@ WHERE tenant_id = 100000
 -- =========================================================
 DELETE FROM cloud_flow_db.wf_callback_dead_letter        WHERE id BETWEEN 20000 AND 29999;
 DELETE FROM cloud_flow_db.wf_reconcile_alert             WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.wf_escalation_log              WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.wf_escalation_chain            WHERE tenant_id = 100000;
 DELETE FROM cloud_flow_db.hr_audit_log                   WHERE id BETWEEN 20000 AND 29999;
 DELETE FROM cloud_flow_db.hr_self_service_message        WHERE id BETWEEN 20000 AND 29999;
 DELETE FROM cloud_flow_db.hr_contract_signature          WHERE id BETWEEN 20000 AND 29999;
@@ -11850,10 +11863,29 @@ INSERT IGNORE INTO cloud_flow_db.wf_callback_dead_letter
 
 -- ---------- 15.3 工作流业务对账告警 ----------
 INSERT IGNORE INTO cloud_flow_db.wf_reconcile_alert
-(id, process_instance_id, business_type, business_id, expected_status, actual_status, create_time) VALUES
-(25200, 'PI-HR-CONTRACT-2025-0050', 'HR_CONTRACT_RENEW', 1104, 'EFFECTIVE', 'RENEWING',  '2026-05-21 02:00:08'),
-(25201, 'PI-HR-RESIGN-2025-0017',   'HR_RESIGNATION',    1041, 'COMPLETED', 'PENDING',   '2026-05-21 02:00:12'),
-(25202, 'PI-CRM-CONTRACT-2026-0023','CRM_SALES_CONTRACT', 9203, 'REJECTED',  'PENDING',   '2026-05-21 02:00:18');
+(id, tenant_id, biz_module, biz_id, wf_instance_id, biz_status, wf_status, detected_at, resolved_at, resolved_by, create_time, update_time) VALUES
+(25200, 100000, 'hr',  1104, 'PI-HR-CONTRACT-2025-0050', 'RENEWING', 'COMPLETED', '2026-05-21 02:00:08', NULL, NULL, '2026-05-21 02:00:08', '2026-05-21 02:00:08'),
+(25201, 100000, 'hr',  1041, 'PI-HR-RESIGN-2025-0017',   'PENDING',  'COMPLETED', '2026-05-21 02:00:12', NULL, NULL, '2026-05-21 02:00:12', '2026-05-21 02:00:12'),
+(25202, 100000, 'crm', 9203, 'PI-CRM-CONTRACT-2026-0023','PENDING',  'CANCELLED', '2026-05-21 02:00:18', NULL, NULL, '2026-05-21 02:00:18', '2026-05-21 02:00:18');
+
+-- ---------- 15.4 工作流超时升级链 ----------
+INSERT IGNORE INTO cloud_flow_db.wf_escalation_chain
+(id, tenant_id, biz_module, level_no, timeout_minutes, action_type, action_target, status, create_time, update_time) VALUES
+(25300, 100000, 'system',   1, 240,  'NOTIFY',   'CURRENT_ASSIGNEE', 1, NOW(), NOW()),
+(25301, 100000, 'system',   2, 480,  'ESCALATE', 'DIRECT_LEADER',    1, NOW(), NOW()),
+(25302, 100000, 'system',   3, 1440, 'REASSIGN', 'DIRECT_LEADER',    1, NOW(), NOW()),
+(25310, 100000, 'oa',       1, 240,  'NOTIFY',   'CURRENT_ASSIGNEE', 1, NOW(), NOW()),
+(25311, 100000, 'oa',       2, 480,  'ESCALATE', 'DIRECT_LEADER',    1, NOW(), NOW()),
+(25312, 100000, 'oa',       3, 1440, 'REASSIGN', 'DIRECT_LEADER',    1, NOW(), NOW()),
+(25320, 100000, 'crm',      1, 240,  'NOTIFY',   'CURRENT_ASSIGNEE', 1, NOW(), NOW()),
+(25321, 100000, 'crm',      2, 480,  'ESCALATE', 'DIRECT_LEADER',    1, NOW(), NOW()),
+(25322, 100000, 'crm',      3, 1440, 'REASSIGN', 'DIRECT_LEADER',    1, NOW(), NOW()),
+(25330, 100000, 'hr',       1, 240,  'NOTIFY',   'CURRENT_ASSIGNEE', 1, NOW(), NOW()),
+(25331, 100000, 'hr',       2, 480,  'ESCALATE', 'DIRECT_LEADER',    1, NOW(), NOW()),
+(25332, 100000, 'hr',       3, 1440, 'REASSIGN', 'DIRECT_LEADER',    1, NOW(), NOW()),
+(25340, 100000, 'workflow', 1, 240,  'NOTIFY',   'CURRENT_ASSIGNEE', 1, NOW(), NOW()),
+(25341, 100000, 'workflow', 2, 480,  'ESCALATE', 'DIRECT_LEADER',    1, NOW(), NOW()),
+(25342, 100000, 'workflow', 3, 1440, 'REASSIGN', 'DIRECT_LEADER',    1, NOW(), NOW());
 
 
 -- =====================================================================

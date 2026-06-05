@@ -1,6 +1,8 @@
 package com.cloudflow.oa.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
@@ -59,10 +61,10 @@ public class BudgetAdjustmentApprovalHandler implements ApprovalResultHandler {
         if (adjustment == null || adjustment.getBudgetId() == null || adjustment.getChangeAmount() == null) {
             return;
         }
-        OaBudgetLine line = budgetLineMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OaBudgetLine>()
+        OaBudgetLine line = budgetLineMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<OaBudgetLine>()
                 .eq(OaBudgetLine::getBudgetId, adjustment.getBudgetId())
-                .eq(OaBudgetLine::getSubjectCode, adjustment.getSubjectCode())
-                .last("limit 1"));
+                .eq(OaBudgetLine::getSubjectCode, adjustment.getSubjectCode()))
+                .getRecords().stream().findFirst().orElse(null);
         if (line == null) {
             return;
         }

@@ -14,6 +14,7 @@ import org.springframework.lang.Nullable;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 租户感知的 Redis 缓存管理器
@@ -45,6 +46,8 @@ public class TenantRedisCacheManager extends RedisCacheManager {
      */
     private static final int CACHE_LENGTH = 2;
 
+    private static final double TTL_JITTER_RATIO = 0.10D;
+
     public TenantRedisCacheManager(RedisCacheWriter cacheWriter,
                                    RedisCacheConfiguration defaultCacheConfiguration,
                                    boolean allowInFlightCacheCreation,
@@ -59,26 +62,49 @@ public class TenantRedisCacheManager extends RedisCacheManager {
     @Override
     protected RedisCache createRedisCache(String name, @Nullable RedisCacheConfiguration cacheConfig) {
         if (StrUtil.isBlank(name) || !name.contains(SPLIT_FLAG)) {
-            return super.createRedisCache(name, cacheConfig);
+            return super.createRedisCache(name, applyTtlJitter(cacheConfig));
         }
 
         String[] cacheArray = name.split(SPLIT_FLAG);
         if (cacheArray.length < CACHE_LENGTH) {
-            return super.createRedisCache(name, cacheConfig);
+            return super.createRedisCache(name, applyTtlJitter(cacheConfig));
         }
 
         // 解析 TTL 并应用到缓存配置
         if (cacheConfig != null) {
             try {
                 Duration duration = DurationStyle.detectAndParse(cacheArray[1], ChronoUnit.SECONDS);
-                cacheConfig = cacheConfig.entryTtl(duration);
+                cacheConfig = cacheConfig.entryTtl(jitterFunction(duration));
                 log.debug("缓存 {} 设置动态 TTL: {}", cacheArray[0], duration);
             } catch (Exception e) {
                 log.warn("解析缓存 TTL 失败: {}，使用默认 TTL", name, e);
             }
         }
         // 使用不含 TTL 部分的名称创建缓存
-        return super.createRedisCache(cacheArray[0], cacheConfig);
+        return super.createRedisCache(cacheArray[0], applyTtlJitter(cacheConfig));
+    }
+
+    private RedisCacheConfiguration applyTtlJitter(@Nullable RedisCacheConfiguration cacheConfig) {
+        if (cacheConfig == null) {
+            return null;
+        }
+        RedisCacheWriter.TtlFunction ttlFunction = cacheConfig.getTtlFunction();
+        return cacheConfig.entryTtl((key, value) -> jitter(ttlFunction.getTimeToLive(key, value)));
+    }
+
+    private RedisCacheWriter.TtlFunction jitterFunction(Duration baseTtl) {
+        return (key, value) -> jitter(baseTtl);
+    }
+
+    private Duration jitter(Duration baseTtl) {
+        if (baseTtl == null || baseTtl.isZero() || baseTtl.isNegative()
+                || RedisCacheWriter.TtlFunction.NO_EXPIRATION.equals(baseTtl)) {
+            return baseTtl;
+        }
+        long baseMillis = baseTtl.toMillis();
+        long range = Math.max(1L, Math.round(baseMillis * TTL_JITTER_RATIO));
+        long offset = ThreadLocalRandom.current().nextLong(-range, range + 1);
+        return Duration.ofMillis(Math.max(1000L, baseMillis + offset));
     }
 
     /**

@@ -293,6 +293,7 @@ DROP TABLE IF EXISTS sys_audit_log;
 CREATE TABLE sys_audit_log (
   audit_id          BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '审计ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  biz_module        VARCHAR(64)     NOT NULL DEFAULT 'system' COMMENT '业务模块',
   audit_name        VARCHAR(255)    DEFAULT '' COMMENT '审计业务名称',
   audit_field       VARCHAR(255)    DEFAULT '' COMMENT '变更字段名',
   before_val        TEXT            COMMENT '变更前值',
@@ -306,9 +307,26 @@ CREATE TABLE sys_audit_log (
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (audit_id),
   KEY idx_audit_tenant (tenant_id),
+  KEY idx_audit_biz_module_create_time (biz_module, create_time),
   KEY idx_audit_name (audit_name),
   KEY idx_audit_create_time (create_time)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
+
+DROP TABLE IF EXISTS sys_audit_archive_policy;
+CREATE TABLE sys_audit_archive_policy (
+  id                BIGINT          NOT NULL AUTO_INCREMENT COMMENT '主键',
+  biz_module        VARCHAR(64)     NOT NULL COMMENT '业务模块',
+  retain_days       INT             NOT NULL DEFAULT 90 COMMENT '主表保留天数',
+  archive_table     VARCHAR(64)     NOT NULL COMMENT '归档冷表',
+  status            VARCHAR(16)     NOT NULL DEFAULT 'ACTIVE' COMMENT '状态：ACTIVE/INACTIVE',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_audit_archive_policy_biz_module (biz_module),
+  KEY idx_audit_archive_policy_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='审计归档策略表';
 
 -- 13. Outbox 事件表
 DROP TABLE IF EXISTS outbox_event;
@@ -648,8 +666,10 @@ CREATE TRIGGER trg_sys_audit_log_no_delete
 BEFORE DELETE ON sys_audit_log
 FOR EACH ROW
 BEGIN
-    SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'ERR.AUDIT_IMMUTABLE: sys_audit_log delete is forbidden';
+    IF COALESCE(@cloudflow_audit_archive_allow_delete, 0) <> 1 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'ERR.AUDIT_IMMUTABLE: sys_audit_log delete is forbidden';
+    END IF;
 END$$
 
 CREATE TRIGGER trg_sys_audit_log_no_update

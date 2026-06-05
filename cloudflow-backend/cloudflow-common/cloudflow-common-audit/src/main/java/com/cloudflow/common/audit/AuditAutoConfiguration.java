@@ -6,15 +6,19 @@ import com.cloudflow.common.audit.handle.IAuditLogHandle;
 import com.cloudflow.common.audit.handle.ICompareHandle;
 import com.cloudflow.common.audit.handle.JaversCompareHandle;
 import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
+import com.cloudflow.common.audit.service.AuditLogArchiveService;
+import com.cloudflow.common.audit.support.AuditBizModuleResolver;
 import com.cloudflow.common.audit.support.SpelParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.context.ApplicationContext;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 
+import javax.sql.DataSource;
 import java.util.Optional;
 
 /**
@@ -39,6 +43,12 @@ public class AuditAutoConfiguration {
         return new SpelParser();
     }
 
+    @Bean
+    @ConditionalOnMissingBean
+    public AuditBizModuleResolver auditBizModuleResolver() {
+        return new AuditBizModuleResolver();
+    }
+
     /**
      * 默认审计日志处理器（本地 Mapper 入库）
      * <p>可通过自定义 {@link IAuditLogHandle} Bean 覆盖</p>
@@ -46,8 +56,10 @@ public class AuditAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean(IAuditLogHandle.class)
-    public IAuditLogHandle defaultAuditLogHandle(SysAuditLogMapper auditLogMapper, ObjectMapper objectMapper) {
-        return new DefaultAuditLogHandle(auditLogMapper, objectMapper);
+    public IAuditLogHandle defaultAuditLogHandle(SysAuditLogMapper auditLogMapper,
+                                                 ObjectMapper objectMapper,
+                                                 AuditBizModuleResolver auditBizModuleResolver) {
+        return new DefaultAuditLogHandle(auditLogMapper, objectMapper, auditBizModuleResolver);
     }
 
     /**
@@ -78,5 +90,13 @@ public class AuditAutoConfiguration {
     @ConditionalOnMissingBean
     public SensitiveDiffAuditVerifier sensitiveDiffAuditVerifier(ApplicationContext applicationContext) {
         return new SensitiveDiffAuditVerifier(applicationContext);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public AuditLogArchiveService auditLogArchiveService(
+            DataSource dataSource,
+            @Value("${cloudflow.audit.archive.dry-run:true}") boolean dryRun) {
+        return new AuditLogArchiveService(dataSource, dryRun);
     }
 }

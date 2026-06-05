@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service;
 
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.workflow.domain.WfReconcileAlert;
 import com.cloudflow.workflow.domain.monitor.*;
 
 import java.time.LocalDate;
@@ -68,6 +69,17 @@ public interface IWorkflowMonitorService {
      * 解决异常告警
      */
     void resolveAnomalyAlert(Long alertId, String resolveNote);
+
+    /**
+     * 获取流程-业务状态对账告警列表。
+     */
+    PageResult<WfReconcileAlert> getReconcileAlerts(String bizModule, Boolean resolved,
+                                                     Integer pageNum, Integer pageSize);
+
+    /**
+     * 标记流程-业务状态对账告警已人工处理。
+     */
+    WfReconcileAlert resolveReconcileAlert(Long alertId);
 
     /**
      * 获取性能分析看板

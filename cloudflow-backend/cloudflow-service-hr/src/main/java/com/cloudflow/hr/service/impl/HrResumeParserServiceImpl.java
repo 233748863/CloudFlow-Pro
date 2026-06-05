@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.HrResumeParsedFieldsPayload;
 import com.cloudflow.hr.domain.entity.HrCandidate;
@@ -99,13 +100,13 @@ public class HrResumeParserServiceImpl implements IHrResumeParserService {
                 .divide(BigDecimal.valueOf(probes), 3, RoundingMode.HALF_UP);
 
         String operator = defaultOperator();
-        HrResumeParsedFields existing = parsedFieldsMapper.selectOne(
+        HrResumeParsedFields existing = parsedFieldsMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrResumeParsedFields>()
                         .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
                         .eq(HrResumeParsedFields::getCandidateId, candidateId)
                         .eq(HrResumeParsedFields::getDeleted, 0)
-                        .orderByDesc(HrResumeParsedFields::getId)
-                        .last("LIMIT 1"));
+                        .orderByDesc(HrResumeParsedFields::getId))
+                .getRecords().stream().findFirst().orElse(null);
         if (existing != null) {
             existing.setResumeUrl(resumeUrl);
             existing.setParsedName(name);

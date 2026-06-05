@@ -125,6 +125,12 @@ cloudflow:
       - wf_callback_dead_letter
       - wf_reconcile_alert
 
+  # M4 审计归档默认 dry-run：只统计候选行，不建冷表、不迁移、不删除。
+  # 运维完成一周 dry-run 观测后，显式改为 false 才执行真实归档。
+  audit:
+    archive:
+      dry-run: true
+
   security:
     token:
       expiration: 1440  # 令牌有效期（分钟）= 24小时
@@ -168,7 +174,7 @@ resilience4j:
         minimumNumberOfCalls: 10
         failureRateThreshold: 50
         waitDurationInOpenState: 30s
-        permittedNumberOfCallsInHalfOpenState: 3
+        permittedNumberOfCallsInHalfOpenState: 10
         automaticTransitionFromOpenToHalfOpenEnabled: true
         registerHealthIndicator: true
     instances:
@@ -181,6 +187,16 @@ resilience4j:
       crm-client:
         baseConfig: default
       hr-client:
+        baseConfig: default
+      oaRemoteWorkflowService:
+        baseConfig: default
+      crmRemoteWorkflowService:
+        baseConfig: default
+      hrWorkflowServiceClient:
+        baseConfig: default
+      authRemoteWorkflowService:
+        baseConfig: default
+      workflowRemoteUserService:
         baseConfig: default
   timelimiter:
     configs:
@@ -197,6 +213,16 @@ resilience4j:
       crm-client:
         baseConfig: default
       hr-client:
+        baseConfig: default
+      oaRemoteWorkflowService:
+        baseConfig: default
+      crmRemoteWorkflowService:
+        baseConfig: default
+      hrWorkflowServiceClient:
+        baseConfig: default
+      authRemoteWorkflowService:
+        baseConfig: default
+      workflowRemoteUserService:
         baseConfig: default
 
 # Feign 熔断器全局开关（各服务也可在自己的 yaml 中开启）

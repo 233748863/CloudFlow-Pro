@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.entity.HrEmployee;
@@ -187,9 +188,9 @@ public class HrTrainingArchiveServiceImpl implements IHrTrainingArchiveService {
     private HrTrainingArchive findArchive(Long employeeId) {
         LambdaQueryWrapper<HrTrainingArchive> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(HrTrainingArchive::getTenantId, currentTenantId())
-                .eq(HrTrainingArchive::getEmployeeId, employeeId)
-                .last("LIMIT 1");
-        return archiveMapper.selectOne(wrapper);
+                .eq(HrTrainingArchive::getEmployeeId, employeeId);
+        return archiveMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     private Map<String, Object> buildArchiveRealtime(Long employeeId) {

@@ -1,6 +1,7 @@
 package com.cloudflow.common.audit;
 
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.audit.annotation.HighRiskAction;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.exception.ServiceException;
 import org.springframework.aop.support.AopUtils;
@@ -48,11 +49,12 @@ public class HighRiskAuditVerifier implements SmartInitializingSingleton {
                         || !Modifier.isPublic(method.getModifiers())) {
                     continue;
                 }
-                if (!looksHighRisk(method.getName())) {
+                Audit audit = method.getAnnotation(Audit.class);
+                if (method.isAnnotationPresent(HighRiskAction.class) && (audit == null || !audit.highRisk())) {
+                    violations.add(targetClass.getName() + "#" + method.getName());
                     continue;
                 }
-                Audit audit = method.getAnnotation(Audit.class);
-                if (audit == null || !audit.highRisk()) {
+                if (looksHighRisk(method.getName()) && (audit == null || !audit.highRisk())) {
                     violations.add(targetClass.getName() + "#" + method.getName());
                 }
             }

@@ -1,6 +1,7 @@
 package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.datascope.DataScopeUtils;
@@ -119,10 +120,10 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
         customer.setRemark(buildConvertedRemark(lead, request.getRemark()));
         crmCustomerService.createCustomer(customer);
 
-        CrmCustomer persistedCustomer = customerMapper.selectOne(new LambdaQueryWrapper<CrmCustomer>()
+        CrmCustomer persistedCustomer = customerMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<CrmCustomer>()
                 .eq(CrmCustomer::getTenantId, currentTenantId())
-                .eq(CrmCustomer::getCustomerCode, customer.getCustomerCode())
-                .last("limit 1"));
+                .eq(CrmCustomer::getCustomerCode, customer.getCustomerCode()))
+                .getRecords().stream().findFirst().orElse(null);
         if (persistedCustomer == null || persistedCustomer.getCustomerId() == null) {
             throw new IllegalStateException("线索转客户失败");
         }

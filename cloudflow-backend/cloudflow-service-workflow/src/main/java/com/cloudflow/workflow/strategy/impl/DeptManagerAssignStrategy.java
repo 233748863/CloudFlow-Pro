@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.strategy.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.system.SysDept;
@@ -126,11 +127,11 @@ public class DeptManagerAssignStrategy implements AssignUserStrategy {
         } catch (NumberFormatException ignored) {
         }
 
-        SysUser leader = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+        SysUser leader = sysUserMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getUserName, normalized)
                 .or()
-                .eq(SysUser::getNickName, normalized)
-                .last("LIMIT 1"));
+                .eq(SysUser::getNickName, normalized))
+                .getRecords().stream().findFirst().orElse(null);
         if (leader != null) {
             return leader.getUserId();
         }

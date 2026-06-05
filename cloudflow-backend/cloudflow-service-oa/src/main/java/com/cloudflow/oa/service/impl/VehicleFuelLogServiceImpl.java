@@ -71,9 +71,9 @@ public class VehicleFuelLogServiceImpl extends ServiceImpl<VehicleFuelLogMapper,
         }
         LambdaQueryWrapper<VehicleFuelLog> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(VehicleFuelLog::getVehicleId, vehicleId)
-                .orderByDesc(VehicleFuelLog::getFuelDate, VehicleFuelLog::getFuelLogId)
-                .last(limit != null && limit > 0 ? "LIMIT " + limit : "LIMIT 30");
-        return baseMapper.selectList(wrapper);
+                .orderByDesc(VehicleFuelLog::getFuelDate, VehicleFuelLog::getFuelLogId);
+        return baseMapper.selectPage(new Page<>(1, limit != null && limit > 0 ? limit : 30, false), wrapper)
+                .getRecords();
     }
 
     @Override
@@ -136,9 +136,9 @@ public class VehicleFuelLogServiceImpl extends ServiceImpl<VehicleFuelLogMapper,
             wrapper.le(VehicleFuelLog::getFuelDate, fuelDate);
         }
         wrapper.isNotNull(VehicleFuelLog::getEndMileage)
-                .orderByDesc(VehicleFuelLog::getFuelDate, VehicleFuelLog::getFuelLogId)
-                .last("LIMIT 1");
-        return baseMapper.selectOne(wrapper);
+                .orderByDesc(VehicleFuelLog::getFuelDate, VehicleFuelLog::getFuelLogId);
+        return baseMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     private void detectAndAlert(VehicleFuelLog current) {
@@ -150,9 +150,8 @@ public class VehicleFuelLogServiceImpl extends ServiceImpl<VehicleFuelLogMapper,
         wrapper.eq(VehicleFuelLog::getVehicleId, current.getVehicleId())
                 .ne(VehicleFuelLog::getFuelLogId, current.getFuelLogId())
                 .isNotNull(VehicleFuelLog::getFuelPer100km)
-                .orderByDesc(VehicleFuelLog::getFuelDate)
-                .last("LIMIT 10");
-        List<VehicleFuelLog> history = baseMapper.selectList(wrapper);
+                .orderByDesc(VehicleFuelLog::getFuelDate);
+        List<VehicleFuelLog> history = baseMapper.selectPage(new Page<>(1, 10, false), wrapper).getRecords();
         if (history.isEmpty()) {
             return;
         }

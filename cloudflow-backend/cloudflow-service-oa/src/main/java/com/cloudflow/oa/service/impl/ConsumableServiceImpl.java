@@ -59,13 +59,7 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
 
     @Override
     public List<SysConsumable> getLowStockList() {
-        // 查询库存数量 <= 低库存阈值的耗材
-        LambdaQueryWrapper<SysConsumable> wrapper = new LambdaQueryWrapper<>();
-        wrapper.apply("quantity <= low_stock_threshold");
-        wrapper.eq(SysConsumable::getWarnEnabled, 1);
-        wrapper.eq(SysConsumable::getDeleted, "0");
-        wrapper.orderByAsc(SysConsumable::getQuantity);
-        return list(wrapper);
+        return baseMapper.selectLowStockList();
     }
 
     @Override

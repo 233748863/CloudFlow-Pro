@@ -1,10 +1,13 @@
 package com.cloudflow.hr.client.fallback;
 
+import com.cloudflow.common.core.domain.ProcessFallbackResponse;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.workflow.WorkflowFallbackRetryPublisher;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.WorkflowInvalidateRequest;
 import com.cloudflow.hr.client.dto.WorkflowStartRequest;
 import com.cloudflow.hr.client.vo.ProcessInstanceVO;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -15,14 +18,24 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class WorkflowServiceFallback implements WorkflowServiceClient {
 
+    private final WorkflowFallbackRetryPublisher retryPublisher;
+
     @Override
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public R<Map<String, String>> startProcessInternal(WorkflowStartRequest request) {
         log.error("Workflow 服务调用失败: 启动流程失败, processDefKey={}, businessKey={}",
                 request != null ? request.getProcessDefKey() : null,
                 request != null ? request.getBusinessKey() : null);
-        return R.fail("工作流服务暂时不可用，无法启动审批流程，请稍后重试");
+        retryPublisher.publish("cloudflow-hr", "startProcessInternal", request, null);
+        R response = R.fail("workflow service unavailable, retry submitted to outbox");
+        response.setData(ProcessFallbackResponse.retry(
+                "workflow service unavailable",
+                request != null ? request.getProcessDefKey() : null,
+                request != null ? request.getBusinessKey() : null));
+        return response;
     }
 
     @Override

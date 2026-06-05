@@ -7,6 +7,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.workflow.domain.WfProcessInstance;
+import com.cloudflow.workflow.domain.WfReconcileAlert;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.monitor.*;
 import com.cloudflow.workflow.domain.system.SysDept;
@@ -60,6 +61,7 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
     private final AnomalyAlertMapper anomalyAlertMapper;
     private final PerformanceStatsMapper performanceStatsMapper;
     private final TaskMonitorMapper taskMonitorMapper;
+    private final WfReconcileAlertMapper reconcileAlertMapper;
     private final WfTaskMapper wfTaskMapper;
     private final WfProcessInstanceMapper processInstanceMapper;
     private final SysUserMapper sysUserMapper;
@@ -333,6 +335,51 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
         performanceStatsRefreshService.refreshForAnomalyAlert(alert);
         
         log.info("异常告警已解决: alertId={}", alertId);
+    }
+
+    @Override
+    public PageResult<WfReconcileAlert> getReconcileAlerts(String bizModule, Boolean resolved,
+                                                           Integer pageNum, Integer pageSize) {
+        Page<WfReconcileAlert> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<WfReconcileAlert> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(WfReconcileAlert::getTenantId, resolveTenantId());
+        if (StringUtils.hasText(bizModule)) {
+            wrapper.eq(WfReconcileAlert::getBizModule, bizModule.trim().toLowerCase());
+        }
+        if (resolved != null) {
+            if (resolved) {
+                wrapper.isNotNull(WfReconcileAlert::getResolvedAt);
+            } else {
+                wrapper.isNull(WfReconcileAlert::getResolvedAt);
+            }
+        }
+        wrapper.orderByDesc(WfReconcileAlert::getDetectedAt)
+                .orderByDesc(WfReconcileAlert::getId);
+
+        Page<WfReconcileAlert> resultPage = reconcileAlertMapper.selectPage(page, wrapper);
+        return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(),
+                resultPage.getCurrent(), resultPage.getSize());
+    }
+
+    @Override
+    @Transactional
+    public WfReconcileAlert resolveReconcileAlert(Long alertId) {
+        WfReconcileAlert alert = reconcileAlertMapper.selectById(alertId);
+        if (alert == null) {
+            throw new BusinessException("RECONCILE_ALERT_NOT_FOUND", "对账告警不存在");
+        }
+        checkTenantAccess(alert.getTenantId());
+        if (alert.getResolvedAt() != null) {
+            return alert;
+        }
+
+        alert.setResolvedAt(LocalDateTime.now());
+        alert.setResolvedBy(requireCurrentUserId());
+        alert.setUpdateTime(LocalDateTime.now());
+        reconcileAlertMapper.updateById(alert);
+        log.info("流程业务对账告警已人工处理: alertId={}, bizModule={}, bizId={}, wfInstanceId={}",
+                alert.getId(), alert.getBizModule(), alert.getBizId(), alert.getWfInstanceId());
+        return alert;
     }
 
     @Override
@@ -648,18 +695,18 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
                 .and(query -> query.eq(SysUser::getUserName, leaderValue)
                         .or()
                         .eq(SysUser::getNickName, leaderValue))
-                .orderByAsc(SysUser::getUserId)
-                .last("LIMIT 1");
-        return sysUserMapper.selectOne(wrapper);
+                .orderByAsc(SysUser::getUserId);
+        return sysUserMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     private SysUser resolveFirstUserByRole(String roleKey, Long tenantId, Long preferredDeptId) {
-        SysRole role = sysRoleMapper.selectOne(new LambdaQueryWrapper<SysRole>()
+        SysRole role = sysRoleMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<SysRole>()
                 .eq(SysRole::getTenantId, tenantId)
                 .eq(SysRole::getRoleKey, roleKey)
                 .eq(SysRole::getStatus, "0")
-                .eq(SysRole::getDeleted, "0")
-                .last("LIMIT 1"));
+                .eq(SysRole::getDeleted, "0"))
+                .getRecords().stream().findFirst().orElse(null);
         if (role == null) {
             return null;
         }
@@ -690,21 +737,21 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
         }
         LambdaQueryWrapper<SysUser> wrapper = activeUserWrapper(tenantId)
                 .in(SysUser::getUserId, userIds)
-                .orderByAsc(SysUser::getUserId)
-                .last("LIMIT 1");
+                .orderByAsc(SysUser::getUserId);
         if (deptId != null) {
             wrapper.eq(SysUser::getDeptId, deptId);
         }
-        return sysUserMapper.selectOne(wrapper);
+        return sysUserMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     private SysUser selectActiveUser(Long userId, Long tenantId) {
         if (userId == null) {
             return null;
         }
-        return sysUserMapper.selectOne(activeUserWrapper(tenantId)
-                .eq(SysUser::getUserId, userId)
-                .last("LIMIT 1"));
+        return sysUserMapper.selectPage(new Page<>(1, 1, false), activeUserWrapper(tenantId)
+                .eq(SysUser::getUserId, userId))
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     private LambdaQueryWrapper<SysUser> activeUserWrapper(Long tenantId) {

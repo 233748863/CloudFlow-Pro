@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfDeployApprovalStepMapper">
+
+    <select id="listByApprovalId" resultType="com.cloudflow.workflow.domain.WfDeployApprovalStep">
+        SELECT *
+        FROM wf_deploy_approval_step
+        WHERE approval_id = #{approvalId}
+        ORDER BY step_no ASC
+    </select>
+
+    <select id="selectByApprovalAndStep" resultType="com.cloudflow.workflow.domain.WfDeployApprovalStep">
+        SELECT *
+        FROM wf_deploy_approval_step
+        WHERE approval_id = #{approvalId}
+          AND step_no = #{stepNo}
+    </select>
+
+    <select id="selectNextPendingStep" resultType="com.cloudflow.workflow.domain.WfDeployApprovalStep">
+        SELECT *
+        FROM wf_deploy_approval_step
+        WHERE approval_id = #{approvalId}
+          AND step_status = 'PENDING'
+        ORDER BY step_no ASC
+        LIMIT 1
+    </select>
+
+</mapper>

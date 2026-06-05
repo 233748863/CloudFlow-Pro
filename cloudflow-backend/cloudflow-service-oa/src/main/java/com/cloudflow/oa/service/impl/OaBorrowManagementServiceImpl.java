@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseBorrow;
 import com.cloudflow.oa.domain.OaRiskAlert;
@@ -73,30 +74,30 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
     }
 
     private List<OaSealApplication> sealApplications(String status, int limit) {
-        return sealApplicationMapper.selectList(new LambdaQueryWrapper<OaSealApplication>()
+        return sealApplicationMapper.selectPage(new Page<>(1, Math.max(1, limit), false),
+                new LambdaQueryWrapper<OaSealApplication>()
                         .eq(OaSealApplication::getStatus, status)
                         .eq(OaSealApplication::getDeleted, "0")
-                        .orderByAsc(OaSealApplication::getExpectedReturnTime)
-                        .last("LIMIT " + limit));
+                        .orderByAsc(OaSealApplication::getExpectedReturnTime)).getRecords();
     }
 
     private List<OaLicenseBorrow> licenseBorrows(String status, int limit) {
-        return licenseBorrowMapper.selectList(new LambdaQueryWrapper<OaLicenseBorrow>()
+        return licenseBorrowMapper.selectPage(new Page<>(1, Math.max(1, limit), false),
+                new LambdaQueryWrapper<OaLicenseBorrow>()
                         .eq(OaLicenseBorrow::getStatus, status)
                         .eq(OaLicenseBorrow::getDeleted, "0")
-                        .orderByAsc(OaLicenseBorrow::getExpectedReturnTime)
-                        .last("LIMIT " + limit));
+                        .orderByAsc(OaLicenseBorrow::getExpectedReturnTime)).getRecords();
     }
 
     private List<OaLicense> expiringLicenses(int days, int limit) {
         LocalDate today = LocalDate.now();
-        return licenseMapper.selectList(new LambdaQueryWrapper<OaLicense>()
+        return licenseMapper.selectPage(new Page<>(1, Math.max(1, limit), false),
+                new LambdaQueryWrapper<OaLicense>()
                 .eq(OaLicense::getDeleted, "0")
                 .ne(OaLicense::getStatus, OaBorrowConstants.RESOURCE_DISABLED)
                 .isNotNull(OaLicense::getExpireDate)
                 .between(OaLicense::getExpireDate, today, today.plusDays(days))
-                .orderByAsc(OaLicense::getExpireDate)
-                .last("LIMIT " + limit));
+                .orderByAsc(OaLicense::getExpireDate)).getRecords();
     }
 
     private long countApplications(String status) {

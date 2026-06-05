@@ -2,6 +2,7 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.KnowledgeDocVersion;
 import com.cloudflow.oa.domain.KnowledgeDocument;
@@ -138,9 +139,9 @@ public class KnowledgeVersionServiceImpl implements IKnowledgeVersionService {
     private Integer nextVersionNo(Long documentId) {
         LambdaQueryWrapper<KnowledgeDocVersion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeDocVersion::getDocumentId, documentId)
-                .orderByDesc(KnowledgeDocVersion::getVersionNo)
-                .last("LIMIT 1");
-        KnowledgeDocVersion latest = versionMapper.selectOne(wrapper);
+                .orderByDesc(KnowledgeDocVersion::getVersionNo);
+        KnowledgeDocVersion latest = versionMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
         return latest == null ? 1 : latest.getVersionNo() + 1;
     }
 

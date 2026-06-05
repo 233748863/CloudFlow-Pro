@@ -110,6 +110,12 @@ public class StaticRuleScanner {
                 boolean hasRate = pendingAnnotations.stream().anyMatch(s -> s.contains("@RateLimiter"));
                 boolean writeSemantic = isWriteSemantic(trimmed, pendingAnnotations);
                 boolean publicReadEndpoint = isPublicReadEndpoint(lowerPath, trimmed, pendingAnnotations, hasPost, hasRate, hasRepeatDisabled);
+                boolean hasHighRiskAction = hasAnnotation(pendingAnnotations, "@HighRiskAction");
+                boolean hasAudit = hasAnnotation(effectiveAnnotations, "@Audit")
+                        || hasAnnotation(effectiveAnnotations, "@Auditable");
+                if (hasHighRiskAction && !hasAudit && !isWhitelisted(whitelist, file, i + 1)) {
+                    findings.add(format(file, i + 1, "HIGH_RISK_AUDIT_REQUIRED", trimmed));
+                }
                 if (controllerSource && !feignLike && hasMapping && !hasPermissionGuard
                         && !publicReadEndpoint
                         && !isWhitelisted(whitelist, file, i + 1)) {
@@ -139,6 +145,15 @@ public class StaticRuleScanner {
             if ((line.contains("SELECT ") || line.contains("UPDATE ") || line.contains("DELETE ") || line.contains("INSERT "))
                     && line.contains("+")) {
                 findings.add(format(file, i + 1, "SQL_CONCAT", line.trim()));
+            }
+            if (isMybatisSqlAnnotation(trimmed) && !isWhitelisted(whitelist, file, i + 1)) {
+                findings.add(format(file, i + 1, "MYBATIS_ANNOTATION_SQL", trimmed));
+            }
+            if (line.contains(".last(") && !isWhitelisted(whitelist, file, i + 1)) {
+                findings.add(format(file, i + 1, "MP_SQL_LAST", line.trim()));
+            }
+            if (line.contains(".apply(\"") && !isWhitelisted(whitelist, file, i + 1)) {
+                findings.add(format(file, i + 1, "MP_SQL_APPLY", line.trim()));
             }
             if (isImmutableLogDeletion(file, line) && !isWhitelisted(whitelist, file, i + 1)) {
                 findings.add(format(file, i + 1, "AUDIT_LOG_DELETE_CALL", line.trim()));
@@ -229,6 +244,17 @@ public class StaticRuleScanner {
                 || annotation.contains("@PutMapping")
                 || annotation.contains("@DeleteMapping")
                 || annotation.contains("@PatchMapping");
+    }
+
+    private boolean isMybatisSqlAnnotation(String line) {
+        return line.startsWith("@Select(")
+                || line.startsWith("@Update(")
+                || line.startsWith("@Insert(")
+                || line.startsWith("@Delete(")
+                || line.startsWith("@SelectProvider(")
+                || line.startsWith("@UpdateProvider(")
+                || line.startsWith("@InsertProvider(")
+                || line.startsWith("@DeleteProvider(");
     }
 
     private boolean isWorkflowInvocationLine(String line) {

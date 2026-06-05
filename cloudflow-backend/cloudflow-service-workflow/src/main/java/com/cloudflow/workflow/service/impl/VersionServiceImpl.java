@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -183,10 +184,10 @@ public class VersionServiceImpl implements IVersionService {
         requireWorkflowAndTenantAccess(workflowId, "查询最新版本");
         LambdaQueryWrapper<WorkflowVersion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowVersion::getWorkflowId, workflowId)
-               .orderByDesc(WorkflowVersion::getCreatedAt)
-               .last("LIMIT 1");
+               .orderByDesc(WorkflowVersion::getCreatedAt);
 
-        return versionMapper.selectOne(wrapper);
+        return versionMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     /**

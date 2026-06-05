@@ -429,10 +429,10 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     }
 
     private OaBudgetLine requireBudgetLine(Long budgetId, String subjectCode) {
-        OaBudgetLine line = budgetLineMapper.selectOne(new LambdaQueryWrapper<OaBudgetLine>()
+        OaBudgetLine line = budgetLineMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<OaBudgetLine>()
                 .eq(OaBudgetLine::getBudgetId, budgetId)
-                .eq(OaBudgetLine::getSubjectCode, subjectCode)
-                .last("limit 1"));
+                .eq(OaBudgetLine::getSubjectCode, subjectCode))
+                .getRecords().stream().findFirst().orElse(null);
         if (line == null) {
             throw new IllegalArgumentException("预算科目不存在: " + subjectCode);
         }
@@ -582,14 +582,14 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     }
 
     private OaBudgetPlan findEffectiveBudget(String targetType, Long targetId) {
-        return getOne(new LambdaQueryWrapper<OaBudgetPlan>()
+        return page(new Page<>(1, 1, false), new LambdaQueryWrapper<OaBudgetPlan>()
                 .eq(OaBudgetPlan::getDeleted, "0")
                 .eq(OaBudgetPlan::getTargetType, targetType)
                 .eq(OaBudgetPlan::getTargetId, targetId)
                 .in(OaBudgetPlan::getStatus, "APPROVED", "ACTIVE")
                 .orderByDesc(OaBudgetPlan::getVersionNo)
-                .orderByDesc(OaBudgetPlan::getBudgetId)
-                .last("limit 1"), false);
+                .orderByDesc(OaBudgetPlan::getBudgetId))
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     private void fillSummary(BudgetExecutionSummaryVO summary, BigDecimal total, BigDecimal reserved, BigDecimal actual, BigDecimal available,
@@ -724,10 +724,10 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     }
 
     private OaBudgetSubject findSubjectByCode(String subjectCode) {
-        return budgetSubjectMapper.selectOne(new LambdaQueryWrapper<OaBudgetSubject>()
+        return budgetSubjectMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<OaBudgetSubject>()
                 .eq(OaBudgetSubject::getDeleted, "0")
-                .eq(OaBudgetSubject::getSubjectCode, subjectCode)
-                .last("limit 1"));
+                .eq(OaBudgetSubject::getSubjectCode, subjectCode))
+                .getRecords().stream().findFirst().orElse(null);
     }
 
     private BigDecimal resolveThresholdRule(String ruleCode, BigDecimal fallback) {

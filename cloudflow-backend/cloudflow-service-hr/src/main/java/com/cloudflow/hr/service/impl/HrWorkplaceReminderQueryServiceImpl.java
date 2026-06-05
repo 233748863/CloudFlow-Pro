@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrEmployeeContract;
 import com.cloudflow.hr.domain.entity.HrLifecycleTask;
@@ -143,10 +144,10 @@ public class HrWorkplaceReminderQueryServiceImpl implements IHrWorkplaceReminder
         if (userId == null) {
             return null;
         }
-        HrEmployee employee = employeeMapper.selectOne(Wrappers.<HrEmployee>lambdaQuery()
+        HrEmployee employee = employeeMapper.selectPage(new Page<>(1, 1, false), Wrappers.<HrEmployee>lambdaQuery()
                 .eq(HrEmployee::getUserId, userId)
-                .eq(HrEmployee::getDeleted, 0)
-                .last("LIMIT 1"));
+                .eq(HrEmployee::getDeleted, 0))
+                .getRecords().stream().findFirst().orElse(null);
         return employee == null ? null : employee.getId();
     }
 

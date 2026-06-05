@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantBroker;
@@ -397,28 +398,28 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
                                              HrRecruitmentRequisition requisition,
                                              HrPosition position,
                                              Long userId) {
-        HrEmployee existing = hrEmployeeMapper.selectOne(new LambdaQueryWrapper<HrEmployee>()
+        HrEmployee existing = hrEmployeeMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<HrEmployee>()
                 .eq(HrEmployee::getTenantId, tenantId)
                 .eq(HrEmployee::getUserId, userId)
-                .eq(HrEmployee::getDeleted, 0)
-                .last("LIMIT 1"));
+                .eq(HrEmployee::getDeleted, 0))
+                .getRecords().stream().findFirst().orElse(null);
         if (existing != null) {
             return existing;
         }
 
         if (candidate.getEmail() != null && !candidate.getEmail().isBlank()) {
-            existing = hrEmployeeMapper.selectOne(new LambdaQueryWrapper<HrEmployee>()
+            existing = hrEmployeeMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<HrEmployee>()
                     .eq(HrEmployee::getTenantId, tenantId)
                     .eq(HrEmployee::getEmail, candidate.getEmail())
-                    .eq(HrEmployee::getDeleted, 0)
-                    .last("LIMIT 1"));
+                    .eq(HrEmployee::getDeleted, 0))
+                    .getRecords().stream().findFirst().orElse(null);
         }
         if (existing == null && candidate.getPhone() != null && !candidate.getPhone().isBlank()) {
-            existing = hrEmployeeMapper.selectOne(new LambdaQueryWrapper<HrEmployee>()
+            existing = hrEmployeeMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<HrEmployee>()
                     .eq(HrEmployee::getTenantId, tenantId)
                     .eq(HrEmployee::getPhone, candidate.getPhone())
-                    .eq(HrEmployee::getDeleted, 0)
-                    .last("LIMIT 1"));
+                    .eq(HrEmployee::getDeleted, 0))
+                    .getRecords().stream().findFirst().orElse(null);
         }
         if (existing != null) {
             if (existing.getUserId() == null && userId != null) {

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfDeployRollbackHistoryMapper">
+
+    <select id="listByOriginalDeployId" resultType="com.cloudflow.workflow.domain.WfDeployRollbackHistory">
+        SELECT *
+        FROM wf_deploy_rollback_history
+        WHERE original_deploy_id = #{deployId}
+        ORDER BY rollback_time DESC
+    </select>
+
+    <select id="selectByRollbackDeployId" resultType="com.cloudflow.workflow.domain.WfDeployRollbackHistory">
+        SELECT *
+        FROM wf_deploy_rollback_history
+        WHERE rollback_deploy_id = #{deployId}
+    </select>
+
+    <select id="listRecent" resultType="com.cloudflow.workflow.domain.WfDeployRollbackHistory">
+        SELECT *
+        FROM wf_deploy_rollback_history
+        ORDER BY rollback_time DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

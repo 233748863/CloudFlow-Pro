@@ -48,11 +48,12 @@ public class TenantConfigProperties {
      */
     private List<String> ignoreTables = new ArrayList<>(List.of(
             "sys_tenant",
-            "sys_menu",
-            "sys_dict_type",
-            "sys_dict_data",
-            "sys_config"
-    ));
+             "sys_menu",
+             "sys_dict_type",
+             "sys_dict_data",
+             "sys_config",
+             "sys_audit_archive_policy"
+     ));
 
     /**
      * 默认租户ID（当上下文中没有租户ID时使用）

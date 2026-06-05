@@ -6,6 +6,7 @@ import com.cloudflow.common.audit.support.SpelParser;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.javers.core.Changes;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.Optional;
@@ -36,7 +37,8 @@ public class JaversCompareHandle implements ICompareHandle {
         // 如果存在审计日志处理器，则交给它处理（M0-5：传递 oldVal/newVal 用于 diff=true）
         auditLogHandleOptional.ifPresent(handle -> {
             if (handle instanceof com.cloudflow.common.audit.handle.DefaultAuditLogHandle defaultHandle) {
-                defaultHandle.handle(audit, changes, oldVal, newVal);
+                Class<?> sourceClass = joinPoint.getTarget() == null ? null : AopUtils.getTargetClass(joinPoint.getTarget());
+                defaultHandle.handle(audit, changes, oldVal, newVal, sourceClass);
             } else {
                 handle.handle(audit, changes);
             }

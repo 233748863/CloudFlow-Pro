@@ -3,6 +3,7 @@ package com.cloudflow.workflow.service.impl;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.redis.core.SysConfigHelper;
+import com.cloudflow.common.redis.lock.DistributedLock;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.vo.UserBriefVO;
@@ -52,7 +53,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
     private static final long DEFAULT_USER_TTL = 1800; // 30分钟
 
     // P2-fix-4: TTL 随机抖动范围（秒），防止缓存雪崩
-    private static final long TTL_JITTER_RANGE = 300; // ±5分钟
+    private static final double TTL_JITTER_RATIO = 0.10D;
 
     private long definitionTtl() {
         return sysConfigHelper.getConfigLong("sys.workflow.cache.definition.ttl", DEFAULT_DEFINITION_TTL);
@@ -79,12 +80,20 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 使用Spring Cache注解自动管理缓存
      */
     @Override
+    @DistributedLock(key = "'cache:wf:definition:' + #definitionId", waitMs = 500, leaseMs = 10000)
     @Cacheable(value = DEFINITION_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #definitionId", unless = "#result == null")
     public WfProcessDefinition getDefinition(String definitionId) {
+        String nullKey = nullKey(DEFINITION_CACHE, definitionId);
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(nullKey))) {
+            return null;
+        }
         // P2-fix-2: 缓存未命中，计数+1
         definitionMissCount.incrementAndGet();
         log.debug("从数据库查询流程定义: {}", definitionId);
         WfProcessDefinition definition = definitionMapper.selectById(definitionId);
+        if (definition == null) {
+            redisTemplate.opsForValue().set(nullKey, "1", 30, TimeUnit.SECONDS);
+        }
         
         if (definition != null) {
             // P2-fix-4: 手动设置带随机抖动的TTL，防止缓存雪崩
@@ -100,12 +109,20 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 获取表单定义（带缓存）
      */
     @Override
+    @DistributedLock(key = "'cache:wf:form:' + #formId", waitMs = 500, leaseMs = 10000)
     @Cacheable(value = FORM_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #formId", unless = "#result == null")
     public WfFormDefinition getForm(String formId) {
+        String nullKey = nullKey(FORM_CACHE, formId);
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(nullKey))) {
+            return null;
+        }
         // P2-fix-2: 缓存未命中，计数+1
         formMissCount.incrementAndGet();
         log.debug("从数据库查询表单定义: {}", formId);
         WfFormDefinition form = formMapper.selectById(formId);
+        if (form == null) {
+            redisTemplate.opsForValue().set(nullKey, "1", 30, TimeUnit.SECONDS);
+        }
         
         if (form != null) {
             // P2-fix-4: 带随机抖动的TTL
@@ -121,9 +138,14 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 获取用户信息（带缓存）
      */
     @Override
+    @DistributedLock(key = "'cache:wf:user:' + #userId", waitMs = 500, leaseMs = 10000)
     @Cacheable(value = USER_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #userId", unless = "#result == null")
     public UserBriefVO getUser(Long userId) {
         if (userId == null) {
+            return null;
+        }
+        String nullKey = nullKey(USER_CACHE, String.valueOf(userId));
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(nullKey))) {
             return null;
         }
         
@@ -147,11 +169,18 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
             }
             
             log.warn("获取用户信息失败: userId={}, msg={}", userId, result.getMsg());
+            redisTemplate.opsForValue().set(nullKey, "1", 30, TimeUnit.SECONDS);
             return null;
         } catch (Exception e) {
             log.error("获取用户信息异常: userId={}", userId, e);
+            redisTemplate.opsForValue().set(nullKey, "1", 30, TimeUnit.SECONDS);
             return null;
         }
+    }
+
+    private String nullKey(String cacheName, String id) {
+        Long tenantId = UserContext.getTenantId();
+        return "cache:null:" + cacheName + ":" + (tenantId == null ? "global" : tenantId) + ":" + id;
     }
 
     /**
@@ -269,7 +298,8 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 在基础TTL上增加 ±TTL_JITTER_RANGE 的随机偏移
      */
     private long getJitteredTtl(long baseTtl) {
-        long jitter = (long) (Math.random() * TTL_JITTER_RANGE * 2) - TTL_JITTER_RANGE;
+        long range = Math.max(1L, Math.round(baseTtl * TTL_JITTER_RATIO));
+        long jitter = java.util.concurrent.ThreadLocalRandom.current().nextLong(-range, range + 1);
         return Math.max(60, baseTtl + jitter); // 最小60秒
     }
 

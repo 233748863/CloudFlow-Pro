@@ -41,10 +41,12 @@ public class HrWorkflowEventListener {
                 "HR_CERTIFICATE_REQUEST:", "status", "CANCELLED", null);
         register("wf_hr_contract_sign", "hr_contract_signature", "id", "process_instance_id",
                 "HR_CONTRACT_SIGN:", "sign_status", "CANCELLED",
-                "UPDATE hr_employee_contract c " +
-                        "JOIN hr_contract_signature s ON c.id = s.contract_id " +
-                        "SET c.sign_status = 'UNSIGNED', c.update_by = ?, c.update_time = NOW() " +
-                        "WHERE s.id = ?");
+                """
+                        UPDATE hr_employee_contract c
+                        JOIN hr_contract_signature s ON c.id = s.contract_id
+                        SET c.sign_status = 'UNSIGNED', c.update_by = ?, c.update_time = NOW()
+                        WHERE s.id = ?
+                        """);
         register("wf_hr_training_enrollment", "hr_training_enrollment", "id", "process_instance_id",
                 "HR_TRAINING_ENROLLMENT:", "status", "WITHDRAWN", null);
     }

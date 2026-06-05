@@ -180,16 +180,16 @@ public class SysFileServiceImpl implements ISysFileService {
         if (StrUtil.isBlank(normalizedPath)) {
             throw new IllegalArgumentException("文件标识不能为空");
         }
-        SysFile sysFile = sysFileMapper.selectOne(new LambdaQueryWrapper<SysFile>()
+        SysFile sysFile = sysFileMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<SysFile>()
                 .eq(SysFile::getDeleted, 0)
-                .eq(SysFile::getFilePath, normalizedPath)
-                .last("limit 1"));
+                .eq(SysFile::getFilePath, normalizedPath))
+                .getRecords().stream().findFirst().orElse(null);
         if (sysFile == null) {
             String normalizedUrl = removeQuery(normalizedPath);
-            sysFile = sysFileMapper.selectOne(new LambdaQueryWrapper<SysFile>()
+            sysFile = sysFileMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<SysFile>()
                     .eq(SysFile::getDeleted, 0)
-                    .eq(SysFile::getUrl, normalizedUrl)
-                    .last("limit 1"));
+                    .eq(SysFile::getUrl, normalizedUrl))
+                    .getRecords().stream().findFirst().orElse(null);
         }
         if (sysFile == null) {
             throw new IllegalArgumentException("文件不存在");

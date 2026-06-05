@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.hr.domain.dto.Hr360EvaluatorInvitePayload;
@@ -234,13 +235,13 @@ public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
                 : weightedSum;
         String grade = gradeOfScore(aggregated);
 
-        HrPerformanceResult existingResult = performanceResultMapper.selectOne(
+        HrPerformanceResult existingResult = performanceResultMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrPerformanceResult>()
                         .eq(HrPerformanceResult::getTenantId, TENANT_ID)
                         .eq(HrPerformanceResult::getObjectiveId, objectiveId)
                         .eq(HrPerformanceResult::getEmployeeId, evaluateeId)
-                        .orderByDesc(HrPerformanceResult::getId)
-                        .last("LIMIT 1"));
+                        .orderByDesc(HrPerformanceResult::getId))
+                .getRecords().stream().findFirst().orElse(null);
         Long resultId;
         if (existingResult == null) {
             HrPerformanceResult entity = new HrPerformanceResult();

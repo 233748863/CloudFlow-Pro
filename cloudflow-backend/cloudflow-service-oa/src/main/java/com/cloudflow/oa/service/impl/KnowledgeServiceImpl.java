@@ -425,9 +425,8 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
     private boolean hasRead(Long documentId) {
         LambdaQueryWrapper<KnowledgeRead> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeRead::getDocumentId, documentId)
-                .eq(KnowledgeRead::getUserId, UserContext.getUserId())
-                .last("LIMIT 1");
-        return readMapper.selectOne(wrapper) != null;
+                .eq(KnowledgeRead::getUserId, UserContext.getUserId());
+        return !readMapper.selectPage(new Page<>(1, 1, false), wrapper).getRecords().isEmpty();
     }
 
     private int countReads(Long documentId) {

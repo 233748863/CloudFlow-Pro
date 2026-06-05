@@ -245,13 +245,12 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
         LocalDate today = LocalDate.now();
 
         // 1) 里程碑逾期: planned_date < today 且 status ∈ PENDING/IN_PROGRESS
-        List<OaContractMilestone> overdueMilestones = milestoneMapper.selectList(
+        List<OaContractMilestone> overdueMilestones = milestoneMapper.selectPage(new Page<>(1, limit, false),
                 new LambdaQueryWrapper<OaContractMilestone>()
                         .eq(OaContractMilestone::getDeleted, 0)
                         .in(OaContractMilestone::getStatus, "PENDING", "IN_PROGRESS")
                         .lt(OaContractMilestone::getPlannedDate, today)
-                        .orderByAsc(OaContractMilestone::getPlannedDate)
-                        .last("LIMIT " + limit));
+                        .orderByAsc(OaContractMilestone::getPlannedDate)).getRecords();
         for (OaContractMilestone m : overdueMilestones) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", "milestone:" + m.getId());
@@ -265,13 +264,12 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
         }
 
         // 2) 付款节点逾期: plan_date < today 且 status ∈ PENDING
-        List<OaContractPaymentSchedule> overduePayments = paymentMapper.selectList(
+        List<OaContractPaymentSchedule> overduePayments = paymentMapper.selectPage(new Page<>(1, limit, false),
                 new LambdaQueryWrapper<OaContractPaymentSchedule>()
                         .eq(OaContractPaymentSchedule::getDeleted, 0)
                         .eq(OaContractPaymentSchedule::getStatus, "PENDING")
                         .lt(OaContractPaymentSchedule::getPlanDate, today)
-                        .orderByAsc(OaContractPaymentSchedule::getPlanDate)
-                        .last("LIMIT " + limit));
+                        .orderByAsc(OaContractPaymentSchedule::getPlanDate)).getRecords();
         for (OaContractPaymentSchedule p : overduePayments) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", "payment:" + p.getId());

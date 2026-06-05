@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfDeployApprovalMapper">
+
+    <select id="selectByDeployId" resultType="com.cloudflow.workflow.domain.WfDeployApproval">
+        SELECT *
+        FROM wf_deploy_approval
+        WHERE deploy_id = #{deployId}
+    </select>
+
+    <select id="listByStatus" resultType="com.cloudflow.workflow.domain.WfDeployApproval">
+        SELECT *
+        FROM wf_deploy_approval
+        WHERE approval_status = #{status}
+        ORDER BY submit_time DESC
+    </select>
+
+    <select id="listBySubmitter" resultType="com.cloudflow.workflow.domain.WfDeployApproval">
+        SELECT *
+        FROM wf_deploy_approval
+        WHERE submitter_id = #{submitterId}
+        ORDER BY submit_time DESC
+    </select>
+
+    <select id="listPendingForUser" resultType="com.cloudflow.workflow.domain.WfDeployApproval">
+        SELECT da.*
+        FROM wf_deploy_approval da
+        INNER JOIN wf_deploy_approval_step das ON da.id = das.approval_id
+        WHERE das.step_status = 'PENDING'
+          AND das.approver_type = 'USER'
+          AND FIND_IN_SET(
+              CAST(#{userId} AS CHAR),
+              REPLACE(REPLACE(REPLACE(REPLACE(IFNULL(das.approver_ids, ''), '[', ''), ']', ''), '"', ''), ' ', '')
+          ) > 0
+        ORDER BY da.submit_time DESC
+    </select>
+
+</mapper>

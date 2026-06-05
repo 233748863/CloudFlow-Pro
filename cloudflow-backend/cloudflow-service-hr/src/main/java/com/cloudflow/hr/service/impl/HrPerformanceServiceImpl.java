@@ -653,12 +653,12 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     }
 
     private Map<String, Object> loadObjective(Long id) {
-        HrPerformanceObjective entity = objectiveMapper.selectOne(
+        HrPerformanceObjective entity = objectiveMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrPerformanceObjective>()
                         .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
                         .eq(HrPerformanceObjective::getId, id)
-                        .eq(HrPerformanceObjective::getDeleted, 0)
-                        .last("LIMIT 1"));
+                        .eq(HrPerformanceObjective::getDeleted, 0))
+                .getRecords().stream().findFirst().orElse(null);
         return entity == null ? Map.of() : toMap(entity);
     }
 
@@ -666,11 +666,11 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         if (id == null) {
             return Map.of();
         }
-        HrPerformanceAssignment entity = assignmentMapper.selectOne(
+        HrPerformanceAssignment entity = assignmentMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrPerformanceAssignment>()
                         .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
-                        .eq(HrPerformanceAssignment::getId, id)
-                        .last("LIMIT 1"));
+                        .eq(HrPerformanceAssignment::getId, id))
+                .getRecords().stream().findFirst().orElse(null);
         return entity == null ? Map.of() : toMap(entity);
     }
 
@@ -686,14 +686,12 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     }
 
     private BigDecimal queryEmployeeSalary(Long employeeId) {
-        List<HrEmployeeComp> rows = employeeCompMapper.selectList(
+        List<HrEmployeeComp> rows = employeeCompMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrEmployeeComp>()
                         .eq(HrEmployeeComp::getEmployeeId, employeeId)
                         .eq(HrEmployeeComp::getDeleted, 0)
                         .orderByDesc(HrEmployeeComp::getEffectiveDate)
-                        .orderByDesc(HrEmployeeComp::getId)
-                        .last("LIMIT 1")
-        );
+                        .orderByDesc(HrEmployeeComp::getId)).getRecords();
         if (rows.isEmpty() || rows.get(0).getTotalSalary() == null) {
             return BigDecimal.ZERO;
         }

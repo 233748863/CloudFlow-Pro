@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfDeployWindowMapper">
+
+    <select id="checkDeployWindow" resultType="com.cloudflow.workflow.domain.WfDeployWindow">
+        SELECT *
+        FROM wf_deploy_window
+        WHERE is_enabled = 1
+          AND (
+              (window_type = 'DAILY'
+               AND TIME(#{checkTime}) BETWEEN start_time AND end_time)
+              OR (window_type = 'WEEKLY'
+                  AND FIND_IN_SET(DAYOFWEEK(#{checkTime}), week_days) > 0
+                  AND TIME(#{checkTime}) BETWEEN start_time AND end_time)
+              OR (window_type = 'MONTHLY'
+                  AND FIND_IN_SET(DAY(#{checkTime}), month_days) > 0
+                  AND TIME(#{checkTime}) BETWEEN start_time AND end_time)
+          )
+    </select>
+
+    <select id="listEnabledWindows" resultType="com.cloudflow.workflow.domain.WfDeployWindow">
+        SELECT *
+        FROM wf_deploy_window
+        WHERE is_enabled = 1
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

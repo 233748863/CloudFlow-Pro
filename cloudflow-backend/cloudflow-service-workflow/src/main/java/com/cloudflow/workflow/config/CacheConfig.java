@@ -12,12 +12,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 缓存配置
@@ -57,6 +59,7 @@ public class CacheConfig {
     private static final long DEFAULT_DEFINITION_TTL_SECONDS = 3600;
     private static final long DEFAULT_FORM_TTL_SECONDS = 3600;
     private static final long DEFAULT_USER_TTL_SECONDS = 1800;
+    private static final double TTL_JITTER_RATIO = 0.10D;
 
     @Autowired
     private SysConfigHelper sysConfigHelper;
@@ -74,20 +77,20 @@ public class CacheConfig {
         GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
         // 默认缓存配置：30分钟过期
-        RedisCacheConfiguration defaultConfig = baseConfig(jsonSerializer).entryTtl(Duration.ofMinutes(30));
+        RedisCacheConfiguration defaultConfig = baseConfig(jsonSerializer).entryTtl(jitterTtl(Duration.ofMinutes(30)));
 
         // 旧三档（保留兼容，1 小时）
-        RedisCacheConfiguration processDefConfig = baseConfig(jsonSerializer).entryTtl(Duration.ofHours(1));
-        RedisCacheConfiguration formDefConfig = baseConfig(jsonSerializer).entryTtl(Duration.ofHours(1));
-        RedisCacheConfiguration versionComparisonConfig = baseConfig(jsonSerializer).entryTtl(Duration.ofHours(1));
+        RedisCacheConfiguration processDefConfig = baseConfig(jsonSerializer).entryTtl(jitterTtl(Duration.ofHours(1)));
+        RedisCacheConfiguration formDefConfig = baseConfig(jsonSerializer).entryTtl(jitterTtl(Duration.ofHours(1)));
+        RedisCacheConfiguration versionComparisonConfig = baseConfig(jsonSerializer).entryTtl(jitterTtl(Duration.ofHours(1)));
 
         // GOV-CONFIG-CLEANUP (A5)：从 sys_config 读取 TTL，注入 WorkflowCacheServiceImpl 实际使用的 cacheName
         long defTtl = sysConfigHelper.getConfigLong("sys.workflow.cache.definition.ttl", DEFAULT_DEFINITION_TTL_SECONDS);
         long formTtl = sysConfigHelper.getConfigLong("sys.workflow.cache.form.ttl", DEFAULT_FORM_TTL_SECONDS);
         long userTtl = sysConfigHelper.getConfigLong("sys.workflow.cache.user.ttl", DEFAULT_USER_TTL_SECONDS);
-        RedisCacheConfiguration wfDefinitionConfig = baseConfig(jsonSerializer).entryTtl(Duration.ofSeconds(defTtl));
-        RedisCacheConfiguration wfFormConfig = baseConfig(jsonSerializer).entryTtl(Duration.ofSeconds(formTtl));
-        RedisCacheConfiguration wfUserConfig = baseConfig(jsonSerializer).entryTtl(Duration.ofSeconds(userTtl));
+        RedisCacheConfiguration wfDefinitionConfig = baseConfig(jsonSerializer).entryTtl(jitterTtl(Duration.ofSeconds(defTtl)));
+        RedisCacheConfiguration wfFormConfig = baseConfig(jsonSerializer).entryTtl(jitterTtl(Duration.ofSeconds(formTtl)));
+        RedisCacheConfiguration wfUserConfig = baseConfig(jsonSerializer).entryTtl(jitterTtl(Duration.ofSeconds(userTtl)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
@@ -105,5 +108,14 @@ public class CacheConfig {
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
                 .disableCachingNullValues();
+    }
+
+    private RedisCacheWriter.TtlFunction jitterTtl(Duration baseTtl) {
+        return (key, value) -> {
+            long baseMillis = baseTtl.toMillis();
+            long range = Math.max(1L, Math.round(baseMillis * TTL_JITTER_RATIO));
+            long offset = ThreadLocalRandom.current().nextLong(-range, range + 1);
+            return Duration.ofMillis(Math.max(1000L, baseMillis + offset));
+        };
     }
 }

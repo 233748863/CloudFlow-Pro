@@ -99,23 +99,23 @@ public class OaTraceEventServiceImpl extends ServiceImpl<OaTraceEventMapper, OaT
     @Override
     public List<OaTraceEvent> listByFilter(String businessType, Long businessId, String relatedType, Long relatedId, Integer limit) {
         int safeLimit = normalizeLimit(limit);
-        return list(new LambdaQueryWrapper<OaTraceEvent>()
+        LambdaQueryWrapper<OaTraceEvent> wrapper = new LambdaQueryWrapper<OaTraceEvent>()
                 .eq(StringUtils.hasText(businessType), OaTraceEvent::getBusinessType, businessType)
                 .eq(businessId != null, OaTraceEvent::getBusinessId, businessId)
                 .eq(StringUtils.hasText(relatedType), OaTraceEvent::getRelatedType, relatedType)
                 .eq(relatedId != null, OaTraceEvent::getRelatedId, relatedId)
                 .orderByAsc(OaTraceEvent::getEventTime)
-                .orderByAsc(OaTraceEvent::getId)
-                .last("LIMIT " + safeLimit));
+                .orderByAsc(OaTraceEvent::getId);
+        return page(new Page<>(1, safeLimit, false), wrapper).getRecords();
     }
 
     @Override
     public List<OaTraceEvent> listRecent(Integer limit) {
         int safeLimit = normalizeLimit(limit);
-        return list(new LambdaQueryWrapper<OaTraceEvent>()
+        LambdaQueryWrapper<OaTraceEvent> wrapper = new LambdaQueryWrapper<OaTraceEvent>()
                 .orderByDesc(OaTraceEvent::getEventTime)
-                .orderByDesc(OaTraceEvent::getId)
-                .last("LIMIT " + safeLimit));
+                .orderByDesc(OaTraceEvent::getId);
+        return page(new Page<>(1, safeLimit, false), wrapper).getRecords();
     }
 
     @Override
@@ -141,15 +141,15 @@ public class OaTraceEventServiceImpl extends ServiceImpl<OaTraceEventMapper, OaT
         if (current == null) {
             return null;
         }
-        OaTraceEvent previous = getOne(new LambdaQueryWrapper<OaTraceEvent>()
+        OaTraceEvent previous = page(new Page<>(1, 1, false), new LambdaQueryWrapper<OaTraceEvent>()
                 .eq(OaTraceEvent::getBusinessType, current.getBusinessType())
                 .eq(OaTraceEvent::getBusinessId, current.getBusinessId())
                 .and(wrapper -> wrapper.lt(OaTraceEvent::getEventTime, current.getEventTime())
                         .or(inner -> inner.eq(OaTraceEvent::getEventTime, current.getEventTime())
                                 .lt(OaTraceEvent::getId, current.getId())))
                 .orderByDesc(OaTraceEvent::getEventTime)
-                .orderByDesc(OaTraceEvent::getId)
-                .last("LIMIT 1"));
+                .orderByDesc(OaTraceEvent::getId))
+                .getRecords().stream().findFirst().orElse(null);
         TimelineDiffDTO dto = new TimelineDiffDTO();
         dto.setEventId(current.getId());
         dto.setBusinessType(current.getBusinessType());

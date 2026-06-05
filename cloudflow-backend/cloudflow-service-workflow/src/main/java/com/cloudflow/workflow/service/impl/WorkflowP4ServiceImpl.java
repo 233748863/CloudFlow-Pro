@@ -648,12 +648,12 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         LambdaQueryWrapper<WfProcessDefinition> subDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
                 .eq(WfProcessDefinition::getProcessKey, subProcessDefKey)
                 .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                .orderByDesc(WfProcessDefinition::getVersion)
-                .last("LIMIT 1");
+                .orderByDesc(WfProcessDefinition::getVersion);
         if (parentInstance.getTenantId() != null) {
             subDefQuery.eq(WfProcessDefinition::getTenantId, parentInstance.getTenantId());
         }
-        WfProcessDefinition subDef = processDefinitionMapper.selectOne(subDefQuery);
+        WfProcessDefinition subDef = processDefinitionMapper.selectPage(new Page<>(1, 1, false), subDefQuery)
+                .getRecords().stream().findFirst().orElse(null);
         if (subDef == null) { throw WorkflowException.processNotFound(subProcessDefKey); }
         assertDefinitionTenantAccess(subDef, "startSubProcess");
         if (org.springframework.util.StringUtils.hasText(subDef.getFormId())) {

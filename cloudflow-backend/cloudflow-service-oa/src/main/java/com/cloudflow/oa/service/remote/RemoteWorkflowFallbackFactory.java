@@ -1,10 +1,13 @@
 package com.cloudflow.oa.service.remote;
 
+import com.cloudflow.common.core.domain.ProcessFallbackResponse;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.event.workflow.WorkflowFallbackRetryPublisher;
 import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowRecallDTO;
 import com.cloudflow.oa.domain.dto.WorkflowTaskCompleteDTO;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
@@ -20,7 +23,10 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class RemoteWorkflowFallbackFactory implements FallbackFactory<RemoteWorkflowService> {
+
+    private final WorkflowFallbackRetryPublisher retryPublisher;
     
     @Override
     public RemoteWorkflowService create(Throwable cause) {
@@ -30,13 +36,15 @@ public class RemoteWorkflowFallbackFactory implements FallbackFactory<RemoteWork
             @Override
             public R<?> startProcess(WorkflowProcessStartDTO req) {
                 log.error("启动工作流失败，请求参数: {}", req);
-                return R.fail("工作流服务暂时不可用，请稍后重试");
+                retryPublisher.publish("cloudflow-oa", "startProcess", req, cause);
+                return retryResponse(req != null ? req.getProcessDefKey() : null, req != null ? req.getBusinessKey() : null);
             }
 
             @Override
             public R<?> startProcessInternal(InternalWorkflowStartDTO req) {
                 log.error("内部启动工作流失败，请求参数: {}", req);
-                return R.fail("工作流服务暂时不可用，请稍后重试");
+                retryPublisher.publish("cloudflow-oa", "startProcessInternal", req, cause);
+                return retryResponse(req != null ? req.getProcessDefKey() : null, req != null ? req.getBusinessKey() : null);
             }
             
             @Override
@@ -79,5 +87,11 @@ public class RemoteWorkflowFallbackFactory implements FallbackFactory<RemoteWork
                 return R.ok(new HashMap<>());
             }
         };
+    }
+
+    private R<ProcessFallbackResponse> retryResponse(String processDefKey, String businessKey) {
+        R<ProcessFallbackResponse> response = R.fail("workflow service unavailable, retry submitted to outbox");
+        response.setData(ProcessFallbackResponse.retry("workflow service unavailable", processDefKey, businessKey));
+        return response;
     }
 }

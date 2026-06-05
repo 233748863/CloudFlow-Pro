@@ -1,6 +1,7 @@
 package com.cloudflow.auth.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.auth.constant.AuthBusinessTypes;
 import com.cloudflow.auth.domain.SysDictChangeApproval;
@@ -18,6 +19,7 @@ import com.cloudflow.auth.mapper.SysDictTypeMapper;
 import com.cloudflow.auth.mapper.SysDictVersionMapper;
 import com.cloudflow.auth.service.ISysDictTypeService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.audit.annotation.HighRiskAction;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
@@ -88,7 +90,11 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     @PostConstruct
     public void init() {
-        loadDictDataToRedis();
+        try {
+            loadDictDataToRedis();
+        } catch (Exception e) {
+            log.warn("dict cache warmup failed, startup continues", e);
+        }
     }
 
     public void loadDictDataToRedis() {
@@ -207,6 +213,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "更新字典类型", spel = "#dictType", oldVal = "@sysDictTypeServiceImpl.getById(#dictType.dictId)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public boolean updateDictType(SysDictType dictType) {
@@ -233,6 +240,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "删除字典类型", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public void deleteDictTypeByIds(Long[] dictIds) {
@@ -249,6 +257,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "删除字典数据", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public DictChangeResult deleteDictDataByIds(Long[] dictCodes) {
@@ -290,6 +299,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     @Override
+    @HighRiskAction
     @Audit(name = "更新字典数据", spel = "#dictData", oldVal = "@sysDictTypeServiceImpl.selectDictDataById(#dictData.dictCode)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public DictChangeResult updateDictData(SysDictData dictData) {
@@ -332,10 +342,10 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
             throw new ServiceException("字典版本快照损坏", ErrorCodeConstants.CONCURRENT_MODIFICATION);
         }
 
-        SysDictType currentType = getOne(new LambdaQueryWrapper<SysDictType>()
+        SysDictType currentType = page(new Page<>(1, 1, false), new LambdaQueryWrapper<SysDictType>()
                 .eq(SysDictType::getDictType, snapshot.type().getDictType())
-                .eq(version.getTenantId() != null, SysDictType::getTenantId, version.getTenantId())
-                .last("LIMIT 1"));
+                .eq(version.getTenantId() != null, SysDictType::getTenantId, version.getTenantId()))
+                .getRecords().stream().findFirst().orElse(null);
         SysDictType typeToPersist = snapshot.type();
         if (currentType != null) {
             typeToPersist.setDictId(currentType.getDictId());
@@ -554,10 +564,10 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         if (dictType == null || dictType.isBlank()) {
             return;
         }
-        SysDictType dictTypeEntity = getOne(new LambdaQueryWrapper<SysDictType>()
+        SysDictType dictTypeEntity = page(new Page<>(1, 1, false), new LambdaQueryWrapper<SysDictType>()
                 .eq(SysDictType::getDictType, dictType)
-                .eq(UserContext.getTenantId() != null, SysDictType::getTenantId, UserContext.getTenantId())
-                .last("LIMIT 1"));
+                .eq(UserContext.getTenantId() != null, SysDictType::getTenantId, UserContext.getTenantId()))
+                .getRecords().stream().findFirst().orElse(null);
         if (dictTypeEntity == null) {
             return;
         }
@@ -579,11 +589,12 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     private Integer nextVersionNo(String dictType, Long tenantId) {
-        SysDictVersion latest = dictVersionMapper.selectOne(new LambdaQueryWrapper<SysDictVersion>()
+        SysDictVersion latest = dictVersionMapper.selectPage(new Page<>(1, 1, false),
+                new LambdaQueryWrapper<SysDictVersion>()
                 .eq(SysDictVersion::getDictType, dictType)
                 .eq(tenantId != null, SysDictVersion::getTenantId, tenantId)
-                .orderByDesc(SysDictVersion::getVersionNo)
-                .last("LIMIT 1"));
+                .orderByDesc(SysDictVersion::getVersionNo))
+                .getRecords().stream().findFirst().orElse(null);
         return latest == null || latest.getVersionNo() == null ? 1 : latest.getVersionNo() + 1;
     }
 

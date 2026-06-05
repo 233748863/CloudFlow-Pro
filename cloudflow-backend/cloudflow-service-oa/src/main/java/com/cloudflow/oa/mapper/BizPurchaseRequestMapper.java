@@ -7,7 +7,6 @@ import com.cloudflow.common.datascope.DataScope;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
@@ -36,7 +35,5 @@ public interface BizPurchaseRequestMapper extends BaseMapper<BizPurchaseRequest>
     /**
      * 获取今日采购单号最大序号。
      */
-    @Select("SELECT MAX(CAST(SUBSTRING(purchase_no, 11) AS UNSIGNED)) FROM biz_purchase_request " +
-            "WHERE purchase_no LIKE CONCAT('CG', DATE_FORMAT(NOW(), '%Y%m%d'), '%')")
     Integer getTodayMaxSeq();
 }

@@ -2,6 +2,7 @@ package com.cloudflow.workflow.event;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfNodeRecord;
 import com.cloudflow.workflow.domain.monitor.NodeMonitor;
@@ -180,13 +181,13 @@ public class WorkflowEventListener {
             LocalDateTime now = event.getEventTime();
 
             // 查找该节点最近一条 RUNNING 状态的记录
-            WfNodeRecord existingRecord = nodeRecordMapper.selectOne(
+            WfNodeRecord existingRecord = nodeRecordMapper.selectPage(new Page<>(1, 1, false),
                     new LambdaQueryWrapper<WfNodeRecord>()
                             .eq(WfNodeRecord::getInstanceId, event.getInstanceId())
                             .eq(WfNodeRecord::getNodeKey, event.getNodeKey())
                             .eq(WfNodeRecord::getStatus, "RUNNING")
-                            .orderByDesc(WfNodeRecord::getStartTime)
-                            .last("LIMIT 1"));
+                            .orderByDesc(WfNodeRecord::getStartTime))
+                    .getRecords().stream().findFirst().orElse(null);
 
             if (existingRecord != null) {
                 existingRecord.setStatus("COMPLETED");
@@ -275,13 +276,13 @@ public class WorkflowEventListener {
 
             LocalDateTime now = event.getEventTime();
 
-            WfNodeRecord existingRecord = nodeRecordMapper.selectOne(
+            WfNodeRecord existingRecord = nodeRecordMapper.selectPage(new Page<>(1, 1, false),
                     new LambdaQueryWrapper<WfNodeRecord>()
                             .eq(WfNodeRecord::getInstanceId, event.getInstanceId())
                             .eq(WfNodeRecord::getNodeKey, event.getNodeKey())
                             .eq(WfNodeRecord::getStatus, "RUNNING")
-                            .orderByDesc(WfNodeRecord::getStartTime)
-                            .last("LIMIT 1"));
+                            .orderByDesc(WfNodeRecord::getStartTime))
+                    .getRecords().stream().findFirst().orElse(null);
 
             if (existingRecord != null) {
                 existingRecord.setStatus("COMPLETED");
@@ -361,13 +362,13 @@ public class WorkflowEventListener {
     private void completeNodeMonitor(String instanceId, String nodeKey, String nodeName,
                                      String nodeType, LocalDateTime completeTime, long durationMs) {
         try {
-            NodeMonitor monitor = nodeMonitorMapper.selectOne(
+            NodeMonitor monitor = nodeMonitorMapper.selectPage(new Page<>(1, 1, false),
                     new LambdaQueryWrapper<NodeMonitor>()
                             .eq(NodeMonitor::getInstanceId, instanceId)
                             .eq(NodeMonitor::getNodeKey, nodeKey)
                             .eq(NodeMonitor::getStatus, "RUNNING")
-                            .orderByDesc(NodeMonitor::getStartTime)
-                            .last("LIMIT 1"));
+                            .orderByDesc(NodeMonitor::getStartTime))
+                    .getRecords().stream().findFirst().orElse(null);
 
             if (monitor == null) {
                 createCompletedNodeMonitor(instanceId, nodeKey, nodeName, nodeType, completeTime, durationMs);

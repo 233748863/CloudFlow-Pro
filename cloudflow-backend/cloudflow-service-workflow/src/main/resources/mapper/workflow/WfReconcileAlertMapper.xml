@@ -3,8 +3,7 @@
 <mapper namespace="com.cloudflow.workflow.mapper.WfReconcileAlertMapper">
 
     <!--
-      查询"流程已完成但业务表状态仍为审批中"的不一致记录。
-      windowMinutes: 只检查最近 N 分钟内完成的流程（避免全表扫描）。
+      M4-2：查询近 N 天流程实例与业务单据状态双向漂移。
       businessTypes: 由 BusinessTypeRegistry 提供的业务类型定义集合，运行期组装 UNION ALL 子查询。
       新增业务模块只需在 WorkflowBusinessTypeContributor 中追加 register 调用即可，无需修改本 XML。
 
@@ -15,29 +14,33 @@
     -->
     <select id="selectInconsistentRecords" resultType="com.cloudflow.workflow.domain.WfReconcileAlert">
         SELECT
-            pi.instance_id AS processInstanceId,
-            biz.business_type AS businessType,
-            biz.business_id AS businessId,
-            'COMPLETED' AS expectedStatus,
-            biz.actual_status AS actualStatus,
-            biz.tenant_id AS tenantId
+            biz.tenant_id AS tenantId,
+            biz.biz_module AS bizModule,
+            biz.business_id AS bizId,
+            pi.instance_id AS wfInstanceId,
+            biz.actual_status AS bizStatus,
+            pi.status AS wfStatus
         FROM wf_process_instance pi
         JOIN (
         <foreach collection="businessTypes" item="bt" separator=" UNION ALL ">
             SELECT
                 ${bt.processInstanceIdField} AS process_instance_id,
-                '${bt.code}' AS business_type,
+                '${bt.module}' AS biz_module,
                 ${bt.idField} AS business_id,
                 ${bt.statusField} AS actual_status,
                 ${bt.businessTable}.tenant_id AS tenant_id
             FROM ${bt.businessTable}
-            WHERE ${bt.statusField} IN ('PENDING','APPROVING')
-              AND ${bt.processInstanceIdField} IS NOT NULL
+            WHERE ${bt.processInstanceIdField} IS NOT NULL
+              AND ${bt.processInstanceIdField} != ''
         </foreach>
         ) biz ON pi.instance_id = biz.process_instance_id
               AND pi.tenant_id = biz.tenant_id
-        WHERE pi.status = 'COMPLETED'
-          AND pi.end_time >= DATE_SUB(NOW(), INTERVAL #{windowMinutes} MINUTE)
+        WHERE (
+            (biz.actual_status IN ('PENDING_APPROVAL','PENDING','APPROVING','IN_APPROVAL') AND pi.status IN ('COMPLETED','CANCELLED'))
+            OR
+            (pi.status = 'RUNNING' AND biz.actual_status IN ('APPROVED','REJECTED','COMPLETED','CANCELLED'))
+        )
+          AND COALESCE(pi.end_time, pi.start_time, pi.create_time) >= DATE_SUB(NOW(), INTERVAL #{windowDays} DAY)
     </select>
 
 </mapper>

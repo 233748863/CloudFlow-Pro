@@ -301,7 +301,7 @@ public class WorkflowStatisticsService {
 
             // 检查数据库连接
             try {
-                processInstanceMapper.selectCount(new LambdaQueryWrapper<WfProcessInstance>().last("LIMIT 1"));
+                processInstanceMapper.selectCount(new LambdaQueryWrapper<WfProcessInstance>());
                 health.put("database", "UP");
             } catch (Exception dbEx) {
                 health.put("database", "DOWN");

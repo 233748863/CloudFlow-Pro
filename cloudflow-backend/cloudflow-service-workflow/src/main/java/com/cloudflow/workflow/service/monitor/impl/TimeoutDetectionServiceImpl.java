@@ -1,32 +1,54 @@
 package com.cloudflow.workflow.service.monitor.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.tenant.support.TenantIterator;
+import com.cloudflow.common.workflow.callback.registry.BusinessTypeDef;
+import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistry;
+import com.cloudflow.workflow.domain.WfEscalationChain;
+import com.cloudflow.workflow.domain.WfEscalationLog;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.monitor.TimeoutAlert;
+import com.cloudflow.workflow.domain.system.SysDept;
+import com.cloudflow.workflow.domain.system.SysRole;
+import com.cloudflow.workflow.domain.system.SysUser;
+import com.cloudflow.workflow.domain.system.SysUserRole;
 import com.cloudflow.workflow.mapper.ProcessMonitorMapper;
 import com.cloudflow.workflow.mapper.TaskMonitorMapper;
 import com.cloudflow.workflow.mapper.TimeoutAlertMapper;
+import com.cloudflow.workflow.mapper.WfEscalationChainMapper;
+import com.cloudflow.workflow.mapper.WfEscalationLogMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
+import com.cloudflow.workflow.mapper.system.SysDeptMapper;
+import com.cloudflow.workflow.mapper.system.SysRoleMapper;
+import com.cloudflow.workflow.mapper.system.SysUserMapper;
+import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.monitor.ITimeoutDetectionService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -51,6 +73,14 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     private final INotificationService notificationService;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
     private final TenantIterator tenantIterator;
+    private final WfEscalationChainMapper escalationChainMapper;
+    private final WfEscalationLogMapper escalationLogMapper;
+    private final BusinessTypeRegistry businessTypeRegistry;
+    private final ObjectMapper objectMapper;
+    private final SysUserMapper sysUserMapper;
+    private final SysDeptMapper sysDeptMapper;
+    private final SysRoleMapper sysRoleMapper;
+    private final SysUserRoleMapper sysUserRoleMapper;
 
     @Value("${workflow.timeout.remind.threshold:3600000}")
     private Long remindThreshold;
@@ -60,6 +90,9 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
 
     @Value("${workflow.timeout.critical.threshold:14400000}")
     private Long criticalThreshold;
+
+    @Value("${workflow.timeout.escalation.default-scan-threshold-ms:60000}")
+    private Long defaultEscalationScanThreshold;
 
     /**
      * 定时检测超时任务，每 5 分钟执行一次。
@@ -75,10 +108,15 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
 
     private void detectTimeoutTasksForTenant(Long tenantId) {
         try {
-            List<TaskMonitor> timeoutTasks = taskMonitorMapper.selectTimeoutTasks(tenantId, criticalThreshold);
+            List<TaskMonitor> timeoutTasks = taskMonitorMapper.selectTimeoutTasks(tenantId, resolveTaskScanThreshold(tenantId));
 
             int alertCount = 0;
             for (TaskMonitor task : timeoutTasks) {
+                task.setTotalDuration(resolveCurrentTaskDuration(task));
+                WfTask wfTask = wfTaskMapper.selectById(task.getTaskId());
+                WfProcessInstance instance = resolveTaskInstance(task, wfTask);
+                executeEscalationChains(tenantId, task, wfTask, instance);
+
                 String level = determineTimeoutLevel(task.getTotalDuration());
                 if (level == null) {
                     continue;
@@ -118,6 +156,353 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
         } catch (Exception e) {
             log.error("检测超时任务失败, tenantId={}", tenantId, e);
         }
+    }
+
+    private Long resolveCurrentTaskDuration(TaskMonitor task) {
+        if (task == null) {
+            return 0L;
+        }
+        if (task.getCreateTimeTask() != null) {
+            return ChronoUnit.MILLIS.between(task.getCreateTimeTask(), LocalDateTime.now());
+        }
+        return task.getTotalDuration() == null ? 0L : task.getTotalDuration();
+    }
+
+    private Long resolveTaskScanThreshold(Long tenantId) {
+        LambdaQueryWrapper<WfEscalationChain> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(WfEscalationChain::getTenantId, tenantId)
+                .eq(WfEscalationChain::getStatus, 1)
+                .orderByAsc(WfEscalationChain::getTimeoutMinutes);
+        WfEscalationChain first = escalationChainMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
+        if (first == null || first.getTimeoutMinutes() == null || first.getTimeoutMinutes() <= 0) {
+            return defaultEscalationScanThreshold;
+        }
+        return Math.max(60000L, first.getTimeoutMinutes() * 60000L);
+    }
+
+    private WfProcessInstance resolveTaskInstance(TaskMonitor task, WfTask wfTask) {
+        String instanceId = wfTask != null && StringUtils.hasText(wfTask.getInstanceId())
+                ? wfTask.getInstanceId()
+                : task.getInstanceId();
+        return StringUtils.hasText(instanceId) ? processInstanceMapper.selectById(instanceId) : null;
+    }
+
+    private void executeEscalationChains(Long tenantId, TaskMonitor monitor, WfTask task, WfProcessInstance instance) {
+        String bizModule = resolveBizModule(instance);
+        List<WfEscalationChain> chains = selectMatchedChains(tenantId, bizModule, monitor.getTotalDuration());
+        if (chains.isEmpty()) {
+            return;
+        }
+
+        for (WfEscalationChain chain : chains) {
+            EscalationTarget target = resolveEscalationTarget(chain, monitor, task, instance);
+            WfEscalationLog escalationLog = buildEscalationLog(tenantId, monitor, instance, bizModule, chain, target);
+            try {
+                escalationLogMapper.insert(escalationLog);
+            } catch (DuplicateKeyException e) {
+                continue;
+            }
+
+            applyEscalationAction(chain, monitor, task, target);
+        }
+    }
+
+    private List<WfEscalationChain> selectMatchedChains(Long tenantId, String bizModule, Long timeoutMillis) {
+        long timeoutMinutes = timeoutMillis == null ? 0 : timeoutMillis / 60000L;
+        List<WfEscalationChain> chains = escalationChainMapper.selectList(new LambdaQueryWrapper<WfEscalationChain>()
+                .eq(WfEscalationChain::getTenantId, tenantId)
+                .eq(WfEscalationChain::getBizModule, bizModule)
+                .eq(WfEscalationChain::getStatus, 1)
+                .le(WfEscalationChain::getTimeoutMinutes, timeoutMinutes)
+                .orderByAsc(WfEscalationChain::getLevelNo));
+        if (!chains.isEmpty() || "system".equals(bizModule)) {
+            return chains;
+        }
+        return escalationChainMapper.selectList(new LambdaQueryWrapper<WfEscalationChain>()
+                .eq(WfEscalationChain::getTenantId, tenantId)
+                .eq(WfEscalationChain::getBizModule, "system")
+                .eq(WfEscalationChain::getStatus, 1)
+                .le(WfEscalationChain::getTimeoutMinutes, timeoutMinutes)
+                .orderByAsc(WfEscalationChain::getLevelNo));
+    }
+
+    private WfEscalationLog buildEscalationLog(Long tenantId,
+                                               TaskMonitor monitor,
+                                               WfProcessInstance instance,
+                                               String bizModule,
+                                               WfEscalationChain chain,
+                                               EscalationTarget target) {
+        WfEscalationLog log = new WfEscalationLog();
+        log.setTenantId(tenantId);
+        log.setTaskId(monitor.getTaskId());
+        log.setInstanceId(instance != null ? instance.getInstanceId() : monitor.getInstanceId());
+        log.setBizModule(bizModule);
+        log.setLevelNo(chain.getLevelNo());
+        log.setActionType(chain.getActionType());
+        log.setActionTarget(chain.getActionTarget());
+        log.setTargetUserId(target.userId());
+        log.setTargetUserName(target.userName());
+        log.setTriggerAt(LocalDateTime.now());
+        log.setCreateTime(LocalDateTime.now());
+        return log;
+    }
+
+    private void applyEscalationAction(WfEscalationChain chain, TaskMonitor monitor, WfTask task, EscalationTarget target) {
+        if (target.userId() == null) {
+            log.warn("超时升级未找到目标用户: taskId={}, levelNo={}, actionTarget={}",
+                    monitor.getTaskId(), chain.getLevelNo(), chain.getActionTarget());
+            return;
+        }
+
+        if ("REASSIGN".equalsIgnoreCase(chain.getActionType()) && task != null && "TODO".equals(task.getStatus())) {
+            task.setAssignee(target.userId());
+            task.setAssigneeName(target.userName());
+            task.setIsTimeout(1);
+            wfTaskMapper.updateById(task);
+
+            monitor.setAssigneeId(target.userId());
+            monitor.setAssigneeName(target.userName());
+            monitor.setAction("ESCALATE_REASSIGN");
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.updateById(monitor);
+        } else if (task != null) {
+            task.setIsTimeout(1);
+            wfTaskMapper.updateById(task);
+        }
+
+        notificationService.sendNotification(
+                target.userId(),
+                "任务超时升级提醒",
+                buildEscalationContent(chain, monitor, target),
+                EVENT_TIMEOUT_TASK
+        );
+    }
+
+    private String buildEscalationContent(WfEscalationChain chain, TaskMonitor monitor, EscalationTarget target) {
+        return String.format("任务【%s】已触发第%d级超时升级，动作=%s，目标处理人=%s，请及时处理。",
+                monitor.getTaskName(),
+                chain.getLevelNo(),
+                chain.getActionType(),
+                target.userName() != null ? target.userName() : target.userId());
+    }
+
+    private EscalationTarget resolveEscalationTarget(WfEscalationChain chain,
+                                                    TaskMonitor monitor,
+                                                    WfTask task,
+                                                    WfProcessInstance instance) {
+        String target = chain.getActionTarget();
+        if (!StringUtils.hasText(target) || "CURRENT_ASSIGNEE".equalsIgnoreCase(target)) {
+            return userTarget(monitor.getAssigneeId(), monitor.getAssigneeName(), monitor.getTenantId());
+        }
+        if ("DIRECT_LEADER".equalsIgnoreCase(target)) {
+            return directLeaderTarget(monitor.getAssigneeId(), monitor.getTenantId());
+        }
+        if ("STARTER".equalsIgnoreCase(target)) {
+            return instance == null
+                    ? new EscalationTarget(null, null)
+                    : userTarget(instance.getStartUserId(), instance.getStartUserName(), instance.getTenantId());
+        }
+        if ("STARTER_DIRECT_LEADER".equalsIgnoreCase(target)) {
+            return instance == null
+                    ? new EscalationTarget(null, null)
+                    : directLeaderTarget(instance.getStartUserId(), instance.getTenantId());
+        }
+        if (target.startsWith("USER:")) {
+            return userTarget(parseLong(target.substring("USER:".length())), null, monitor.getTenantId());
+        }
+        if (target.startsWith("ROLE:")) {
+            return roleTarget(target.substring("ROLE:".length()), monitor.getTenantId());
+        }
+        if (task != null && task.getAssignee() != null) {
+            return userTarget(task.getAssignee(), task.getAssigneeName(), task.getTenantId());
+        }
+        return userTarget(monitor.getAssigneeId(), monitor.getAssigneeName(), monitor.getTenantId());
+    }
+
+    private EscalationTarget userTarget(Long userId, String fallbackName, Long tenantId) {
+        if (userId == null) {
+            return new EscalationTarget(null, null);
+        }
+        SysUser user = selectActiveUser(userId, tenantId);
+        return new EscalationTarget(userId, user == null ? fallbackName : resolveUserName(user));
+    }
+
+    private EscalationTarget directLeaderTarget(Long sourceUserId, Long tenantId) {
+        SysUser sourceUser = selectActiveUser(sourceUserId, tenantId);
+        if (sourceUser == null || sourceUser.getDeptId() == null) {
+            return new EscalationTarget(null, null);
+        }
+        SysDept dept = sysDeptMapper.selectById(sourceUser.getDeptId());
+        SysUser leader = resolveLeaderFromDept(dept, tenantId);
+        if (leader == null) {
+            leader = resolveFirstRoleUser("manager", tenantId, sourceUser.getDeptId());
+        }
+        return leader == null
+                ? new EscalationTarget(null, null)
+                : new EscalationTarget(leader.getUserId(), resolveUserName(leader));
+    }
+
+    private EscalationTarget roleTarget(String roleKey, Long tenantId) {
+        SysUser user = resolveFirstRoleUser(roleKey, tenantId, null);
+        return user == null
+                ? new EscalationTarget(null, null)
+                : new EscalationTarget(user.getUserId(), resolveUserName(user));
+    }
+
+    private SysUser resolveLeaderFromDept(SysDept dept, Long tenantId) {
+        if (dept == null || !StringUtils.hasText(dept.getLeader())) {
+            return null;
+        }
+        String leader = dept.getLeader().trim();
+        Long leaderId = parseLong(leader);
+        if (leaderId != null) {
+            return selectActiveUser(leaderId, tenantId);
+        }
+        return sysUserMapper.selectPage(new Page<>(1, 1, false), activeUserWrapper(tenantId)
+                .and(query -> query.eq(SysUser::getUserName, leader).or().eq(SysUser::getNickName, leader)))
+                .getRecords().stream().findFirst().orElse(null);
+    }
+
+    private SysUser resolveFirstRoleUser(String roleKey, Long tenantId, Long deptId) {
+        if (!StringUtils.hasText(roleKey)) {
+            return null;
+        }
+        SysRole role = sysRoleMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<SysRole>()
+                .eq(SysRole::getTenantId, tenantId)
+                .eq(SysRole::getRoleKey, roleKey)
+                .eq(SysRole::getStatus, "0")
+                .eq(SysRole::getDeleted, 0))
+                .getRecords().stream().findFirst().orElse(null);
+        if (role == null) {
+            return null;
+        }
+        List<Long> userIds = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                        .eq(SysUserRole::getTenantId, tenantId)
+                        .eq(SysUserRole::getRoleId, role.getRoleId()))
+                .stream()
+                .map(SysUserRole::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (userIds.isEmpty()) {
+            return null;
+        }
+        LambdaQueryWrapper<SysUser> wrapper = activeUserWrapper(tenantId)
+                .in(SysUser::getUserId, userIds)
+                .orderByAsc(SysUser::getUserId);
+        if (deptId != null) {
+            wrapper.eq(SysUser::getDeptId, deptId);
+        }
+        return sysUserMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
+    }
+
+    private SysUser selectActiveUser(Long userId, Long tenantId) {
+        if (userId == null) {
+            return null;
+        }
+        return sysUserMapper.selectPage(new Page<>(1, 1, false), activeUserWrapper(tenantId)
+                .eq(SysUser::getUserId, userId))
+                .getRecords().stream().findFirst().orElse(null);
+    }
+
+    private LambdaQueryWrapper<SysUser> activeUserWrapper(Long tenantId) {
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getStatus, "0")
+                .eq(SysUser::getDeleted, 0);
+        if (tenantId != null) {
+            wrapper.eq(SysUser::getTenantId, tenantId);
+        }
+        return wrapper;
+    }
+
+    private String resolveUserName(SysUser user) {
+        if (user == null) {
+            return null;
+        }
+        if (StringUtils.hasText(user.getNickName())) {
+            return user.getNickName();
+        }
+        if (StringUtils.hasText(user.getUserName())) {
+            return user.getUserName();
+        }
+        return String.valueOf(user.getUserId());
+    }
+
+    private Long parseLong(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String resolveBizModule(WfProcessInstance instance) {
+        if (instance == null) {
+            return "workflow";
+        }
+        String businessType = resolveBusinessTypeFromVariables(instance.getVariables());
+        if (StringUtils.hasText(businessType)) {
+            BusinessTypeDef def = businessTypeRegistry.get(businessType);
+            if (def != null && StringUtils.hasText(def.getModule())) {
+                return normalizeBizModule(def.getModule());
+            }
+            return normalizeBizModule(businessType);
+        }
+        return normalizeBizModule(instance.getProcessDefKey());
+    }
+
+    private String resolveBusinessTypeFromVariables(String variables) {
+        if (!StringUtils.hasText(variables)) {
+            return null;
+        }
+        try {
+            Map<String, Object> values = objectMapper.readValue(variables, new TypeReference<>() {});
+            Object businessType = values.get("businessType");
+            if (businessType == null) {
+                businessType = values.get("bizModule");
+            }
+            if (businessType == null) {
+                businessType = values.get("sourceModule");
+            }
+            return businessType == null ? null : String.valueOf(businessType);
+        } catch (Exception e) {
+            log.debug("解析流程变量业务模块失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String normalizeBizModule(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "workflow";
+        }
+        String normalized = value.trim().toLowerCase();
+        if (normalized.startsWith("oa") || normalized.contains("_oa_")) {
+            return "oa";
+        }
+        if (normalized.startsWith("crm") || normalized.contains("_crm_")) {
+            return "crm";
+        }
+        if (normalized.startsWith("hr") || normalized.contains("_hr_") || normalized.startsWith("wf_hr")) {
+            return "hr";
+        }
+        if (normalized.startsWith("auth") || normalized.startsWith("sys_")) {
+            return "auth";
+        }
+        if (normalized.startsWith("workflow") || normalized.startsWith("wf_")) {
+            return "workflow";
+        }
+        if (normalized.startsWith("system")) {
+            return "system";
+        }
+        return "workflow";
+    }
+
+    private record EscalationTarget(Long userId, String userName) {
     }
 
     /**

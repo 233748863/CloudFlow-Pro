@@ -2,6 +2,7 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.exception.ServiceException;
@@ -136,10 +137,10 @@ public class WorkTaskServiceImpl extends ServiceImpl<WorkTaskMapper, WorkTask> i
     }
 
     private WorkTask requireTask(Long taskId) {
-        WorkTask task = getOne(new LambdaQueryWrapper<WorkTask>()
+        WorkTask task = page(new Page<>(1, 1, false), new LambdaQueryWrapper<WorkTask>()
                 .eq(WorkTask::getTaskId, taskId)
-                .eq(WorkTask::getDeleted, 0)
-                .last("LIMIT 1"));
+                .eq(WorkTask::getDeleted, 0))
+                .getRecords().stream().findFirst().orElse(null);
         if (task == null) {
             throw new ServiceException("任务不存在: " + taskId, ErrorCodeConstants.BAD_REQUEST);
         }

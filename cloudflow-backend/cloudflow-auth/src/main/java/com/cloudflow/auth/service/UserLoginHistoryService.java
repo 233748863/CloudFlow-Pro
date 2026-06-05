@@ -1,6 +1,7 @@
 package com.cloudflow.auth.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.SysUserLoginHistory;
 import com.cloudflow.auth.mapper.SysUserLoginHistoryMapper;
@@ -26,11 +27,12 @@ public class UserLoginHistoryService {
             return new LoginRiskContext(null, currentIp, null, currentLocation.label(), null, currentLocation.province(), loginTime);
         }
 
-        SysUserLoginHistory previous = loginHistoryMapper.selectOne(new LambdaQueryWrapper<SysUserLoginHistory>()
+        SysUserLoginHistory previous = loginHistoryMapper.selectPage(new Page<>(1, 1, false),
+                new LambdaQueryWrapper<SysUserLoginHistory>()
                 .eq(SysUserLoginHistory::getUserId, user.getUserId())
                 .eq(user.getTenantId() != null, SysUserLoginHistory::getTenantId, user.getTenantId())
-                .orderByDesc(SysUserLoginHistory::getLoginTime)
-                .last("LIMIT 1"));
+                .orderByDesc(SysUserLoginHistory::getLoginTime))
+                .getRecords().stream().findFirst().orElse(null);
 
         SysUserLoginHistory history = new SysUserLoginHistory();
         history.setTenantId(user.getTenantId());

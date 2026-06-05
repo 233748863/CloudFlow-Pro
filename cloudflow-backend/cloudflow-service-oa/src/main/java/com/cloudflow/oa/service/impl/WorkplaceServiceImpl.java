@@ -1,5 +1,6 @@
 package com.cloudflow.oa.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.domain.OaRiskAlert;
@@ -364,11 +365,11 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                                                              WorkplaceSummaryDTO.Stats stats,
                                                              Long userId) {
         try {
-            List<OaRiskAlert> risks = oaRiskAlertService.list(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OaRiskAlert>()
-                    .in(OaRiskAlert::getRiskStatus, OaContractConstants.RISK_STATUS_OPEN, OaContractConstants.RISK_STATUS_HANDLING)
-                    .orderByDesc(OaRiskAlert::getDetectedTime)
-                    .orderByDesc(OaRiskAlert::getId)
-                    .last("LIMIT 8"));
+            List<OaRiskAlert> risks = oaRiskAlertService.page(new Page<>(1, 8, false),
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OaRiskAlert>()
+                            .in(OaRiskAlert::getRiskStatus, OaContractConstants.RISK_STATUS_OPEN, OaContractConstants.RISK_STATUS_HANDLING)
+                            .orderByDesc(OaRiskAlert::getDetectedTime)
+                            .orderByDesc(OaRiskAlert::getId)).getRecords();
             List<WorkplaceSummaryDTO.RiskItem> oaRiskItems = risks.stream().map(this::toRiskItem).collect(Collectors.toList());
             List<WorkplaceSummaryDTO.RiskItem> crmRiskItems = loadCrmRisks();
             List<WorkplaceSummaryDTO.RiskItem> hrRiskItems = loadHrReminders(serviceHealth, userId);

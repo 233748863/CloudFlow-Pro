@@ -24,6 +24,9 @@ public class SysAuditLogEntity {
     /** 租户ID */
     private Long tenantId;
 
+    /** 业务模块 */
+    private String bizModule;
+
     /** 审计业务名称 */
     private String auditName;
 

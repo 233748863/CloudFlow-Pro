@@ -119,11 +119,10 @@ public class VehicleServiceImpl extends ServiceImpl<SysVehicleMapper, SysVehicle
 
         List<VehicleMaintenance> maintenances = vehicleMaintenanceService.listByVehicleId(vehicleId, 5);
         List<VehicleViolation> violations = vehicleViolationService.listByVehicleId(vehicleId, 5);
-        List<OaRiskAlert> risks = riskAlertMapper.selectList(new LambdaQueryWrapper<OaRiskAlert>()
+        List<OaRiskAlert> risks = riskAlertMapper.selectPage(new Page<>(1, 10, false), new LambdaQueryWrapper<OaRiskAlert>()
                 .eq(OaRiskAlert::getBusinessType, VehicleConstants.BUSINESS_TYPE_VEHICLE)
                 .eq(OaRiskAlert::getBusinessId, vehicleId)
-                .orderByDesc(OaRiskAlert::getDetectedTime)
-                .last("LIMIT 10"));
+                .orderByDesc(OaRiskAlert::getDetectedTime)).getRecords();
 
         profile.setMaintenances(maintenances);
         profile.setViolations(violations);

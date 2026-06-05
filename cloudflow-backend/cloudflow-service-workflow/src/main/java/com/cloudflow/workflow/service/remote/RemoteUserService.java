@@ -19,7 +19,8 @@ import java.util.Map;
 @FeignClient(
     name = "cloudflow-auth",
     path = "/inner/auth/user",
-    contextId = "workflowRemoteUserService"
+    contextId = "workflowRemoteUserService",
+    fallbackFactory = RemoteUserFallbackFactory.class
 )
 public interface RemoteUserService {
     

@@ -962,6 +962,44 @@ CREATE TABLE wf_timeout_alert (
     INDEX idx_alert_time (alert_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='超时告警表';
 
+-- M4-1: 超时升级链配置
+DROP TABLE IF EXISTS wf_escalation_chain;
+CREATE TABLE wf_escalation_chain (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT DEFAULT 100000 COMMENT '租户ID',
+    biz_module VARCHAR(32) NOT NULL COMMENT '业务模块(auth/workflow/oa/crm/hr/system)',
+    level_no INT NOT NULL COMMENT '升级级别',
+    timeout_minutes INT NOT NULL COMMENT '超时分钟数',
+    action_type VARCHAR(32) NOT NULL COMMENT '动作类型(NOTIFY/REASSIGN/ESCALATE)',
+    action_target VARCHAR(128) COMMENT '动作目标(CURRENT_ASSIGNEE/DIRECT_LEADER/ROLE:xxx/USER:xxx)',
+    status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态(1启用 0停用)',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_tenant_module_level (tenant_id, biz_module, level_no),
+    KEY idx_module_status (tenant_id, biz_module, status),
+    KEY idx_timeout_minutes (timeout_minutes)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流超时升级链配置';
+
+-- M4-1: 超时升级执行日志，按 task_id + level_no 去重
+DROP TABLE IF EXISTS wf_escalation_log;
+CREATE TABLE wf_escalation_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT DEFAULT 100000 COMMENT '租户ID',
+    task_id VARCHAR(64) NOT NULL COMMENT '任务ID',
+    instance_id VARCHAR(64) COMMENT '流程实例ID',
+    biz_module VARCHAR(32) NOT NULL COMMENT '业务模块',
+    level_no INT NOT NULL COMMENT '升级级别',
+    action_type VARCHAR(32) NOT NULL COMMENT '动作类型',
+    action_target VARCHAR(128) COMMENT '动作目标',
+    target_user_id BIGINT COMMENT '目标用户ID',
+    target_user_name VARCHAR(100) COMMENT '目标用户姓名',
+    trigger_at DATETIME NOT NULL COMMENT '触发时间',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    UNIQUE KEY uk_task_level (task_id, level_no),
+    KEY idx_tenant_module (tenant_id, biz_module),
+    KEY idx_trigger_at (trigger_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流超时升级日志';
+
 --
 DROP TABLE IF EXISTS wf_anomaly_alert;
 CREATE TABLE wf_anomaly_alert (
@@ -1100,12 +1138,18 @@ DROP TABLE IF EXISTS wf_reconcile_alert;
 CREATE TABLE wf_reconcile_alert (
   id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
   tenant_id           BIGINT DEFAULT 100000 COMMENT '租户ID（来自业务行；本表不参与 MP 自动租户过滤）',
-  process_instance_id VARCHAR(64) NOT NULL COMMENT '流程实例ID',
-  business_type       VARCHAR(64) NOT NULL COMMENT '业务类型',
-  business_id         BIGINT NOT NULL COMMENT '业务主键ID',
-  expected_status     VARCHAR(32) COMMENT '业务期望状态(对账基准)',
-  actual_status       VARCHAR(32) COMMENT '业务实际状态',
-  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '告警生成时间',
-  UNIQUE KEY uk_instance (process_instance_id),
-  KEY idx_alert_tenant (tenant_id)
+  biz_module          VARCHAR(32) NOT NULL COMMENT '业务模块',
+  biz_id              BIGINT NOT NULL COMMENT '业务主键ID',
+  wf_instance_id      VARCHAR(64) NOT NULL COMMENT '流程实例ID',
+  biz_status          VARCHAR(32) COMMENT '业务状态',
+  wf_status           VARCHAR(32) COMMENT '流程状态',
+  detected_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发现时间',
+  resolved_at         DATETIME COMMENT '解决时间',
+  resolved_by         BIGINT COMMENT '解决人',
+  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time         DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  UNIQUE KEY uk_reconcile_open (wf_instance_id, biz_module, biz_id, biz_status, wf_status),
+  KEY idx_alert_tenant (tenant_id),
+  KEY idx_detected_at (detected_at),
+  KEY idx_resolved_at (resolved_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程业务状态对账告警';

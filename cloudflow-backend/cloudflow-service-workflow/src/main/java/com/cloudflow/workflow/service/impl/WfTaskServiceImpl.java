@@ -524,10 +524,10 @@ public class WfTaskServiceImpl implements IWfTaskService {
     }
 
     private void markCompletedTaskReadAsNoop(String taskId, Long userId) {
-        WfTaskHistory history = taskHistoryMapper.selectOne(new LambdaQueryWrapper<WfTaskHistory>()
+        WfTaskHistory history = taskHistoryMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<WfTaskHistory>()
                 .eq(WfTaskHistory::getTaskId, taskId)
-                .orderByDesc(WfTaskHistory::getCreateTime)
-                .last("LIMIT 1"));
+                .orderByDesc(WfTaskHistory::getCreateTime))
+                .getRecords().stream().findFirst().orElse(null);
         if (history == null) {
             throw WorkflowException.taskNotFound(taskId);
         }

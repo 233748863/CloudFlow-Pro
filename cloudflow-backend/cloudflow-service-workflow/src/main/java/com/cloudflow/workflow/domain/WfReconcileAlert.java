@@ -15,10 +15,14 @@ public class WfReconcileAlert {
     private Long id;
 
     private Long tenantId;
-    private String processInstanceId;
-    private String businessType;
-    private Long businessId;
-    private String expectedStatus;
-    private String actualStatus;
+    private String bizModule;
+    private Long bizId;
+    private String wfInstanceId;
+    private String bizStatus;
+    private String wfStatus;
+    private LocalDateTime detectedAt;
+    private LocalDateTime resolvedAt;
+    private Long resolvedBy;
     private LocalDateTime createTime;
+    private LocalDateTime updateTime;
 }

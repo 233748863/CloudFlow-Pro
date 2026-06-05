@@ -3,6 +3,7 @@ package com.cloudflow.common.audit.handle;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.audit.domain.SysAuditLogEntity;
 import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
+import com.cloudflow.common.audit.support.AuditBizModuleResolver;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantConfigProperties;
 import cn.hutool.extra.spring.SpringUtil;
@@ -36,10 +37,11 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
 
     private final SysAuditLogMapper auditLogMapper;
     private final ObjectMapper objectMapper;
+    private final AuditBizModuleResolver auditBizModuleResolver;
 
     @Override
     public void handle(Audit audit, Changes changes) {
-        handle(audit, changes, null, null);
+        handle(audit, changes, null, null, null);
     }
 
     /**
@@ -48,6 +50,10 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
      * @param newVal 新值对象（diff=true 时需要）
      */
     public void handle(Audit audit, Changes changes, Object oldVal, Object newVal) {
+        handle(audit, changes, oldVal, newVal, null);
+    }
+
+    public void handle(Audit audit, Changes changes, Object oldVal, Object newVal, Class<?> sourceClass) {
         // 无变更则跳过
         if (changes.isEmpty()) {
             return;
@@ -71,6 +77,8 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
             }
         }
 
+        String bizModule = auditBizModuleResolver.resolve(sourceClass);
+
         // 将每个字段变更转换为审计日志记录
         List<SysAuditLogEntity> auditLogList = new ArrayList<>();
         for (Change change : changes) {
@@ -79,6 +87,7 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
             }
 
             SysAuditLogEntity auditLog = new SysAuditLogEntity();
+            auditLog.setBizModule(bizModule);
             auditLog.setAuditName(audit.name());
             auditLog.setAuditField(valueChange.getPropertyName());
 

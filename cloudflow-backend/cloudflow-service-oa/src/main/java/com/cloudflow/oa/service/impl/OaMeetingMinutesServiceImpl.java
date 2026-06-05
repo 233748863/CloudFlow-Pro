@@ -156,11 +156,11 @@ public class OaMeetingMinutesServiceImpl implements IOaMeetingMinutesService {
         if (!StringUtils.hasText(attendance.getAttendStatus())) {
             attendance.setAttendStatus("NOT_CHECKED");
         }
-        OaMeetingAttendance exist = attendanceMapper.selectOne(new LambdaQueryWrapper<OaMeetingAttendance>()
+        OaMeetingAttendance exist = attendanceMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<OaMeetingAttendance>()
                 .eq(OaMeetingAttendance::getMinutesId, attendance.getMinutesId())
                 .eq(OaMeetingAttendance::getUserId, attendance.getUserId())
-                .eq(OaMeetingAttendance::getDeleted, 0)
-                .last("LIMIT 1"));
+                .eq(OaMeetingAttendance::getDeleted, 0))
+                .getRecords().stream().findFirst().orElse(null);
         if (exist != null) {
             exist.setAttendStatus(attendance.getAttendStatus());
             exist.setCheckInTime(attendance.getCheckInTime());
