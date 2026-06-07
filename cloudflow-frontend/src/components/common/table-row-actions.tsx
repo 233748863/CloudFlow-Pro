@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreHorizontal } from 'lucide-react';
+import { Archive, Ban, Check, Copy, Download, Edit, ExternalLink, Eye, MoreHorizontal, Power, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
 import { Button } from './button';
@@ -44,6 +44,7 @@ export interface ActionPreset {
   label: string;
   priority: TableRowActionPriority;
   tone: TableRowActionTone;
+  icon: React.ReactNode;
 }
 
 export interface TableRowActionItem {
@@ -82,24 +83,24 @@ export interface TableRowActionsProps {
 }
 
 const DEFAULT_ACTION_PRESETS: Record<ActionSemanticKey, ActionPreset> = {
-  view: { semantic: 'view', label: '查看详情', priority: 'primary', tone: 'neutral' },
-  edit: { semantic: 'edit', label: '编辑', priority: 'primary', tone: 'primary' },
-  confirm: { semantic: 'confirm', label: '确认', priority: 'secondary', tone: 'success' },
-  submit: { semantic: 'submit', label: '提交', priority: 'secondary', tone: 'success' },
-  process: { semantic: 'process', label: '处理', priority: 'primary', tone: 'primary' },
-  bind: { semantic: 'bind', label: '绑定', priority: 'secondary', tone: 'info' },
-  writeoff: { semantic: 'writeoff', label: '核销', priority: 'secondary', tone: 'info' },
-  send: { semantic: 'send', label: '发送', priority: 'secondary', tone: 'info' },
-  enable: { semantic: 'enable', label: '启用', priority: 'secondary', tone: 'success' },
-  disable: { semantic: 'disable', label: '停用', priority: 'danger', tone: 'warning' },
-  reset: { semantic: 'reset', label: '重置', priority: 'secondary', tone: 'warning' },
-  copy: { semantic: 'copy', label: '复制', priority: 'tertiary', tone: 'neutral' },
-  open: { semantic: 'open', label: '打开', priority: 'tertiary', tone: 'info' },
-  export: { semantic: 'export', label: '导出', priority: 'tertiary', tone: 'neutral' },
-  archive: { semantic: 'archive', label: '归档', priority: 'danger', tone: 'warning' },
-  void: { semantic: 'void', label: '作废', priority: 'danger', tone: 'danger' },
-  delete: { semantic: 'delete', label: '删除', priority: 'danger', tone: 'danger' },
-  custom: { semantic: 'custom', label: '操作', priority: 'secondary', tone: 'neutral' },
+  view: { semantic: 'view', label: '查看详情', priority: 'primary', tone: 'neutral', icon: <Eye size={15} /> },
+  edit: { semantic: 'edit', label: '编辑', priority: 'primary', tone: 'primary', icon: <Edit size={15} /> },
+  confirm: { semantic: 'confirm', label: '确认', priority: 'secondary', tone: 'success', icon: <Check size={15} /> },
+  submit: { semantic: 'submit', label: '提交', priority: 'secondary', tone: 'success', icon: <Send size={15} /> },
+  process: { semantic: 'process', label: '处理', priority: 'primary', tone: 'primary', icon: <Check size={15} /> },
+  bind: { semantic: 'bind', label: '绑定', priority: 'secondary', tone: 'info', icon: <ExternalLink size={15} /> },
+  writeoff: { semantic: 'writeoff', label: '核销', priority: 'secondary', tone: 'info', icon: <Check size={15} /> },
+  send: { semantic: 'send', label: '发送', priority: 'secondary', tone: 'info', icon: <Send size={15} /> },
+  enable: { semantic: 'enable', label: '启用', priority: 'secondary', tone: 'success', icon: <Power size={15} /> },
+  disable: { semantic: 'disable', label: '停用', priority: 'danger', tone: 'warning', icon: <Power size={15} /> },
+  reset: { semantic: 'reset', label: '重置', priority: 'secondary', tone: 'warning', icon: <RotateCcw size={15} /> },
+  copy: { semantic: 'copy', label: '复制', priority: 'tertiary', tone: 'neutral', icon: <Copy size={15} /> },
+  open: { semantic: 'open', label: '打开', priority: 'tertiary', tone: 'info', icon: <ExternalLink size={15} /> },
+  export: { semantic: 'export', label: '导出', priority: 'tertiary', tone: 'neutral', icon: <Download size={15} /> },
+  archive: { semantic: 'archive', label: '归档', priority: 'danger', tone: 'warning', icon: <Archive size={15} /> },
+  void: { semantic: 'void', label: '作废', priority: 'danger', tone: 'danger', icon: <Ban size={15} /> },
+  delete: { semantic: 'delete', label: '删除', priority: 'danger', tone: 'danger', icon: <Trash2 size={15} /> },
+  custom: { semantic: 'custom', label: '操作', priority: 'secondary', tone: 'neutral', icon: <Check size={15} /> },
 };
 
 const toneClassMap: Record<TableRowActionTone, string> = {
@@ -138,6 +139,26 @@ interface OverflowMenuPlacement {
 
 const getPreset = (action: TableRowActionItem) =>
   action.semantic ? DEFAULT_ACTION_PRESETS[action.semantic] : DEFAULT_ACTION_PRESETS.custom;
+
+const inferPresetByLabel = (label: string) => {
+  if (/删除|移除/.test(label)) return DEFAULT_ACTION_PRESETS.delete;
+  if (/编辑|修改/.test(label)) return DEFAULT_ACTION_PRESETS.edit;
+  if (/查看|详情/.test(label)) return DEFAULT_ACTION_PRESETS.view;
+  if (/启用|恢复/.test(label)) return DEFAULT_ACTION_PRESETS.enable;
+  if (/停用|禁用/.test(label)) return DEFAULT_ACTION_PRESETS.disable;
+  if (/提交|发送/.test(label)) return DEFAULT_ACTION_PRESETS.submit;
+  if (/确认|通过|同意|完成/.test(label)) return DEFAULT_ACTION_PRESETS.confirm;
+  if (/重置|刷新/.test(label)) return DEFAULT_ACTION_PRESETS.reset;
+  if (/复制/.test(label)) return DEFAULT_ACTION_PRESETS.copy;
+  if (/打开|跳转/.test(label)) return DEFAULT_ACTION_PRESETS.open;
+  if (/导出|下载/.test(label)) return DEFAULT_ACTION_PRESETS.export;
+  if (/归档/.test(label)) return DEFAULT_ACTION_PRESETS.archive;
+  if (/作废|驳回|拒绝/.test(label)) return DEFAULT_ACTION_PRESETS.void;
+  return DEFAULT_ACTION_PRESETS.custom;
+};
+
+const resolveIcon = (action: TableRowActionItem) =>
+  action.icon ?? (action.semantic ? getPreset(action).icon : inferPresetByLabel(action.label).icon);
 
 const resolvePriority = (action: TableRowActionItem) =>
   action.priority
@@ -230,7 +251,7 @@ function ActionItemButton({ action, layout }: ActionItemButtonProps) {
         passthroughClassName,
       )}
     >
-      {action.icon ? <span className="shrink-0">{action.icon}</span> : null}
+      {resolveIcon(action) ? <span className="shrink-0">{resolveIcon(action)}</span> : null}
       <span className={cn(layout === 'stacked' ? 'leading-tight text-center whitespace-normal' : 'leading-none whitespace-nowrap')}>
         {label}
       </span>
@@ -438,7 +459,7 @@ export function ActionToolbar({
           title={action.tooltip ?? action.title ?? action.label}
           className={cn('gap-1.5', action.className)}
         >
-          {action.icon ? <span className="shrink-0">{action.icon}</span> : null}
+          {resolveIcon(action) ? <span className="shrink-0">{resolveIcon(action)}</span> : null}
           <span>{action.label}</span>
         </Button>
       ))}
@@ -448,7 +469,7 @@ export function ActionToolbar({
 
 export function TableRowActions({
   actions,
-  align = 'start',
+  align = 'end',
   wrap = false,
   iconOnly = false,
   className,
@@ -506,7 +527,7 @@ export function TableRowActions({
               action.className,
             )}
           >
-            {action.icon ? <span className="shrink-0">{action.icon}</span> : null}
+            {resolveIcon(action) ? <span className="shrink-0">{resolveIcon(action)}</span> : null}
             <span className="leading-none whitespace-nowrap">{action.label}</span>
           </Button>
         ))}
