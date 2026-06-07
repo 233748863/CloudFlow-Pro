@@ -8,7 +8,7 @@ import { clearAuthSession } from '@/utils/sessionCleanup';
 import { setAuthToken, setCurrentUserSnapshot } from '@/utils/authStorage';
 import { queryClient } from '@/lib/queryClient';
 import { tenantStorage } from '@/utils/tenantStorage';
-import { resetWorkflowDesignCaches } from '@/pages/WorkflowDesign';
+import { resetWorkflowDesignCaches } from '@/pages/workflowDesignCache';
 import { resetWsTopicHandlers } from '@/hooks/useWebSocket';
 import { clearEmployeeResolverCache } from '@/services/api/hr/self-service';
 import { useAnnouncementStore } from '@/stores/announcementStore';
@@ -84,6 +84,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     void initAuth();
+  }, []);
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setUser(null);
+    };
+
+    window.addEventListener('cloudflow:auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('cloudflow:auth-expired', handleAuthExpired);
   }, []);
 
   const refreshUser = async () => {

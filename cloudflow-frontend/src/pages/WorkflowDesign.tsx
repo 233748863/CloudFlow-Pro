@@ -22,23 +22,13 @@ import {
   parseWorkflowGraphDefinition,
 } from '../utils/workflowGraph';
 
-type WorkflowDesignContextPayload = {
-  forms: FormDefinition[];
-  roles: any[];
-  users: User[];
-};
+import {
+  workflowDesignCache,
+  resetWorkflowDesignCaches,
+  type WorkflowDesignContextPayload,
+} from './workflowDesignCache';
 
-let workflowDesignContextCache: WorkflowDesignContextPayload | null = null;
-let workflowDesignContextPromise: Promise<WorkflowDesignContextPayload> | null = null;
-const processDefinitionPromiseCache = new Map<string, Promise<any | null>>();
-let processDefinitionsListPromise: Promise<any[]> | null = null;
-
-export const resetWorkflowDesignCaches = () => {
-  workflowDesignContextCache = null;
-  workflowDesignContextPromise = null;
-  processDefinitionPromiseCache.clear();
-  processDefinitionsListPromise = null;
-};
+export { resetWorkflowDesignCaches };
 
 const StatusPanel: React.FC<{
   icon: React.ReactNode;
@@ -57,14 +47,14 @@ const StatusPanel: React.FC<{
 );
 
 const loadWorkflowDesignContext = async (): Promise<WorkflowDesignContextPayload> => {
-  if (workflowDesignContextCache) {
-    return workflowDesignContextCache;
+  if (workflowDesignCache.context) {
+    return workflowDesignCache.context;
   }
-  if (workflowDesignContextPromise) {
-    return workflowDesignContextPromise;
+  if (workflowDesignCache.contextPromise) {
+    return workflowDesignCache.contextPromise;
   }
 
-  workflowDesignContextPromise = Promise.all([
+  workflowDesignCache.contextPromise = Promise.all([
     getFormDefinitions().catch((err) => {
       logWorkflow.warn('鍔犺浇琛ㄥ崟鍒楄〃澶辫触:', err);
       toast.warning('表单列表加载失败，暂时无法绑定表单');
@@ -87,14 +77,14 @@ const loadWorkflowDesignContext = async (): Promise<WorkflowDesignContextPayload
         roles: Array.isArray(roles) ? roles : [],
         users: Array.isArray(users) ? users.map(mapBackendUserToFrontend) : [],
       };
-      workflowDesignContextCache = payload;
+      workflowDesignCache.context = payload;
       return payload;
     })
     .finally(() => {
-      workflowDesignContextPromise = null;
+      workflowDesignCache.contextPromise = null;
     });
 
-  return workflowDesignContextPromise;
+  return workflowDesignCache.contextPromise;
 };
 
 const loadProcessDefinitionById = async (definitionId: string): Promise<any | null> => {
@@ -103,7 +93,7 @@ const loadProcessDefinitionById = async (definitionId: string): Promise<any | nu
     return null;
   }
 
-  const cachedPromise = processDefinitionPromiseCache.get(normalizedId);
+  const cachedPromise = workflowDesignCache.processDefinitionPromises.get(normalizedId);
   if (cachedPromise) {
     return cachedPromise;
   }
@@ -114,28 +104,28 @@ const loadProcessDefinitionById = async (definitionId: string): Promise<any | nu
       return null;
     })
     .finally(() => {
-      processDefinitionPromiseCache.delete(normalizedId);
+      workflowDesignCache.processDefinitionPromises.delete(normalizedId);
     });
 
-  processDefinitionPromiseCache.set(normalizedId, requestPromise);
+  workflowDesignCache.processDefinitionPromises.set(normalizedId, requestPromise);
   return requestPromise;
 };
 
 const loadProcessDefinitionsList = async (): Promise<any[]> => {
-  if (processDefinitionsListPromise) {
-    return processDefinitionsListPromise;
+  if (workflowDesignCache.processDefinitionsListPromise) {
+    return workflowDesignCache.processDefinitionsListPromise;
   }
 
-  processDefinitionsListPromise = getProcessDefinitions()
+  workflowDesignCache.processDefinitionsListPromise = getProcessDefinitions()
     .catch((err) => {
       logWorkflow.warn('鍔犺浇娴佺▼瀹氫箟鍒楄〃澶辫触:', err);
       return [];
     })
     .finally(() => {
-      processDefinitionsListPromise = null;
+      workflowDesignCache.processDefinitionsListPromise = null;
     });
 
-  return processDefinitionsListPromise;
+  return workflowDesignCache.processDefinitionsListPromise;
 };
 
 const createDefaultWorkflow = (): WorkflowDefinition => ({
