@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
-import { API_TIMEOUT, API_SUCCESS_CODE } from '@/constants/api';
+import { API_TIMEOUT, API_SUCCESS_CODE, API_ERROR_CODES } from '@/constants/api';
 import { handleApiError, ApiErrorResponse } from '@/utils/errorHandler';
 import { clearAuthSession } from '@/utils/sessionCleanup';
 import { getCurrentUserSnapshot } from '@/utils/authStorage';
@@ -150,6 +150,28 @@ let isRedirectingToLogin = false;
 window.addEventListener('online', () => { isOnline = true; });
 window.addEventListener('offline', () => { isOnline = false; });
 
+function redirectToLoginWhenUnauthorized() {
+  // 并发去重：多个请求同时 401 时只处理一次
+  if (isRedirectingToLogin) {
+    return;
+  }
+  isRedirectingToLogin = true;
+
+  if (isForcePasswordChangeUser()) {
+    isRedirectingToLogin = false; // 强制改密不跳转，重置标志位
+    return;
+  }
+
+  toast.error('登录已过期，请重新登录');
+  clearAuthSession();
+  window.dispatchEvent(new Event('cloudflow:auth-expired'));
+
+  const loginPath = `${appBasePath}/login`;
+  if (window.location.pathname !== loginPath) {
+    navigateTo(loginPath, { replace: true });
+  }
+}
+
 // 请求拦截器
 request.interceptors.request.use(
   config => {
@@ -194,6 +216,10 @@ request.interceptors.response.use(
     }
     // 假设后端返回格式为 { code: 200, msg: 'success', data: ... }
     if (res.code !== API_SUCCESS_CODE) {
+      if (res.code === API_ERROR_CODES.UNAUTHORIZED) {
+        redirectToLoginWhenUnauthorized();
+        return Promise.reject(new Error(res.msg || '登录已过期，请重新登录'));
+      }
       // 503 服务不可用 - 微服务未启动，始终静默处理
       if (res.code === 503) {
         console.warn(`[API] 服务暂时不可用: ${res.msg}`);
@@ -234,23 +260,7 @@ request.interceptors.response.use(
 
     // 全局处理 401 未授权 (always show)
     if (error.response && error.response.status === 401) {
-       // 并发去重：多个请求同时 401 时只处理一次
-       if (isRedirectingToLogin) {
-         return Promise.reject(error);
-       }
-       isRedirectingToLogin = true;
-
-       if (isForcePasswordChangeUser()) {
-         isRedirectingToLogin = false; // 强制改密不跳转，重置标志位
-         return Promise.reject(new Error('登录态校验中，请先完成密码修改'));
-       }
-       toast.error('登录已过期，请重新登录');
-       // 清除认证信息和会话缓存，并跳转登录页（P2-1: SPA 软跳转替代 window.location.href，避免全页刷新清空 React 状态）
-       clearAuthSession();
-       const loginPath = `${appBasePath}/login`;
-       if (window.location.pathname !== loginPath) {
-           navigateTo(loginPath, { replace: true });
-       }
+       redirectToLoginWhenUnauthorized();
     } else if (error.response && error.response.status === 503) {
        // 服务不可用 - 微服务未启动，静默处理不弹 toast
        console.warn(`[API] 服务暂时不可用: ${error.config?.url}`);
