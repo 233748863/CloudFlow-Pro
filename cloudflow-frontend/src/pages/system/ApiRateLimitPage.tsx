@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Plus, RefreshCw, RotateCcw, Search, Zap } from 'lucide-react';
+import { Edit, Plus, Power, RefreshCw, RotateCcw, Search, Trash2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -466,24 +466,25 @@ export const ApiRateLimitPage = () => {
                           </TableCell>
                           <TableCell>
                             <TableRowActions
+                              align="end"
                               actions={[
                                 {
-                                  key: 'toggle',
-                                  label: rule.status === 'ACTIVE' ? '停用' : '启用',
-                                  semantic: rule.status === 'ACTIVE' ? 'disable' : 'enable',
+                                  label: rule.status === 'ACTIVE' ? '停用规则' : '启用规则',
+                                  icon: <Power size={15} />,
                                   onClick: () => handleToggle(rule),
+                                  tone: rule.status === 'ACTIVE' ? 'warning' : 'success',
                                 },
                                 {
-                                  key: 'edit',
-                                  label: '编辑',
-                                  semantic: 'edit',
+                                  label: '编辑规则',
+                                  icon: <Edit size={15} />,
                                   onClick: () => handleOpenModal(rule),
+                                  tone: 'neutral',
                                 },
                                 {
-                                  key: 'delete',
-                                  label: '删除',
-                                  semantic: 'delete',
+                                  label: '删除规则',
+                                  icon: <Trash2 size={15} />,
                                   onClick: () => setPendingDelete(rule),
+                                  tone: 'danger',
                                 },
                               ]}
                             />

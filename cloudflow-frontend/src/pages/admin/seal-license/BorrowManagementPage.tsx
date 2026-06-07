@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { BaseDialog, Button, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatCard, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import FileUpload from '@/components/FileUpload';
 import { contractApi, OaRiskAlert } from '@/services/api/contractRisk';
@@ -280,9 +281,9 @@ export const BorrowManagementPage: React.FC = () => {
       <TablePageLayout
         className="gap-4"
         filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="w-full sm:w-[160px]">
+          <FilterBar
+            filters={[
+              <div key="kind" className="w-full sm:w-[160px]">
                 <Select value={query.kind} onValueChange={(kind) => setQuery((prev) => ({ ...prev, pageNum: 1, kind }))}>
                   <SelectTrigger className="h-10"><SelectValue placeholder="业务类型" /></SelectTrigger>
                   <SelectContent>
@@ -291,8 +292,8 @@ export const BorrowManagementPage: React.FC = () => {
                     <SelectItem value="LICENSE">证照</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="w-full sm:w-[160px]">
+              </div>,
+              <div key="status" className="w-full sm:w-[160px]">
                 <Select value={query.status} onValueChange={(status) => setQuery((prev) => ({ ...prev, pageNum: 1, status }))}>
                   <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
@@ -302,19 +303,19 @@ export const BorrowManagementPage: React.FC = () => {
                     <SelectItem value="RETURNED">已归还</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>第 {query.pageNum} / {totalPages} 页</span>
-                <span>共 {total} 条</span>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), kind: 'ALL', status: 'APPROVED' })}>
+              </div>,
+            ]}
+            stats={[
+              { label: '', value: `第 ${query.pageNum} / ${totalPages} 页` },
+              { label: '', value: `共 ${total} 条` },
+            ]}
+            actions={[
+              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), kind: 'ALL', status: 'APPROVED' })}>
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
-              </Button>
-            </div>
-          </div>
+              </Button>,
+            ]}
+          />
         )}
         table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">

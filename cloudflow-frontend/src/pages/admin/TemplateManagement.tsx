@@ -6,7 +6,6 @@ import {
   Loader2,
   Plus,
   RefreshCw,
-  Search,
   ShieldOff,
   Trash2,
   X,
@@ -15,6 +14,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination, TableRowActions } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import {
   Button,
   Input,
@@ -345,8 +345,7 @@ export const TemplateManagement: React.FC = () => {
     }
   }, [canManageTemplates, currentPage, isAdmin, pageSize, query, selectedCategory]);
 
-  const handleSearch = (event: React.FormEvent) => {
-    event.preventDefault();
+  const applySearch = () => {
     setCurrentPage(1);
     setQuery({
       keyword: filters.keyword.trim(),
@@ -571,18 +570,17 @@ export const TemplateManagement: React.FC = () => {
     <>
       <TablePageLayout
         filters={(
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-2.5">
-              <div className="relative w-full sm:w-72">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <Input
-                  value={filters.keyword}
-                  onChange={(event) => setFilters((current) => ({ ...current, keyword: event.target.value }))}
-                  placeholder="搜索模板名称"
-                  className="h-10 pl-10"
-                />
-              </div>
+          <FilterBar
+            search={{
+              value: filters.keyword,
+              onChange: (value) => setFilters((current) => ({ ...current, keyword: value })),
+              onSubmit: applySearch,
+              placeholder: '搜索模板名称',
+              widthClassName: 'w-full sm:w-72',
+            }}
+            filters={[
               <Select
+                key="status"
                 value={filters.status}
                 onValueChange={(value) =>
                   setFilters((current) => ({
@@ -599,34 +597,33 @@ export const TemplateManagement: React.FC = () => {
                   <SelectItem value="active">仅启用</SelectItem>
                   <SelectItem value="inactive">仅禁用</SelectItem>
                 </SelectContent>
-              </Select>
-
-              <Button type="submit" size="sm">
+              </Select>,
+            ]}
+            actions={[
+              <Button key="search" type="button" size="sm" onClick={applySearch}>
                 查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  清空
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:flex-nowrap">
-              <Button type="button" variant="outline" size="sm" onClick={() => void Promise.all([loadCategories(), loadTemplates()])}>
+              </Button>,
+              ...(hasActiveFilters
+                ? [
+                    <Button key="reset" type="button" variant="outline" size="sm" onClick={handleReset}>
+                      清空
+                    </Button>,
+                  ]
+                : []),
+              <Button key="refresh" type="button" variant="outline" size="sm" onClick={() => void Promise.all([loadCategories(), loadTemplates()])}>
                 <RefreshCw className="h-4 w-4" />
                 刷新
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => openCategoryModal()}>
+              </Button>,
+              <Button key="new-category" type="button" variant="outline" size="sm" onClick={() => openCategoryModal()}>
                 <FolderPlus className="h-4 w-4" />
                 新建分类
-              </Button>
-              <Button type="button" size="sm" onClick={() => openTemplateModal()} disabled={flatCategories.length === 0}>
+              </Button>,
+              <Button key="new-template" type="button" size="sm" onClick={() => openTemplateModal()} disabled={flatCategories.length === 0}>
                 <Plus className="h-4 w-4" />
                 新建模板
-              </Button>
-            </div>
-          </div>
+              </Button>,
+            ]}
+          />
         )}
         table={(<TableSurfaceCard>
           <div className="grid min-h-[620px] grid-cols-1 xl:grid-cols-[248px_minmax(0,1fr)]">

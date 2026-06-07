@@ -22,6 +22,7 @@ import {
   Input,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -467,29 +468,23 @@ export const ArchivedWorkflows: React.FC = () => {
                               {restoreStatus.label}
                             </span>
                           </TableCell>
-                          <TableCell className="py-3.5 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => void handleRestore([workflow.workflowId])}
-                                disabled={restoring || !workflow.canRestore || !canBatchRestore}
-                                className="h-8 px-2.5 text-xs"
-                              >
-                                <RotateCcw className="h-4 w-4" />
-                                恢复
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => openDeleteDialog([workflow.workflowId])}
-                                disabled={deleting || !canPermanentDelete}
-                                className="h-8 px-2.5 text-xs"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                删除
-                              </Button>
-                            </div>
+                          <TableCell className="py-3.5">
+                            <TableRowActions
+                              actions={[
+                                {
+                                  label: '恢复',
+                                  semantic: 'enable',
+                                  onClick: () => void handleRestore([workflow.workflowId]),
+                                  disabled: restoring || !workflow.canRestore || !canBatchRestore,
+                                },
+                                {
+                                  label: '删除',
+                                  semantic: 'delete',
+                                  onClick: () => openDeleteDialog([workflow.workflowId]),
+                                  disabled: deleting || !canPermanentDelete,
+                                },
+                              ]}
+                            />
                           </TableCell>
                         </TableRow>
                       );

@@ -27,6 +27,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import {
   Button,
   DatePicker,
@@ -695,66 +696,34 @@ const VehicleUsageList: React.FC = () => {
     <div className="space-y-4">
       <TablePageLayout
         className="gap-3"
-        actions={
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              {activeTab === 'usage' ? (
-                <>
-                  <span className="font-medium text-slate-900 dark:text-slate-100">共 {usageTotal} 条</span>
-                  <span className="text-slate-500 dark:text-slate-400">待审批 {usagePrimaryActions.pending}</span>
-                  <span className="text-slate-500 dark:text-slate-400">待派车 {usagePrimaryActions.approved}</span>
-                  <span className="text-slate-500 dark:text-slate-400">进行中 {usagePrimaryActions.inUse}</span>
-                </>
-              ) : (
-                <>
-                  <span className="font-medium text-slate-900 dark:text-slate-100">总费用 {formatCurrency(stats?.totalAmount)}</span>
-                  <span className="text-slate-500 dark:text-slate-400">本月 {formatCurrency(stats?.monthlyAmount)}</span>
-                  <span className="text-slate-500 dark:text-slate-400">上月 {formatCurrency(stats?.lastMonthAmount)}</span>
-                  <span className="text-slate-500 dark:text-slate-400">共 {expenseTotal} 条</span>
-                </>
-              )}
-            </div>
-            <div className="ml-auto flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => void refreshCurrentView()}>
-                <RotateCcw size={14} className="mr-1.5" />
-                刷新
-              </Button>
-              <Button size="sm" onClick={() => navigate('/admin/vehicle/booking')}>
-                <Plus size={14} className="mr-1.5" />
-                新建申请
-              </Button>
-            </div>
-          </div>
-        }
         filters={
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-1 flex-wrap items-center gap-3">
-                <SegmentedControl className="min-h-9">
-                  <SegmentedControlItem size="sm" active={activeTab === 'usage'} onClick={() => setActiveTab('usage')}>
-                    <Car size={14} className="mr-1.5" />
-                    用车记录
-                  </SegmentedControlItem>
-                  <SegmentedControlItem size="sm" active={activeTab === 'expense'} onClick={() => setActiveTab('expense')}>
-                    <DollarSign size={14} className="mr-1.5" />
-                    费用明细
-                  </SegmentedControlItem>
-                </SegmentedControl>
-
-                {activeTab === 'usage' ? (
-                  <div className="w-full sm:w-40">
-                    <Select value={usageQuery.status || ALL_FILTER_VALUE} onValueChange={(value) => setUsageQuery((prev) => ({ ...prev, pageNum: 1, status: value === ALL_FILTER_VALUE ? '' : value }))}>
-                      <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
-                      <SelectContent>
-                        {USAGE_STATUS_OPTIONS.map((item) => (
-                          <SelectItem key={item.value || ALL_FILTER_VALUE} value={item.value || ALL_FILTER_VALUE}>{item.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <>
-                    <div className="w-full sm:w-40">
+          <FilterBar
+            filters={[
+              <SegmentedControl key="tabs" className="min-h-9">
+                <SegmentedControlItem size="sm" active={activeTab === 'usage'} onClick={() => setActiveTab('usage')}>
+                  <Car size={14} className="mr-1.5" />
+                  用车记录
+                </SegmentedControlItem>
+                <SegmentedControlItem size="sm" active={activeTab === 'expense'} onClick={() => setActiveTab('expense')}>
+                  <DollarSign size={14} className="mr-1.5" />
+                  费用明细
+                </SegmentedControlItem>
+              </SegmentedControl>,
+              ...(activeTab === 'usage'
+                ? [
+                    <div key="usage-status" className="w-full sm:w-40">
+                      <Select value={usageQuery.status || ALL_FILTER_VALUE} onValueChange={(value) => setUsageQuery((prev) => ({ ...prev, pageNum: 1, status: value === ALL_FILTER_VALUE ? '' : value }))}>
+                        <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+                        <SelectContent>
+                          {USAGE_STATUS_OPTIONS.map((item) => (
+                            <SelectItem key={item.value || ALL_FILTER_VALUE} value={item.value || ALL_FILTER_VALUE}>{item.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>,
+                  ]
+                : [
+                    <div key="expense-type" className="w-full sm:w-40">
                       <Select value={expenseQuery.expenseType || ALL_FILTER_VALUE} onValueChange={(value) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, expenseType: value === ALL_FILTER_VALUE ? '' : value }))}>
                         <SelectTrigger className="h-10"><SelectValue placeholder="全部类型" /></SelectTrigger>
                         <SelectContent>
@@ -763,20 +732,43 @@ const VehicleUsageList: React.FC = () => {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <Input className="h-10 w-full sm:w-32" placeholder="车辆ID" value={expenseQuery.vehicleId} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, vehicleId: event.target.value }))} />
-                    <Input className="h-10 w-full sm:w-32" placeholder="申请ID" value={expenseQuery.usageId} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, usageId: event.target.value }))} />
-                    <DatePicker className="h-10 w-full sm:w-40" type="date" value={expenseQuery.startDate} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, startDate: event.target.value }))} />
-                    <DatePicker className="h-10 w-full sm:w-40" type="date" value={expenseQuery.endDate} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, endDate: event.target.value }))} />
-                  </>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {activeTab === 'usage' && hasUsageFilters ? <Button variant="outline" size="sm" onClick={resetUsageFilters}>清空筛选</Button> : null}
-                {activeTab === 'expense' && hasExpenseFilters ? <Button variant="outline" size="sm" onClick={resetExpenseFilters}>清空筛选</Button> : null}
-              </div>
-            </div>
-          </div>
+                    </div>,
+                    <Input key="vehicle-id" className="h-10 w-full sm:w-32" placeholder="车辆ID" value={expenseQuery.vehicleId} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, vehicleId: event.target.value }))} />,
+                    <Input key="usage-id" className="h-10 w-full sm:w-32" placeholder="申请ID" value={expenseQuery.usageId} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, usageId: event.target.value }))} />,
+                    <DatePicker key="start-date" className="h-10 w-full sm:w-40" type="date" value={expenseQuery.startDate} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, startDate: event.target.value }))} />,
+                    <DatePicker key="end-date" className="h-10 w-full sm:w-40" type="date" value={expenseQuery.endDate} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, endDate: event.target.value }))} />,
+                  ]),
+            ]}
+            stats={activeTab === 'usage'
+              ? [
+                  { label: '共', value: `${usageTotal} 条` },
+                  { label: '待审批', value: usagePrimaryActions.pending },
+                  { label: '待派车', value: usagePrimaryActions.approved },
+                  { label: '进行中', value: usagePrimaryActions.inUse },
+                ]
+              : [
+                  { label: '总费用', value: formatCurrency(stats?.totalAmount) },
+                  { label: '本月', value: formatCurrency(stats?.monthlyAmount) },
+                  { label: '上月', value: formatCurrency(stats?.lastMonthAmount) },
+                  { label: '共', value: `${expenseTotal} 条` },
+                ]}
+            actions={[
+              ...(activeTab === 'usage' && hasUsageFilters
+                ? [<Button key="clear-usage" variant="outline" size="sm" onClick={resetUsageFilters}>清空筛选</Button>]
+                : []),
+              ...(activeTab === 'expense' && hasExpenseFilters
+                ? [<Button key="clear-expense" variant="outline" size="sm" onClick={resetExpenseFilters}>清空筛选</Button>]
+                : []),
+              <Button key="refresh" variant="outline" size="sm" onClick={() => void refreshCurrentView()}>
+                <RotateCcw size={14} className="mr-1.5" />
+                刷新
+              </Button>,
+              <Button key="new" size="sm" onClick={() => navigate('/admin/vehicle/booking')}>
+                <Plus size={14} className="mr-1.5" />
+                新建申请
+              </Button>,
+            ]}
+          />
         }
         table={(<TableSurfaceCard>{activeTab === 'usage' ? usageTable : expenseTable}</TableSurfaceCard>)}
         pagination={activeTab === 'usage'

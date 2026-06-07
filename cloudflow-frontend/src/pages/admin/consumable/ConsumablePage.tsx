@@ -12,7 +12,6 @@ import {
   ShoppingCart,
   Plus,
   RotateCcw,
-  Search,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +19,7 @@ import { BaseDialog } from "@/components/common/BaseDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Pagination } from "@/components/common/Pagination";
 import { TablePageLayout, TableSurfaceCard } from "@/components/layout/TablePageLayout";
+import { FilterBar } from "@/components/layout";
 import {
   Button,
   DatePicker,
@@ -331,46 +331,38 @@ const ConsumablePage: React.FC = () => {
       <TablePageLayout
         className="gap-4"
         filters={
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-[280px]">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-                <Input
-                  className="h-10 pl-9"
-                  value={searchName}
-                  onChange={(event) => setSearchName(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && handleSearch()}
-                  placeholder="搜索耗材名称"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>第 {searchParams.pageNum} / {totalPages} 页</span>
-                <span>共 {total} 条</span>
-                <span>当前页库存 {totalQuantity}</span>
-                <span>低库存 {lowStockCount} 项</span>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={handleSearch}>
+          <FilterBar
+            search={{
+              value: searchName,
+              onChange: setSearchName,
+              onSubmit: handleSearch,
+              placeholder: '搜索耗材名称',
+              widthClassName: 'w-full sm:w-[280px]',
+            }}
+            stats={[
+              { label: '', value: `第 ${searchParams.pageNum} / ${totalPages} 页` },
+              { label: '', value: `共 ${total} 条` },
+              { label: '', value: `当前页库存 ${totalQuantity}` },
+              { label: '', value: `低库存 ${lowStockCount} 项` },
+            ]}
+            actions={[
+              <Button key="search" variant="outline" size="sm" onClick={handleSearch}>
                 搜索
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleReset}>
+              </Button>,
+              <Button key="reset" variant="outline" size="sm" onClick={handleReset}>
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => void openSuggestion()}>
+              </Button>,
+              <Button key="suggestion" variant="outline" size="sm" onClick={() => void openSuggestion()}>
                 <ShoppingCart size={14} className="mr-1.5" />
                 补货建议
-              </Button>
-          <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:consumable:add')}>
-            <Plus size={14} className="mr-1.5" />
-            新增耗材
-              </Button>
-            </div>
-          </div>
+              </Button>,
+              <Button key="add" size="sm" onClick={handleAdd} disabled={!hasPermission('oa:consumable:add')}>
+                <Plus size={14} className="mr-1.5" />
+                新增耗材
+              </Button>,
+            ]}
+          />
         }
         table={(<TableSurfaceCard><div className="min-h-[38rem] overflow-x-auto">
             <table className="w-full min-w-[980px]">
