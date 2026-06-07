@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common';
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger, type TableRowActionItem } from '@/components/common';
 import { Link } from 'react-router-dom';
 import {
   AttendanceRuleAssignment,
@@ -36,7 +36,7 @@ import {
 } from '@/services/api/hr';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { buildEmployeeLabel, flattenDeptTree, idFallbackLabel, normalizeRows } from './hrShared';
-import { HrCrudPanel, HrFormField, HrPageHeader, renderStatus } from './HrDomainWorkspace';
+import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 
 const ruleTypeLabels: Record<string, string> = {
   FIXED: '固定工时',
@@ -345,31 +345,25 @@ const HrAttendancePage: React.FC = () => {
     }
   };
 
-  const requestActions = (row: HrRecord) => {
+  const requestActions = (row: HrRecord): TableRowActionItem[] => {
     const status = String(row.status || '').toUpperCase();
-    return (
-      <div className="flex flex-wrap justify-end gap-2">
-        {[
-          { label: '提交', action: 'submit', enabled: status === 'DRAFT' },
-          { label: '通过', action: 'approve', enabled: status === 'APPROVING' },
-          { label: '驳回', action: 'reject', enabled: status === 'APPROVING' },
-          { label: '取消', action: 'cancel', enabled: !['APPROVED', 'REJECTED', 'CANCELLED'].includes(status) },
-        ].map((item) => (
-          <Button
-            key={item.action}
-            variant="outline"
-            size="sm"
-            disabled={!item.enabled}
-            onClick={() => void submitAndReload(
-              () => changeHrTimeRequestStatus(Number(row.id), item.action),
-              `申请已${item.label}`,
-            )}
-          >
-            {item.label}
-          </Button>
-        ))}
-      </div>
-    );
+    const items: Array<{ label: string; action: string; semantic: TableRowActionItem['semantic']; enabled: boolean }> = [
+      { label: '提交', action: 'submit', semantic: 'submit', enabled: status === 'DRAFT' },
+      { label: '通过', action: 'approve', semantic: 'confirm', enabled: status === 'APPROVING' },
+      { label: '驳回', action: 'reject', semantic: 'void', enabled: status === 'APPROVING' },
+      { label: '取消', action: 'cancel', semantic: 'void', enabled: !['APPROVED', 'REJECTED', 'CANCELLED'].includes(status) },
+    ];
+    return items
+      .filter((item) => item.enabled)
+      .map((item) => ({
+        key: item.action,
+        label: item.label,
+        semantic: item.semantic,
+        onClick: () => void submitAndReload(
+          () => changeHrTimeRequestStatus(Number(row.id), item.action),
+          `申请已${item.label}`,
+        ),
+      }));
   };
 
   const shiftFields: HrFormField[] = [
@@ -425,17 +419,6 @@ const HrAttendancePage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <HrPageHeader
-        eyebrow="Attendance"
-        title="考勤休假"
-        stats={[
-          { label: '班次', value: shifts.length },
-          { label: '规则', value: rules.length },
-          { label: '排班', value: schedules.length },
-          { label: '申请', value: timeRequests.length, tone: 'active' },
-        ]}
-      />
-
       <div className="flex justify-end">
         <Link to="/hr/attendance/appeals">
           <Button variant="outline">考勤异常申诉</Button>
@@ -552,6 +535,7 @@ const HrAttendancePage: React.FC = () => {
               { key: 'checkMethod', label: '方式', render: (row) => checkMethodLabels[String(row.checkMethod || '').toUpperCase()] || row.checkMethod || '-' },
               { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
             ]}
+            pageSize={10}
           />
         </TabsContent>
 
@@ -570,6 +554,7 @@ const HrAttendancePage: React.FC = () => {
               { key: 'lateTimes', label: '迟到' },
               { key: 'absentDays', label: '缺勤' },
             ]}
+            pageSize={10}
           />
         </TabsContent>
 
@@ -630,6 +615,7 @@ const HrAttendancePage: React.FC = () => {
               { key: 'usedQuota', label: '已用' },
               { key: 'availableQuota', label: '可用' },
             ]}
+            pageSize={10}
           />
         </TabsContent>
 
@@ -656,6 +642,7 @@ const HrAttendancePage: React.FC = () => {
             ]}
             actions={requestActions}
             minWidthClassName="min-w-[1040px]"
+            pageSize={10}
           />
         </TabsContent>
       </Tabs>

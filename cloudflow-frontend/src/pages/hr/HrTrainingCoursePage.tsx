@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCcw, Trash2 } from 'lucide-react';
+import { Plus, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
+  ConfirmDialog,
   Input,
   Label,
   Select,
@@ -10,18 +11,17 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
   TableHead,
+  TableActionHead,
   TableHeader,
-  TableRow,
+  TableRowActions,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/common';
 import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -60,6 +60,7 @@ const CoursesTab: React.FC<{
   const [editingId, setEditingId] = useState<number | null>(null);
   const defaultForm: HrTrainingCoursePayload = { courseName: '', mode: 'OFFLINE', durationHours: 0, creditHours: 0, status: 'ACTIVE' };
   const [form, setForm] = useState<HrTrainingCoursePayload>(defaultForm);
+  const [deleteTarget, setDeleteTarget] = useState<HrTrainingCourse | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,55 +94,73 @@ const CoursesTab: React.FC<{
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try { await deleteTrainingCourse(id); await load(); } catch (error) { toast.error(getErrorMessage(error, '删除失败')); }
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteTrainingCourse(deleteTarget.id);
+      toast.success('已删除');
+      setDeleteTarget(null);
+      await load();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除失败'));
+    }
   };
 
   return (
-    <>
-      <div className="mb-3 flex justify-end">
-        <Button size="sm" onClick={() => { setEditingId(null); setForm(defaultForm); setOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" />新建课程
-        </Button>
-      </div>
+    <div className="space-y-4">
+      <FilterBar
+        stats={[{ label: '', value: `共 ${rows.length} 门` }]}
+        actions={[
+          <Button key="refresh" size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
+            <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+          </Button>,
+          <Button key="create" size="sm" onClick={() => { setEditingId(null); setForm(defaultForm); setOpen(true); }}>
+            <Plus className="mr-1.5 h-4 w-4" />新建课程
+          </Button>,
+        ]}
+      />
       <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>编码</TableHead>
-              <TableHead>名称</TableHead>
-              <TableHead>分类</TableHead>
-              <TableHead>讲师</TableHead>
-              <TableHead>形式</TableHead>
-              <TableHead>课时</TableHead>
-              <TableHead>学分</TableHead>
-              <TableHead>操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={8} className="py-10 text-center text-sm text-slate-400">加载中...</TableCell></TableRow>
-            ) : rows.length ? rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-mono text-xs">{row.courseCode || '-'}</TableCell>
-                <TableCell className="font-medium">{row.courseName}</TableCell>
-                <TableCell>{categories.find((c) => c.id === row.categoryId)?.name || '-'}</TableCell>
-                <TableCell>{instructors.find((i) => i.id === row.instructorId)?.instructorName || '-'}</TableCell>
-                <TableCell>{enumLabel(modeLabel, row.mode)}</TableCell>
-                <TableCell>{row.durationHours ?? '-'}</TableCell>
-                <TableCell>{row.creditHours ?? '-'}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>编辑</Button>
-                    <Button size="sm" variant="ghost" onClick={() => void handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )) : (
-              <TableRow><TableCell colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无课程</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[840px]">
+            <TableHeader className="sticky top-0 z-10">
+              <tr>
+                <TableHead>编码</TableHead>
+                <TableHead>名称</TableHead>
+                <TableHead>分类</TableHead>
+                <TableHead>讲师</TableHead>
+                <TableHead>形式</TableHead>
+                <TableHead>课时</TableHead>
+                <TableHead>学分</TableHead>
+                <TableActionHead className="w-40">操作</TableActionHead>
+              </tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {loading ? (
+                <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
+              ) : rows.length ? rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 font-mono text-xs">{row.courseCode || '-'}</td>
+                  <td className="px-4 py-3 text-sm font-medium">{row.courseName}</td>
+                  <td className="px-4 py-3 text-sm">{categories.find((c) => c.id === row.categoryId)?.name || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{instructors.find((i) => i.id === row.instructorId)?.instructorName || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(modeLabel, row.mode)}</td>
+                  <td className="px-4 py-3 text-sm">{row.durationHours ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.creditHours ?? '-'}</td>
+                  <td className="px-4 py-3">
+                    <TableRowActions
+                      actions={[
+                        { key: 'edit', label: '编辑', semantic: 'edit', onClick: () => { setEditingId(row.id); setForm(row); setOpen(true); } },
+                        { key: 'delete', label: '删除', semantic: 'delete', onClick: () => setDeleteTarget(row) },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              )) : (
+                <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无课程</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </TableSurfaceCard>
 
       <BaseDialog
@@ -196,12 +215,23 @@ const CoursesTab: React.FC<{
           <div><Label>简介</Label><Input value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} /></div>
         </div>
       </BaseDialog>
-    </>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="删除课程"
+        message={deleteTarget ? `确认删除课程「${deleteTarget.courseName}」?此操作不可撤销。` : ''}
+        danger
+        confirmText="确认删除"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void handleDeleteConfirm()}
+      />
+    </div>
   );
 };
 
 const CategoryTab: React.FC<{ reload: () => void; categories: HrTrainingCategory[] }> = ({ reload, categories }) => {
   const [name, setName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<HrTrainingCategory | null>(null);
 
   const handleAdd = async () => {
     if (!name.trim()) return;
@@ -215,31 +245,53 @@ const CategoryTab: React.FC<{ reload: () => void; categories: HrTrainingCategory
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try { await deleteTrainingCategory(id); reload(); } catch (error) { toast.error(getErrorMessage(error, '删除失败')); }
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteTrainingCategory(deleteTarget.id);
+      toast.success('已删除');
+      setDeleteTarget(null);
+      reload();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除失败'));
+    }
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex gap-2">
         <Input placeholder="新分类名称" value={name} onChange={(e) => setName(e.target.value)} className="max-w-xs" />
         <Button size="sm" onClick={() => void handleAdd()}><Plus className="mr-1 h-3 w-3" />添加</Button>
       </div>
       <TableSurfaceCard>
-        <Table>
-          <TableHeader><TableRow><TableHead>名称</TableHead><TableHead>操作</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {categories.length ? categories.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell>{c.name}</TableCell>
-                <TableCell><Button size="sm" variant="ghost" onClick={() => void handleDelete(c.id)}><Trash2 className="h-3 w-3" /></Button></TableCell>
-              </TableRow>
-            )) : (
-              <TableRow><TableCell colSpan={2} className="py-10 text-center text-sm text-slate-400">暂无分类</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[360px]">
+            <TableHeader className="sticky top-0 z-10">
+              <tr><TableHead>名称</TableHead><TableActionHead className="w-24">操作</TableActionHead></tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {categories.length ? categories.map((c) => (
+                <tr key={c.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 text-sm">{c.name}</td>
+                  <td className="px-4 py-3"><TableRowActions actions={[{ key: 'delete', label: '删除', semantic: 'delete', onClick: () => setDeleteTarget(c) }]} /></td>
+                </tr>
+              )) : (
+                <tr><td colSpan={2} className="py-10 text-center text-sm text-slate-400">暂无分类</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </TableSurfaceCard>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="删除分类"
+        message={deleteTarget ? `确认删除分类「${deleteTarget.name}」?` : ''}
+        danger
+        confirmText="确认删除"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void handleDeleteConfirm()}
+      />
     </div>
   );
 };
@@ -247,6 +299,7 @@ const CategoryTab: React.FC<{ reload: () => void; categories: HrTrainingCategory
 const InstructorTab: React.FC<{ reload: () => void; instructors: HrTrainingInstructor[] }> = ({ reload, instructors }) => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<HrTrainingInstructorPayload>({ instructorName: '', instructorType: 'INTERNAL' });
+  const [deleteTarget, setDeleteTarget] = useState<HrTrainingInstructor | null>(null);
 
   const handleSave = async () => {
     if (!form.instructorName.trim()) {
@@ -263,34 +316,47 @@ const InstructorTab: React.FC<{ reload: () => void; instructors: HrTrainingInstr
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try { await deleteTrainingInstructor(id); reload(); } catch (error) { toast.error(getErrorMessage(error, '删除失败')); }
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteTrainingInstructor(deleteTarget.id);
+      toast.success('已删除');
+      setDeleteTarget(null);
+      reload();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除失败'));
+    }
   };
 
   return (
-    <>
-      <div className="mb-3 flex justify-end">
-        <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-3 w-3" />新增讲师</Button>
-      </div>
+    <div className="space-y-4">
+      <FilterBar
+        stats={[{ label: '', value: `共 ${instructors.length} 人` }]}
+        actions={[
+          <Button key="create" size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新增讲师</Button>,
+        ]}
+      />
       <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow><TableHead>姓名</TableHead><TableHead>类型</TableHead><TableHead>专业</TableHead><TableHead>联系</TableHead><TableHead>操作</TableHead></TableRow>
-          </TableHeader>
-          <TableBody>
-            {instructors.length ? instructors.map((i) => (
-              <TableRow key={i.id}>
-                <TableCell>{i.instructorName}</TableCell>
-                <TableCell>{i.instructorType === 'INTERNAL' ? '内部' : '外聘'}</TableCell>
-                <TableCell>{i.expertise || '-'}</TableCell>
-                <TableCell>{i.contact || '-'}</TableCell>
-                <TableCell><Button size="sm" variant="ghost" onClick={() => void handleDelete(i.id)}><Trash2 className="h-3 w-3" /></Button></TableCell>
-              </TableRow>
-            )) : (
-              <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-slate-400">暂无讲师</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px]">
+            <TableHeader className="sticky top-0 z-10">
+              <tr><TableHead>姓名</TableHead><TableHead>类型</TableHead><TableHead>专业</TableHead><TableHead>联系</TableHead><TableActionHead className="w-24">操作</TableActionHead></tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {instructors.length ? instructors.map((i) => (
+                <tr key={i.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 text-sm">{i.instructorName}</td>
+                  <td className="px-4 py-3 text-sm">{i.instructorType === 'INTERNAL' ? '内部' : '外聘'}</td>
+                  <td className="px-4 py-3 text-sm">{i.expertise || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{i.contact || '-'}</td>
+                  <td className="px-4 py-3"><TableRowActions actions={[{ key: 'delete', label: '删除', semantic: 'delete', onClick: () => setDeleteTarget(i) }]} /></td>
+                </tr>
+              )) : (
+                <tr><td colSpan={5} className="py-10 text-center text-sm text-slate-400">暂无讲师</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </TableSurfaceCard>
       <BaseDialog open={open} title="新增讲师" onClose={() => setOpen(false)}
         footer={<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>取消</Button><Button onClick={() => void handleSave()}>保存</Button></div>}>
@@ -310,7 +376,17 @@ const InstructorTab: React.FC<{ reload: () => void; instructors: HrTrainingInstr
           <div><Label>联系方式</Label><Input value={form.contact ?? ''} onChange={(e) => setForm((p) => ({ ...p, contact: e.target.value }))} /></div>
         </div>
       </BaseDialog>
-    </>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="删除讲师"
+        message={deleteTarget ? `确认删除讲师「${deleteTarget.instructorName}」?` : ''}
+        danger
+        confirmText="确认删除"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void handleDeleteConfirm()}
+      />
+    </div>
   );
 };
 
@@ -331,18 +407,12 @@ export const HrTrainingCoursePage: React.FC = () => {
   useEffect(() => { void loadRefs(); }, [loadRefs]);
 
   return (
-    <div className="flex flex-col gap-4 p-6">
-      <div className="flex items-center justify-between">
-        <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">课程库</div>
-        <Button variant="outline" size="sm" onClick={() => void loadRefs()}>
-          <RefreshCcw className="mr-1 h-3 w-3" />刷新
-        </Button>
-      </div>
-      <Tabs defaultValue="course">
-        <TabsList>
-          <TabsTrigger value="course">课程</TabsTrigger>
-          <TabsTrigger value="category">分类</TabsTrigger>
-          <TabsTrigger value="instructor">讲师</TabsTrigger>
+    <div className="space-y-4">
+      <Tabs defaultValue="course" className="space-y-4">
+        <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
+          <TabsTrigger value="course" className="flex-1 lg:flex-none">课程</TabsTrigger>
+          <TabsTrigger value="category" className="flex-1 lg:flex-none">分类</TabsTrigger>
+          <TabsTrigger value="instructor" className="flex-1 lg:flex-none">讲师</TabsTrigger>
         </TabsList>
         <TabsContent value="course"><CoursesTab categories={categories} instructors={instructors} /></TabsContent>
         <TabsContent value="category"><CategoryTab reload={loadRefs} categories={categories} /></TabsContent>

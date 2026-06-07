@@ -1,17 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCcw, ShieldCheck } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
+import { LoaderCircle, RefreshCcw, RotateCcw, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  BaseDialog,
   Button,
   Input,
-  Table,
-  TableBody,
-  TableCell,
+  Label,
+  Pagination,
   TableHead,
   TableHeader,
-  TableRow,
 } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrBenefitPayment,
@@ -20,101 +22,180 @@ import {
 } from '@/services/api/hr';
 import { normalizeRows, formatMoneyValue } from '../hrShared';
 
+const benefitStatusLabel: Record<string, string> = {
+  DRAFT: '草稿',
+  GENERATED: '已生成',
+  PAID: '已发放',
+  CANCELLED: '已取消',
+};
+
+const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
+  if (!status) return <span className="text-slate-400">-</span>;
+  const cls =
+    status === 'PAID'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      : status === 'CANCELLED'
+      ? 'border-slate-200 bg-slate-50 text-slate-500'
+      : 'border-sky-200 bg-sky-50 text-sky-700';
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${cls}`}>
+      {benefitStatusLabel[status] || status}
+    </span>
+  );
+};
+
 export const HrEssBenefitPage: React.FC = () => {
   const [rows, setRows] = useState<HrBenefitPayment[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [periodMonth, setPeriodMonth] = useState('');
+  const [query, setQuery] = useState({ periodMonth: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
+
+  const [genOpen, setGenOpen] = useState(false);
+  const [genMonth, setGenMonth] = useState('');
+  const [generating, setGenerating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listBenefitPayments({ pageSize: 200 });
+      const params: Record<string, string | number> = { pageNum: query.pageNum, pageSize: query.pageSize };
+      if (query.periodMonth) params.periodMonth = query.periodMonth;
+      const res = await listBenefitPayments(params);
       setRows(normalizeRows<HrBenefitPayment>(res));
+      setTotal(res?.total ?? 0);
     } catch (error) {
       toast.error(getErrorMessage(error, '社保福利加载失败'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [query]);
 
   useEffect(() => { void load(); }, [load]);
 
   const handleGenerate = async () => {
-    if (!periodMonth.match(/^\d{4}-\d{2}$/)) {
+    if (!genMonth.match(/^\d{4}-\d{2}$/)) {
       toast.error('请填写格式为 YYYY-MM 的月份');
       return;
     }
+    setGenerating(true);
     try {
-      await generateBenefitPayments(periodMonth);
-      toast.success(`${periodMonth} 已生成`);
+      await generateBenefitPayments(genMonth);
+      toast.success(`${genMonth} 已生成`);
+      setGenOpen(false);
       await load();
     } catch (error) {
       toast.error(getErrorMessage(error, '生成失败'));
+    } finally {
+      setGenerating(false);
     }
   };
 
-  const filtered = useMemo(() => {
-    if (!periodMonth) return rows;
-    return rows.filter((row) => row.periodMonth === periodMonth);
-  }, [rows, periodMonth]);
+  const hasFilters = Boolean(query.periodMonth);
+
+  const filters = (
+    <FilterBar
+      search={{
+        value: query.periodMonth,
+        onChange: (value) => setQuery((q) => ({ ...q, periodMonth: value })),
+        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
+        placeholder: '按月份筛选 YYYY-MM',
+        widthClassName: 'w-full sm:w-[200px]',
+      }}
+      stats={[{ label: '', value: `共 ${total} 条` }]}
+      actions={[
+        ...(hasFilters
+          ? [
+              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, periodMonth: '' }))}>
+                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
+              </Button>,
+            ]
+          : []),
+        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+        </Button>,
+        <Button key="gen" size="sm" onClick={() => { setGenMonth(''); setGenOpen(true); }}>
+          <ShieldCheck className="mr-1.5 h-4 w-4" />生成当月明细
+        </Button>,
+      ]}
+    />
+  );
+
+  const table = (
+    <TableSurfaceCard>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[920px]">
+          <TableHeader className="sticky top-0 z-10">
+            <tr>
+              <TableHead>期间</TableHead>
+              <TableHead>方案</TableHead>
+              <TableHead>缴费基数</TableHead>
+              <TableHead>公司缴纳</TableHead>
+              <TableHead>个人缴纳</TableHead>
+              <TableHead>分项</TableHead>
+              <TableHead>状态</TableHead>
+            </tr>
+          </TableHeader>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="py-16 text-center text-sm text-slate-400">
+                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-16 text-center text-sm text-slate-400">暂无明细</td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 text-sm">{row.periodMonth}</td>
+                  <td className="px-4 py-3 text-xs">{`方案 #${row.schemeId}`}</td>
+                  <td className="px-4 py-3 text-sm">{formatMoneyValue(row.baseAmount)}</td>
+                  <td className="px-4 py-3 text-sm">{formatMoneyValue(row.companyAmount)}</td>
+                  <td className="px-4 py-3 text-sm">{formatMoneyValue(row.personalAmount)}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">
+                    {row.items ? Object.entries(row.items).map(([k, v]) => `${k}:${formatMoneyValue(v)}`).join(' / ') : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm"><StatusBadge status={row.status} /></td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </TableSurfaceCard>
+  );
+
+  const pagination = total > 0 ? (
+    <Pagination
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      total={total}
+      onPageChange={(pageNum) => setQuery((q) => ({ ...q, pageNum }))}
+      onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, pageSize, pageNum: 1 }))}
+    />
+  ) : null;
 
   return (
-    <div className="p-6">
-      <div className="mb-4 flex items-center gap-2 text-xl font-semibold text-slate-900 dark:text-slate-50">
-        <ShieldCheck className="h-5 w-5" />社保公积金
-      </div>
-      <TablePageLayout
-        actions={
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="YYYY-MM"
-              value={periodMonth}
-              onChange={(event) => setPeriodMonth(event.target.value)}
-              className="w-32"
-            />
-            <Button onClick={() => void handleGenerate()}>生成当月明细</Button>
-            <Button variant="outline" onClick={() => void load()} disabled={loading}>
-              <RefreshCcw className="mr-2 h-4 w-4" />刷新
-            </Button>
+    <div className="space-y-4">
+      <TablePageLayout filters={filters} table={table} pagination={pagination} />
+
+      <BaseDialog
+        open={genOpen}
+        title="生成当月社保福利明细"
+        onClose={() => setGenOpen(false)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setGenOpen(false)}>取消</Button>
+            <Button onClick={() => void handleGenerate()} disabled={generating}>生成</Button>
           </div>
         }
-        table={
-          <TableSurfaceCard>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>期间</TableHead>
-                  <TableHead>方案</TableHead>
-                  <TableHead>缴费基数</TableHead>
-                  <TableHead>公司缴纳</TableHead>
-                  <TableHead>个人缴纳</TableHead>
-                  <TableHead>分项</TableHead>
-                  <TableHead>状态</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-slate-400">加载中...</TableCell></TableRow>
-                ) : filtered.length ? filtered.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.periodMonth}</TableCell>
-                    <TableCell className="text-xs">{`方案 #${row.schemeId}`}</TableCell>
-                    <TableCell>{formatMoneyValue(row.baseAmount)}</TableCell>
-                    <TableCell>{formatMoneyValue(row.companyAmount)}</TableCell>
-                    <TableCell>{formatMoneyValue(row.personalAmount)}</TableCell>
-                    <TableCell className="text-xs text-slate-500">
-                      {row.items ? Object.entries(row.items).map(([k, v]) => `${k}:${formatMoneyValue(v)}`).join(' / ') : '-'}
-                    </TableCell>
-                    <TableCell>{row.status || '-'}</TableCell>
-                  </TableRow>
-                )) : (
-                  <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无明细</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableSurfaceCard>
-        }
-      />
+      >
+        <div className="space-y-2">
+          <Label>月份（YYYY-MM）</Label>
+          <Input placeholder="YYYY-MM" value={genMonth} onChange={(event) => setGenMonth(event.target.value)} />
+        </div>
+      </BaseDialog>
     </div>
   );
 };

@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Plus, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  BaseDialog,
   Button,
+  ConfirmDialog,
   EmployeeSelector,
   Input,
   Label,
@@ -10,16 +13,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRowActions,
   Textarea,
 } from '@/components/common';
-import { BaseDialog } from '@/components/common/BaseDialog';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   closeInjury,
@@ -32,6 +32,7 @@ import {
   type HrWorkInjuryPayload,
 } from '@/services/api/hr';
 import { enumLabel, formatDateTimeValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
+import { StageTimeline } from '../components/StageTimeline';
 
 const statusFlow = ['REPORTED', 'INVESTIGATING', 'DETERMINING', 'DETERMINED', 'COMPENSATING', 'REHABILITATING', 'CLOSED'];
 
@@ -62,27 +63,6 @@ const emptyForm: Partial<HrWorkInjuryPayload> = {
   status: 'REPORTED',
 };
 
-const StageTimeline: React.FC<{ current?: string }> = ({ current }) => {
-  const currentIdx = statusFlow.indexOf(String(current ?? '').toUpperCase());
-  return (
-    <div className="flex flex-wrap items-center gap-1 py-1">
-      {statusFlow.map((s, idx) => {
-        const reached = currentIdx >= idx;
-        return (
-          <React.Fragment key={s}>
-            <div className={`rounded-full px-2 py-0.5 text-[10px] ${reached ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
-              {statusLabel[s]}
-            </div>
-            {idx < statusFlow.length - 1 && (
-              <div className={`h-px w-3 ${currentIdx > idx ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
-};
-
 export const HrWorkInjuryPage: React.FC = () => {
   const [rows, setRows] = useState<HrWorkInjury[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,11 +71,13 @@ export const HrWorkInjuryPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<HrWorkInjury | null>(null);
   const [form, setForm] = useState<Partial<HrWorkInjuryPayload>>(emptyForm);
+  const [closeTarget, setCloseTarget] = useState<HrWorkInjury | null>(null);
+  const [closeReason, setCloseReason] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, unknown> = {};
+      const params: Record<string, string | number> = {};
       if (statusFilter !== 'all') params.status = statusFilter;
       const res = await listInjuries(params);
       setRows(normalizeRows<HrWorkInjury>(res));
@@ -160,12 +142,13 @@ export const HrWorkInjuryPage: React.FC = () => {
     }
   };
 
-  const handleClose = async (row: HrWorkInjury) => {
-    const reason = window.prompt('关闭理由');
-    if (reason === null) return;
+  const handleCloseConfirm = async () => {
+    if (!closeTarget) return;
     try {
-      await closeInjury(row.id, reason || undefined);
+      await closeInjury(closeTarget.id, closeReason || undefined);
       toast.success('已关闭');
+      setCloseTarget(null);
+      setCloseReason('');
       void load();
     } catch (error) {
       toast.error(getErrorMessage(error, '关闭失败'));
@@ -181,33 +164,37 @@ export const HrWorkInjuryPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">工伤申报</div>
-          <div className="mt-1 text-xs text-slate-500">7 阶段全流程:上报 → 调查 → 认定 → 赔偿 → 康复 → 关闭</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-36">
-            <Label className="text-xs text-slate-500">状态</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部</SelectItem>
-                {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button variant="outline" onClick={() => void load()} disabled={loading}>刷新</Button>
-          <Button onClick={openCreate}>上报工伤</Button>
-        </div>
-      </div>
+  const filters = (
+    <FilterBar
+      filters={[
+        <div key="status" className="w-full sm:w-40">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部状态</SelectItem>
+              {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>,
+      ]}
+      stats={[{ label: '', value: `共 ${rows.length} 条` }]}
+      actions={[
+        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+        </Button>,
+        <Button key="add" size="sm" onClick={openCreate}>
+          <Plus className="mr-1.5 h-4 w-4" />上报工伤
+        </Button>,
+      ]}
+    />
+  );
 
-      <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
+  const table = (
+    <TableSurfaceCard>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[960px]">
+          <TableHeader className="sticky top-0 z-10">
+            <tr>
               <TableHead>编号</TableHead>
               <TableHead>员工 ID</TableHead>
               <TableHead>发生时间</TableHead>
@@ -215,45 +202,49 @@ export const HrWorkInjuryPage: React.FC = () => {
               <TableHead>等级</TableHead>
               <TableHead>当前阶段</TableHead>
               <TableHead>伤残等级</TableHead>
-              <TableHead>操作</TableHead>
-            </TableRow>
+              <TableHead className="text-right">操作</TableHead>
+            </tr>
           </TableHeader>
-          <TableBody>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="py-6 text-center text-sm text-slate-400">加载中…</TableCell></TableRow>
+              <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
             ) : rows.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="py-6 text-center text-sm text-slate-400">暂无记录</TableCell></TableRow>
+              <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无记录</td></tr>
             ) : (
               rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-mono text-xs">
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 font-mono text-xs">
                     <button type="button" onClick={() => void openDetail(row)} className="text-sky-600 hover:underline">
                       {row.injuryNo}
                     </button>
-                  </TableCell>
-                  <TableCell>{row.employeeId}</TableCell>
-                  <TableCell className="text-xs">{formatDateTimeValue(row.occurredAt)}</TableCell>
-                  <TableCell className="max-w-[10rem] truncate text-xs">{row.location ?? '-'}</TableCell>
-                  <TableCell>{enumLabel(levelLabel, row.injuryLevel)}</TableCell>
-                  <TableCell><StageTimeline current={row.status} /></TableCell>
-                  <TableCell>{row.determinedGrade ? `${row.determinedGrade} 级` : '-'}</TableCell>
-                  <TableCell className="space-x-2 text-xs">
-                    {hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => openEdit(row)}>编辑</Button>
-                        <Button size="sm" onClick={() => void handleSubmit(row)}>发起认定</Button>
-                      </>
-                    )}
-                    {!hasWorkflowStatus(row.status, 'CLOSED') && (
-                      <Button size="sm" variant="outline" onClick={() => void handleClose(row)}>关闭</Button>
-                    )}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                  <td className="px-4 py-3 text-sm">{row.employeeId}</td>
+                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.occurredAt)}</td>
+                  <td className="px-4 py-3 max-w-[10rem] truncate text-xs">{row.location ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(levelLabel, row.injuryLevel)}</td>
+                  <td className="px-4 py-3"><StageTimeline steps={statusFlow} labels={statusLabel} current={row.status} tone="emerald" /></td>
+                  <td className="px-4 py-3 text-sm">{row.determinedGrade ? `${row.determinedGrade} 级` : '-'}</td>
+                  <td className="px-4 py-3">
+                    <TableRowActions
+                      actions={[
+                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => openEdit(row), hidden: !hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') },
+                        { key: 'submit', semantic: 'submit', label: '发起认定', onClick: () => void handleSubmit(row), hidden: !hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') },
+                        { key: 'close', semantic: 'void', label: '关闭', onClick: () => { setCloseTarget(row); setCloseReason(''); }, hidden: hasWorkflowStatus(row.status, 'CLOSED') },
+                      ]}
+                    />
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
-      </TableSurfaceCard>
+          </tbody>
+        </table>
+      </div>
+    </TableSurfaceCard>
+  );
+
+  return (
+    <div className="space-y-4">
+      <TablePageLayout filters={filters} table={table} />
 
       <BaseDialog
         open={open}
@@ -301,6 +292,21 @@ export const HrWorkInjuryPage: React.FC = () => {
         </div>
       </BaseDialog>
 
+      <ConfirmDialog
+        open={Boolean(closeTarget)}
+        title="关闭工伤记录"
+        message={closeTarget ? `确认关闭 ${closeTarget.injuryNo}?可填写关闭理由。` : ''}
+        danger
+        confirmText="确认关闭"
+        onCancel={() => { setCloseTarget(null); setCloseReason(''); }}
+        onConfirm={() => void handleCloseConfirm()}
+      >
+        <div>
+          <Label>关闭理由(可选)</Label>
+          <Textarea rows={3} value={closeReason} onChange={(e) => setCloseReason(e.target.value)} placeholder="填写关闭理由" />
+        </div>
+      </ConfirmDialog>
+
       {detail && (
         <BaseDialog
           open={Boolean(detail)}
@@ -310,7 +316,7 @@ export const HrWorkInjuryPage: React.FC = () => {
           footer={<div className="flex justify-end"><Button variant="outline" onClick={() => setDetail(null)}>关闭</Button></div>}
         >
           <div className="space-y-3 text-sm">
-            <StageTimeline current={detail.status} />
+            <StageTimeline steps={statusFlow} labels={statusLabel} current={detail.status} tone="emerald" />
             <div className="grid grid-cols-2 gap-3">
               <div><span className="text-slate-500">员工 ID:</span> {detail.employeeId}</div>
               <div><span className="text-slate-500">发生时间:</span> {formatDateTimeValue(detail.occurredAt)}</div>

@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { Button } from '@/components/common';
 import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrEssPortalSummary,
@@ -124,18 +125,15 @@ export const HrEssPortalPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">员工自助门户</div>
-          <div className="text-sm text-slate-500 dark:text-slate-400">
-            {summary?.employee?.name ? `${summary.employee.name} · ${summary.employee.employeeNo}` : '加载中...'}
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-2 h-4 w-4" />刷新
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6">
+      <FilterBar
+        stats={[{ label: '未读消息', value: `${summary?.unreadCount ?? 0}` }]}
+        actions={[
+          <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+          </Button>,
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryCard
@@ -215,7 +213,7 @@ export const HrEssPortalPage: React.FC = () => {
             <ul className="space-y-2 text-sm">
               {summary.unreadMessages.map((msg) => (
                 <li key={msg.id} className="rounded-lg border border-slate-200/70 p-3 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                     <div className="font-medium text-slate-800 dark:text-slate-100">{msg.title}</div>
                     <Button size="sm" variant="ghost" onClick={() => void handleMarkOneRead(msg.id)}>
                       标记已读

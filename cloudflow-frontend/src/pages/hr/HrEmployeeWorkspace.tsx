@@ -10,7 +10,6 @@ import {
   Plus,
   RefreshCcw,
   ShieldCheck,
-  Trash2,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,6 +26,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  TableRowActions,
   Tabs,
   TabsContent,
   TabsList,
@@ -996,20 +996,13 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             </div>
 
                             <div className="flex flex-wrap gap-2 sm:justify-end">
-                              <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => void handleEditContract(item.id)}>
-                                <Edit3 size={14} className="mr-1.5" />
-                                {'\u7f16\u8f91'}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 rounded-full px-3"
-                                disabled={!canDeleteContract(item)}
-                                onClick={() => requestDeleteContract(item)}
-                              >
-                                <Trash2 size={14} className="mr-1.5" />
-                                {'\u5220\u9664'}
-                              </Button>
+                              <TableRowActions
+                                mode="inline"
+                                actions={[
+                                  { key: 'edit', semantic: 'edit', label: '\u7f16\u8f91', onClick: () => void handleEditContract(item.id) },
+                                  { key: 'delete', semantic: 'delete', label: '\u5220\u9664', disabled: !canDeleteContract(item), onClick: () => requestDeleteContract(item) },
+                                ]}
+                              />
                             </div>
                           </div>
 
@@ -1120,14 +1113,13 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                               </div>
 
                               <div className="flex flex-wrap gap-2 sm:justify-end">
-                                <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => void handleEditDocument(item.id)}>
-                                  <Edit3 size={14} className="mr-1.5" />
-                                  编辑
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => requestDeleteDocument(item)}>
-                                  <Trash2 size={14} className="mr-1.5" />
-                                  删除
-                                </Button>
+                                <TableRowActions
+                                  mode="inline"
+                                  actions={[
+                                    { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => void handleEditDocument(item.id) },
+                                    { key: 'delete', semantic: 'delete', label: '删除', onClick: () => requestDeleteDocument(item) },
+                                  ]}
+                                />
                               </div>
                             </div>
                           </div>
@@ -1235,14 +1227,13 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             </div>
 
                             <div className="flex flex-wrap gap-2 sm:justify-end">
-                              <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => void handleEditContact(item.id)}>
-                                <Edit3 size={14} className="mr-1.5" />
-                                编辑
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => requestDeleteContact(item)}>
-                                <Trash2 size={14} className="mr-1.5" />
-                                删除
-                              </Button>
+                              <TableRowActions
+                                mode="inline"
+                                actions={[
+                                  { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => void handleEditContact(item.id) },
+                                  { key: 'delete', semantic: 'delete', label: '删除', onClick: () => requestDeleteContact(item) },
+                                ]}
+                              />
                             </div>
                           </div>
                         </div>

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
-import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common';
+import { ConfirmDialog, Tabs, TabsContent, TabsList, TabsTrigger, type TableRowActionItem } from '@/components/common';
 import {
   DeptTreeNode,
   HrRecord,
@@ -22,7 +21,7 @@ import {
 } from '@/services/api/hr';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { enumLabel, flattenDeptTree, formatDateValue, idFallbackLabel, normalizeRows, optionOrIdLabel } from './hrShared';
-import { HrCrudPanel, HrFormField, HrPageHeader, renderStatus } from './HrDomainWorkspace';
+import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 
 const levelSeriesLabels: Record<string, string> = {
   P: '专业序列',
@@ -69,12 +68,9 @@ const headcountDefault = (): HrRecord => ({
   expiryDate: '',
 });
 
-const compactActions = (onDelete: () => void) => (
-  <Button variant="ghost" size="sm" className="text-rose-600 hover:text-rose-700" onClick={onDelete}>
-    <Trash2 size={14} className="mr-1.5" />
-    删除
-  </Button>
-);
+const deleteAction = (onDelete: () => void): TableRowActionItem[] => [
+  { key: 'delete', semantic: 'delete', label: '删除', onClick: onDelete },
+];
 
 const HrOrganizationPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('families');
@@ -89,6 +85,7 @@ const HrOrganizationPage: React.FC = () => {
   const [levelForm, setLevelForm] = useState<HrRecord>(levelDefault);
   const [positionForm, setPositionForm] = useState<HrRecord>(positionDefault);
   const [headcountForm, setHeadcountForm] = useState<HrRecord>(headcountDefault);
+  const [deleteTarget, setDeleteTarget] = useState<{ name: string; runner: () => Promise<unknown>; success: string } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -207,17 +204,6 @@ const HrOrganizationPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <HrPageHeader
-        eyebrow="Organization"
-        title="组织编制"
-        stats={[
-          { label: '职位族', value: families.length },
-          { label: '职级', value: levels.length },
-          { label: '职位', value: positions.length },
-          { label: '编制', value: headcounts.length, tone: 'active' },
-        ]}
-      />
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
           <TabsTrigger value="families" className="flex-1 lg:flex-none">职位族</TabsTrigger>
@@ -245,7 +231,7 @@ const HrOrganizationPage: React.FC = () => {
               { key: 'sortOrder', label: '排序' },
               { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
             ]}
-            actions={(row) => compactActions(() => void submitAndReload(() => deletePositionFamily(Number(row.id)), '职位族已删除'))}
+            actions={(row) => deleteAction(() => setDeleteTarget({ name: String(row.familyName || row.familyCode || row.id), runner: () => deletePositionFamily(Number(row.id)), success: '职位族已删除' }))}
           />
         </TabsContent>
 
@@ -269,7 +255,7 @@ const HrOrganizationPage: React.FC = () => {
               { key: 'levelRank', label: '等级' },
               { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
             ]}
-            actions={(row) => compactActions(() => void submitAndReload(() => deleteOrganizationLevel(Number(row.id)), '职级已删除'))}
+            actions={(row) => deleteAction(() => setDeleteTarget({ name: String(row.levelName || row.levelCode || row.id), runner: () => deleteOrganizationLevel(Number(row.id)), success: '职级已删除' }))}
           />
         </TabsContent>
 
@@ -294,7 +280,7 @@ const HrOrganizationPage: React.FC = () => {
               { key: 'postId', label: '岗位', render: (row) => row.postName || optionOrIdLabel('岗位', postOptions, row.postId) },
               { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
             ]}
-            actions={(row) => compactActions(() => void submitAndReload(() => deletePosition(Number(row.id)), '职位已删除'))}
+            actions={(row) => deleteAction(() => setDeleteTarget({ name: String(row.positionName || row.positionCode || row.id), runner: () => deletePosition(Number(row.id)), success: '职位已删除' }))}
           />
         </TabsContent>
 
@@ -323,6 +309,21 @@ const HrOrganizationPage: React.FC = () => {
           />
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="确认删除"
+        message={deleteTarget ? `确认删除「${deleteTarget.name}」?此操作不可撤销。` : ''}
+        danger
+        confirmText="确认删除"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          const target = deleteTarget;
+          setDeleteTarget(null);
+          void submitAndReload(target.runner, target.success);
+        }}
+      />
     </div>
   );
 };

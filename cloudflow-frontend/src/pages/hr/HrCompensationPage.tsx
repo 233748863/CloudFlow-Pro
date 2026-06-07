@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common';
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger, type TableRowActionItem } from '@/components/common';
 import {
   EmployeeInsurance,
   EmployeeSalary,
@@ -46,7 +46,7 @@ import {
   optionOrIdLabel,
   yesNoLabel,
 } from './hrShared';
-import { HrCrudPanel, HrFormField, HrPageHeader, renderStatus } from './HrDomainWorkspace';
+import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 import HrCompensationSimulatePanel from './components/HrCompensationSimulatePanel';
 
 const componentTypeLabels: Record<string, string> = {
@@ -266,27 +266,21 @@ const HrCompensationPage: React.FC = () => {
     }
   };
 
-  const changeActions = (row: SalaryAdjustment) => {
+  const changeActions = (row: SalaryAdjustment): TableRowActionItem[] => {
     const status = String(row.status || '').toUpperCase();
-    return (
-      <div className="flex flex-wrap justify-end gap-2">
-        {[
-          { label: '提交', enabled: status === 'DRAFT', runner: () => submitSalaryAdjustment(row.id) },
-          { label: '通过', enabled: status === 'APPROVING', runner: () => approveSalaryAdjustment(row.id) },
-          { label: '生效', enabled: status === 'APPROVED', runner: () => effectiveSalaryAdjustment(row.id) },
-        ].map((item) => (
-          <Button
-            key={item.label}
-            variant="outline"
-            size="sm"
-            disabled={!item.enabled}
-            onClick={() => void submitAndReload(item.runner, `调薪已${item.label}`)}
-          >
-            {item.label}
-          </Button>
-        ))}
-      </div>
-    );
+    const items: Array<{ label: string; semantic: TableRowActionItem['semantic']; enabled: boolean; runner: () => Promise<unknown> }> = [
+      { label: '提交', semantic: 'submit', enabled: status === 'DRAFT', runner: () => submitSalaryAdjustment(row.id) },
+      { label: '通过', semantic: 'confirm', enabled: status === 'APPROVING', runner: () => approveSalaryAdjustment(row.id) },
+      { label: '生效', semantic: 'confirm', enabled: status === 'APPROVED', runner: () => effectiveSalaryAdjustment(row.id) },
+    ];
+    return items
+      .filter((item) => item.enabled)
+      .map((item) => ({
+        key: item.label,
+        label: item.label,
+        semantic: item.semantic,
+        onClick: () => void submitAndReload(item.runner, `调薪已${item.label}`),
+      }));
   };
 
   const parseItemIds = (value: unknown) => {
@@ -313,17 +307,6 @@ const HrCompensationPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <HrPageHeader
-        eyebrow="Compensation"
-        title="薪酬福利"
-        stats={[
-          { label: '薪资项目', value: components.length },
-          { label: '薪资结构', value: structures.length },
-          { label: '员工薪资', value: employeeComps.length },
-          { label: '调薪', value: changes.length, tone: 'active' },
-        ]}
-      />
-
       <div className="flex justify-end">
         <Button variant="outline" onClick={() => setSimulateOpen(true)}>
           薪酬模拟器

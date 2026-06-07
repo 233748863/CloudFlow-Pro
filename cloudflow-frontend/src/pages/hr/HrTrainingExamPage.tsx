@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, RefreshCcw, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Plus, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
+  ConfirmDialog,
   Input,
   Label,
   Select,
@@ -10,18 +11,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRowActions,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/common';
 import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { getExamPaperStatusLabel } from '@/utils/enumLabels';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -64,6 +63,7 @@ const QuestionBankTab: React.FC = () => {
   const [rows, setRows] = useState<HrExamQuestionBank[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<HrExamQuestionBankPayload>({ questionType: 'SINGLE', content: '', score: 5 });
+  const [deleteTarget, setDeleteTarget] = useState<HrExamQuestionBank | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -84,35 +84,41 @@ const QuestionBankTab: React.FC = () => {
     } catch (error) { toast.error(getErrorMessage(error, '保存失败')); }
   };
 
-  const handleDelete = async (id: number) => {
-    try { await deleteQuestion(id); await load(); } catch (error) { toast.error(getErrorMessage(error, '删除失败')); }
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try { await deleteQuestion(deleteTarget.id); toast.success('已删除'); setDeleteTarget(null); await load(); } catch (error) { toast.error(getErrorMessage(error, '删除失败')); }
   };
 
   return (
-    <>
-      <div className="mb-3 flex justify-end gap-2">
-        <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-3 w-3" />新增题目</Button>
-        <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1 h-3 w-3" />刷新</Button>
-      </div>
+    <div className="space-y-4">
+      <FilterBar
+        stats={[{ label: '', value: `共 ${rows.length} 题` }]}
+        actions={[
+          <Button key="refresh" size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>,
+          <Button key="create" size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新增题目</Button>,
+        ]}
+      />
       <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow><TableHead>题型</TableHead><TableHead>题干</TableHead><TableHead>分值</TableHead><TableHead>难度</TableHead><TableHead>操作</TableHead></TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length ? rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>{enumLabel(questionTypeLabel, row.questionType)}</TableCell>
-                <TableCell className="max-w-md truncate">{row.content}</TableCell>
-                <TableCell>{row.score ?? '-'}</TableCell>
-                <TableCell>{row.difficulty ?? '-'}</TableCell>
-                <TableCell><Button size="sm" variant="ghost" onClick={() => void handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button></TableCell>
-              </TableRow>
-            )) : (
-              <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-slate-400">暂无题目</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px]">
+            <TableHeader className="sticky top-0 z-10">
+              <tr><TableHead>题型</TableHead><TableHead>题干</TableHead><TableHead>分值</TableHead><TableHead>难度</TableHead><TableHead className="text-right">操作</TableHead></tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {rows.length ? rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 text-sm">{enumLabel(questionTypeLabel, row.questionType)}</td>
+                  <td className="px-4 py-3 text-sm max-w-md truncate">{row.content}</td>
+                  <td className="px-4 py-3 text-sm">{row.score ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.difficulty ?? '-'}</td>
+                  <td className="px-4 py-3"><TableRowActions actions={[{ key: 'delete', semantic: 'delete', label: '删除', onClick: () => setDeleteTarget(row) }]} /></td>
+                </tr>
+              )) : (
+                <tr><td colSpan={5} className="py-10 text-center text-sm text-slate-400">暂无题目</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </TableSurfaceCard>
       <BaseDialog open={open} title="新增题目" onClose={() => setOpen(false)} width="wide"
         footer={<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>取消</Button><Button onClick={() => void handleSave()}>保存</Button></div>}>
@@ -138,7 +144,16 @@ const QuestionBankTab: React.FC = () => {
           <div><Label>解析</Label><Input value={form.analysis ?? ''} onChange={(e) => setForm((p) => ({ ...p, analysis: e.target.value }))} /></div>
         </div>
       </BaseDialog>
-    </>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="删除题目"
+        message={deleteTarget ? `确认删除该题目?此操作不可撤销。` : ''}
+        danger
+        confirmText="确认删除"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void handleDeleteConfirm()}
+      />
+    </div>
   );
 };
 
@@ -146,6 +161,7 @@ const PaperTab: React.FC = () => {
   const [rows, setRows] = useState<HrExamPaper[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<HrExamPaperPayload>({ paperName: '', totalScore: 100, passScore: 60, durationMinutes: 60, generateMode: 'MANUAL', questionIds: [] });
+  const [deleteTarget, setDeleteTarget] = useState<HrExamPaper | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -160,8 +176,9 @@ const PaperTab: React.FC = () => {
     try { await savePaper(form); toast.success('已保存'); setOpen(false); await load(); } catch (error) { toast.error(getErrorMessage(error, '保存失败')); }
   };
 
-  const handleDelete = async (id: number) => {
-    try { await deletePaper(id); await load(); } catch (error) { toast.error(getErrorMessage(error, '删除失败')); }
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try { await deletePaper(deleteTarget.id); toast.success('已删除'); setDeleteTarget(null); await load(); } catch (error) { toast.error(getErrorMessage(error, '删除失败')); }
   };
 
   const handleStartAttempt = async (id: number) => {
@@ -172,38 +189,45 @@ const PaperTab: React.FC = () => {
   };
 
   return (
-    <>
-      <div className="mb-3 flex justify-end gap-2">
-        <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-3 w-3" />新建试卷</Button>
-        <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1 h-3 w-3" />刷新</Button>
-      </div>
+    <div className="space-y-4">
+      <FilterBar
+        stats={[{ label: '', value: `共 ${rows.length} 套` }]}
+        actions={[
+          <Button key="refresh" size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>,
+          <Button key="create" size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新建试卷</Button>,
+        ]}
+      />
       <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow><TableHead>名称</TableHead><TableHead>总分</TableHead><TableHead>及格</TableHead><TableHead>时长(分)</TableHead><TableHead>题数</TableHead><TableHead>组卷</TableHead><TableHead>状态</TableHead><TableHead>操作</TableHead></TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length ? rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-medium">{row.paperName}</TableCell>
-                <TableCell>{row.totalScore ?? '-'}</TableCell>
-                <TableCell>{row.passScore ?? '-'}</TableCell>
-                <TableCell>{row.durationMinutes ?? '-'}</TableCell>
-                <TableCell>{row.questionCount ?? (row.questionIds?.length ?? 0)}</TableCell>
-                <TableCell>{row.generateMode === 'RANDOM' ? '随机' : '手动'}</TableCell>
-                <TableCell>{getExamPaperStatusLabel(row.status)}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => void handleStartAttempt(row.id)}>开始作答</Button>
-                    <Button size="sm" variant="ghost" onClick={() => void handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )) : (
-              <TableRow><TableCell colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无试卷</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[960px]">
+            <TableHeader className="sticky top-0 z-10">
+              <tr><TableHead>名称</TableHead><TableHead>总分</TableHead><TableHead>及格</TableHead><TableHead>时长(分)</TableHead><TableHead>题数</TableHead><TableHead>组卷</TableHead><TableHead>状态</TableHead><TableHead className="text-right">操作</TableHead></tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {rows.length ? rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 text-sm font-medium">{row.paperName}</td>
+                  <td className="px-4 py-3 text-sm">{row.totalScore ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.passScore ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.durationMinutes ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.questionCount ?? (row.questionIds?.length ?? 0)}</td>
+                  <td className="px-4 py-3 text-sm">{row.generateMode === 'RANDOM' ? '随机' : '手动'}</td>
+                  <td className="px-4 py-3 text-sm">{getExamPaperStatusLabel(row.status)}</td>
+                  <td className="px-4 py-3">
+                    <TableRowActions
+                      actions={[
+                        { key: 'start', semantic: 'process', label: '开始作答', onClick: () => void handleStartAttempt(row.id) },
+                        { key: 'delete', semantic: 'delete', label: '删除', onClick: () => setDeleteTarget(row) },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              )) : (
+                <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无试卷</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </TableSurfaceCard>
       <BaseDialog open={open} title="新建试卷" onClose={() => setOpen(false)} width="wide"
         footer={<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>取消</Button><Button onClick={() => void handleSave()}>保存</Button></div>}>
@@ -227,7 +251,16 @@ const PaperTab: React.FC = () => {
           <div><Label>题目 ID 列表（逗号分隔）</Label><Input value={(form.questionIds ?? []).join(',')} onChange={(e) => setForm((p) => ({ ...p, questionIds: e.target.value.split(',').map((s) => Number(s.trim())).filter(Boolean) }))} /></div>
         </div>
       </BaseDialog>
-    </>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="删除试卷"
+        message={deleteTarget ? `确认删除试卷「${deleteTarget.paperName}」?此操作不可撤销。` : ''}
+        danger
+        confirmText="确认删除"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void handleDeleteConfirm()}
+      />
+    </div>
   );
 };
 
@@ -271,31 +304,36 @@ const AttemptTab: React.FC<{ mine: boolean }> = ({ mine }) => {
   };
 
   return (
-    <>
-      <div className="mb-3 flex justify-end gap-2">
-        <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1 h-3 w-3" />刷新</Button>
-      </div>
+    <div className="space-y-4">
+      <FilterBar
+        stats={[{ label: '', value: `共 ${rows.length} 份` }]}
+        actions={[
+          <Button key="refresh" size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>,
+        ]}
+      />
       <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow><TableHead>试卷</TableHead><TableHead>开始</TableHead><TableHead>提交</TableHead><TableHead>分数</TableHead><TableHead>通过</TableHead><TableHead>状态</TableHead><TableHead>操作</TableHead></TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length ? rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>{`#${row.paperId}`}</TableCell>
-                <TableCell>{formatDateTimeValue(row.startTime)}</TableCell>
-                <TableCell>{formatDateTimeValue(row.submitTime)}</TableCell>
-                <TableCell>{row.score ?? '-'}</TableCell>
-                <TableCell>{row.passFlag == null ? '-' : row.passFlag ? '是' : '否'}</TableCell>
-                <TableCell>{enumLabel(attemptStatusLabel, row.status)}</TableCell>
-                <TableCell><Button size="sm" variant="ghost" onClick={() => void handleView(row.id)}>查看</Button></TableCell>
-              </TableRow>
-            )) : (
-              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无答卷</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[840px]">
+            <TableHeader className="sticky top-0 z-10">
+              <tr><TableHead>试卷</TableHead><TableHead>开始</TableHead><TableHead>提交</TableHead><TableHead>分数</TableHead><TableHead>通过</TableHead><TableHead>状态</TableHead><TableHead className="text-right">操作</TableHead></tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {rows.length ? rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 text-sm">{`#${row.paperId}`}</td>
+                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.startTime)}</td>
+                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.submitTime)}</td>
+                  <td className="px-4 py-3 text-sm">{row.score ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.passFlag == null ? '-' : row.passFlag ? '是' : '否'}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(attemptStatusLabel, row.status)}</td>
+                  <td className="px-4 py-3"><TableRowActions actions={[{ key: 'view', semantic: 'view', label: '查看', onClick: () => void handleView(row.id) }]} /></td>
+                </tr>
+              )) : (
+                <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无答卷</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </TableSurfaceCard>
       <BaseDialog open={!!detail} title={`答卷详情 #${detail?.id}`} onClose={() => setDetail(null)} width="wide"
         footer={
@@ -325,19 +363,18 @@ const AttemptTab: React.FC<{ mine: boolean }> = ({ mine }) => {
           </div>
         ) : null}
       </BaseDialog>
-    </>
+    </div>
   );
 };
 
 export const HrTrainingExamPage: React.FC = () => (
-  <div className="p-6">
-    <div className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-50">在线考试</div>
-    <Tabs defaultValue="papers">
-      <TabsList>
-        <TabsTrigger value="papers">试卷管理</TabsTrigger>
-        <TabsTrigger value="questions">题库</TabsTrigger>
-        <TabsTrigger value="mine">我的作答</TabsTrigger>
-        <TabsTrigger value="all">全员作答</TabsTrigger>
+  <div className="space-y-4">
+    <Tabs defaultValue="papers" className="space-y-4">
+      <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
+        <TabsTrigger value="papers" className="flex-1 lg:flex-none">试卷管理</TabsTrigger>
+        <TabsTrigger value="questions" className="flex-1 lg:flex-none">题库</TabsTrigger>
+        <TabsTrigger value="mine" className="flex-1 lg:flex-none">我的作答</TabsTrigger>
+        <TabsTrigger value="all" className="flex-1 lg:flex-none">全员作答</TabsTrigger>
       </TabsList>
       <TabsContent value="papers"><PaperTab /></TabsContent>
       <TabsContent value="questions"><QuestionBankTab /></TabsContent>

@@ -4,12 +4,12 @@ import {
   CalendarRange,
   Plus,
   RefreshCcw,
-  Search,
   UserRoundSearch,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
+import { FilterBar } from '@/components/layout';
 import FileUpload from '@/components/FileUpload';
 import {
   Button,
@@ -725,81 +725,44 @@ export const HrRecruitmentPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <BriefcaseBusiness className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          招聘中心
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          招聘与候选人
-        </h1>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          需求 {loading ? '--' : requests.length}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          招聘中 {loading ? '--' : recruitingRequests.length}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          候选人 {loading ? '--' : candidates.length}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          面试 {loading ? '--' : interviews.length}
-        </span>
-        <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-          可安排面试 {loading ? '--' : interviewableCandidates.length}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          Offer {loading ? '--' : offers.length}
-        </span>
-
-        <div className="ml-auto flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => void loadData()}>
+      <FilterBar
+        search={{
+          value: keyword,
+          onChange: setKeyword,
+          placeholder: '搜索需求编号、岗位、候选人、邮箱或状态',
+          widthClassName: 'w-full lg:max-w-md',
+        }}
+        stats={[
+          { label: '需求', value: loading ? '--' : requests.length },
+          { label: '招聘中', value: loading ? '--' : recruitingRequests.length },
+          { label: '候选人', value: loading ? '--' : candidates.length },
+          { label: '面试', value: loading ? '--' : interviews.length },
+          { label: '可安排面试', value: loading ? '--' : interviewableCandidates.length },
+          { label: 'Offer', value: loading ? '--' : offers.length },
+        ]}
+        actions={[
+          <Button key="refresh" variant="outline" size="sm" onClick={() => void loadData()}>
             <RefreshCcw size={14} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} />
             刷新
-          </Button>
-          <Button size="sm" onClick={() => setRequestDialog(true)}>
+          </Button>,
+          <Button key="req" size="sm" onClick={() => setRequestDialog(true)}>
             <Plus size={14} className="mr-1.5" />
             新建需求
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setCandidateDialog(true)}>
+          </Button>,
+          <Button key="cand" variant="outline" size="sm" onClick={() => setCandidateDialog(true)}>
             <UserRoundSearch size={14} className="mr-1.5" />
             新建候选人
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setInterviewDialog(true)}>
+          </Button>,
+          <Button key="interview" variant="outline" size="sm" onClick={() => setInterviewDialog(true)}>
             <CalendarRange size={14} className="mr-1.5" />
             安排面试
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setOfferDialog(true)}>
+          </Button>,
+          <Button key="offer" variant="outline" size="sm" onClick={() => setOfferDialog(true)}>
             <Plus size={14} className="mr-1.5" />
             新建Offer
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-start">
-        <div className="relative w-full lg:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-          <Input
-            className="pl-10"
-            placeholder="搜索需求编号、岗位、候选人、邮箱或状态"
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setKeyword('');
-            }}
-          >
-            重置搜索
-          </Button>
-        </div>
-      </div>
+          </Button>,
+        ]}
+      />
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as RecruitmentTab)} className="space-y-4">
         <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">

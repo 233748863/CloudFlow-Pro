@@ -1,23 +1,26 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
+import { LoaderCircle, RefreshCcw, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  BaseDialog,
   Button,
   Input,
   Label,
+  Pagination,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
+  TableActionHead,
   TableHead,
   TableHeader,
-  TableRow,
 } from '@/components/common';
-import { BaseDialog } from '@/components/common/BaseDialog';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { TableRowActions } from '@/components/common/table-row-actions';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   cancelOrder,
@@ -41,26 +44,31 @@ const statusLabel: Record<string, string> = {
 
 export const HrMallOrderPage: React.FC = () => {
   const [rows, setRows] = useState<HrMallOrder[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [scope, setScope] = useState<'all' | 'mine'>('all');
+  const [query, setQuery] = useState({ orderNo: '', status: '', scope: 'all' as 'all' | 'mine', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
+
   const [detail, setDetail] = useState<HrMallOrder | null>(null);
   const [shipOpen, setShipOpen] = useState<HrMallOrder | null>(null);
   const [expressNo, setExpressNo] = useState('');
+  const [cancelTarget, setCancelTarget] = useState<HrMallOrder | null>(null);
+  const [cancelReason, setCancelReason] = useState('不需要了');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, unknown> = {};
-      if (statusFilter !== 'all') params.status = statusFilter;
-      const res = scope === 'mine' ? await listMyOrders(params) : await listAllOrders(params);
+      const params: Record<string, string | number> = { pageNum: query.pageNum, pageSize: query.pageSize };
+      if (query.orderNo) params.orderNo = query.orderNo;
+      if (query.status) params.status = query.status;
+      const res = query.scope === 'mine' ? await listMyOrders(params) : await listAllOrders(params);
       setRows(normalizeRows<HrMallOrder>(res));
+      setTotal(res?.total ?? 0);
     } catch (error) {
       toast.error(getErrorMessage(error, '加载订单失败'));
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, scope]);
+  }, [query]);
 
   useEffect(() => {
     void load();
@@ -92,12 +100,12 @@ export const HrMallOrderPage: React.FC = () => {
     }
   };
 
-  const handleCancel = async (row: HrMallOrder) => {
-    const reason = window.prompt('取消理由', '不需要了');
-    if (reason === null) return;
+  const handleCancel = async () => {
+    if (!cancelTarget) return;
     try {
-      await cancelOrder(row.id, reason || undefined);
+      await cancelOrder(cancelTarget.id, cancelReason.trim() || undefined);
       toast.success('已取消,积分与库存已退回');
+      setCancelTarget(null);
       void load();
     } catch (error) {
       toast.error(getErrorMessage(error, '取消失败'));
@@ -114,42 +122,59 @@ export const HrMallOrderPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">兑换订单</div>
-          <div className="mt-1 text-xs text-slate-500">订单状态机 · 发货 · 确认收货 · 取消退回</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-32">
-            <Label className="text-xs text-slate-500">视图</Label>
-            <Select value={scope} onValueChange={(v) => setScope(v as 'all' | 'mine')}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部</SelectItem>
-                <SelectItem value="mine">我的</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-36">
-            <Label className="text-xs text-slate-500">状态</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部</SelectItem>
-                {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button variant="outline" onClick={() => void load()} disabled={loading}>刷新</Button>
-        </div>
-      </div>
+  const hasFilters = Boolean(query.orderNo || query.status || query.scope !== 'all');
 
-      <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
+  const filters = (
+    <FilterBar
+      search={{
+        value: query.orderNo,
+        onChange: (value) => setQuery((q) => ({ ...q, orderNo: value })),
+        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
+        placeholder: '搜索订单号',
+        widthClassName: 'w-full sm:w-[200px]',
+      }}
+      filters={[
+        <div key="scope" className="w-full sm:w-32">
+          <Select value={query.scope} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, scope: v as 'all' | 'mine' }))}>
+            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部</SelectItem>
+              <SelectItem value="mine">我的</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>,
+        <div key="status" className="w-full sm:w-36">
+          <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
+            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">全部状态</SelectItem>
+              {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>,
+      ]}
+      stats={[{ label: '', value: `共 ${total} 条` }]}
+      actions={[
+        ...(hasFilters
+          ? [
+              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, orderNo: '', status: '', scope: 'all' }))}>
+                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
+              </Button>,
+            ]
+          : []),
+        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+        </Button>,
+      ]}
+    />
+  );
+
+  const table = (
+    <TableSurfaceCard>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1080px]">
+          <TableHeader className="sticky top-0 z-10">
+            <tr>
               <TableHead>订单号</TableHead>
               <TableHead>员工 ID</TableHead>
               <TableHead>积分</TableHead>
@@ -157,47 +182,68 @@ export const HrMallOrderPage: React.FC = () => {
               <TableHead>收件人</TableHead>
               <TableHead>物流号</TableHead>
               <TableHead>下单时间</TableHead>
-              <TableHead>操作</TableHead>
-            </TableRow>
+              <TableActionHead className="text-right">操作</TableActionHead>
+            </tr>
           </TableHeader>
-          <TableBody>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="py-6 text-center text-sm text-slate-400">加载中…</TableCell></TableRow>
+              <tr>
+                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">
+                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                </td>
+              </tr>
             ) : rows.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="py-6 text-center text-sm text-slate-400">暂无订单</TableCell></TableRow>
+              <tr>
+                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">暂无订单</td>
+              </tr>
             ) : (
               rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-mono text-xs">
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 font-mono text-xs">
                     <button type="button" onClick={() => void openDetail(row)} className="text-sky-600 hover:underline">
                       {row.orderNo}
                     </button>
-                  </TableCell>
-                  <TableCell>{row.employeeId}</TableCell>
-                  <TableCell>{Number(row.totalPoints ?? 0).toLocaleString()}</TableCell>
-                  <TableCell>{enumLabel(statusLabel, row.status)}</TableCell>
-                  <TableCell className="text-xs">{row.receiverName ?? '-'}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.expressNo ?? '-'}</TableCell>
-                  <TableCell className="text-xs">{formatDateTimeValue(row.createTime)}</TableCell>
-                  <TableCell className="space-x-2 text-xs">
-                    {hasWorkflowStatus(row.status, 'APPROVED') && (
-                      <Button size="sm" onClick={() => setShipOpen(row)}>发货</Button>
-                    )}
-                    {hasWorkflowStatus(row.status, 'SHIPPED') && scope === 'mine' && (
-                      <Button size="sm" onClick={() => void handleComplete(row)}>确认收货</Button>
-                    )}
-                    {hasWorkflowStatus(row.status, 'PENDING', 'APPROVED') && (
-                      <Button size="sm" variant="outline" onClick={() => void handleCancel(row)}>取消</Button>
-                    )}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                  <td className="px-4 py-3 text-sm">{row.employeeId}</td>
+                  <td className="px-4 py-3 text-sm">{Number(row.totalPoints ?? 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-xs">{row.receiverName ?? '-'}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{row.expressNo ?? '-'}</td>
+                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.createTime)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        { key: 'detail', label: '详情', semantic: 'view', onClick: () => void openDetail(row) },
+                        { key: 'ship', label: '发货', semantic: 'submit', onClick: () => setShipOpen(row), hidden: !hasWorkflowStatus(row.status, 'APPROVED') },
+                        { key: 'complete', label: '确认收货', semantic: 'confirm', onClick: () => void handleComplete(row), hidden: !(hasWorkflowStatus(row.status, 'SHIPPED') && query.scope === 'mine') },
+                        { key: 'cancel', label: '取消', semantic: 'void', onClick: () => { setCancelTarget(row); setCancelReason('不需要了'); }, hidden: !hasWorkflowStatus(row.status, 'PENDING', 'APPROVED') },
+                      ]}
+                    />
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
-      </TableSurfaceCard>
+          </tbody>
+        </table>
+      </div>
+    </TableSurfaceCard>
+  );
 
-      {/* 订单详情 */}
+  const pagination = total > 0 ? (
+    <Pagination
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      total={total}
+      onPageChange={(pageNum) => setQuery((q) => ({ ...q, pageNum }))}
+      onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, pageSize, pageNum: 1 }))}
+    />
+  ) : null;
+
+  return (
+    <div className="space-y-4">
+      <TablePageLayout filters={filters} table={table} pagination={pagination} />
+
       {detail && (
         <BaseDialog
           open={Boolean(detail)}
@@ -225,32 +271,33 @@ export const HrMallOrderPage: React.FC = () => {
             </div>
             <div>
               <div className="mb-2 font-semibold">商品明细</div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>商品</TableHead>
-                    <TableHead>单价</TableHead>
-                    <TableHead>数量</TableHead>
-                    <TableHead>小计</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(detail.items ?? []).map((it, idx) => (
-                    <TableRow key={String(it.id ?? idx)}>
-                      <TableCell>{it.itemName}</TableCell>
-                      <TableCell>{it.pointPrice}</TableCell>
-                      <TableCell>{it.quantity}</TableCell>
-                      <TableCell>{it.subtotal ?? (Number(it.pointPrice ?? 0) * Number(it.quantity ?? 0))}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px]">
+                  <TableHeader>
+                    <tr>
+                      <TableHead>商品</TableHead>
+                      <TableHead>单价</TableHead>
+                      <TableHead>数量</TableHead>
+                      <TableHead>小计</TableHead>
+                    </tr>
+                  </TableHeader>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {(detail.items ?? []).map((it, idx) => (
+                      <tr key={String(it.id ?? idx)}>
+                        <td className="px-4 py-2 text-sm">{it.itemName}</td>
+                        <td className="px-4 py-2 text-sm">{it.pointPrice}</td>
+                        <td className="px-4 py-2 text-sm">{it.quantity}</td>
+                        <td className="px-4 py-2 text-sm">{it.subtotal ?? (Number(it.pointPrice ?? 0) * Number(it.quantity ?? 0))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </BaseDialog>
       )}
 
-      {/* 发货录入 */}
       {shipOpen && (
         <BaseDialog
           open={Boolean(shipOpen)}
@@ -275,6 +322,24 @@ export const HrMallOrderPage: React.FC = () => {
           </div>
         </BaseDialog>
       )}
+
+      <BaseDialog
+        open={cancelTarget !== null}
+        title={`取消订单 · ${cancelTarget?.orderNo ?? ''}`}
+        onClose={() => setCancelTarget(null)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCancelTarget(null)}>关闭</Button>
+            <Button onClick={() => void handleCancel()}>确认取消</Button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <div className="text-xs text-slate-500">取消后积分与库存将自动退回。</div>
+          <Label>取消理由</Label>
+          <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="请输入取消理由" />
+        </div>
+      </BaseDialog>
     </div>
   );
 };

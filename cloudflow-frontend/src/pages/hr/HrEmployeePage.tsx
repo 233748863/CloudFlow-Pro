@@ -1,15 +1,14 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
-  Edit3,
   Plus,
   RefreshCcw,
-  Search,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import {
   Button,
   DatePicker,
@@ -29,6 +28,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableRowActions,
 } from '@/components/common';
 import { DictBadge } from '@/components/common/DictBadge';
 import { DictSelect } from '@/components/common/DictSelect';
@@ -320,60 +320,54 @@ export const HrEmployeePage: React.FC = () => {
       <TablePageLayout
         className="gap-4"
         filters={(
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-1 flex-wrap items-center gap-3">
-                <div className="relative w-full xl:w-80">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                  <Input
-                    className="pl-10"
-                    placeholder="按姓名、工号、部门、岗位搜索"
-                    value={keyword}
-                    onChange={(event) => setKeyword(event.target.value)}
-                  />
-                </div>
-
-                <div className="w-full sm:w-40">
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="员工状态" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">全部状态</SelectItem>
-                      {employeeStatusDict.data?.map((item) => (
-                        <SelectItem key={item.value} value={item.value} label={item.label}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {hasActiveFilters ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setKeyword('');
-                      setStatus('ALL');
-                    }}
-                  >
-                    重置
-                  </Button>
-                ) : null}
-                <Button variant="outline" size="sm" onClick={() => void loadData(selectedEmployeeId ?? undefined)}>
-                  <RefreshCcw size={14} className={cn('mr-1.5', loading && 'animate-spin')} />
-                  刷新
-                </Button>
-                <Button size="sm" onClick={handleCreate}>
-                  <Plus size={14} className="mr-1.5" />
-                  新建员工
-                </Button>
-              </div>
-            </div>
-          </div>
+          <FilterBar
+            search={{
+              value: keyword,
+              onChange: setKeyword,
+              placeholder: '按姓名、工号、部门、岗位搜索',
+              widthClassName: 'w-full xl:w-80',
+            }}
+            filters={[
+              <div key="status" className="w-full sm:w-40">
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="员工状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">全部状态</SelectItem>
+                    {employeeStatusDict.data?.map((item) => (
+                      <SelectItem key={item.value} value={item.value} label={item.label}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>,
+            ]}
+            actions={[
+              ...(hasActiveFilters ? [
+                <Button
+                  key="reset"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setKeyword('');
+                    setStatus('ALL');
+                  }}
+                >
+                  重置
+                </Button>,
+              ] : []),
+              <Button key="refresh" variant="outline" size="sm" onClick={() => void loadData(selectedEmployeeId ?? undefined)}>
+                <RefreshCcw size={14} className={cn('mr-1.5', loading && 'animate-spin')} />
+                刷新
+              </Button>,
+              <Button key="create" size="sm" onClick={handleCreate}>
+                <Plus size={14} className="mr-1.5" />
+                新建员工
+              </Button>,
+            ]}
+          />
         )}
         table={(<TableSurfaceCard>
           <div className="grid h-full min-h-[720px] xl:grid-cols-[minmax(0,1.3fr)_minmax(400px,0.94fr)]">
@@ -463,30 +457,13 @@ export const HrEmployeePage: React.FC = () => {
                               </TableCell>
                               <TableCell className="whitespace-nowrap">{toDateInputValue(item.hireDate) || '-'}</TableCell>
                               <TableCell className="text-right">
-                                <div className="flex justify-end gap-2 whitespace-nowrap">
-                                  <Button
-                                    size="sm"
-                                    variant={active ? 'default' : 'outline'}
-                                    className="h-8"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      setSelectedEmployeeId(item.id);
-                                    }}
-                                  >
-                                    详情
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      void handleEdit(item.id);
-                                    }}
-                                  >
-                                    <Edit3 size={14} className="mr-1.5" />
-                                    编辑
-                                  </Button>
+                                <div onClick={(event) => event.stopPropagation()}>
+                                  <TableRowActions
+                                    actions={[
+                                      { key: 'detail', semantic: 'view', label: '详情', onClick: () => setSelectedEmployeeId(item.id) },
+                                      { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => void handleEdit(item.id) },
+                                    ]}
+                                  />
                                 </div>
                               </TableCell>
                             </TableRow>

@@ -1,24 +1,27 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Download, FileBadge, Plus, RefreshCcw, XCircle } from 'lucide-react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
+import { FileBadge, LoaderCircle, Plus, RefreshCcw, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  BaseDialog,
   Button,
+  ConfirmDialog,
   Input,
   Label,
+  Pagination,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
+  TableActionHead,
   TableHead,
   TableHeader,
-  TableRow,
 } from '@/components/common';
+import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { BaseDialog } from '@/components/common/BaseDialog';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrCertificateRequest,
@@ -38,6 +41,15 @@ const certificateTypeLabel: Record<string, string> = {
   CUSTOM: '其他',
 };
 
+const certificateStatusLabel: Record<string, string> = {
+  DRAFT: '草稿',
+  PENDING: '待审批',
+  APPROVING: '审批中',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
+  ISSUED: '已开具',
+  CANCELLED: '已取消',
+};
 
 const defaultForm: HrCertificateRequestPayload = {
   certificateType: 'EMPLOYMENT',
@@ -50,22 +62,30 @@ const defaultForm: HrCertificateRequestPayload = {
 
 export const HrEssCertificatePage: React.FC = () => {
   const [rows, setRows] = useState<HrCertificateRequest[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState({ keyword: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<HrCertificateRequestPayload>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingCancel, setPendingCancel] = useState<HrCertificateRequest | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listCertificateRequests({ pageSize: 200 });
+      const params: Record<string, string | number> = { pageNum: query.pageNum, pageSize: query.pageSize };
+      if (query.keyword) params.keyword = query.keyword;
+      if (query.status) params.status = query.status;
+      const res = await listCertificateRequests(params);
       setRows(normalizeRows<HrCertificateRequest>(res));
+      setTotal(res?.total ?? 0);
     } catch (error) {
       toast.error(getErrorMessage(error, '证明记录加载失败'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [query]);
 
   useEffect(() => {
     void load();
@@ -90,10 +110,12 @@ export const HrEssCertificatePage: React.FC = () => {
     }
   };
 
-  const handleCancel = async (id: number) => {
+  const handleCancel = async () => {
+    if (!pendingCancel) return;
     try {
-      await cancelCertificateRequest(id);
+      await cancelCertificateRequest(pendingCancel.id);
       toast.success('已取消');
+      setPendingCancel(null);
       await load();
     } catch (error) {
       toast.error(getErrorMessage(error, '取消失败'));
@@ -116,71 +138,115 @@ export const HrEssCertificatePage: React.FC = () => {
     }
   };
 
+  const hasFilters = Boolean(query.keyword || query.status);
+
+  const filters = (
+    <FilterBar
+      search={{
+        value: query.keyword,
+        onChange: (value) => setQuery((q) => ({ ...q, keyword: value })),
+        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
+        placeholder: '搜索申请号/用途',
+        widthClassName: 'w-full sm:w-[220px]',
+      }}
+      filters={[
+        <div key="status" className="w-full sm:w-40">
+          <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
+            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">全部状态</SelectItem>
+              {Object.entries(certificateStatusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>,
+      ]}
+      stats={[{ label: '', value: `共 ${total} 条` }]}
+      actions={[
+        ...(hasFilters
+          ? [
+              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, keyword: '', status: '' }))}>
+                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
+              </Button>,
+            ]
+          : []),
+        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+        </Button>,
+        <Button key="add" size="sm" onClick={() => { setForm(defaultForm); setDialogOpen(true); }}>
+          <Plus className="mr-1.5 h-4 w-4" />申请证明
+        </Button>,
+      ]}
+    />
+  );
+
+  const table = (
+    <TableSurfaceCard>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1000px]">
+          <TableHeader className="sticky top-0 z-10">
+            <tr>
+              <TableHead>申请号</TableHead>
+              <TableHead>类型</TableHead>
+              <TableHead>用途</TableHead>
+              <TableHead>接收单位</TableHead>
+              <TableHead>份数</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead>开具时间</TableHead>
+              <TableActionHead className="text-right">操作</TableActionHead>
+            </tr>
+          </TableHeader>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">
+                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">暂无申请</td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 font-mono text-xs">{row.requestNo}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(certificateTypeLabel, row.certificateType)}</td>
+                  <td className="px-4 py-3 text-sm">{row.purpose || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.recipientOrg || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.copies ?? 1}</td>
+                  <td className="px-4 py-3 text-sm">{getCertificateStatusLabel(row.status)}</td>
+                  <td className="px-4 py-3 text-sm">{formatDateTimeValue(row.issuedAt)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        { key: 'download', label: '下载', semantic: 'view', onClick: () => void handleDownload(row), hidden: !(row.status === 'ISSUED' && row.pdfFileId) },
+                        { key: 'cancel', label: '取消', semantic: 'void', onClick: () => setPendingCancel(row), hidden: !hasWorkflowStatus(row.status, 'DRAFT', 'PENDING', 'APPROVING') },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </TableSurfaceCard>
+  );
+
+  const pagination = total > 0 ? (
+    <Pagination
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      total={total}
+      onPageChange={(pageNum) => setQuery((q) => ({ ...q, pageNum }))}
+      onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, pageSize, pageNum: 1 }))}
+    />
+  ) : null;
+
   return (
-    <div className="p-6">
-      <TablePageLayout
-        actions={
-          <div className="flex items-center gap-2">
-            <Button onClick={() => { setForm(defaultForm); setDialogOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" />申请证明
-            </Button>
-            <Button variant="outline" onClick={() => void load()} disabled={loading}>
-              <RefreshCcw className="mr-2 h-4 w-4" />刷新
-            </Button>
-          </div>
-        }
-        table={
-          <TableSurfaceCard>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>申请号</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>用途</TableHead>
-                  <TableHead>接收单位</TableHead>
-                  <TableHead>份数</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>开具时间</TableHead>
-                  <TableHead>操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={8} className="py-10 text-center text-sm text-slate-400">加载中...</TableCell></TableRow>
-                ) : rows.length ? (
-                  rows.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="font-mono text-xs">{row.requestNo}</TableCell>
-                      <TableCell>{enumLabel(certificateTypeLabel, row.certificateType)}</TableCell>
-                      <TableCell>{row.purpose || '-'}</TableCell>
-                      <TableCell>{row.recipientOrg || '-'}</TableCell>
-                      <TableCell>{row.copies ?? 1}</TableCell>
-                      <TableCell>{getCertificateStatusLabel(row.status)}</TableCell>
-                      <TableCell>{formatDateTimeValue(row.issuedAt)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {row.status === 'ISSUED' && row.pdfFileId ? (
-                            <Button size="sm" variant="ghost" onClick={() => void handleDownload(row)}>
-                              <Download className="mr-1 h-3 w-3" />下载
-                            </Button>
-                          ) : null}
-                          {hasWorkflowStatus(row.status, 'DRAFT', 'PENDING', 'APPROVING') ? (
-                            <Button size="sm" variant="ghost" onClick={() => void handleCancel(row.id)}>
-                              <XCircle className="mr-1 h-3 w-3" />取消
-                            </Button>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow><TableCell colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无申请</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableSurfaceCard>
-        }
-      />
+    <div className="space-y-4">
+      <TablePageLayout filters={filters} table={table} pagination={pagination} />
 
       <BaseDialog
         open={dialogOpen}
@@ -241,6 +307,15 @@ export const HrEssCertificatePage: React.FC = () => {
           </div>
         </div>
       </BaseDialog>
+
+      <ConfirmDialog
+        open={!!pendingCancel}
+        title="取消证明申请"
+        message={`确认取消申请「${pendingCancel?.requestNo}」？取消后流程将终止。`}
+        danger
+        onCancel={() => setPendingCancel(null)}
+        onConfirm={handleCancel}
+      />
     </div>
   );
 };

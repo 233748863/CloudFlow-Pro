@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, DatePicker, DeptSelector, EmployeeSelector } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import {
   Button,
   Input,
@@ -31,6 +32,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Textarea,
 } from '@/components/common';
 import { StatCard } from '@/components/common/StatCard';
@@ -1420,105 +1424,92 @@ export const HrPerformancePage: React.FC = () => {
     <>
       <TablePageLayout
         className="animate-fade-in"
-        actions={
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {metricItems.map((item) => (
-              <StatCard
-                key={item.title}
-                title={item.title}
-                value={item.value}
-                icon={item.icon}
-                iconVariant={item.iconVariant}
-                meta={item.meta}
-              />
-            ))}
-          </div>
-        }
         filters={
-          <div className="card p-4">
-            <div className="space-y-4">
-              <div className="flex flex-wrap-reverse items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-                  <div className="relative w-full min-w-[240px] sm:w-80">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      className="pl-10"
-                      value={keyword}
-                      onChange={(event) => setKeyword(event.target.value)}
-                      placeholder="搜索目标编号、周期或名称"
-                    />
-                  </div>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="状态" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_STATUS}>全部状态</SelectItem>
-                      <SelectItem value="DRAFT">草稿</SelectItem>
-                      <SelectItem value="PLAN_APPROVING">计划审批中</SelectItem>
-                      <SelectItem value="PLAN_APPROVED">执行中</SelectItem>
-                      <SelectItem value="RESULT_APPROVING">结果审批中</SelectItem>
-                      <SelectItem value="COMPLETED">已归档</SelectItem>
-                      <SelectItem value="REJECTED">已驳回</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" onClick={() => void loadList()}>
-                    <Search className="h-4 w-4" />
-                    查询
-                  </Button>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="outline" onClick={() => void loadList()} disabled={loading}>
-                    <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
-                    刷新
-                  </Button>
-                  <Button onClick={() => setCreateOpen(true)}>
-                    <FilePlus2 className="h-4 w-4" />
-                    新建绩效目标
-                  </Button>
-                  <Button variant="soft" onClick={() => setShow360Panel(true)} disabled={!currentObjective}>
-                    360 度评估
-                  </Button>
-                  <Button variant="soft" onClick={() => setShowDistributionPanel(true)} disabled={!currentObjective}>
-                    强制分布
-                  </Button>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="cf-tabs overflow-x-auto">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {metricItems.map((item) => (
+                <StatCard
+                  key={item.title}
+                  title={item.title}
+                  value={item.value}
+                  icon={item.icon}
+                  iconVariant={item.iconVariant}
+                  meta={item.meta}
+                />
+              ))}
+            </div>
+            <FilterBar
+              search={{
+                value: keyword,
+                onChange: setKeyword,
+                onSubmit: () => void loadList(),
+                placeholder: '搜索目标编号、周期或名称',
+                widthClassName: 'w-full sm:w-80',
+              }}
+              filters={[
+                <Select key="status" value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_STATUS}>全部状态</SelectItem>
+                    <SelectItem value="DRAFT">草稿</SelectItem>
+                    <SelectItem value="PLAN_APPROVING">计划审批中</SelectItem>
+                    <SelectItem value="PLAN_APPROVED">执行中</SelectItem>
+                    <SelectItem value="RESULT_APPROVING">结果审批中</SelectItem>
+                    <SelectItem value="COMPLETED">已归档</SelectItem>
+                    <SelectItem value="REJECTED">已驳回</SelectItem>
+                  </SelectContent>
+                </Select>,
+              ]}
+              actions={[
+                <Button key="refresh" variant="outline" onClick={() => void loadList()} disabled={loading}>
+                  <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
+                  刷新
+                </Button>,
+                <Button key="create" onClick={() => setCreateOpen(true)}>
+                  <FilePlus2 className="h-4 w-4" />
+                  新建绩效目标
+                </Button>,
+                <Button key="360" variant="soft" onClick={() => setShow360Panel(true)} disabled={!currentObjective}>
+                  360 度评估
+                </Button>,
+                <Button key="dist" variant="soft" onClick={() => setShowDistributionPanel(true)} disabled={!currentObjective}>
+                  强制分布
+                </Button>,
+              ]}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PerformanceTab)}>
+                <TabsList className="overflow-x-auto">
                   {tabs.map((tab) => (
-                    <button
-                      key={tab.value}
-                      type="button"
-                      className={cn('cf-tab cf-tab-sm', activeTab === tab.value && 'cf-tab-active')}
-                      onClick={() => setActiveTab(tab.value)}
-                    >
+                    <TabsTrigger key={tab.value} value={tab.value} className="cf-tab-sm">
                       {tab.label}
-                    </button>
+                    </TabsTrigger>
                   ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {currentObjective ? (
-                    <>
-                      <span className={statusBadgeClass(currentObjective.status)}>{statusLabel(currentObjective.status)}</span>
-                      {['DRAFT', 'REJECTED'].includes(currentObjective.status) ? (
-                        <Button size="sm" variant="soft" onClick={() => void handleSubmitPlan()} disabled={pendingAction === 'submit-plan'}>
-                          提交计划审批
-                        </Button>
-                      ) : null}
-                      {currentObjective.status === 'PLAN_APPROVED' ? (
-                        <Button size="sm" variant="soft" onClick={() => void handleSubmitResult()} disabled={pendingAction === 'submit-result'}>
-                          提交结果审批
-                        </Button>
-                      ) : null}
-                      {['PLAN_APPROVED', 'RESULT_APPROVED'].includes(currentObjective.status) ? (
-                        <Button size="sm" variant="soft" onClick={() => setInterviewPanelOpen(true)}>
-                          录入面谈
-                        </Button>
-                      ) : null}
-                    </>
-                  ) : null}
-                </div>
+                </TabsList>
+              </Tabs>
+              <div className="flex flex-wrap items-center gap-2">
+                {currentObjective ? (
+                  <>
+                    <span className={statusBadgeClass(currentObjective.status)}>{statusLabel(currentObjective.status)}</span>
+                    {['DRAFT', 'REJECTED'].includes(currentObjective.status) ? (
+                      <Button size="sm" variant="soft" onClick={() => void handleSubmitPlan()} disabled={pendingAction === 'submit-plan'}>
+                        提交计划审批
+                      </Button>
+                    ) : null}
+                    {currentObjective.status === 'PLAN_APPROVED' ? (
+                      <Button size="sm" variant="soft" onClick={() => void handleSubmitResult()} disabled={pendingAction === 'submit-result'}>
+                        提交结果审批
+                      </Button>
+                    ) : null}
+                    {['PLAN_APPROVED', 'RESULT_APPROVED'].includes(currentObjective.status) ? (
+                      <Button size="sm" variant="soft" onClick={() => setInterviewPanelOpen(true)}>
+                        录入面谈
+                      </Button>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
             </div>
           </div>

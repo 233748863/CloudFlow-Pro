@@ -89,7 +89,7 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
 
   return (
     <div className="card p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
         <div className="text-base font-semibold">招聘渠道维护</div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => void loadData()} disabled={loading}>

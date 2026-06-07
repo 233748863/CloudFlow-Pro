@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Plus, RefreshCcw, XCircle } from 'lucide-react';
+import { Plus, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -10,18 +10,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRowActions,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/common';
 import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -112,67 +110,61 @@ const EnrollmentList: React.FC<{ mine: boolean }> = ({ mine }) => {
   const registeringSessions = sessions.filter((s) => s.status === 'REGISTERING');
 
   return (
-    <>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="text-sm text-slate-500">{mine ? '我的报名记录' : '全员报名记录'}</div>
-        <div className="flex gap-2">
-          {mine ? (
-            <Button size="sm" onClick={() => setOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />我要报名
-            </Button>
-          ) : null}
-          <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
-            <RefreshCcw className="mr-1 h-3 w-3" />刷新
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <FilterBar
+        stats={[{ label: '', value: `共 ${rows.length} 条` }]}
+        actions={[
+          <Button key="refresh" size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
+            <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+          </Button>,
+          ...(mine ? [
+            <Button key="enroll" size="sm" onClick={() => setOpen(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />我要报名
+            </Button>,
+          ] : []),
+        ]}
+      />
       <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>班次</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>签到时间</TableHead>
-              <TableHead>结业状态</TableHead>
-              <TableHead>分数</TableHead>
-              <TableHead>操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-slate-400">加载中...</TableCell></TableRow>
-            ) : rows.length ? rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>{`班次#${row.sessionId}`}</TableCell>
-                <TableCell>{row.enrollType === 'SELF' ? '自报' : '指派'}</TableCell>
-                <TableCell>{enumLabel(enrollStatusLabel, row.status)}</TableCell>
-                <TableCell>{formatDateTimeValue(row.checkInTime)}</TableCell>
-                <TableCell>{enumLabel(completionLabel, row.completionStatus)}</TableCell>
-                <TableCell>{row.score ?? '-'}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-2">
-                    {row.status === 'APPROVED' && !row.checkInTime ? (
-                      <Button size="sm" variant="outline" onClick={() => void handleCheckIn(row.id)}>
-                        <CheckCircle2 className="mr-1 h-3 w-3" />签到
-                      </Button>
-                    ) : null}
-                    {row.status === 'APPROVED' && row.checkInTime && row.completionStatus !== 'PASSED' ? (
-                      <Button size="sm" variant="outline" onClick={() => void handleComplete(row.id)}>完成</Button>
-                    ) : null}
-                    {row.status === 'PENDING' || row.status === 'APPROVED' ? (
-                      <Button size="sm" variant="ghost" onClick={() => void handleCancel(row.id)}>
-                        <XCircle className="mr-1 h-3 w-3" />取消
-                      </Button>
-                    ) : null}
-                  </div>
-                </TableCell>
-              </TableRow>
-            )) : (
-              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无记录</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[840px]">
+            <TableHeader className="sticky top-0 z-10">
+              <tr>
+                <TableHead>班次</TableHead>
+                <TableHead>类型</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead>签到时间</TableHead>
+                <TableHead>结业状态</TableHead>
+                <TableHead>分数</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {loading ? (
+                <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
+              ) : rows.length ? rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 text-sm">{`班次#${row.sessionId}`}</td>
+                  <td className="px-4 py-3 text-sm">{row.enrollType === 'SELF' ? '自报' : '指派'}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(enrollStatusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.checkInTime)}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(completionLabel, row.completionStatus)}</td>
+                  <td className="px-4 py-3 text-sm">{row.score ?? '-'}</td>
+                  <td className="px-4 py-3">
+                    <TableRowActions
+                      actions={[
+                        { key: 'checkin', semantic: 'confirm', label: '签到', onClick: () => void handleCheckIn(row.id), hidden: !(row.status === 'APPROVED' && !row.checkInTime) },
+                        { key: 'complete', semantic: 'confirm', label: '完成', onClick: () => void handleComplete(row.id), hidden: !(row.status === 'APPROVED' && row.checkInTime && row.completionStatus !== 'PASSED') },
+                        { key: 'cancel', semantic: 'void', label: '取消', onClick: () => void handleCancel(row.id), hidden: !(row.status === 'PENDING' || row.status === 'APPROVED') },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              )) : (
+                <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无记录</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </TableSurfaceCard>
 
       <BaseDialog open={open} title="我要报名" onClose={() => setOpen(false)}
@@ -194,17 +186,16 @@ const EnrollmentList: React.FC<{ mine: boolean }> = ({ mine }) => {
           <div><Label>备注</Label><Input value={comment} onChange={(e) => setComment(e.target.value)} /></div>
         </div>
       </BaseDialog>
-    </>
+    </div>
   );
 };
 
 export const HrTrainingEnrollmentPage: React.FC = () => (
-  <div className="p-6">
-    <div className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-50">培训报名</div>
-    <Tabs defaultValue="mine">
-      <TabsList>
-        <TabsTrigger value="mine">我的报名</TabsTrigger>
-        <TabsTrigger value="all">全员报名</TabsTrigger>
+  <div className="space-y-4">
+    <Tabs defaultValue="mine" className="space-y-4">
+      <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
+        <TabsTrigger value="mine" className="flex-1 lg:flex-none">我的报名</TabsTrigger>
+        <TabsTrigger value="all" className="flex-1 lg:flex-none">全员报名</TabsTrigger>
       </TabsList>
       <TabsContent value="mine"><EnrollmentList mine /></TabsContent>
       <TabsContent value="all"><EnrollmentList mine={false} /></TabsContent>

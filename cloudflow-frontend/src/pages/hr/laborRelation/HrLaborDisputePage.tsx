@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Plus, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  BaseDialog,
   Button,
+  ConfirmDialog,
   EmployeeSelector,
   Input,
   Label,
@@ -10,16 +13,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRowActions,
   Textarea,
 } from '@/components/common';
-import { BaseDialog } from '@/components/common/BaseDialog';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   closeDispute,
@@ -36,6 +36,7 @@ import {
   type HrLaborDisputePayload,
 } from '@/services/api/hr';
 import { enumLabel, formatDateTimeValue, formatMoneyValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
+import { StageTimeline } from '../components/StageTimeline';
 
 const statusFlow = ['REGISTERED', 'MEDIATING', 'MEDIATED', 'ARBITRATING', 'AWARDED', 'EXECUTED', 'CLOSED'];
 
@@ -75,27 +76,6 @@ const emptyForm: Partial<HrLaborDisputePayload> = {
   status: 'REGISTERED',
 };
 
-const DisputeTimeline: React.FC<{ current?: string }> = ({ current }) => {
-  const currentIdx = statusFlow.indexOf(String(current ?? '').toUpperCase());
-  return (
-    <div className="flex flex-wrap items-center gap-1 py-1">
-      {statusFlow.map((s, idx) => {
-        const reached = currentIdx >= idx;
-        return (
-          <React.Fragment key={s}>
-            <div className={`rounded-full px-2 py-0.5 text-[10px] ${reached ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
-              {statusLabel[s]}
-            </div>
-            {idx < statusFlow.length - 1 && (
-              <div className={`h-px w-3 ${currentIdx > idx ? 'bg-sky-500' : 'bg-slate-200'}`} />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
-};
-
 export const HrLaborDisputePage: React.FC = () => {
   const [rows, setRows] = useState<HrLaborDispute[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,11 +91,13 @@ export const HrLaborDisputePage: React.FC = () => {
     fileId: undefined,
     remark: '',
   });
+  const [closeTarget, setCloseTarget] = useState<HrLaborDispute | null>(null);
+  const [closeReason, setCloseReason] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, unknown> = {};
+      const params: Record<string, string | number> = {};
       if (statusFilter !== 'all') params.status = statusFilter;
       const res = await listDisputes(params);
       setRows(normalizeRows<HrLaborDispute>(res));
@@ -169,12 +151,13 @@ export const HrLaborDisputePage: React.FC = () => {
     }
   };
 
-  const handleClose = async (row: HrLaborDispute) => {
-    const reason = window.prompt('关闭理由');
-    if (reason === null) return;
+  const handleCloseConfirm = async () => {
+    if (!closeTarget) return;
     try {
-      await closeDispute(row.id, reason || undefined);
+      await closeDispute(closeTarget.id, closeReason || undefined);
       toast.success('已关闭');
+      setCloseTarget(null);
+      setCloseReason('');
       void load();
     } catch (error) {
       toast.error(getErrorMessage(error, '关闭失败'));
@@ -204,78 +187,88 @@ export const HrLaborDisputePage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">争议台账</div>
-          <div className="mt-1 text-xs text-slate-500">登记 → 调解 → 仲裁 → 执行三段全流程</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-36">
-            <Label className="text-xs text-slate-500">状态</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部</SelectItem>
-                {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button variant="outline" onClick={() => void load()} disabled={loading}>刷新</Button>
-          <Button onClick={openCreate}>登记争议</Button>
-        </div>
-      </div>
+  const filters = (
+    <FilterBar
+      filters={[
+        <div key="status" className="w-full sm:w-40">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部状态</SelectItem>
+              {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>,
+      ]}
+      stats={[{ label: '', value: `共 ${rows.length} 条` }]}
+      actions={[
+        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+        </Button>,
+        <Button key="add" size="sm" onClick={openCreate}>
+          <Plus className="mr-1.5 h-4 w-4" />登记争议
+        </Button>,
+      ]}
+    />
+  );
 
-      <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
+  const table = (
+    <TableSurfaceCard>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[920px]">
+          <TableHeader className="sticky top-0 z-10">
+            <tr>
               <TableHead>编号</TableHead>
               <TableHead>申请人</TableHead>
               <TableHead>争议类型</TableHead>
               <TableHead>诉求金额</TableHead>
               <TableHead>当前阶段</TableHead>
               <TableHead>登记时间</TableHead>
-              <TableHead>操作</TableHead>
-            </TableRow>
+              <TableHead className="text-right">操作</TableHead>
+            </tr>
           </TableHeader>
-          <TableBody>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {loading ? (
-              <TableRow><TableCell colSpan={7} className="py-6 text-center text-sm text-slate-400">加载中…</TableCell></TableRow>
+              <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
             ) : rows.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="py-6 text-center text-sm text-slate-400">暂无争议</TableCell></TableRow>
+              <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无争议</td></tr>
             ) : (
               rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-mono text-xs">
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 font-mono text-xs">
                     <button type="button" onClick={() => void openDetail(row)} className="text-sky-600 hover:underline">
                       {row.disputeNo}
                     </button>
-                  </TableCell>
-                  <TableCell className="text-xs">
+                  </td>
+                  <td className="px-4 py-3 text-xs">
                     {row.applicantEmployeeId ? `员工 #${row.applicantEmployeeId}` : `${row.applicantExternalName ?? '-'} ${row.applicantExternalPhone ?? ''}`}
-                  </TableCell>
-                  <TableCell>{enumLabel(disputeTypeLabel, row.disputeType)}</TableCell>
-                  <TableCell>{formatMoneyValue(row.claimAmount)}</TableCell>
-                  <TableCell><DisputeTimeline current={row.status} /></TableCell>
-                  <TableCell className="text-xs">{formatDateTimeValue(row.openedAt ?? row.createTime)}</TableCell>
-                  <TableCell className="space-x-2 text-xs">
-                    {hasWorkflowStatus(row.status, 'REGISTERED', 'MEDIATED') && (
-                      <Button size="sm" onClick={() => void handleSubmit(row)}>发起处理</Button>
-                    )}
-                    <Button size="sm" variant="outline" onClick={() => openEdit(row)}>编辑</Button>
-                    <Button size="sm" variant="outline" onClick={() => setEvidenceOpen(row)}>上传证据</Button>
-                    {!hasWorkflowStatus(row.status, 'CLOSED') && (
-                      <Button size="sm" variant="outline" onClick={() => void handleClose(row)}>关闭</Button>
-                    )}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(disputeTypeLabel, row.disputeType)}</td>
+                  <td className="px-4 py-3 text-sm">{formatMoneyValue(row.claimAmount)}</td>
+                  <td className="px-4 py-3"><StageTimeline steps={statusFlow} labels={statusLabel} current={row.status} tone="sky" /></td>
+                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.openedAt ?? row.createTime)}</td>
+                  <td className="px-4 py-3">
+                    <TableRowActions
+                      actions={[
+                        { key: 'submit', semantic: 'process', label: '发起处理', onClick: () => void handleSubmit(row), hidden: !hasWorkflowStatus(row.status, 'REGISTERED', 'MEDIATED') },
+                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => openEdit(row) },
+                        { key: 'evidence', semantic: 'bind', label: '上传证据', onClick: () => setEvidenceOpen(row) },
+                        { key: 'close', semantic: 'void', label: '关闭', onClick: () => { setCloseTarget(row); setCloseReason(''); }, hidden: hasWorkflowStatus(row.status, 'CLOSED') },
+                      ]}
+                    />
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
-      </TableSurfaceCard>
+          </tbody>
+        </table>
+      </div>
+    </TableSurfaceCard>
+  );
+
+  return (
+    <div className="space-y-4">
+      <TablePageLayout filters={filters} table={table} />
 
       <BaseDialog
         open={open}
@@ -323,6 +316,21 @@ export const HrLaborDisputePage: React.FC = () => {
         </div>
       </BaseDialog>
 
+      <ConfirmDialog
+        open={Boolean(closeTarget)}
+        title="关闭争议"
+        message={closeTarget ? `确认关闭 ${closeTarget.disputeNo}?可填写关闭理由。` : ''}
+        danger
+        confirmText="确认关闭"
+        onCancel={() => { setCloseTarget(null); setCloseReason(''); }}
+        onConfirm={() => void handleCloseConfirm()}
+      >
+        <div>
+          <Label>关闭理由(可选)</Label>
+          <Textarea rows={3} value={closeReason} onChange={(e) => setCloseReason(e.target.value)} placeholder="填写关闭理由" />
+        </div>
+      </ConfirmDialog>
+
       {detail && (
         <BaseDialog
           open={Boolean(detail)}
@@ -332,7 +340,7 @@ export const HrLaborDisputePage: React.FC = () => {
           footer={<div className="flex justify-end"><Button variant="outline" onClick={() => { setDetail(null); setEvidence([]); }}>关闭</Button></div>}
         >
           <div className="space-y-4 text-sm">
-            <DisputeTimeline current={detail.status} />
+            <StageTimeline steps={statusFlow} labels={statusLabel} current={detail.status} tone="sky" />
             <div className="grid grid-cols-2 gap-3">
               <div><span className="text-slate-500">申请人:</span> {detail.applicantEmployeeId ? `员工 #${detail.applicantEmployeeId}` : `${detail.applicantExternalName ?? '-'} ${detail.applicantExternalPhone ?? ''}`}</div>
               <div><span className="text-slate-500">类型:</span> {enumLabel(disputeTypeLabel, detail.disputeType)}</div>
@@ -349,30 +357,32 @@ export const HrLaborDisputePage: React.FC = () => {
             )}
             <div>
               <div className="mb-2 font-semibold">证据材料 · 共 {evidence.length} 份</div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>类型</TableHead>
-                    <TableHead>附件 ID</TableHead>
-                    <TableHead>上传时间</TableHead>
-                    <TableHead>备注</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {evidence.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="py-3 text-center text-xs text-slate-400">暂无证据</TableCell></TableRow>
-                  ) : (
-                    evidence.map((ev) => (
-                      <TableRow key={ev.id}>
-                        <TableCell>{enumLabel(evidenceTypeLabel, ev.evidenceType)}</TableCell>
-                        <TableCell className="font-mono text-xs">{ev.fileId ?? '-'}</TableCell>
-                        <TableCell className="text-xs">{formatDateTimeValue(ev.uploadedAt)}</TableCell>
-                        <TableCell className="max-w-[16rem] truncate text-xs">{ev.remark ?? '-'}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                <table className="w-full min-w-[480px]">
+                  <TableHeader>
+                    <tr>
+                      <TableHead>类型</TableHead>
+                      <TableHead>附件 ID</TableHead>
+                      <TableHead>上传时间</TableHead>
+                      <TableHead>备注</TableHead>
+                    </tr>
+                  </TableHeader>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {evidence.length === 0 ? (
+                      <tr><td colSpan={4} className="py-3 text-center text-xs text-slate-400">暂无证据</td></tr>
+                    ) : (
+                      evidence.map((ev) => (
+                        <tr key={ev.id}>
+                          <td className="px-4 py-2 text-sm">{enumLabel(evidenceTypeLabel, ev.evidenceType)}</td>
+                          <td className="px-4 py-2 font-mono text-xs">{ev.fileId ?? '-'}</td>
+                          <td className="px-4 py-2 text-xs">{formatDateTimeValue(ev.uploadedAt)}</td>
+                          <td className="px-4 py-2 max-w-[16rem] truncate text-xs">{ev.remark ?? '-'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </BaseDialog>

@@ -26,6 +26,7 @@ import {
   Textarea,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrTalentNineBoxGrid,
@@ -278,16 +279,10 @@ export const HrTalentNineBoxPage: React.FC = () => {
   const cellListParticipants = cellListOpen ? grid[cellListOpen] || [] : [];
 
   return (
-    <div className="p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">九宫格校准</div>
-          <div className="mt-1 text-xs text-slate-500">
-            拖拽员工跨格调整定位 · 双击员工录入潜力分与评语 · 单格满 {CELL_MAX_VISIBLE} 人后折叠展示
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-64">
+    <div className="space-y-4">
+      <FilterBar
+        filters={[
+          <div key="review" className="w-64">
             <Select value={reviewId ? String(reviewId) : ''} onValueChange={(v) => setReviewId(Number(v))}>
               <SelectTrigger>
                 <SelectValue placeholder="选择盘点活动" />
@@ -300,23 +295,22 @@ export const HrTalentNineBoxPage: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <Button variant="outline" disabled={loading || !reviewId} onClick={() => void reload()}>
-            <RefreshCcw className="mr-2 h-4 w-4" />刷新
-          </Button>
-          <Button disabled={!editable} onClick={() => void handlePublish()}>
-            <Send className="mr-2 h-4 w-4" />发起发布
-          </Button>
-        </div>
-      </div>
+          </div>,
+        ]}
+        stats={[{ label: '状态', value: currentReview ? `${enumLabel(statusLabel, currentReview.status)}${editable ? ' · 可编辑' : ' · 只读'}` : '-' }]}
+        actions={[
+          <Button key="refresh" variant="outline" size="sm" disabled={loading || !reviewId} onClick={() => void reload()}>
+            <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+          </Button>,
+          <Button key="publish" size="sm" disabled={!editable} onClick={() => void handlePublish()}>
+            <Send className="mr-1.5 h-4 w-4" />发起发布
+          </Button>,
+        ]}
+      />
 
-      <div className="mb-3 flex items-center gap-4 text-xs text-slate-500">
+      <div className="flex items-center gap-4 text-xs text-slate-500">
         <span>X 轴(横向):业绩 高 → 低</span>
         <span>Y 轴(纵向):潜力 高 → 低</span>
-        <span className="text-slate-400">
-          状态:{currentReview ? enumLabel(statusLabel, currentReview.status) : '-'} ·
-          {editable ? ' 可编辑' : ' 只读'}
-        </span>
       </div>
 
       {!reviewId ? (

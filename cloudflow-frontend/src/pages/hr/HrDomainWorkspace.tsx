@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Plus, RefreshCcw } from 'lucide-react';
 import {
   BaseDialog,
@@ -8,6 +8,7 @@ import {
   EmployeeSelector,
   Input,
   Label,
+  Pagination,
   PositionSelector,
   PostSelector,
   Select,
@@ -15,21 +16,20 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRowActions,
   Tabs,
   TabsList,
   TabsTrigger,
   Textarea,
+  type TableRowActionItem,
 } from '@/components/common';
+import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 import { HrRecord } from '@/services/api/hr';
 import { HR_CITY_OPTIONS } from './hrShared';
-import { HrStatusPill, HrTableStateRow } from './hrReference';
+import { HrStatusPill } from './hrReference';
 
 export interface HrSelectOption {
   label: React.ReactNode;
@@ -72,13 +72,6 @@ export interface HrTableColumn<T extends HrRecord = HrRecord> {
   render?: (row: T) => React.ReactNode;
 }
 
-interface HrPageHeaderProps {
-  eyebrow: string;
-  title: string;
-  stats?: Array<{ label: string; value: React.ReactNode; tone?: 'default' | 'active' }>;
-  actions?: React.ReactNode;
-}
-
 interface HrCrudPanelProps<T extends HrRecord = HrRecord> {
   title: string;
   rows: T[];
@@ -92,9 +85,12 @@ interface HrCrudPanelProps<T extends HrRecord = HrRecord> {
   formFields?: HrFormField[];
   onCreate?: (form: HrRecord) => Promise<void> | void;
   resetForm?: () => HrRecord;
-  actions?: (row: T) => React.ReactNode;
+  /** 行操作:返回 TableRowActionItem[],由统一 TableRowActions 渲染 */
+  actions?: (row: T) => TableRowActionItem[];
   minWidthClassName?: string;
   emptyTitle?: string;
+  /** 客户端分页页大小;不传则不分页 */
+  pageSize?: number;
 }
 
 export const statusTone = (status?: string | number | null) => {
@@ -146,39 +142,6 @@ export const statusLabel = (status?: string | number | null) => {
   };
   return labels[normalized] || (status == null || status === '' ? '-' : String(status));
 };
-
-export const HrPageHeader: React.FC<HrPageHeaderProps> = ({ eyebrow, title, stats = [], actions }) => (
-  <div className="space-y-4">
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div className="min-w-0">
-        <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          {eyebrow}
-        </div>
-        <h1 className="mt-1 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          {title}
-        </h1>
-      </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-    </div>
-    {stats.length ? (
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        {stats.map((stat) => (
-          <span
-            key={stat.label}
-            className={cn(
-              'rounded-full border px-2.5 py-1 text-xs',
-              stat.tone === 'active'
-                ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
-                : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-            )}
-          >
-            {stat.label} {stat.value}
-          </span>
-        ))}
-      </div>
-    ) : null}
-  </div>
-);
 
 export const HrTabList: React.FC<{
   value: string;
@@ -273,10 +236,25 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
   actions,
   minWidthClassName = 'min-w-[840px]',
   emptyTitle,
+  pageSize,
 }: HrCrudPanelProps<T>) => {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [innerPageSize, setInnerPageSize] = useState(pageSize ?? 10);
   const canCreate = Boolean(createLabel && form && setForm && onCreate);
+  const colCount = columns.length + (actions ? 1 : 0);
+
+  const paged = Boolean(pageSize);
+  const total = rows.length;
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(total / innerPageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [total, innerPageSize, page]);
+  const visibleRows = useMemo(
+    () => (paged ? rows.slice((page - 1) * innerPageSize, page * innerPageSize) : rows),
+    [paged, rows, page, innerPageSize],
+  );
 
   const closeDialog = () => {
     setOpen(false);
@@ -297,12 +275,12 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+    <TableSurfaceCard>
       <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {loading ? '同步中' : `${rows.length} 条`}
+            {loading ? '同步中' : `${total} 条`}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -322,35 +300,51 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
       </div>
 
       <div className="overflow-x-auto">
-        <Table className={minWidthClassName}>
-          <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-            <TableRow>
+        <table className={cn('w-full', minWidthClassName)}>
+          <TableHeader className="sticky top-0 z-10">
+            <tr>
               {columns.map((column) => (
                 <TableHead key={column.key} className={column.className}>{column.label}</TableHead>
               ))}
               {actions ? <TableHead className="text-right">操作</TableHead> : null}
-            </TableRow>
+            </tr>
           </TableHeader>
-          <TableBody>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {loading ? (
-              <HrTableStateRow colSpan={columns.length + (actions ? 1 : 0)} title="正在加载..." loading />
-            ) : rows.length === 0 ? (
-              <HrTableStateRow colSpan={columns.length + (actions ? 1 : 0)} title={emptyTitle || '暂无数据'} />
+              <tr><td colSpan={colCount} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
+            ) : visibleRows.length === 0 ? (
+              <tr><td colSpan={colCount} className="py-10 text-center text-sm text-slate-400">{emptyTitle || '暂无数据'}</td></tr>
             ) : (
-              rows.map((row) => (
-                <TableRow key={String(row.id || JSON.stringify(row))}>
+              visibleRows.map((row) => (
+                <tr key={String(row.id || JSON.stringify(row))} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                   {columns.map((column) => (
-                    <TableCell key={column.key} className={column.className}>
+                    <td key={column.key} className={column.className ?? 'px-4 py-3 text-sm'}>
                       {column.render ? column.render(row) : row[column.key] ?? '-'}
-                    </TableCell>
+                    </td>
                   ))}
-                  {actions ? <TableCell className="text-right">{actions(row)}</TableCell> : null}
-                </TableRow>
+                  {actions ? (
+                    <td className="px-4 py-3">
+                      <TableRowActions actions={actions(row)} />
+                    </td>
+                  ) : null}
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
+
+      {paged && total > 0 ? (
+        <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+          <Pagination
+            page={page}
+            pageSize={innerPageSize}
+            total={total}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setInnerPageSize(size); setPage(1); }}
+          />
+        </div>
+      ) : null}
 
       {canCreate && form && setForm ? (
         <BaseDialog
@@ -521,6 +515,6 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
           </div>
         </BaseDialog>
       ) : null}
-    </div>
+    </TableSurfaceCard>
   );
 };

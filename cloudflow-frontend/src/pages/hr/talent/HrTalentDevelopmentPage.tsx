@@ -1,25 +1,28 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCcw, Trash2 } from 'lucide-react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
+import { LoaderCircle, Plus, RefreshCcw, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  BaseDialog,
   Button,
+  ConfirmDialog,
   Input,
   Label,
+  Pagination,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
+  TableActionHead,
   TableHead,
   TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
+import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { BaseDialog } from '@/components/common/BaseDialog';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrTalentDevelopmentAction,
@@ -29,6 +32,7 @@ import {
   listDevelopmentActions,
   updateDevelopmentAction,
 } from '@/services/api/hr';
+import { useAuth } from '@/context/AuthContext';
 import { enumLabel, formatDateValue, normalizeRows } from '../hrShared';
 
 const actionTypeLabel: Record<string, string> = {
@@ -46,26 +50,41 @@ const statusLabel: Record<string, string> = {
   CANCELLED: '已取消',
 };
 
+const defaultForm = { employeeId: '', actionType: 'TRAINING', actionName: '', mentorId: '', trainingSessionId: '', startDate: '', endDate: '', description: '' };
+
 export const HrTalentDevelopmentPage: React.FC = () => {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission?.('hr:talent:development:edit') ?? true;
+  const canAdd = hasPermission?.('hr:talent:development:add') ?? true;
+
   const [rows, setRows] = useState<HrTalentDevelopmentAction[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState({ employeeId: '', actionType: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
+
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ employeeId: '', actionType: 'TRAINING', actionName: '', mentorId: '', trainingSessionId: '', startDate: '', endDate: '', description: '' });
+  const [form, setForm] = useState(defaultForm);
   const [completeAction, setCompleteAction] = useState<HrTalentDevelopmentAction | null>(null);
   const [completeForm, setCompleteForm] = useState({ evaluationScore: '', evaluationNotes: '' });
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listDevelopmentActions({ pageSize: 200 });
+      const params: Record<string, string | number> = { pageNum: query.pageNum, pageSize: query.pageSize };
+      if (query.employeeId) params.employeeId = query.employeeId;
+      if (query.actionType) params.actionType = query.actionType;
+      if (query.status) params.status = query.status;
+      const res = await listDevelopmentActions(params);
       setRows(normalizeRows<HrTalentDevelopmentAction>(res));
+      setTotal(res?.total ?? 0);
     } catch (error) {
       toast.error(getErrorMessage(error, '培养行动加载失败'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [query]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -94,6 +113,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
       toast.success('已保存');
       setOpen(false);
       setEditingId(null);
+      setForm(defaultForm);
       await load();
     } catch (error) {
       toast.error(getErrorMessage(error, '保存失败'));
@@ -116,50 +136,120 @@ export const HrTalentDevelopmentPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="p-6">
-      <div className="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-50">培养行动</div>
-      <TablePageLayout
-        actions={
-          <div className="flex items-center gap-2">
-            <Button onClick={() => { setEditingId(null); setForm({ employeeId: '', actionType: 'TRAINING', actionName: '', mentorId: '', trainingSessionId: '', startDate: '', endDate: '', description: '' }); setOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" />新建培养行动
-            </Button>
-            <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCcw className="mr-2 h-4 w-4" />刷新</Button>
-          </div>
-        }
-        table={
-          <TableSurfaceCard>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>员工</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>名称</TableHead>
-                  <TableHead>导师</TableHead>
-                  <TableHead>培训班次</TableHead>
-                  <TableHead>起止</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>评分</TableHead>
-                  <TableHead>操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={9} className="py-10 text-center text-sm text-slate-400">加载中...</TableCell></TableRow>
-                ) : rows.length ? rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.employeeId}</TableCell>
-                    <TableCell>{enumLabel(actionTypeLabel, row.actionType)}</TableCell>
-                    <TableCell className="font-medium">{row.actionName}</TableCell>
-                    <TableCell>{row.mentorId ?? '-'}</TableCell>
-                    <TableCell>{row.trainingSessionId ?? '-'}</TableCell>
-                    <TableCell>{formatDateValue(row.startDate)} / {formatDateValue(row.endDate)}</TableCell>
-                    <TableCell>{enumLabel(statusLabel, row.status)}</TableCell>
-                    <TableCell>{row.evaluationScore ?? '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => {
+  const handleDelete = async () => {
+    if (deleteId == null) return;
+    try {
+      await deleteDevelopmentAction(deleteId);
+      toast.success('已删除');
+      setDeleteId(null);
+      if (rows.length === 1 && query.pageNum > 1) {
+        setQuery((q) => ({ ...q, pageNum: q.pageNum - 1 }));
+      } else {
+        await load();
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除失败'));
+    }
+  };
+
+  const hasFilters = Boolean(query.employeeId || query.actionType || query.status);
+
+  const filters = (
+    <FilterBar
+      search={{
+        value: query.employeeId,
+        onChange: (value) => setQuery((q) => ({ ...q, employeeId: value })),
+        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
+        placeholder: '按员工 ID 搜索',
+        widthClassName: 'w-full sm:w-[180px]',
+      }}
+      filters={[
+        <div key="actionType" className="w-full sm:w-40">
+          <Select value={query.actionType || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, actionType: v === '__all' ? '' : v }))}>
+            <SelectTrigger className="h-10"><SelectValue placeholder="全部类型" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">全部类型</SelectItem>
+              {Object.entries(actionTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>,
+        <div key="status" className="w-full sm:w-36">
+          <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
+            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">全部状态</SelectItem>
+              {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>,
+      ]}
+      stats={[{ label: '', value: `共 ${total} 条` }]}
+      actions={[
+        ...(hasFilters
+          ? [
+              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, employeeId: '', actionType: '', status: '' }))}>
+                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
+              </Button>,
+            ]
+          : []),
+        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+        </Button>,
+        ...(canAdd
+          ? [
+              <Button key="add" size="sm" onClick={() => { setEditingId(null); setForm(defaultForm); setOpen(true); }}>
+                <Plus className="mr-1.5 h-4 w-4" />新建培养行动
+              </Button>,
+            ]
+          : []),
+      ]}
+    />
+  );
+
+  const table = (
+    <TableSurfaceCard>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1120px]">
+          <TableHeader className="sticky top-0 z-10">
+            <tr>
+              <TableHead>员工</TableHead>
+              <TableHead>类型</TableHead>
+              <TableHead>名称</TableHead>
+              <TableHead>导师</TableHead>
+              <TableHead>培训班次</TableHead>
+              <TableHead>起止</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead>评分</TableHead>
+              <TableActionHead className="text-right">操作</TableActionHead>
+            </tr>
+          </TableHeader>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {loading ? (
+              <tr>
+                <td colSpan={9} className="py-16 text-center text-sm text-slate-400">
+                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="py-16 text-center text-sm text-slate-400">暂无培养行动</td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 text-sm">{row.employeeId}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(actionTypeLabel, row.actionType)}</td>
+                  <td className="px-4 py-3 text-sm font-medium">{row.actionName}</td>
+                  <td className="px-4 py-3 text-sm">{row.mentorId ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.trainingSessionId ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{formatDateValue(row.startDate)} / {formatDateValue(row.endDate)}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm">{row.evaluationScore ?? '-'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        { key: 'edit', label: '编辑', semantic: 'edit', permissionKey: 'hr:talent:development:edit', onClick: () => {
                           setEditingId(row.id);
                           setForm({
                             employeeId: String(row.employeeId),
@@ -172,22 +262,34 @@ export const HrTalentDevelopmentPage: React.FC = () => {
                             description: row.description ?? '',
                           });
                           setOpen(true);
-                        }}>编辑</Button>
-                        {(row.status === 'PLANNED' || row.status === 'ONGOING') ? (
-                          <Button size="sm" variant="outline" onClick={() => { setCompleteAction(row); setCompleteForm({ evaluationScore: '', evaluationNotes: '' }); }}>完成回填</Button>
-                        ) : null}
-                        <Button size="sm" variant="ghost" onClick={async () => { try { await deleteDevelopmentAction(row.id); toast.success('已删除'); await load(); } catch (e) { toast.error(getErrorMessage(e, '删除失败')); } }}><Trash2 className="h-3 w-3" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )) : (
-                  <TableRow><TableCell colSpan={9} className="py-10 text-center text-sm text-slate-400">暂无培养行动</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableSurfaceCard>
-        }
-      />
+                        } },
+                        { key: 'complete', label: '完成回填', semantic: 'confirm', permissionKey: 'hr:talent:development:edit', onClick: () => { setCompleteAction(row); setCompleteForm({ evaluationScore: '', evaluationNotes: '' }); }, hidden: !(row.status === 'PLANNED' || row.status === 'ONGOING') },
+                        { key: 'delete', label: '删除', semantic: 'delete', permissionKey: 'hr:talent:development:remove', onClick: () => setDeleteId(row.id) },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </TableSurfaceCard>
+  );
+
+  const pagination = total > 0 ? (
+    <Pagination
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      total={total}
+      onPageChange={(pageNum) => setQuery((q) => ({ ...q, pageNum }))}
+      onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, pageSize, pageNum: 1 }))}
+    />
+  ) : null;
+
+  return (
+    <div className="space-y-4">
+      <TablePageLayout filters={filters} table={table} pagination={pagination} />
 
       <BaseDialog
         open={open}
@@ -196,7 +298,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={() => void handleSave()}>保存</Button>
+            <Button onClick={() => void handleSave()} disabled={!canEdit && !canAdd}>保存</Button>
           </div>
         }
       >
@@ -242,6 +344,15 @@ export const HrTalentDevelopmentPage: React.FC = () => {
           <div><Label>评估说明</Label><Textarea value={completeForm.evaluationNotes} onChange={(e) => setCompleteForm((p) => ({ ...p, evaluationNotes: e.target.value }))} rows={4} /></div>
         </div>
       </BaseDialog>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        title="删除培养行动"
+        message="删除后不可恢复，确认删除该培养行动？"
+        danger
+        onCancel={() => setDeleteId(null)}
+        onConfirm={() => void handleDelete()}
+      />
     </div>
   );
 };

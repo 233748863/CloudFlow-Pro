@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common';
+import { Tabs, TabsContent, TabsList, TabsTrigger, type TableRowActionItem } from '@/components/common';
 import {
   Candidate,
   DeptTreeNode,
@@ -20,7 +20,7 @@ import {
 } from '@/services/api/hr';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { buildEmployeeLabel, flattenDeptTree, formatDateValue, normalizeRows, optionOrIdLabel } from './hrShared';
-import { HrCrudPanel, HrFormField, HrPageHeader, renderStatus } from './HrDomainWorkspace';
+import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 
 type LifecycleType = 'ONBOARDING' | 'PROBATION' | 'TRANSFER' | 'RESIGNATION';
 
@@ -228,46 +228,29 @@ const HrLifecyclePage: React.FC = () => {
     }
   };
 
-  const actionButtons = (row: LifecycleApplication) => {
+  const actionButtons = (row: LifecycleApplication): TableRowActionItem[] => {
     const status = String(row.status || '').toUpperCase();
-    const buttons = [
-      { label: '提交', action: 'submit', enabled: status === 'DRAFT' },
-      { label: '通过', action: 'approve', enabled: status === 'APPROVING' },
-      { label: '驳回', action: 'reject', enabled: status === 'APPROVING' },
-      { label: row.type === 'TRANSFER' ? '生效' : '完成', action: row.type === 'TRANSFER' ? 'effective' : 'complete', enabled: ['APPROVED', 'ACCEPTED'].includes(status) },
+    const items: Array<{ label: string; action: string; semantic: TableRowActionItem['semantic']; enabled: boolean }> = [
+      { label: '提交', action: 'submit', semantic: 'submit', enabled: status === 'DRAFT' },
+      { label: '通过', action: 'approve', semantic: 'confirm', enabled: status === 'APPROVING' },
+      { label: '驳回', action: 'reject', semantic: 'void', enabled: status === 'APPROVING' },
+      { label: row.type === 'TRANSFER' ? '生效' : '完成', action: row.type === 'TRANSFER' ? 'effective' : 'complete', semantic: 'confirm', enabled: ['APPROVED', 'ACCEPTED'].includes(status) },
     ];
-    return (
-      <div className="flex flex-wrap justify-end gap-2">
-        {buttons.map((button) => (
-          <Button
-            key={button.action}
-            variant="outline"
-            size="sm"
-            disabled={!button.enabled}
-            onClick={() => void submitAndReload(
-              () => changeLifecycleApplicationStatus(row.id, button.action),
-              `申请已${button.label}`,
-            )}
-          >
-            {button.label}
-          </Button>
-        ))}
-      </div>
-    );
+    return items
+      .filter((item) => item.enabled)
+      .map((item) => ({
+        key: item.action,
+        label: item.label,
+        semantic: item.semantic,
+        onClick: () => void submitAndReload(
+          () => changeLifecycleApplicationStatus(row.id, item.action),
+          `申请已${item.label}`,
+        ),
+      }));
   };
 
   return (
     <div className="space-y-4">
-      <HrPageHeader
-        eyebrow="Lifecycle"
-        title="员工异动"
-        stats={lifecycleTabs.map((item) => ({
-          label: item.label,
-          value: rowsByType[item.value]?.length || 0,
-          tone: activeTab === item.value ? 'active' : 'default',
-        }))}
-      />
-
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as LifecycleType)} className="space-y-4">
         <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
           {lifecycleTabs.map((item) => (

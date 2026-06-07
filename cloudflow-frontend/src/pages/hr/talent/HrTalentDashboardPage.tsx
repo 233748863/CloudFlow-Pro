@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/common';
 import { StatCard } from '@/components/common/StatCard';
 import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrTalentDevelopmentAction,
@@ -99,18 +100,14 @@ export const HrTalentDashboardPage: React.FC = () => {
   }, [load]);
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">人才盘点工作台</div>
-          <div className="mt-1 text-xs text-slate-500">
-            盘点 / 高潜池 / 继任 / 培养行动 一站式概览
-          </div>
-        </div>
-        <Button variant="outline" disabled={loading} onClick={() => void load()}>
-          <RefreshCcw className="mr-2 h-4 w-4" />刷新
-        </Button>
-      </div>
+    <div className="space-y-4">
+      <FilterBar
+        actions={[
+          <Button key="refresh" variant="outline" size="sm" disabled={loading} onClick={() => void load()}>
+            <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+          </Button>,
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

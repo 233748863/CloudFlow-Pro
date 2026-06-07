@@ -2,19 +2,16 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, Coins } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  BaseDialog,
   Button,
   Input,
   Label,
-  Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
-import { BaseDialog } from '@/components/common/BaseDialog';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   getMyPointAccount,
@@ -159,98 +156,97 @@ export const HrMallPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">积分商城</div>
-          <div className="mt-1 text-xs text-slate-500">使用积分兑换实物或电子福利,高价值订单走 HR 审批兜底</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="rounded-md bg-amber-50 px-3 py-1.5 text-sm">
-            <Coins className="mr-1 inline h-4 w-4 text-amber-600" />
-            可用 <span className="font-semibold">{Number(account?.availablePoints ?? 0).toLocaleString()}</span> 分
-          </div>
-          <Button onClick={() => setCartOpen(true)}>
-            <ShoppingCart className="mr-2 h-4 w-4" />
-            购物车 ({cart.length})
-          </Button>
-        </div>
-      </div>
-
-      <TableSurfaceCard>
-        <div className="flex flex-wrap items-center gap-2 p-4">
-          <div className="flex-1 min-w-[200px]">
-            <Input
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="搜索商品"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {categories.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={`rounded-full border px-3 py-1 text-xs ${
-                  category === c
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {c === 'all' ? '全部' : c}
-              </button>
-            ))}
-          </div>
-        </div>
-      </TableSurfaceCard>
-
-      {loading ? (
-        <TableSurfaceCard>
-          <div className="py-10 text-center text-sm text-slate-400">加载中…</div>
-        </TableSurfaceCard>
-      ) : filtered.length === 0 ? (
-        <TableSurfaceCard>
-          <div className="py-10 text-center text-sm text-slate-400">暂无商品</div>
-        </TableSurfaceCard>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {filtered.map((it) => (
-            <div
-              key={it.id}
-              className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
+  const filters = (
+    <FilterBar
+      search={{
+        value: keyword,
+        onChange: setKeyword,
+        placeholder: '搜索商品',
+        widthClassName: 'w-full sm:w-[220px]',
+      }}
+      filters={[
+        <div key="category" className="flex flex-wrap gap-2">
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategory(c)}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                category === c
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40'
+                  : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300'
+              }`}
             >
-              <button
-                type="button"
-                onClick={() => setDetail(it)}
-                className="aspect-square w-full overflow-hidden bg-slate-100 text-left"
-              >
-                {it.coverImage ? (
-                  <img src={it.coverImage} alt={it.itemName} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">无图</div>
-                )}
-              </button>
-              <div className="flex flex-1 flex-col justify-between p-3">
+              {c === 'all' ? '全部' : c}
+            </button>
+          ))}
+        </div>,
+      ]}
+      stats={[{ label: '', value: `共 ${filtered.length} 件` }]}
+      actions={[
+        <div key="balance" className="rounded-md bg-amber-50 px-3 py-1.5 text-sm dark:bg-amber-950/40">
+          <Coins className="mr-1 inline h-4 w-4 text-amber-600" />
+          可用 <span className="font-semibold">{Number(account?.availablePoints ?? 0).toLocaleString()}</span> 分
+        </div>,
+        <Button key="cart" size="sm" onClick={() => setCartOpen(true)}>
+          <ShoppingCart className="mr-2 h-4 w-4" />
+          购物车 ({cart.length})
+        </Button>,
+      ]}
+    />
+  );
+
+  const grid = (
+    loading ? (
+      <TableSurfaceCard>
+        <div className="py-10 text-center text-sm text-slate-400">加载中…</div>
+      </TableSurfaceCard>
+    ) : filtered.length === 0 ? (
+      <TableSurfaceCard>
+        <div className="py-10 text-center text-sm text-slate-400">暂无商品</div>
+      </TableSurfaceCard>
+    ) : (
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {filtered.map((it) => (
+          <div
+            key={it.id}
+            className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-950/60"
+          >
+            <button
+              type="button"
+              onClick={() => setDetail(it)}
+              className="aspect-square w-full overflow-hidden bg-slate-100 text-left dark:bg-slate-800"
+            >
+              {it.coverImage ? (
+                <img src={it.coverImage} alt={it.itemName} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">无图</div>
+              )}
+            </button>
+            <div className="flex flex-1 flex-col justify-between p-3">
+              <div>
+                <div className="line-clamp-2 text-sm font-medium">{it.itemName}</div>
+                <div className="mt-1 text-xs text-slate-400">{it.category ?? '-'}</div>
+              </div>
+              <div className="mt-2 flex items-end justify-between">
                 <div>
-                  <div className="line-clamp-2 text-sm font-medium">{it.itemName}</div>
-                  <div className="mt-1 text-xs text-slate-400">{it.category ?? '-'}</div>
+                  <div className="text-lg font-semibold text-amber-600">{it.pointPrice} <span className="text-xs font-normal">分</span></div>
+                  <div className="text-xs text-slate-400">库存 {it.stock}</div>
                 </div>
-                <div className="mt-2 flex items-end justify-between">
-                  <div>
-                    <div className="text-lg font-semibold text-amber-600">{it.pointPrice} <span className="text-xs font-normal">分</span></div>
-                    <div className="text-xs text-slate-400">库存 {it.stock}</div>
-                  </div>
-                  <Button size="sm" onClick={() => addToCart(it)} disabled={it.stock <= 0}>
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
+                <Button size="sm" onClick={() => addToCart(it)} disabled={it.stock <= 0}>
+                  <Plus className="h-3 w-3" />
+                </Button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
+    )
+  );
+
+  return (
+    <div className="space-y-4">
+      <TablePageLayout filters={filters} table={grid} />
 
       {/* 商品详情 Drawer */}
       {detail && (
@@ -320,48 +316,50 @@ export const HrMallPage: React.FC = () => {
         }
       >
         <div className="space-y-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>商品</TableHead>
-                <TableHead>单价</TableHead>
-                <TableHead>数量</TableHead>
-                <TableHead>小计</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cart.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-6 text-center text-sm text-slate-400">购物车为空</TableCell>
-                </TableRow>
-              ) : (
-                cart.map((c) => (
-                  <TableRow key={c.item.id}>
-                    <TableCell className="font-medium">{c.item.itemName}</TableCell>
-                    <TableCell>{c.item.pointPrice} 分</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button size="sm" variant="outline" onClick={() => updateQty(c.item.id, -1)}>
-                          <Minus className="h-3 w-3" />
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px]">
+              <TableHeader>
+                <tr>
+                  <TableHead>商品</TableHead>
+                  <TableHead>单价</TableHead>
+                  <TableHead>数量</TableHead>
+                  <TableHead>小计</TableHead>
+                  <TableHead></TableHead>
+                </tr>
+              </TableHeader>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {cart.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-sm text-slate-400">购物车为空</td>
+                  </tr>
+                ) : (
+                  cart.map((c) => (
+                    <tr key={c.item.id}>
+                      <td className="px-4 py-2 text-sm font-medium">{c.item.itemName}</td>
+                      <td className="px-4 py-2 text-sm">{c.item.pointPrice} 分</td>
+                      <td className="px-4 py-2 text-sm">
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="outline" onClick={() => updateQty(c.item.id, -1)}>
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center">{c.quantity}</span>
+                          <Button size="sm" variant="outline" onClick={() => updateQty(c.item.id, 1)}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 text-sm font-semibold">{((c.item.pointPrice ?? 0) * c.quantity).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-sm">
+                        <Button size="sm" variant="outline" onClick={() => removeFromCart(c.item.id)}>
+                          <Trash2 className="h-3 w-3" />
                         </Button>
-                        <span className="w-8 text-center">{c.quantity}</span>
-                        <Button size="sm" variant="outline" onClick={() => updateQty(c.item.id, 1)}>
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-semibold">{((c.item.pointPrice ?? 0) * c.quantity).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="outline" onClick={() => removeFromCart(c.item.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
             <div>

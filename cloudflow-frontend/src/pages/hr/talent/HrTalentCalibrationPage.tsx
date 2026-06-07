@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCcw } from 'lucide-react';
+import { LoaderCircle, Plus, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  BaseDialog,
   Button,
   Input,
   Label,
@@ -10,16 +11,14 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
+  TableActionHead,
   TableHead,
   TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
+import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { BaseDialog } from '@/components/common/BaseDialog';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrTalentCalibrationSession,
@@ -29,6 +28,7 @@ import {
   listTalentReviews,
   updateCalibrationSession,
 } from '@/services/api/hr';
+import { useAuth } from '@/context/AuthContext';
 import { enumLabel, formatDateTimeValue, normalizeRows } from '../hrShared';
 
 const statusLabel: Record<string, string> = {
@@ -38,14 +38,20 @@ const statusLabel: Record<string, string> = {
   CANCELLED: '已取消',
 };
 
+const defaultForm = { sessionNo: '', scheduledAt: '', location: '', agenda: '', minutes: '', status: 'PLANNED' };
+
 export const HrTalentCalibrationPage: React.FC = () => {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission?.('hr:talent:calibration:edit') ?? true;
+  const canAdd = hasPermission?.('hr:talent:calibration:add') ?? true;
+
   const [reviews, setReviews] = useState<HrTalentReview[]>([]);
   const [reviewId, setReviewId] = useState<number | null>(null);
   const [sessions, setSessions] = useState<HrTalentCalibrationSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<HrTalentCalibrationSession | null>(null);
-  const [form, setForm] = useState({ sessionNo: '', scheduledAt: '', location: '', agenda: '', minutes: '', status: 'PLANNED' });
+  const [form, setForm] = useState(defaultForm);
 
   useEffect(() => {
     void (async () => {
@@ -77,7 +83,7 @@ export const HrTalentCalibrationPage: React.FC = () => {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ sessionNo: '', scheduledAt: '', location: '', agenda: '', minutes: '', status: 'PLANNED' });
+    setForm(defaultForm);
     setOpen(true);
   };
 
@@ -113,63 +119,92 @@ export const HrTalentCalibrationPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">校准会议</div>
-        <div className="w-64">
+  const filters = (
+    <FilterBar
+      filters={[
+        <div key="review" className="w-full sm:w-64">
           <Select value={reviewId ? String(reviewId) : ''} onValueChange={(v) => setReviewId(Number(v))}>
-            <SelectTrigger><SelectValue placeholder="选择盘点活动" /></SelectTrigger>
+            <SelectTrigger className="h-10"><SelectValue placeholder="选择盘点活动" /></SelectTrigger>
             <SelectContent>
               {reviews.map((r) => <SelectItem key={r.id} value={String(r.id)}>{r.reviewName}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
+        </div>,
+      ]}
+      stats={[{ label: '', value: `共 ${sessions.length} 条` }]}
+      actions={[
+        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading || !reviewId}>
+          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+        </Button>,
+        ...(canAdd
+          ? [
+              <Button key="add" size="sm" onClick={openCreate} disabled={!reviewId}>
+                <Plus className="mr-1.5 h-4 w-4" />新建会议
+              </Button>,
+            ]
+          : []),
+      ]}
+    />
+  );
+
+  const table = (
+    <TableSurfaceCard>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[920px]">
+          <TableHeader className="sticky top-0 z-10">
+            <tr>
+              <TableHead>会议编号</TableHead>
+              <TableHead>时间</TableHead>
+              <TableHead>地点</TableHead>
+              <TableHead>议程</TableHead>
+              <TableHead>状态</TableHead>
+              <TableActionHead className="text-right">操作</TableActionHead>
+            </tr>
+          </TableHeader>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {!reviewId ? (
+              <tr>
+                <td colSpan={6} className="py-16 text-center text-sm text-slate-400">请选择盘点活动</td>
+              </tr>
+            ) : loading ? (
+              <tr>
+                <td colSpan={6} className="py-16 text-center text-sm text-slate-400">
+                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                </td>
+              </tr>
+            ) : sessions.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-16 text-center text-sm text-slate-400">暂无校准会议</td>
+              </tr>
+            ) : (
+              sessions.map((s) => (
+                <tr key={s.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 font-mono text-xs">{s.sessionNo}</td>
+                  <td className="px-4 py-3 text-sm">{formatDateTimeValue(s.scheduledAt) || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{s.location || '-'}</td>
+                  <td className="px-4 py-3 max-w-xs truncate text-sm">{s.agenda || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, s.status)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        { key: 'edit', label: '编辑/纪要', semantic: 'edit', permissionKey: 'hr:talent:calibration:edit', onClick: () => openEdit(s) },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
-      <TablePageLayout
-        actions={
-          <div className="flex items-center gap-2">
-            <Button onClick={openCreate} disabled={!reviewId}><Plus className="mr-2 h-4 w-4" />新建会议</Button>
-            <Button variant="outline" onClick={() => void load()} disabled={loading || !reviewId}><RefreshCcw className="mr-2 h-4 w-4" />刷新</Button>
-          </div>
-        }
-        table={
-          <TableSurfaceCard>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>会议编号</TableHead>
-                  <TableHead>时间</TableHead>
-                  <TableHead>地点</TableHead>
-                  <TableHead>议程</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!reviewId ? (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-slate-400">请选择盘点活动</TableCell></TableRow>
-                ) : loading ? (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-slate-400">加载中...</TableCell></TableRow>
-                ) : sessions.length ? sessions.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-mono text-xs">{s.sessionNo}</TableCell>
-                    <TableCell>{formatDateTimeValue(s.scheduledAt) || '-'}</TableCell>
-                    <TableCell>{s.location || '-'}</TableCell>
-                    <TableCell className="max-w-xs truncate">{s.agenda || '-'}</TableCell>
-                    <TableCell>{enumLabel(statusLabel, s.status)}</TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(s)}>编辑/纪要</Button>
-                    </TableCell>
-                  </TableRow>
-                )) : (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-slate-400">暂无校准会议</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableSurfaceCard>
-        }
-      />
+    </TableSurfaceCard>
+  );
+
+  return (
+    <div className="space-y-4">
+      <TablePageLayout filters={filters} table={table} />
+
       <BaseDialog
         open={open}
         title={editing ? '编辑会议 / 录入纪要' : '新建校准会议'}
@@ -177,7 +212,7 @@ export const HrTalentCalibrationPage: React.FC = () => {
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={() => void handleSave()}>保存</Button>
+            <Button onClick={() => void handleSave()} disabled={!canEdit && !canAdd}>保存</Button>
           </div>
         }
       >

@@ -1,24 +1,27 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
+import { LoaderCircle, Plus, RefreshCcw, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  BaseDialog,
   Button,
   Input,
   Label,
+  Pagination,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
+  TableActionHead,
   TableHead,
   TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
-import { BaseDialog } from '@/components/common/BaseDialog';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { TableRowActions } from '@/components/common/table-row-actions';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   createMallItem,
@@ -50,8 +53,9 @@ const emptyForm: Partial<HrMallItemPayload> = {
 
 export const HrMallItemAdminPage: React.FC = () => {
   const [rows, setRows] = useState<HrMallItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [query, setQuery] = useState({ itemName: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   const [editing, setEditing] = useState<HrMallItem | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Partial<HrMallItemPayload>>(emptyForm);
@@ -59,16 +63,18 @@ export const HrMallItemAdminPage: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, unknown> = {};
-      if (statusFilter !== 'all') params.status = statusFilter;
+      const params: Record<string, string | number> = { pageNum: query.pageNum, pageSize: query.pageSize };
+      if (query.itemName) params.itemName = query.itemName;
+      if (query.status) params.status = query.status;
       const res = await listMallItems(params);
       setRows(normalizeRows<HrMallItem>(res));
+      setTotal(res?.total ?? 0);
     } catch (error) {
       toast.error(getErrorMessage(error, '加载商品失败'));
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [query]);
 
   useEffect(() => {
     void load();
@@ -136,33 +142,53 @@ export const HrMallItemAdminPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xl font-semibold text-slate-900 dark:text-slate-50">商品管理</div>
-          <div className="mt-1 text-xs text-slate-500">维护积分商城 SKU,上下架与库存管理(HR 管理员入口)</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-36">
-            <Label className="text-xs text-slate-500">状态</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部</SelectItem>
-                {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button variant="outline" onClick={() => void load()} disabled={loading}>刷新</Button>
-          <Button onClick={openCreate}>新增商品</Button>
-        </div>
-      </div>
+  const hasFilters = Boolean(query.itemName || query.status);
 
-      <TableSurfaceCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
+  const filters = (
+    <FilterBar
+      search={{
+        value: query.itemName,
+        onChange: (value) => setQuery((q) => ({ ...q, itemName: value })),
+        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
+        placeholder: '搜索商品名称',
+        widthClassName: 'w-full sm:w-[200px]',
+      }}
+      filters={[
+        <div key="status" className="w-full sm:w-36">
+          <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
+            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">全部状态</SelectItem>
+              {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>,
+      ]}
+      stats={[{ label: '', value: `共 ${total} 条` }]}
+      actions={[
+        ...(hasFilters
+          ? [
+              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, itemName: '', status: '' }))}>
+                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
+              </Button>,
+            ]
+          : []),
+        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+        </Button>,
+        <Button key="add" size="sm" onClick={openCreate}>
+          <Plus className="mr-1.5 h-4 w-4" />新增商品
+        </Button>,
+      ]}
+    />
+  );
+
+  const table = (
+    <TableSurfaceCard>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1080px]">
+          <TableHeader className="sticky top-0 z-10">
+            <tr>
               <TableHead>编号</TableHead>
               <TableHead>名称</TableHead>
               <TableHead>分类</TableHead>
@@ -171,39 +197,63 @@ export const HrMallItemAdminPage: React.FC = () => {
               <TableHead>销量</TableHead>
               <TableHead>审批阈值</TableHead>
               <TableHead>状态</TableHead>
-              <TableHead>操作</TableHead>
-            </TableRow>
+              <TableActionHead className="text-right">操作</TableActionHead>
+            </tr>
           </TableHeader>
-          <TableBody>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {loading ? (
-              <TableRow><TableCell colSpan={9} className="py-6 text-center text-sm text-slate-400">加载中…</TableCell></TableRow>
+              <tr>
+                <td colSpan={9} className="py-16 text-center text-sm text-slate-400">
+                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                </td>
+              </tr>
             ) : rows.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="py-6 text-center text-sm text-slate-400">暂无商品</TableCell></TableRow>
+              <tr>
+                <td colSpan={9} className="py-16 text-center text-sm text-slate-400">暂无商品</td>
+              </tr>
             ) : (
               rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-mono text-xs">{row.itemNo}</TableCell>
-                  <TableCell className="font-medium">{row.itemName}</TableCell>
-                  <TableCell className="text-xs">{row.category ?? '-'}</TableCell>
-                  <TableCell>{row.pointPrice}</TableCell>
-                  <TableCell>{row.stock}</TableCell>
-                  <TableCell>{row.salesCount ?? 0}</TableCell>
-                  <TableCell>{row.approvalThreshold ?? 0}</TableCell>
-                  <TableCell>{enumLabel(statusLabel, row.status)}</TableCell>
-                  <TableCell className="space-x-2 text-xs">
-                    <Button size="sm" variant="outline" onClick={() => openEdit(row)}>编辑</Button>
-                    {row.status === 'OFF_SHELF' ? (
-                      <Button size="sm" onClick={() => void handleOnShelf(row)}>上架</Button>
-                    ) : (
-                      <Button size="sm" variant="outline" onClick={() => void handleOffShelf(row)}>下架</Button>
-                    )}
-                  </TableCell>
-                </TableRow>
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 font-mono text-xs">{row.itemNo}</td>
+                  <td className="px-4 py-3 text-sm font-medium">{row.itemName}</td>
+                  <td className="px-4 py-3 text-xs">{row.category ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{row.pointPrice}</td>
+                  <td className="px-4 py-3 text-sm">{row.stock}</td>
+                  <td className="px-4 py-3 text-sm">{row.salesCount ?? 0}</td>
+                  <td className="px-4 py-3 text-sm">{row.approvalThreshold ?? 0}</td>
+                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        { key: 'edit', label: '编辑', semantic: 'edit', permissionKey: 'hr:benefit:mall:item:edit', onClick: () => openEdit(row) },
+                        { key: 'onShelf', label: '上架', semantic: 'submit', permissionKey: 'hr:benefit:mall:item:edit', onClick: () => void handleOnShelf(row), hidden: row.status !== 'OFF_SHELF' },
+                        { key: 'offShelf', label: '下架', semantic: 'void', permissionKey: 'hr:benefit:mall:item:edit', onClick: () => void handleOffShelf(row), hidden: row.status !== 'ON_SHELF' },
+                      ]}
+                    />
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
-      </TableSurfaceCard>
+          </tbody>
+        </table>
+      </div>
+    </TableSurfaceCard>
+  );
+
+  const pagination = total > 0 ? (
+    <Pagination
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      total={total}
+      onPageChange={(pageNum) => setQuery((q) => ({ ...q, pageNum }))}
+      onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, pageSize, pageNum: 1 }))}
+    />
+  ) : null;
+
+  return (
+    <div className="space-y-4">
+      <TablePageLayout filters={filters} table={table} pagination={pagination} />
 
       <BaseDialog
         open={open}
