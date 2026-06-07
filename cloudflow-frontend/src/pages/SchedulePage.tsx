@@ -46,6 +46,7 @@ import {
   Textarea,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
@@ -494,6 +495,7 @@ export const SchedulePage = () => {
   const [selectedEvent, setSelectedEvent] = useState<SelectedEventDetail | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
   const [form, setForm] = useState<Partial<SysScheduleEvent>>(createDefaultForm());
   const [tableFilters, setTableFilters] = useState<ScheduleTableFilters>(DEFAULT_TABLE_FILTERS);
   const [tablePageNum, setTablePageNum] = useState(1);
@@ -716,42 +718,35 @@ export const SchedulePage = () => {
       setIsSubmitting(false);
     }
   };
-  const handleDeleteSelectedEvent = async () => {
+  const handleDeleteSelectedEvent = () => {
     if (!selectedEvent) return;
     if (!canDeleteSchedule) {
       toast.error('当前账号没有删除日程权限');
       return;
     }
-    setIsDeleting(true);
-    try {
-      await deleteEvent(selectedEvent.id);
-      toast.success('日程已删除');
-      setSelectedEvent(null);
-      await refreshCurrentWindow();
-    } catch (error) {
-      console.error('删除日程失败', error);
-      toast.error('删除失败，请稍后重试');
-    } finally {
-      setIsDeleting(false);
-    }
+    setPendingDelete({ id: selectedEvent.id, title: selectedEvent.title || '该日程' });
   };
 
-  const handleDeleteFromTable = async (event: ScheduleCalendarEvent) => {
+  const handleDeleteFromTable = (event: ScheduleCalendarEvent) => {
     if (!canDeleteSchedule) {
       toast.error('当前账号没有删除日程权限');
       return;
     }
-    if (!window.confirm(`确认删除“${event.extendedProps.originalTitle}”吗？删除后不可恢复。`)) {
-      return;
-    }
+    setPendingDelete({ id: event.id, title: event.extendedProps.originalTitle || event.title || '该日程' });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
     setIsDeleting(true);
     try {
-      await deleteEvent(event.id);
+      await deleteEvent(id);
       toast.success('日程已删除');
-      if (selectedEvent?.id === event.id) {
+      if (selectedEvent?.id === id) {
         setSelectedEvent(null);
       }
       await refreshCurrentWindow();
+      setPendingDelete(null);
     } catch (error) {
       console.error('删除日程失败', error);
       toast.error('删除失败，请稍后重试');
@@ -1540,6 +1535,18 @@ export const SchedulePage = () => {
           </div>
         ) : null}
       </BaseDialog>
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="删除日程"
+        message={pendingDelete ? `确认删除“${pendingDelete.title}”吗？删除后不可恢复。` : ''}
+        danger
+        confirmText={isDeleting ? '正在删除...' : '确认删除'}
+        onCancel={() => {
+          if (!isDeleting) setPendingDelete(null);
+        }}
+        onConfirm={() => void handleConfirmDelete()}
+      />
     </>
   );
 };

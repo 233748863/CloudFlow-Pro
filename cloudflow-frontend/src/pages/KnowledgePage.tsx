@@ -66,12 +66,13 @@ import { getErrorMessage } from '@/utils/errorMessage';
 type ViewMode = 'library' | 'mine' | 'manage';
 
 interface ConfirmState {
-  type: 'submit' | 'recall' | 'delete';
+  type: 'submit' | 'recall' | 'delete' | 'rollback';
   id: number;
   title: string;
   message: string;
   confirmText: string;
   danger?: boolean;
+  versionNo?: number;
 }
 
 const categories = ['行政制度', '办公指南', '财务制度', '人事制度', '项目规范', '其他'];
@@ -476,6 +477,11 @@ const KnowledgePage: React.FC = () => {
       } else if (currentState.type === 'recall') {
         await knowledgeApi.recall(currentState.id);
         toast.success('已撤回审批');
+      } else if (currentState.type === 'rollback') {
+        if (!currentState.versionNo) return;
+        await knowledgeApi.rollbackVersion(currentState.id, currentState.versionNo);
+        toast.success(`已回滚到 v${currentState.versionNo}`);
+        setVersionOpen(false);
       } else {
         await knowledgeApi.remove(currentState.id);
         toast.success('文档已删除');
@@ -486,7 +492,9 @@ const KnowledgePage: React.FC = () => {
         ? '提交失败'
         : currentState.type === 'recall'
           ? '撤回失败'
-          : '删除失败';
+          : currentState.type === 'rollback'
+            ? '回滚失败'
+            : '删除失败';
       toast.error(error?.message || fallback);
     }
   };
@@ -552,17 +560,17 @@ const KnowledgePage: React.FC = () => {
     }
   };
 
-  const handleVersionRollback = async (versionNo?: number) => {
+  const handleVersionRollback = (versionNo?: number) => {
     if (!versionDocId || !versionNo) return;
-    if (!window.confirm(`确定回滚到 v${versionNo}？将覆盖当前正文。`)) return;
-    try {
-      await knowledgeApi.rollbackVersion(versionDocId, versionNo);
-      toast.success(`已回滚到 v${versionNo}`);
-      setVersionOpen(false);
-      await fetchData();
-    } catch (err: any) {
-      toast.error(err?.message || '回滚失败');
-    }
+    setConfirmState({
+      type: 'rollback',
+      id: versionDocId,
+      versionNo,
+      title: '回滚版本',
+      message: `确定回滚到 v${versionNo}？将覆盖当前正文。`,
+      confirmText: '确认回滚',
+      danger: true,
+    });
   };
 
   const renderFilters = (

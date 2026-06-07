@@ -143,6 +143,7 @@ const MeetingMinutesPage: React.FC = () => {
   const [pendingAttendDelete, setPendingAttendDelete] = useState<OaMeetingAttendance | null>(null);
   const [pendingDispatch, setPendingDispatch] = useState<OaMeetingMinutes | null>(null);
   const [pendingConfirmRow, setPendingConfirmRow] = useState<OaMeetingMinutes | null>(null);
+  const [bookingConflict, setBookingConflict] = useState<{ payload: OaMeetingMinutes; message: string } | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -199,54 +200,8 @@ const MeetingMinutesPage: React.FC = () => {
     }
   };
 
-  const saveForm = async () => {
-    if (!formData.meetingTitle.trim()) {
-      toast.error('请输入会议标题');
-      return;
-    }
-    if (!formData.minutesContent.trim()) {
-      toast.error('请输入纪要内容');
-      return;
-    }
+  const persistMinutes = async (payload: OaMeetingMinutes) => {
     try {
-      const payload: OaMeetingMinutes = { ...formData, decisions: stringifyDecisions(decisions) };
-
-      // 如果选择了会议室和会议时间，自动创建会议室预约
-      let scheduleEventId = payload.scheduleEventId;
-      if (payload.roomId && payload.meetingTime) {
-        try {
-          const startDate = new Date(payload.meetingTime);
-          const endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // 默认1.5小时
-          const startStr = toBackendDateString(startDate);
-          const endStr = toBackendDateString(endDate);
-          if (startStr && endStr) {
-            await createEvent({
-              title: payload.meetingTitle,
-              startTime: startStr,
-              endTime: endStr,
-              type: 'MEETING',
-              roomId: payload.roomId,
-            });
-            toast.success('会议室已自动预约');
-          }
-        } catch (bookingErr: any) {
-          const msg = bookingErr?.response?.data?.msg || bookingErr?.message || '';
-          if (msg.includes('已被预订')) {
-            // 冲突：提示用户是否仍要保存纪要（不关联预约）
-            const proceed = window.confirm(
-              `会议室预约失败：${msg}\n\n是否仍要保存会议纪要（不关联会议室预约）？`
-            );
-            if (!proceed) return;
-            scheduleEventId = undefined;
-          } else {
-            // 其他预约失败，仍保存纪要
-            console.warn('会议室预约失败，仅保存纪要:', msg);
-            scheduleEventId = undefined;
-          }
-        }
-      }
-
-      payload.scheduleEventId = scheduleEventId;
       if (payload.id) {
         await meetingMinutesApi.edit(payload);
         toast.success('已更新');
@@ -259,6 +214,51 @@ const MeetingMinutesPage: React.FC = () => {
     } catch (err) {
       toast.error(getErrorMessage(err, '保存失败'));
     }
+  };
+
+  const saveForm = async () => {
+    if (!formData.meetingTitle.trim()) {
+      toast.error('请输入会议标题');
+      return;
+    }
+    if (!formData.minutesContent.trim()) {
+      toast.error('请输入纪要内容');
+      return;
+    }
+    const payload: OaMeetingMinutes = { ...formData, decisions: stringifyDecisions(decisions) };
+
+    // 如果选择了会议室和会议时间，自动创建会议室预约
+    let scheduleEventId = payload.scheduleEventId;
+    if (payload.roomId && payload.meetingTime) {
+      try {
+        const startDate = new Date(payload.meetingTime);
+        const endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // 默认1.5小时
+        const startStr = toBackendDateString(startDate);
+        const endStr = toBackendDateString(endDate);
+        if (startStr && endStr) {
+          await createEvent({
+            title: payload.meetingTitle,
+            startTime: startStr,
+            endTime: endStr,
+            type: 'MEETING',
+            roomId: payload.roomId,
+          });
+          toast.success('会议室已自动预约');
+        }
+      } catch (bookingErr: any) {
+        const msg = bookingErr?.response?.data?.msg || bookingErr?.message || '';
+        if (msg.includes('已被预订')) {
+          // 冲突：弹窗询问是否仍保存纪要（不关联预约）
+          setBookingConflict({ payload: { ...payload, scheduleEventId: undefined }, message: msg });
+          return;
+        }
+        // 其他预约失败，仍保存纪要
+        console.warn('会议室预约失败，仅保存纪要:', msg);
+        scheduleEventId = undefined;
+      }
+    }
+
+    await persistMinutes({ ...payload, scheduleEventId });
   };
 
   const handleDelete = async () => {
@@ -793,6 +793,19 @@ const MeetingMinutesPage: React.FC = () => {
         danger
         onCancel={() => setPendingAttendDelete(null)}
         onConfirm={handleAttendDelete}
+      />
+
+      <ConfirmDialog
+        open={!!bookingConflict}
+        title="会议室预约失败"
+        message={`会议室预约失败：${bookingConflict?.message ?? ''}\n\n是否仍要保存会议纪要（不关联会议室预约）？`}
+        confirmText="仍要保存"
+        onCancel={() => setBookingConflict(null)}
+        onConfirm={() => {
+          const payload = bookingConflict?.payload;
+          setBookingConflict(null);
+          if (payload) void persistMinutes(payload);
+        }}
       />
     </div>
   );

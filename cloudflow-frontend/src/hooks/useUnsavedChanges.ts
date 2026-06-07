@@ -1,9 +1,9 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useAppStore } from '../stores/workflowStore';
 
 /**
  * 离开页面确认 Hook
- * 当有未保存的更改时，阻止用户离开页面
+ * 当有未保存的更改时，通过浏览器原生提示阻止刷新/关闭页面。
  */
 export function useUnsavedChanges(enabled: boolean = true) {
   const isDirty = useAppStore((s) => s.isDirty);
@@ -22,11 +22,5 @@ export function useUnsavedChanges(enabled: boolean = true) {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [enabled, isDirty]);
 
-  // 路由跳转确认（需要配合 React Router 使用）
-  const confirmNavigation = useCallback(() => {
-    if (!enabled || !isDirty) return true;
-    return window.confirm('您有未保存的更改，确定要离开吗？');
-  }, [enabled, isDirty]);
-
-  return { isDirty, confirmNavigation };
+  return { isDirty };
 }
