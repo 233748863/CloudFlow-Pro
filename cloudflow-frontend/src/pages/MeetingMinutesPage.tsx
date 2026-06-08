@@ -50,6 +50,8 @@ import { createEvent } from '@/services/api/schedule';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay, toBackendDateString } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
@@ -66,29 +68,9 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
   </tr>
 );
 
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿',
-  CONFIRMED: '已确认',
-};
-
-const toneMap: Record<string, string> = {
-  DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-  CONFIRMED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-};
-
 const getStatusBadge = (status?: string) => (
-  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
-    {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
-  </span>
+  <DictBadge dictType="oa_meeting_minutes_status" value={String(status || 'DRAFT')} />
 );
-
-const ATTEND_LABELS: Record<MeetingAttendStatus, { label: string; cls: string }> = {
-  ATTEND: { label: '出席', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  ABSENT: { label: '缺席', cls: 'border-rose-200 bg-rose-50 text-rose-700' },
-  LATE: { label: '迟到', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
-  LEAVE: { label: '请假', cls: 'border-sky-200 bg-sky-50 text-sky-700' },
-  NOT_CHECKED: { label: '未登记', cls: 'border-slate-200 bg-slate-50 text-slate-500' },
-};
 
 const emptyForm = (): OaMeetingMinutes => ({
   meetingTitle: '',
@@ -120,6 +102,8 @@ const emptyAttendance = (minutesId: number): OaMeetingAttendance => ({
 const MeetingMinutesPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission?.('oa:meeting:edit') ?? true;
+  const statusDict = useDict('oa_meeting_minutes_status');
+  const attendDict = useDict('oa_meeting_attend_status');
 
   const [rows, setRows] = useState<OaMeetingMinutes[]>([]);
   const [total, setTotal] = useState(0);
@@ -368,8 +352,9 @@ const MeetingMinutesPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">全部状态</SelectItem>
-              <SelectItem value="DRAFT">草稿</SelectItem>
-              <SelectItem value="CONFIRMED">已确认</SelectItem>
+              {statusDict.getOptions().map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -675,31 +660,26 @@ const MeetingMinutesPage: React.FC = () => {
                 <div className="py-4 text-center text-xs text-slate-400">暂无出席记录</div>
               ) : (
                 <ul className="space-y-1 text-sm">
-                  {attendance.map((a) => {
-                    const label = ATTEND_LABELS[a.attendStatus] || ATTEND_LABELS.NOT_CHECKED;
-                    return (
-                      <li key={a.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900 dark:text-slate-100">{a.userName || '-'}</span>
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${label.cls}`}>
-                            {label.label}
-                          </span>
-                          {a.checkInTime ? (
-                            <span className="text-xs text-slate-400">{formatDateTimeDisplay(a.checkInTime)}</span>
-                          ) : null}
-                          {a.remark ? <span className="text-xs text-slate-400">· {a.remark}</span> : null}
-                        </div>
-                        {canEdit ? (
-                          <div className="flex items-center gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => openAttendanceEdit(a)}>编辑</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setPendingAttendDelete(a)}>
-                              <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                            </Button>
-                          </div>
+                  {attendance.map((a) => (
+                    <li key={a.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{a.userName || '-'}</span>
+                        <DictBadge dictType="oa_meeting_attend_status" value={String(a.attendStatus || 'NOT_CHECKED')} />
+                        {a.checkInTime ? (
+                          <span className="text-xs text-slate-400">{formatDateTimeDisplay(a.checkInTime)}</span>
                         ) : null}
-                      </li>
-                    );
-                  })}
+                        {a.remark ? <span className="text-xs text-slate-400">· {a.remark}</span> : null}
+                      </div>
+                      {canEdit ? (
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openAttendanceEdit(a)}>编辑</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setPendingAttendDelete(a)}>
+                            <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                          </Button>
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
                 </ul>
               )}
             </div>
@@ -735,8 +715,8 @@ const MeetingMinutesPage: React.FC = () => {
             >
               <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {(Object.keys(ATTEND_LABELS) as MeetingAttendStatus[]).map((k) => (
-                  <SelectItem key={k} value={k}>{ATTEND_LABELS[k].label}</SelectItem>
+                {attendDict.getOptions().map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

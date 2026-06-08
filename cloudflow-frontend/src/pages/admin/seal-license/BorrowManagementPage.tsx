@@ -15,6 +15,8 @@ import { useAuth } from '@/context/AuthContext';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 type Kind = 'SEAL' | 'LICENSE';
 
@@ -31,13 +33,6 @@ interface UnifiedBorrow {
   contractId?: number;
   contractNo?: string;
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  APPROVED: '待借出',
-  BORROWED: '已借出',
-  OVERDUE: '已逾期',
-  RETURNED: '已归还',
-};
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
@@ -67,19 +62,9 @@ const toLicenseBorrow = (item: OaLicenseBorrow): UnifiedBorrow => ({
   status: item.status,
 });
 
-const getStatusBadge = (status?: string) => {
-  const toneMap: Record<string, string> = {
-    APPROVED: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    BORROWED: 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-    OVERDUE: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    RETURNED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-  };
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'APPROVED'] || toneMap.APPROVED}`}>
-      {STATUS_LABELS[status || ''] || status || '-'}
-    </span>
-  );
-};
+const getStatusBadge = (status?: string) => (
+  <DictBadge dictType="oa_borrow_status" value={String(status || 'APPROVED')} fallback="待借出" />
+);
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading = false }) => (
   <tr className="hover:bg-transparent">
@@ -101,6 +86,7 @@ const metricMetaClassName = 'mt-0.5 truncate text-xs';
 
 export const BorrowManagementPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const statusDict = useDict('oa_borrow_status');
   const [rows, setRows] = useState<UnifiedBorrow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -297,10 +283,7 @@ export const BorrowManagementPage: React.FC = () => {
                 <Select value={query.status} onValueChange={(status) => setQuery((prev) => ({ ...prev, pageNum: 1, status }))}>
                   <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="APPROVED">待借出</SelectItem>
-                    <SelectItem value="BORROWED">已借出</SelectItem>
-                    <SelectItem value="OVERDUE">已逾期</SelectItem>
-                    <SelectItem value="RETURNED">已归还</SelectItem>
+                    {statusDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>,

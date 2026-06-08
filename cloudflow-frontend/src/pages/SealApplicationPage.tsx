@@ -15,24 +15,8 @@ import { useAuth } from '@/context/AuthContext';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  BORROWED: '已借出',
-  RETURNED: '已归还',
-  OVERDUE: '已逾期',
-  CANCELLED: '已取消',
-};
-
-const SCENE_LABELS: Record<string, string> = {
-  CONTRACT: '合同',
-  PROOF: '证明',
-  FINANCE: '财务',
-  OTHER: '其他',
-};
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'cancel';
@@ -55,23 +39,9 @@ const emptyForm: OaSealApplication = {
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
-const getStatusBadge = (status?: string) => {
-  const toneMap: Record<string, string> = {
-    DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-    PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    BORROWED: 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-    RETURNED: 'border border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200',
-    OVERDUE: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    CANCELLED: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-  };
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
-      {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
-    </span>
-  );
-};
+const getStatusBadge = (status?: string) => (
+  <DictBadge dictType="oa_seal_application_status" value={String(status || 'DRAFT')} />
+);
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading = false }) => (
   <tr className="hover:bg-transparent">
@@ -88,6 +58,8 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
 
 export const SealApplicationPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const statusDict = useDict('oa_seal_application_status');
+  const sceneDict = useDict('oa_seal_scene');
   const [rows, setRows] = useState<OaSealApplication[]>([]);
   const [seals, setSeals] = useState<OaSeal[]>([]);
   const [total, setTotal] = useState(0);
@@ -248,7 +220,7 @@ export const SealApplicationPage: React.FC = () => {
                   <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                    {statusDict.getOptions().map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -310,7 +282,7 @@ export const SealApplicationPage: React.FC = () => {
                       <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{item.sealName || '-'}</td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                         <div className="font-medium text-slate-900 dark:text-slate-100">{item.documentName || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{SCENE_LABELS[item.useScene || ''] || item.useScene || '-'}</div>
+                        <div className="mt-1 text-xs text-slate-400">{sceneDict.getLabel(String(item.useScene ?? '')) || '-'}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                         <div>{item.userName || '-'}</div>
@@ -386,7 +358,7 @@ export const SealApplicationPage: React.FC = () => {
               <Select value={form.useScene || 'CONTRACT'} onValueChange={(value) => setForm((prev) => ({ ...prev, useScene: value }))}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(SCENE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                  {sceneDict.getOptions().map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -438,7 +410,7 @@ export const SealApplicationPage: React.FC = () => {
                 ['印章', detailApplication.sealName],
                 ['关联合同', detailApplication.contractNo],
                 ['文件名称', detailApplication.documentName],
-                ['用印场景', SCENE_LABELS[detailApplication.useScene || ''] || detailApplication.useScene],
+                ['用印场景', sceneDict.getLabel(String(detailApplication.useScene ?? ''))],
                 ['申请人', detailApplication.userName],
                 ['所属部门', detailApplication.deptName],
                 ['预计借出', formatDateTimeDisplay(detailApplication.expectedBorrowTime)],

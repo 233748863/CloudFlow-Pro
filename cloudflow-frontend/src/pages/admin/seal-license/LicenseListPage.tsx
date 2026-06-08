@@ -15,32 +15,10 @@ import { useAuth } from '@/context/AuthContext';
 import { PageResult } from '@/types';
 import type { UserBrief } from '@/types/workflow';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
-const TYPE_LABELS: Record<string, string> = {
-  BUSINESS: '营业执照',
-  PERMIT: '许可证',
-  QUALIFICATION: '资质证书',
-  OTHER: '其他',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  AVAILABLE: '可用',
-  BORROWED: '借出',
-  DISABLED: '停用',
-};
-
-const EDITABLE_STATUS_LABELS: Record<string, string> = {
-  AVAILABLE: STATUS_LABELS.AVAILABLE,
-  DISABLED: STATUS_LABELS.DISABLED,
-};
-
-const RENEWAL_STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  CANCELLED: '已取消',
-};
+const EDITABLE_LICENSE_STATUSES = ['AVAILABLE', 'DISABLED'] as const;
 
 const emptyForm: OaLicense = {
   licenseCode: '',
@@ -61,35 +39,15 @@ const EXPIRY_REMINDER_WINDOW_DAYS = 30;
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
-const getStatusBadge = (status?: string) => {
-  const toneMap: Record<string, string> = {
-    AVAILABLE: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    BORROWED: 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-    DISABLED: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-  };
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'AVAILABLE'] || toneMap.AVAILABLE}`}>
-      {STATUS_LABELS[status || 'AVAILABLE'] || status || '-'}
-    </span>
-  );
-};
+const getStatusBadge = (status?: string) => (
+  <DictBadge dictType="oa_license_status" value={String(status || 'AVAILABLE')} fallback="可用" />
+);
 
 const isBorrowLocked = (item: Pick<OaLicense, 'status'>) => item.status === 'BORROWED';
 
-const getRenewalStatusBadge = (status?: string) => {
-  const toneMap: Record<string, string> = {
-    DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-    PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    CANCELLED: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-  };
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
-      {RENEWAL_STATUS_LABELS[status || 'DRAFT'] || status || '-'}
-    </span>
-  );
-};
+const getRenewalStatusBadge = (status?: string) => (
+  <DictBadge dictType="oa_renewal_status" value={String(status || 'DRAFT')} fallback="草稿" />
+);
 
 const getDaysUntil = (date?: string) => {
   if (!date) return null;
@@ -147,6 +105,8 @@ const DetailField: React.FC<{ label: string; value: React.ReactNode }> = ({ labe
 
 export const LicenseListPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const typeDict = useDict('oa_license_type');
+  const statusDict = useDict('oa_license_status');
   const [rows, setRows] = useState<OaLicense[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), licenseName: '', status: '', expiry: '' });
@@ -363,7 +323,7 @@ export const LicenseListPage: React.FC = () => {
                   <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                    {statusDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>,
@@ -417,7 +377,7 @@ export const LicenseListPage: React.FC = () => {
                       <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{item.licenseCode}</td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                         <div className="font-medium text-slate-900 dark:text-slate-100">{item.licenseName}</div>
-                        <div className="mt-1 text-xs text-slate-400">{TYPE_LABELS[item.licenseType] || item.licenseType}</div>
+                        <div className="mt-1 text-xs text-slate-400">{typeDict.getLabel(item.licenseType) || item.licenseType}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                         <div>{item.licenseNo || '-'}</div>
@@ -487,14 +447,14 @@ export const LicenseListPage: React.FC = () => {
                   <Label>类型</Label>
                   <Select value={form.licenseType} onValueChange={(value) => setForm((prev) => ({ ...prev, licenseType: value }))}>
                     <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(TYPE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
+                    <SelectContent>{typeDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>状态</Label>
                   <Select value={form.status || 'AVAILABLE'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value as OaLicense['status'] }))}>
                     <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(EDITABLE_STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
+                    <SelectContent>{EDITABLE_LICENSE_STATUSES.map((value) => <SelectItem key={value} value={value}>{statusDict.getLabel(value)}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
@@ -560,11 +520,11 @@ export const LicenseListPage: React.FC = () => {
               <dl className="space-y-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500 dark:text-slate-400">类型</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">{TYPE_LABELS[form.licenseType] || '-'}</dd>
+                  <dd className="font-medium text-slate-900 dark:text-slate-100">{typeDict.getLabel(form.licenseType) || '-'}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500 dark:text-slate-400">状态</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">{STATUS_LABELS[form.status || 'AVAILABLE'] || '-'}</dd>
+                  <dd className="font-medium text-slate-900 dark:text-slate-100">{statusDict.getLabel(form.status || 'AVAILABLE') || '-'}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500 dark:text-slate-400">到期日期</dt>
@@ -592,7 +552,7 @@ export const LicenseListPage: React.FC = () => {
           <div className="space-y-4">
             <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
               <DetailField label="证照编码" value={detailLicense.licenseCode} />
-              <DetailField label="证照类型" value={TYPE_LABELS[detailLicense.licenseType] || detailLicense.licenseType} />
+              <DetailField label="证照类型" value={typeDict.getLabel(detailLicense.licenseType) || detailLicense.licenseType} />
               <DetailField label="证照编号" value={detailLicense.licenseNo} />
               <DetailField label="签发机构" value={detailLicense.issuer} />
               <DetailField label="签发日期" value={detailLicense.issueDate} />

@@ -20,8 +20,10 @@ import { Card, CardContent, CardHeader, CardTitle, Button, DatePicker, DeptSelec
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
+import { useDict } from '@/hooks/useDict';
 
 const STATUS_OPTIONS = ['DRAFT', 'PENDING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'ARCHIVED'] as const;
+const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 type DetailTab = 'overview' | 'gantt' | 'milestone' | 'wbs' | 'cost' | 'risk' | 'linkage';
 type ChildDialog =
   | { type: 'member'; item?: ProjectMember | null }
@@ -81,25 +83,6 @@ const emptyDependency: ProjectDependency = {
 };
 
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300';
-
-const statusLabelMap: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  IN_PROGRESS: '执行中',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-  ARCHIVED: '已归档',
-  PLANNED: '计划中',
-  COMPLETED_MILESTONE: '已完成',
-};
-
-const sourceTypeLabelMap: Record<string, string> = {
-  MANUAL: '手工创建',
-  CRM_OPPORTUNITY: 'CRM 商机',
-  CRM_QUOTE: 'CRM 报价',
-  CONTRACT: 'OA 合同',
-};
 
 const tabs: Array<{ value: DetailTab; label: string; icon: React.ReactNode }> = [
   { value: 'overview', label: '概览', icon: <FolderKanban size={14} /> },
@@ -276,6 +259,9 @@ const DraggableGanttBar: React.FC<{
 
 export default function ProjectManagementPage() {
   const { hasPermission } = useAuth();
+  const statusDict = useDict('oa_project_status');
+  const sourceTypeDict = useDict('oa_project_source_type');
+  const severityDict = useDict('severity_level');
   const navigate = useNavigate();
   const location = useLocation();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -529,7 +515,7 @@ export default function ProjectManagementPage() {
   const linkageCards = useMemo(() => {
     if (!detail?.linkSummary) return [];
     return [
-      { label: '来源对象', value: detail.linkSummary.sourceName || `${sourceTypeLabelMap[detail.linkSummary.sourceType || ''] || detail.linkSummary.sourceType || '-'} / ${detail.linkSummary.sourceId || '-'}` },
+      { label: '来源对象', value: detail.linkSummary.sourceName || `${sourceTypeDict.getLabel(detail.linkSummary.sourceType || '') || detail.linkSummary.sourceType || '-'} / ${detail.linkSummary.sourceId || '-'}` },
       { label: '合同联动', value: detail.linkSummary.contractNo || '-' },
       { label: '预算摘要', value: detail.linkSummary.budgetSummary || '-' },
       { label: '发票摘要', value: detail.linkSummary.invoiceSummary || '-' },
@@ -556,7 +542,7 @@ export default function ProjectManagementPage() {
                   <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{statusLabelMap[item] || item}</SelectItem>)}
+                    {STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{statusDict.getLabel(item)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -588,8 +574,8 @@ export default function ProjectManagementPage() {
                     <td className="px-4 py-3 text-sm"><div>{row.projectName}</div><div className="text-xs text-slate-500">{row.customerName || '-'}</div></td>
                     <td className="px-4 py-3 text-sm"><div>{row.ownerName || '-'}</div><div className="text-xs text-slate-500">{row.deptName || '-'}</div></td>
                     <td className="px-4 py-3 text-sm"><div>{formatMoney(row.budgetAmount)}</div><div className="text-xs text-slate-500">成本 {formatMoney(row.actualCostAmount)}</div></td>
-                    <td className="px-4 py-3 text-sm"><div>{row.progress || 0}%</div><div className="text-xs text-slate-500">{row.riskLevel || '-'}</div></td>
-                    <td className="px-4 py-3 text-sm"><div>{row.sourceName || sourceTypeLabelMap[row.sourceType || 'MANUAL'] || row.sourceType || '-'}</div><div className="text-xs text-slate-500">基线 {row.baselineVersion || 0}</div></td>
+                    <td className="px-4 py-3 text-sm"><div>{row.progress || 0}%</div><div className="text-xs text-slate-500">{severityDict.getLabel(row.riskLevel || '') || '-'}</div></td>
+                    <td className="px-4 py-3 text-sm"><div>{row.sourceName || sourceTypeDict.getLabel(row.sourceType || 'MANUAL') || row.sourceType || '-'}</div><div className="text-xs text-slate-500">基线 {row.baselineVersion || 0}</div></td>
                     <td className="px-4 py-3 text-right">
                       <TableRowActions
                         align="end"
@@ -700,7 +686,7 @@ export default function ProjectManagementPage() {
             </div>
             <div>
               <Label className={fieldLabelClassName}>来源类型</Label>
-              <Input value={sourceTypeLabelMap[form.sourceType || 'MANUAL'] || form.sourceType || '手工创建'} disabled />
+              <Input value={sourceTypeDict.getLabel(form.sourceType || 'MANUAL') || form.sourceType || '手工创建'} disabled />
             </div>
             <div>
               <Label className={fieldLabelClassName}>来源名称</Label>
@@ -734,7 +720,7 @@ export default function ProjectManagementPage() {
               <TabsContent value="overview" className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <Card><CardHeader className="pb-3"><CardTitle className="text-base">项目编号</CardTitle></CardHeader><CardContent className="text-sm">{detail.project.projectNo || '-'}</CardContent></Card>
-                  <Card><CardHeader className="pb-3"><CardTitle className="text-base">状态</CardTitle></CardHeader><CardContent className="text-sm">{statusLabelMap[detail.project.status || 'DRAFT'] || detail.project.status || '-'}</CardContent></Card>
+                  <Card><CardHeader className="pb-3"><CardTitle className="text-base">状态</CardTitle></CardHeader><CardContent className="text-sm">{statusDict.getLabel(detail.project.status || 'DRAFT') || '-'}</CardContent></Card>
                   <Card><CardHeader className="pb-3"><CardTitle className="text-base">预算 / 成本</CardTitle></CardHeader><CardContent className="text-sm">{formatMoney(detail.project.budgetAmount)} / {formatMoney(detail.costSummary?.totalAmount || detail.project.actualCostAmount)}</CardContent></Card>
                   <Card><CardHeader className="pb-3"><CardTitle className="text-base">基线版本</CardTitle></CardHeader><CardContent className="text-sm">{detail.baselineVersion || detail.project.baselineVersion || 0}</CardContent></Card>
                 </div>
@@ -745,7 +731,7 @@ export default function ProjectManagementPage() {
                     <CardContent className="space-y-2 text-sm">
                       <div>客户：{detail.project.customerName || '-'}</div>
                       <div>合同：{detail.project.contractNo || '-'}</div>
-                      <div>来源：{detail.project.sourceName || sourceTypeLabelMap[detail.project.sourceType || 'MANUAL'] || detail.project.sourceType || '-'} / {detail.project.sourceId || '-'}</div>
+                      <div>来源：{detail.project.sourceName || sourceTypeDict.getLabel(detail.project.sourceType || 'MANUAL') || detail.project.sourceType || '-'} / {detail.project.sourceId || '-'}</div>
                       <div>逾期里程碑：{detail.kpi?.overdueMilestoneCount || 0}</div>
                       <div>逾期任务：{detail.kpi?.overdueTaskCount || 0}</div>
                       <div>开放风险：{detail.kpi?.openRiskCount || 0}</div>
@@ -904,7 +890,7 @@ export default function ProjectManagementPage() {
                         <div key={`${item.riskId || item.riskCode || index}`} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
                           <div>
                             <div>{item.riskName || '-'}</div>
-                            <div className="text-xs text-slate-500">{item.riskLevel || '-'} / {item.triggerSource || '-'} / {item.status || '-'}</div>
+                            <div className="text-xs text-slate-500">{severityDict.getLabel(item.riskLevel || '') || '-'} / {item.triggerSource || '-'} / {item.status || '-'}</div>
                           </div>
                           {item.riskId ? (
                             <TableRowActions actions={[
@@ -1047,10 +1033,7 @@ export default function ProjectManagementPage() {
               <Select value={riskForm.riskLevel || 'MEDIUM'} onValueChange={(value) => setRiskForm((prev) => ({ ...prev, riskLevel: value }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="LOW">低</SelectItem>
-                  <SelectItem value="MEDIUM">中</SelectItem>
-                  <SelectItem value="HIGH">高</SelectItem>
-                  <SelectItem value="CRITICAL">严重</SelectItem>
+                  {RISK_LEVELS.map((value) => <SelectItem key={value} value={value}>{severityDict.getLabel(value)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

@@ -33,25 +33,8 @@ import {
   Textarea,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-
-const PAYMENT_TYPE_OPTIONS = [
-  { value: 'PURCHASE', label: '采购' },
-  { value: 'SERVICE', label: '服务' },
-  { value: 'RENT', label: '租金' },
-  { value: 'OTHER', label: '其他' },
-] as const;
-
-const PAYMENT_TYPE_LABELS = Object.fromEntries(
-  PAYMENT_TYPE_OPTIONS.map((option) => [option.value, option.label]),
-) as Record<(typeof PAYMENT_TYPE_OPTIONS)[number]['value'], string>;
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  PAID: '已付款',
-};
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'pay';
@@ -148,14 +131,15 @@ const formatAmount = (value?: number | null) => {
   })}`;
 };
 
-const getPaymentTypeLabel = (paymentType?: string) =>
-  PAYMENT_TYPE_LABELS[paymentType as keyof typeof PAYMENT_TYPE_LABELS] || paymentType || '-';
-
 const getAttachmentList = (attachmentUrl?: string) =>
   normalizeAttachmentUrls(attachmentUrl);
 
 export const PaymentRequestPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const statusDict = useDict('oa_payment_request_status');
+  const paymentTypeDict = useDict('oa_payment_type');
+  const getPaymentTypeLabel = (paymentType?: string) =>
+    paymentTypeDict.getLabel(String(paymentType ?? '')) || '-';
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({
@@ -232,7 +216,7 @@ export const PaymentRequestPage: React.FC = () => {
 
   const hasActiveFilters = Boolean(searchParams.status || searchParams.paymentType);
   const currentStatusLabel = searchParams.status
-    ? STATUS_LABELS[searchParams.status] || searchParams.status
+    ? statusDict.getLabel(searchParams.status)
     : '全部状态';
   const currentTypeLabel = searchParams.paymentType
     ? getPaymentTypeLabel(searchParams.paymentType)
@@ -405,21 +389,9 @@ export const PaymentRequestPage: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status?: string) => {
-    const toneMap: Record<string, string> = {
-      DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-      PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-      APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-      REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-      PAID: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    };
-
-    return (
-      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
-        {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
-      </span>
-    );
-  };
+  const getStatusBadge = (status?: string) => (
+    <DictBadge dictType="oa_payment_request_status" value={String(status || 'DRAFT')} />
+  );
 
   const renderDetailValue = (value?: string | number | null) => {
     if (value === undefined || value === null || value === '') {
@@ -451,9 +423,9 @@ export const PaymentRequestPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
+                    {statusDict.getOptions().map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -470,7 +442,7 @@ export const PaymentRequestPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部类型</SelectItem>
-                    {PAYMENT_TYPE_OPTIONS.map((option) => (
+                    {paymentTypeDict.getOptions().map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -700,7 +672,7 @@ export const PaymentRequestPage: React.FC = () => {
                   <SelectValue placeholder="请选择付款类型" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PAYMENT_TYPE_OPTIONS.map((option) => (
+                  {paymentTypeDict.getOptions().map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>

@@ -45,49 +45,8 @@ import {
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import type { UserBrief } from '@/types/workflow';
-
-const STATUS_OPTIONS = [
-  { value: '', label: '全部状态' },
-  { value: 'DRAFT', label: '草稿' },
-  { value: 'PENDING', label: '审批中' },
-  { value: 'APPROVED', label: '已通过' },
-  { value: 'REJECTED', label: '已拒绝' },
-  { value: 'CANCELLED', label: '已取消' },
-] as const;
-
-const TRANSPORT_OPTIONS = [
-  { value: 'PLANE', label: '飞机' },
-  { value: 'TRAIN', label: '火车' },
-  { value: 'CAR', label: '自驾' },
-  { value: 'OTHER', label: '其他' },
-] as const;
-
-const ACCOMMODATION_OPTIONS = [
-  { value: 'SELF', label: '自行安排' },
-  { value: 'COMPANY', label: '公司安排' },
-  { value: 'NONE', label: '无需住宿' },
-] as const;
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已拒绝',
-  CANCELLED: '已取消',
-};
-
-const TRANSPORT_LABELS: Record<string, string> = {
-  PLANE: '飞机',
-  TRAIN: '火车',
-  CAR: '自驾',
-  OTHER: '其他',
-};
-
-const ACCOMMODATION_LABELS: Record<string, string> = {
-  SELF: '自行安排',
-  COMPANY: '公司安排',
-  NONE: '无需住宿',
-};
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'cancel';
@@ -204,6 +163,9 @@ const DetailRow: React.FC<{
 
 export const BusinessTripPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const tripStatusDict = useDict('oa_business_trip_status');
+  const transportDict = useDict('oa_transport_type');
+  const accommodationDict = useDict('oa_accommodation_type');
   const [list, setList] = useState<BusinessTrip[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({
@@ -246,7 +208,7 @@ export const BusinessTripPage: React.FC = () => {
   const pendingCount = useMemo(() => list.filter((item) => item.status === 'PENDING').length, [list]);
   const approvedCount = useMemo(() => list.filter((item) => item.status === 'APPROVED').length, [list]);
   const hasActiveFilters = Boolean(searchParams.status || searchParams.destination);
-  const currentStatusLabel = searchParams.status ? STATUS_LABELS[searchParams.status] || searchParams.status : '全部状态';
+  const currentStatusLabel = searchParams.status ? tripStatusDict.getLabel(searchParams.status) : '全部状态';
   const currentDestinationLabel = searchParams.destination || '全部目的地';
   const formTripDays = calculateTripDays(formData.startDate, formData.endDate);
 
@@ -443,21 +405,9 @@ export const BusinessTripPage: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status?: string) => {
-    const toneMap: Record<string, string> = {
-      DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-      PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-      APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-      REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-      CANCELLED: 'border border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400',
-    };
-
-    return (
-      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
-        {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
-      </span>
-    );
-  };
+  const getStatusBadge = (status?: string) => (
+    <DictBadge dictType="oa_business_trip_status" value={String(status || 'DRAFT')} />
+  );
 
   const getAttachmentList = (attachmentUrl?: string) =>
     normalizeAttachmentUrls(attachmentUrl);
@@ -508,7 +458,7 @@ export const BusinessTripPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {STATUS_OPTIONS.filter((option) => option.value).map((option) => (
+                    {tripStatusDict.getOptions().map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -597,7 +547,7 @@ export const BusinessTripPage: React.FC = () => {
                           {item.tripDays ? `${item.tripDays} 天` : '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                          {TRANSPORT_LABELS[item.transportType || ''] || '-'}
+                          {transportDict.getLabel(String(item.transportType ?? '')) || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{formatAmount(item.estimatedCost)}</td>
                         <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
@@ -751,7 +701,7 @@ export const BusinessTripPage: React.FC = () => {
                       <SelectValue placeholder="请选择交通方式" />
                     </SelectTrigger>
                     <SelectContent>
-                      {TRANSPORT_OPTIONS.map((option) => (
+                      {transportDict.getOptions().map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>
@@ -771,7 +721,7 @@ export const BusinessTripPage: React.FC = () => {
                       <SelectValue placeholder="请选择住宿安排" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ACCOMMODATION_OPTIONS.map((option) => (
+                      {accommodationDict.getOptions().map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>
@@ -912,7 +862,7 @@ export const BusinessTripPage: React.FC = () => {
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500 dark:text-slate-400">交通</dt>
                   <dd className="font-medium text-slate-900 dark:text-slate-100">
-                    {TRANSPORT_LABELS[formData.transportType || ''] || '-'}
+                    {transportDict.getLabel(String(formData.transportType ?? '')) || '-'}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
@@ -962,8 +912,8 @@ export const BusinessTripPage: React.FC = () => {
               <DetailRow label="目的地" value={renderDetailValue(detailTrip.destination)} />
               <DetailRow label="日期" value={`${renderDetailValue(detailTrip.startDate)} ~ ${renderDetailValue(detailTrip.endDate)}`} />
               <DetailRow label="出差天数" value={detailTrip.tripDays ? `${detailTrip.tripDays} 天` : '-'} />
-              <DetailRow label="交通方式" value={TRANSPORT_LABELS[detailTrip.transportType || ''] || '-'} />
-              <DetailRow label="住宿安排" value={ACCOMMODATION_LABELS[detailTrip.accommodation || ''] || '-'} />
+              <DetailRow label="交通方式" value={transportDict.getLabel(String(detailTrip.transportType ?? '')) || '-'} />
+              <DetailRow label="住宿安排" value={accommodationDict.getLabel(String(detailTrip.accommodation ?? '')) || '-'} />
               <DetailRow label="预计费用" value={formatAmount(detailTrip.estimatedCost)} />
               <DetailRow label="关联项目" value={renderDetailValue(detailTrip.projectName)} />
               <DetailRow label="联系电话" value={renderDetailValue(detailTrip.contactPhone)} />

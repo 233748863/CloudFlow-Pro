@@ -11,6 +11,8 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 type BudgetDialog =
   | { type: 'plan'; item?: BudgetPlan | null }
@@ -21,40 +23,6 @@ type BudgetDialog =
   | null;
 
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300';
-
-const thresholdToneMap: Record<string, string> = {
-  NORMAL: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-  WARN: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  ALERT: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200',
-  BLOCK: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-};
-
-const thresholdLabelMap: Record<string, string> = {
-  NORMAL: '正常',
-  WARN: '预警',
-  ALERT: '告警',
-  BLOCK: '拦截',
-};
-
-const targetTypeLabelMap: Record<string, string> = {
-  DEPT: '部门预算',
-  PROJECT: '项目预算',
-};
-
-const budgetStatusLabelMap: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  ACTIVE: '生效中',
-};
-
-const operationTypeLabelMap: Record<string, string> = {
-  RESERVE: '预算占用',
-  RELEASE: '预算释放',
-  WRITEOFF: '预算核销',
-  ADJUST: '预算调整',
-};
 
 const emptyPlanLine: BudgetLine = {
   subjectCode: '',
@@ -115,6 +83,9 @@ const flattenDeptOptions = (items: SysDept[] = [], prefix = ''): Array<{ label: 
 
 export default function BudgetManagementPage() {
   const { hasPermission } = useAuth();
+  const targetTypeDict = useDict('oa_budget_target_type');
+  const budgetStatusDict = useDict('oa_budget_status');
+  const operationTypeDict = useDict('oa_budget_operation_type');
   const [plans, setPlans] = useState<BudgetPlan[]>([]);
   const [subjects, setSubjects] = useState<BudgetSubject[]>([]);
   const [adjustments, setAdjustments] = useState<BudgetAdjustment[]>([]);
@@ -294,9 +265,7 @@ export default function BudgetManagementPage() {
   };
 
   const thresholdBadge = (status?: string) => (
-    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${thresholdToneMap[status || 'NORMAL'] || thresholdToneMap.NORMAL}`}>
-      {thresholdLabelMap[status || 'NORMAL'] || status || '正常'}
-    </span>
+    <DictBadge dictType="oa_budget_threshold" value={String(status || 'NORMAL')} fallback="正常" />
   );
 
   return (
@@ -339,8 +308,8 @@ export default function BudgetManagementPage() {
                     <tr key={item.budgetId}>
                       <td className="px-4 py-3 text-sm">
                         <div>{item.budgetName}</div>
-                        <div className="text-xs text-slate-500">{item.budgetNo || '-'} / {targetTypeLabelMap[item.targetType || 'DEPT'] || item.targetType || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{budgetStatusLabelMap[item.status || 'DRAFT'] || item.status || '-'}</div>
+                        <div className="text-xs text-slate-500">{item.budgetNo || '-'} / {targetTypeDict.getLabel(item.targetType || 'DEPT') || item.targetType || '-'}</div>
+                        <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || item.status || '-'}</div>
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div>{formatMoney(item.totalAmount)}</div>
@@ -409,7 +378,7 @@ export default function BudgetManagementPage() {
                       <td className="px-4 py-3 text-sm">
                         <div>{item.adjustmentNo}</div>
                         <div className="text-xs text-slate-500">{item.subjectName || item.subjectCode || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{budgetStatusLabelMap[item.status || 'DRAFT'] || item.status || '-'}</div>
+                        <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || item.status || '-'}</div>
                       </td>
                       <td className="px-4 py-3 text-sm">{formatMoney(item.changeAmount)}</td>
                       <td className="px-4 py-3 text-right">
@@ -464,7 +433,7 @@ export default function BudgetManagementPage() {
                 <div className="mb-3 text-sm font-medium">预算主表</div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">预算编号：{planDetail.budgetNo || '-'}</div>
-                  <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">目标对象：{targetTypeLabelMap[planDetail.targetType || 'DEPT'] || planDetail.targetType} / {planDetail.targetName || planDetail.projectName || planDetail.deptName || '-'}</div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">目标对象：{targetTypeDict.getLabel(planDetail.targetType || 'DEPT') || planDetail.targetType} / {planDetail.targetName || planDetail.projectName || planDetail.deptName || '-'}</div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">负责人：{planDetail.ownerName || '-'}</div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">可用余额：{formatMoney(planSummary.availableAmount)}</div>
                 </div>
@@ -499,7 +468,7 @@ export default function BudgetManagementPage() {
                           <div className="text-xs text-slate-500">{item.businessNo || item.businessId || '-'}</div>
                         </td>
                         <td className="px-4 py-3 text-sm">{item.subjectName || item.subjectCode || '-'}</td>
-                        <td className="px-4 py-3 text-sm">{operationTypeLabelMap[item.operationType || ''] || item.operationType || '-'}</td>
+                        <td className="px-4 py-3 text-sm">{operationTypeDict.getLabel(item.operationType || '') || item.operationType || '-'}</td>
                         <td className="px-4 py-3 text-sm">{formatMoney(item.amount)}</td>
                         <td className="px-4 py-3 text-sm">{formatMoney(item.availableAfter)}</td>
                         <td className="px-4 py-3 text-sm">{item.remark || '-'}</td>
@@ -553,8 +522,7 @@ export default function BudgetManagementPage() {
               <Select value={planForm.targetType || 'DEPT'} onValueChange={(value) => syncPlanTargetContext(value, 0)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DEPT">部门预算</SelectItem>
-                  <SelectItem value="PROJECT">项目预算</SelectItem>
+                  {targetTypeDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

@@ -39,14 +39,8 @@ import {
   Textarea,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-
-const STATUS_MAP: Record<string, string> = {
-  PENDING: '待确认',
-  CONFIRMED: '已确认',
-  ARRIVED: '已到访',
-  COMPLETED: '已离场',
-  CANCELLED: '已取消',
-};
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 const createDefaultForm = (): Visitor => ({
   visitorName: '',
@@ -96,20 +90,9 @@ const TableStateRow: React.FC<{
   </tr>
 );
 
-const getStatusTone = (status: string) => {
-  const config: Record<string, string> = {
-    PENDING: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    CONFIRMED: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    ARRIVED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    COMPLETED: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-    CANCELLED: 'border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
-  };
-
-  return config[status] || config.PENDING;
-};
-
 export const VisitorPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const statusDict = useDict('oa_visitor_status');
   const [list, setList] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({
@@ -289,7 +272,7 @@ export const VisitorPage: React.FC = () => {
   };
 
   const currentStatusLabel = searchParams.status
-    ? STATUS_MAP[searchParams.status] || searchParams.status
+    ? statusDict.getLabel(searchParams.status) || searchParams.status
     : '全部状态';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.visitorName || searchParams.visitDate);
 
@@ -347,11 +330,9 @@ export const VisitorPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    <SelectItem value="PENDING">待确认</SelectItem>
-                    <SelectItem value="CONFIRMED">已确认</SelectItem>
-                    <SelectItem value="ARRIVED">已到访</SelectItem>
-                    <SelectItem value="COMPLETED">已离场</SelectItem>
-                    <SelectItem value="CANCELLED">已取消</SelectItem>
+                    {statusDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -407,8 +388,6 @@ export const VisitorPage: React.FC = () => {
                     <TableStateRow colSpan={8} title="暂无访客记录" />
                   ) : (
                     list.map((item) => {
-                      const tone = getStatusTone(item.status || 'PENDING');
-
                       return (
                         <TableRow key={item.visitorId} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                           <TableCell className="px-4 py-3 align-top">
@@ -457,9 +436,7 @@ export const VisitorPage: React.FC = () => {
                           </TableCell>
 
                           <TableCell className="px-4 py-3 align-top">
-                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>
-                              {STATUS_MAP[item.status || 'PENDING'] || item.status}
-                            </span>
+                            <DictBadge dictType="oa_visitor_status" value={String(item.status || 'PENDING')} fallback="待确认" />
                           </TableCell>
 
                           <TableCell className="px-4 py-3 align-top text-right">

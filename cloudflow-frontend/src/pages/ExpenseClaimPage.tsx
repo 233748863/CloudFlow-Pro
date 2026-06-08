@@ -34,58 +34,8 @@ import {
   Textarea,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-
-const STATUS_OPTIONS = [
-  { value: '', label: '全部状态' },
-  { value: 'DRAFT', label: '草稿' },
-  { value: 'PENDING', label: '审批中' },
-  { value: 'APPROVED', label: '已通过' },
-  { value: 'REJECTED', label: '已驳回' },
-  { value: 'PAID', label: '已打款' },
-] as const;
-
-const CATEGORY_OPTIONS = [
-  { value: '', label: '全部类别' },
-  { value: 'TRAVEL', label: '差旅' },
-  { value: 'OFFICE', label: '办公' },
-  { value: 'ENTERTAINMENT', label: '招待' },
-  { value: 'TRANSPORT', label: '交通' },
-  { value: 'OTHER', label: '其他' },
-] as const;
-
-const EXPENSE_TYPE_OPTIONS = [
-  { value: 'TRANSPORT', label: '交通' },
-  { value: 'ACCOMMODATION', label: '住宿' },
-  { value: 'MEAL', label: '餐饮' },
-  { value: 'COMMUNICATION', label: '通讯' },
-  { value: 'OFFICE_SUPPLIES', label: '办公用品' },
-  { value: 'OTHER', label: '其他' },
-] as const;
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  PAID: '已打款',
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  TRAVEL: '差旅',
-  OFFICE: '办公',
-  ENTERTAINMENT: '招待',
-  TRANSPORT: '交通',
-  OTHER: '其他',
-};
-
-const EXPENSE_TYPE_LABELS: Record<string, string> = {
-  TRANSPORT: '交通',
-  ACCOMMODATION: '住宿',
-  MEAL: '餐饮',
-  COMMUNICATION: '通讯',
-  OFFICE_SUPPLIES: '办公用品',
-  OTHER: '其他',
-};
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'pay';
@@ -190,6 +140,9 @@ const DetailRow: React.FC<{
 
 export const ExpenseClaimPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const statusDict = useDict('oa_expense_status');
+  const categoryDict = useDict('oa_expense_category');
+  const expenseTypeDict = useDict('oa_expense_item_type');
   const [claims, setClaims] = useState<ExpenseClaim[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({
@@ -266,10 +219,10 @@ export const ExpenseClaimPage: React.FC = () => {
 
   const hasActiveFilters = Boolean(searchParams.status || searchParams.category);
   const currentStatusLabel = searchParams.status
-    ? STATUS_LABELS[searchParams.status] || searchParams.status
+    ? statusDict.getLabel(searchParams.status)
     : '全部状态';
   const currentCategoryLabel = searchParams.category
-    ? CATEGORY_LABELS[searchParams.category] || searchParams.category
+    ? categoryDict.getLabel(searchParams.category)
     : '全部类别';
   const totalPages = Math.max(1, Math.ceil(remoteTotal / searchParams.pageSize));
   const formTotalAmount = formData.items?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0;
@@ -470,21 +423,9 @@ export const ExpenseClaimPage: React.FC = () => {
     });
   };
 
-  const getStatusBadge = (status?: string) => {
-    const toneMap: Record<string, string> = {
-      DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-      PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-      APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-      REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-      PAID: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    };
-
-    return (
-      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
-        {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
-      </span>
-    );
-  };
+  const getStatusBadge = (status?: string) => (
+    <DictBadge dictType="oa_expense_status" value={String(status || 'DRAFT')} />
+  );
 
   const renderDetailValue = (value?: string | number | null) => {
     if (value === undefined || value === null || value === '') {
@@ -516,7 +457,7 @@ export const ExpenseClaimPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {STATUS_OPTIONS.filter((option) => option.value).map((option) => (
+                    {statusDict.getOptions().map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -535,7 +476,7 @@ export const ExpenseClaimPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部类别</SelectItem>
-                    {CATEGORY_OPTIONS.filter((option) => option.value).map((option) => (
+                    {categoryDict.getOptions().map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -624,7 +565,7 @@ export const ExpenseClaimPage: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                           <div className="font-medium text-slate-900 dark:text-slate-100">
-                            {CATEGORY_LABELS[item.category] || item.category || '-'}
+                            {categoryDict.getLabel(String(item.category ?? '')) || '-'}
                           </div>
                           <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                             {(item.items?.length || 0)} 条明细
@@ -732,7 +673,7 @@ export const ExpenseClaimPage: React.FC = () => {
                   <SelectValue placeholder="请选择报销类别" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORY_OPTIONS.filter((option) => option.value).map((option) => (
+                  {categoryDict.getOptions().map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -864,7 +805,7 @@ export const ExpenseClaimPage: React.FC = () => {
                           <SelectValue placeholder="请选择费用类型" />
                         </SelectTrigger>
                         <SelectContent>
-                          {EXPENSE_TYPE_OPTIONS.map((option) => (
+                          {expenseTypeDict.getOptions().map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -970,7 +911,7 @@ export const ExpenseClaimPage: React.FC = () => {
             <DetailRows>
               <DetailRow label="申请人" value={renderDetailValue(detailClaim.userName)} />
               <DetailRow label="所属部门" value={renderDetailValue(detailClaim.deptName)} />
-              <DetailRow label="报销类别" value={CATEGORY_LABELS[detailClaim.category] || detailClaim.category || '-'} />
+              <DetailRow label="报销类别" value={categoryDict.getLabel(String(detailClaim.category ?? '')) || '-'} />
               <DetailRow label="总金额" value={formatAmount(detailClaim.totalAmount)} />
               <DetailRow label="关联项目" value={renderDetailValue(detailClaim.projectName)} />
               <DetailRow label="客户" value={renderDetailValue(detailClaim.customerName)} />
@@ -1007,7 +948,7 @@ export const ExpenseClaimPage: React.FC = () => {
                       {detailClaim.items.map((item, index) => (
                         <tr key={`${index}-${item.expenseDate || 'detail'}`} className="hover:bg-slate-50 dark:hover:bg-slate-900/60">
                           <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
-                            {EXPENSE_TYPE_LABELS[item.expenseType] || item.expenseType || '-'}
+                            {expenseTypeDict.getLabel(String(item.expenseType ?? '')) || '-'}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{formatAmount(item.amount)}</td>
                           <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{renderDetailValue(item.expenseDate)}</td>

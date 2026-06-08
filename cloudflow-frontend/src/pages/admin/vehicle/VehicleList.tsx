@@ -44,6 +44,7 @@ import {
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useDict } from '@/hooks/useDict';
 import {
   addVehicle,
   deleteVehicle,
@@ -83,51 +84,31 @@ interface DeleteState {
 
 const ALL_FILTER_VALUE = '__all__';
 
-const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+const STATUS_CONFIG: Record<string, { className: string; icon: React.ReactNode }> = {
   '1': {
-    label: '可用',
     className: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
     icon: <CheckCircle size={14} />,
   },
   '2': {
-    label: '已预约',
     className: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
     icon: <Clock size={14} />,
   },
   '3': {
-    label: '使用中',
     className: 'border border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200',
     icon: <Car size={14} />,
   },
   '4': {
-    label: '维修中',
     className: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
     icon: <Wrench size={14} />,
   },
   '5': {
-    label: '已报废',
     className: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
     icon: <XCircle size={14} />,
   },
 };
 
-const STATUS_OPTIONS = [
-  { value: '', label: '全部状态' },
-  { value: '1', label: '可用' },
-  { value: '2', label: '已预约' },
-  { value: '3', label: '使用中' },
-  { value: '4', label: '维修中' },
-  { value: '5', label: '已报废' },
-];
-
-const USAGE_STATUS_LABEL: Record<string, string> = {
-  '0': '待审批',
-  '1': '已批准',
-  '2': '已驳回',
-  '3': '进行中',
-  '4': '已完成',
-  '5': '已取消',
-};
+const STATUS_FILTER_VALUES = ['1', '2', '3', '4', '5'];
+const FORM_STATUS_VALUES = ['1', '4', '5'];
 
 const TableStateRow: React.FC<TableStateRowProps> = ({ colSpan, title, description, loading = false }) => (
   <TableRow className="hover:bg-transparent">
@@ -192,8 +173,8 @@ const createVehicleForm = (): Partial<SysVehicle> => ({
 });
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const statusDict = useDict('oa_vehicle_status');
   const config = STATUS_CONFIG[status] || {
-    label: '未知',
     className: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
     icon: null,
   };
@@ -201,7 +182,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${config.className}`}>
       {config.icon}
-      {config.label}
+      {statusDict.getLabel(status) || '未知'}
     </span>
   );
 };
@@ -248,6 +229,8 @@ const WarningTags: React.FC<{ value?: string; compact?: boolean; maxVisible?: nu
 
 const VehicleList: React.FC = () => {
   const { hasPermission } = useAuth();
+  const vehicleStatusDict = useDict('oa_vehicle_status');
+  const usageStatusDict = useDict('oa_vehicle_usage_status');
   const [vehicles, setVehicles] = useState<SysVehicle[]>([]);
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<VehicleStats | null>(null);
@@ -426,7 +409,7 @@ const VehicleList: React.FC = () => {
 
   const allSelected = vehicles.length > 0 && selectedIds.length === vehicles.length;
   const hasActiveFilters = Boolean(query.licensePlate || query.status);
-  const statusLabel = STATUS_OPTIONS.find((item) => item.value === query.status)?.label || '全部状态';
+  const statusLabel = query.status ? (vehicleStatusDict.getLabel(query.status) || '全部状态') : '全部状态';
   const runtimeInUse = vehicles.filter((item) => (item.runtimeStatus || item.status) === '3').length;
   const runtimeBooked = vehicles.filter((item) => (item.runtimeStatus || item.status) === '2').length;
 
@@ -477,9 +460,9 @@ const VehicleList: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_FILTER_VALUE}>全部状态</SelectItem>
-                    {STATUS_OPTIONS.filter((item) => item.value).map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                    {STATUS_FILTER_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {vehicleStatusDict.getLabel(value)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -563,7 +546,7 @@ const VehicleList: React.FC = () => {
                   ) : (
                     vehicles.map((vehicle) => {
                       const runtimeStatus = vehicle.runtimeStatus || vehicle.status;
-                      const currentUsageStatusLabel = vehicle.currentUsageStatus ? USAGE_STATUS_LABEL[vehicle.currentUsageStatus] : '';
+                      const currentUsageStatusLabel = vehicle.currentUsageStatus ? usageStatusDict.getLabel(vehicle.currentUsageStatus) : '';
                       return (
                         <TableRow key={vehicle.vehicleId} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60">
                           <TableCell className="px-3 py-2.5">
@@ -600,8 +583,8 @@ const VehicleList: React.FC = () => {
                           <TableCell className="px-3 py-2.5">
                             <div className="space-y-1.5">
                               <StatusBadge status={runtimeStatus} />
-                              <div className="truncate text-xs text-slate-500 dark:text-slate-400" title={`基础 ${STATUS_CONFIG[vehicle.status || '1']?.label || '-'}`}>
-                                基础 {STATUS_CONFIG[vehicle.status || '1']?.label || '-'}
+                              <div className="truncate text-xs text-slate-500 dark:text-slate-400" title={`基础 ${vehicleStatusDict.getLabel(vehicle.status || '1') || '-'}`}>
+                                基础 {vehicleStatusDict.getLabel(vehicle.status || '1') || '-'}
                               </div>
                             </div>
                           </TableCell>
@@ -744,9 +727,9 @@ const VehicleList: React.FC = () => {
               <Select value={formData.status || '1'} onValueChange={(value) => setFormData({ ...formData, status: value as SysVehicle['status'] })}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">可用</SelectItem>
-                  <SelectItem value="4">维修中</SelectItem>
-                  <SelectItem value="5">已报废</SelectItem>
+                  {FORM_STATUS_VALUES.map((value) => (
+                    <SelectItem key={value} value={value}>{vehicleStatusDict.getLabel(value)}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

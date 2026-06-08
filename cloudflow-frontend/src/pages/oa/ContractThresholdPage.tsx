@@ -34,6 +34,8 @@ import {
   type OaContractAmountThreshold,
 } from '@/services/api/contractRisk';
 import { cn } from '@/utils/cn';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 const ALL_VALUE = '__all__';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
@@ -48,30 +50,9 @@ const DEFAULT_FORM: OaContractAmountThreshold = {
   remark: '',
 };
 
-const TIER_OPTIONS: { value: ContractAmountTier; label: string }[] = [
-  { value: 'T1', label: 'T1 (基础档)' },
-  { value: 'T2', label: 'T2 (中等档)' },
-  { value: 'T3', label: 'T3 (高额档)' },
-];
-
-const ROLE_OPTIONS: { value: ContractApproverRole; label: string }[] = [
-  { value: 'DEPT_MGR', label: '部门经理' },
-  { value: 'VP', label: '副总裁 / VP' },
-  { value: 'CEO', label: 'CEO' },
-];
-
-const STATUS_BADGE: Record<string, string> = {
-  ACTIVE:
-    'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200',
-  INACTIVE:
-    'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
-};
-
-const TIER_BADGE: Record<string, string> = {
-  T1: 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200',
-  T2: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200',
-  T3: 'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200',
-};
+const TIER_VALUES: ContractAmountTier[] = ['T1', 'T2', 'T3'];
+const ROLE_VALUES: ContractApproverRole[] = ['DEPT_MGR', 'VP', 'CEO'];
+const STATUS_VALUES: ('ACTIVE' | 'INACTIVE')[] = ['ACTIVE', 'INACTIVE'];
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; description?: string; loading?: boolean }> = ({
   colSpan,
@@ -93,6 +74,9 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; description?: st
 );
 
 export const ContractThresholdPage: React.FC = () => {
+  const tierDict = useDict('oa_contract_amount_tier');
+  const roleDict = useDict('oa_contract_approver_role');
+  const statusDict = useDict('oa_contract_threshold_status');
   const [rows, setRows] = useState<OaContractAmountThreshold[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -208,15 +192,11 @@ export const ContractThresholdPage: React.FC = () => {
           ¥{Number(row.thresholdMin).toLocaleString()} – {row.thresholdMax != null ? `¥${Number(row.thresholdMax).toLocaleString()}` : '∞'}
         </TableCell>
         <TableCell>
-          <span className={cn('inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium', TIER_BADGE[row.amountTier])}>
-            {row.amountTier}
-          </span>
+          <DictBadge dictType="oa_contract_amount_tier" value={String(row.amountTier || '')} />
         </TableCell>
-        <TableCell>{ROLE_OPTIONS.find((r) => r.value === row.approverRole)?.label ?? row.approverRole}</TableCell>
+        <TableCell>{roleDict.getLabel(row.approverRole)}</TableCell>
         <TableCell>
-          <span className={cn('inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium', STATUS_BADGE[row.status || ''])}>
-            {row.status === 'ACTIVE' ? '生效' : '停用'}
-          </span>
+          <DictBadge dictType="oa_contract_threshold_status" value={String(row.status || '')} />
         </TableCell>
         <TableCell className="max-w-[240px] truncate text-xs text-slate-500" title={row.remark}>
           {row.remark || '—'}
@@ -264,9 +244,9 @@ export const ContractThresholdPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_VALUE}>全部</SelectItem>
-                    {TIER_OPTIONS.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
+                    {TIER_VALUES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {tierDict.getLabel(t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -282,8 +262,11 @@ export const ContractThresholdPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_VALUE}>全部</SelectItem>
-                    <SelectItem value="ACTIVE">生效</SelectItem>
-                    <SelectItem value="INACTIVE">停用</SelectItem>
+                    {STATUS_VALUES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {statusDict.getLabel(s)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -383,9 +366,9 @@ export const ContractThresholdPage: React.FC = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TIER_OPTIONS.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
+                {TIER_VALUES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {tierDict.getLabel(t)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -401,9 +384,9 @@ export const ContractThresholdPage: React.FC = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ROLE_OPTIONS.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
+                {ROLE_VALUES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {roleDict.getLabel(r)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -419,8 +402,11 @@ export const ContractThresholdPage: React.FC = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ACTIVE">生效</SelectItem>
-                <SelectItem value="INACTIVE">停用</SelectItem>
+                {STATUS_VALUES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {statusDict.getLabel(s)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

@@ -55,13 +55,14 @@ import {
   type KnowledgeDocument,
   type KnowledgeReadStats,
   type KnowledgeScopeType,
-  type KnowledgeStatus,
   type OaKnowledgeTemplate,
 } from '@/services/api/knowledge';
 import { renderAnnouncementHtml } from '@/utils/announcementContent';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 type ViewMode = 'library' | 'mine' | 'manage';
 
@@ -76,19 +77,6 @@ interface ConfirmState {
 }
 
 const categories = ['行政制度', '办公指南', '财务制度', '人事制度', '项目规范', '其他'];
-
-const statusMeta: Record<KnowledgeStatus, { label: string; className: string }> = {
-  DRAFT: { label: '草稿', className: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300' },
-  PENDING: { label: '审批中', className: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200' },
-  PUBLISHED: { label: '已发布', className: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200' },
-  REJECTED: { label: '已驳回', className: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200' },
-};
-
-const scopeLabel: Record<KnowledgeScopeType, string> = {
-  ALL: '全员可见',
-  DEPT: '部门可见',
-  ROLE: '角色可见',
-};
 
 const createEmptyForm = (): KnowledgeDocument => ({
   title: '',
@@ -134,10 +122,9 @@ const TableStateRow: React.FC<{
   </tr>
 );
 
-const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
-  const meta = statusMeta[(status || 'DRAFT') as KnowledgeStatus] || statusMeta.DRAFT;
-  return <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${meta.className}`}>{meta.label}</span>;
-};
+const StatusBadge: React.FC<{ status?: string }> = ({ status }) => (
+  <DictBadge dictType="oa_knowledge_status" value={String(status || 'DRAFT')} />
+);
 
 const AttachmentLinks: React.FC<{ value?: string }> = ({ value }) => {
   const files = normalizeAttachmentUrls(value);
@@ -210,6 +197,8 @@ const normalizeRoleListResponse = (response: unknown): SysRole[] => {
 const KnowledgePage: React.FC = () => {
   const { user, hasPermission } = useAuth();
   const canManage = hasPermission('oa:knowledge:manage');
+  const statusDict = useDict('oa_knowledge_status');
+  const scopeDict = useDict('oa_knowledge_scope');
 
   const [viewMode, setViewMode] = useState<ViewMode>('library');
   const [library, setLibrary] = useState<KnowledgeDocument[]>([]);
@@ -256,7 +245,7 @@ const KnowledgePage: React.FC = () => {
   const currentCategoryLabel = category || '全部分类';
   const currentStatusLabel = viewMode === 'library'
     ? (unreadOnly ? '仅未读' : '全部阅读')
-    : (statusMeta[status as KnowledgeStatus]?.label || '全部状态');
+    : (statusDict.getLabel(status) || '全部状态');
   const totalPages = viewMode === 'library' ? 1 : Math.max(1, Math.ceil(total / pageSize));
   const deptNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -286,7 +275,7 @@ const KnowledgePage: React.FC = () => {
     const values = parseScopeValues(document.scopeValue);
     const nameMap = document.scopeType === 'DEPT' ? deptNameMap : roleNameMap;
     const names = values.map((value) => nameMap.get(value) || value);
-    return names.length ? `${scopeLabel[document.scopeType]}：${names.join('、')}` : scopeLabel[document.scopeType];
+    return names.length ? `${scopeDict.getLabel(document.scopeType)}：${names.join('、')}` : scopeDict.getLabel(document.scopeType);
   };
 
   const fetchData = async () => {
@@ -625,8 +614,8 @@ const KnowledgePage: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">全部状态</SelectItem>
-                {Object.entries(statusMeta).map(([value, meta]) => (
-                  <SelectItem key={value} value={value}>{meta.label}</SelectItem>
+                {statusDict.getOptions().map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

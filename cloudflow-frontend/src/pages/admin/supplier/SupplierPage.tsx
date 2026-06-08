@@ -24,11 +24,8 @@ import {
   TableHeader,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: '启用',
-  DISABLED: '停用',
-};
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 const createDefaultForm = (): Supplier => ({
   supplierName: '',
@@ -39,22 +36,13 @@ const createDefaultForm = (): Supplier => ({
   status: 'ACTIVE',
 });
 
-const statusBadge = (status?: string) => {
-  const active = status !== 'DISABLED';
-  return (
-    <span className={[
-      'rounded-full px-2.5 py-1 text-xs font-semibold',
-      active
-        ? 'border border-emerald-200 bg-emerald-50 text-emerald-600'
-        : 'border border-slate-200 bg-slate-50 text-slate-500',
-    ].join(' ')}>
-      {STATUS_LABELS[status || 'ACTIVE'] || status || '-'}
-    </span>
-  );
-};
+const statusBadge = (status?: string) => (
+  <DictBadge dictType="oa_supplier_status" value={String(status || 'ACTIVE')} fallback="启用" />
+);
 
 const SupplierPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const statusDict = useDict('oa_supplier_status');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -170,8 +158,7 @@ const SupplierPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    <SelectItem value="ACTIVE">启用</SelectItem>
-                    <SelectItem value="DISABLED">停用</SelectItem>
+                    {statusDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>,
@@ -278,8 +265,7 @@ const SupplierPage: React.FC = () => {
             <Select value={formData.status || 'ACTIVE'} onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="ACTIVE">启用</SelectItem>
-                <SelectItem value="DISABLED">停用</SelectItem>
+                {statusDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

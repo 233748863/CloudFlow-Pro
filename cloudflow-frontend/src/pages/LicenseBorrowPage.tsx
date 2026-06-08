@@ -13,17 +13,8 @@ import { useAuth } from '@/context/AuthContext';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  BORROWED: '已借出',
-  RETURNED: '已归还',
-  OVERDUE: '已逾期',
-  CANCELLED: '已取消',
-};
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'cancel';
@@ -43,23 +34,9 @@ const emptyForm: OaLicenseBorrow = {
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
-const getStatusBadge = (status?: string) => {
-  const toneMap: Record<string, string> = {
-    DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-    PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    BORROWED: 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-    RETURNED: 'border border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200',
-    OVERDUE: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    CANCELLED: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-  };
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
-      {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
-    </span>
-  );
-};
+const getStatusBadge = (status?: string) => (
+  <DictBadge dictType="oa_license_borrow_status" value={String(status || 'DRAFT')} />
+);
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading = false }) => (
   <tr className="hover:bg-transparent">
@@ -76,6 +53,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
 
 export const LicenseBorrowPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const statusDict = useDict('oa_license_borrow_status');
   const [rows, setRows] = useState<OaLicenseBorrow[]>([]);
   const [licenses, setLicenses] = useState<OaLicense[]>([]);
   const [total, setTotal] = useState(0);
@@ -218,7 +196,7 @@ export const LicenseBorrowPage: React.FC = () => {
                   <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                    {statusDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

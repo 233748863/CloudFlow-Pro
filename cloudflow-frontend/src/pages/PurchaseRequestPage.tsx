@@ -51,24 +51,8 @@ import {
   Textarea,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  PARTIAL_RECEIVED: '部分入库',
-  RECEIVED: '已入库',
-  REJECTED: '已驳回',
-};
-
-const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  NONE: '未生成',
-  DRAFT: '付款草稿',
-  PENDING: '付款审批中',
-  APPROVED: '付款已通过',
-  REJECTED: '付款驳回',
-  PAID: '已付款',
-};
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'payment';
@@ -103,38 +87,13 @@ const formatAmount = (value?: number | null) => {
 const getAttachmentList = (attachmentUrl?: string) =>
   normalizeAttachmentUrls(attachmentUrl);
 
-const getStatusBadge = (status?: string) => {
-  const toneMap: Record<string, string> = {
-    DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-    PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    PARTIAL_RECEIVED: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    RECEIVED: 'border border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200',
-    REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-  };
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
-      {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
-    </span>
-  );
-};
+const getStatusBadge = (status?: string) => (
+  <DictBadge dictType="oa_purchase_request_status" value={String(status || 'DRAFT')} />
+);
 
-const getPaymentStatusBadge = (status?: string) => {
-  const toneMap: Record<string, string> = {
-    NONE: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-    DRAFT: 'border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
-    PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    PAID: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  };
-  const value = status || 'NONE';
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[value] || toneMap.NONE}`}>
-      {PAYMENT_STATUS_LABELS[value] || value}
-    </span>
-  );
-};
+const getPaymentStatusBadge = (status?: string) => (
+  <DictBadge dictType="oa_payment_status" value={String(status || 'NONE')} />
+);
 
 const InlineState: React.FC<{ title: string; icon?: React.ReactNode; className?: string }> = ({ title, icon, className }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
@@ -153,6 +112,7 @@ const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label,
 );
 
 export const PurchaseRequestPage: React.FC = () => {
+  const statusDict = useDict('oa_purchase_request_status');
   const [purchases, setPurchases] = useState<PurchaseRequest[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [consumables, setConsumables] = useState<Consumable[]>([]);
@@ -409,8 +369,8 @@ export const PurchaseRequestPage: React.FC = () => {
                   <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    {statusDict.getOptions().map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -21,33 +21,10 @@ import { PageResult } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  SEALING: '用印中',
-  SEALED: '已用印',
-  ACTIVE: '履行中',
-  EXPIRED: '已到期',
-  TERMINATED: '已终止',
-  CANCELLED: '已取消',
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  SALES: '销售合同',
-  PURCHASE: '采购合同',
-  SERVICE: '服务合同',
-  OTHER: '其他',
-};
-
-const RISK_LABELS: Record<string, string> = {
-  LOW: '低',
-  MEDIUM: '中',
-  HIGH: '高',
-  CRITICAL: '严重',
-};
+const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 
 const emptyForm: OaContract = {
   contractName: '',
@@ -72,31 +49,13 @@ interface ConfirmState {
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
-const getStatusBadge = (status?: string) => {
-  const toneMap: Record<string, string> = {
-    DRAFT: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-    PENDING: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    REJECTED: 'border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    SEALING: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    SEALED: 'border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200',
-    ACTIVE: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-    EXPIRED: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200',
-    TERMINATED: 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-    CANCELLED: 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-  };
-  return <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>{STATUS_LABELS[status || 'DRAFT'] || status || '-'}</span>;
-};
+const getStatusBadge = (status?: string) => (
+  <DictBadge dictType="oa_contract_status" value={String(status || 'DRAFT')} />
+);
 
-const getRiskBadge = (level?: string) => {
-  const toneMap: Record<string, string> = {
-    LOW: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-    MEDIUM: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    HIGH: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200',
-    CRITICAL: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-  };
-  return <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${toneMap[level || 'LOW'] || toneMap.LOW}`}>{RISK_LABELS[level || 'LOW'] || level || '-'}</span>;
-};
+const getRiskBadge = (level?: string) => (
+  <DictBadge dictType="severity_level" value={String(level || 'LOW')} />
+);
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading = false }) => (
   <tr className="hover:bg-transparent">
@@ -115,6 +74,9 @@ export const ContractPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const statusDict = useDict('oa_contract_status');
+  const typeDict = useDict('oa_contract_type');
+  const severityDict = useDict('severity_level');
   const [rows, setRows] = useState<OaContract[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -362,7 +324,7 @@ export const ContractPage: React.FC = () => {
                   <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                    {statusDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -371,7 +333,7 @@ export const ContractPage: React.FC = () => {
                   <SelectTrigger className="h-10"><SelectValue placeholder="风险等级" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部风险</SelectItem>
-                    {Object.entries(RISK_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                    {RISK_LEVELS.map((value) => <SelectItem key={value} value={value}>{severityDict.getLabel(value)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -428,7 +390,7 @@ export const ContractPage: React.FC = () => {
                         <div className="mt-1 text-xs text-slate-400">{item.counterpartyName}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        <div>{TYPE_LABELS[item.contractType] || item.contractType}</div>
+                        <div>{typeDict.getLabel(String(item.contractType ?? ''))}</div>
                         <div className="mt-1 text-xs text-slate-400">{item.currency || 'CNY'} {Number(item.amount || 0).toLocaleString()}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
@@ -498,7 +460,7 @@ export const ContractPage: React.FC = () => {
               <Select value={form.contractType} onValueChange={(value) => setForm((prev) => ({ ...prev, contractType: value }))}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(TYPE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                  {typeDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -530,7 +492,7 @@ export const ContractPage: React.FC = () => {
               <Select value={form.riskLevel || 'LOW'} onValueChange={(value) => setForm((prev) => ({ ...prev, riskLevel: value as OaContract['riskLevel'] }))}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(RISK_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                  {RISK_LEVELS.map((value) => <SelectItem key={value} value={value}>{severityDict.getLabel(value)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -653,7 +615,7 @@ export const ContractPage: React.FC = () => {
               {[
                 ['合同名称', detail.contractName],
                 ['相对方', detail.counterpartyName],
-                ['合同类型', TYPE_LABELS[detail.contractType] || detail.contractType],
+                ['合同类型', typeDict.getLabel(String(detail.contractType ?? ''))],
                 ['金额', `${detail.currency || 'CNY'} ${Number(detail.amount || 0).toLocaleString()}`],
                 ['负责人', detail.ownerName],
                 ['部门', detail.deptName],
