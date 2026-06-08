@@ -25,21 +25,14 @@ import {
 } from '@/services/api/hr/recruitment';
 import { getRecruitChannelStatusLabel } from '@/utils/enumLabels';
 import { getErrorMessage } from '@/utils/errorMessage';
-
-const TYPE_OPTIONS = [
-  { value: 'PORTAL', label: '招聘门户' },
-  { value: 'HEADHUNTER', label: '猎头' },
-  { value: 'REFERRAL', label: '内推' },
-  { value: 'CAMPUS', label: '校招' },
-  { value: 'SOCIAL', label: '社招' },
-  { value: 'OTHER', label: '其他' },
-];
+import { useDict } from '@/hooks/useDict';
 
 interface Props {
   onClose: () => void;
 }
 
 export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
+  const channelTypeDict = useDict('hr_recruit_channel_type');
   const [channels, setChannels] = useState<RecruitmentChannel[]>([]);
   const [stats, setStats] = useState<RecruitmentChannelStat[]>([]);
   const [loading, setLoading] = useState(false);
@@ -120,7 +113,7 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
             <SelectValue placeholder="渠道类型" />
           </SelectTrigger>
           <SelectContent>
-            {TYPE_OPTIONS.map((opt) => (
+            {channelTypeDict.getOptions().map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}
               </SelectItem>
@@ -175,7 +168,7 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
                   <TableCell>{channel.channelCode}</TableCell>
                   <TableCell>{channel.channelName}</TableCell>
                   <TableCell>
-                    {TYPE_OPTIONS.find((opt) => opt.value === channel.channelType)?.label || channel.channelType}
+                    {channelTypeDict.getLabel(String(channel.channelType ?? '')) || channel.channelType}
                   </TableCell>
                   <TableCell>{channel.costAmount?.toLocaleString?.() ?? '-'}</TableCell>
                   <TableCell>{stat?.totalCandidates ?? 0}</TableCell>

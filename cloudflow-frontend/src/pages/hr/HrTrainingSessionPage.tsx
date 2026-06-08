@@ -35,15 +35,9 @@ import {
   listTrainingCourses,
 } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
-import { normalizeRows, formatDateTimeValue, enumLabel } from './hrShared';
-
-const sessionStatusLabel: Record<string, string> = {
-  PLANNED: '计划中',
-  REGISTERING: '报名中',
-  ONGOING: '进行中',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
+import { normalizeRows, formatDateTimeValue } from './hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const defaultForm: HrTrainingSessionPayload = {
   courseId: 0,
@@ -68,6 +62,7 @@ export const HrTrainingSessionPage: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<HrTrainingSessionPayload>(defaultForm);
   const [pendingDelete, setPendingDelete] = useState<HrTrainingSession | null>(null);
+  const statusOptions = useDict('hr_training_session_status').getOptions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -161,7 +156,7 @@ export const HrTrainingSessionPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {Object.entries(sessionStatusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -227,7 +222,7 @@ export const HrTrainingSessionPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm">{formatDateTimeValue(row.endTime)}</td>
                   <td className="px-4 py-3 text-sm">{row.capacity}</td>
                   <td className="px-4 py-3 text-sm">{row.enrolledCount ?? 0}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(sessionStatusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_training_session_status" value={row.status} fallback="-" /></td>
                   <td className="px-4 py-3 text-right">
                     <TableRowActions
                       align="end"

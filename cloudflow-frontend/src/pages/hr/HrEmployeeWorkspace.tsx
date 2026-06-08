@@ -100,34 +100,6 @@ interface ContactFormState {
   priority: string;
 }
 
-const contractTypeLabel: Record<string, string> = {
-  LABOR: '劳动合同',
-  SERVICE: '劳务合同',
-  INTERN: '实习协议',
-};
-
-const contractStatusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  ACTIVE: '生效中',
-  EXPIRED: '已过期',
-  TERMINATED: '已终止',
-};
-
-const documentTypeLabel: Record<string, string> = {
-  ID_CARD: '身份证',
-  PASSPORT: '护照',
-  DIPLOMA: '学历证书',
-  DEGREE: '学位证书',
-};
-
-const relationshipLabel: Record<string, string> = {
-  SPOUSE: '配偶',
-  PARENT: '父母',
-  SIBLING: '兄弟姐妹',
-  CHILD: '子女',
-  OTHER: '其他',
-};
-
 const defaultContractForm: ContractFormState = {
   contractType: 'LABOR',
   contractNo: '',
@@ -411,6 +383,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
   const employeeStatusDict = useDict('employee_status');
   const employeeTypeDict = useDict('employee_type');
+  const contractTypeDict = useDict('hr_contract_type');
+  const documentTypeDict = useDict('hr_document_type');
+  const relationshipDict = useDict('hr_family_relationship');
   const [pendingDelete, setPendingDelete] = useState<DeleteTarget | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -964,7 +939,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-white dark:bg-slate-100 dark:text-slate-900">
-                                  {item.contractTypeName || contractTypeLabel[item.contractType] || item.contractType}
+                                  {item.contractTypeName || contractTypeDict.getLabel(String(item.contractType ?? '')) || item.contractType}
                                 </span>
                                 <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
                                   {item.contractNo}
@@ -977,7 +952,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                     contractStatusTone(item.status),
                                   ].join(' ')}
                                 >
-                                  {item.statusName || contractStatusLabel[item.status || ''] || textValue(item.status)}
+                                  {item.statusName || contractStatusDict.getLabel(String(item.status ?? '')) || textValue(item.status)}
                                 </span>
                                 <span
                                   className={[
@@ -1091,7 +1066,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-white dark:bg-slate-100 dark:text-slate-900">
-                                    {item.documentTypeName || documentTypeLabel[item.documentType] || item.documentType}
+                                    {item.documentTypeName || documentTypeDict.getLabel(String(item.documentType ?? '')) || item.documentType}
                                   </span>
                                   <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
                                     {item.documentNo}
@@ -1205,7 +1180,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-white dark:bg-slate-100 dark:text-slate-900">
-                                  {item.relationshipName || relationshipLabel[item.relationship] || item.relationship}
+                                  {item.relationshipName || relationshipDict.getLabel(String(item.relationship ?? '')) || item.relationship}
                                 </span>
                                 <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
                                   {item.contactName}
@@ -1246,7 +1221,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                           />
                           <ArchiveCardField
                             label="关系"
-                            value={item.relationshipName || relationshipLabel[item.relationship] || item.relationship}
+                            value={item.relationshipName || relationshipDict.getLabel(String(item.relationship ?? '')) || item.relationship}
                             icon={<Users className="h-3.5 w-3.5" />}
                           />
                           <ArchiveCardField
@@ -1301,9 +1276,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="LABOR">劳动合同</SelectItem>
-                    <SelectItem value="SERVICE">劳务合同</SelectItem>
-                    <SelectItem value="INTERN">实习协议</SelectItem>
+                    {contractTypeDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1329,10 +1304,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DRAFT">草稿</SelectItem>
-                    <SelectItem value="ACTIVE">生效中</SelectItem>
-                    <SelectItem value="EXPIRED">已过期</SelectItem>
-                    <SelectItem value="TERMINATED">已终止</SelectItem>
+                    {contractStatusDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1432,10 +1406,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ID_CARD">身份证</SelectItem>
-                    <SelectItem value="PASSPORT">护照</SelectItem>
-                    <SelectItem value="DIPLOMA">学历证书</SelectItem>
-                    <SelectItem value="DEGREE">学位证书</SelectItem>
+                    {documentTypeDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1527,11 +1500,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SPOUSE">配偶</SelectItem>
-                    <SelectItem value="PARENT">父母</SelectItem>
-                    <SelectItem value="SIBLING">兄弟姐妹</SelectItem>
-                    <SelectItem value="CHILD">子女</SelectItem>
-                    <SelectItem value="OTHER">其他</SelectItem>
+                    {relationshipDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

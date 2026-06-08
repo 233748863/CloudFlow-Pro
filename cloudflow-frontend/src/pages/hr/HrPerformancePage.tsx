@@ -38,6 +38,8 @@ import {
   Textarea,
 } from '@/components/common';
 import { StatCard } from '@/components/common/StatCard';
+import { DictBadge } from '@/components/common/DictBadge';
+import { useDict } from '@/hooks/useDict';
 import {
   HrEmployee,
   PerformanceAssignment,
@@ -141,10 +143,6 @@ const defaultCreateForm = () => ({
 });
 
 const rowKey = () => `${Date.now()}-${Math.random()}`;
-const metricTypeLabel = (valueType?: string | null) => {
-  const labels: Record<string, string> = { DECIMAL: '小数', INTEGER: '整数', PERCENT: '百分比' };
-  return labels[String(valueType || '').toUpperCase()] || '小数';
-};
 
 const EmployeePicker: React.FC<{
   value?: string;
@@ -334,36 +332,6 @@ const metricDisplayFromDefinition = (metric?: PerformanceMetric): MetricDisplay 
 const treeMetricDisplay = (node: PerformanceAssignment, primaryMetric?: PerformanceMetric, isMultiMetric = false): MetricDisplay | null => {
   if (node.metricCode || node.metricName) return node;
   return isMultiMetric ? null : metricDisplayFromDefinition(primaryMetric);
-};
-
-const statusLabel = (status?: string) => {
-  const labels: Record<string, string> = {
-    DRAFT: '草稿',
-    PLAN_APPROVING: '计划审批中',
-    PLAN_APPROVED: '执行中',
-    RESULT_APPROVING: '结果审批中',
-    COMPLETED: '已归档',
-    REJECTED: '已驳回',
-    CANCELLED: '已取消',
-  };
-  return labels[String(status || '').toUpperCase()] || status || '-';
-};
-
-const statusBadgeClass = (status?: string) => {
-  switch (String(status || '').toUpperCase()) {
-    case 'COMPLETED':
-      return 'badge badge-success';
-    case 'PLAN_APPROVED':
-      return 'badge badge-primary';
-    case 'PLAN_APPROVING':
-    case 'RESULT_APPROVING':
-      return 'badge badge-warning';
-    case 'REJECTED':
-    case 'CANCELLED':
-      return 'rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-300';
-    default:
-      return 'badge badge-gray';
-  }
 };
 
 const completionTone = (rate?: number) => {
@@ -760,6 +728,11 @@ export const HrPerformancePage: React.FC = () => {
     afterTotal: '',
     effectiveDate: '',
   });
+
+  const { getLabel: getMetricTypeLabel } = useDict('hr_performance_metric_type');
+  const { getLabel: getPerfStatusLabel } = useDict('hr_performance_status');
+  const perfStatusOptions = useDict('hr_performance_status').getOptions();
+  const metricTypeOptions = useDict('hr_performance_metric_type').getOptions();
 
   const deptLabelById = useMemo(() => {
     const map = new Map<number, string>();
@@ -1453,12 +1426,7 @@ export const HrPerformancePage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_STATUS}>全部状态</SelectItem>
-                    <SelectItem value="DRAFT">草稿</SelectItem>
-                    <SelectItem value="PLAN_APPROVING">计划审批中</SelectItem>
-                    <SelectItem value="PLAN_APPROVED">执行中</SelectItem>
-                    <SelectItem value="RESULT_APPROVING">结果审批中</SelectItem>
-                    <SelectItem value="COMPLETED">已归档</SelectItem>
-                    <SelectItem value="REJECTED">已驳回</SelectItem>
+                    {perfStatusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                   </SelectContent>
                 </Select>,
               ]}
@@ -1492,7 +1460,7 @@ export const HrPerformancePage: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 {currentObjective ? (
                   <>
-                    <span className={statusBadgeClass(currentObjective.status)}>{statusLabel(currentObjective.status)}</span>
+                    <DictBadge dictType="hr_performance_status" value={currentObjective.status} />
                     {['DRAFT', 'REJECTED'].includes(currentObjective.status) ? (
                       <Button size="sm" variant="soft" onClick={() => void handleSubmitPlan()} disabled={pendingAction === 'submit-plan'}>
                         提交计划审批
@@ -1537,7 +1505,7 @@ export const HrPerformancePage: React.FC = () => {
                 <PerformanceSummaryCard
                   label="指标配置"
                   value={objectiveMetrics.length}
-                  hint={objectiveMetrics.map((metric) => `${metric.metricName} · ${metric.metricUnit || '-'} · ${metricTypeLabel(metric.valueType)}`).join(' / ')}
+                  hint={objectiveMetrics.map((metric) => `${metric.metricName} · ${metric.metricUnit || '-'} · ${getMetricTypeLabel(String(metric.valueType ?? '')) || '小数'}`).join(' / ')}
                 />
                 <PerformanceSummaryCard
                   label="完成率"
@@ -1548,7 +1516,7 @@ export const HrPerformancePage: React.FC = () => {
                 <PerformanceSummaryCard
                   label="评分等级"
                   value={`${currentObjective?.score?.toFixed?.(1) || '0.0'} / ${currentObjective?.grade || 'D'}`}
-                  hint={statusLabel(currentObjective?.status)}
+                  hint={getPerfStatusLabel(String(currentObjective?.status ?? '')) || '-'}
                 />
               </div>
             </div>
@@ -1712,9 +1680,7 @@ export const HrPerformancePage: React.FC = () => {
                   <Select value={row.valueType} onValueChange={(value) => updateCreateMetric(row.key, { valueType: value as CreateMetricRow['valueType'], precision: value === 'INTEGER' ? '0' : row.precision || '2' })}>
                     <SelectTrigger><SelectValue placeholder="数值类型" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DECIMAL">小数</SelectItem>
-                      <SelectItem value="INTEGER">整数</SelectItem>
-                      <SelectItem value="PERCENT">百分比</SelectItem>
+                      {metricTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Input type="number" min={0} max={4} disabled={row.valueType === 'INTEGER'} value={row.precision} onChange={(e) => updateCreateMetric(row.key, { precision: e.target.value })} placeholder="0-4" />
@@ -1731,7 +1697,7 @@ export const HrPerformancePage: React.FC = () => {
               {createMatrixItems.map(({ category, metric, key, weight }) => (
                 <div key={key} className="grid grid-cols-[minmax(0,1fr)_120px] items-center gap-2">
                   <Label className="truncate text-sm text-slate-600 dark:text-slate-300">
-                    {category.categoryName}-{metric.metricName}（{metric.metricUnit} / {metricTypeLabel(metric.valueType)}）
+                    {category.categoryName}-{metric.metricName}（{metric.metricUnit} / {getMetricTypeLabel(String(metric.valueType ?? '')) || '小数'}）
                   </Label>
                   <Input
                     type="number"

@@ -29,14 +29,9 @@ import {
   updateCalibrationSession,
 } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
-import { enumLabel, formatDateTimeValue, normalizeRows } from '../hrShared';
-
-const statusLabel: Record<string, string> = {
-  PLANNED: '已计划',
-  ONGOING: '进行中',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
+import { formatDateTimeValue, normalizeRows } from '../hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const defaultForm = { sessionNo: '', scheduledAt: '', location: '', agenda: '', minutes: '', status: 'PLANNED' };
 
@@ -52,6 +47,7 @@ export const HrTalentCalibrationPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<HrTalentCalibrationSession | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const statusOptions = useDict('hr_talent_calibration_status').getOptions();
 
   useEffect(() => {
     void (async () => {
@@ -183,7 +179,7 @@ export const HrTalentCalibrationPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm">{formatDateTimeValue(s.scheduledAt) || '-'}</td>
                   <td className="px-4 py-3 text-sm">{s.location || '-'}</td>
                   <td className="px-4 py-3 max-w-xs truncate text-sm">{s.agenda || '-'}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, s.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_calibration_status" value={s.status} fallback="-" /></td>
                   <td className="px-4 py-3 text-right">
                     <TableRowActions
                       align="end"
@@ -227,7 +223,7 @@ export const HrTalentCalibrationPage: React.FC = () => {
             <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

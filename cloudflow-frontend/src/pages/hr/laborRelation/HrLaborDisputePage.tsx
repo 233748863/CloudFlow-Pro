@@ -35,36 +35,12 @@ import {
   type HrLaborDispute,
   type HrLaborDisputePayload,
 } from '@/services/api/hr';
-import { enumLabel, formatDateTimeValue, formatMoneyValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
+import { formatDateTimeValue, formatMoneyValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
 import { StageTimeline } from '../components/StageTimeline';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const statusFlow = ['REGISTERED', 'MEDIATING', 'MEDIATED', 'ARBITRATING', 'AWARDED', 'EXECUTED', 'CLOSED'];
-
-const statusLabel: Record<string, string> = {
-  REGISTERED: '已登记',
-  MEDIATING: '调解中',
-  MEDIATED: '调解完成',
-  ARBITRATING: '仲裁中',
-  AWARDED: '已裁决',
-  EXECUTED: '已执行',
-  CLOSED: '已关闭',
-};
-
-const disputeTypeLabel: Record<string, string> = {
-  SALARY: '薪资争议',
-  CONTRACT: '合同争议',
-  DISMISSAL: '解雇争议',
-  SOCIAL_INSURANCE: '社保争议',
-  OTHER: '其他',
-};
-
-const evidenceTypeLabel: Record<string, string> = {
-  CONTRACT: '合同',
-  PAYSLIP: '工资单',
-  MEDICAL: '医疗记录',
-  WITNESS: '证人证言',
-  OTHER: '其他',
-};
 
 const emptyForm: Partial<HrLaborDisputePayload> = {
   applicantEmployeeId: undefined,
@@ -93,6 +69,10 @@ export const HrLaborDisputePage: React.FC = () => {
   });
   const [closeTarget, setCloseTarget] = useState<HrLaborDispute | null>(null);
   const [closeReason, setCloseReason] = useState('');
+
+  const disputeTypeOptions = useDict('hr_labor_dispute_type').getOptions();
+  const evidenceTypeOptions = useDict('hr_evidence_type').getOptions();
+  const { getLabel: statusLabel } = useDict('hr_labor_dispute_status');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -195,7 +175,7 @@ export const HrLaborDisputePage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部状态</SelectItem>
-              {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
+              {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -243,9 +223,9 @@ export const HrLaborDisputePage: React.FC = () => {
                   <td className="px-4 py-3 text-xs">
                     {row.applicantEmployeeId ? `员工 #${row.applicantEmployeeId}` : `${row.applicantExternalName ?? '-'} ${row.applicantExternalPhone ?? ''}`}
                   </td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(disputeTypeLabel, row.disputeType)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_labor_dispute_type" value={row.disputeType} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm">{formatMoneyValue(row.claimAmount)}</td>
-                  <td className="px-4 py-3"><StageTimeline steps={statusFlow} labels={statusLabel} current={row.status} tone="sky" /></td>
+                  <td className="px-4 py-3"><StageTimeline steps={statusFlow} dictType="hr_labor_dispute_status" current={row.status} tone="sky" /></td>
                   <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.openedAt ?? row.createTime)}</td>
                   <td className="px-4 py-3">
                     <TableRowActions
@@ -300,7 +280,7 @@ export const HrLaborDisputePage: React.FC = () => {
               <Select value={String(form.disputeType ?? 'SALARY')} onValueChange={(v) => setForm({ ...form, disputeType: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(disputeTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  {disputeTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -340,10 +320,10 @@ export const HrLaborDisputePage: React.FC = () => {
           footer={<div className="flex justify-end"><Button variant="outline" onClick={() => { setDetail(null); setEvidence([]); }}>关闭</Button></div>}
         >
           <div className="space-y-4 text-sm">
-            <StageTimeline steps={statusFlow} labels={statusLabel} current={detail.status} tone="sky" />
+            <StageTimeline steps={statusFlow} dictType="hr_labor_dispute_status" current={detail.status} tone="sky" />
             <div className="grid grid-cols-2 gap-3">
               <div><span className="text-slate-500">申请人:</span> {detail.applicantEmployeeId ? `员工 #${detail.applicantEmployeeId}` : `${detail.applicantExternalName ?? '-'} ${detail.applicantExternalPhone ?? ''}`}</div>
-              <div><span className="text-slate-500">类型:</span> {enumLabel(disputeTypeLabel, detail.disputeType)}</div>
+              <div><span className="text-slate-500">类型:</span> <DictLabel dictType="hr_labor_dispute_type" value={detail.disputeType} fallback="-" /></div>
               <div><span className="text-slate-500">诉求金额:</span> {formatMoneyValue(detail.claimAmount)}</div>
               <div><span className="text-slate-500">登记时间:</span> {formatDateTimeValue(detail.openedAt ?? detail.createTime)}</div>
               <div><span className="text-slate-500">关闭时间:</span> {formatDateTimeValue(detail.closedAt)}</div>
@@ -373,7 +353,7 @@ export const HrLaborDisputePage: React.FC = () => {
                     ) : (
                       evidence.map((ev) => (
                         <tr key={ev.id}>
-                          <td className="px-4 py-2 text-sm">{enumLabel(evidenceTypeLabel, ev.evidenceType)}</td>
+                          <td className="px-4 py-2 text-sm"><DictLabel dictType="hr_evidence_type" value={ev.evidenceType} fallback="-" /></td>
                           <td className="px-4 py-2 font-mono text-xs">{ev.fileId ?? '-'}</td>
                           <td className="px-4 py-2 text-xs">{formatDateTimeValue(ev.uploadedAt)}</td>
                           <td className="px-4 py-2 max-w-[16rem] truncate text-xs">{ev.remark ?? '-'}</td>
@@ -406,7 +386,7 @@ export const HrLaborDisputePage: React.FC = () => {
               <Select value={String(evidenceForm.evidenceType ?? 'CONTRACT')} onValueChange={(v) => setEvidenceForm({ ...evidenceForm, evidenceType: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(evidenceTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  {evidenceTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

@@ -20,17 +20,8 @@ import {
   markMessageRead,
   markAllMessagesRead,
 } from '@/services/api/hr';
-import { formatDateValue, formatDateTimeValue, formatMoneyValue, enumLabel } from './hrShared';
-
-const certificateStatusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '待审批',
-  APPROVING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  ISSUED: '已开具',
-  CANCELLED: '已取消',
-};
+import { formatDateValue, formatDateTimeValue, formatMoneyValue } from './hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
 
 const SummaryCard: React.FC<{
   title: string;
@@ -244,7 +235,7 @@ export const HrEssPortalPage: React.FC = () => {
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">{cert.purpose || '-'}</div>
                   </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">{enumLabel(certificateStatusLabel, cert.status)}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400"><DictLabel dictType="hr_certificate_status" value={String(cert.status ?? '')} fallback="-" /></span>
                 </li>
               ))}
             </ul>

@@ -22,6 +22,7 @@ import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePage
 import { FilterBar } from '@/components/layout';
 import { type BaseDialogWidth } from '@/components/common/BaseDialog';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useDict } from '@/hooks/useDict';
 import { normalizeRows } from '../hrShared';
 
 export interface SubRecordColumn<T> {
@@ -32,7 +33,7 @@ export interface SubRecordColumn<T> {
 
 export type SubRecordField<F> =
   | { type: 'text' | 'number' | 'date' | 'datetime' | 'textarea'; key: keyof F; label: string; colSpan?: 1 | 2; rows?: number }
-  | { type: 'select'; key: keyof F; label: string; colSpan?: 1 | 2; options: Record<string, string> }
+  | { type: 'select'; key: keyof F; label: string; colSpan?: 1 | 2; options?: Record<string, string>; dictType?: string }
   | { type: 'user'; key: keyof F; label: string; colSpan?: 1 | 2 }
   | { type: 'custom'; key: keyof F; label: string; colSpan?: 1 | 2; render: (form: Partial<F>, setForm: (next: Partial<F>) => void) => React.ReactNode };
 
@@ -41,6 +42,27 @@ export interface SubRecordApi<F> {
   create: (parentId: number, payload: F) => Promise<unknown>;
   update: (parentId: number, id: number, payload: Partial<F>) => Promise<unknown>;
 }
+
+const SubRecordSelectField: React.FC<{
+  value: string;
+  onChange: (v: string) => void;
+  options?: Record<string, string>;
+  dictType?: string;
+}> = ({ value, onChange, options, dictType }) => {
+  const { getOptions } = useDict(dictType ?? '', { enabled: !!dictType });
+  const entries: Array<[string, string]> = dictType
+    ? getOptions().map((o) => [o.value, o.label])
+    : Object.entries(options ?? {});
+  const first = entries[0]?.[0] ?? '';
+  return (
+    <Select value={value || first} onValueChange={onChange}>
+      <SelectTrigger><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {entries.map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+};
 
 export interface HrSubRecordCrudPageProps<T extends { id: number }, F> {
   parentLabel: string;
@@ -228,16 +250,15 @@ export function HrSubRecordCrudPage<T extends { id: number }, F>({
                 );
               }
               if (field.type === 'select') {
-                const first = Object.keys(field.options)[0] ?? '';
                 return (
                   <div key={String(field.key)} className={span}>
                     <Label>{field.label}</Label>
-                    <Select value={String(getVal(field.key) ?? first)} onValueChange={(v) => setVal(field.key, v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(field.options).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SubRecordSelectField
+                      value={String(getVal(field.key) ?? '')}
+                      onChange={(v) => setVal(field.key, v)}
+                      options={field.options}
+                      dictType={field.dictType}
+                    />
                   </div>
                 );
               }

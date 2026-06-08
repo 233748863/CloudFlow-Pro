@@ -31,16 +31,9 @@ import {
   shipOrder,
   type HrMallOrder,
 } from '@/services/api/hr';
-import { enumLabel, formatDateTimeValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
-
-const statusLabel: Record<string, string> = {
-  PENDING: '待处理',
-  APPROVING: '审批中',
-  APPROVED: '已通过',
-  SHIPPED: '已发货',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
+import { formatDateTimeValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 export const HrMallOrderPage: React.FC = () => {
   const [rows, setRows] = useState<HrMallOrder[]>([]);
@@ -53,6 +46,9 @@ export const HrMallOrderPage: React.FC = () => {
   const [expressNo, setExpressNo] = useState('');
   const [cancelTarget, setCancelTarget] = useState<HrMallOrder | null>(null);
   const [cancelReason, setCancelReason] = useState('不需要了');
+
+  const { getOptions: getStatusOptions } = useDict('hr_mall_order_status');
+  const statusOptions = getStatusOptions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -148,7 +144,7 @@ export const HrMallOrderPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -206,7 +202,7 @@ export const HrMallOrderPage: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 text-sm">{row.employeeId}</td>
                   <td className="px-4 py-3 text-sm">{Number(row.totalPoints ?? 0).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_mall_order_status" value={row.status} fallback="-" /></td>
                   <td className="px-4 py-3 text-xs">{row.receiverName ?? '-'}</td>
                   <td className="px-4 py-3 font-mono text-xs">{row.expressNo ?? '-'}</td>
                   <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.createTime)}</td>
@@ -258,7 +254,7 @@ export const HrMallOrderPage: React.FC = () => {
         >
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-3">
-              <div><span className="text-slate-500">状态:</span> {enumLabel(statusLabel, detail.status)}</div>
+              <div><span className="text-slate-500">状态:</span> <DictLabel dictType="hr_mall_order_status" value={detail.status} fallback="-" /></div>
               <div><span className="text-slate-500">积分合计:</span> {detail.totalPoints}</div>
               <div><span className="text-slate-500">收件人:</span> {detail.receiverName ?? '-'}</div>
               <div><span className="text-slate-500">联系电话:</span> {detail.receiverPhone ?? '-'}</div>

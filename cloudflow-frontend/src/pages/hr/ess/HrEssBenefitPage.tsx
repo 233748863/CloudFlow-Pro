@@ -21,28 +21,7 @@ import {
   generateBenefitPayments,
 } from '@/services/api/hr';
 import { normalizeRows, formatMoneyValue } from '../hrShared';
-
-const benefitStatusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  GENERATED: '已生成',
-  PAID: '已发放',
-  CANCELLED: '已取消',
-};
-
-const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
-  if (!status) return <span className="text-slate-400">-</span>;
-  const cls =
-    status === 'PAID'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : status === 'CANCELLED'
-      ? 'border-slate-200 bg-slate-50 text-slate-500'
-      : 'border-sky-200 bg-sky-50 text-sky-700';
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${cls}`}>
-      {benefitStatusLabel[status] || status}
-    </span>
-  );
-};
+import { DictBadge } from '@/components/common/DictBadge';
 
 export const HrEssBenefitPage: React.FC = () => {
   const [rows, setRows] = useState<HrBenefitPayment[]>([]);
@@ -156,7 +135,7 @@ export const HrEssBenefitPage: React.FC = () => {
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {row.items ? Object.entries(row.items).map(([k, v]) => `${k}:${formatMoneyValue(v)}`).join(' / ') : '-'}
                   </td>
-                  <td className="px-4 py-3 text-sm"><StatusBadge status={row.status} /></td>
+                  <td className="px-4 py-3 text-sm">{row.status ? <DictBadge dictType="hr_ess_benefit_status" value={row.status} fallback="-" /> : <span className="text-slate-400">-</span>}</td>
                 </tr>
               ))
             )}

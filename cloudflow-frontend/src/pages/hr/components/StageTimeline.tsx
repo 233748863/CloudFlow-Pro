@@ -1,4 +1,5 @@
 import React from 'react';
+import { useDict } from '@/hooks/useDict';
 
 export type StageTimelineTone = 'emerald' | 'sky';
 
@@ -9,14 +10,17 @@ const toneClass: Record<StageTimelineTone, { dot: string; line: string }> = {
 
 interface StageTimelineProps {
   steps: string[];
-  labels: Record<string, string>;
+  labels?: Record<string, string>;
+  dictType?: string;
   current?: string;
   tone?: StageTimelineTone;
 }
 
-export const StageTimeline: React.FC<StageTimelineProps> = ({ steps, labels, current, tone = 'emerald' }) => {
+export const StageTimeline: React.FC<StageTimelineProps> = ({ steps, labels, dictType, current, tone = 'emerald' }) => {
+  const { getLabel } = useDict(dictType ?? '', { enabled: !!dictType });
   const currentIdx = steps.indexOf(String(current ?? '').toUpperCase());
   const cls = toneClass[tone];
+  const resolveLabel = (s: string) => labels?.[s] ?? (dictType ? getLabel(s) : s);
   return (
     <div className="flex flex-wrap items-center gap-1 py-1">
       {steps.map((s, idx) => {
@@ -24,7 +28,7 @@ export const StageTimeline: React.FC<StageTimelineProps> = ({ steps, labels, cur
         return (
           <React.Fragment key={s}>
             <div className={`rounded-full px-2 py-0.5 text-[10px] ${reached ? cls.dot : 'bg-slate-100 text-slate-400'}`}>
-              {labels[s] ?? s}
+              {resolveLabel(s)}
             </div>
             {idx < steps.length - 1 && (
               <div className={`h-px w-3 ${currentIdx > idx ? cls.line : 'bg-slate-200'}`} />

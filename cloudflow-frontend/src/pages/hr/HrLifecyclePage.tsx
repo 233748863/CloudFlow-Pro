@@ -21,6 +21,7 @@ import {
 import { getErrorMessage } from '@/utils/errorMessage';
 import { buildEmployeeLabel, flattenDeptTree, formatDateValue, normalizeRows, optionOrIdLabel } from './hrShared';
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
+import { useDict } from '@/hooks/useDict';
 
 type LifecycleType = 'ONBOARDING' | 'PROBATION' | 'TRANSFER' | 'RESIGNATION';
 
@@ -66,14 +67,8 @@ const formDefaults: Record<LifecycleType, () => HrRecord> = {
   }),
 };
 
-const typeLabels: Record<LifecycleType, string> = {
-  ONBOARDING: '入职',
-  PROBATION: '转正',
-  TRANSFER: '调岗',
-  RESIGNATION: '离职',
-};
-
 const HrLifecyclePage: React.FC = () => {
+  const lifecycleTypeDict = useDict('hr_lifecycle_type');
   const [activeTab, setActiveTab] = useState<LifecycleType>('ONBOARDING');
   const [applications, setApplications] = useState<LifecycleApplication[]>([]);
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
@@ -280,7 +275,7 @@ const HrLifecyclePage: React.FC = () => {
               columns={[
                 { key: 'applicationNo', label: '编号' },
                 { key: 'name', label: '员工/候选人', render: displayPerson },
-                { key: 'type', label: '类型', render: () => typeLabels[item.value] },
+                { key: 'type', label: '类型', render: () => lifecycleTypeDict.getLabel(item.value) },
                 { key: 'expectedDate', label: '预计日期', render: (row) => formatDateValue(row.expectedDate || row.effectiveDate || row.onboardDate || row.actualDate) },
                 { key: 'status', label: '状态', render: (row) => renderStatus(row.status, row.statusDesc) },
               ]}

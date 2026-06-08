@@ -25,21 +25,8 @@ import {
   listTalentPools,
   listTalentReviews,
 } from '@/services/api/hr';
-import { enumLabel, normalizeRows } from '../hrShared';
-
-const cycleLabel: Record<string, string> = {
-  ANNUAL: '年度',
-  H1: '上半年',
-  H2: '下半年',
-  QUARTER: '季度',
-};
-
-const reviewStatusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  IN_PROGRESS: '进行中',
-  CALIBRATING: '校准中',
-  PUBLISHED: '已发布',
-};
+import { normalizeRows } from '../hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
 
 interface TalentDashboardData {
   ongoingReviews: number;
@@ -157,7 +144,7 @@ export const HrTalentDashboardPage: React.FC = () => {
                 <div>
                   <div className="font-medium">{r.reviewName}</div>
                   <div className="text-xs text-slate-500">
-                    {r.reviewYear} · {enumLabel(cycleLabel, r.cycleType)} · {enumLabel(reviewStatusLabel, r.status)}
+                    {r.reviewYear} · <DictLabel dictType="hr_talent_cycle" value={String(r.cycleType ?? '')} fallback="-" /> · <DictLabel dictType="hr_talent_review_status" value={String(r.status ?? '')} fallback="-" />
                   </div>
                 </div>
                 <div className="flex gap-2">

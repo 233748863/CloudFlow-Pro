@@ -28,21 +28,9 @@ import {
   type HrPointAccount,
   type HrPointTransaction,
 } from '@/services/api/hr';
-import { enumLabel, formatDateTimeValue, normalizeRows } from '../hrShared';
-
-const directionLabel: Record<string, string> = {
-  IN: '入账',
-  OUT: '扣减',
-  FROZEN: '冻结',
-  UNFROZEN: '解冻',
-};
-
-const sourceLabel: Record<string, string> = {
-  BENEFIT: '福利',
-  MALL_ORDER: '商城订单',
-  MANUAL_ADJUST: '手动调整',
-  EXPIRE: '过期清零',
-};
+import { formatDateTimeValue, normalizeRows } from '../hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 export const HrPointAccountPage: React.FC = () => {
   const [employeeId, setEmployeeId] = useState('');
@@ -61,6 +49,9 @@ export const HrPointAccountPage: React.FC = () => {
     direction: 'IN' as 'IN' | 'OUT',
     remark: '',
   });
+
+  const { getOptions: getDirectionOptions } = useDict('hr_point_direction');
+  const directionOptions = getDirectionOptions();
 
   const loadAccount = useCallback(async (empId?: number) => {
     setLoading(true);
@@ -149,7 +140,7 @@ export const HrPointAccountPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部方向" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部方向</SelectItem>
-              {Object.entries(directionLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {directionOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -214,8 +205,8 @@ export const HrPointAccountPage: React.FC = () => {
                 txns.map((row) => (
                   <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                     <td className="px-4 py-3 font-mono text-xs">{row.txnNo}</td>
-                    <td className="px-4 py-3 text-sm"><span className={row.direction === 'IN' ? 'text-emerald-600' : row.direction === 'OUT' ? 'text-rose-600' : 'text-slate-500'}>{enumLabel(directionLabel, row.direction)}</span></td>
-                    <td className="px-4 py-3 text-xs">{enumLabel(sourceLabel, row.sourceType)}{row.sourceId ? ` #${row.sourceId}` : ''}</td>
+                    <td className="px-4 py-3 text-sm"><span className={row.direction === 'IN' ? 'text-emerald-600' : row.direction === 'OUT' ? 'text-rose-600' : 'text-slate-500'}><DictLabel dictType="hr_point_direction" value={row.direction} fallback="-" /></span></td>
+                    <td className="px-4 py-3 text-xs"><DictLabel dictType="hr_point_source" value={row.sourceType} fallback="-" />{row.sourceId ? ` #${row.sourceId}` : ''}</td>
                     <td className="px-4 py-3 text-sm">{row.direction === 'OUT' ? '-' : '+'}{Number(row.points ?? 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-sm">{Number(row.balanceAfter ?? 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.effectiveDate ?? row.createTime)}</td>

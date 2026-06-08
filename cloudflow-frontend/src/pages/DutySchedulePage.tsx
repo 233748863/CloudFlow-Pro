@@ -37,6 +37,8 @@ import {
   UserSelector,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 import type { UserBrief } from '@/types/workflow';
 
 type SearchParams = {
@@ -61,38 +63,6 @@ const emptySwapData = {
   backupUserId: 0,
   backupUserName: '',
   reason: '',
-};
-
-const statusMap: Record<string, string> = {
-  SCHEDULED: '已排班',
-  CHECKED_IN: '已签到',
-  COMPLETED: '已完成',
-  SWAPPED: '已换班',
-  CANCELLED: '已取消',
-};
-
-const typeMap: Record<string, string> = {
-  DAILY: '日常值班',
-  HOLIDAY: '节假日值班',
-  EMERGENCY: '应急值班',
-};
-
-const shiftMap: Record<string, string> = {
-  DAY: '白班',
-  NIGHT: '夜班',
-  FULL: '全天',
-};
-
-const getStatusBadgeClassName = (status: string) => {
-  const config: Record<string, string> = {
-    SCHEDULED: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    CHECKED_IN: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    COMPLETED: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    SWAPPED: 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-    CANCELLED: 'border border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
-  };
-
-  return config[status] || config.SCHEDULED;
 };
 
 const InlineState: React.FC<{
@@ -132,6 +102,9 @@ const TableStateRow: React.FC<{
 
 export const DutySchedulePage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const statusDict = useDict('hr_duty_status');
+  const typeDict = useDict('hr_duty_type');
+  const shiftDict = useDict('hr_duty_shift');
   const [list, setList] = useState<DutySchedule[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState<SearchParams>({
@@ -317,11 +290,9 @@ export const DutySchedulePage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    <SelectItem value="SCHEDULED">已排班</SelectItem>
-                    <SelectItem value="CHECKED_IN">已签到</SelectItem>
-                    <SelectItem value="COMPLETED">已完成</SelectItem>
-                    <SelectItem value="SWAPPED">已换班</SelectItem>
-                    <SelectItem value="CANCELLED">已取消</SelectItem>
+                    {statusDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -338,9 +309,9 @@ export const DutySchedulePage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部类型</SelectItem>
-                    <SelectItem value="DAILY">日常值班</SelectItem>
-                    <SelectItem value="HOLIDAY">节假日值班</SelectItem>
-                    <SelectItem value="EMERGENCY">应急值班</SelectItem>
+                    {typeDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -348,7 +319,7 @@ export const DutySchedulePage: React.FC = () => {
 
             <div className="text-xs text-slate-500 dark:text-slate-400">
               {hasActiveFilters
-                ? `${searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态'} / ${searchParams.scheduleType ? typeMap[searchParams.scheduleType] || searchParams.scheduleType : '全部类型'}`
+                ? `${searchParams.status ? statusDict.getLabel(searchParams.status) || searchParams.status : '全部状态'} / ${searchParams.scheduleType ? typeDict.getLabel(searchParams.scheduleType) || searchParams.scheduleType : '全部类型'}`
                 : '全部排班'}
             </div>
 
@@ -393,13 +364,13 @@ export const DutySchedulePage: React.FC = () => {
                           {item.title}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                          {typeMap[item.scheduleType] || item.scheduleType}
+                          {typeDict.getLabel(item.scheduleType || '') || item.scheduleType}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                           {item.dutyDate}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                          {shiftMap[item.shiftType || ''] || '-'}
+                          {shiftDict.getLabel(item.shiftType || '') || '-'}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
                           <div>{item.userName || '-'}</div>
@@ -417,11 +388,7 @@ export const DutySchedulePage: React.FC = () => {
                           <div className="mt-1">{item.checkOutTime ? `退: ${item.checkOutTime}` : '退: -'}</div>
                         </TableCell>
                         <TableCell className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClassName(item.status || 'SCHEDULED')}`}
-                          >
-                            {statusMap[item.status || 'SCHEDULED'] || item.status}
-                          </span>
+                          <DictBadge dictType="hr_duty_status" value={String(item.status || 'SCHEDULED')} fallback="已排班" />
                         </TableCell>
                         <TableCell className="whitespace-nowrap px-4 py-3 text-right">
                           <TableRowActions
@@ -531,9 +498,9 @@ export const DutySchedulePage: React.FC = () => {
                       <SelectValue placeholder="请选择值班类型" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DAILY">日常值班</SelectItem>
-                      <SelectItem value="HOLIDAY">节假日值班</SelectItem>
-                      <SelectItem value="EMERGENCY">应急值班</SelectItem>
+                      {typeDict.getOptions().map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -548,9 +515,9 @@ export const DutySchedulePage: React.FC = () => {
                       <SelectValue placeholder="请选择班次" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DAY">白班</SelectItem>
-                      <SelectItem value="NIGHT">夜班</SelectItem>
-                      <SelectItem value="FULL">全天</SelectItem>
+                      {shiftDict.getOptions().map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -618,13 +585,13 @@ export const DutySchedulePage: React.FC = () => {
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500 dark:text-slate-400">类型</dt>
                   <dd className="font-medium text-slate-900 dark:text-slate-100">
-                    {typeMap[formData.scheduleType] || '-'}
+                    {typeDict.getLabel(formData.scheduleType || '') || '-'}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500 dark:text-slate-400">班次</dt>
                   <dd className="font-medium text-slate-900 dark:text-slate-100">
-                    {shiftMap[formData.shiftType || 'DAY'] || '-'}
+                    {shiftDict.getLabel(formData.shiftType || 'DAY') || '-'}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">

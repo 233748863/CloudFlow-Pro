@@ -35,24 +35,8 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-
-const STATUS_LABELS: Record<AttendanceAppealStatus, { label: string; cls: string }> = {
-  DRAFT: { label: '草稿', cls: 'border-slate-200 bg-slate-50 text-slate-600' },
-  SUBMITTED: { label: '已提交', cls: 'border-sky-200 bg-sky-50 text-sky-700' },
-  MANAGER_REVIEWING: { label: '主管审核中', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
-  HR_REVIEWING: { label: 'HR 复核中', cls: 'border-violet-200 bg-violet-50 text-violet-700' },
-  APPROVED: { label: '已通过', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  REJECTED: { label: '已驳回', cls: 'border-rose-200 bg-rose-50 text-rose-700' },
-  CANCELLED: { label: '已撤回', cls: 'border-slate-200 bg-slate-50 text-slate-500' },
-};
-
-const REASON_LABELS: Record<AttendanceAppealReason, string> = {
-  FORGOT_CLOCK: '忘记打卡',
-  BUSINESS_TRIP: '外出公干',
-  EQUIPMENT_FAULT: '设备故障',
-  SYSTEM_ERROR: '系统异常',
-  OTHER: '其他',
-};
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 const emptyForm = (): HrAttendanceAppeal => ({
   attendanceDate: new Date().toISOString().slice(0, 10),
@@ -63,14 +47,9 @@ const emptyForm = (): HrAttendanceAppeal => ({
   expectedClockOut: '',
 });
 
-const StatusBadge: React.FC<{ status?: AttendanceAppealStatus }> = ({ status }) => {
-  const cfg = STATUS_LABELS[status || 'DRAFT'];
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${cfg.cls}`}>
-      {cfg.label}
-    </span>
-  );
-};
+const StatusBadge: React.FC<{ status?: AttendanceAppealStatus }> = ({ status }) => (
+  <DictBadge dictType="hr_attendance_appeal_status" value={String(status || 'DRAFT')} />
+);
 
 const DetailField: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="border-b border-slate-100 pb-3 dark:border-slate-800">
@@ -82,6 +61,8 @@ const DetailField: React.FC<{ label: string; value: React.ReactNode }> = ({ labe
 const HrAttendanceAppealPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission?.('hr:attendance:edit') ?? true;
+  const appealStatusDict = useDict('hr_attendance_appeal_status');
+  const appealReasonDict = useDict('hr_attendance_appeal_reason');
 
   const [rows, setRows] = useState<HrAttendanceAppeal[]>([]);
   const [total, setTotal] = useState(0);
@@ -229,8 +210,8 @@ const HrAttendanceAppealPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {(Object.keys(STATUS_LABELS) as AttendanceAppealStatus[]).map((s) => (
-                <SelectItem key={s} value={s}>{STATUS_LABELS[s].label}</SelectItem>
+              {appealStatusDict.getOptions().map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -290,7 +271,7 @@ const HrAttendanceAppealPage: React.FC = () => {
                   <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                     <td className="px-4 py-3 text-sm">{row.employeeName || '-'}</td>
                     <td className="px-4 py-3 text-sm">{row.attendanceDate || '-'}</td>
-                    <td className="px-4 py-3 text-sm">{REASON_LABELS[row.appealReason || 'OTHER']}</td>
+                    <td className="px-4 py-3 text-sm">{appealReasonDict.getLabel(String(row.appealReason || 'OTHER'))}</td>
                     <td className="px-4 py-3 text-sm"><StatusBadge status={row.status} /></td>
                     <td className="px-4 py-3 text-xs text-slate-400">{formatDateTimeDisplay(row.createTime)}</td>
                     <td className="px-4 py-3 text-right">
@@ -362,8 +343,8 @@ const HrAttendanceAppealPage: React.FC = () => {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(REASON_LABELS) as AttendanceAppealReason[]).map((k) => (
-                    <SelectItem key={k} value={k}>{REASON_LABELS[k]}</SelectItem>
+                  {appealReasonDict.getOptions().map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -418,7 +399,7 @@ const HrAttendanceAppealPage: React.FC = () => {
             <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
               <DetailField label="员工" value={detail.employeeName} />
               <DetailField label="考勤日期" value={detail.attendanceDate} />
-              <DetailField label="申诉原因" value={REASON_LABELS[detail.appealReason || 'OTHER']} />
+              <DetailField label="申诉原因" value={appealReasonDict.getLabel(String(detail.appealReason || 'OTHER'))} />
               <DetailField label="期望上班时间" value={detail.expectedClockIn ? formatDateTimeDisplay(detail.expectedClockIn) : '-'} />
               <DetailField label="期望下班时间" value={detail.expectedClockOut ? formatDateTimeDisplay(detail.expectedClockOut) : '-'} />
               <DetailField label="提交时间" value={formatDateTimeDisplay(detail.createTime)} />

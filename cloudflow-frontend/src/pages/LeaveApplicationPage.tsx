@@ -41,6 +41,8 @@ import {
   TableHeader,
   Textarea,
 } from '@/components/common';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 import { TableRowActions } from '@/components/common/table-row-actions';
 
 interface LeaveApplicationDraftForm {
@@ -80,18 +82,6 @@ interface ConfirmState {
 
 const ALL_FILTER_VALUE = '__all__';
 
-const statusMap: Record<string, string> = {
-  DRAFT: '草稿',
-  APPROVING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已拒绝',
-  CANCELLED: '已撤销',
-};
-
-const unitMap: Record<string, string> = {
-  DAY: '天',
-  HOUR: '小时',
-};
 
 const InlineState: React.FC<InlineStateProps> = ({
   title,
@@ -215,10 +205,11 @@ const calculateDuration = (
   return Math.floor((end - start) / 86400000) + 1;
 };
 
-const formatDuration = (item: LeaveApplication) =>
-  `${item.duration}${unitMap[item.unit || ''] || item.unit || ''}`;
-
 export const LeaveApplicationPage: React.FC = () => {
+  const statusDict = useDict('hr_leave_status');
+  const unitDict = useDict('hr_leave_unit');
+  const formatDuration = (item: LeaveApplication) =>
+    `${item.duration}${unitDict.getLabel(item.unit || '') || item.unit || ''}`;
   const [list, setList] = useState<LeaveApplication[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<HrLeaveTypeOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -285,7 +276,7 @@ export const LeaveApplicationPage: React.FC = () => {
   const pendingCount = list.filter((item) => item.status === 'APPROVING').length;
   const approvedCount = list.filter((item) => item.status === 'APPROVED').length;
   const currentStatusLabel = searchParams.status
-    ? (statusMap[searchParams.status] || searchParams.status)
+    ? (statusDict.getLabel(searchParams.status) || searchParams.status)
     : '全部状态';
   const currentTypeLabel = searchParams.leaveTypeId
     ? (leaveTypes.find((item) => String(item.id) === searchParams.leaveTypeId)?.leaveName || '指定类型')
@@ -295,11 +286,7 @@ export const LeaveApplicationPage: React.FC = () => {
 
   const statusQuickFilters = [
     { label: '全部', value: '' },
-    { label: '草稿', value: 'DRAFT' },
-    { label: '审批中', value: 'APPROVING' },
-    { label: '已通过', value: 'APPROVED' },
-    { label: '已拒绝', value: 'REJECTED' },
-    { label: '已撤销', value: 'CANCELLED' },
+    ...statusDict.getOptions(),
   ];
 
   const renderDetailValue = (value?: string | number | null) => {
@@ -566,21 +553,9 @@ export const LeaveApplicationPage: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, string> = {
-      DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-      APPROVING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-      APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-      REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-      CANCELLED: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400',
-    };
-    const className = config[status] || config.DRAFT;
-    return (
-      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${className}`}>
-        {statusMap[status] || status}
-      </span>
-    );
-  };
+  const getStatusBadge = (status: string) => (
+    <DictBadge dictType="hr_leave_status" value={String(status || 'DRAFT')} fallback="草稿" />
+  );
 
   return (
     <div className="space-y-4">
@@ -856,8 +831,8 @@ export const LeaveApplicationPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
-            <span>时长 {duration > 0 ? `${duration}${unitMap[selectedType?.unit || ''] || ''}` : '--'}</span>
-            <span>{unitMap[selectedType?.unit || ''] || '--'}</span>
+            <span>时长 {duration > 0 ? `${duration}${unitDict.getLabel(selectedType?.unit || '') || ''}` : '--'}</span>
+            <span>{unitDict.getLabel(selectedType?.unit || '') || '--'}</span>
             <span>{selectedType?.needQuota ? '占用额度' : '不校验额度'}</span>
           </div>
 
@@ -901,7 +876,7 @@ export const LeaveApplicationPage: React.FC = () => {
               <DetailField label="开始时间" value={formatDateTimeDisplay(detailRecord.startTime)} />
               <DetailField label="结束时间" value={formatDateTimeDisplay(detailRecord.endTime)} />
               <DetailField label="请假时长" value={formatDuration(detailRecord)} />
-              <DetailField label="状态" value={statusMap[detailRecord.status || 'DRAFT'] || detailRecord.status || '-'} />
+              <DetailField label="状态" value={statusDict.getLabel(detailRecord.status || 'DRAFT') || detailRecord.status || '-'} />
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
               <DetailField label="更新时间" value={formatDateTimeDisplay(detailRecord.updateTime)} />
             </div>

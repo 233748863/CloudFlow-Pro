@@ -6,32 +6,8 @@ import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePage
 import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { getMyBenefitSummary, type HrBenefitMineSummary } from '@/services/api/hr';
-import { enumLabel, formatDateTimeValue, formatMoneyValue } from '../hrShared';
-
-const requestStatusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  SUBMITTED: '已提交',
-  APPROVING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  PAID: '已发放',
-  CANCELLED: '已取消',
-};
-
-const requestTypeLabel: Record<string, string> = {
-  BENEFIT_CLAIM: '福利申领',
-  POINT_TOPUP: '积分充值',
-  POINT_ADJUST: '积分调整',
-};
-
-const orderStatusLabel: Record<string, string> = {
-  PENDING: '待处理',
-  APPROVING: '审批中',
-  APPROVED: '已通过',
-  SHIPPED: '已发货',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
+import { formatDateTimeValue, formatMoneyValue } from '../hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
 
 export const HrBenefitMinePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -188,7 +164,7 @@ export const HrBenefitMinePage: React.FC = () => {
                       <tr key={row.id}>
                         <td className="px-4 py-2 font-mono text-xs">{row.orderNo}</td>
                         <td className="px-4 py-2 text-sm">{Number(row.totalPoints ?? 0).toLocaleString()}</td>
-                        <td className="px-4 py-2 text-sm">{enumLabel(orderStatusLabel, row.status)}</td>
+                        <td className="px-4 py-2 text-sm">{row.status ? <DictLabel dictType="hr_mall_order_status" value={row.status} fallback="-" /> : '-'}</td>
                         <td className="px-4 py-2 text-xs">{formatDateTimeValue(row.createTime)}</td>
                       </tr>
                     ))
@@ -223,12 +199,12 @@ export const HrBenefitMinePage: React.FC = () => {
                     (summary?.recentRequests ?? []).map((row) => (
                       <tr key={row.id}>
                         <td className="px-4 py-2 font-mono text-xs">{row.requestNo}</td>
-                        <td className="px-4 py-2 text-sm">{enumLabel(requestTypeLabel, row.requestType)}</td>
+                        <td className="px-4 py-2 text-sm">{row.requestType ? <DictLabel dictType="hr_benefit_request_type" value={row.requestType} fallback="-" /> : '-'}</td>
                         <td className="px-4 py-2 text-xs">
                           {row.amount ? formatMoneyValue(row.amount) : '-'}
                           {row.pointAmount ? ` / ${row.pointAmount} 分` : ''}
                         </td>
-                        <td className="px-4 py-2 text-sm">{enumLabel(requestStatusLabel, row.status)}</td>
+                        <td className="px-4 py-2 text-sm">{row.status ? <DictLabel dictType="hr_benefit_request_status" value={row.status} fallback="-" /> : '-'}</td>
                         <td className="px-4 py-2 text-xs">{formatDateTimeValue(row.createTime)}</td>
                         <td className="px-4 py-2 text-xs">{formatDateTimeValue(row.paidAt)}</td>
                       </tr>

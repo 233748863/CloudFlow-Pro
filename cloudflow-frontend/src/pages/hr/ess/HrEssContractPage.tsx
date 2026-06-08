@@ -3,6 +3,7 @@ import { LoaderCircle, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, TableActionHead, TableHead, TableHeader } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
+import { DictLabel } from '@/components/common/DictLabel';
 import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -13,16 +14,7 @@ import {
   requestContractSign,
   cancelContractSign,
 } from '@/services/api/hr';
-import { normalizeRows, formatDateValue, formatDateTimeValue, enumLabel, hasWorkflowStatus } from '../hrShared';
-
-const signStatusLabel: Record<string, string> = {
-  PENDING: '待签署',
-  SIGNING: '审批中',
-  SIGNED: '已签署',
-  REJECTED: '已驳回',
-  EXPIRED: '已过期',
-  CANCELLED: '已取消',
-};
+import { normalizeRows, formatDateValue, formatDateTimeValue, hasWorkflowStatus } from '../hrShared';
 
 const REQUESTABLE_SIGN_STATUS = new Set(['', 'UNSIGNED', 'REJECTED', 'EXPIRED', 'CANCELLED']);
 const BLOCKED_CONTRACT_STATUS = new Set(['EXPIRED', 'TERMINATED']);
@@ -129,10 +121,10 @@ export const HrEssContractPage: React.FC = () => {
                 contracts.map((row: any) => (
                   <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                     <td className="px-4 py-3 text-sm">{row.contractNo || `#${row.id}`}</td>
-                    <td className="px-4 py-3 text-sm">{row.contractType || '-'}</td>
+                    <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_contract_type" value={row.contractType} fallback="-" /></td>
                     <td className="px-4 py-3 text-sm">{formatDateValue(row.startDate)}</td>
                     <td className="px-4 py-3 text-sm">{formatDateValue(row.endDate)}</td>
-                    <td className="px-4 py-3 text-sm">{enumLabel(signStatusLabel, row.signStatus) || row.status || '-'}</td>
+                    <td className="px-4 py-3 text-sm">{row.signStatus ? <DictLabel dictType="hr_contract_sign_status" value={row.signStatus} fallback="-" /> : <DictLabel dictType="hr_employment_contract_status" value={row.status} fallback="-" />}</td>
                     <td className="px-4 py-3 text-right">
                       <TableRowActions
                         align="end"
@@ -179,9 +171,9 @@ export const HrEssContractPage: React.FC = () => {
                 signatures.map((row) => (
                   <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                     <td className="px-4 py-3 text-sm">{row.contractId}</td>
-                    <td className="px-4 py-3 text-sm">{row.signerType}</td>
-                    <td className="px-4 py-3 text-sm">{row.signMethod || '-'}</td>
-                    <td className="px-4 py-3 text-sm">{enumLabel(signStatusLabel, row.signStatus)}</td>
+                    <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_contract_signer_type" value={row.signerType} fallback="-" /></td>
+                    <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_contract_sign_method" value={row.signMethod} fallback="-" /></td>
+                    <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_contract_sign_status" value={row.signStatus} fallback="-" /></td>
                     <td className="px-4 py-3 text-sm">{formatDateTimeValue(row.signTime)}</td>
                     <td className="px-4 py-3 text-sm">{formatDateTimeValue(row.expireTime)}</td>
                     <td className="px-4 py-3 text-right">

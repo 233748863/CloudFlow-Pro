@@ -31,25 +31,10 @@ import {
   cancelCertificateRequest,
   downloadCertificatePdf,
 } from '@/services/api/hr';
-import { normalizeRows, enumLabel, formatDateTimeValue, hasWorkflowStatus } from '../hrShared';
+import { normalizeRows, formatDateTimeValue, hasWorkflowStatus } from '../hrShared';
 import { getCertificateStatusLabel } from '@/utils/enumLabels';
-
-const certificateTypeLabel: Record<string, string> = {
-  EMPLOYMENT: '在职证明',
-  INCOME: '收入证明',
-  SOCIAL_INSURANCE: '社保证明',
-  CUSTOM: '其他',
-};
-
-const certificateStatusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '待审批',
-  APPROVING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  ISSUED: '已开具',
-  CANCELLED: '已取消',
-};
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const defaultForm: HrCertificateRequestPayload = {
   certificateType: 'EMPLOYMENT',
@@ -70,6 +55,8 @@ export const HrEssCertificatePage: React.FC = () => {
   const [form, setForm] = useState<HrCertificateRequestPayload>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
   const [pendingCancel, setPendingCancel] = useState<HrCertificateRequest | null>(null);
+  const certTypeOptions = useDict('hr_certificate_type').getOptions();
+  const certStatusOptions = useDict('hr_certificate_status').getOptions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,7 +142,7 @@ export const HrEssCertificatePage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {Object.entries(certificateStatusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {certStatusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -210,7 +197,7 @@ export const HrEssCertificatePage: React.FC = () => {
               rows.map((row) => (
                 <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                   <td className="px-4 py-3 font-mono text-xs">{row.requestNo}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(certificateTypeLabel, row.certificateType)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_certificate_type" value={String(row.certificateType ?? '')} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm">{row.purpose || '-'}</td>
                   <td className="px-4 py-3 text-sm">{row.recipientOrg || '-'}</td>
                   <td className="px-4 py-3 text-sm">{row.copies ?? 1}</td>
@@ -266,8 +253,8 @@ export const HrEssCertificatePage: React.FC = () => {
             <Select value={form.certificateType} onValueChange={(value) => setForm((prev) => ({ ...prev, certificateType: value }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Object.entries(certificateTypeLabel).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                {certTypeOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

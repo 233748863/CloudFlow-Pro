@@ -10,45 +10,8 @@ import {
   getEmployeeTalentArchive,
   getMyTalentArchive,
 } from '@/services/api/hr';
-import { enumLabel, formatDateTimeValue, formatDateValue } from '../hrShared';
-
-const reviewStatusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  IN_PROGRESS: '进行中',
-  CALIBRATING: '校准中',
-  PUBLISHED: '已发布',
-  ARCHIVED: '已归档',
-  REJECTED: '已驳回',
-};
-
-const actionTypeLabel: Record<string, string> = {
-  TRAINING: '培训',
-  MENTOR: '导师制',
-  JOB_ROTATION: '岗位轮换',
-  STRETCH_PROJECT: '挑战项目',
-  EXTERNAL_COURSE: '外部课程',
-};
-
-const actionStatusLabel: Record<string, string> = {
-  PLANNED: '已计划',
-  ONGOING: '进行中',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
-
-const readinessLabel: Record<string, string> = {
-  READY_NOW: '即可顶岗',
-  IN_1_2_YEARS: '1-2 年',
-  IN_3_5_YEARS: '3-5 年',
-};
-
-const poolTypeLabel: Record<string, string> = {
-  CORE: '核心',
-  HIPO: '高潜',
-  SUCCESSOR: '继任',
-  CRITICAL_SKILL: '关键技能',
-  EXTERNAL_BENCH: '外部储备',
-};
+import { formatDateTimeValue, formatDateValue } from '../hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
 
 interface MiniGridProps {
   currentCell?: number;
@@ -195,7 +158,7 @@ export const HrTalentArchivePage: React.FC = () => {
                         <div className="text-sm font-medium">{String(row.reviewName ?? '-')}</div>
                         <div className="text-xs text-slate-400">{String(row.reviewYear ?? '')}</div>
                       </td>
-                      <td className="px-4 py-2 text-sm">{enumLabel(reviewStatusLabel, row.status)}</td>
+                      <td className="px-4 py-2 text-sm"><DictLabel dictType="hr_talent_review_status" value={String(row.status ?? '')} fallback="-" /></td>
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           <MiniGrid currentCell={Number(row.gridCell) || undefined} />
@@ -238,7 +201,7 @@ export const HrTalentArchivePage: React.FC = () => {
                   {(archive.pools ?? []).length ? (archive.pools ?? []).map((row: Record<string, unknown>, idx) => (
                     <tr key={`${row.poolId}-${idx}`}>
                       <td className="px-4 py-2 text-sm font-medium">{String(row.poolName ?? '-')}</td>
-                      <td className="px-4 py-2 text-sm">{enumLabel(poolTypeLabel, row.poolType)}</td>
+                      <td className="px-4 py-2 text-sm"><DictLabel dictType="hr_talent_pool_type" value={String(row.poolType ?? '')} fallback="-" /></td>
                       <td className="px-4 py-2 text-sm">{row.status === 'IN' ? '在池' : '已退出'}</td>
                       <td className="px-4 py-2 text-xs">{formatDateTimeValue(row.joinedAt)}</td>
                     </tr>
@@ -267,8 +230,8 @@ export const HrTalentArchivePage: React.FC = () => {
                       </div>
                       <div className="mt-0.5 text-sm font-medium">{String(row.actionName ?? '-')}</div>
                       <div className="text-xs text-slate-500">
-                        {enumLabel(actionTypeLabel, row.actionType)} ·
-                        {' '}{enumLabel(actionStatusLabel, row.status)}
+                        <DictLabel dictType="hr_talent_action_type" value={String(row.actionType ?? '')} fallback="-" /> ·
+                        {' '}<DictLabel dictType="hr_talent_action_status" value={String(row.status ?? '')} fallback="-" />
                         {row.evaluationScore != null && row.evaluationScore !== ''
                           ? ` · 评分 ${row.evaluationScore as React.ReactNode}`
                           : ''}
@@ -303,7 +266,7 @@ export const HrTalentArchivePage: React.FC = () => {
                   {(archive.successorOf ?? []).length ? (archive.successorOf ?? []).map((row: Record<string, unknown>, idx) => (
                     <tr key={`${row.id ?? idx}`}>
                       <td className="px-4 py-2 text-sm font-medium">{String(row.planName ?? '-')}</td>
-                      <td className="px-4 py-2 text-sm">{enumLabel(readinessLabel, row.readiness)}</td>
+                      <td className="px-4 py-2 text-sm"><DictLabel dictType="hr_talent_readiness" value={String(row.readiness ?? '')} fallback="-" /></td>
                       <td className="px-4 py-2 text-sm">{String(row.rankOrder ?? '-')}</td>
                       <td className="px-4 py-2 max-w-[12rem] truncate text-xs">
                         {String(row.developmentGap ?? '-')}

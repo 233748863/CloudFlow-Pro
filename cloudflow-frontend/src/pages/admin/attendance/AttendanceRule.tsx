@@ -49,6 +49,7 @@ import {
   TabsTrigger,
   Textarea,
 } from '@/components/common';
+import { useDict } from '@/hooks/useDict';
 
 const WEEKDAYS = [
   { value: 1, label: '周一' },
@@ -59,25 +60,6 @@ const WEEKDAYS = [
   { value: 6, label: '周六' },
   { value: 7, label: '周日' },
 ];
-
-const RULE_TYPE_LABEL: Record<string, string> = {
-  FIXED: '固定班',
-  ROTATION: '轮班',
-  FLEXIBLE: '弹性',
-  COMPREHENSIVE: '综合工时',
-};
-
-const TARGET_LABEL: Record<string, string> = {
-  DEPT: '部门',
-  POST: '岗位',
-  EMPLOYEE: '员工',
-};
-
-const DAY_TYPE_LABEL: Record<string, string> = {
-  WORKDAY: '工作日',
-  REST: '休息日',
-  HOLIDAY: '节假日',
-};
 
 const defaultConfig = (shiftId?: number): AttendanceRuleConfig => ({
   shiftId,
@@ -150,6 +132,9 @@ const createDraftRule = (shiftId?: number): HrScheduleRule => ({
 });
 
 const AttendanceRulePage: React.FC = () => {
+  const ruleTypeDict = useDict('hr_schedule_rule_type');
+  const targetTypeDict = useDict('hr_target_type');
+  const dayTypeDict = useDict('hr_work_calendar_day_type');
   const [rules, setRules] = useState<HrScheduleRule[]>([]);
   const [shifts, setShifts] = useState<HrShift[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -392,7 +377,7 @@ const AttendanceRulePage: React.FC = () => {
                     {rule.status === 1 ? <CheckCircle2 size={14} className="text-emerald-500" /> : null}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{RULE_TYPE_LABEL[rule.ruleType] || rule.ruleType}</span>
+                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{ruleTypeDict.getLabel(rule.ruleType || '') || rule.ruleType}</span>
                     <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{shift?.shiftName || '未绑定班次'}</span>
                   </div>
                 </button>
@@ -443,10 +428,7 @@ const AttendanceRulePage: React.FC = () => {
                     <Select value={draft?.ruleType || 'FIXED'} onValueChange={(value) => setDraft((prev) => (prev ? { ...prev, ruleType: value } : prev))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="FIXED">固定班</SelectItem>
-                        <SelectItem value="ROTATION">轮班</SelectItem>
-                        <SelectItem value="FLEXIBLE">弹性工作制</SelectItem>
-                        <SelectItem value="COMPREHENSIVE">综合工时制</SelectItem>
+                        {ruleTypeDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </Field>
@@ -549,9 +531,7 @@ const AttendanceRulePage: React.FC = () => {
                   <Select value={assignmentDraft.targetType} onValueChange={(value) => setAssignmentDraft((prev) => ({ ...prev, targetType: value as 'DEPT' | 'POST' | 'EMPLOYEE' }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DEPT">部门</SelectItem>
-                      <SelectItem value="POST">岗位</SelectItem>
-                      <SelectItem value="EMPLOYEE">员工</SelectItem>
+                      {targetTypeDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Input placeholder="目标ID" value={assignmentDraft.targetId} onChange={(event) => setAssignmentDraft((prev) => ({ ...prev, targetId: event.target.value }))} />
@@ -567,7 +547,7 @@ const AttendanceRulePage: React.FC = () => {
                     <div className="px-4 py-8 text-center text-sm text-slate-500">暂无适用范围</div>
                   ) : assignments.map((item) => (
                     <div key={item.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">{TARGET_LABEL[item.targetType]}</span>
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">{targetTypeDict.getLabel(item.targetType || '') || item.targetType}</span>
                       <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.targetName || item.targetId}</span>
                       <span className="text-xs text-slate-500">{item.effectiveStart} 起</span>
                       <Button className="ml-auto" variant="ghost" size="icon" onClick={() => handleDeleteAssignment(item.id)}>
@@ -586,9 +566,7 @@ const AttendanceRulePage: React.FC = () => {
                   <Select value={calendarDraft.dayType} onValueChange={(value) => setCalendarDraft((prev) => ({ ...prev, dayType: value as 'WORKDAY' | 'REST' | 'HOLIDAY' }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="WORKDAY">工作日</SelectItem>
-                      <SelectItem value="REST">休息日</SelectItem>
-                      <SelectItem value="HOLIDAY">节假日</SelectItem>
+                      {dayTypeDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Input placeholder="日期名称" value={calendarDraft.dayName} onChange={(event) => setCalendarDraft((prev) => ({ ...prev, dayName: event.target.value }))} />
@@ -603,9 +581,9 @@ const AttendanceRulePage: React.FC = () => {
                     <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800">
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.calendarDate}</div>
-                        <div className="mt-1 text-xs text-slate-500">{item.dayName || DAY_TYPE_LABEL[item.dayType]}</div>
+                        <div className="mt-1 text-xs text-slate-500">{item.dayName || dayTypeDict.getLabel(item.dayType || '') || item.dayType}</div>
                       </div>
-                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">{DAY_TYPE_LABEL[item.dayType]}</span>
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">{dayTypeDict.getLabel(item.dayType || '') || item.dayType}</span>
                       <Button variant="ghost" size="icon" onClick={() => handleDeleteCalendar(item.id)}>
                         <Trash2 size={15} />
                       </Button>

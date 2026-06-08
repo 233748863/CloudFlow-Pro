@@ -6,14 +6,9 @@ import {
   type HrWorkInjuryInvestigation,
   type HrWorkInjuryInvestigationPayload,
 } from '@/services/api/hr';
-import { enumLabel, formatDateValue } from '../hrShared';
+import { formatDateValue } from '../hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
 import { HrSubRecordCrudPage } from '../components/HrSubRecordCrudPage';
-
-const responsibilityLabel: Record<string, string> = {
-  WORK_RELATED: '工作相关',
-  COMMUTE: '上下班通勤',
-  THIRD_PARTY: '第三方责任',
-};
 
 export const HrWorkInjuryInvestigationPage: React.FC = () => (
   <HrSubRecordCrudPage<HrWorkInjuryInvestigation, HrWorkInjuryInvestigationPayload>
@@ -26,7 +21,7 @@ export const HrWorkInjuryInvestigationPage: React.FC = () => (
     columns={[
       { header: '调查日期', className: 'px-4 py-3 text-xs', render: (r) => formatDateValue(r.investigationDate) },
       { header: '调查员', render: (r) => r.investigatorId ?? '-' },
-      { header: '责任类型', render: (r) => enumLabel(responsibilityLabel, r.responsibilityType) },
+      { header: '责任类型', render: (r) => <DictLabel dictType="hr_work_injury_responsibility" value={r.responsibilityType} fallback="-" /> },
       { header: '结论', className: 'px-4 py-3 max-w-[20rem] truncate text-xs', render: (r) => r.conclusion ?? '-' },
     ]}
     emptyForm={{
@@ -46,7 +41,7 @@ export const HrWorkInjuryInvestigationPage: React.FC = () => (
     fields={[
       { type: 'user', key: 'investigatorId', label: '调查员' },
       { type: 'date', key: 'investigationDate', label: '调查日期' },
-      { type: 'select', key: 'responsibilityType', label: '责任类型', colSpan: 2, options: responsibilityLabel },
+      { type: 'select', key: 'responsibilityType', label: '责任类型', colSpan: 2, dictType: 'hr_work_injury_responsibility' },
       { type: 'textarea', key: 'witnessStatements', label: '证人证言' },
       { type: 'textarea', key: 'conclusion', label: '调查结论' },
     ]}

@@ -22,6 +22,8 @@ import {
 import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { FilterBar } from '@/components/layout';
 import { BaseDialog } from '@/components/common/BaseDialog';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 import { getExamPaperStatusLabel } from '@/utils/enumLabels';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -43,23 +45,10 @@ import {
   submitAttempt,
   gradeAttempt,
 } from '@/services/api/hr';
-import { normalizeRows, formatDateTimeValue, enumLabel } from './hrShared';
-
-const questionTypeLabel: Record<string, string> = {
-  SINGLE: '单选',
-  MULTI: '多选',
-  JUDGE: '判断',
-  FILL: '填空',
-  ESSAY: '问答',
-};
-
-const attemptStatusLabel: Record<string, string> = {
-  IN_PROGRESS: '答题中',
-  SUBMITTED: '已提交',
-  GRADED: '已批改',
-};
+import { normalizeRows, formatDateTimeValue } from './hrShared';
 
 const QuestionBankTab: React.FC = () => {
+  const { getOptions: getQuestionTypeOptions } = useDict('hr_exam_question_type');
   const [rows, setRows] = useState<HrExamQuestionBank[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<HrExamQuestionBankPayload>({ questionType: 'SINGLE', content: '', score: 5 });
@@ -107,7 +96,7 @@ const QuestionBankTab: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {rows.length ? rows.map((row) => (
                 <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 text-sm">{enumLabel(questionTypeLabel, row.questionType)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_exam_question_type" value={row.questionType} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm max-w-md truncate">{row.content}</td>
                   <td className="px-4 py-3 text-sm">{row.score ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">{row.difficulty ?? '-'}</td>
@@ -129,7 +118,7 @@ const QuestionBankTab: React.FC = () => {
               <Select value={form.questionType} onValueChange={(v) => setForm((p) => ({ ...p, questionType: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(questionTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  {getQuestionTypeOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -325,7 +314,7 @@ const AttemptTab: React.FC<{ mine: boolean }> = ({ mine }) => {
                   <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.submitTime)}</td>
                   <td className="px-4 py-3 text-sm">{row.score ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">{row.passFlag == null ? '-' : row.passFlag ? '是' : '否'}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(attemptStatusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_exam_attempt_status" value={row.status} fallback="-" /></td>
                   <td className="px-4 py-3"><TableRowActions actions={[{ key: 'view', semantic: 'view', label: '查看', onClick: () => void handleView(row.id) }]} /></td>
                 </tr>
               )) : (
@@ -352,7 +341,7 @@ const AttemptTab: React.FC<{ mine: boolean }> = ({ mine }) => {
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-3">
               <div><Label className="text-xs">试卷</Label><div>{detail.paperId}</div></div>
-              <div><Label className="text-xs">状态</Label><div>{enumLabel(attemptStatusLabel, detail.status)}</div></div>
+              <div><Label className="text-xs">状态</Label><div><DictLabel dictType="hr_exam_attempt_status" value={detail.status} fallback="-" /></div></div>
               <div><Label className="text-xs">分数</Label><div>{detail.score ?? '-'}</div></div>
               <div><Label className="text-xs">通过</Label><div>{detail.passFlag == null ? '-' : detail.passFlag ? '是' : '否'}</div></div>
             </div>

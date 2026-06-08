@@ -8,23 +8,10 @@ import {
   type HrWorkInjuryCompensation,
   type HrWorkInjuryCompensationPayload,
 } from '@/services/api/hr';
-import { enumLabel, formatDateTimeValue, formatMoneyValue, hasWorkflowStatus } from '../hrShared';
+import { formatDateTimeValue, formatMoneyValue, hasWorkflowStatus } from '../hrShared';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { DictLabel } from '@/components/common/DictLabel';
 import { HrSubRecordCrudPage } from '../components/HrSubRecordCrudPage';
-
-const itemTypeLabel: Record<string, string> = {
-  MEDICAL: '医疗费',
-  DISABILITY_ALLOWANCE: '伤残津贴',
-  LUMP_SUM: '一次性补助',
-  FUNERAL: '丧葬费',
-  DEPENDENT_SUPPORT: '抚恤金',
-};
-
-const statusLabel: Record<string, string> = {
-  PLANNED: '待支付',
-  PAID: '已支付',
-  REJECTED: '已驳回',
-};
 
 export const HrWorkInjuryCompensationPage: React.FC = () => (
   <HrSubRecordCrudPage<HrWorkInjuryCompensation, HrWorkInjuryCompensationPayload>
@@ -35,9 +22,9 @@ export const HrWorkInjuryCompensationPage: React.FC = () => (
     createTitle="新增赔偿项"
     editTitle="编辑赔偿项"
     columns={[
-      { header: '赔偿项', render: (r) => enumLabel(itemTypeLabel, r.itemType) },
+      { header: '赔偿项', render: (r) => <DictLabel dictType="hr_work_injury_comp_item" value={r.itemType} fallback="-" /> },
       { header: '金额', render: (r) => formatMoneyValue(r.amount) },
-      { header: '状态', render: (r) => enumLabel(statusLabel, r.paymentStatus) },
+      { header: '状态', render: (r) => <DictLabel dictType="hr_work_injury_comp_status" value={r.paymentStatus} fallback="-" /> },
       { header: '支付时间', className: 'px-4 py-3 text-xs', render: (r) => formatDateTimeValue(r.paidAt) },
       { header: '备注', className: 'px-4 py-3 max-w-[12rem] truncate text-xs', render: (r) => r.remark ?? '-' },
     ]}
@@ -56,7 +43,7 @@ export const HrWorkInjuryCompensationPage: React.FC = () => (
       remark: r.remark,
     })}
     fields={[
-      { type: 'select', key: 'itemType', label: '赔偿项', options: itemTypeLabel },
+      { type: 'select', key: 'itemType', label: '赔偿项', dictType: 'hr_work_injury_comp_item' },
       { type: 'number', key: 'amount', label: '金额' },
       { type: 'text', key: 'bankAccount', label: '银行账号(加密)', colSpan: 2 },
       { type: 'textarea', key: 'remark', label: '备注', rows: 2 },

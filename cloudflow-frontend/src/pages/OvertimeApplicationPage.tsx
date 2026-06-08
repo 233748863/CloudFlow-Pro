@@ -42,6 +42,8 @@ import {
   TableHeader,
   Textarea,
 } from '@/components/common';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 import { TableRowActions } from '@/components/common/table-row-actions';
 
 interface InlineStateProps {
@@ -82,25 +84,6 @@ const emptyForm = (): OvertimeApplicationForm => ({
   endTime: '',
   reason: '',
 });
-
-const statusMap: Record<string, string> = {
-  DRAFT: '草稿',
-  APPROVING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  CANCELLED: '已取消',
-};
-
-const overtimeTypeMap: Record<string, string> = {
-  WORKDAY: '工作日',
-  WEEKEND: '周末',
-  HOLIDAY: '节假日',
-};
-
-const compensationTypeMap: Record<string, string> = {
-  PAYMENT: '加班费',
-  TIME_OFF: '调休',
-};
 
 const InlineState: React.FC<InlineStateProps> = ({
   title,
@@ -153,6 +136,9 @@ const calculateDurationHours = (startTime: string, endTime: string) => {
 };
 
 export const OvertimeApplicationPage: React.FC = () => {
+  const statusDict = useDict('hr_overtime_status');
+  const typeDict = useDict('hr_overtime_type');
+  const compensationDict = useDict('hr_overtime_compensation_type');
   const [list, setList] = useState<OvertimeApplication[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({
@@ -216,21 +202,14 @@ export const OvertimeApplicationPage: React.FC = () => {
   const approvedCount = list.filter((item) => item.status === 'APPROVED').length;
   const totalHours = list.reduce((sum, item) => sum + Number(item.duration || 0), 0);
   const currentStatusLabel = searchParams.status
-    ? (statusMap[searchParams.status] || searchParams.status)
+    ? (statusDict.getLabel(searchParams.status) || searchParams.status)
     : '全部状态';
   const currentTypeLabel = searchParams.overtimeType
-    ? (overtimeTypeMap[searchParams.overtimeType] || searchParams.overtimeType)
+    ? (typeDict.getLabel(searchParams.overtimeType) || searchParams.overtimeType)
     : '全部类型';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.overtimeType);
 
-  const statusQuickFilters = [
-    { label: '全部', value: '' },
-    { label: '草稿', value: 'DRAFT' },
-    { label: '审批中', value: 'APPROVING' },
-    { label: '已通过', value: 'APPROVED' },
-    { label: '已驳回', value: 'REJECTED' },
-    { label: '已取消', value: 'CANCELLED' },
-  ];
+  const statusQuickFilters = [{ label: '全部', value: '' }, ...statusDict.getOptions()];
 
   const renderDetailValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === '') {
@@ -416,21 +395,9 @@ export const OvertimeApplicationPage: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, string> = {
-      DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-      APPROVING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-      APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-      REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-      CANCELLED: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400',
-    };
-    const className = config[status] || config.DRAFT;
-    return (
-      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${className}`}>
-        {statusMap[status] || status}
-      </span>
-    );
-  };
+  const getStatusBadge = (status: string) => (
+    <DictBadge dictType="hr_overtime_status" value={String(status || 'DRAFT')} fallback="草稿" />
+  );
 
   return (
     <div className="space-y-4">
@@ -482,9 +449,9 @@ export const OvertimeApplicationPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
-                    <SelectItem value="WORKDAY">工作日</SelectItem>
-                    <SelectItem value="WEEKEND">周末</SelectItem>
-                    <SelectItem value="HOLIDAY">节假日</SelectItem>
+                    {typeDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -558,7 +525,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                           {item.applicationNo || '-'}
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {overtimeTypeMap[item.overtimeType] || item.overtimeType}
+                          {typeDict.getLabel(item.overtimeType || '') || item.overtimeType}
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
                           <div>{formatDateTimeDisplay(item.startTime)}</div>
@@ -568,7 +535,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                           {item.duration ? `${item.duration} 小时` : '-'}
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {compensationTypeMap[item.compensationType] || item.compensationType}
+                          {compensationDict.getLabel(item.compensationType || '') || item.compensationType}
                         </td>
                         <td className="px-4 py-2.5">{getStatusBadge(item.status || 'DRAFT')}</td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-right">
@@ -666,9 +633,9 @@ export const OvertimeApplicationPage: React.FC = () => {
                   <SelectValue placeholder="请选择加班类型" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="WORKDAY">工作日</SelectItem>
-                  <SelectItem value="WEEKEND">周末</SelectItem>
-                  <SelectItem value="HOLIDAY">节假日</SelectItem>
+                  {typeDict.getOptions().map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -687,8 +654,9 @@ export const OvertimeApplicationPage: React.FC = () => {
                   <SelectValue placeholder="请选择补偿方式" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PAYMENT">加班费</SelectItem>
-                  <SelectItem value="TIME_OFF">调休</SelectItem>
+                  {compensationDict.getOptions().map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -724,8 +692,8 @@ export const OvertimeApplicationPage: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
             <span>时长 {formDuration > 0 ? `${formDuration} 小时` : '--'}</span>
-            <span>{overtimeTypeMap[formData.overtimeType] || '--'}</span>
-            <span>{compensationTypeMap[formData.compensationType] || '--'}</span>
+            <span>{typeDict.getLabel(formData.overtimeType || '') || '--'}</span>
+            <span>{compensationDict.getLabel(formData.compensationType || '') || '--'}</span>
           </div>
 
           <div>
@@ -763,12 +731,12 @@ export const OvertimeApplicationPage: React.FC = () => {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <DetailField label="申请单号" value={renderDetailValue(detailRecord.applicationNo)} />
               <DetailField label="申请人" value={renderDetailValue(detailRecord.employeeName)} />
-              <DetailField label="加班类型" value={overtimeTypeMap[detailRecord.overtimeType] || detailRecord.overtimeType} />
-              <DetailField label="补偿方式" value={compensationTypeMap[detailRecord.compensationType] || detailRecord.compensationType} />
+              <DetailField label="加班类型" value={typeDict.getLabel(detailRecord.overtimeType || '') || detailRecord.overtimeType} />
+              <DetailField label="补偿方式" value={compensationDict.getLabel(detailRecord.compensationType || '') || detailRecord.compensationType} />
               <DetailField label="开始时间" value={formatDateTimeDisplay(detailRecord.startTime)} />
               <DetailField label="结束时间" value={formatDateTimeDisplay(detailRecord.endTime)} />
               <DetailField label="加班时长" value={detailRecord.duration ? `${detailRecord.duration} 小时` : '-'} />
-              <DetailField label="状态" value={statusMap[detailRecord.status || 'DRAFT'] || detailRecord.status || '-'} />
+              <DetailField label="状态" value={statusDict.getLabel(detailRecord.status || 'DRAFT') || detailRecord.status || '-'} />
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
             </div>
 

@@ -32,29 +32,9 @@ import {
   updateTalentReview,
 } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
-import { enumLabel, formatDateTimeValue, normalizeRows } from '../hrShared';
-
-const cycleTypeLabel: Record<string, string> = {
-  ANNUAL: '年度',
-  H1: '上半年',
-  H2: '下半年',
-  QUARTER: '季度',
-};
-
-const scopeTypeLabel: Record<string, string> = {
-  GLOBAL: '全员',
-  DEPT: '部门',
-  POSITION: '岗位',
-};
-
-const statusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  IN_PROGRESS: '进行中',
-  CALIBRATING: '校准中',
-  PUBLISHED: '已发布',
-  ARCHIVED: '已归档',
-  REJECTED: '已驳回',
-};
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
+import { formatDateTimeValue, normalizeRows } from '../hrShared';
 
 const defaultForm: HrTalentReviewPayload = {
   reviewNo: '',
@@ -69,6 +49,10 @@ export const HrTalentReviewPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission?.('hr:talent:review:edit') ?? true;
   const canAdd = hasPermission?.('hr:talent:review:add') ?? true;
+
+  const { getOptions: getStatusOptions } = useDict('hr_talent_review_status');
+  const { getOptions: getCycleOptions } = useDict('hr_talent_cycle');
+  const { getOptions: getScopeOptions } = useDict('hr_talent_scope_type');
 
   const [rows, setRows] = useState<HrTalentReview[]>([]);
   const [total, setTotal] = useState(0);
@@ -165,7 +149,7 @@ export const HrTalentReviewPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {getStatusOptions().map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -226,9 +210,9 @@ export const HrTalentReviewPage: React.FC = () => {
                   <td className="px-4 py-3 font-mono text-xs">{row.reviewNo}</td>
                   <td className="px-4 py-3 text-sm font-medium">{row.reviewName}</td>
                   <td className="px-4 py-3 text-sm">{row.reviewYear}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(cycleTypeLabel, row.cycleType)}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(scopeTypeLabel, row.scopeType)}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_cycle" value={String(row.cycleType ?? '')} fallback="-" /></td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_scope_type" value={String(row.scopeType ?? '')} fallback="-" /></td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_review_status" value={String(row.status ?? '')} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm">{formatDateTimeValue(row.publishTime) || '-'}</td>
                   <td className="px-4 py-3 text-right">
                     <TableRowActions
@@ -284,7 +268,7 @@ export const HrTalentReviewPage: React.FC = () => {
               <Select value={form.cycleType} onValueChange={(v) => setForm((p) => ({ ...p, cycleType: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(cycleTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  {getCycleOptions().map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -295,7 +279,7 @@ export const HrTalentReviewPage: React.FC = () => {
               <Select value={form.scopeType} onValueChange={(v) => setForm((p) => ({ ...p, scopeType: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(scopeTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  {getScopeOptions().map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

@@ -70,11 +70,13 @@ import {
 } from '@/services/api/hr';
 import { getMeetingRooms } from '@/services/api/schedule';
 import { MeetingRoom } from '@/types';
-import { enumLabel, formatDateValue, formatDateTimeValue, formatMoneyValue, optionLabel, optionOrIdLabel } from './hrShared';
+import { formatDateValue, formatDateTimeValue, formatMoneyValue, optionLabel, optionOrIdLabel } from './hrShared';
 import { getAttachmentRawValue } from '@/utils/attachment';
 import HrRecruitmentChannelPanel from './components/HrRecruitmentChannelPanel';
 import HrResumeParsePanel from './components/HrResumeParsePanel';
 import { listRecruitmentChannels, type RecruitmentChannel } from '@/services/api/hr/recruitment';
+import { DictBadge } from '@/components/common/DictBadge';
+import { useDict } from '@/hooks/useDict';
 
 type RecruitmentTab = 'request' | 'candidate' | 'interview' | 'offer' | 'channel';
 
@@ -112,71 +114,6 @@ const flattenDeptTree = (
   return result;
 };
 
-const requestStatusTone: Record<string, string> = {
-  DRAFT: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-  APPROVING: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  RECRUITING: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-  COMPLETED: 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-  CANCELLED: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-};
-
-const requestStatusLabels: Record<string, string> = {
-  DRAFT: '草稿',
-  APPROVING: '审批中',
-  RECRUITING: '招聘中',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
-
-const candidateStatusTone: Record<string, string> = {
-  NEW: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-  SCREENING: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-  INTERVIEW: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  OFFER: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-  HIRED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-  REJECTED: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-};
-
-const candidateStatusLabels: Record<string, string> = {
-  NEW: '新简历',
-  SCREENING: '筛选中',
-  INTERVIEW: '面试中',
-  OFFER: 'Offer阶段',
-  HIRED: '已录用',
-  REJECTED: '已拒绝',
-};
-
-const interviewStatusTone: Record<string, string> = {
-  SCHEDULED: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-  COMPLETED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-  CANCELLED: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-};
-
-const interviewRoundLabels: Record<string, string> = {
-  FIRST: '初试',
-  SECOND: '复试',
-  FINAL: '终面',
-};
-
-const interviewTypeLabels: Record<string, string> = {
-  PHONE: '电话面试',
-  VIDEO: '视频面试',
-  ONSITE: '现场面试',
-};
-
-const interviewStatusLabels: Record<string, string> = {
-  SCHEDULED: '已排期',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
-
-const sourceLabels: Record<string, string> = {
-  WEBSITE: '官网',
-  REFERRAL: '内推',
-  HEADHUNTER: '猎头',
-  CAMPUS: '校招',
-};
-
 const editableCandidateStatuses = ['NEW', 'SCREENING', 'INTERVIEW', 'REJECTED'];
 
 const requestFormDefault: RecruitmentRequestPayload = {
@@ -197,24 +134,6 @@ const candidateFormDefault: CandidatePayload = {
   email: '',
   resumeAttachmentUrls: '',
   source: 'WEBSITE',
-};
-
-const offerStatusTone: Record<string, string> = {
-  DRAFT: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-  APPROVING: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-  SENT: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-  ACCEPTED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-  REJECTED: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-};
-
-const offerStatusLabels: Record<string, string> = {
-  DRAFT: '草稿',
-  APPROVING: '审批中',
-  APPROVED: '已审批',
-  SENT: '已发送',
-  ACCEPTED: '已接受',
-  REJECTED: '已拒绝',
 };
 
 const interviewFormDefault: InterviewSchedulePayload = {
@@ -339,6 +258,10 @@ export const HrRecruitmentPage: React.FC = () => {
   const [interviewForm, setInterviewForm] = useState<InterviewSchedulePayload>(interviewFormDefault);
   const [offerForm, setOfferForm] = useState<OfferPayload>(offerFormDefault);
   const [resumePanel, setResumePanel] = useState<{ open: boolean; candidate?: Candidate }>({ open: false });
+  const candidateStatusDict = useDict('hr_candidate_status');
+  const sourceDict = useDict('hr_candidate_source');
+  const interviewRoundDict = useDict('hr_interview_round');
+  const interviewTypeDict = useDict('hr_interview_type');
 
   const loadData = async () => {
     setLoading(true);
@@ -833,14 +756,7 @@ export const HrRecruitmentPage: React.FC = () => {
                         <TableCell>{item.headcount}</TableCell>
                         <TableCell>{item.hiredCount}</TableCell>
                         <TableCell>
-                          <span
-                            className={[
-                              'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                              requestStatusTone[item.status] || requestStatusTone.DRAFT,
-                            ].join(' ')}
-                          >
-                            {item.statusDesc || enumLabel(requestStatusLabels, item.status)}
-                          </span>
+                          <DictBadge dictType="hr_recruit_request_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex flex-wrap justify-end gap-2">
@@ -935,17 +851,10 @@ export const HrRecruitmentPage: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>{item.phone}</TableCell>
-                        <TableCell>{item.sourceDesc || enumLabel(sourceLabels, item.source)}</TableCell>
+                        <TableCell>{item.sourceDesc || sourceDict.getLabel(String(item.source ?? ''))}</TableCell>
                         <TableCell>{item.positionName || '-'}</TableCell>
                         <TableCell>
-                          <span
-                            className={[
-                              'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                              candidateStatusTone[item.status] || candidateStatusTone.NEW,
-                            ].join(' ')}
-                          >
-                            {item.statusDesc || enumLabel(candidateStatusLabels, item.status)}
-                          </span>
+                          <DictBadge dictType="hr_candidate_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="ml-auto flex items-center justify-end gap-2">
@@ -971,13 +880,7 @@ export const HrRecruitmentPage: React.FC = () => {
                                 <SelectContent>
                                   {editableCandidateStatuses.map((status) => (
                                     <SelectItem key={status} value={status}>
-                                      {status === 'NEW'
-                                        ? '新简历'
-                                        : status === 'SCREENING'
-                                          ? '筛选中'
-                                          : status === 'INTERVIEW'
-                                            ? '面试中'
-                                            : '已拒绝'}
+                                      {candidateStatusDict.getLabel(status)}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -1038,8 +941,8 @@ export const HrRecruitmentPage: React.FC = () => {
                         <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                           {item.candidateName || '-'}
                         </TableCell>
-                        <TableCell>{item.interviewRoundName || enumLabel(interviewRoundLabels, item.interviewRound)}</TableCell>
-                        <TableCell>{item.interviewTypeName || enumLabel(interviewTypeLabels, item.interviewType)}</TableCell>
+                        <TableCell>{item.interviewRoundName || interviewRoundDict.getLabel(String(item.interviewRound ?? ''))}</TableCell>
+                        <TableCell>{item.interviewTypeName || interviewTypeDict.getLabel(String(item.interviewType ?? ''))}</TableCell>
                         <TableCell>
                           <div>{formatDateTimeValue(item.interviewTime)}</div>
                           {item.interviewEndTime ? (
@@ -1050,14 +953,7 @@ export const HrRecruitmentPage: React.FC = () => {
                         </TableCell>
                         <TableCell>{item.meetingRoomName || item.location || '-'}</TableCell>
                         <TableCell>
-                          <span
-                            className={[
-                              'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                              interviewStatusTone[item.status] || interviewStatusTone.SCHEDULED,
-                            ].join(' ')}
-                          >
-                            {item.statusName || item.statusDesc || enumLabel(interviewStatusLabels, item.status)}
-                          </span>
+                          <DictBadge dictType="hr_interview_status" value={String(item.status ?? '')} fallback={item.statusName || item.statusDesc || '-'} />
                         </TableCell>
                       </TableRow>
                     ))
@@ -1108,14 +1004,7 @@ export const HrRecruitmentPage: React.FC = () => {
                           <TableCell>{formatMoneyValue(item.salary)}</TableCell>
                           <TableCell>{formatDateValue(item.expectedArrivalDate || item.expectedDate)}</TableCell>
                           <TableCell>
-                            <span
-                              className={[
-                                'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                                offerStatusTone[status] || offerStatusTone.DRAFT,
-                              ].join(' ')}
-                            >
-                              {item.statusDesc || enumLabel(offerStatusLabels, item.status)}
-                            </span>
+                            <DictBadge dictType="hr_offer_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex flex-wrap justify-end gap-2">
@@ -1371,10 +1260,9 @@ export const HrRecruitmentPage: React.FC = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="WEBSITE">官网</SelectItem>
-                    <SelectItem value="REFERRAL">内推</SelectItem>
-                    <SelectItem value="HEADHUNTER">猎头</SelectItem>
-                    <SelectItem value="CAMPUS">校招</SelectItem>
+                    {sourceDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1488,9 +1376,9 @@ export const HrRecruitmentPage: React.FC = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="FIRST">初试</SelectItem>
-                    <SelectItem value="SECOND">复试</SelectItem>
-                    <SelectItem value="FINAL">终面</SelectItem>
+                    {interviewRoundDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1506,9 +1394,9 @@ export const HrRecruitmentPage: React.FC = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PHONE">电话面试</SelectItem>
-                    <SelectItem value="VIDEO">视频面试</SelectItem>
-                    <SelectItem value="ONSITE">现场面试</SelectItem>
+                    {interviewTypeDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

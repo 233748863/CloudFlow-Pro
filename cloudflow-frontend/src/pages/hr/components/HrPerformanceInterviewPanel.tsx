@@ -11,10 +11,10 @@ import {
   Textarea,
 } from '@/components/common';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { DictBadge } from '@/components/common/DictBadge';
 import {
   hrPerformanceInterviewApi,
   type HrPerformanceInterview,
-  type PerformanceInterviewStatus,
 } from '@/services/api/hr/batch2';
 
 interface Props {
@@ -24,11 +24,6 @@ interface Props {
   employeeName?: string;
   onClose: () => void;
 }
-
-const STATUS_LABELS: Record<PerformanceInterviewStatus, { label: string; cls: string }> = {
-  DRAFT: { label: '草稿', cls: 'border-slate-200 bg-slate-50 text-slate-600' },
-  CONFIRMED: { label: '已确认', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-};
 
 const emptyForm = (): HrPerformanceInterview => ({
   interviewTime: '',
@@ -147,14 +142,11 @@ export const HrPerformanceInterviewPanel = ({ open, resultId, employeeId, employ
         ) : (
           <div className="space-y-3">
             {list.map((item) => {
-              const status = STATUS_LABELS[item.status || 'DRAFT'];
               return (
                 <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm">
-                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${status.cls}`}>
-                        {status.label}
-                      </span>
+                      <DictBadge dictType="hr_perf_interview_status" value={String(item.status || 'DRAFT')} />
                       <span className="text-slate-700 dark:text-slate-200">{item.interviewTime}</span>
                       {item.location ? <span className="text-xs text-slate-500">@ {item.location}</span> : null}
                     </div>

@@ -9,11 +9,11 @@ import {
   Textarea,
 } from '@/components/common';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { DictBadge } from '@/components/common/DictBadge';
 import {
   hrResumeApi,
   type HrResumeParsedRecord,
   type HrResumeParsedFieldsPayload,
-  type ResumeParsedStatus,
 } from '@/services/api/hr/batch2';
 
 interface Props {
@@ -23,12 +23,6 @@ interface Props {
   defaultResumeUrl?: string;
   onClose: () => void;
 }
-
-const STATUS_LABELS: Record<ResumeParsedStatus, { label: string; cls: string }> = {
-  PENDING: { label: '待复核', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
-  CONFIRMED: { label: '已确认', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  REJECTED: { label: '已驳回', cls: 'border-rose-200 bg-rose-50 text-rose-700' },
-};
 
 const formatConfidence = (value?: number) => {
   if (value === undefined || value === null) return '-';
@@ -182,15 +176,12 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
         ) : (
           <div className="space-y-3">
             {records.map((record) => {
-              const status = STATUS_LABELS[record.status] || STATUS_LABELS.PENDING;
               const isEditing = editingId === record.id;
               return (
                 <div key={record.id} className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 ${status.cls}`}>
-                        {status.label}
-                      </span>
+                      <DictBadge dictType="hr_resume_parse_status" value={String(record.status || 'PENDING')} />
                       <span>置信度: {formatConfidence(record.confidence)}</span>
                       {record.createTime ? <span>解析时间: {record.createTime}</span> : null}
                     </div>

@@ -32,12 +32,9 @@ import {
   type HrMallItem,
   type HrMallItemPayload,
 } from '@/services/api/hr';
-import { enumLabel, normalizeRows } from '../hrShared';
-
-const statusLabel: Record<string, string> = {
-  ON_SHELF: '上架中',
-  OFF_SHELF: '已下架',
-};
+import { normalizeRows } from '../hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const emptyForm: Partial<HrMallItemPayload> = {
   itemNo: '',
@@ -59,6 +56,9 @@ export const HrMallItemAdminPage: React.FC = () => {
   const [editing, setEditing] = useState<HrMallItem | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Partial<HrMallItemPayload>>(emptyForm);
+
+  const { getOptions: getStatusOptions } = useDict('hr_mall_item_status');
+  const statusOptions = getStatusOptions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -159,7 +159,7 @@ export const HrMallItemAdminPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -221,7 +221,7 @@ export const HrMallItemAdminPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm">{row.stock}</td>
                   <td className="px-4 py-3 text-sm">{row.salesCount ?? 0}</td>
                   <td className="px-4 py-3 text-sm">{row.approvalThreshold ?? 0}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_mall_item_status" value={row.status} fallback="-" /></td>
                   <td className="px-4 py-3 text-right">
                     <TableRowActions
                       align="end"

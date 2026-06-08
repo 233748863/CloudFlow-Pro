@@ -31,27 +31,12 @@ import {
   type HrWorkInjury,
   type HrWorkInjuryPayload,
 } from '@/services/api/hr';
-import { enumLabel, formatDateTimeValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
+import { formatDateTimeValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
 import { StageTimeline } from '../components/StageTimeline';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const statusFlow = ['REPORTED', 'INVESTIGATING', 'DETERMINING', 'DETERMINED', 'COMPENSATING', 'REHABILITATING', 'CLOSED'];
-
-const statusLabel: Record<string, string> = {
-  REPORTED: '已上报',
-  INVESTIGATING: '调查中',
-  DETERMINING: '认定中',
-  DETERMINED: '已认定',
-  COMPENSATING: '赔偿中',
-  REHABILITATING: '康复中',
-  CLOSED: '已关闭',
-};
-
-const levelLabel: Record<string, string> = {
-  MINOR: '轻伤',
-  MODERATE: '中等',
-  SEVERE: '重伤',
-  DEATH: '死亡',
-};
 
 const emptyForm: Partial<HrWorkInjuryPayload> = {
   employeeId: undefined,
@@ -73,6 +58,8 @@ export const HrWorkInjuryPage: React.FC = () => {
   const [form, setForm] = useState<Partial<HrWorkInjuryPayload>>(emptyForm);
   const [closeTarget, setCloseTarget] = useState<HrWorkInjury | null>(null);
   const [closeReason, setCloseReason] = useState('');
+  const { getLabel: statusLabel } = useDict('hr_work_injury_status');
+  const levelOptions = useDict('hr_work_injury_level').getOptions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,7 +159,7 @@ export const HrWorkInjuryPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部状态</SelectItem>
-              {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
+              {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -221,8 +208,8 @@ export const HrWorkInjuryPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm">{row.employeeId}</td>
                   <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.occurredAt)}</td>
                   <td className="px-4 py-3 max-w-[10rem] truncate text-xs">{row.location ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(levelLabel, row.injuryLevel)}</td>
-                  <td className="px-4 py-3"><StageTimeline steps={statusFlow} labels={statusLabel} current={row.status} tone="emerald" /></td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_work_injury_level" value={row.injuryLevel} fallback="-" /></td>
+                  <td className="px-4 py-3"><StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={row.status} tone="emerald" /></td>
                   <td className="px-4 py-3 text-sm">{row.determinedGrade ? `${row.determinedGrade} 级` : '-'}</td>
                   <td className="px-4 py-3">
                     <TableRowActions
@@ -280,7 +267,7 @@ export const HrWorkInjuryPage: React.FC = () => {
               <Select value={String(form.injuryLevel ?? 'MINOR')} onValueChange={(v) => setForm({ ...form, injuryLevel: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(levelLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  {levelOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -316,13 +303,13 @@ export const HrWorkInjuryPage: React.FC = () => {
           footer={<div className="flex justify-end"><Button variant="outline" onClick={() => setDetail(null)}>关闭</Button></div>}
         >
           <div className="space-y-3 text-sm">
-            <StageTimeline steps={statusFlow} labels={statusLabel} current={detail.status} tone="emerald" />
+            <StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={detail.status} tone="emerald" />
             <div className="grid grid-cols-2 gap-3">
               <div><span className="text-slate-500">员工 ID:</span> {detail.employeeId}</div>
               <div><span className="text-slate-500">发生时间:</span> {formatDateTimeValue(detail.occurredAt)}</div>
               <div><span className="text-slate-500">地点:</span> {detail.location ?? '-'}</div>
               <div><span className="text-slate-500">部位:</span> {detail.injuryPart ?? '-'}</div>
-              <div><span className="text-slate-500">等级:</span> {enumLabel(levelLabel, detail.injuryLevel)}</div>
+              <div><span className="text-slate-500">等级:</span> <DictLabel dictType="hr_work_injury_level" value={detail.injuryLevel} fallback="-" /></div>
               <div><span className="text-slate-500">伤残等级:</span> {detail.determinedGrade ? `${detail.determinedGrade} 级` : '-'}</div>
               <div><span className="text-slate-500">认定时间:</span> {formatDateTimeValue(detail.determinedAt)}</div>
               <div><span className="text-slate-500">工作流:</span> {detail.processInstanceId ?? '-'}</div>

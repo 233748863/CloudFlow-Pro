@@ -27,6 +27,7 @@ import {
   type PerformanceEvaluator,
 } from '@/services/api/hr/performance';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { DictBadge } from '@/components/common/DictBadge';
 import { cn } from '@/utils/cn';
 
 type EvaluatorSource = 'SELF' | 'MANAGER' | 'PEER' | 'SUBORDINATE' | 'CUSTOMER';
@@ -38,18 +39,6 @@ const SOURCE_OPTIONS: Array<{ value: EvaluatorSource; label: string; external?: 
   { value: 'SUBORDINATE', label: '下属' },
   { value: 'CUSTOMER', label: '客户（外部）', external: true },
 ];
-
-const STATUS_TONE: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-800/50',
-  COMPLETED: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-800/50',
-  CANCELLED: 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-700',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: '待评分',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
 
 const isExternalSource = (source: EvaluatorSource) =>
   SOURCE_OPTIONS.find((opt) => opt.value === source)?.external === true;
@@ -299,7 +288,6 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
             </TableHeader>
             <TableBody>
               {evaluators.map((row) => {
-                const statusKey = String(row.status || 'PENDING').toUpperCase();
                 const isExternal = String(row.evaluatorSource || '').toUpperCase() === 'CUSTOMER';
                 return (
                   <TableRow key={row.id}>
@@ -320,14 +308,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                     </TableCell>
                     <TableCell className="tabular-nums">{row.weight}</TableCell>
                     <TableCell>
-                      <span
-                        className={cn(
-                          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1',
-                          STATUS_TONE[statusKey] || STATUS_TONE.PENDING,
-                        )}
-                      >
-                        {STATUS_LABEL[statusKey] || row.status}
-                      </span>
+                      <DictBadge dictType="hr_perf_360_status" value={String(row.status || 'PENDING')} variant="ring" />
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center justify-end gap-2">

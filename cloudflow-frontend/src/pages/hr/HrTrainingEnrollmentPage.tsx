@@ -33,20 +33,8 @@ import {
   cancelTrainingEnrollment,
   listTrainingSessions,
 } from '@/services/api/hr';
-import { normalizeRows, formatDateTimeValue, enumLabel } from './hrShared';
-
-const enrollStatusLabel: Record<string, string> = {
-  PENDING: '待审批',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  WITHDRAWN: '已退出',
-};
-
-const completionLabel: Record<string, string> = {
-  PENDING: '未结业',
-  PASSED: '已通过',
-  FAILED: '未通过',
-};
+import { normalizeRows, formatDateTimeValue } from './hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
 
 const EnrollmentList: React.FC<{ mine: boolean }> = ({ mine }) => {
   const [rows, setRows] = useState<HrTrainingEnrollment[]>([]);
@@ -145,9 +133,9 @@ const EnrollmentList: React.FC<{ mine: boolean }> = ({ mine }) => {
                 <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                   <td className="px-4 py-3 text-sm">{`班次#${row.sessionId}`}</td>
                   <td className="px-4 py-3 text-sm">{row.enrollType === 'SELF' ? '自报' : '指派'}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(enrollStatusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_enroll_status" value={String(row.status ?? '')} fallback="-" /></td>
                   <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.checkInTime)}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(completionLabel, row.completionStatus)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_enroll_completion" value={String(row.completionStatus ?? '')} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm">{row.score ?? '-'}</td>
                   <td className="px-4 py-3">
                     <TableRowActions

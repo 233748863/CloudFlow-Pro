@@ -37,42 +37,7 @@ import {
 import { getErrorMessage } from '@/utils/errorMessage';
 import { buildEmployeeLabel, flattenDeptTree, idFallbackLabel, normalizeRows } from './hrShared';
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
-
-const ruleTypeLabels: Record<string, string> = {
-  FIXED: '固定工时',
-  STANDARD: '标准工时',
-  FLEXIBLE: '弹性工时',
-};
-
-const targetTypeLabels: Record<string, string> = {
-  DEPT: '部门',
-  POST: '岗位',
-  EMPLOYEE: '员工',
-};
-
-const checkTypeLabels: Record<string, string> = {
-  CHECK_IN: '上班打卡',
-  CHECK_OUT: '下班打卡',
-};
-
-const checkMethodLabels: Record<string, string> = {
-  MANUAL: '人工补录',
-  MOBILE: '移动端',
-  TERMINAL: '考勤机',
-  WIFI: 'Wi-Fi',
-  GPS: '定位',
-};
-
-const leaveUnitLabels: Record<string, string> = {
-  DAY: '天',
-  HOUR: '小时',
-};
-
-const requestTypeLabels: Record<string, string> = {
-  LEAVE: '请假',
-  OVERTIME: '加班',
-  SUPPLEMENT: '补录',
-};
+import { useDict } from '@/hooks/useDict';
 
 const formatTimeValue = (value?: unknown) => {
   const text = String(value || '');
@@ -188,6 +153,12 @@ const HrAttendancePage: React.FC = () => {
   const [leaveTypeForm, setLeaveTypeForm] = useState<HrRecord>(leaveTypeDefault);
   const [quotaForm, setQuotaForm] = useState<HrRecord>(quotaDefault);
   const [requestForm, setRequestForm] = useState<HrRecord>(requestDefault);
+  const ruleTypeDict = useDict('hr_attendance_rule_type');
+  const targetTypeDict = useDict('hr_target_type');
+  const checkTypeDict = useDict('hr_check_type');
+  const checkMethodDict = useDict('hr_check_method');
+  const leaveUnitDict = useDict('hr_leave_unit');
+  const requestTypeDict = useDict('hr_attendance_request_type');
 
   const loadData = async () => {
     setLoading(true);
@@ -331,7 +302,7 @@ const HrAttendancePage: React.FC = () => {
   const scheduleTargetLabel = (row: HrRecord) => {
     const targetType = String(row.targetType || '').toUpperCase();
     const options = targetType === 'POST' ? postOptions : targetType === 'EMPLOYEE' ? employeeOptions : deptOptions;
-    const prefix = targetTypeLabels[targetType] || '对象';
+    const prefix = targetTypeDict.getLabel(targetType) || '对象';
     return row.targetName || getOptionLabel(row.targetId, options) || idFallbackLabel(prefix, row.targetId);
   };
 
@@ -407,13 +378,13 @@ const HrAttendancePage: React.FC = () => {
   ];
 
   const requestFields: HrFormField[] = [
-    { key: 'requestType', label: '类型', type: 'select', options: [{ label: '请假', value: 'LEAVE' }, { label: '加班', value: 'OVERTIME' }, { label: '补录', value: 'SUPPLEMENT' }] },
+    { key: 'requestType', label: '类型', type: 'select', options: requestTypeDict.getOptions() },
     { key: 'employeeId', label: '员工', type: 'employee' },
     { key: 'leaveTypeId', label: '假期类型', type: 'select', valueType: 'number', options: leaveTypeOptions },
     { key: 'startTime', label: '开始时间', type: 'datetime-local' },
     { key: 'endTime', label: '结束时间', type: 'datetime-local' },
     { key: 'duration', label: '时长', type: 'number' },
-    { key: 'unit', label: '单位', type: 'select', options: [{ label: '天', value: 'DAY' }, { label: '小时', value: 'HOUR' }] },
+    { key: 'unit', label: '单位', type: 'select', options: leaveUnitDict.getOptions() },
     { key: 'reason', label: '原因', type: 'textarea', className: 'md:col-span-2' },
   ];
 
@@ -479,7 +450,7 @@ const HrAttendancePage: React.FC = () => {
             columns={[
               { key: 'ruleCode', label: '编码' },
               { key: 'ruleName', label: '名称' },
-              { key: 'ruleType', label: '类型', render: (row) => ruleTypeLabels[String(row.ruleType || '').toUpperCase()] || row.ruleType || '-' },
+              { key: 'ruleType', label: '类型', render: (row) => ruleTypeDict.getLabel(String(row.ruleType ?? '')) },
               { key: 'shiftId', label: '班次', render: (row) => shiftLabel(row.shiftId) },
               { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
             ]}
@@ -500,7 +471,7 @@ const HrAttendancePage: React.FC = () => {
             onCreate={(form) => submitAndReload(() => createHrScheduleAssignment(form), '排班已保存')}
             columns={[
               { key: 'ruleId', label: '规则', render: (row) => ruleLabel(row.ruleId) },
-              { key: 'targetType', label: '对象', render: (row) => targetTypeLabels[String(row.targetType || '').toUpperCase()] || row.targetType || '-' },
+              { key: 'targetType', label: '对象', render: (row) => targetTypeDict.getLabel(String(row.targetType ?? '')) },
               { key: 'targetName', label: '名称', render: scheduleTargetLabel },
               { key: 'effectiveStart', label: '开始', render: (row) => formatDateValue(row.effectiveStart) },
               { key: 'effectiveEnd', label: '结束', render: (row) => formatDateValue(row.effectiveEnd) },
@@ -530,9 +501,9 @@ const HrAttendancePage: React.FC = () => {
             onCreate={(form) => submitAndReload(() => createHrAttendanceRecord(form), '打卡记录已保存')}
             columns={[
               { key: 'employeeName', label: '员工', render: (row) => employeeLabel(row) },
-              { key: 'checkType', label: '类型', render: (row) => checkTypeLabels[String(row.checkType || '').toUpperCase()] || row.checkType || '-' },
+              { key: 'checkType', label: '类型', render: (row) => checkTypeDict.getLabel(String(row.checkType ?? '')) },
               { key: 'checkTime', label: '时间', render: (row) => formatDateTimeValue(row.checkTime) },
-              { key: 'checkMethod', label: '方式', render: (row) => checkMethodLabels[String(row.checkMethod || '').toUpperCase()] || row.checkMethod || '-' },
+              { key: 'checkMethod', label: '方式', render: (row) => checkMethodDict.getLabel(String(row.checkMethod ?? '')) },
               { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
             ]}
             pageSize={10}
@@ -572,14 +543,14 @@ const HrAttendancePage: React.FC = () => {
               { key: 'leaveName', label: '名称' },
               { key: 'needQuota', label: '额度控制', type: 'select', valueType: 'number', options: [{ label: '是', value: 1 }, { label: '否', value: 0 }] },
               { key: 'isPaid', label: '带薪', type: 'select', valueType: 'number', options: [{ label: '是', value: 1 }, { label: '否', value: 0 }] },
-              { key: 'unit', label: '单位', type: 'select', options: [{ label: '天', value: 'DAY' }, { label: '小时', value: 'HOUR' }] },
+              { key: 'unit', label: '单位', type: 'select', options: leaveUnitDict.getOptions() },
               { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
             ]}
             onCreate={(form) => submitAndReload(() => createHrLeaveType(form), '假期类型已保存')}
             columns={[
               { key: 'leaveCode', label: '编码' },
               { key: 'leaveName', label: '名称' },
-              { key: 'unit', label: '单位', render: (row) => leaveUnitLabels[String(row.unit || '').toUpperCase()] || row.unit || '-' },
+              { key: 'unit', label: '单位', render: (row) => leaveUnitDict.getLabel(String(row.unit ?? '')) },
               { key: 'needQuota', label: '额度', render: (row) => yesNoLabel(row.needQuota) },
               { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
             ]}
@@ -633,7 +604,7 @@ const HrAttendancePage: React.FC = () => {
             onCreate={(form) => submitAndReload(() => createHrTimeRequest(form), '申请已保存')}
             columns={[
               { key: 'requestNo', label: '编号' },
-              { key: 'requestType', label: '类型', render: (row) => requestTypeLabels[String(row.requestType || '').toUpperCase()] || row.requestType || '-' },
+              { key: 'requestType', label: '类型', render: (row) => requestTypeDict.getLabel(String(row.requestType ?? '')) },
               { key: 'employeeName', label: '员工', render: (row) => employeeLabel(row) },
               { key: 'startTime', label: '开始', render: (row) => formatDateTimeValue(row.startTime) },
               { key: 'endTime', label: '结束', render: (row) => formatDateTimeValue(row.endTime) },

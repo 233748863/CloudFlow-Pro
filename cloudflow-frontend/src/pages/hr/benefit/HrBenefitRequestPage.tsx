@@ -33,30 +33,13 @@ import {
   type HrBenefitRequestPayload,
 } from '@/services/api/hr';
 import {
-  enumLabel,
   formatDateTimeValue,
   formatMoneyValue,
   hasWorkflowStatus,
   normalizeRows,
 } from '../hrShared';
-
-const statusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  SUBMITTED: '已提交',
-  APPROVING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  PAID: '已发放',
-  CANCELLED: '已取消',
-};
-
-const typeLabel: Record<string, string> = {
-  BENEFIT_CLAIM: '福利申领',
-  POINT_TOPUP: '积分充值',
-  POINT_ADJUST: '积分调整',
-};
-
-const typeOptions = Object.entries(typeLabel).map(([value, label]) => ({ value, label }));
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const emptyForm: Partial<HrBenefitRequestPayload> = {
   requestType: 'BENEFIT_CLAIM',
@@ -77,6 +60,11 @@ export const HrBenefitRequestPage: React.FC = () => {
   const [form, setForm] = useState<Partial<HrBenefitRequestPayload>>(emptyForm);
   const [cancelTarget, setCancelTarget] = useState<HrBenefitRequest | null>(null);
   const [cancelReason, setCancelReason] = useState('撤回');
+
+  const { getOptions: getTypeOptions } = useDict('hr_benefit_request_type');
+  const { getOptions: getStatusOptions } = useDict('hr_benefit_request_status');
+  const typeOptions = getTypeOptions();
+  const statusOptions = getStatusOptions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -181,7 +169,7 @@ export const HrBenefitRequestPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -237,12 +225,12 @@ export const HrBenefitRequestPage: React.FC = () => {
                 <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                   <td className="px-4 py-3 font-mono text-xs">{row.requestNo}</td>
                   <td className="px-4 py-3 text-sm">{row.employeeId}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(typeLabel, row.requestType)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_benefit_request_type" value={row.requestType} fallback="-" /></td>
                   <td className="px-4 py-3 text-xs">
                     {row.amount ? formatMoneyValue(row.amount) : '-'}
                     {row.pointAmount ? ` / ${row.pointAmount} 分` : ''}
                   </td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_benefit_request_status" value={row.status} fallback="-" /></td>
                   <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.createTime)}</td>
                   <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.paidAt)}</td>
                   <td className="px-4 py-3 text-right">

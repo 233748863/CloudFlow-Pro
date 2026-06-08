@@ -36,15 +36,9 @@ import {
   updateTalentPool,
 } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
-import { enumLabel, normalizeRows } from '../hrShared';
-
-const poolTypeLabel: Record<string, string> = {
-  CORE: '核心',
-  HIPO: '高潜',
-  SUCCESSOR: '继任',
-  CRITICAL_SKILL: '关键技能',
-  EXTERNAL_BENCH: '外部储备',
-};
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
+import { normalizeRows } from '../hrShared';
 
 const defaultForm = { poolNo: '', poolName: '', poolType: 'HIPO', description: '' };
 
@@ -52,6 +46,7 @@ export const HrTalentPoolPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission?.('hr:talent:pool:edit') ?? true;
   const canAdd = hasPermission?.('hr:talent:pool:add') ?? true;
+  const poolTypeOptions = useDict('hr_talent_pool_type').getOptions();
 
   const [rows, setRows] = useState<HrTalentPool[]>([]);
   const [total, setTotal] = useState(0);
@@ -179,7 +174,7 @@ export const HrTalentPoolPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部类型" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部类型</SelectItem>
-              {Object.entries(poolTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {poolTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -237,7 +232,7 @@ export const HrTalentPoolPage: React.FC = () => {
                 <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                   <td className="px-4 py-3 font-mono text-xs">{row.poolNo}</td>
                   <td className="px-4 py-3 text-sm font-medium">{row.poolName}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(poolTypeLabel, row.poolType)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_pool_type" value={row.poolType} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm">{row.status === 'ACTIVE' ? '启用' : '已归档'}</td>
                   <td className="px-4 py-3 max-w-[24rem] truncate text-sm">{row.description || '-'}</td>
                   <td className="px-4 py-3 text-right">
@@ -292,7 +287,7 @@ export const HrTalentPoolPage: React.FC = () => {
             <Select value={form.poolType} onValueChange={(v) => setForm((p) => ({ ...p, poolType: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Object.entries(poolTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                {poolTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

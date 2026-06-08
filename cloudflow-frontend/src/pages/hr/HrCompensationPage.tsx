@@ -39,7 +39,6 @@ import {
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   buildEmployeeLabel,
-  enumLabel,
   formatDateValue,
   formatMoneyValue,
   normalizeRows,
@@ -48,38 +47,7 @@ import {
 } from './hrShared';
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 import HrCompensationSimulatePanel from './components/HrCompensationSimulatePanel';
-
-const componentTypeLabels: Record<string, string> = {
-  FIXED: '固定薪酬',
-  VARIABLE: '浮动薪酬',
-  EARNING: '收入',
-  DEDUCTION: '扣减',
-  COMPANY: '公司成本',
-};
-
-const componentCategoryLabels: Record<string, string> = {
-  BASE: '基本工资',
-  ALLOWANCE: '津贴补贴',
-  BONUS: '奖金绩效',
-  BENEFIT: '福利成本',
-  OTHER: '其他',
-};
-
-const changeTypeLabels: Record<string, string> = {
-  ADJUST: '调薪',
-  PROMOTION: '晋升',
-  PERFORMANCE: '绩效',
-};
-
-const deductionTypeLabels: Record<string, string> = {
-  CHILD_EDUCATION: '子女教育',
-  CONTINUING_EDU: '继续教育',
-  CONTINUING_EDUCATION: '继续教育',
-  HOUSING_LOAN: '住房贷款利息',
-  HOUSING_RENT: '住房租金',
-  ELDERLY_CARE: '赡养老人',
-  INFANT_CARE: '婴幼儿照护',
-};
+import { useDict } from '@/hooks/useDict';
 
 const componentDefault = (): HrRecord => ({
   itemCode: `COMP${Date.now()}`,
@@ -186,6 +154,10 @@ const HrCompensationPage: React.FC = () => {
   const [employeeBenefitForm, setEmployeeBenefitForm] = useState<HrRecord>(employeeBenefitDefault);
   const [taxProfileForm, setTaxProfileForm] = useState<HrRecord>(taxProfileDefault);
   const [taxDeductionForm, setTaxDeductionForm] = useState<HrRecord>(taxDeductionDefault);
+  const componentTypeDict = useDict('hr_comp_component_type');
+  const componentCategoryDict = useDict('hr_comp_component_category');
+  const changeTypeDict = useDict('hr_comp_change_type');
+  const deductionTypeDict = useDict('hr_tax_deduction_type');
 
   const loadData = async () => {
     setLoading(true);
@@ -292,8 +264,8 @@ const HrCompensationPage: React.FC = () => {
 
   const componentFields: HrFormField[] = [
     { key: 'itemName', label: '项目名称' },
-    { key: 'itemType', label: '类型', type: 'select', options: [{ label: '固定薪酬', value: 'FIXED' }, { label: '浮动薪酬', value: 'VARIABLE' }, { label: '扣减项', value: 'DEDUCTION' }, { label: '公司成本', value: 'COMPANY' }] },
-    { key: 'category', label: '分类', type: 'select', options: [{ label: '基本工资', value: 'BASE' }, { label: '津贴补贴', value: 'ALLOWANCE' }, { label: '奖金绩效', value: 'BONUS' }, { label: '福利成本', value: 'BENEFIT' }, { label: '其他', value: 'OTHER' }] },
+    { key: 'itemType', label: '类型', type: 'select', options: componentTypeDict.getOptions() },
+    { key: 'category', label: '分类', type: 'select', options: componentCategoryDict.getOptions() },
     { key: 'taxable', label: '计税', type: 'select', valueType: 'number', options: [{ label: '是', value: 1 }, { label: '否', value: 0 }] },
     { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
   ];
@@ -345,8 +317,8 @@ const HrCompensationPage: React.FC = () => {
             columns={[
               { key: 'itemCode', label: '编码', render: (row) => row.itemCode || row.componentCode },
               { key: 'itemName', label: '名称', render: (row) => row.itemName || row.componentName },
-              { key: 'itemType', label: '类型', render: (row) => enumLabel(componentTypeLabels, row.itemType || row.componentType) },
-              { key: 'category', label: '分类', render: (row) => enumLabel(componentCategoryLabels, row.category) },
+              { key: 'itemType', label: '类型', render: (row) => componentTypeDict.getLabel(String(row.itemType || row.componentType || '')) },
+              { key: 'category', label: '分类', render: (row) => componentCategoryDict.getLabel(String(row.category ?? '')) },
               { key: 'taxable', label: '计税', render: (row) => yesNoLabel(row.taxable ?? row.isTaxable) },
               { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
             ]}
@@ -450,7 +422,7 @@ const HrCompensationPage: React.FC = () => {
             resetForm={changeDefault}
             formFields={[
               { key: 'employeeId', label: '员工', type: 'employee' },
-              { key: 'changeType', label: '类型', type: 'select', options: [{ label: '调薪', value: 'ADJUST' }, { label: '晋升', value: 'PROMOTION' }, { label: '绩效', value: 'PERFORMANCE' }] },
+              { key: 'changeType', label: '类型', type: 'select', options: changeTypeDict.getOptions() },
               { key: 'beforeTotal', label: '调整前', type: 'number' },
               { key: 'afterTotal', label: '调整后', type: 'number' },
               { key: 'effectiveDate', label: '生效日期', type: 'date' },
@@ -460,7 +432,7 @@ const HrCompensationPage: React.FC = () => {
             columns={[
               { key: 'changeNo', label: '编号', render: (row) => row.changeNo || row.applicationNo },
               { key: 'employeeName', label: '员工', render: employeeLabel },
-              { key: 'changeType', label: '类型', render: (row) => enumLabel(changeTypeLabels, row.changeType) },
+              { key: 'changeType', label: '类型', render: (row) => changeTypeDict.getLabel(String(row.changeType ?? '')) },
               { key: 'beforeTotal', label: '调整前', render: (row) => moneyCell(row.beforeTotal) },
               { key: 'afterTotal', label: '调整后', render: (row) => moneyCell(row.afterTotal) },
               { key: 'effectiveDate', label: '生效日期', render: (row) => formatDateValue(row.effectiveDate) },
@@ -573,7 +545,7 @@ const HrCompensationPage: React.FC = () => {
             onCreate={(form) => submitAndReload(() => addTaxDeduction(form), '专项扣除已保存')}
             columns={[
               { key: 'employeeName', label: '员工', render: employeeLabel },
-              { key: 'deductionType', label: '类型', render: (row) => enumLabel(deductionTypeLabels, row.deductionType) },
+              { key: 'deductionType', label: '类型', render: (row) => deductionTypeDict.getLabel(String(row.deductionType ?? '')) },
               { key: 'amount', label: '金额', render: (row) => moneyCell(row.amount) },
               { key: 'startDate', label: '开始', render: (row) => formatDateValue(row.startDate) },
               { key: 'endDate', label: '结束', render: (row) => formatDateValue(row.endDate) },

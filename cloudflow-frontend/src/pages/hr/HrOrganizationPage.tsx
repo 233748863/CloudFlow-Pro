@@ -20,19 +20,9 @@ import {
   setHeadcount,
 } from '@/services/api/hr';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { enumLabel, flattenDeptTree, formatDateValue, idFallbackLabel, normalizeRows, optionOrIdLabel } from './hrShared';
+import { flattenDeptTree, formatDateValue, idFallbackLabel, normalizeRows, optionOrIdLabel } from './hrShared';
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
-
-const levelSeriesLabels: Record<string, string> = {
-  P: '专业序列',
-  M: '管理序列',
-  S: '支持序列',
-};
-
-const targetTypeLabels: Record<string, string> = {
-  DEPT: '部门',
-  POST: '岗位',
-};
+import { useDict } from '@/hooks/useDict';
 
 const familyDefault = (): HrRecord => ({
   familyCode: `FAM${Date.now()}`,
@@ -86,6 +76,8 @@ const HrOrganizationPage: React.FC = () => {
   const [positionForm, setPositionForm] = useState<HrRecord>(positionDefault);
   const [headcountForm, setHeadcountForm] = useState<HrRecord>(headcountDefault);
   const [deleteTarget, setDeleteTarget] = useState<{ name: string; runner: () => Promise<unknown>; success: string } | null>(null);
+  const levelSeriesDict = useDict('hr_level_series');
+  const targetTypeDict = useDict('hr_target_type');
 
   const loadData = async () => {
     setLoading(true);
@@ -141,7 +133,7 @@ const HrOrganizationPage: React.FC = () => {
   const headcountTargetLabel = (row: HrRecord) => {
     const targetType = String(row.targetType || '').toUpperCase();
     const options = targetType === 'POST' ? postOptions : deptOptions;
-    const prefix = targetTypeLabels[targetType] || '对象';
+    const prefix = targetTypeDict.getLabel(targetType) || '对象';
     return row.targetName || getOptionLabel(row.targetId, options) || idFallbackLabel(prefix, row.targetId);
   };
 
@@ -154,7 +146,7 @@ const HrOrganizationPage: React.FC = () => {
 
   const levelFields: HrFormField[] = [
     { key: 'levelName', label: '职级名称' },
-    { key: 'levelSeries', label: '序列', type: 'select', options: [{ label: '专业序列', value: 'P' }, { label: '管理序列', value: 'M' }, { label: '支持序列', value: 'S' }] },
+    { key: 'levelSeries', label: '序列', type: 'select', options: levelSeriesDict.getOptions() },
     { key: 'levelRank', label: '等级', type: 'number' },
     { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
     { key: 'description', label: '说明', type: 'textarea', className: 'md:col-span-2' },
@@ -251,7 +243,7 @@ const HrOrganizationPage: React.FC = () => {
             columns={[
               { key: 'levelCode', label: '编码' },
               { key: 'levelName', label: '名称' },
-              { key: 'levelSeries', label: '序列', render: (row) => enumLabel(levelSeriesLabels, row.levelSeries) },
+              { key: 'levelSeries', label: '序列', render: (row) => levelSeriesDict.getLabel(String(row.levelSeries ?? '')) },
               { key: 'levelRank', label: '等级' },
               { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
             ]}
@@ -298,7 +290,7 @@ const HrOrganizationPage: React.FC = () => {
             formFields={headcountFields}
             onCreate={(form) => submitAndReload(() => setHeadcount(form as Parameters<typeof setHeadcount>[0]), '编制已保存')}
             columns={[
-              { key: 'targetType', label: '对象', render: (row) => enumLabel(targetTypeLabels, row.targetType) },
+              { key: 'targetType', label: '对象', render: (row) => targetTypeDict.getLabel(String(row.targetType ?? '')) },
               { key: 'targetName', label: '名称', render: headcountTargetLabel },
               { key: 'approvedCount', label: '核定' },
               { key: 'actualCount', label: '在岗' },

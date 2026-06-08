@@ -39,27 +39,9 @@ import {
   updateSuccessionPlan,
 } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
-import { enumLabel, formatDateTimeValue, normalizeRows } from '../hrShared';
-
-const riskLevelLabel: Record<string, string> = {
-  LOW: '低',
-  MID: '中',
-  HIGH: '高',
-  CRITICAL: '关键',
-};
-
-const statusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  PUBLISHED: '已发布',
-  ARCHIVED: '已归档',
-  REJECTED: '已驳回',
-};
-
-const readinessLabel: Record<string, string> = {
-  READY_NOW: '即可顶岗',
-  IN_1_2_YEARS: '1-2 年',
-  IN_3_5_YEARS: '3-5 年',
-};
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
+import { formatDateTimeValue, normalizeRows } from '../hrShared';
 
 const defaultForm = { planNo: '', planName: '', positionId: '', incumbentEmployeeId: '', riskLevel: 'MID', description: '' };
 
@@ -67,6 +49,10 @@ export const HrTalentSuccessionPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission?.('hr:talent:succession:edit') ?? true;
   const canAdd = hasPermission?.('hr:talent:succession:add') ?? true;
+
+  const { getOptions: getStatusOptions } = useDict('hr_publish_status');
+  const { getOptions: getRiskOptions } = useDict('hr_talent_succession_risk');
+  const { getOptions: getReadinessOptions } = useDict('hr_talent_readiness');
 
   const [rows, setRows] = useState<HrTalentSuccessionPlan[]>([]);
   const [total, setTotal] = useState(0);
@@ -211,7 +197,7 @@ export const HrTalentSuccessionPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {getStatusOptions().map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -273,8 +259,8 @@ export const HrTalentSuccessionPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm font-medium">{row.planName}</td>
                   <td className="px-4 py-3 text-sm">{row.positionId ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">{row.incumbentEmployeeId ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(riskLevelLabel, row.riskLevel)}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_succession_risk" value={String(row.riskLevel ?? '')} fallback="-" /></td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_publish_status" value={String(row.status ?? '')} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm">{formatDateTimeValue(row.publishTime) || '-'}</td>
                   <td className="px-4 py-3 text-right">
                     <TableRowActions
@@ -332,7 +318,7 @@ export const HrTalentSuccessionPage: React.FC = () => {
             <Select value={form.riskLevel} onValueChange={(v) => setForm((p) => ({ ...p, riskLevel: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Object.entries(riskLevelLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                {getRiskOptions().map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -368,7 +354,7 @@ export const HrTalentSuccessionPage: React.FC = () => {
                   {(detailPlan?.successors ?? []).map((s) => (
                     <tr key={s.id}>
                       <td className="px-4 py-2 text-sm">{s.employeeId}</td>
-                      <td className="px-4 py-2 text-sm">{enumLabel(readinessLabel, s.readiness)}</td>
+                      <td className="px-4 py-2 text-sm"><DictLabel dictType="hr_talent_readiness" value={String(s.readiness ?? '')} fallback="-" /></td>
                       <td className="px-4 py-2 text-sm">{s.rankOrder ?? '-'}</td>
                       <td className="px-4 py-2 max-w-[12rem] truncate text-sm">{s.developmentGap || '-'}</td>
                       <td className="px-4 py-2 text-right">
@@ -398,7 +384,7 @@ export const HrTalentSuccessionPage: React.FC = () => {
                   <Select value={successorForm.readiness} onValueChange={(v) => setSuccessorForm((p) => ({ ...p, readiness: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {Object.entries(readinessLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                      {getReadinessOptions().map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

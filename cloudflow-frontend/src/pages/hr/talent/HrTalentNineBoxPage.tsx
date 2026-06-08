@@ -38,7 +38,8 @@ import {
   publishTalentReview,
   upsertReviewParticipant,
 } from '@/services/api/hr';
-import { enumLabel, normalizeRows } from '../hrShared';
+import { normalizeRows } from '../hrShared';
+import { useDict } from '@/hooks/useDict';
 
 const CELL_MAX_VISIBLE = 8;
 
@@ -61,15 +62,6 @@ const CELLS: CellMeta[] = [
   { cell: 8, label: '待提升', performance: '低', potential: '中', tone: 'bg-rose-50 border-rose-200' },
   { cell: 9, label: '末位', performance: '低', potential: '低', tone: 'bg-rose-100 border-rose-300' },
 ];
-
-const statusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  IN_PROGRESS: '进行中',
-  CALIBRATING: '校准中',
-  PUBLISHED: '已发布',
-  ARCHIVED: '已归档',
-  REJECTED: '已驳回',
-};
 
 interface EmployeeChipProps {
   participant: HrTalentReviewParticipant;
@@ -165,6 +157,7 @@ export const HrTalentNineBoxPage: React.FC = () => {
     developActionSummary: '',
   });
   const [cellListOpen, setCellListOpen] = useState<number | null>(null);
+  const { getLabel: statusLabel } = useDict('hr_talent_review_status');
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor), useSensor(KeyboardSensor));
 
@@ -290,14 +283,14 @@ export const HrTalentNineBoxPage: React.FC = () => {
               <SelectContent>
                 {reviews.map((r) => (
                   <SelectItem key={r.id} value={String(r.id)}>
-                    {r.reviewName} · {enumLabel(statusLabel, r.status)}
+                    {r.reviewName} · {statusLabel(String(r.status ?? ''))}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>,
         ]}
-        stats={[{ label: '状态', value: currentReview ? `${enumLabel(statusLabel, currentReview.status)}${editable ? ' · 可编辑' : ' · 只读'}` : '-' }]}
+        stats={[{ label: '状态', value: currentReview ? `${statusLabel(String(currentReview.status ?? ''))}${editable ? ' · 可编辑' : ' · 只读'}` : '-' }]}
         actions={[
           <Button key="refresh" variant="outline" size="sm" disabled={loading || !reviewId} onClick={() => void reload()}>
             <RefreshCcw className="mr-1.5 h-4 w-4" />刷新

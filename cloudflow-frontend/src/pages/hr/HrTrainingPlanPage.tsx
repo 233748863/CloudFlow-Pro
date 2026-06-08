@@ -33,20 +33,9 @@ import {
   changeTrainingPlanStatus,
 } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
-import { normalizeRows, formatMoneyValue, enumLabel } from './hrShared';
-
-const planTypeLabel: Record<string, string> = {
-  ANNUAL: '年度',
-  QUARTERLY: '季度',
-  DEPT: '部门',
-  ADHOC: '临时',
-};
-
-const planStatusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  PUBLISHED: '已发布',
-  ARCHIVED: '已归档',
-};
+import { normalizeRows, formatMoneyValue } from './hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const defaultForm: HrTrainingPlanPayload = {
   planName: '',
@@ -70,6 +59,8 @@ export const HrTrainingPlanPage: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<HrTrainingPlanPayload>(defaultForm);
   const [pendingDelete, setPendingDelete] = useState<HrTrainingPlan | null>(null);
+  const planTypeOptions = useDict('hr_training_plan_type').getOptions();
+  const planStatusOptions = useDict('hr_publish_status').getOptions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -153,7 +144,7 @@ export const HrTrainingPlanPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {Object.entries(planStatusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {planStatusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -212,10 +203,10 @@ export const HrTrainingPlanPage: React.FC = () => {
                 <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                   <td className="px-4 py-3 font-mono text-xs">{row.planNo || `#${row.id}`}</td>
                   <td className="px-4 py-3 text-sm font-medium">{row.planName}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(planTypeLabel, row.planType)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_training_plan_type" value={row.planType} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm">{row.year ?? '-'}{row.quarter ? ` Q${row.quarter}` : ''}</td>
                   <td className="px-4 py-3 text-sm">{formatMoneyValue(row.budget)}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(planStatusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_publish_status" value={row.status} fallback="-" /></td>
                   <td className="px-4 py-3 text-right">
                     <TableRowActions
                       align="end"
@@ -269,7 +260,7 @@ export const HrTrainingPlanPage: React.FC = () => {
               <Select value={form.planType} onValueChange={(v) => setForm((p) => ({ ...p, planType: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(planTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  {planTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

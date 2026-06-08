@@ -43,6 +43,8 @@ import {
   Textarea,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 interface InlineStateProps {
   title: string;
@@ -90,18 +92,6 @@ const toTimeValue = (value?: string) => {
   return matched ? matched[1] : value;
 };
 
-const statusMap: Record<string, string> = {
-  MISSING: '草稿',
-  APPROVING: '审批中',
-  SUPPLEMENT: '已补录',
-  REJECTED: '已驳回',
-};
-
-const checkTypeMap: Record<string, string> = {
-  CHECK_IN: '签到',
-  CHECK_OUT: '签退',
-};
-
 const InlineState: React.FC<InlineStateProps> = ({
   title,
   icon,
@@ -141,6 +131,8 @@ const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
 );
 
 export const AttendanceSupplementPage: React.FC = () => {
+  const statusDict = useDict('hr_attendance_supplement_status');
+  const checkTypeDict = useDict('hr_check_type');
   const [list, setList] = useState<AttendanceSupplement[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({
@@ -199,21 +191,15 @@ export const AttendanceSupplementPage: React.FC = () => {
   const pendingCount = list.filter((item) => item.status === 'APPROVING').length;
   const approvedCount = list.filter((item) => item.status === 'SUPPLEMENT').length;
   const currentStatusLabel = searchParams.status
-    ? (statusMap[searchParams.status] || searchParams.status)
+    ? (statusDict.getLabel(searchParams.status) || searchParams.status)
     : '全部状态';
   const currentTypeLabel = searchParams.checkType
-    ? (checkTypeMap[searchParams.checkType] || searchParams.checkType)
+    ? (checkTypeDict.getLabel(searchParams.checkType) || searchParams.checkType)
     : '全部类型';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.checkType);
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
 
-  const statusQuickFilters = [
-    { label: '全部', value: '' },
-    { label: '草稿', value: 'MISSING' },
-    { label: '审批中', value: 'APPROVING' },
-    { label: '已补录', value: 'SUPPLEMENT' },
-    { label: '已驳回', value: 'REJECTED' },
-  ];
+  const statusQuickFilters = [{ label: '全部', value: '' }, ...statusDict.getOptions()];
 
   const renderDetailValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === '') {
@@ -369,20 +355,9 @@ export const AttendanceSupplementPage: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, string> = {
-      MISSING: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-      APPROVING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-      SUPPLEMENT: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-      REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    };
-    const className = config[status] || config.MISSING;
-    return (
-      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${className}`}>
-        {statusMap[status] || status}
-      </span>
-    );
-  };
+  const getStatusBadge = (status: string) => (
+    <DictBadge dictType="hr_attendance_supplement_status" value={String(status || 'MISSING')} fallback="草稿" />
+  );
 
   return (
     <div className="space-y-4">
@@ -434,8 +409,9 @@ export const AttendanceSupplementPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
-                    <SelectItem value="CHECK_IN">签到</SelectItem>
-                    <SelectItem value="CHECK_OUT">签退</SelectItem>
+                    {checkTypeDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -512,7 +488,7 @@ export const AttendanceSupplementPage: React.FC = () => {
                           {item.attendanceDate || '-'}
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {checkTypeMap[item.checkType] || item.checkType}
+                          {checkTypeDict.getLabel(item.checkType || '') || item.checkType}
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
                           {toTimeValue(item.checkTime) || '-'}
@@ -622,8 +598,9 @@ export const AttendanceSupplementPage: React.FC = () => {
                   <SelectValue placeholder="请选择打卡类型" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CHECK_IN">签到</SelectItem>
-                  <SelectItem value="CHECK_OUT">签退</SelectItem>
+                  {checkTypeDict.getOptions().map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -679,7 +656,7 @@ export const AttendanceSupplementPage: React.FC = () => {
               <DetailField label="补录单号" value={renderDetailValue(detailRecord.supplementNo)} />
               <DetailField label="申请人" value={renderDetailValue(detailRecord.employeeName)} />
               <DetailField label="补录日期" value={renderDetailValue(detailRecord.attendanceDate)} />
-              <DetailField label="打卡类型" value={checkTypeMap[detailRecord.checkType] || detailRecord.checkType} />
+              <DetailField label="打卡类型" value={checkTypeDict.getLabel(detailRecord.checkType || '') || detailRecord.checkType} />
               <DetailField label="补录时间" value={renderDetailValue(detailRecord.checkTime)} />
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
             </div>

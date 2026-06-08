@@ -33,22 +33,9 @@ import {
   updateDevelopmentAction,
 } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
-import { enumLabel, formatDateValue, normalizeRows } from '../hrShared';
-
-const actionTypeLabel: Record<string, string> = {
-  TRAINING: '培训',
-  MENTOR: '导师制',
-  JOB_ROTATION: '岗位轮换',
-  STRETCH_PROJECT: '挑战项目',
-  EXTERNAL_COURSE: '外部课程',
-};
-
-const statusLabel: Record<string, string> = {
-  PLANNED: '已计划',
-  ONGOING: '进行中',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
+import { formatDateValue, normalizeRows } from '../hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const defaultForm = { employeeId: '', actionType: 'TRAINING', actionName: '', mentorId: '', trainingSessionId: '', startDate: '', endDate: '', description: '' };
 
@@ -68,6 +55,8 @@ export const HrTalentDevelopmentPage: React.FC = () => {
   const [completeAction, setCompleteAction] = useState<HrTalentDevelopmentAction | null>(null);
   const [completeForm, setCompleteForm] = useState({ evaluationScore: '', evaluationNotes: '' });
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const actionTypeOptions = useDict('hr_talent_action_type').getOptions();
+  const statusOptions = useDict('hr_talent_action_status').getOptions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -169,7 +158,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部类型" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部类型</SelectItem>
-              {Object.entries(actionTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {actionTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -178,7 +167,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
             <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
-              {Object.entries(statusLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+              {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>,
@@ -238,12 +227,12 @@ export const HrTalentDevelopmentPage: React.FC = () => {
               rows.map((row) => (
                 <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                   <td className="px-4 py-3 text-sm">{row.employeeId}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(actionTypeLabel, row.actionType)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_action_type" value={row.actionType} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm font-medium">{row.actionName}</td>
                   <td className="px-4 py-3 text-sm">{row.mentorId ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">{row.trainingSessionId ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">{formatDateValue(row.startDate)} / {formatDateValue(row.endDate)}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(statusLabel, row.status)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_action_status" value={row.status} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm">{row.evaluationScore ?? '-'}</td>
                   <td className="px-4 py-3 text-right">
                     <TableRowActions
@@ -310,7 +299,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
               <Select value={form.actionType} onValueChange={(v) => setForm((p) => ({ ...p, actionType: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(actionTypeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  {actionTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

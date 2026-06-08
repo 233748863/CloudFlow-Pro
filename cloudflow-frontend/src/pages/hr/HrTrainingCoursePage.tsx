@@ -42,13 +42,9 @@ import {
   createTrainingInstructor,
   deleteTrainingInstructor,
 } from '@/services/api/hr';
-import { normalizeRows, enumLabel } from './hrShared';
-
-const modeLabel: Record<string, string> = {
-  ONLINE: '线上',
-  OFFLINE: '线下',
-  BLENDED: '混合',
-};
+import { normalizeRows } from './hrShared';
+import { DictLabel } from '@/components/common/DictLabel';
+import { useDict } from '@/hooks/useDict';
 
 const CoursesTab: React.FC<{
   categories: HrTrainingCategory[];
@@ -58,6 +54,7 @@ const CoursesTab: React.FC<{
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const modeOptions = useDict('hr_training_mode').getOptions();
   const defaultForm: HrTrainingCoursePayload = { courseName: '', mode: 'OFFLINE', durationHours: 0, creditHours: 0, status: 'ACTIVE' };
   const [form, setForm] = useState<HrTrainingCoursePayload>(defaultForm);
   const [deleteTarget, setDeleteTarget] = useState<HrTrainingCourse | null>(null);
@@ -143,7 +140,7 @@ const CoursesTab: React.FC<{
                   <td className="px-4 py-3 text-sm font-medium">{row.courseName}</td>
                   <td className="px-4 py-3 text-sm">{categories.find((c) => c.id === row.categoryId)?.name || '-'}</td>
                   <td className="px-4 py-3 text-sm">{instructors.find((i) => i.id === row.instructorId)?.instructorName || '-'}</td>
-                  <td className="px-4 py-3 text-sm">{enumLabel(modeLabel, row.mode)}</td>
+                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_training_mode" value={row.mode} fallback="-" /></td>
                   <td className="px-4 py-3 text-sm">{row.durationHours ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">{row.creditHours ?? '-'}</td>
                   <td className="px-4 py-3">
@@ -205,7 +202,7 @@ const CoursesTab: React.FC<{
               <Select value={form.mode} onValueChange={(v) => setForm((p) => ({ ...p, mode: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(modeLabel).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  {modeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
