@@ -2656,6 +2656,994 @@ WHERE dict_type IN (
   'workflow_definition_status'
 );
 
+-- =========================================================
+-- 一-D. 业务展示枚举字典统一收口（HR / OA / CRM 前端硬编码 label 迁移）
+-- 自包含幂等：先 DELETE 本段全部 dict_type，再 INSERT IGNORE 重新写入，重复执行可刷新 label。
+-- list_class → 前端颜色：success→emerald, warning→amber, danger→rose,
+--   info→sky, primary→teal, secondary→violet, default→slate（无 orange 通道）。
+-- =========================================================
+-- >>> BIZ_ENUM_DICT_BEGIN
+DELETE FROM cloud_flow_db.sys_dict_data WHERE dict_type IN (
+  'hr_performance_metric_type','hr_performance_status','hr_contract_type','hr_document_type',
+  'hr_family_relationship','hr_certificate_status','hr_certificate_type','hr_exam_question_type',
+  'hr_exam_attempt_status','hr_enroll_status','hr_enroll_completion','hr_training_mode',
+  'hr_training_session_status','hr_training_plan_type','hr_publish_status','hr_recruit_request_status',
+  'hr_candidate_status','hr_interview_round','hr_interview_type','hr_interview_status',
+  'hr_candidate_source','hr_recruit_channel_type','hr_offer_status','hr_attendance_rule_type','hr_target_type',
+  'hr_check_type','hr_check_method','hr_leave_unit','hr_attendance_request_type',
+  'hr_comp_component_type','hr_comp_component_category','hr_comp_change_type','hr_tax_deduction_type',
+  'hr_lifecycle_type','hr_level_series','hr_attendance_appeal_status','hr_attendance_appeal_reason',
+  'hr_perf_interview_status','hr_perf_360_status','hr_resume_parse_status','hr_nine_box_cell','hr_talent_review_status',
+  'hr_talent_cycle','hr_talent_action_type','hr_talent_action_status','hr_talent_readiness',
+  'hr_talent_pool_type','hr_talent_succession_risk','hr_talent_scope_type','hr_talent_calibration_status',
+  'hr_labor_dispute_status',
+  'hr_labor_dispute_type','hr_evidence_type','hr_dispute_mediation_result','hr_work_injury_status',
+  'hr_work_injury_level','hr_work_injury_comp_item','hr_work_injury_comp_status','hr_work_injury_rehab_position',
+  'hr_work_injury_rehab_status','hr_work_injury_responsibility','hr_benefit_request_status','hr_benefit_request_type',
+  'hr_mall_order_status','hr_point_direction','hr_point_source','hr_mall_item_status',
+  'hr_ess_benefit_status','hr_contract_sign_status','hr_contract_signer_type','hr_contract_sign_method',
+  'hr_employment_contract_status','oa_meeting_minutes_status','oa_meeting_attend_status','oa_knowledge_status',
+  'oa_knowledge_scope','oa_schedule_event_type','crm_pool_action','oa_project_status',
+  'oa_project_source_type','crm_customer_health','crm_stage','crm_sales_target_dimension',
+  'crm_period_type','crm_assignment_rule_type','oa_seal_application_status','oa_seal_scene',
+  'oa_purchase_request_status','oa_payment_status','oa_payment_type','oa_payment_request_status',
+  'oa_expense_status','oa_expense_category','oa_expense_item_type','oa_contract_status',
+  'oa_contract_type','oa_business_trip_status','oa_transport_type','oa_accommodation_type',
+  'oa_budget_threshold','oa_budget_target_type','oa_budget_status','oa_budget_operation_type',
+  'oa_milestone_type','oa_milestone_status','oa_milestone_payment_status','oa_borrow_status',
+  'oa_license_borrow_status','oa_license_type','oa_license_status','oa_renewal_status','oa_seal_type',
+  'oa_supplier_status','oa_risk_alert_status','oa_risk_alert_source','oa_risk_business_type',
+  'asset_status','oa_business_rule_effect','oa_business_rule_hit_result','oa_deploy_approval_status',
+  'oa_approver_type','oa_approval_mode',
+  'hr_schedule_rule_type','hr_work_calendar_day_type','hr_leave_status','hr_overtime_status',
+  'hr_overtime_type','hr_overtime_compensation_type','hr_attendance_supplement_status',
+  'hr_duty_status','hr_duty_type','hr_duty_shift','oa_visitor_status','wf_monitor_action',
+  'oa_vehicle_status','oa_vehicle_usage_status',
+  'oa_contract_amount_tier','oa_contract_approver_role','oa_contract_threshold_status'
+);
+
+DELETE FROM cloud_flow_db.sys_dict_type WHERE dict_type IN (
+  'hr_performance_metric_type','hr_performance_status','hr_contract_type','hr_document_type',
+  'hr_family_relationship','hr_certificate_status','hr_certificate_type','hr_exam_question_type',
+  'hr_exam_attempt_status','hr_enroll_status','hr_enroll_completion','hr_training_mode',
+  'hr_training_session_status','hr_training_plan_type','hr_publish_status','hr_recruit_request_status',
+  'hr_candidate_status','hr_interview_round','hr_interview_type','hr_interview_status',
+  'hr_candidate_source','hr_recruit_channel_type','hr_offer_status','hr_attendance_rule_type','hr_target_type',
+  'hr_check_type','hr_check_method','hr_leave_unit','hr_attendance_request_type',
+  'hr_comp_component_type','hr_comp_component_category','hr_comp_change_type','hr_tax_deduction_type',
+  'hr_lifecycle_type','hr_level_series','hr_attendance_appeal_status','hr_attendance_appeal_reason',
+  'hr_perf_interview_status','hr_perf_360_status','hr_resume_parse_status','hr_nine_box_cell','hr_talent_review_status',
+  'hr_talent_cycle','hr_talent_action_type','hr_talent_action_status','hr_talent_readiness',
+  'hr_talent_pool_type','hr_talent_succession_risk','hr_talent_scope_type','hr_talent_calibration_status',
+  'hr_labor_dispute_status',
+  'hr_labor_dispute_type','hr_evidence_type','hr_dispute_mediation_result','hr_work_injury_status',
+  'hr_work_injury_level','hr_work_injury_comp_item','hr_work_injury_comp_status','hr_work_injury_rehab_position',
+  'hr_work_injury_rehab_status','hr_work_injury_responsibility','hr_benefit_request_status','hr_benefit_request_type',
+  'hr_mall_order_status','hr_point_direction','hr_point_source','hr_mall_item_status',
+  'hr_ess_benefit_status','hr_contract_sign_status','hr_contract_signer_type','hr_contract_sign_method',
+  'hr_employment_contract_status','oa_meeting_minutes_status','oa_meeting_attend_status','oa_knowledge_status',
+  'oa_knowledge_scope','oa_schedule_event_type','crm_pool_action','oa_project_status',
+  'oa_project_source_type','crm_customer_health','crm_stage','crm_sales_target_dimension',
+  'crm_period_type','crm_assignment_rule_type','oa_seal_application_status','oa_seal_scene',
+  'oa_purchase_request_status','oa_payment_status','oa_payment_type','oa_payment_request_status',
+  'oa_expense_status','oa_expense_category','oa_expense_item_type','oa_contract_status',
+  'oa_contract_type','oa_business_trip_status','oa_transport_type','oa_accommodation_type',
+  'oa_budget_threshold','oa_budget_target_type','oa_budget_status','oa_budget_operation_type',
+  'oa_milestone_type','oa_milestone_status','oa_milestone_payment_status','oa_borrow_status',
+  'oa_license_borrow_status','oa_license_type','oa_license_status','oa_renewal_status','oa_seal_type',
+  'oa_supplier_status','oa_risk_alert_status','oa_risk_alert_source','oa_risk_business_type',
+  'asset_status','oa_business_rule_effect','oa_business_rule_hit_result','oa_deploy_approval_status',
+  'oa_approver_type','oa_approval_mode',
+  'hr_schedule_rule_type','hr_work_calendar_day_type','hr_leave_status','hr_overtime_status',
+  'hr_overtime_type','hr_overtime_compensation_type','hr_attendance_supplement_status',
+  'hr_duty_status','hr_duty_type','hr_duty_shift','oa_visitor_status','wf_monitor_action',
+  'oa_vehicle_status','oa_vehicle_usage_status',
+  'oa_contract_amount_tier','oa_contract_approver_role','oa_contract_threshold_status'
+);
+
+INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
+('HR绩效指标类型', 'hr_performance_metric_type', '小数/整数/百分比'),
+('HR绩效状态', 'hr_performance_status', '绩效计划到归档全流程'),
+('HR合同类型', 'hr_contract_type', '劳动/劳务/实习/全职/兼职'),
+('HR证件类型', 'hr_document_type', '身份证/护照/学历学位'),
+('HR家庭关系', 'hr_family_relationship', '配偶/父母/子女等'),
+('HR证明状态', 'hr_certificate_status', '员工证明开具流程状态'),
+('HR证明类型', 'hr_certificate_type', '在职/收入/社保等证明'),
+('HR试题类型', 'hr_exam_question_type', '单选/多选/判断/填空/问答'),
+('HR作答状态', 'hr_exam_attempt_status', '答题中/已提交/已批改'),
+('HR报名状态', 'hr_enroll_status', '培训报名审批状态'),
+('HR结业状态', 'hr_enroll_completion', '未结业/已通过/未通过'),
+('HR培训形式', 'hr_training_mode', '线上/线下/混合'),
+('HR培训班次状态', 'hr_training_session_status', '计划/报名/进行/完成/取消'),
+('HR培训计划类型', 'hr_training_plan_type', '年度/季度/部门/临时'),
+('HR发布状态', 'hr_publish_status', '草稿/已发布/已归档/已驳回（通用）'),
+('HR招聘需求状态', 'hr_recruit_request_status', '草稿/审批/招聘/完成/取消'),
+('HR候选人状态', 'hr_candidate_status', '简历到录用流转'),
+('HR面试轮次', 'hr_interview_round', '初试/复试/终面'),
+('HR面试方式', 'hr_interview_type', '电话/视频/现场'),
+('HR面试状态', 'hr_interview_status', '已排期/已完成/已取消'),
+('HR候选人来源', 'hr_candidate_source', '官网/内推/猎头/校招'),
+('HR招聘渠道类型', 'hr_recruit_channel_type', '门户/猎头/内推/校招/社招/其他'),
+('HR Offer状态', 'hr_offer_status', 'Offer 审批发送流转'),
+('HR考勤规则类型', 'hr_attendance_rule_type', '固定/标准/弹性工时'),
+('HR目标对象类型', 'hr_target_type', '部门/岗位/员工（通用）'),
+('HR打卡类型', 'hr_check_type', '上班/下班打卡'),
+('HR打卡方式', 'hr_check_method', '人工/移动/考勤机/WiFi/GPS'),
+('HR请假单位', 'hr_leave_unit', '天/小时'),
+('HR考勤申请类型', 'hr_attendance_request_type', '请假/加班/补录'),
+('HR薪酬组件类型', 'hr_comp_component_type', '固定/浮动/收入/扣减/公司成本'),
+('HR薪酬组件分类', 'hr_comp_component_category', '基本/津贴/奖金/福利/其他'),
+('HR调薪类型', 'hr_comp_change_type', '调薪/晋升/绩效'),
+('HR专项附加扣除', 'hr_tax_deduction_type', '个税专项附加扣除项目'),
+('HR人事异动类型', 'hr_lifecycle_type', '入职/转正/调岗/离职'),
+('HR职级序列', 'hr_level_series', '专业/管理/支持序列'),
+('HR考勤申诉状态', 'hr_attendance_appeal_status', '草稿到撤回全流程'),
+('HR考勤申诉原因', 'hr_attendance_appeal_reason', '忘打卡/公干/故障等'),
+('HR绩效面谈状态', 'hr_perf_interview_status', '草稿/已确认'),
+('HR绩效360评估状态', 'hr_perf_360_status', '待评分/已完成/已取消'),
+('HR简历解析状态', 'hr_resume_parse_status', '待复核/已确认/已驳回'),
+('HR九宫格', 'hr_nine_box_cell', '人才九宫格 1-9 区'),
+('HR人才盘点状态', 'hr_talent_review_status', '盘点周期状态'),
+('HR人才周期', 'hr_talent_cycle', '年度/半年/季度'),
+('HR人才发展动作', 'hr_talent_action_type', '培训/导师/轮岗等'),
+('HR人才动作状态', 'hr_talent_action_status', '已计划/进行/完成/取消'),
+('HR继任就绪度', 'hr_talent_readiness', '即可顶岗/1-2年/3-5年'),
+('HR人才池类型', 'hr_talent_pool_type', '核心/高潜/继任等'),
+('HR继任风险', 'hr_talent_succession_risk', '低/中/高/关键'),
+('HR盘点范围', 'hr_talent_scope_type', '全员/部门/岗位'),
+('HR人才校准会议状态', 'hr_talent_calibration_status', '已计划/进行中/已完成/已取消'),
+('HR劳动争议状态', 'hr_labor_dispute_status', '登记到关闭流转'),
+('HR劳动争议类型', 'hr_labor_dispute_type', '薪资/合同/解雇/社保等'),
+('HR证据类型', 'hr_evidence_type', '合同/工资单/医疗等'),
+('HR调解结果', 'hr_dispute_mediation_result', '成功/部分/失败'),
+('HR工伤状态', 'hr_work_injury_status', '上报到关闭流转'),
+('HR工伤等级', 'hr_work_injury_level', '轻伤/中等/重伤/死亡'),
+('HR工伤赔付项目', 'hr_work_injury_comp_item', '医疗/伤残/补助等'),
+('HR工伤赔付状态', 'hr_work_injury_comp_status', '待支付/已支付/已驳回'),
+('HR工伤康复岗位调整', 'hr_work_injury_rehab_position', '原岗/减轻/调整'),
+('HR工伤康复状态', 'hr_work_injury_rehab_status', '康复中/返岗/无法返岗'),
+('HR工伤责任认定', 'hr_work_injury_responsibility', '工作/通勤/第三方'),
+('HR福利申请状态', 'hr_benefit_request_status', '草稿到发放流转'),
+('HR福利申请类型', 'hr_benefit_request_type', '申领/充值/调整'),
+('HR商城订单状态', 'hr_mall_order_status', '待处理到完成流转'),
+('HR积分方向', 'hr_point_direction', '入账/扣减/冻结/解冻'),
+('HR积分来源', 'hr_point_source', '福利/商城/调整/过期'),
+('HR商品状态', 'hr_mall_item_status', '上架/下架'),
+('HR自助福利状态', 'hr_ess_benefit_status', '草稿/生成/发放/取消'),
+('HR合同签署状态', 'hr_contract_sign_status', '未签到取消流转'),
+('HR签署方', 'hr_contract_signer_type', '员工/公司'),
+('HR签署方式', 'hr_contract_sign_method', '电子/手动'),
+('HR用工合同状态', 'hr_employment_contract_status', '草稿/生效/待生效/到期/终止/续签'),
+('OA会议纪要状态', 'oa_meeting_minutes_status', '草稿/已确认'),
+('OA参会状态', 'oa_meeting_attend_status', '出席/缺席/迟到/请假/未登记'),
+('OA知识状态', 'oa_knowledge_status', '草稿/审批/发布/驳回'),
+('OA知识可见范围', 'oa_knowledge_scope', '全员/部门/角色'),
+('OA日程类型', 'oa_schedule_event_type', '会议/工作/个人'),
+('CRM公海动作', 'crm_pool_action', '释放/抢单/指派/回收'),
+('OA项目状态', 'oa_project_status', '项目全流程状态'),
+('OA项目来源', 'oa_project_source_type', '手工/商机/报价/合同'),
+('CRM客户健康度', 'crm_customer_health', '健康/关注/高风险'),
+('CRM销售阶段', 'crm_stage', '线索到赢单/输单'),
+('CRM销售目标维度', 'crm_sales_target_dimension', '个人/部门'),
+('CRM周期类型', 'crm_period_type', '月度/季度/年度'),
+('CRM分配规则类型', 'crm_assignment_rule_type', '回收/抢单上限/分配'),
+('OA用印申请状态', 'oa_seal_application_status', '草稿到取消流转'),
+('OA用印场景', 'oa_seal_scene', '合同/证明/财务/其他'),
+('OA采购申请状态', 'oa_purchase_request_status', '草稿到入库流转'),
+('OA付款状态', 'oa_payment_status', '付款生成到完成'),
+('OA付款类型', 'oa_payment_type', '采购/服务/租金/其他'),
+('OA付款申请状态', 'oa_payment_request_status', '草稿到付款流转'),
+('OA报销状态', 'oa_expense_status', '草稿到打款流转'),
+('OA报销类别', 'oa_expense_category', '差旅/办公/招待等'),
+('OA报销明细类型', 'oa_expense_item_type', '交通/住宿/餐饮等'),
+('OA合同状态', 'oa_contract_status', '草稿到取消全流程'),
+('OA合同类型', 'oa_contract_type', '销售/采购/服务/其他'),
+('OA出差状态', 'oa_business_trip_status', '草稿到取消流转'),
+('OA交通方式', 'oa_transport_type', '飞机/火车/自驾/其他'),
+('OA住宿方式', 'oa_accommodation_type', '自行/公司/无需'),
+('OA预算阈值', 'oa_budget_threshold', '正常/预警/告警/拦截'),
+('OA预算对象类型', 'oa_budget_target_type', '部门/项目预算'),
+('OA预算状态', 'oa_budget_status', '草稿到生效流转'),
+('OA预算操作类型', 'oa_budget_operation_type', '占用/释放/核销/调整'),
+('OA里程碑类型', 'oa_milestone_type', '交付/付款/验收/其他'),
+('OA里程碑状态', 'oa_milestone_status', '待开始到取消'),
+('OA里程碑付款状态', 'oa_milestone_payment_status', '待付款/已付款/逾期/取消'),
+('OA借用状态', 'oa_borrow_status', '待借出到归还'),
+('OA证照借用申请状态', 'oa_license_borrow_status', '草稿到取消流转'),
+('OA证照类型', 'oa_license_type', '营业执照/许可证等'),
+('OA证照状态', 'oa_license_status', '可用/借出/停用'),
+('OA续期状态', 'oa_renewal_status', '草稿到取消流转'),
+('OA印章类型', 'oa_seal_type', '公章/财务章/合同章等'),
+('OA供应商状态', 'oa_supplier_status', '启用/停用'),
+('OA风险告警状态', 'oa_risk_alert_status', '未处理/处理中/关闭/忽略'),
+('OA风险告警来源', 'oa_risk_alert_source', '规则/人工'),
+('OA风险业务类型', 'oa_risk_business_type', '合同/用印/车辆'),
+('资产状态', 'asset_status', '闲置/在用/维修/报废'),
+('OA业务规则动作', 'oa_business_rule_effect', '拦截/告警/预警/放行'),
+('OA规则命中结果', 'oa_business_rule_hit_result', '通过/拒绝/拦截/告警/预警/放行'),
+('OA发布审批状态', 'oa_deploy_approval_status', '待审批/通过/驳回/取消'),
+('OA审批人类型', 'oa_approver_type', '成员/角色/部门'),
+('OA审批模式', 'oa_approval_mode', '任一/所有/依次'),
+('HR排班规则类型', 'hr_schedule_rule_type', '固定班/轮班/弹性/综合工时'),
+('HR企业日历日期类型', 'hr_work_calendar_day_type', '工作日/休息日/节假日'),
+('HR请假单状态', 'hr_leave_status', '草稿/审批中/通过/拒绝/撤销'),
+('HR加班单状态', 'hr_overtime_status', '草稿/审批中/通过/驳回/取消'),
+('HR加班类型', 'hr_overtime_type', '工作日/周末/节假日'),
+('HR加班补偿方式', 'hr_overtime_compensation_type', '加班费/调休'),
+('HR补卡单状态', 'hr_attendance_supplement_status', '草稿/审批中/已补录/驳回'),
+('HR值班排班状态', 'hr_duty_status', '已排班/签到/完成/换班/取消'),
+('HR值班类型', 'hr_duty_type', '日常/节假日/应急'),
+('HR值班班次', 'hr_duty_shift', '白班/夜班/全天'),
+('OA访客状态', 'oa_visitor_status', '待确认/确认/到访/离场/取消'),
+('工作流监控操作', 'wf_monitor_action', '启动/完成/驳回/撤回/创建/发布'),
+('OA车辆状态', 'oa_vehicle_status', '可用/已预约/使用中/维修中/已报废'),
+('OA车辆用车状态', 'oa_vehicle_usage_status', '待审批/已批准/已驳回/进行中/已完成/已取消'),
+('OA合同金额档位', 'oa_contract_amount_tier', 'T1基础/T2中等/T3高额'),
+('OA合同审批角色', 'oa_contract_approver_role', '部门经理/VP/CEO'),
+('OA合同阈值状态', 'oa_contract_threshold_status', '生效/停用');
+
+-- HR 绩效
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '小数', 'DECIMAL', 'hr_performance_metric_type', 'default'),
+(2, '整数', 'INTEGER', 'hr_performance_metric_type', 'default'),
+(3, '百分比', 'PERCENT', 'hr_performance_metric_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_performance_status', 'default'),
+(2, '计划审批中', 'PLAN_APPROVING', 'hr_performance_status', 'warning'),
+(3, '执行中', 'PLAN_APPROVED', 'hr_performance_status', 'info'),
+(4, '结果审批中', 'RESULT_APPROVING', 'hr_performance_status', 'warning'),
+(5, '已归档', 'COMPLETED', 'hr_performance_status', 'success'),
+(6, '已驳回', 'REJECTED', 'hr_performance_status', 'danger'),
+(7, '已取消', 'CANCELLED', 'hr_performance_status', 'default');
+
+-- HR 合同 / 员工档案
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '劳动合同', 'LABOR', 'hr_contract_type', 'default'),
+(2, '劳务合同', 'SERVICE', 'hr_contract_type', 'default'),
+(3, '实习协议', 'INTERN', 'hr_contract_type', 'default'),
+(4, '全职合同', 'FULL_TIME', 'hr_contract_type', 'default'),
+(5, '兼职合同', 'PART_TIME', 'hr_contract_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '身份证', 'ID_CARD', 'hr_document_type', 'default'),
+(2, '护照', 'PASSPORT', 'hr_document_type', 'default'),
+(3, '学历证书', 'DIPLOMA', 'hr_document_type', 'default'),
+(4, '学位证书', 'DEGREE', 'hr_document_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '配偶', 'SPOUSE', 'hr_family_relationship', 'default'),
+(2, '父母', 'PARENT', 'hr_family_relationship', 'default'),
+(3, '兄弟姐妹', 'SIBLING', 'hr_family_relationship', 'default'),
+(4, '子女', 'CHILD', 'hr_family_relationship', 'default'),
+(5, '其他', 'OTHER', 'hr_family_relationship', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_certificate_status', 'default'),
+(2, '待审批', 'PENDING', 'hr_certificate_status', 'warning'),
+(3, '审批中', 'APPROVING', 'hr_certificate_status', 'warning'),
+(4, '已通过', 'APPROVED', 'hr_certificate_status', 'success'),
+(5, '已驳回', 'REJECTED', 'hr_certificate_status', 'danger'),
+(6, '已开具', 'ISSUED', 'hr_certificate_status', 'success'),
+(7, '已取消', 'CANCELLED', 'hr_certificate_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '在职证明', 'EMPLOYMENT', 'hr_certificate_type', 'default'),
+(2, '收入证明', 'INCOME', 'hr_certificate_type', 'default'),
+(3, '社保证明', 'SOCIAL_INSURANCE', 'hr_certificate_type', 'default'),
+(4, '其他', 'CUSTOM', 'hr_certificate_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_employment_contract_status', 'default'),
+(2, '生效中', 'ACTIVE', 'hr_employment_contract_status', 'success'),
+(3, '待生效', 'PENDING', 'hr_employment_contract_status', 'warning'),
+(4, '已到期', 'EXPIRED', 'hr_employment_contract_status', 'warning'),
+(5, '已终止', 'TERMINATED', 'hr_employment_contract_status', 'danger'),
+(6, '已续签', 'RENEWED', 'hr_employment_contract_status', 'info');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '未签署', 'UNSIGNED', 'hr_contract_sign_status', 'default'),
+(2, '待签署', 'PENDING', 'hr_contract_sign_status', 'warning'),
+(3, '审批中', 'SIGNING', 'hr_contract_sign_status', 'info'),
+(4, '已签署', 'SIGNED', 'hr_contract_sign_status', 'success'),
+(5, '已驳回', 'REJECTED', 'hr_contract_sign_status', 'danger'),
+(6, '已过期', 'EXPIRED', 'hr_contract_sign_status', 'warning'),
+(7, '已取消', 'CANCELLED', 'hr_contract_sign_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '员工', 'EMPLOYEE', 'hr_contract_signer_type', 'default'),
+(2, '公司', 'COMPANY', 'hr_contract_signer_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '电子签署', 'E_SIGN', 'hr_contract_sign_method', 'default'),
+(2, '手动签署', 'MANUAL', 'hr_contract_sign_method', 'default');
+
+-- HR 培训
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '单选', 'SINGLE', 'hr_exam_question_type', 'default'),
+(2, '多选', 'MULTI', 'hr_exam_question_type', 'default'),
+(3, '判断', 'JUDGE', 'hr_exam_question_type', 'default'),
+(4, '填空', 'FILL', 'hr_exam_question_type', 'default'),
+(5, '问答', 'ESSAY', 'hr_exam_question_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '答题中', 'IN_PROGRESS', 'hr_exam_attempt_status', 'info'),
+(2, '已提交', 'SUBMITTED', 'hr_exam_attempt_status', 'warning'),
+(3, '已批改', 'GRADED', 'hr_exam_attempt_status', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待审批', 'PENDING', 'hr_enroll_status', 'warning'),
+(2, '已通过', 'APPROVED', 'hr_enroll_status', 'success'),
+(3, '已驳回', 'REJECTED', 'hr_enroll_status', 'danger'),
+(4, '已退出', 'WITHDRAWN', 'hr_enroll_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '未结业', 'PENDING', 'hr_enroll_completion', 'default'),
+(2, '已通过', 'PASSED', 'hr_enroll_completion', 'success'),
+(3, '未通过', 'FAILED', 'hr_enroll_completion', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '线上', 'ONLINE', 'hr_training_mode', 'default'),
+(2, '线下', 'OFFLINE', 'hr_training_mode', 'default'),
+(3, '混合', 'BLENDED', 'hr_training_mode', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '计划中', 'PLANNED', 'hr_training_session_status', 'default'),
+(2, '报名中', 'REGISTERING', 'hr_training_session_status', 'info'),
+(3, '进行中', 'ONGOING', 'hr_training_session_status', 'warning'),
+(4, '已完成', 'COMPLETED', 'hr_training_session_status', 'success'),
+(5, '已取消', 'CANCELLED', 'hr_training_session_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '年度', 'ANNUAL', 'hr_training_plan_type', 'default'),
+(2, '季度', 'QUARTERLY', 'hr_training_plan_type', 'default'),
+(3, '部门', 'DEPT', 'hr_training_plan_type', 'default'),
+(4, '临时', 'ADHOC', 'hr_training_plan_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_publish_status', 'default'),
+(2, '已发布', 'PUBLISHED', 'hr_publish_status', 'success'),
+(3, '已归档', 'ARCHIVED', 'hr_publish_status', 'default'),
+(4, '已驳回', 'REJECTED', 'hr_publish_status', 'danger');
+
+-- HR 招聘
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_recruit_request_status', 'default'),
+(2, '审批中', 'APPROVING', 'hr_recruit_request_status', 'warning'),
+(3, '招聘中', 'RECRUITING', 'hr_recruit_request_status', 'info'),
+(4, '已完成', 'COMPLETED', 'hr_recruit_request_status', 'success'),
+(5, '已取消', 'CANCELLED', 'hr_recruit_request_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '新简历', 'NEW', 'hr_candidate_status', 'info'),
+(2, '筛选中', 'SCREENING', 'hr_candidate_status', 'warning'),
+(3, '面试中', 'INTERVIEW', 'hr_candidate_status', 'info'),
+(4, 'Offer阶段', 'OFFER', 'hr_candidate_status', 'primary'),
+(5, '已录用', 'HIRED', 'hr_candidate_status', 'success'),
+(6, '已拒绝', 'REJECTED', 'hr_candidate_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '初试', 'FIRST', 'hr_interview_round', 'default'),
+(2, '复试', 'SECOND', 'hr_interview_round', 'default'),
+(3, '终面', 'FINAL', 'hr_interview_round', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '电话面试', 'PHONE', 'hr_interview_type', 'default'),
+(2, '视频面试', 'VIDEO', 'hr_interview_type', 'default'),
+(3, '现场面试', 'ONSITE', 'hr_interview_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '已排期', 'SCHEDULED', 'hr_interview_status', 'info'),
+(2, '已完成', 'COMPLETED', 'hr_interview_status', 'success'),
+(3, '已取消', 'CANCELLED', 'hr_interview_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '官网', 'WEBSITE', 'hr_candidate_source', 'default'),
+(2, '内推', 'REFERRAL', 'hr_candidate_source', 'default'),
+(3, '猎头', 'HEADHUNTER', 'hr_candidate_source', 'default'),
+(4, '校招', 'CAMPUS', 'hr_candidate_source', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '招聘门户', 'PORTAL', 'hr_recruit_channel_type', 'default'),
+(2, '猎头', 'HEADHUNTER', 'hr_recruit_channel_type', 'default'),
+(3, '内推', 'REFERRAL', 'hr_recruit_channel_type', 'default'),
+(4, '校招', 'CAMPUS', 'hr_recruit_channel_type', 'default'),
+(5, '社招', 'SOCIAL', 'hr_recruit_channel_type', 'default'),
+(6, '其他', 'OTHER', 'hr_recruit_channel_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_offer_status', 'default'),
+(2, '审批中', 'APPROVING', 'hr_offer_status', 'warning'),
+(3, '已审批', 'APPROVED', 'hr_offer_status', 'info'),
+(4, '已发送', 'SENT', 'hr_offer_status', 'info'),
+(5, '已接受', 'ACCEPTED', 'hr_offer_status', 'success'),
+(6, '已拒绝', 'REJECTED', 'hr_offer_status', 'danger');
+
+-- HR 考勤
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '固定工时', 'FIXED', 'hr_attendance_rule_type', 'default'),
+(2, '标准工时', 'STANDARD', 'hr_attendance_rule_type', 'default'),
+(3, '弹性工时', 'FLEXIBLE', 'hr_attendance_rule_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '部门', 'DEPT', 'hr_target_type', 'default'),
+(2, '岗位', 'POST', 'hr_target_type', 'default'),
+(3, '员工', 'EMPLOYEE', 'hr_target_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '上班打卡', 'CHECK_IN', 'hr_check_type', 'default'),
+(2, '下班打卡', 'CHECK_OUT', 'hr_check_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '人工补录', 'MANUAL', 'hr_check_method', 'default'),
+(2, '移动端', 'MOBILE', 'hr_check_method', 'default'),
+(3, '考勤机', 'TERMINAL', 'hr_check_method', 'default'),
+(4, 'Wi-Fi', 'WIFI', 'hr_check_method', 'default'),
+(5, '定位', 'GPS', 'hr_check_method', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '天', 'DAY', 'hr_leave_unit', 'default'),
+(2, '小时', 'HOUR', 'hr_leave_unit', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '请假', 'LEAVE', 'hr_attendance_request_type', 'default'),
+(2, '加班', 'OVERTIME', 'hr_attendance_request_type', 'default'),
+(3, '补录', 'SUPPLEMENT', 'hr_attendance_request_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_attendance_appeal_status', 'default'),
+(2, '已提交', 'SUBMITTED', 'hr_attendance_appeal_status', 'info'),
+(3, '主管审核中', 'MANAGER_REVIEWING', 'hr_attendance_appeal_status', 'warning'),
+(4, 'HR复核中', 'HR_REVIEWING', 'hr_attendance_appeal_status', 'secondary'),
+(5, '已通过', 'APPROVED', 'hr_attendance_appeal_status', 'success'),
+(6, '已驳回', 'REJECTED', 'hr_attendance_appeal_status', 'danger'),
+(7, '已撤回', 'CANCELLED', 'hr_attendance_appeal_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '忘记打卡', 'FORGOT_CLOCK', 'hr_attendance_appeal_reason', 'default'),
+(2, '外出公干', 'BUSINESS_TRIP', 'hr_attendance_appeal_reason', 'default'),
+(3, '设备故障', 'EQUIPMENT_FAULT', 'hr_attendance_appeal_reason', 'default'),
+(4, '系统异常', 'SYSTEM_ERROR', 'hr_attendance_appeal_reason', 'default'),
+(5, '其他', 'OTHER', 'hr_attendance_appeal_reason', 'default');
+
+-- HR 薪酬
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '固定薪酬', 'FIXED', 'hr_comp_component_type', 'default'),
+(2, '浮动薪酬', 'VARIABLE', 'hr_comp_component_type', 'default'),
+(3, '收入', 'EARNING', 'hr_comp_component_type', 'default'),
+(4, '扣减', 'DEDUCTION', 'hr_comp_component_type', 'default'),
+(5, '公司成本', 'COMPANY', 'hr_comp_component_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '基本工资', 'BASE', 'hr_comp_component_category', 'default'),
+(2, '津贴补贴', 'ALLOWANCE', 'hr_comp_component_category', 'default'),
+(3, '奖金绩效', 'BONUS', 'hr_comp_component_category', 'default'),
+(4, '福利成本', 'BENEFIT', 'hr_comp_component_category', 'default'),
+(5, '其他', 'OTHER', 'hr_comp_component_category', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '调薪', 'ADJUST', 'hr_comp_change_type', 'default'),
+(2, '晋升', 'PROMOTION', 'hr_comp_change_type', 'default'),
+(3, '绩效', 'PERFORMANCE', 'hr_comp_change_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '子女教育', 'CHILD_EDUCATION', 'hr_tax_deduction_type', 'default'),
+(2, '继续教育', 'CONTINUING_EDU', 'hr_tax_deduction_type', 'default'),
+(3, '继续教育', 'CONTINUING_EDUCATION', 'hr_tax_deduction_type', 'default'),
+(4, '住房贷款利息', 'HOUSING_LOAN', 'hr_tax_deduction_type', 'default'),
+(5, '住房租金', 'HOUSING_RENT', 'hr_tax_deduction_type', 'default'),
+(6, '赡养老人', 'ELDERLY_CARE', 'hr_tax_deduction_type', 'default'),
+(7, '婴幼儿照护', 'INFANT_CARE', 'hr_tax_deduction_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '入职', 'ONBOARDING', 'hr_lifecycle_type', 'default'),
+(2, '转正', 'PROBATION', 'hr_lifecycle_type', 'default'),
+(3, '调岗', 'TRANSFER', 'hr_lifecycle_type', 'default'),
+(4, '离职', 'RESIGNATION', 'hr_lifecycle_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '专业序列', 'P', 'hr_level_series', 'default'),
+(2, '管理序列', 'M', 'hr_level_series', 'default'),
+(3, '支持序列', 'S', 'hr_level_series', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_perf_interview_status', 'default'),
+(2, '已确认', 'CONFIRMED', 'hr_perf_interview_status', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待复核', 'PENDING', 'hr_resume_parse_status', 'warning'),
+(2, '已确认', 'CONFIRMED', 'hr_resume_parse_status', 'success'),
+(3, '已驳回', 'REJECTED', 'hr_resume_parse_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待评分', 'PENDING', 'hr_perf_360_status', 'warning'),
+(2, '已完成', 'COMPLETED', 'hr_perf_360_status', 'success'),
+(3, '已取消', 'CANCELLED', 'hr_perf_360_status', 'default');
+
+-- HR 人才发展
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '明星员工', '1', 'hr_nine_box_cell', 'success'),
+(2, '核心员工', '2', 'hr_nine_box_cell', 'success'),
+(3, '技术骨干', '3', 'hr_nine_box_cell', 'success'),
+(4, '潜力新星', '4', 'hr_nine_box_cell', 'info'),
+(5, '合格员工', '5', 'hr_nine_box_cell', 'info'),
+(6, '稳定贡献者', '6', 'hr_nine_box_cell', 'warning'),
+(7, '错位人才', '7', 'hr_nine_box_cell', 'warning'),
+(8, '待提升', '8', 'hr_nine_box_cell', 'danger'),
+(9, '末位', '9', 'hr_nine_box_cell', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_talent_review_status', 'default'),
+(2, '进行中', 'IN_PROGRESS', 'hr_talent_review_status', 'info'),
+(3, '校准中', 'CALIBRATING', 'hr_talent_review_status', 'warning'),
+(4, '已发布', 'PUBLISHED', 'hr_talent_review_status', 'success'),
+(5, '已归档', 'ARCHIVED', 'hr_talent_review_status', 'default'),
+(6, '已驳回', 'REJECTED', 'hr_talent_review_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '年度', 'ANNUAL', 'hr_talent_cycle', 'default'),
+(2, '上半年', 'H1', 'hr_talent_cycle', 'default'),
+(3, '下半年', 'H2', 'hr_talent_cycle', 'default'),
+(4, '季度', 'QUARTER', 'hr_talent_cycle', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '培训', 'TRAINING', 'hr_talent_action_type', 'default'),
+(2, '导师制', 'MENTOR', 'hr_talent_action_type', 'default'),
+(3, '岗位轮换', 'JOB_ROTATION', 'hr_talent_action_type', 'default'),
+(4, '挑战项目', 'STRETCH_PROJECT', 'hr_talent_action_type', 'default'),
+(5, '外部课程', 'EXTERNAL_COURSE', 'hr_talent_action_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '已计划', 'PLANNED', 'hr_talent_action_status', 'default'),
+(2, '进行中', 'ONGOING', 'hr_talent_action_status', 'info'),
+(3, '已完成', 'COMPLETED', 'hr_talent_action_status', 'success'),
+(4, '已取消', 'CANCELLED', 'hr_talent_action_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '即可顶岗', 'READY_NOW', 'hr_talent_readiness', 'success'),
+(2, '1-2 年', 'IN_1_2_YEARS', 'hr_talent_readiness', 'warning'),
+(3, '3-5 年', 'IN_3_5_YEARS', 'hr_talent_readiness', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '核心', 'CORE', 'hr_talent_pool_type', 'default'),
+(2, '高潜', 'HIPO', 'hr_talent_pool_type', 'default'),
+(3, '继任', 'SUCCESSOR', 'hr_talent_pool_type', 'default'),
+(4, '关键技能', 'CRITICAL_SKILL', 'hr_talent_pool_type', 'default'),
+(5, '外部储备', 'EXTERNAL_BENCH', 'hr_talent_pool_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '低', 'LOW', 'hr_talent_succession_risk', 'success'),
+(2, '中', 'MID', 'hr_talent_succession_risk', 'warning'),
+(3, '高', 'HIGH', 'hr_talent_succession_risk', 'danger'),
+(4, '关键', 'CRITICAL', 'hr_talent_succession_risk', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '全员', 'GLOBAL', 'hr_talent_scope_type', 'default'),
+(2, '部门', 'DEPT', 'hr_talent_scope_type', 'default'),
+(3, '岗位', 'POSITION', 'hr_talent_scope_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '已计划', 'PLANNED', 'hr_talent_calibration_status', 'default'),
+(2, '进行中', 'ONGOING', 'hr_talent_calibration_status', 'info'),
+(3, '已完成', 'COMPLETED', 'hr_talent_calibration_status', 'success'),
+(4, '已取消', 'CANCELLED', 'hr_talent_calibration_status', 'default');
+
+-- HR 劳动关系 / 工伤
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '已登记', 'REGISTERED', 'hr_labor_dispute_status', 'info'),
+(2, '调解中', 'MEDIATING', 'hr_labor_dispute_status', 'warning'),
+(3, '调解完成', 'MEDIATED', 'hr_labor_dispute_status', 'success'),
+(4, '仲裁中', 'ARBITRATING', 'hr_labor_dispute_status', 'warning'),
+(5, '已裁决', 'AWARDED', 'hr_labor_dispute_status', 'info'),
+(6, '已执行', 'EXECUTED', 'hr_labor_dispute_status', 'success'),
+(7, '已关闭', 'CLOSED', 'hr_labor_dispute_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '薪资争议', 'SALARY', 'hr_labor_dispute_type', 'default'),
+(2, '合同争议', 'CONTRACT', 'hr_labor_dispute_type', 'default'),
+(3, '解雇争议', 'DISMISSAL', 'hr_labor_dispute_type', 'default'),
+(4, '社保争议', 'SOCIAL_INSURANCE', 'hr_labor_dispute_type', 'default'),
+(5, '其他', 'OTHER', 'hr_labor_dispute_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '合同', 'CONTRACT', 'hr_evidence_type', 'default'),
+(2, '工资单', 'PAYSLIP', 'hr_evidence_type', 'default'),
+(3, '医疗记录', 'MEDICAL', 'hr_evidence_type', 'default'),
+(4, '证人证言', 'WITNESS', 'hr_evidence_type', 'default'),
+(5, '其他', 'OTHER', 'hr_evidence_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '调解成功', 'SUCCESS', 'hr_dispute_mediation_result', 'success'),
+(2, '部分达成', 'PARTIAL', 'hr_dispute_mediation_result', 'warning'),
+(3, '调解失败', 'FAILED', 'hr_dispute_mediation_result', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '已上报', 'REPORTED', 'hr_work_injury_status', 'info'),
+(2, '调查中', 'INVESTIGATING', 'hr_work_injury_status', 'warning'),
+(3, '认定中', 'DETERMINING', 'hr_work_injury_status', 'warning'),
+(4, '已认定', 'DETERMINED', 'hr_work_injury_status', 'info'),
+(5, '赔偿中', 'COMPENSATING', 'hr_work_injury_status', 'warning'),
+(6, '康复中', 'REHABILITATING', 'hr_work_injury_status', 'info'),
+(7, '已关闭', 'CLOSED', 'hr_work_injury_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '轻伤', 'MINOR', 'hr_work_injury_level', 'success'),
+(2, '中等', 'MODERATE', 'hr_work_injury_level', 'warning'),
+(3, '重伤', 'SEVERE', 'hr_work_injury_level', 'danger'),
+(4, '死亡', 'DEATH', 'hr_work_injury_level', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '医疗费', 'MEDICAL', 'hr_work_injury_comp_item', 'default'),
+(2, '伤残津贴', 'DISABILITY_ALLOWANCE', 'hr_work_injury_comp_item', 'default'),
+(3, '一次性补助', 'LUMP_SUM', 'hr_work_injury_comp_item', 'default'),
+(4, '丧葬费', 'FUNERAL', 'hr_work_injury_comp_item', 'default'),
+(5, '抚恤金', 'DEPENDENT_SUPPORT', 'hr_work_injury_comp_item', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待支付', 'PLANNED', 'hr_work_injury_comp_status', 'warning'),
+(2, '已支付', 'PAID', 'hr_work_injury_comp_status', 'success'),
+(3, '已驳回', 'REJECTED', 'hr_work_injury_comp_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '原岗位', 'SAME', 'hr_work_injury_rehab_position', 'default'),
+(2, '减轻工作', 'RELIGHTED', 'hr_work_injury_rehab_position', 'default'),
+(3, '调整岗位', 'CHANGED', 'hr_work_injury_rehab_position', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '康复中', 'IN_REHAB', 'hr_work_injury_rehab_status', 'info'),
+(2, '已返岗', 'RETURNED', 'hr_work_injury_rehab_status', 'success'),
+(3, '无法返岗', 'UNABLE_RETURN', 'hr_work_injury_rehab_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '工作相关', 'WORK_RELATED', 'hr_work_injury_responsibility', 'default'),
+(2, '上下班通勤', 'COMMUTE', 'hr_work_injury_responsibility', 'default'),
+(3, '第三方责任', 'THIRD_PARTY', 'hr_work_injury_responsibility', 'default');
+
+-- HR 福利 / 商城 / 积分
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_benefit_request_status', 'default'),
+(2, '已提交', 'SUBMITTED', 'hr_benefit_request_status', 'info'),
+(3, '审批中', 'APPROVING', 'hr_benefit_request_status', 'warning'),
+(4, '已通过', 'APPROVED', 'hr_benefit_request_status', 'success'),
+(5, '已驳回', 'REJECTED', 'hr_benefit_request_status', 'danger'),
+(6, '已发放', 'PAID', 'hr_benefit_request_status', 'success'),
+(7, '已取消', 'CANCELLED', 'hr_benefit_request_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '福利申领', 'BENEFIT_CLAIM', 'hr_benefit_request_type', 'default'),
+(2, '积分充值', 'POINT_TOPUP', 'hr_benefit_request_type', 'default'),
+(3, '积分调整', 'POINT_ADJUST', 'hr_benefit_request_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待处理', 'PENDING', 'hr_mall_order_status', 'warning'),
+(2, '审批中', 'APPROVING', 'hr_mall_order_status', 'warning'),
+(3, '已通过', 'APPROVED', 'hr_mall_order_status', 'info'),
+(4, '已发货', 'SHIPPED', 'hr_mall_order_status', 'info'),
+(5, '已完成', 'COMPLETED', 'hr_mall_order_status', 'success'),
+(6, '已取消', 'CANCELLED', 'hr_mall_order_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '入账', 'IN', 'hr_point_direction', 'success'),
+(2, '扣减', 'OUT', 'hr_point_direction', 'danger'),
+(3, '冻结', 'FROZEN', 'hr_point_direction', 'warning'),
+(4, '解冻', 'UNFROZEN', 'hr_point_direction', 'info');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '福利', 'BENEFIT', 'hr_point_source', 'default'),
+(2, '商城订单', 'MALL_ORDER', 'hr_point_source', 'default'),
+(3, '手动调整', 'MANUAL_ADJUST', 'hr_point_source', 'default'),
+(4, '过期清零', 'EXPIRE', 'hr_point_source', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '上架中', 'ON_SHELF', 'hr_mall_item_status', 'success'),
+(2, '已下架', 'OFF_SHELF', 'hr_mall_item_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_ess_benefit_status', 'info'),
+(2, '已生成', 'GENERATED', 'hr_ess_benefit_status', 'info'),
+(3, '已发放', 'PAID', 'hr_ess_benefit_status', 'success'),
+(4, '已取消', 'CANCELLED', 'hr_ess_benefit_status', 'default');
+
+-- OA 协同 / CRM
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_meeting_minutes_status', 'default'),
+(2, '已确认', 'CONFIRMED', 'oa_meeting_minutes_status', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '出席', 'ATTEND', 'oa_meeting_attend_status', 'success'),
+(2, '缺席', 'ABSENT', 'oa_meeting_attend_status', 'danger'),
+(3, '迟到', 'LATE', 'oa_meeting_attend_status', 'warning'),
+(4, '请假', 'LEAVE', 'oa_meeting_attend_status', 'info'),
+(5, '未登记', 'NOT_CHECKED', 'oa_meeting_attend_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_knowledge_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_knowledge_status', 'warning'),
+(3, '已发布', 'PUBLISHED', 'oa_knowledge_status', 'success'),
+(4, '已驳回', 'REJECTED', 'oa_knowledge_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '全员可见', 'ALL', 'oa_knowledge_scope', 'default'),
+(2, '部门可见', 'DEPT', 'oa_knowledge_scope', 'default'),
+(3, '角色可见', 'ROLE', 'oa_knowledge_scope', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '会议', 'MEETING', 'oa_schedule_event_type', 'info'),
+(2, '工作', 'WORK', 'oa_schedule_event_type', 'success'),
+(3, '个人', 'PERSONAL', 'oa_schedule_event_type', 'warning');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '释放到公海', 'RELEASE', 'crm_pool_action', 'default'),
+(2, '抢单', 'CLAIM', 'crm_pool_action', 'default'),
+(3, '指派', 'ASSIGN', 'crm_pool_action', 'default'),
+(4, '自动回收', 'AUTO_RELEASE', 'crm_pool_action', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_project_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_project_status', 'warning'),
+(3, '已通过', 'APPROVED', 'oa_project_status', 'success'),
+(4, '执行中', 'IN_PROGRESS', 'oa_project_status', 'info'),
+(5, '已完成', 'COMPLETED', 'oa_project_status', 'success'),
+(6, '已取消', 'CANCELLED', 'oa_project_status', 'default'),
+(7, '已归档', 'ARCHIVED', 'oa_project_status', 'default'),
+(8, '计划中', 'PLANNED', 'oa_project_status', 'info'),
+(9, '已完成', 'COMPLETED_MILESTONE', 'oa_project_status', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '手工创建', 'MANUAL', 'oa_project_source_type', 'default'),
+(2, 'CRM 商机', 'CRM_OPPORTUNITY', 'oa_project_source_type', 'default'),
+(3, 'CRM 报价', 'CRM_QUOTE', 'oa_project_source_type', 'default'),
+(4, 'OA 合同', 'CONTRACT', 'oa_project_source_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '健康', 'GREEN', 'crm_customer_health', 'success'),
+(2, '关注', 'YELLOW', 'crm_customer_health', 'warning'),
+(3, '高风险', 'RED', 'crm_customer_health', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '线索', 'LEAD', 'crm_stage', 'info'),
+(2, '已确认', 'QUALIFIED', 'crm_stage', 'info'),
+(3, '方案报价', 'PROPOSAL', 'crm_stage', 'warning'),
+(4, '商务谈判', 'NEGOTIATION', 'crm_stage', 'warning'),
+(5, '赢单', 'WON', 'crm_stage', 'success'),
+(6, '输单', 'LOST', 'crm_stage', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '个人', 'OWNER', 'crm_sales_target_dimension', 'default'),
+(2, '部门', 'DEPT', 'crm_sales_target_dimension', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '月度', 'MONTH', 'crm_period_type', 'default'),
+(2, '季度', 'QUARTER', 'crm_period_type', 'default'),
+(3, '年度', 'YEAR', 'crm_period_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '自动回收', 'AUTO_RELEASE', 'crm_assignment_rule_type', 'default'),
+(2, '抢单上限', 'CLAIM_LIMIT', 'crm_assignment_rule_type', 'default'),
+(3, '分配策略', 'ASSIGN', 'crm_assignment_rule_type', 'default');
+
+-- OA 用印 / 采购 / 付款 / 报销
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_seal_application_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_seal_application_status', 'warning'),
+(3, '已通过', 'APPROVED', 'oa_seal_application_status', 'success'),
+(4, '已驳回', 'REJECTED', 'oa_seal_application_status', 'danger'),
+(5, '已借出', 'BORROWED', 'oa_seal_application_status', 'info'),
+(6, '已归还', 'RETURNED', 'oa_seal_application_status', 'success'),
+(7, '已逾期', 'OVERDUE', 'oa_seal_application_status', 'danger'),
+(8, '已取消', 'CANCELLED', 'oa_seal_application_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '合同', 'CONTRACT', 'oa_seal_scene', 'default'),
+(2, '证明', 'PROOF', 'oa_seal_scene', 'default'),
+(3, '财务', 'FINANCE', 'oa_seal_scene', 'default'),
+(4, '其他', 'OTHER', 'oa_seal_scene', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_purchase_request_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_purchase_request_status', 'warning'),
+(3, '已通过', 'APPROVED', 'oa_purchase_request_status', 'success'),
+(4, '部分入库', 'PARTIAL_RECEIVED', 'oa_purchase_request_status', 'info'),
+(5, '已入库', 'RECEIVED', 'oa_purchase_request_status', 'success'),
+(6, '已驳回', 'REJECTED', 'oa_purchase_request_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '未生成', 'NONE', 'oa_payment_status', 'default'),
+(2, '付款草稿', 'DRAFT', 'oa_payment_status', 'default'),
+(3, '付款审批中', 'PENDING', 'oa_payment_status', 'warning'),
+(4, '付款已通过', 'APPROVED', 'oa_payment_status', 'success'),
+(5, '付款驳回', 'REJECTED', 'oa_payment_status', 'danger'),
+(6, '已付款', 'PAID', 'oa_payment_status', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '采购', 'PURCHASE', 'oa_payment_type', 'default'),
+(2, '服务', 'SERVICE', 'oa_payment_type', 'default'),
+(3, '租金', 'RENT', 'oa_payment_type', 'default'),
+(4, '其他', 'OTHER', 'oa_payment_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_payment_request_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_payment_request_status', 'warning'),
+(3, '已通过', 'APPROVED', 'oa_payment_request_status', 'success'),
+(4, '已驳回', 'REJECTED', 'oa_payment_request_status', 'danger'),
+(5, '已付款', 'PAID', 'oa_payment_request_status', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_expense_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_expense_status', 'warning'),
+(3, '已通过', 'APPROVED', 'oa_expense_status', 'success'),
+(4, '已驳回', 'REJECTED', 'oa_expense_status', 'danger'),
+(5, '已打款', 'PAID', 'oa_expense_status', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '差旅', 'TRAVEL', 'oa_expense_category', 'default'),
+(2, '办公', 'OFFICE', 'oa_expense_category', 'default'),
+(3, '招待', 'ENTERTAINMENT', 'oa_expense_category', 'default'),
+(4, '交通', 'TRANSPORT', 'oa_expense_category', 'default'),
+(5, '其他', 'OTHER', 'oa_expense_category', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '交通', 'TRANSPORT', 'oa_expense_item_type', 'default'),
+(2, '住宿', 'ACCOMMODATION', 'oa_expense_item_type', 'default'),
+(3, '餐饮', 'MEAL', 'oa_expense_item_type', 'default'),
+(4, '通讯', 'COMMUNICATION', 'oa_expense_item_type', 'default'),
+(5, '办公用品', 'OFFICE_SUPPLIES', 'oa_expense_item_type', 'default'),
+(6, '其他', 'OTHER', 'oa_expense_item_type', 'default');
+
+-- OA 合同 / 出差 / 预算 / 里程碑
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_contract_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_contract_status', 'warning'),
+(3, '已通过', 'APPROVED', 'oa_contract_status', 'success'),
+(4, '已驳回', 'REJECTED', 'oa_contract_status', 'danger'),
+(5, '用印中', 'SEALING', 'oa_contract_status', 'warning'),
+(6, '已用印', 'SEALED', 'oa_contract_status', 'info'),
+(7, '履行中', 'ACTIVE', 'oa_contract_status', 'success'),
+(8, '已到期', 'EXPIRED', 'oa_contract_status', 'warning'),
+(9, '已终止', 'TERMINATED', 'oa_contract_status', 'danger'),
+(10, '已取消', 'CANCELLED', 'oa_contract_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '销售合同', 'SALES', 'oa_contract_type', 'default'),
+(2, '采购合同', 'PURCHASE', 'oa_contract_type', 'default'),
+(3, '服务合同', 'SERVICE', 'oa_contract_type', 'default'),
+(4, '其他', 'OTHER', 'oa_contract_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_business_trip_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_business_trip_status', 'warning'),
+(3, '已通过', 'APPROVED', 'oa_business_trip_status', 'success'),
+(4, '已拒绝', 'REJECTED', 'oa_business_trip_status', 'danger'),
+(5, '已取消', 'CANCELLED', 'oa_business_trip_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '飞机', 'PLANE', 'oa_transport_type', 'default'),
+(2, '火车', 'TRAIN', 'oa_transport_type', 'default'),
+(3, '自驾', 'CAR', 'oa_transport_type', 'default'),
+(4, '其他', 'OTHER', 'oa_transport_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '自行安排', 'SELF', 'oa_accommodation_type', 'default'),
+(2, '公司安排', 'COMPANY', 'oa_accommodation_type', 'default'),
+(3, '无需住宿', 'NONE', 'oa_accommodation_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '正常', 'NORMAL', 'oa_budget_threshold', 'success'),
+(2, '预警', 'WARN', 'oa_budget_threshold', 'warning'),
+(3, '告警', 'ALERT', 'oa_budget_threshold', 'danger'),
+(4, '拦截', 'BLOCK', 'oa_budget_threshold', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '部门预算', 'DEPT', 'oa_budget_target_type', 'default'),
+(2, '项目预算', 'PROJECT', 'oa_budget_target_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_budget_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_budget_status', 'warning'),
+(3, '已通过', 'APPROVED', 'oa_budget_status', 'success'),
+(4, '已驳回', 'REJECTED', 'oa_budget_status', 'danger'),
+(5, '生效中', 'ACTIVE', 'oa_budget_status', 'info');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '预算占用', 'RESERVE', 'oa_budget_operation_type', 'default'),
+(2, '预算释放', 'RELEASE', 'oa_budget_operation_type', 'default'),
+(3, '预算核销', 'WRITEOFF', 'oa_budget_operation_type', 'default'),
+(4, '预算调整', 'ADJUST', 'oa_budget_operation_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '交付', 'DELIVERY', 'oa_milestone_type', 'default'),
+(2, '付款', 'PAYMENT', 'oa_milestone_type', 'default'),
+(3, '验收', 'ACCEPTANCE', 'oa_milestone_type', 'default'),
+(4, '其他', 'OTHER', 'oa_milestone_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待开始', 'PENDING', 'oa_milestone_status', 'default'),
+(2, '进行中', 'IN_PROGRESS', 'oa_milestone_status', 'info'),
+(3, '已完成', 'DONE', 'oa_milestone_status', 'success'),
+(4, '已逾期', 'OVERDUE', 'oa_milestone_status', 'danger'),
+(5, '已取消', 'CANCELLED', 'oa_milestone_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待付款', 'PENDING', 'oa_milestone_payment_status', 'default'),
+(2, '已付款', 'PAID', 'oa_milestone_payment_status', 'success'),
+(3, '已逾期', 'OVERDUE', 'oa_milestone_payment_status', 'danger'),
+(4, '已取消', 'CANCELLED', 'oa_milestone_payment_status', 'default');
+
+-- 行政 / 资产 / 规则 / 发布审批
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待借出', 'APPROVED', 'oa_borrow_status', 'info'),
+(2, '已借出', 'BORROWED', 'oa_borrow_status', 'info'),
+(3, '已逾期', 'OVERDUE', 'oa_borrow_status', 'danger'),
+(4, '已归还', 'RETURNED', 'oa_borrow_status', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_license_borrow_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_license_borrow_status', 'warning'),
+(3, '已通过', 'APPROVED', 'oa_license_borrow_status', 'success'),
+(4, '已驳回', 'REJECTED', 'oa_license_borrow_status', 'danger'),
+(5, '已借出', 'BORROWED', 'oa_license_borrow_status', 'info'),
+(6, '已归还', 'RETURNED', 'oa_license_borrow_status', 'success'),
+(7, '已逾期', 'OVERDUE', 'oa_license_borrow_status', 'danger'),
+(8, '已取消', 'CANCELLED', 'oa_license_borrow_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '营业执照', 'BUSINESS', 'oa_license_type', 'default'),
+(2, '许可证', 'PERMIT', 'oa_license_type', 'default'),
+(3, '资质证书', 'QUALIFICATION', 'oa_license_type', 'default'),
+(4, '其他', 'OTHER', 'oa_license_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '可用', 'AVAILABLE', 'oa_license_status', 'success'),
+(2, '借出', 'BORROWED', 'oa_license_status', 'info'),
+(3, '停用', 'DISABLED', 'oa_license_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'oa_renewal_status', 'default'),
+(2, '审批中', 'PENDING', 'oa_renewal_status', 'info'),
+(3, '已通过', 'APPROVED', 'oa_renewal_status', 'success'),
+(4, '已驳回', 'REJECTED', 'oa_renewal_status', 'danger'),
+(5, '已取消', 'CANCELLED', 'oa_renewal_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '公章', 'COMPANY', 'oa_seal_type', 'default'),
+(2, '财务章', 'FINANCE', 'oa_seal_type', 'default'),
+(3, '合同章', 'CONTRACT', 'oa_seal_type', 'default'),
+(4, '法人章', 'LEGAL', 'oa_seal_type', 'default'),
+(5, '其他', 'OTHER', 'oa_seal_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '启用', 'ACTIVE', 'oa_supplier_status', 'success'),
+(2, '停用', 'DISABLED', 'oa_supplier_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '未处理', 'OPEN', 'oa_risk_alert_status', 'danger'),
+(2, '处理中', 'HANDLING', 'oa_risk_alert_status', 'info'),
+(3, '已关闭', 'CLOSED', 'oa_risk_alert_status', 'success'),
+(4, '已忽略', 'IGNORED', 'oa_risk_alert_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '规则', 'RULE', 'oa_risk_alert_source', 'default'),
+(2, '人工', 'MANUAL', 'oa_risk_alert_source', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '合同', 'CONTRACT', 'oa_risk_business_type', 'default'),
+(2, '用印', 'SEAL', 'oa_risk_business_type', 'default'),
+(3, '车辆', 'VEHICLE', 'oa_risk_business_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '闲置', '1', 'asset_status', 'success'),
+(2, '在用', '2', 'asset_status', 'info'),
+(3, '维修', '3', 'asset_status', 'warning'),
+(4, '报废', '4', 'asset_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '拦截', 'BLOCK', 'oa_business_rule_effect', 'danger'),
+(2, '告警', 'ALERT', 'oa_business_rule_effect', 'danger'),
+(3, '预警', 'WARN', 'oa_business_rule_effect', 'warning'),
+(4, '放行', 'PASS', 'oa_business_rule_effect', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '通过', 'PASSED', 'oa_business_rule_hit_result', 'success'),
+(2, '拒绝', 'REJECTED', 'oa_business_rule_hit_result', 'danger'),
+(3, '拦截', 'BLOCK', 'oa_business_rule_hit_result', 'danger'),
+(4, '告警', 'ALERT', 'oa_business_rule_hit_result', 'danger'),
+(5, '预警', 'WARN', 'oa_business_rule_hit_result', 'warning'),
+(6, '放行', 'PASS', 'oa_business_rule_hit_result', 'success');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待审批', 'PENDING', 'oa_deploy_approval_status', 'warning'),
+(2, '已通过', 'APPROVED', 'oa_deploy_approval_status', 'success'),
+(3, '已驳回', 'REJECTED', 'oa_deploy_approval_status', 'danger'),
+(4, '已取消', 'CANCELLED', 'oa_deploy_approval_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '指定成员', 'USER', 'oa_approver_type', 'default'),
+(2, '角色审批', 'ROLE', 'oa_approver_type', 'default'),
+(3, '部门审批', 'DEPT', 'oa_approver_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '任一人', 'ANY', 'oa_approval_mode', 'default'),
+(2, '所有人', 'ALL', 'oa_approval_mode', 'default'),
+(3, '依次审批', 'SEQUENCE', 'oa_approval_mode', 'default');
+
+-- HR 考勤排班 / 请假加班 / 值班 / 行政访客 / 工作流监控
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '固定班', 'FIXED', 'hr_schedule_rule_type', 'default'),
+(2, '轮班', 'ROTATION', 'hr_schedule_rule_type', 'default'),
+(3, '弹性工作制', 'FLEXIBLE', 'hr_schedule_rule_type', 'default'),
+(4, '综合工时制', 'COMPREHENSIVE', 'hr_schedule_rule_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '工作日', 'WORKDAY', 'hr_work_calendar_day_type', 'default'),
+(2, '休息日', 'REST', 'hr_work_calendar_day_type', 'default'),
+(3, '节假日', 'HOLIDAY', 'hr_work_calendar_day_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_leave_status', 'default'),
+(2, '审批中', 'APPROVING', 'hr_leave_status', 'info'),
+(3, '已通过', 'APPROVED', 'hr_leave_status', 'success'),
+(4, '已拒绝', 'REJECTED', 'hr_leave_status', 'danger'),
+(5, '已撤销', 'CANCELLED', 'hr_leave_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'DRAFT', 'hr_overtime_status', 'default'),
+(2, '审批中', 'APPROVING', 'hr_overtime_status', 'info'),
+(3, '已通过', 'APPROVED', 'hr_overtime_status', 'success'),
+(4, '已驳回', 'REJECTED', 'hr_overtime_status', 'danger'),
+(5, '已取消', 'CANCELLED', 'hr_overtime_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '工作日', 'WORKDAY', 'hr_overtime_type', 'default'),
+(2, '周末', 'WEEKEND', 'hr_overtime_type', 'default'),
+(3, '节假日', 'HOLIDAY', 'hr_overtime_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '加班费', 'PAYMENT', 'hr_overtime_compensation_type', 'default'),
+(2, '调休', 'TIME_OFF', 'hr_overtime_compensation_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '草稿', 'MISSING', 'hr_attendance_supplement_status', 'default'),
+(2, '审批中', 'APPROVING', 'hr_attendance_supplement_status', 'info'),
+(3, '已补录', 'SUPPLEMENT', 'hr_attendance_supplement_status', 'success'),
+(4, '已驳回', 'REJECTED', 'hr_attendance_supplement_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '已排班', 'SCHEDULED', 'hr_duty_status', 'info'),
+(2, '已签到', 'CHECKED_IN', 'hr_duty_status', 'warning'),
+(3, '已完成', 'COMPLETED', 'hr_duty_status', 'success'),
+(4, '已换班', 'SWAPPED', 'hr_duty_status', 'info'),
+(5, '已取消', 'CANCELLED', 'hr_duty_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '日常值班', 'DAILY', 'hr_duty_type', 'default'),
+(2, '节假日值班', 'HOLIDAY', 'hr_duty_type', 'default'),
+(3, '应急值班', 'EMERGENCY', 'hr_duty_type', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '白班', 'DAY', 'hr_duty_shift', 'default'),
+(2, '夜班', 'NIGHT', 'hr_duty_shift', 'default'),
+(3, '全天', 'FULL', 'hr_duty_shift', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待确认', 'PENDING', 'oa_visitor_status', 'warning'),
+(2, '已确认', 'CONFIRMED', 'oa_visitor_status', 'info'),
+(3, '已到访', 'ARRIVED', 'oa_visitor_status', 'success'),
+(4, '已离场', 'COMPLETED', 'oa_visitor_status', 'default'),
+(5, '已取消', 'CANCELLED', 'oa_visitor_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '启动流程', 'PROCESS_START', 'wf_monitor_action', 'default'),
+(2, '完成任务', 'TASK_COMPLETE', 'wf_monitor_action', 'default'),
+(3, '驳回任务', 'TASK_REJECT', 'wf_monitor_action', 'default'),
+(4, '撤回流程', 'PROCESS_RECALL', 'wf_monitor_action', 'default'),
+(5, '创建定义', 'DEFINITION_CREATE', 'wf_monitor_action', 'default'),
+(6, '发布定义', 'DEFINITION_DEPLOY', 'wf_monitor_action', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '可用', '1', 'oa_vehicle_status', 'success'),
+(2, '已预约', '2', 'oa_vehicle_status', 'info'),
+(3, '使用中', '3', 'oa_vehicle_status', 'warning'),
+(4, '维修中', '4', 'oa_vehicle_status', 'warning'),
+(5, '已报废', '5', 'oa_vehicle_status', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '待审批', '0', 'oa_vehicle_usage_status', 'warning'),
+(2, '已批准', '1', 'oa_vehicle_usage_status', 'success'),
+(3, '已驳回', '2', 'oa_vehicle_usage_status', 'danger'),
+(4, '进行中', '3', 'oa_vehicle_usage_status', 'info'),
+(5, '已完成', '4', 'oa_vehicle_usage_status', 'default'),
+(6, '已取消', '5', 'oa_vehicle_usage_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, 'T1 (基础档)', 'T1', 'oa_contract_amount_tier', 'info'),
+(2, 'T2 (中等档)', 'T2', 'oa_contract_amount_tier', 'warning'),
+(3, 'T3 (高额档)', 'T3', 'oa_contract_amount_tier', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '部门经理', 'DEPT_MGR', 'oa_contract_approver_role', 'default'),
+(2, '副总裁 / VP', 'VP', 'oa_contract_approver_role', 'default'),
+(3, 'CEO', 'CEO', 'oa_contract_approver_role', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '生效', 'ACTIVE', 'oa_contract_threshold_status', 'success'),
+(2, '停用', 'INACTIVE', 'oa_contract_threshold_status', 'default');
+-- <<< BIZ_ENUM_DICT_END
+
 -- 12. 初始化系统参数数据
 -- config_scope: 0=全局（所有租户共享） 1=租户（每个租户可独立配置）
 -- 用户管理配置（租户级：不同租户可设不同密码策略）
