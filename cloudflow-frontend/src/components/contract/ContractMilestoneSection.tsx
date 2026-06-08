@@ -26,52 +26,45 @@ import {
 } from '@/components/common';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
+import { useDict } from '@/hooks/useDict';
 
 interface Props {
   contractId: number;
 }
 
-const MILESTONE_TYPE_LABELS: Record<ContractMilestoneType, string> = {
-  DELIVERY: '交付',
-  PAYMENT: '付款',
-  ACCEPTANCE: '验收',
-  OTHER: '其他',
-};
-
-const MILESTONE_STATUS_LABELS: Record<ContractMilestoneStatus, { label: string; cls: string; icon: React.ReactNode }> = {
+const MILESTONE_STATUS_META: Record<ContractMilestoneStatus, { cls: string; icon: React.ReactNode }> = {
   PENDING: {
-    label: '待开始',
     cls: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300',
     icon: <CircleDashed size={12} className="mr-1" />,
   },
   IN_PROGRESS: {
-    label: '进行中',
     cls: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200',
     icon: <CalendarClock size={12} className="mr-1" />,
   },
   DONE: {
-    label: '已完成',
     cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200',
     icon: <CheckCircle2 size={12} className="mr-1" />,
   },
   OVERDUE: {
-    label: '已逾期',
     cls: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200',
     icon: <CircleX size={12} className="mr-1" />,
   },
   CANCELLED: {
-    label: '已取消',
     cls: 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
     icon: <CircleX size={12} className="mr-1" />,
   },
 };
 
-const PAYMENT_STATUS_LABELS: Record<PaymentStatus, { label: string; cls: string }> = {
-  PENDING: { label: '待付款', cls: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300' },
-  PAID: { label: '已付款', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200' },
-  OVERDUE: { label: '已逾期', cls: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200' },
-  CANCELLED: { label: '已取消', cls: 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400' },
+const PAYMENT_STATUS_META: Record<PaymentStatus, { cls: string }> = {
+  PENDING: { cls: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300' },
+  PAID: { cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200' },
+  OVERDUE: { cls: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200' },
+  CANCELLED: { cls: 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400' },
 };
+
+const MILESTONE_TYPE_VALUES: ContractMilestoneType[] = ['DELIVERY', 'PAYMENT', 'ACCEPTANCE', 'OTHER'];
+const MILESTONE_STATUS_VALUES: ContractMilestoneStatus[] = ['PENDING', 'IN_PROGRESS', 'DONE', 'OVERDUE', 'CANCELLED'];
+const PAYMENT_STATUS_VALUES: PaymentStatus[] = ['PENDING', 'PAID', 'OVERDUE', 'CANCELLED'];
 
 const emptyMilestone = (contractId: number): OaContractMilestone => ({
   contractId,
@@ -91,6 +84,9 @@ const emptyPayment = (contractId: number): OaContractPaymentSchedule => ({
 });
 
 export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
+  const milestoneTypeDict = useDict('oa_milestone_type');
+  const milestoneStatusDict = useDict('oa_milestone_status');
+  const paymentStatusDict = useDict('oa_milestone_payment_status');
   const [milestones, setMilestones] = useState<OaContractMilestone[]>([]);
   const [payments, setPayments] = useState<OaContractPaymentSchedule[]>([]);
   const [loading, setLoading] = useState(false);
@@ -275,7 +271,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
           ) : (
             <ul className="space-y-2">
               {milestones.map((m) => {
-                const meta = MILESTONE_STATUS_LABELS[m.status];
+                const meta = MILESTONE_STATUS_META[m.status];
                 return (
                   <li
                     key={m.id}
@@ -287,7 +283,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                           {m.milestoneName}
                         </span>
                         <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-                          {MILESTONE_TYPE_LABELS[m.milestoneType]}
+                          {milestoneTypeDict.getLabel(m.milestoneType)}
                         </span>
                         <span
                           className={cn(
@@ -296,7 +292,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                           )}
                         >
                           {meta.icon}
-                          {meta.label}
+                          {milestoneStatusDict.getLabel(m.status)}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -346,7 +342,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
           ) : (
             <ul className="space-y-2">
               {payments.map((p) => {
-                const meta = PAYMENT_STATUS_LABELS[p.status];
+                const meta = PAYMENT_STATUS_META[p.status];
                 return (
                   <li
                     key={p.id}
@@ -363,7 +359,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                             meta.cls,
                           )}
                         >
-                          {meta.label}
+                          {paymentStatusDict.getLabel(p.status)}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -432,8 +428,8 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {(['DELIVERY', 'PAYMENT', 'ACCEPTANCE', 'OTHER'] as ContractMilestoneType[]).map((t) => (
-                  <SelectItem key={t} value={t}>{MILESTONE_TYPE_LABELS[t]}</SelectItem>
+                {MILESTONE_TYPE_VALUES.map((t) => (
+                  <SelectItem key={t} value={t}>{milestoneTypeDict.getLabel(t)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -448,8 +444,8 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {(['PENDING', 'IN_PROGRESS', 'DONE', 'OVERDUE', 'CANCELLED'] as ContractMilestoneStatus[]).map((s) => (
-                  <SelectItem key={s} value={s}>{MILESTONE_STATUS_LABELS[s].label}</SelectItem>
+                {MILESTONE_STATUS_VALUES.map((s) => (
+                  <SelectItem key={s} value={s}>{milestoneStatusDict.getLabel(s)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -578,8 +574,8 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {(['PENDING', 'PAID', 'OVERDUE', 'CANCELLED'] as PaymentStatus[]).map((s) => (
-                  <SelectItem key={s} value={s}>{PAYMENT_STATUS_LABELS[s].label}</SelectItem>
+                {PAYMENT_STATUS_VALUES.map((s) => (
+                  <SelectItem key={s} value={s}>{paymentStatusDict.getLabel(s)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -51,30 +51,6 @@ import { DictBadge } from '@/components/common/DictBadge';
 const ALL_VALUE = '__all__';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
-const effectClassName: Record<string, string> = {
-  BLOCK: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-  ALERT: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200',
-  WARN: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  PASS: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-};
-
-const effectLabelMap: Record<string, string> = {
-  BLOCK: '拦截',
-  ALERT: '告警',
-  WARN: '预警',
-  PASS: '放行',
-};
-
-
-const hitResultLabelMap: Record<string, string> = {
-  PASSED: '通过',
-  REJECTED: '拒绝',
-  BLOCK: '拦截',
-  ALERT: '告警',
-  WARN: '预警',
-  PASS: '放行',
-};
-
 const normalizeListResponse = <T,>(response: any) => {
   const rows = Array.isArray(response?.records)
     ? response.records
@@ -90,18 +66,6 @@ const normalizeListResponse = <T,>(response: any) => {
 };
 
 const formatDateTime = (value?: string) => value ? value.replace('T', ' ').slice(0, 19) : '-';
-
-const Badge: React.FC<{ value?: string; classNameMap?: Record<string, string | { fullClass?: string; tone?: string; label?: string }>; labelMap?: Record<string, string | { label?: string }> }> = ({ value, classNameMap = effectClassName, labelMap = effectLabelMap }) => {
-  const classEntry = classNameMap[value || ''];
-  const labelEntry = labelMap[value || ''];
-  const resolvedClass = typeof classEntry === 'string' ? classEntry : classEntry?.fullClass || classEntry?.tone || effectClassName.ARCHIVED;
-  const resolvedLabel = typeof labelEntry === 'string' ? labelEntry : labelEntry?.label || value || '-';
-  return (
-    <span className={cn('rounded-full border px-2.5 py-1 text-xs font-medium', resolvedClass)}>
-      {value ? resolvedLabel : '-'}
-    </span>
-  );
-};
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading }) => (
   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
@@ -119,6 +83,7 @@ type ConfirmState =
 export const BusinessRulePage = () => {
   const [activeTab, setActiveTab] = useState('rules');
   const workflowDefStatusDict = useDict('workflow_definition_status');
+  const effectDict = useDict('oa_business_rule_effect');
   const [rows, setRows] = useState<BusinessRule[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -350,7 +315,7 @@ export const BusinessRulePage = () => {
               </TableCell>
               <TableCell>{rule.module}</TableCell>
               <TableCell>{rule.thresholdValue ?? '-'}</TableCell>
-              <TableCell><Badge value={rule.effect} /></TableCell>
+              <TableCell><DictBadge dictType="oa_business_rule_effect" value={String(rule.effect || '')} /></TableCell>
               <TableCell>{rule.priority}</TableCell>
               <TableCell>
                 <Switch checked={rule.enabled === 1} onCheckedChange={(checked) => void toggleEnabled(rule, checked)} />
@@ -441,7 +406,7 @@ export const BusinessRulePage = () => {
                           <TableCell>v{version.versionNo}</TableCell>
                           <TableCell className="font-mono text-xs">{version.ruleCode}</TableCell>
                           <TableCell>{version.thresholdValue ?? '-'}</TableCell>
-                          <TableCell><Badge value={version.effect} /></TableCell>
+                          <TableCell><DictBadge dictType="oa_business_rule_effect" value={String(version.effect || '')} /></TableCell>
                           <TableCell><DictBadge dictType="workflow_definition_status" value={version.status || ''} /></TableCell>
                           <TableCell>{version.publisherName || '-'}</TableCell>
                           <TableCell>{formatDateTime(version.publishedTime)}</TableCell>
@@ -479,10 +444,9 @@ export const BusinessRulePage = () => {
                     <SelectTrigger className="h-10 w-full sm:w-36"><SelectValue placeholder="结果" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value={ALL_VALUE}>全部结果</SelectItem>
-                      <SelectItem value="BLOCK">拦截</SelectItem>
-                      <SelectItem value="ALERT">告警</SelectItem>
-                      <SelectItem value="WARN">预警</SelectItem>
-                      <SelectItem value="PASS">放行</SelectItem>
+                      {effectDict.getOptions().map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Button type="submit" size="sm">查询</Button>
@@ -518,8 +482,8 @@ export const BusinessRulePage = () => {
                           <TableCell>{hit.businessType}#{hit.businessId || '-'}</TableCell>
                           <TableCell>{hit.thresholdValue ?? '-'}</TableCell>
                           <TableCell>{hit.actualValue ?? '-'}</TableCell>
-                          <TableCell><Badge value={hit.effect} /></TableCell>
-                          <TableCell><Badge value={hit.hitResult} labelMap={hitResultLabelMap} /></TableCell>
+                          <TableCell><DictBadge dictType="oa_business_rule_effect" value={String(hit.effect || '')} /></TableCell>
+                          <TableCell><DictBadge dictType="oa_business_rule_hit_result" value={String(hit.hitResult || '')} /></TableCell>
                           <TableCell>{formatDateTime(hit.createdTime)}</TableCell>
                         </TableRow>
                       ))}
@@ -566,10 +530,9 @@ export const BusinessRulePage = () => {
                 <Select value={form.effect} onValueChange={(value) => setForm((current) => current ? { ...current, effect: value as BusinessRule['effect'] } : current)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="WARN">预警</SelectItem>
-                    <SelectItem value="ALERT">告警</SelectItem>
-                    <SelectItem value="BLOCK">拦截</SelectItem>
-                    <SelectItem value="PASS">放行</SelectItem>
+                    {effectDict.getOptions().map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

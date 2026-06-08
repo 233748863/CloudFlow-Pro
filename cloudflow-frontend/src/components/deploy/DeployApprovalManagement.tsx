@@ -18,6 +18,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
 import { Button, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
 import { cn } from '@/utils/cn';
+import { useDict } from '@/hooks/useDict';
 import {
   ApprovalStep,
   DeployApproval,
@@ -31,31 +32,26 @@ import {
 const STATUS_CONFIG: Record<
   string,
   {
-    label: string;
     className: string;
     icon: React.ElementType;
   }
 > = {
   PENDING: {
-    label: '待审批',
     className:
       'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200',
     icon: Clock3,
   },
   APPROVED: {
-    label: '已通过',
     className:
       'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200',
     icon: CheckCircle,
   },
   REJECTED: {
-    label: '已驳回',
     className:
       'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200',
     icon: XCircle,
   },
   CANCELLED: {
-    label: '已取消',
     className:
       'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
     icon: X,
@@ -66,18 +62,6 @@ const APPROVER_TYPE_ICONS: Record<string, React.ElementType> = {
   USER: User,
   ROLE: Users,
   DEPT: Building,
-};
-
-const APPROVER_TYPE_LABELS: Record<string, string> = {
-  USER: '指定成员',
-  ROLE: '角色审批',
-  DEPT: '部门审批',
-};
-
-const APPROVAL_MODE_LABELS: Record<ApprovalStep['approvalMode'], string> = {
-  ANY: '任一人',
-  ALL: '所有人',
-  SEQUENCE: '依次审批',
 };
 
 const getStatusMeta = (status: string) => STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
@@ -141,6 +125,9 @@ const InlineState: React.FC<{
 );
 
 export const DeployApprovalManagement: React.FC = () => {
+  const statusDict = useDict('oa_deploy_approval_status');
+  const approverTypeDict = useDict('oa_approver_type');
+  const approvalModeDict = useDict('oa_approval_mode');
   const [activeView, setActiveView] = useState<'pending' | 'submitted'>('pending');
   const [pendingApprovals, setPendingApprovals] = useState<DeployApproval[]>([]);
   const [submittedApprovals, setSubmittedApprovals] = useState<DeployApproval[]>([]);
@@ -351,7 +338,7 @@ export const DeployApprovalManagement: React.FC = () => {
                     )}
                   >
                     <StatusIcon className="h-3.5 w-3.5" />
-                    {statusMeta.label}
+                    {statusDict.getLabel(approval.approvalStatus)}
                   </span>
                   <div className="mt-2">
                     <div className="flex items-center justify-between gap-3 text-xs text-slate-400 dark:text-slate-500">
@@ -445,7 +432,7 @@ export const DeployApprovalManagement: React.FC = () => {
                 流程 · {detailModal.processName || detailModal.approval.processDefId}
               </span>
               <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-                状态 · {getStatusMeta(detailModal.approval.approvalStatus).label}
+                状态 · {statusDict.getLabel(detailModal.approval.approvalStatus)}
               </span>
               <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
                 进度 · {detailModal.approval.currentStep}/{detailModal.approval.totalSteps}
@@ -495,16 +482,16 @@ export const DeployApprovalManagement: React.FC = () => {
                                   )}
                                 >
                                   <StatusIcon className="h-3.5 w-3.5" />
-                                  {statusMeta.label}
+                                  {statusDict.getLabel(step.stepStatus)}
                                 </span>
                               </div>
 
                               <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
                                 <span className="inline-flex items-center gap-1">
                                   <ApproverIcon className="h-3.5 w-3.5" />
-                                  {APPROVER_TYPE_LABELS[step.approverType] || step.approverType}
+                                  {approverTypeDict.getLabel(step.approverType)}
                                 </span>
-                                <span>审批模式：{APPROVAL_MODE_LABELS[step.approvalMode]}</span>
+                                <span>审批模式：{approvalModeDict.getLabel(step.approvalMode)}</span>
                                 <span>审批 ID：{step.id}</span>
                               </div>
                             </div>

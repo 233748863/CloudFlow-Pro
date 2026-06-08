@@ -13,6 +13,7 @@ import {
   FileText,
 } from 'lucide-react';
 import request from '@/services/api/request';
+import { useDict } from '@/hooks/useDict';
 
 interface MetricsData {
   totalInstances: number;
@@ -81,17 +82,8 @@ function MobileProgressBar({ label, value, max, color }: { label: string; value:
   );
 }
 
-// 操作名称映射
-const ACTION_LABELS: Record<string, string> = {
-  PROCESS_START: '启动流程',
-  TASK_COMPLETE: '完成任务',
-  TASK_REJECT: '驳回任务',
-  PROCESS_RECALL: '撤回流程',
-  DEFINITION_CREATE: '创建定义',
-  DEFINITION_DEPLOY: '发布定义',
-};
-
 export const MobileWorkflowMonitor: React.FC = () => {
+  const actionDict = useDict('wf_monitor_action');
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -372,7 +364,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
             <div className="space-y-2">
               {Object.entries(m.actionCounters).slice(0, 5).map(([action, count]) => (
                 <div key={action} className="flex justify-between items-center text-xs">
-                  <span className="text-gray-600">{ACTION_LABELS[action] || action}</span>
+                  <span className="text-gray-600">{actionDict.getLabel(action) || action}</span>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-800">{count}</span>
                     <span className="px-1.5 py-0.5 bg-pink-50 text-pink-600 rounded text-xs">
