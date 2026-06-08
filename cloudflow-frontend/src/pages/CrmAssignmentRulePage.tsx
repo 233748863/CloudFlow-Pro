@@ -27,12 +27,7 @@ import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePage
 import { CrmAssignmentRule, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-
-const ruleTypeLabelMap: Record<string, string> = {
-  AUTO_RELEASE: '自动回收',
-  CLAIM_LIMIT: '抢单上限',
-  ASSIGN: '分配策略',
-};
+import { useDict } from '@/hooks/useDict';
 
 import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
 
@@ -48,6 +43,7 @@ const emptyRule: CrmAssignmentRule = {
 };
 
 export default function CrmAssignmentRulePage() {
+  const ruleTypeDict = useDict('crm_assignment_rule_type');
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<CrmAssignmentRule[]>([]);
   const [pageNum, setPageNum] = useState(1);
@@ -126,7 +122,7 @@ export default function CrmAssignmentRulePage() {
                   <SelectTrigger><SelectValue placeholder="规则类型" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部类型</SelectItem>
-                    {ruleTypeOptions.map((item) => <SelectItem key={item} value={item}>{ruleTypeLabelMap[item]}</SelectItem>)}
+                    {ruleTypeOptions.map((item) => <SelectItem key={item} value={item}>{ruleTypeDict.getLabel(item)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -168,7 +164,7 @@ export default function CrmAssignmentRulePage() {
                     <tr key={row.ruleId}>
                       <td className="px-4 py-3 text-sm">{row.priority ?? 100}</td>
                       <td className="px-4 py-3 text-sm"><div>{row.ruleName}</div><div className="text-xs text-slate-500">{row.remark || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm">{ruleTypeLabelMap[row.ruleType] || row.ruleType}</td>
+                      <td className="px-4 py-3 text-sm">{ruleTypeDict.getLabel(row.ruleType || '') || row.ruleType}</td>
                       <td className="px-4 py-3 text-sm">
                         <div>部门：{row.deptName || '全部'}</div>
                         <div className="text-xs text-slate-500">等级：{row.customerLevel || '全部'}；标签：{row.customerTags || '全部'}</div>
@@ -225,7 +221,7 @@ export default function CrmAssignmentRulePage() {
             <Select value={form.ruleType} onValueChange={(value) => setForm((prev) => ({ ...prev, ruleType: value as CrmAssignmentRule['ruleType'] }))}>
               <SelectTrigger><SelectValue placeholder="选择类型" /></SelectTrigger>
               <SelectContent>
-                {ruleTypeOptions.map((item) => <SelectItem key={item} value={item}>{ruleTypeLabelMap[item]}</SelectItem>)}
+                {ruleTypeOptions.map((item) => <SelectItem key={item} value={item}>{ruleTypeDict.getLabel(item)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

@@ -28,17 +28,7 @@ import { CrmSalesTarget, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
-
-const dimensionLabelMap: Record<string, string> = {
-  OWNER: '个人',
-  DEPT: '部门',
-};
-
-const periodTypeLabelMap: Record<string, string> = {
-  MONTH: '月度',
-  QUARTER: '季度',
-  YEAR: '年度',
-};
+import { useDict } from '@/hooks/useDict';
 
 const statusOptions = ['ACTIVE', 'INACTIVE'];
 const dimensionOptions = ['OWNER', 'DEPT'];
@@ -62,6 +52,8 @@ const formatCurrency = (value?: number) => Number(value || 0).toLocaleString('zh
 });
 
 export default function CrmSalesTargetPage() {
+  const dimensionDict = useDict('crm_sales_target_dimension');
+  const periodTypeDict = useDict('crm_period_type');
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<CrmSalesTarget[]>([]);
   const [pageNum, setPageNum] = useState(1);
@@ -148,7 +140,7 @@ export default function CrmSalesTargetPage() {
                   <SelectTrigger><SelectValue placeholder="维度" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部维度</SelectItem>
-                    {dimensionOptions.map((item) => <SelectItem key={item} value={item}>{dimensionLabelMap[item]}</SelectItem>)}
+                    {dimensionOptions.map((item) => <SelectItem key={item} value={item}>{dimensionDict.getLabel(item)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -157,7 +149,7 @@ export default function CrmSalesTargetPage() {
                   <SelectTrigger><SelectValue placeholder="周期" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部周期</SelectItem>
-                    {periodTypeOptions.map((item) => <SelectItem key={item} value={item}>{periodTypeLabelMap[item]}</SelectItem>)}
+                    {periodTypeOptions.map((item) => <SelectItem key={item} value={item}>{periodTypeDict.getLabel(item)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -193,8 +185,8 @@ export default function CrmSalesTargetPage() {
                     <tr key={row.salesTargetId}>
                       <td className="px-4 py-3 text-sm">{row.targetNo || '-'}</td>
                       <td className="px-4 py-3 text-sm"><div>{row.targetName}</div><div className="text-xs text-slate-500">{getCrmGenericStatusLabel(row.status)}</div></td>
-                      <td className="px-4 py-3 text-sm"><div>{dimensionLabelMap[row.dimensionType || ''] || row.dimensionType || '-'}</div><div className="text-xs text-slate-500">{row.ownerName || row.deptName || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm"><div>{periodTypeLabelMap[row.periodType || ''] || row.periodType || '-'}</div><div className="text-xs text-slate-500">{row.periodLabel || '-'}</div></td>
+                      <td className="px-4 py-3 text-sm"><div>{dimensionDict.getLabel(row.dimensionType || '') || row.dimensionType || '-'}</div><div className="text-xs text-slate-500">{row.ownerName || row.deptName || '-'}</div></td>
+                      <td className="px-4 py-3 text-sm"><div>{periodTypeDict.getLabel(row.periodType || '') || row.periodType || '-'}</div><div className="text-xs text-slate-500">{row.periodLabel || '-'}</div></td>
                       <td className="px-4 py-3 text-right text-sm tabular-nums">{formatCurrency(row.targetAmount)}</td>
                       <td className="px-4 py-3 text-right text-sm tabular-nums">{formatCurrency(row.achievedAmount)}</td>
                       <td className="px-4 py-3 text-right text-sm tabular-nums">{Number(row.completionRate || 0).toFixed(2)}%</td>
@@ -245,7 +237,7 @@ export default function CrmSalesTargetPage() {
             <Select value={form.dimensionType || 'OWNER'} onValueChange={(value) => setForm((prev) => ({ ...prev, dimensionType: value as CrmSalesTarget['dimensionType'] }))}>
               <SelectTrigger><SelectValue placeholder="选择维度" /></SelectTrigger>
               <SelectContent>
-                {dimensionOptions.map((item) => <SelectItem key={item} value={item}>{dimensionLabelMap[item]}</SelectItem>)}
+                {dimensionOptions.map((item) => <SelectItem key={item} value={item}>{dimensionDict.getLabel(item)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -254,7 +246,7 @@ export default function CrmSalesTargetPage() {
             <Select value={form.periodType || 'MONTH'} onValueChange={(value) => setForm((prev) => ({ ...prev, periodType: value as CrmSalesTarget['periodType'], targetPeriod: value === 'YEAR' ? undefined : prev.targetPeriod }))}>
               <SelectTrigger><SelectValue placeholder="选择周期" /></SelectTrigger>
               <SelectContent>
-                {periodTypeOptions.map((item) => <SelectItem key={item} value={item}>{periodTypeLabelMap[item]}</SelectItem>)}
+                {periodTypeOptions.map((item) => <SelectItem key={item} value={item}>{periodTypeDict.getLabel(item)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

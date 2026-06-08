@@ -20,15 +20,10 @@ import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePage
 import { CrmCustomer, CrmCustomerPoolLog, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-
-const actionLabelMap: Record<string, string> = {
-  RELEASE: '释放到公海',
-  CLAIM: '抢单',
-  ASSIGN: '指派',
-  AUTO_RELEASE: '自动回收',
-};
+import { useDict } from '@/hooks/useDict';
 
 export default function CrmCustomerPoolPage() {
+  const actionDict = useDict('crm_pool_action');
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<CrmCustomer[]>([]);
   const [pageNum, setPageNum] = useState(1);
@@ -257,7 +252,7 @@ export default function CrmCustomerPoolPage() {
               {logs.map((log) => (
                 <tr key={log.logId}>
                   <td className="px-2 py-2">{formatDateTimeDisplay(log.createTime) || '-'}</td>
-                  <td className="px-2 py-2">{actionLabelMap[log.actionType || ''] || log.actionType || '-'}</td>
+                  <td className="px-2 py-2">{actionDict.getLabel(log.actionType || '') || log.actionType || '-'}</td>
                   <td className="px-2 py-2">{log.fromOwnerName || '-'}</td>
                   <td className="px-2 py-2">{log.toOwnerName || '-'}</td>
                   <td className="px-2 py-2 text-xs text-slate-500">{log.reason || '-'}</td>
