@@ -1,6 +1,6 @@
 package com.cloudflow.oa.service.impl;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.domain.OaRiskAlert;
@@ -365,11 +365,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                                                              WorkplaceSummaryDTO.Stats stats,
                                                              Long userId) {
         try {
-            List<OaRiskAlert> risks = oaRiskAlertService.page(new Page<>(1, 8, false),
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OaRiskAlert>()
-                            .in(OaRiskAlert::getRiskStatus, OaContractConstants.RISK_STATUS_OPEN, OaContractConstants.RISK_STATUS_HANDLING)
-                            .orderByDesc(OaRiskAlert::getDetectedTime)
-                            .orderByDesc(OaRiskAlert::getId)).getRecords();
+            List<OaRiskAlert> risks = loadScopedOaRisks();
             List<WorkplaceSummaryDTO.RiskItem> oaRiskItems = risks.stream().map(this::toRiskItem).collect(Collectors.toList());
             List<WorkplaceSummaryDTO.RiskItem> crmRiskItems = loadCrmRisks();
             List<WorkplaceSummaryDTO.RiskItem> hrRiskItems = loadHrReminders(serviceHealth, userId);
@@ -386,6 +382,26 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             markService(serviceHealth, "oa.risk", false, "风险服务不可用");
             return new ArrayList<>();
         }
+    }
+
+    private List<OaRiskAlert> loadScopedOaRisks() {
+        List<OaRiskAlert> risks = new ArrayList<>();
+        risks.addAll(loadScopedOaRisksByStatus(OaContractConstants.RISK_STATUS_OPEN));
+        risks.addAll(loadScopedOaRisksByStatus(OaContractConstants.RISK_STATUS_HANDLING));
+        return risks.stream()
+                .sorted(Comparator.comparing(OaRiskAlert::getDetectedTime, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(OaRiskAlert::getId, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(8)
+                .collect(Collectors.toList());
+    }
+
+    private List<OaRiskAlert> loadScopedOaRisksByStatus(String status) {
+        OaRiskAlert riskQuery = new OaRiskAlert();
+        riskQuery.setRiskStatus(status);
+        PageQuery riskPageQuery = new PageQuery();
+        riskPageQuery.setPageNum(1);
+        riskPageQuery.setPageSize(8);
+        return oaRiskAlertService.queryPage(riskQuery, riskPageQuery).getRows();
     }
 
     private WorkplaceSummaryDTO.RiskItem toRiskItem(OaRiskAlert risk) {

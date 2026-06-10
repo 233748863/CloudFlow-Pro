@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -234,28 +235,29 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
         VehicleUsage currentUsage = usageMapper.selectCurrentUsageByVehicleId(vehicleId);
         if (currentUsage != null && currentUsage.getEndTime() != null
                 && LocalDateTime.now().isAfter(currentUsage.getEndTime().plusMinutes(30))) {
-            createOpenRisk(vehicleId, VehicleConstants.RISK_CODE_OVERDUE_RETURN, "车辆逾期未归还", OaContractConstants.RISK_LEVEL_HIGH);
+            createOpenRisk(vehicle, currentUsage, VehicleConstants.RISK_CODE_OVERDUE_RETURN, "车辆逾期未归还", OaContractConstants.RISK_LEVEL_HIGH);
         }
 
         if (vehicle.getInsuranceExpiry() != null && withinThreshold(vehicle.getInsuranceExpiry(), 30)) {
-            createOpenRisk(vehicleId, VehicleConstants.RISK_CODE_INSURANCE_EXPIRY, "车辆保险即将到期", OaContractConstants.RISK_LEVEL_MEDIUM);
+            createOpenRisk(vehicle, currentUsage, VehicleConstants.RISK_CODE_INSURANCE_EXPIRY, "车辆保险即将到期", OaContractConstants.RISK_LEVEL_MEDIUM);
         }
         if (vehicle.getAnnualInspectionExpiry() != null && withinThreshold(vehicle.getAnnualInspectionExpiry(), 30)) {
-            createOpenRisk(vehicleId, VehicleConstants.RISK_CODE_INSPECTION_EXPIRY, "车辆年检即将到期", OaContractConstants.RISK_LEVEL_MEDIUM);
+            createOpenRisk(vehicle, currentUsage, VehicleConstants.RISK_CODE_INSPECTION_EXPIRY, "车辆年检即将到期", OaContractConstants.RISK_LEVEL_MEDIUM);
         }
         if (vehicle.getNextMaintenanceMileage() != null && vehicle.getMileage() != null
                 && vehicle.getNextMaintenanceMileage().subtract(vehicle.getMileage()).compareTo(BigDecimal.valueOf(500)) <= 0) {
-            createOpenRisk(vehicleId, VehicleConstants.RISK_CODE_MAINTENANCE_DUE, "车辆接近保养里程", OaContractConstants.RISK_LEVEL_MEDIUM);
+            createOpenRisk(vehicle, currentUsage, VehicleConstants.RISK_CODE_MAINTENANCE_DUE, "车辆接近保养里程", OaContractConstants.RISK_LEVEL_MEDIUM);
         }
         long pendingViolations = violationMapper.selectCount(new LambdaQueryWrapper<VehicleViolation>()
                 .eq(VehicleViolation::getVehicleId, vehicleId)
                 .in(VehicleViolation::getStatus, "PENDING", "PROCESSING"));
         if (pendingViolations > 0) {
-            createOpenRisk(vehicleId, VehicleConstants.RISK_CODE_PENDING_VIOLATION, "车辆存在未处理违章", OaContractConstants.RISK_LEVEL_HIGH);
+            createOpenRisk(vehicle, currentUsage, VehicleConstants.RISK_CODE_PENDING_VIOLATION, "车辆存在未处理违章", OaContractConstants.RISK_LEVEL_HIGH);
         }
     }
 
-    private void createOpenRisk(Long vehicleId, String riskCode, String riskName, String riskLevel) {
+    private void createOpenRisk(SysVehicle vehicle, VehicleUsage currentUsage, String riskCode, String riskName, String riskLevel) {
+        Long vehicleId = vehicle.getVehicleId();
         Long exists = riskAlertMapper.selectCount(new LambdaQueryWrapper<OaRiskAlert>()
                 .eq(OaRiskAlert::getBusinessType, VehicleConstants.BUSINESS_TYPE_VEHICLE)
                 .eq(OaRiskAlert::getBusinessId, vehicleId)
@@ -273,10 +275,35 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
         risk.setRiskLevel(riskLevel);
         risk.setRiskSource(OaContractConstants.RISK_SOURCE_RULE);
         risk.setRiskStatus(OaContractConstants.RISK_STATUS_OPEN);
+        applyVehicleRiskOwner(risk, vehicle, currentUsage);
         risk.setDetectedTime(LocalDateTime.now());
         risk.setCreateTime(LocalDateTime.now());
         risk.setUpdateTime(LocalDateTime.now());
         riskAlertMapper.insert(risk);
+    }
+
+    private void applyVehicleRiskOwner(OaRiskAlert risk, SysVehicle vehicle, VehicleUsage currentUsage) {
+        if (currentUsage != null && currentUsage.getDriverId() != null) {
+            risk.setOwnerId(currentUsage.getDriverId());
+            risk.setOwnerName(resolveName(currentUsage.getDriverName(), currentUsage.getDriverId()));
+            return;
+        }
+        if (currentUsage != null && currentUsage.getApplicantId() != null) {
+            risk.setOwnerId(currentUsage.getApplicantId());
+            risk.setOwnerName(resolveName(currentUsage.getApplicantName(), currentUsage.getApplicantId()));
+            return;
+        }
+        if (vehicle != null && vehicle.getManagerUserId() != null) {
+            risk.setOwnerId(vehicle.getManagerUserId());
+            risk.setOwnerName(resolveName(null, vehicle.getManagerUserId()));
+        }
+    }
+
+    private String resolveName(String name, Long userId) {
+        if (StringUtils.hasText(name)) {
+            return name;
+        }
+        return userId == null ? null : "用户" + userId;
     }
 
     private void clearOpenRisk(Long vehicleId, String riskCode) {
