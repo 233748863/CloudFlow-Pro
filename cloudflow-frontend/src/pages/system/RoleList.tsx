@@ -781,7 +781,7 @@ export const RoleList = () => {
             </div>
           </div>
         }
-        table={(<TableSurfaceCard><>
+        table={(<TableSurfaceCard fill><>
             <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow>

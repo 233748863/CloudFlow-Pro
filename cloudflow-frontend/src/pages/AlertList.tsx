@@ -626,7 +626,7 @@ const AlertList: React.FC = () => {
             </div>
           </div>
         }
-        table={(<TableSurfaceCard><div className="divide-y divide-slate-200 dark:divide-slate-800">
+        table={(<TableSurfaceCard fill><div className="divide-y divide-slate-200 dark:divide-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
               <div className="text-sm text-slate-500 dark:text-slate-400">
                 <span className="font-medium text-slate-900 dark:text-slate-100">{currentTabLabel}</span>

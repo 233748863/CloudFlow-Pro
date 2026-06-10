@@ -144,7 +144,7 @@ export default function CrmAssignmentRulePage() {
           </div>
         )}
         table={(
-          <TableSurfaceCard>
+          <TableSurfaceCard fill>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1200px]">
                 <TableHeader>

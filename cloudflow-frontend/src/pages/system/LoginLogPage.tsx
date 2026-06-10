@@ -353,7 +353,7 @@ export const LoginLogPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(<TableSurfaceCard>
+        table={(<TableSurfaceCard fill>
           <>
             <div className="overflow-x-auto">
               <Table className="min-w-[1040px]">

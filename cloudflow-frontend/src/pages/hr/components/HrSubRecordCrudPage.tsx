@@ -184,7 +184,7 @@ export function HrSubRecordCrudPage<T extends { id: number }, F>({
   const colCount = columns.length + 1;
 
   const table = (
-    <TableSurfaceCard>
+    <TableSurfaceCard fill>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px]">
           <TableHeader className="sticky top-0 z-10">

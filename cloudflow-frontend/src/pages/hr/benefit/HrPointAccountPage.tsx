@@ -173,7 +173,7 @@ export const HrPointAccountPage: React.FC = () => {
         <TableSurfaceCard><div className="p-4"><div className="text-xs text-slate-500">冻结积分</div><div className="text-2xl font-semibold">{Number(account?.frozenPoints ?? 0).toLocaleString()}</div></div></TableSurfaceCard>
       </div>
 
-      <TableSurfaceCard>
+      <TableSurfaceCard fill>
         <div className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
           积分流水{account?.id ? ` · 账户 #${account.id}` : ''}
         </div>

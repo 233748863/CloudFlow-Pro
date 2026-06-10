@@ -770,7 +770,7 @@ const VehicleUsageList: React.FC = () => {
             ]}
           />
         }
-        table={(<TableSurfaceCard>{activeTab === 'usage' ? usageTable : expenseTable}</TableSurfaceCard>)}
+        table={(<TableSurfaceCard fill>{activeTab === 'usage' ? usageTable : expenseTable}</TableSurfaceCard>)}
         pagination={activeTab === 'usage'
           ? (usageTotal > 0 ? <Pagination total={usageTotal} page={usageQuery.pageNum} pageSize={usageQuery.pageSize} onPageChange={(page) => setUsageQuery((prev) => ({ ...prev, pageNum: page }))} onPageSizeChange={(pageSize) => setUsageQuery((prev) => ({ ...prev, pageNum: 1, pageSize }))} /> : undefined)
           : expenseTotal > 0 ? <Pagination total={expenseTotal} page={expenseQuery.pageNum} pageSize={expenseQuery.pageSize} onPageChange={(page) => setExpenseQuery((prev) => ({ ...prev, pageNum: page }))} onPageSizeChange={(pageSize) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, pageSize }))} /> : undefined}

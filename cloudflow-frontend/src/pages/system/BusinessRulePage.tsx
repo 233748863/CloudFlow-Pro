@@ -347,7 +347,7 @@ export const BusinessRulePage = () => {
           <TablePageLayout
             className="gap-3"
             filters={renderRuleFilters}
-            table={<TableSurfaceCard>{renderRuleTable}</TableSurfaceCard>}
+            table={<TableSurfaceCard fill>{renderRuleTable}</TableSurfaceCard>}
             pagination={total > 0 ? (
               <Pagination total={total} page={query.pageNum} pageSize={query.pageSize} onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />
             ) : null}
@@ -380,7 +380,7 @@ export const BusinessRulePage = () => {
               </div>
             )}
             table={(
-              <TableSurfaceCard>
+              <TableSurfaceCard fill>
                 <div className="overflow-x-auto">
                   <Table className="min-w-[1050px]">
                     <TableHeader>
@@ -457,7 +457,7 @@ export const BusinessRulePage = () => {
               </div>
             )}
             table={(
-              <TableSurfaceCard>
+              <TableSurfaceCard fill>
                 <div className="overflow-x-auto">
                   <Table className="min-w-[980px]">
                     <TableHeader>

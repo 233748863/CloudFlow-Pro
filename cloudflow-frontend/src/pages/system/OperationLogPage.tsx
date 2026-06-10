@@ -496,7 +496,7 @@ export const OperationLogPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(<TableSurfaceCard>
+        table={(<TableSurfaceCard fill>
           <div className="divide-y divide-slate-200 dark:divide-slate-800">
             <section className="p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">

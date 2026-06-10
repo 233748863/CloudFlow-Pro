@@ -353,7 +353,7 @@ export const ArchivedWorkflows: React.FC = () => {
             </div>
           </div>
         )}
-        table={(<TableSurfaceCard>
+        table={(<TableSurfaceCard fill>
           <>
             {selectedIds.length > 0 ? (
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2 dark:border-slate-800">

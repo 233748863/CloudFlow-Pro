@@ -9,14 +9,19 @@ interface TablePageLayoutProps {
   className?: string;
 }
 
+interface TableSurfaceCardProps extends React.HTMLAttributes<HTMLDivElement> {
+  fill?: boolean;
+}
+
 export const TableSurfaceCard = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className = '', ...props }, ref) => (
+  TableSurfaceCardProps
+>(({ className = '', fill = false, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
       'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
+      fill && 'flex min-h-[40rem] flex-col',
       className,
     )}
     {...props}

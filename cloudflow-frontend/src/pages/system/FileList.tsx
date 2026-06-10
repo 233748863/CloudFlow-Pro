@@ -433,7 +433,7 @@ export const FileList = () => {
             </div>
           </div>
         }
-        table={(<TableSurfaceCard><>
+        table={(<TableSurfaceCard fill><>
             <Table className="min-w-[1040px]">
               <TableHeader>
                 <TableRow>

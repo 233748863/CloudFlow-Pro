@@ -525,7 +525,7 @@ export const TenantList: React.FC = () => {
             </div>
           </div>
         }
-        table={(<TableSurfaceCard><>
+        table={(<TableSurfaceCard fill><>
             <Table className="min-w-[1180px]">
               <TableHeader>
                 <TableRow>

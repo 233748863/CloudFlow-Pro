@@ -664,7 +664,7 @@ export const WorkflowImport: React.FC = () => {
             </div>
           </div>
         )}
-        table={(<TableSurfaceCard>
+        table={(<TableSurfaceCard fill>
           <>
             <div className="border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
               <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">

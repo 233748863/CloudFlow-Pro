@@ -284,7 +284,7 @@ export const UserBlacklistPage = () => {
           </div>
         )}
         table={(
-          <TableSurfaceCard>
+          <TableSurfaceCard fill>
             <>
               <div className="overflow-x-auto">
                 <Table className="min-w-[960px]">

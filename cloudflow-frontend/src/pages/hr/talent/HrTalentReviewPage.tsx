@@ -178,7 +178,7 @@ export const HrTalentReviewPage: React.FC = () => {
   );
 
   const table = (
-    <TableSurfaceCard>
+    <TableSurfaceCard fill>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1040px]">
           <TableHeader className="sticky top-0 z-10">

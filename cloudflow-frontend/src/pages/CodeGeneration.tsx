@@ -190,7 +190,7 @@ export const CodeGeneration = () => {
           </div>
         </div>
       }
-      table={(<TableSurfaceCard>{loading ? (
+      table={(<TableSurfaceCard fill>{loading ? (
           <InlineState
             title="正在加载已发布流程"
             description="系统正在读取流程定义并准备代码预览。"

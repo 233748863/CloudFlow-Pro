@@ -293,8 +293,8 @@ export default function InvoiceManagementPage() {
             </div>
           </div>
         )}
-        table={(<TableSurfaceCard>
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+        table={(<TableSurfaceCard fill>
+          <div className="overflow-x-auto">
             <table className="w-full min-w-[1360px]">
               <TableHeader>
                 <tr>

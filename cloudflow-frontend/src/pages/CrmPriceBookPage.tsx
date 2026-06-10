@@ -131,7 +131,7 @@ export default function CrmPriceBookPage() {
           </div>
         )}
         table={(
-          <TableSurfaceCard>
+          <TableSurfaceCard fill>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1080px]">
                 <TableHeader>

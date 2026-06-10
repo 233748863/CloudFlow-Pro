@@ -553,7 +553,7 @@ export default function ProjectManagementPage() {
             </Button>
           </div>
         )}
-        table={(<TableSurfaceCard>
+        table={(<TableSurfaceCard fill>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1180px]">
               <TableHeader>

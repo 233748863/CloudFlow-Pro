@@ -115,7 +115,7 @@ export const HrEssSalarySlipPage: React.FC = () => {
   );
 
   const table = (
-    <TableSurfaceCard>
+    <TableSurfaceCard fill>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[840px]">
           <TableHeader className="sticky top-0 z-10">

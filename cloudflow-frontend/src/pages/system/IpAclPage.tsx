@@ -366,7 +366,7 @@ export const IpAclPage = () => {
           </div>
         )}
         table={(
-          <TableSurfaceCard>
+          <TableSurfaceCard fill>
             <>
               <div className="overflow-x-auto">
                 <Table className="min-w-[1280px]">

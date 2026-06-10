@@ -614,7 +614,7 @@ export const UserList = () => {
             </div>
           </div>
         }
-        table={(<TableSurfaceCard><>
+        table={(<TableSurfaceCard fill><>
             <Table className="min-w-[1080px]">
               <TableHeader>
                 <TableRow>
