@@ -27,6 +27,11 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id: string) {
             const normalizedId = id.replace(/\\/g, '/')
+            if (normalizedId.includes('/src/pages/crm/')) return 'crm'
+            if (normalizedId.includes('/src/pages/hr/')) return 'hr'
+            if (normalizedId.includes('/src/pages/office/') || normalizedId.includes('/src/pages/admin/')) return 'oa'
+            if (normalizedId.includes('/src/pages/system/')) return 'system'
+            if (normalizedId.includes('/src/pages/workflow/')) return 'workflow'
             if (!normalizedId.includes('node_modules')) return undefined
             if (
               normalizedId.includes('/vue/') ||

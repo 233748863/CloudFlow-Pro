@@ -1,135 +1,106 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import MainLayout from '@/layouts/MainLayout.vue'
-import MobileLayout from '@/layouts/MobileLayout.vue'
-import AuthPage from '@/pages/AuthPage.vue'
-import DashboardPage from '@/pages/DashboardPage.vue'
-import MobileDashboardPage from '@/pages/MobileDashboardPage.vue'
-import MobileMessagesPage from '@/pages/MobileMessagesPage.vue'
-import MobileProfilePage from '@/pages/MobileProfilePage.vue'
-import MobileReimbursementPage from '@/pages/MobileReimbursementPage.vue'
-import MobileVehicleBookingPage from '@/pages/MobileVehicleBookingPage.vue'
-import ProfilePage from '@/pages/ProfilePage.vue'
-import SchedulePage from '@/pages/SchedulePage.vue'
-import PlaceholderPage from '@/pages/PlaceholderPage.vue'
-import AdminBorrowManagementPage from '@/pages/admin/AdminBorrowManagementPage.vue'
-import AdminLedgerPage from '@/pages/admin/AdminLedgerPage.vue'
-import AttendanceCheckIn from '@/pages/admin/attendance/AttendanceCheckIn.vue'
-import AttendanceRule from '@/pages/admin/attendance/AttendanceRule.vue'
-import AttendanceSupplement from '@/pages/admin/attendance/AttendanceSupplement.vue'
-import OfficeAnnouncementPage from '@/pages/office/OfficeAnnouncementPage.vue'
-import OfficeContactPage from '@/pages/office/OfficeContactPage.vue'
-import OfficeKnowledgePage from '@/pages/office/OfficeKnowledgePage.vue'
-import HrAttendanceStatisticsPage from '@/pages/hr/HrAttendanceStatisticsPage.vue'
-import HrApplicationPage from '@/pages/hr/HrApplicationPage.vue'
-import HrDashboardPage from '@/pages/hr/HrDashboardPage.vue'
-import HrEmployeePage from '@/pages/hr/HrEmployeePage.vue'
-import HrHeadcountPage from '@/pages/hr/HrHeadcountPage.vue'
-import HrLifecyclePage from '@/pages/hr/HrLifecyclePage.vue'
-import HrLeaveQuotaPage from '@/pages/hr/HrLeaveQuotaPage.vue'
-import HrOfferPage from '@/pages/hr/HrOfferPage.vue'
-import HrOrganizationPage from '@/pages/hr/HrOrganizationPage.vue'
-import HrPerformancePage from '@/pages/hr/HrPerformancePage.vue'
-import HrRecruitmentPage from '@/pages/hr/HrRecruitmentPage.vue'
-import HrSalaryPage from '@/pages/hr/HrSalaryPage.vue'
-import HrSchedulePage from '@/pages/hr/HrSchedulePage.vue'
-import SystemAuditLogPage from '@/pages/system/SystemAuditLogPage.vue'
-import SystemCachePage from '@/pages/system/SystemCachePage.vue'
-import SystemCodeGenerationPage from '@/pages/system/SystemCodeGenerationPage.vue'
-import SystemConfigPage from '@/pages/system/SystemConfigPage.vue'
-import SystemDictPage from '@/pages/system/SystemDictPage.vue'
-import SystemFilePage from '@/pages/system/SystemFilePage.vue'
-import SystemLogPage from '@/pages/system/SystemLogPage.vue'
-import SystemMenuPage from '@/pages/system/SystemMenuPage.vue'
-import SystemOnlineUserPage from '@/pages/system/SystemOnlineUserPage.vue'
-import SystemOrgStructurePage from '@/pages/system/SystemOrgStructurePage.vue'
-import SystemPostPage from '@/pages/system/SystemPostPage.vue'
-import SystemRolePage from '@/pages/system/SystemRolePage.vue'
-import SystemTenantPage from '@/pages/system/SystemTenantPage.vue'
-import SystemUserPage from '@/pages/system/SystemUserPage.vue'
-import ProcessCenterPage from '@/pages/workflow/ProcessCenterPage.vue'
-import TemplateManagementPage from '@/pages/workflow/TemplateManagementPage.vue'
-import WorkflowAdminPage from '@/pages/workflow/WorkflowAdminPage.vue'
-import WorkflowCreatePage from '@/pages/workflow/WorkflowCreatePage.vue'
-import WorkflowDesignPage from '@/pages/workflow/WorkflowDesignPage.vue'
-import WorkflowVersionHistoryPage from '@/pages/workflow/WorkflowVersionHistoryPage.vue'
-import NotFoundPage from '@/pages/NotFoundPage.vue'
-import ServiceUnavailablePage from '@/pages/ServiceUnavailablePage.vue'
-import ForbiddenPage from '@/pages/ForbiddenPage.vue'
-import ServerErrorPage from '@/pages/ServerErrorPage.vue'
-import ChunkLoadErrorPage from '@/pages/ChunkLoadErrorPage.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNavigationStore } from '@/stores/navigation'
 import { desktopRouteCatalog, mobileRouteCatalog, type CloudFlowRouteMeta } from './routeCatalog'
-import { workflowPagePaths } from '@/pages/workflow/workflowPageConfigs'
 import { isMobileDevice } from '@/utils/device'
 import { resolveDocumentTitle } from '@/router/title'
 import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 
+const routeComponents = {
+  mainLayout: () => import('@/layouts/MainLayout.vue'),
+  mobileLayout: () => import('@/layouts/MobileLayout.vue'),
+  auth: () => import('@/pages/AuthPage.vue'),
+  serviceUnavailable: () => import('@/pages/ServiceUnavailablePage.vue'),
+  forbidden: () => import('@/pages/ForbiddenPage.vue'),
+  serverError: () => import('@/pages/ServerErrorPage.vue'),
+  chunkLoadError: () => import('@/pages/ChunkLoadErrorPage.vue'),
+  notFound: () => import('@/pages/NotFoundPage.vue'),
+  dashboard: () => import('@/pages/DashboardPage.vue'),
+  mobileDashboard: () => import('@/pages/MobileDashboardPage.vue'),
+  mobileVehicleBooking: () => import('@/pages/MobileVehicleBookingPage.vue'),
+  mobileProfile: () => import('@/pages/MobileProfilePage.vue'),
+  mobileMessages: () => import('@/pages/MobileMessagesPage.vue'),
+  mobileReimbursement: () => import('@/pages/MobileReimbursementPage.vue'),
+  mobileTasks: () => import('@/pages/workflow/ProcessCenterPage.vue'),
+  mobileSchedule: () => import('@/pages/SchedulePage.vue'),
+  mobileMeetingRoom: () => import('@/pages/admin/AdminLedgerPage.vue'),
+  mobileLeaveApplication: () => import('@/pages/hr/HrApplicationPage.vue'),
+  mobileWorkflowMonitor: () => import('@/pages/workflow/WorkflowAdminPage.vue'),
+  profile: () => import('@/pages/ProfilePage.vue'),
+  schedule: () => import('@/pages/SchedulePage.vue'),
+  processCenter: () => import('@/pages/workflow/ProcessCenterPage.vue'),
+  workflowCreate: () => import('@/pages/workflow/WorkflowCreatePage.vue'),
+  workflowDesign: () => import('@/pages/workflow/WorkflowDesignPage.vue'),
+  workflowAdmin: () => import('@/pages/workflow/WorkflowAdminPage.vue'),
+  workflowVersionHistory: () => import('@/pages/workflow/WorkflowVersionHistoryPage.vue'),
+  templateManagement: () => import('@/pages/workflow/TemplateManagementPage.vue'),
+  officeAnnouncement: () => import('@/pages/office/OfficeAnnouncementPage.vue'),
+  officeContact: () => import('@/pages/office/OfficeContactPage.vue'),
+  officeKnowledge: () => import('@/pages/office/OfficeKnowledgePage.vue'),
+  oaBusiness: () => import('@/pages/office/OaBusinessPage.vue'),
+  crmModule: () => import('@/pages/crm/CrmModulePage.vue'),
+  crmCustomerWorkspace: () => import('@/pages/crm/CrmCustomerWorkspacePage.vue'),
+  attendanceCheckIn: () => import('@/pages/admin/attendance/AttendanceCheckIn.vue'),
+  attendanceRule: () => import('@/pages/admin/attendance/AttendanceRule.vue'),
+  attendanceSupplement: () => import('@/pages/admin/attendance/AttendanceSupplement.vue'),
+  adminBorrowManagement: () => import('@/pages/admin/AdminBorrowManagementPage.vue'),
+  adminLedger: () => import('@/pages/admin/AdminLedgerPage.vue'),
+  hrAdvanced: () => import('@/pages/hr/HrAdvancedPage.vue'),
+  hrAttendanceStatistics: () => import('@/pages/hr/HrAttendanceStatisticsPage.vue'),
+  hrApplication: () => import('@/pages/hr/HrApplicationPage.vue'),
+  hrDashboard: () => import('@/pages/hr/HrDashboardPage.vue'),
+  hrEmployee: () => import('@/pages/hr/HrEmployeePage.vue'),
+  hrEss: () => import('@/pages/hr/HrEssPage.vue'),
+  hrBenefit: () => import('@/pages/hr/HrBenefitPage.vue'),
+  hrHeadcount: () => import('@/pages/hr/HrHeadcountPage.vue'),
+  hrLaborDispute: () => import('@/pages/hr/HrLaborDisputePage.vue'),
+  hrLifecycle: () => import('@/pages/hr/HrLifecyclePage.vue'),
+  hrLeaveQuota: () => import('@/pages/hr/HrLeaveQuotaPage.vue'),
+  hrOffer: () => import('@/pages/hr/HrOfferPage.vue'),
+  hrOrganization: () => import('@/pages/hr/HrOrganizationPage.vue'),
+  hrPerformance: () => import('@/pages/hr/HrPerformancePage.vue'),
+  hrRecruitment: () => import('@/pages/hr/HrRecruitmentPage.vue'),
+  hrSalary: () => import('@/pages/hr/HrSalaryPage.vue'),
+  hrSchedule: () => import('@/pages/hr/HrSchedulePage.vue'),
+  hrTalent: () => import('@/pages/hr/HrTalentPage.vue'),
+  hrTraining: () => import('@/pages/hr/HrTrainingPage.vue'),
+  hrWorkInjury: () => import('@/pages/hr/HrWorkInjuryPage.vue'),
+  systemSecurity: () => import('@/pages/system/SystemSecurityPage.vue'),
+  systemAuditLog: () => import('@/pages/system/SystemAuditLogPage.vue'),
+  systemCache: () => import('@/pages/system/SystemCachePage.vue'),
+  systemCodeGeneration: () => import('@/pages/system/SystemCodeGenerationPage.vue'),
+  systemConfig: () => import('@/pages/system/SystemConfigPage.vue'),
+  systemDict: () => import('@/pages/system/SystemDictPage.vue'),
+  systemFile: () => import('@/pages/system/SystemFilePage.vue'),
+  systemLog: () => import('@/pages/system/SystemLogPage.vue'),
+  systemMenu: () => import('@/pages/system/SystemMenuPage.vue'),
+  systemOnlineUser: () => import('@/pages/system/SystemOnlineUserPage.vue'),
+  systemOrgStructure: () => import('@/pages/system/SystemOrgStructurePage.vue'),
+  systemPost: () => import('@/pages/system/SystemPostPage.vue'),
+  systemRole: () => import('@/pages/system/SystemRolePage.vue'),
+  systemTenant: () => import('@/pages/system/SystemTenantPage.vue'),
+  systemUser: () => import('@/pages/system/SystemUserPage.vue')
+} as const
+
+type RouteComponentKey = keyof typeof routeComponents
+
 const resolveComponent = (meta: CloudFlowRouteMeta) => {
-  if (meta.path === '/' || meta.path === '/dashboard') {
-    return meta.mobile ? MobileDashboardPage : DashboardPage
-  }
-  if (meta.mobile && meta.path === '/vehicle/booking') return MobileVehicleBookingPage
-  if (meta.mobile && meta.path === '/profile') return MobileProfilePage
-  if (meta.mobile && meta.path === '/messages') return MobileMessagesPage
-  if (meta.mobile && meta.path === '/reimbursement/request') return MobileReimbursementPage
-  if (meta.path === '/profile') return ProfilePage
-  if (meta.path === '/schedule') return SchedulePage
-  if (['/workplace', '/my-apps', '/tasks', '/my-copies', '/templates'].includes(meta.path)) return ProcessCenterPage
-  if (meta.path === '/workflow/create') return WorkflowCreatePage
-  if (['/workflow', '/workflow/design'].includes(meta.path)) return WorkflowDesignPage
-  if (meta.path === '/workflow/versions/:workflowId') return WorkflowVersionHistoryPage
-  if (meta.path === '/templates/manage') return TemplateManagementPage
-  if (['/announcement', '/office/announcement'].includes(meta.path)) return OfficeAnnouncementPage
-  if (meta.path === '/office/contact') return OfficeContactPage
-  if (meta.path === '/office/knowledge') return OfficeKnowledgePage
-  if (meta.path === '/hr/attendance/checkin') return AttendanceCheckIn
-  if (meta.path === '/hr/attendance/rule') return AttendanceRule
-  if (meta.path === '/hr/attendance/statistics') return HrAttendanceStatisticsPage
-  if (meta.path === '/hr/attendance/supplement') return AttendanceSupplement
-  if (meta.path === '/hr/dashboard') return HrDashboardPage
-  if (meta.path === '/hr/employees') return HrEmployeePage
-  if (meta.path === '/hr/organization') return HrOrganizationPage
-  if (meta.path.startsWith('/hr/salary')) return HrSalaryPage
-  if (meta.path === '/hr/recruitment') return HrRecruitmentPage
-  if (meta.path === '/hr/headcount') return HrHeadcountPage
-  if (meta.path === '/hr/schedule') return HrSchedulePage
-  if (meta.path === '/hr/offer') return HrOfferPage
-  if (['/hr/onboarding', '/hr/probation', '/hr/transfer', '/hr/resignation'].includes(meta.path)) return HrLifecyclePage
-  if (meta.path === '/hr/performance') return HrPerformancePage
-  if (meta.path === '/hr/leave/quota') return HrLeaveQuotaPage
-  if (['/hr/leave/application', '/hr/overtime/applications'].includes(meta.path)) return HrApplicationPage
-  if (meta.path === '/admin/borrow-management') return AdminBorrowManagementPage
-  if (
-    meta.path.startsWith('/admin/') ||
-    [
-      '/meeting-room',
-      '/office/business-trip',
-      '/expense/claim',
-      '/payment/request',
-      '/office/purchase-request',
-      '/office/seal-application',
-      '/office/license-borrow',
-      '/office/contracts'
-    ].includes(meta.path)
-  ) return AdminLedgerPage
-  if (workflowPagePaths.includes(meta.path)) return WorkflowAdminPage
-  if (meta.path === '/users') return SystemOrgStructurePage
-  if (meta.path === '/code') return SystemCodeGenerationPage
-  if (meta.path === '/system/config') return SystemConfigPage
-  if (meta.path === '/system/cache') return SystemCachePage
-  if (meta.path === '/system/dict') return SystemDictPage
-  if (meta.path === '/system/audit-log') return SystemAuditLogPage
-  if (['/system/log', '/system/login-log'].includes(meta.path)) return SystemLogPage
-  if (meta.path === '/system/online') return SystemOnlineUserPage
-  if (meta.path === '/system/users') return SystemUserPage
-  if (meta.path === '/system/roles') return SystemRolePage
-  if (meta.path === '/system/menus') return SystemMenuPage
-  if (meta.path === '/system/files') return SystemFilePage
-  if (meta.path === '/system/tenant') return SystemTenantPage
-  if (meta.path === '/system/post') return SystemPostPage
-  return PlaceholderPage
+  const key = meta.componentKey as RouteComponentKey | undefined
+  return key ? routeComponents[key] || routeComponents.notFound : routeComponents.notFound
 }
+
+const buildRouteMeta = (item: CloudFlowRouteMeta) => ({
+  path: item.path,
+  title: item.title,
+  group: item.group,
+  source: item.source,
+  requiresAuth: true,
+  permissions: item.permissions || [],
+  roles: item.roles || [],
+  redirect: item.redirect,
+  mobile: item.mobile,
+  componentKey: item.componentKey
+})
 
 const buildChildRoutes = (catalog: CloudFlowRouteMeta[]): RouteRecordRaw[] =>
   catalog.map((item) => {
@@ -137,26 +108,14 @@ const buildChildRoutes = (catalog: CloudFlowRouteMeta[]): RouteRecordRaw[] =>
       return {
         path: item.path,
         redirect: item.redirect,
-        meta: {
-          title: item.title,
-          source: item.source,
-          requiresAuth: true,
-          permissions: item.permissions || [],
-          roles: item.roles || []
-        }
+        meta: buildRouteMeta(item)
       }
     }
 
     return {
       path: item.path,
       component: resolveComponent(item),
-      meta: {
-        title: item.title,
-        source: item.source,
-        requiresAuth: true,
-        permissions: item.permissions || [],
-        roles: item.roles || []
-      }
+      meta: buildRouteMeta(item)
     }
   })
 
@@ -165,7 +124,7 @@ const usingMobileRoutes = isMobileDevice()
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
-    component: AuthPage,
+    component: routeComponents.auth,
     meta: {
       title: '登录',
       requiresAuth: false
@@ -173,7 +132,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/register',
-    component: AuthPage,
+    component: routeComponents.auth,
     meta: {
       title: '注册',
       requiresAuth: false
@@ -181,7 +140,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/503',
-    component: ServiceUnavailablePage,
+    component: routeComponents.serviceUnavailable,
     meta: {
       title: '服务不可用',
       requiresAuth: false
@@ -189,7 +148,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/403',
-    component: ForbiddenPage,
+    component: routeComponents.forbidden,
     meta: {
       title: '权限不足',
       requiresAuth: false
@@ -197,7 +156,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/500',
-    component: ServerErrorPage,
+    component: routeComponents.serverError,
     meta: {
       title: '页面运行异常',
       requiresAuth: false
@@ -205,7 +164,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/load-error',
-    component: ChunkLoadErrorPage,
+    component: routeComponents.chunkLoadError,
     meta: {
       title: '资源加载失败',
       requiresAuth: false
@@ -213,7 +172,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    component: usingMobileRoutes ? MobileLayout : MainLayout,
+    component: usingMobileRoutes ? routeComponents.mobileLayout : routeComponents.mainLayout,
     meta: {
       requiresAuth: true
     },
@@ -221,7 +180,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/:pathMatch(.*)*',
-    component: NotFoundPage,
+    component: routeComponents.notFound,
     meta: {
       title: '页面不存在',
       requiresAuth: false

@@ -444,7 +444,7 @@ export const removeWorkflowGraphNode = (
       })
   }
 
-  let edges = graph.edges.filter((edge) => !idsToRemove.has(edge.source) && !idsToRemove.has(edge.target))
+  const edges = graph.edges.filter((edge) => !idsToRemove.has(edge.source) && !idsToRemove.has(edge.target))
 
   if (keepTargetId) {
     const buildEdgeKey = (edge: WorkflowGraphEdge) =>

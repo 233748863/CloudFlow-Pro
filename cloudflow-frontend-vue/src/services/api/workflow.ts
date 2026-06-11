@@ -433,3 +433,37 @@ export const escalateTimeoutAlert = (alertId: string | number) =>
 
 export const resolveAnomalyAlert = (alertId: string | number, resolver: string, solution: string) =>
   request.put<void>(`/workflow/alert/anomaly/${alertId}/resolve`, undefined, { params: { resolver, solution } })
+
+// 新增 API：任务管理（补充）
+export const listMyTasks = (params: WorkflowRecord) =>
+  request.get<WorkflowPageResult<WorkflowRecord>>('/workflow/task/my-tasks', { params: buildPageQuery(params) })
+
+export const listMyApplications = (params: WorkflowRecord) =>
+  request.get<WorkflowPageResult<WorkflowRecord>>('/workflow/task/my-applications', { params: buildPageQuery(params) })
+
+export const approveTask = (taskId: string, data: WorkflowRecord) =>
+  request.post(`/workflow/task/${taskId}/approve`, data)
+
+export const rejectTask = (taskId: string, data: WorkflowRecord) =>
+  request.post(`/workflow/task/${taskId}/reject`, data)
+
+// 新增 API：流程监控（补充）
+export const listProcessInstances = (params: WorkflowRecord) =>
+  request.get<WorkflowPageResult<WorkflowRecord>>('/workflow/instance/list', { params: buildPageQuery(params) })
+
+export const terminateProcess = (instanceId: string) =>
+  request.post(`/workflow/instance/${instanceId}/terminate`)
+
+export const reassignTask = (taskId: string, data: WorkflowRecord) =>
+  request.post(`/workflow/task/${taskId}/reassign`, data)
+
+// 新增 API：预警管理（补充）
+export const listAlerts = (params: WorkflowRecord) =>
+  request.get<WorkflowPageResult<WorkflowRecord>>('/workflow/alert/list', { params: buildPageQuery(params) })
+
+export const dismissAlert = (alertId: string) =>
+  request.post(`/workflow/alert/${alertId}/dismiss`)
+
+// 新增 API：性能统计
+// 抄送消息（使用已有的 getMyCopyList）
+export const listCopyMessages = getMyCopyList

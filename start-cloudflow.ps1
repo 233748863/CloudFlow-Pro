@@ -461,35 +461,45 @@ function Get-StartupFailureHint {
 function Stop-ProcessTree {
     param([int]$RootProcessId)
 
-    $processIds = @()
-    $queue = @($RootProcessId)
+    $allTerminated = @()
+    $maxIterations = 5
+    $iteration = 0
 
-    while ($queue.Count -gt 0) {
-        $current = $queue[0]
-        if ($queue.Count -eq 1) {
-            $queue = @()
-        } else {
-            $queue = $queue[1..($queue.Count - 1)]
-        }
+    while ($iteration -lt $maxIterations) {
+        $processIds = @()
+        $queue = @($RootProcessId)
 
-        if ($processIds -notcontains $current) {
-            $processIds += $current
-        }
+        while ($queue.Count -gt 0) {
+            $current = $queue[0]
+            $queue = if ($queue.Count -eq 1) { @() } else { $queue[1..($queue.Count - 1)] }
 
-        $children = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-            Where-Object { $_.ParentProcessId -eq $current } |
-            Select-Object -ExpandProperty ProcessId
+            if ($processIds -notcontains $current -and $allTerminated -notcontains $current) {
+                $processIds += $current
+            }
 
-        foreach ($child in $children) {
-            if ($processIds -notcontains [int]$child) {
-                $queue += [int]$child
+            $children = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+                Where-Object { $_.ParentProcessId -eq $current } |
+                Select-Object -ExpandProperty ProcessId
+
+            foreach ($child in $children) {
+                if ($processIds -notcontains [int]$child -and $allTerminated -notcontains [int]$child) {
+                    $queue += [int]$child
+                }
             }
         }
-    }
 
-    $processIds |
-        Sort-Object -Descending -Unique |
-        ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+        if ($processIds.Count -eq 0) {
+            break
+        }
+
+        $processIds | Sort-Object -Descending -Unique | ForEach-Object {
+            Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue
+            $allTerminated += $_
+        }
+
+        Start-Sleep -Milliseconds 200
+        $iteration++
+    }
 }
 
 function Get-ServicePorts {
@@ -518,40 +528,49 @@ function Stop-BackendModuleProcesses {
         ("{0}\target\" -f $Service.Module)
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
-    $matchedProcesses = @()
-    foreach ($process in Get-CimInstance Win32_Process -ErrorAction SilentlyContinue) {
-        if ($null -eq $process -or [string]::IsNullOrWhiteSpace($process.CommandLine)) {
-            continue
-        }
-
-        $matched = $false
-        foreach ($pattern in $patterns) {
-            if ($process.CommandLine -like "*$pattern*") {
-                $matched = $true
-                break
+    $matchedProcesses = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+            if ($null -eq $_ -or [string]::IsNullOrWhiteSpace($_.CommandLine)) {
+                return $false
             }
+            foreach ($pattern in $patterns) {
+                if ($_.CommandLine -like "*$pattern*") {
+                    return $true
+                }
+            }
+            return $false
         }
 
-        if ($matched) {
-            $matchedProcesses += $process
-        }
+    $matchedProcesses | Sort-Object ProcessId -Unique | ForEach-Object {
+        Write-Host ("{0,-10} 清理残留进程 PID {1}" -f $Service.Name, $_.ProcessId)
+        Stop-ProcessTree -RootProcessId $_.ProcessId
     }
+}
 
-    $matchedProcessIds = @(
-        $matchedProcesses |
-            Select-Object -ExpandProperty ProcessId -Unique |
-            ForEach-Object { [int]$_ }
+function Stop-FrontendProcesses {
+    $patterns = @(
+        "cloudflow-frontend",
+        "vite",
+        "cloudflow-frontend-vue"
     )
 
-    $rootProcesses = $matchedProcesses |
-        Where-Object { $matchedProcessIds -notcontains [int]$_.ParentProcessId } |
-        Sort-Object ProcessId -Unique
-
-    $rootProcesses |
-        ForEach-Object {
-            Write-Host ("{0,-10} 清理残留进程 PID {1}" -f $Service.Name, $_.ProcessId)
-            Stop-ProcessTree -RootProcessId $_.ProcessId
+    $matchedProcesses = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+            if ($null -eq $_ -or [string]::IsNullOrWhiteSpace($_.CommandLine)) {
+                return $false
+            }
+            foreach ($pattern in $patterns) {
+                if ($_.CommandLine -like "*$pattern*") {
+                    return $true
+                }
+            }
+            return $false
         }
+
+    $matchedProcesses | Sort-Object ProcessId -Unique | ForEach-Object {
+        Write-Host ("{0,-10} 清理残留进程 PID {1}" -f "frontend", $_.ProcessId)
+        Stop-ProcessTree -RootProcessId $_.ProcessId
+    }
 }
 
 function Stop-PortListeners {
@@ -586,6 +605,45 @@ function Stop-PortListeners {
             Stop-ProcessTree -RootProcessId $process.ProcessId
         }
     }
+}
+
+function Wait-PortsReleased {
+    param(
+        [object]$Service,
+        [int]$MaxWaitSeconds = 10
+    )
+
+    $ports = Get-ServicePorts -Service $Service
+    $deadline = (Get-Date).AddSeconds($MaxWaitSeconds)
+
+    while ((Get-Date) -lt $deadline) {
+        $occupied = @()
+        foreach ($port in $ports) {
+            if ($null -ne (Get-ListenerProcess -Port $port)) {
+                $occupied += $port
+            }
+        }
+
+        if ($occupied.Count -eq 0) {
+            return $true
+        }
+
+        Start-Sleep -Milliseconds 500
+    }
+
+    $stillOccupied = @()
+    foreach ($port in $ports) {
+        if ($null -ne (Get-ListenerProcess -Port $port)) {
+            $stillOccupied += $port
+        }
+    }
+
+    if ($stillOccupied.Count -gt 0) {
+        Write-Host ("{0,-10} 警告：端口 {1} 仍被占用" -f $Service.Name, ($stillOccupied -join ","))
+        return $false
+    }
+
+    return $true
 }
 
 function Install-BackendDependencies {
@@ -915,9 +973,12 @@ $pending = @()
 foreach ($service in $BackendServices) {
     Stop-BackendModuleProcesses -Service $service
     Stop-PortListeners -Service $service
+    Wait-PortsReleased -Service $service -MaxWaitSeconds 10
 }
+
+Stop-FrontendProcesses
 Stop-PortListeners -Service $FrontendService
-Start-Sleep -Seconds 2
+Wait-PortsReleased -Service $FrontendService -MaxWaitSeconds 10
 
 $nacosSync = Start-NacosConfigurationSync
 $startedFrontend = Start-FrontendService -Service $FrontendService

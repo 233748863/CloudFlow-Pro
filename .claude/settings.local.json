@@ -20,7 +20,16 @@
       "Bash(rtk wc *)",
       "Bash(mvn -pl cloudflow-service-oa -am compile -q)",
       "Bash(mvn -pl cloudflow-service-oa -am compile)",
-      "Bash(rtk tsc *)"
+      "Bash(rtk tsc *)",
+      "Bash(echo \"===EXIT $?===\")",
+      "Bash(rtk find *)",
+      "Bash(sed -n '1,40p' cloudflow-frontend/src/services/api/hr/talent-pool.ts)",
+      "Bash(rtk npm *)",
+      "Bash(awk 'NR>=2436 && /sys_dict_data/ {last=NR} END{print \"last dict_data insert near:\", last}' cloudflow-backend/DB/06.cloudflow-business-seed.sql)",
+      "Bash(sed -n '88,120p' cloudflow-backend/DB/06.cloudflow-business-seed.sql)",
+      "Bash(sed -n '480,490p' src/pages/OvertimeApplicationPage.tsx)",
+      "Bash(sed -n '663,692p' src/pages/OvertimeApplicationPage.tsx)",
+      "Bash(grep -vE \"^\\(useDict|dictType\\)$\")"
     ],
     "defaultMode": "auto"
   },
