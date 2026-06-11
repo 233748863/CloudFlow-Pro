@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { DollarSign } from 'lucide-vue-next'
 import { Panel } from '@/components/common'
-
-const records = ref([])
 </script>
 
 <template>
