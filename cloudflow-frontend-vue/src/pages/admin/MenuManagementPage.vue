@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { Settings } from 'lucide-vue-next'
 import { Panel, Button } from '@/components/common'
 
