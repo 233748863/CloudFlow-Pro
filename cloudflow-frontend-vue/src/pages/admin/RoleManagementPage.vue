@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { Settings } from 'lucide-vue-next'
 import { Panel, Button } from '@/components/common'
 
-const items = ref([])
 </script>
 
 <template>
