@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Calendar, MapPin } from 'lucide-vue-next'
+import { Calendar } from 'lucide-vue-next'
 import { Panel } from '@/components/common'
 
 const attendanceData = ref([
