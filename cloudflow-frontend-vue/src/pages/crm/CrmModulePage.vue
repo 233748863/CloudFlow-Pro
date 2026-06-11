@@ -6,7 +6,7 @@ import { crmPageConfigByPath } from './crmPageConfigs'
 
 const route = useRoute()
 const config = computed(() =>
-  crmPageConfigByPath.get(route.path) || crmPageConfigByPath.get('/office/crm')
+  crmPageConfigByPath[route.path] || crmPageConfigByPath['/crm/customer']
 )
 </script>
 
