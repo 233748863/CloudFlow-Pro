@@ -1,7 +1,0 @@
-export * from './crm/types'
-export * from './crm/customer'
-export * from './crm/lead'
-export * from './crm/opportunity'
-export * from './crm/catalog'
-export * from './crm/pool'
-export * from './crm/workspace'

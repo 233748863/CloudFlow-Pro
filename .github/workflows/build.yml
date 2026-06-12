@@ -66,18 +66,6 @@ jobs:
         npm run type-check
         npm run build
 
-    - name: Enable Corepack
-      run: |
-        corepack enable
-        corepack prepare pnpm@9.15.4 --activate
-
-    - name: Build Vue Frontend
-      run: |
-        cd cloudflow-frontend-vue
-        pnpm install --frozen-lockfile
-        pnpm typecheck
-        pnpm build
-        
     - name: Build Docker Image
       run: |
         docker build --build-arg MODULE_NAME=cloudflow-service-workflow -t cloudflow-workflow:latest .

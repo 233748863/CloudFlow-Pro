@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BackendRoot = Join-Path $Root "cloudflow-backend"
-$FrontendRoot = Join-Path $Root "cloudflow-frontend"
+$ReactFrontendRoot = Join-Path $Root "cloudflow-frontend"
 $RuntimeRoot = Join-Path $Root ".cloudflow-runtime"
 $LogRoot = Join-Path $RuntimeRoot "logs"
 $LocalDefaultSharedPassword = "Juwangkeji@2025"
@@ -58,11 +58,16 @@ $BackendServices = @(
     }
 )
 
-$FrontendService = @{
-    Name = "frontend"
-    Port = 3000
-    MainClass = "vite"
-}
+$FrontendServices = @(
+    @{
+        Name = "frontend"
+        DisplayName = "React 前端"
+        Port = 3000
+        Root = $ReactFrontendRoot
+        PackageManager = "npm.cmd"
+        ProcessPatterns = @("cloudflow-frontend", "vite")
+    }
+)
 
 function Get-EnvValue {
     param([string]$Name)
@@ -375,11 +380,22 @@ function Test-BackendProcess {
 }
 
 function Test-FrontendProcess {
-    param([object]$Process)
+    param(
+        [object]$Service,
+        [object]$Process
+    )
 
-    return $null -ne $Process -and
-        $Process.CommandLine -like "*cloudflow-frontend*" -and
-        $Process.CommandLine -like "*vite*"
+    if ($null -eq $Process -or [string]::IsNullOrWhiteSpace($Process.CommandLine)) {
+        return $false
+    }
+
+    foreach ($pattern in $Service.ProcessPatterns) {
+        if ($Process.CommandLine -notlike "*$pattern*") {
+            return $false
+        }
+    }
+
+    return $true
 }
 
 function Test-BackendHealth {
@@ -548,19 +564,10 @@ function Stop-BackendModuleProcesses {
 }
 
 function Stop-FrontendProcesses {
-    $patterns = @(
-        "cloudflow-frontend",
-        "vite",
-        "cloudflow-frontend-vue"
-    )
-
     $matchedProcesses = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
         Where-Object {
-            if ($null -eq $_ -or [string]::IsNullOrWhiteSpace($_.CommandLine)) {
-                return $false
-            }
-            foreach ($pattern in $patterns) {
-                if ($_.CommandLine -like "*$pattern*") {
+            foreach ($service in $FrontendServices) {
+                if (Test-FrontendProcess -Service $service -Process $_) {
                     return $true
                 }
             }
@@ -864,8 +871,13 @@ function Wait-BackendServicesReady {
 function Start-FrontendService {
     param([object]$Service)
 
-    if (-not (Test-Path (Join-Path $FrontendRoot "node_modules"))) {
-        throw "前端依赖不存在：cloudflow-frontend\node_modules"
+    if (-not (Test-Path (Join-Path $Service.Root "node_modules"))) {
+        throw "前端依赖不存在：$($Service.Root)\node_modules"
+    }
+
+    $packageCommand = Get-Command $Service.PackageManager -ErrorAction SilentlyContinue
+    if ($null -eq $packageCommand) {
+        throw "前端启动命令不存在：$($Service.PackageManager)"
     }
 
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -873,9 +885,9 @@ function Start-FrontendService {
     $errLog = Join-Path $LogRoot "$($Service.Name)-$stamp.err.log"
 
     Start-Process `
-        -FilePath "npm.cmd" `
+        -FilePath $packageCommand.Source `
         -ArgumentList @("run", "dev", "--", "--host", "0.0.0.0", "--port", "$($Service.Port)") `
-        -WorkingDirectory $FrontendRoot `
+        -WorkingDirectory $Service.Root `
         -WindowStyle Hidden `
         -RedirectStandardOutput $outLog `
         -RedirectStandardError $errLog `
@@ -977,24 +989,30 @@ foreach ($service in $BackendServices) {
 }
 
 Stop-FrontendProcesses
-Stop-PortListeners -Service $FrontendService
-Wait-PortsReleased -Service $FrontendService -MaxWaitSeconds 10
+foreach ($service in $FrontendServices) {
+    Stop-PortListeners -Service $service
+    Wait-PortsReleased -Service $service -MaxWaitSeconds 10
+}
 
 $nacosSync = Start-NacosConfigurationSync
-$startedFrontend = Start-FrontendService -Service $FrontendService
-$pending += @{
-    Service = $startedFrontend.Service
-    OutLog = $startedFrontend.OutLog
-    ErrLog = $startedFrontend.ErrLog
-    ExpectedProcess = {
-        param($service, $process)
-        Test-FrontendProcess -Process $process
+foreach ($service in $FrontendServices) {
+    $startedFrontend = Start-FrontendService -Service $service
+    $pending += @{
+        Service = $startedFrontend.Service
+        OutLog = $startedFrontend.OutLog
+        ErrLog = $startedFrontend.ErrLog
+        ExpectedProcess = {
+            param($service, $process)
+            Test-FrontendProcess -Service $service -Process $process
+        }
     }
 }
 
 $installResult = Install-BackendDependencies
 if (-not $installResult.Success) {
-    Stop-PortListeners -Service $FrontendService
+    foreach ($service in $FrontendServices) {
+        Stop-PortListeners -Service $service
+    }
     Write-Host "backend    编译失败，查看日志：$($installResult.OutLog)"
     if (Test-Path $installResult.ErrLog) {
         Write-Host "backend    错误日志：$($installResult.ErrLog)"
@@ -1028,5 +1046,7 @@ if ($failed.Count -gt 0) {
 }
 
 Write-Host "CloudFlow 前后端已启动。"
-Write-Host "前端：http://localhost:3000"
+foreach ($service in $FrontendServices) {
+    Write-Host ("{0}：http://localhost:{1}" -f $service.DisplayName, $service.Port)
+}
 Write-Host "网关：http://localhost:9000"
