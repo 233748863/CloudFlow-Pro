@@ -67,6 +67,10 @@ export const SliderCaptcha = ({
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<CaptchaStatus>('idle');
   const [renderWidth, setRenderWidth] = useState(width);
+  const [bgNaturalSize, setBgNaturalSize] = useState({
+    width: BG_ORIGIN_WIDTH,
+    height: BG_ORIGIN_HEIGHT,
+  });
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -76,8 +80,8 @@ export const SliderCaptcha = ({
   const sliderLeftRef = useRef(0);
 
   const renderHeight = Math.round((renderWidth / width) * height);
-  const scaleX = renderWidth / BG_ORIGIN_WIDTH;
-  const scaleY = renderHeight / BG_ORIGIN_HEIGHT;
+  const scaleX = renderWidth / (bgNaturalSize.width || BG_ORIGIN_WIDTH);
+  const scaleY = renderHeight / (bgNaturalSize.height || BG_ORIGIN_HEIGHT);
   const maxSliderLeft = Math.max(renderWidth - SLIDER_BTN_WIDTH, 0);
   const progressWidth = clamp(
     sliderLeft + HANDLE_VISUAL_WIDTH + HANDLE_INSET,
@@ -104,6 +108,10 @@ export const SliderCaptcha = ({
     setLoading(true);
     setLoadError('');
     setCaptchaData(null);
+    setBgNaturalSize({
+      width: BG_ORIGIN_WIDTH,
+      height: BG_ORIGIN_HEIGHT,
+    });
     resetSliderState();
 
     try {
@@ -345,8 +353,15 @@ export const SliderCaptcha = ({
               <img
                 src={captchaData.bgImage}
                 alt="captcha background"
-                className="absolute inset-0 h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-fill"
                 draggable={false}
+                onLoad={(event) => {
+                  const image = event.currentTarget;
+                  setBgNaturalSize({
+                    width: image.naturalWidth || BG_ORIGIN_WIDTH,
+                    height: image.naturalHeight || BG_ORIGIN_HEIGHT,
+                  });
+                }}
               />
               <img
                 src={captchaData.sliderImage}
