@@ -77,7 +77,7 @@ export const CustomTitleBar: React.FC = () => {
     <div
       onPointerDown={handleDragStart}
       onDoubleClick={handleMaximize}
-      className="cf-titlebar fixed left-0 right-0 top-0 z-50 flex h-8 select-none items-center justify-between border-b border-slate-200/60 bg-white/95 backdrop-blur-xl transition-colors dark:border-slate-800/60 dark:bg-slate-950/95"
+      className="cf-titlebar fixed left-0 right-0 top-0 z-50 flex h-8 select-none items-center justify-between border-b border-slate-200/70 bg-white transition-colors dark:border-slate-800/70 dark:bg-slate-950"
     >
       {/* 左侧：Logo 和标题 */}
       <div className="flex h-full items-center gap-2 px-3">
