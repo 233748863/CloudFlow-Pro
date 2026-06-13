@@ -69,14 +69,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       try {
-        const userInfo = await getInfo();
+        const userInfo = await getInfo({ silent: true });
         if (userInfo) {
           const currentUser = buildAuthUser(userInfo);
           setUser(currentUser);
           setCurrentUserSnapshot(currentUser);
         }
-      } catch (error) {
-        logger.error('Failed to get user info:', error);
+      } catch {
         clearAuthSession();
       }
 

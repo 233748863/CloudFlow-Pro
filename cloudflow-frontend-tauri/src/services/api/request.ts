@@ -151,7 +151,13 @@ let isRedirectingToLogin = false;
 window.addEventListener('online', () => { isOnline = true; });
 window.addEventListener('offline', () => { isOnline = false; });
 
-function redirectToLoginWhenUnauthorized() {
+function redirectToLoginWhenUnauthorized(options: { silent?: boolean } = {}) {
+  if (options.silent) {
+    clearAuthSession();
+    window.dispatchEvent(new Event('cloudflow:auth-expired'));
+    return;
+  }
+
   // 并发去重：多个请求同时 401 时只处理一次
   if (isRedirectingToLogin) {
     return;
@@ -227,7 +233,7 @@ request.interceptors.response.use(
     // 假设后端返回格式为 { code: 200, msg: 'success', data: ... }
     if (res.code !== API_SUCCESS_CODE) {
       if (res.code === API_ERROR_CODES.UNAUTHORIZED) {
-        redirectToLoginWhenUnauthorized();
+        redirectToLoginWhenUnauthorized({ silent: isSilent });
         return Promise.reject(new Error(res.msg || '登录已过期，请重新登录'));
       }
       // 503 服务不可用 - 微服务未启动，始终静默处理
@@ -268,9 +274,9 @@ request.interceptors.response.use(
 
     const isSilent = error.config?.silent;
 
-    // 全局处理 401 未授权 (always show)
+    // 全局处理 401 未授权；静默请求只清状态，不弹提示。
     if (error.response && error.response.status === 401) {
-       redirectToLoginWhenUnauthorized();
+       redirectToLoginWhenUnauthorized({ silent: isSilent });
     } else if (error.response && error.response.status === 503) {
        // 服务不可用 - 微服务未启动，静默处理不弹 toast
        console.warn(`[API] 服务暂时不可用: ${error.config?.url}`);
