@@ -90,7 +90,7 @@ export const AnnouncementBell: React.FC = () => {
       <button
         type="button"
         onClick={openModal}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:scale-105 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 ${
+        className={`relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:scale-105 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800 ${
           unreadCount > 0 ? 'text-blue-600 dark:text-blue-400' : ''
         }`}
         aria-label="公告"
@@ -111,10 +111,10 @@ export const AnnouncementBell: React.FC = () => {
             onClick={closeModal}
           >
             <div
-              className="cf-announcement-panel w-full max-w-[620px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+              className="cf-announcement-panel w-full max-w-[620px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-950 dark:ring-slate-700/70"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="relative overflow-hidden border-b border-gray-100/80 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 px-6 py-5 dark:border-dark-700/50 dark:from-blue-900/10 dark:to-indigo-900/5">
+              <div className="relative overflow-hidden border-b border-gray-100/80 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 px-6 py-5 dark:border-slate-800 dark:from-blue-950/25 dark:to-slate-950">
                 <div className="relative z-10 flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2">
@@ -147,7 +147,7 @@ export const AnnouncementBell: React.FC = () => {
                     <button
                       type="button"
                       onClick={closeModal}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/50 text-gray-500 backdrop-blur-sm transition-all hover:bg-white hover:text-gray-700 dark:bg-dark-700/50 dark:text-gray-400 dark:hover:bg-dark-700 dark:hover:text-gray-300"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/50 text-gray-500 backdrop-blur-sm transition-all hover:bg-white hover:text-gray-700 dark:bg-slate-900/70 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                       aria-label="关闭"
                     >
                       <X size={16} />
@@ -162,7 +162,7 @@ export const AnnouncementBell: React.FC = () => {
                 {loading ? (
                   <div className="flex items-center justify-center py-16">
                     <div className="relative">
-                      <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600 dark:border-dark-600 dark:border-t-blue-400" />
+                      <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400" />
                       <div className="absolute inset-0 h-12 w-12 animate-pulse rounded-full border-4 border-blue-400/30" />
                     </div>
                   </div>
@@ -171,7 +171,7 @@ export const AnnouncementBell: React.FC = () => {
                     {announcements.map((item) => (
                       <div
                         key={item.announcementId}
-                        className={`group relative flex min-h-[72px] items-center gap-4 border-b border-gray-100 px-6 py-4 transition-all hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-700/30 ${
+                        className={`group relative flex min-h-[72px] items-center gap-4 border-b border-gray-100 px-6 py-4 transition-all hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900/70 ${
                           !item.isRead ? 'bg-blue-50/30 dark:bg-blue-900/5' : ''
                         }`}
                         onClick={() => void openDetail(item)}
@@ -183,7 +183,7 @@ export const AnnouncementBell: React.FC = () => {
                               <Info className="relative z-10 h-5 w-5" strokeWidth={2.5} />
                             </div>
                           ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-dark-700 dark:text-gray-600">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-slate-900 dark:text-slate-500">
                               <Check className="h-5 w-5" />
                             </div>
                           )}
@@ -224,7 +224,7 @@ export const AnnouncementBell: React.FC = () => {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16">
                     <div className="relative mb-4">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-dark-700 dark:to-dark-600">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-900">
                         <Inbox size={28} className="text-gray-400 dark:text-gray-500" />
                       </div>
                       <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">

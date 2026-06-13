@@ -67,12 +67,12 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
     >
       <div
         className={cn(
-          'cf-announcement-panel w-full overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10',
+          'cf-announcement-panel w-full overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-950 dark:ring-slate-700/70',
           maxWidthClassName,
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative overflow-hidden border-b border-gray-100 bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-purple-50/30 px-8 py-6 dark:border-dark-700 dark:from-blue-900/20 dark:via-indigo-900/10 dark:to-purple-900/5">
+        <div className="relative overflow-hidden border-b border-gray-100 bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-purple-50/30 px-8 py-6 dark:border-slate-800 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-slate-950">
           <div className="absolute right-0 top-0 h-full w-64 bg-gradient-to-l from-indigo-100/30 to-transparent dark:from-indigo-900/20" />
           <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br from-blue-400/20 to-indigo-500/20 blur-3xl" />
           <div className="absolute -left-4 -bottom-4 h-24 w-24 rounded-full bg-gradient-to-tr from-purple-400/20 to-pink-500/20 blur-2xl" />
@@ -127,7 +127,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
             <button
               type="button"
               onClick={onClose}
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/50 text-gray-500 backdrop-blur-sm transition-all hover:bg-white hover:text-gray-700 hover:shadow-lg dark:bg-dark-700/50 dark:text-gray-400 dark:hover:bg-dark-700 dark:hover:text-gray-300"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/50 text-gray-500 backdrop-blur-sm transition-all hover:bg-white hover:text-gray-700 hover:shadow-lg dark:bg-slate-900/70 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               aria-label="关闭"
             >
               <X size={18} />
@@ -135,7 +135,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
           </div>
         </div>
 
-        <div className="cf-announcement-scroll max-h-[60vh] overflow-y-auto bg-white px-8 py-8 dark:bg-dark-800">
+        <div className="cf-announcement-scroll max-h-[60vh] overflow-y-auto bg-white px-8 py-8 dark:bg-slate-950">
           <div className="relative">
             <div className="absolute bottom-0 left-0 top-0 w-1 rounded-full bg-gradient-to-b from-blue-500 via-indigo-500 to-purple-500" />
             <div className="pl-6">
@@ -144,7 +144,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
           </div>
         </div>
 
-        <div className="border-t border-gray-100 bg-gray-50/50 px-8 py-5 dark:border-dark-700 dark:bg-dark-900/30">
+        <div className="border-t border-gray-100 bg-gray-50/50 px-8 py-5 dark:border-slate-800 dark:bg-slate-900/70">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <Info className="h-4 w-4" />
@@ -155,7 +155,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow dark:border-dark-600 dark:bg-dark-700 dark:text-gray-300 dark:hover:bg-dark-600"
+                className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 关闭
               </button>

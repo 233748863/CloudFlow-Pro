@@ -171,7 +171,7 @@ export const NoticeBell: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:scale-105 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 ${
+        className={`relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:scale-105 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800 ${
           unreadCount > 0 ? 'text-blue-600 dark:text-blue-400' : ''
         }`}
         aria-label="消息通知"
@@ -191,10 +191,10 @@ export const NoticeBell: React.FC = () => {
             onClick={() => setIsModalOpen(false)}
           >
             <div
-              className="cf-announcement-panel w-full max-w-[680px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+              className="cf-announcement-panel w-full max-w-[680px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-950 dark:ring-slate-700/70"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="relative overflow-hidden border-b border-gray-100/80 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 px-6 py-5 dark:border-dark-700/50 dark:from-blue-900/10 dark:to-indigo-900/5">
+              <div className="relative overflow-hidden border-b border-gray-100/80 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 px-6 py-5 dark:border-slate-800 dark:from-blue-950/25 dark:to-slate-950">
                 <div className="relative z-10 flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -202,7 +202,7 @@ export const NoticeBell: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setSelectedNotice(null)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/70 text-gray-600 transition hover:bg-white dark:bg-dark-700/70 dark:text-gray-300 dark:hover:bg-dark-700"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/70 text-gray-600 transition hover:bg-white dark:bg-slate-900/70 dark:text-slate-300 dark:hover:bg-slate-800"
                           aria-label="返回通知列表"
                         >
                           <ArrowLeft size={16} />
@@ -228,7 +228,7 @@ export const NoticeBell: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/50 text-gray-500 backdrop-blur-sm transition-all hover:bg-white hover:text-gray-700 dark:bg-dark-700/50 dark:text-gray-400 dark:hover:bg-dark-700 dark:hover:text-gray-300"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/50 text-gray-500 backdrop-blur-sm transition-all hover:bg-white hover:text-gray-700 dark:bg-slate-900/70 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                     aria-label="关闭"
                   >
                     <X size={16} />
@@ -259,7 +259,7 @@ export const NoticeBell: React.FC = () => {
                       </h3>
                     </div>
 
-                    <div className="rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-700 dark:bg-dark-700/40 dark:text-slate-200">
+                    <div className="rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
                       <div className="whitespace-pre-wrap break-words">{selectedNotice.content || '暂无内容'}</div>
                     </div>
                   </div>
@@ -269,7 +269,7 @@ export const NoticeBell: React.FC = () => {
                       <button
                         key={item.id}
                         type="button"
-                        className={`group relative flex min-h-[76px] w-full items-center gap-4 border-b border-gray-100 px-6 py-4 text-left transition-all hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-700/30 ${
+                        className={`group relative flex min-h-[76px] w-full items-center gap-4 border-b border-gray-100 px-6 py-4 text-left transition-all hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900/70 ${
                           !item.isRead ? 'bg-blue-50/30 dark:bg-blue-900/5' : ''
                         }`}
                         onClick={() => void openDetail(item)}
@@ -309,7 +309,7 @@ export const NoticeBell: React.FC = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16">
-                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-dark-700 dark:to-dark-600">
+                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-900">
                       <Inbox size={28} className="text-gray-400 dark:text-gray-500" />
                     </div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">暂无通知</p>

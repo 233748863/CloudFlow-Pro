@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { BaseDialog, Button, Input, Label } from '@/components/common';
 import { changeProfilePassword } from '@/services/api/auth';
 
+const passwordLabelClassName = 'text-slate-700 dark:text-slate-200';
+
 interface ForcePasswordChangeDialogProps {
   open: boolean;
   onChanged: () => Promise<unknown>;
@@ -78,7 +80,9 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
     >
       <form id="force-password-change-form" onSubmit={submit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="force-password-old">当前密码</Label>
+          <Label htmlFor="force-password-old" className={passwordLabelClassName}>
+            当前密码
+          </Label>
           <Input
             id="force-password-old"
             type="password"
@@ -89,7 +93,9 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="force-password-new">新密码</Label>
+          <Label htmlFor="force-password-new" className={passwordLabelClassName}>
+            新密码
+          </Label>
           <Input
             id="force-password-new"
             type="password"
@@ -100,7 +106,9 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="force-password-confirm">确认新密码</Label>
+          <Label htmlFor="force-password-confirm" className={passwordLabelClassName}>
+            确认新密码
+          </Label>
           <Input
             id="force-password-confirm"
             type="password"

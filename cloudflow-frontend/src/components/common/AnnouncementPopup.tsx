@@ -30,10 +30,10 @@ export const AnnouncementPopup: React.FC = () => {
   return createPortal(
     <div className="cf-announcement-popup-layer fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-gradient-to-br from-black/70 via-black/60 to-black/70 p-4 pt-[8vh] backdrop-blur-md">
       <div
-        className="cf-announcement-popup-panel w-full max-w-[680px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+        className="cf-announcement-popup-panel w-full max-w-[680px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-950 dark:ring-slate-700/70"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative overflow-hidden border-b border-amber-100/80 bg-gradient-to-br from-amber-50/80 via-orange-50/50 to-yellow-50/30 px-8 py-6 dark:border-dark-700/50 dark:from-amber-900/20 dark:via-orange-900/10 dark:to-yellow-900/5">
+        <div className="relative overflow-hidden border-b border-amber-100/80 bg-gradient-to-br from-amber-50/80 via-orange-50/50 to-yellow-50/30 px-8 py-6 dark:border-slate-800 dark:from-amber-950/35 dark:via-orange-950/20 dark:to-slate-950">
           <div className="absolute right-0 top-0 h-full w-64 bg-gradient-to-l from-orange-100/30 to-transparent dark:from-orange-900/20" />
           <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br from-amber-400/20 to-orange-500/20 blur-3xl" />
           <div className="absolute -left-4 -bottom-4 h-24 w-24 rounded-full bg-gradient-to-tr from-yellow-400/20 to-amber-500/20 blur-2xl" />
@@ -63,7 +63,7 @@ export const AnnouncementPopup: React.FC = () => {
           </div>
         </div>
 
-        <div className="cf-announcement-scroll max-h-[50vh] overflow-y-auto bg-white px-8 py-8 dark:bg-dark-800">
+        <div className="cf-announcement-scroll max-h-[50vh] overflow-y-auto bg-white px-8 py-8 dark:bg-slate-950">
           <div className="relative">
             <div className="absolute bottom-0 left-0 top-0 w-1 rounded-full bg-gradient-to-b from-amber-500 via-orange-500 to-yellow-500" />
             <div className="pl-6">
@@ -72,7 +72,7 @@ export const AnnouncementPopup: React.FC = () => {
           </div>
         </div>
 
-        <div className="border-t border-gray-100 bg-gray-50/50 px-8 py-5 dark:border-dark-700 dark:bg-dark-900/30">
+        <div className="border-t border-gray-100 bg-gray-50/50 px-8 py-5 dark:border-slate-800 dark:bg-slate-900/70">
           <div className="flex items-center justify-end">
             <button
               type="button"

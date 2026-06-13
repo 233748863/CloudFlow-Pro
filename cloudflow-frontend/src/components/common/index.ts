@@ -88,3 +88,4 @@ export { AnnouncementManageFilterBar } from './AnnouncementManageFilterBar';
 export { AnnouncementManageTable } from './AnnouncementManageTable';
 export { AnnouncementPopup } from './AnnouncementPopup';
 export { NoticeBell } from './NoticeBell';
+export { UnifiedMessageBell } from './UnifiedMessageBell';
