@@ -29,7 +29,12 @@
       "Bash(sed -n '88,120p' cloudflow-backend/DB/06.cloudflow-business-seed.sql)",
       "Bash(sed -n '480,490p' src/pages/OvertimeApplicationPage.tsx)",
       "Bash(sed -n '663,692p' src/pages/OvertimeApplicationPage.tsx)",
-      "Bash(grep -vE \"^\\(useDict|dictType\\)$\")"
+      "Bash(grep -vE \"^\\(useDict|dictType\\)$\")",
+      "Bash(npm run *)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist)",
+      "Bash(npx kill-port *)",
+      "Bash(npm list *)"
     ],
     "defaultMode": "auto"
   },
