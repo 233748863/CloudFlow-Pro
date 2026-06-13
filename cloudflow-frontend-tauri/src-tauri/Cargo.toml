@@ -1,0 +1,15 @@
+[package]
+name = "cloudflow-pro-desktop"
+version = "0.1.0"
+description = "CloudFlow Pro desktop shell"
+authors = ["CloudFlow"]
+license = "MIT"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }

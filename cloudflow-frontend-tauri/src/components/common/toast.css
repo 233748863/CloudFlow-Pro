@@ -1,0 +1,257 @@
+.cf-toast-viewport {
+  pointer-events: none;
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  display: flex;
+  width: min(calc(100vw - 2rem), 28rem);
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cf-toast {
+  pointer-events: auto;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-left: 4px solid transparent;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(20px);
+}
+
+.cf-toast--success {
+  border-left-color: #22c55e;
+}
+
+.cf-toast--error {
+  border-left-color: #ef4444;
+}
+
+.cf-toast--warning {
+  border-left-color: #eab308;
+}
+
+.cf-toast--info {
+  border-left-color: #3b82f6;
+}
+
+.cf-toast--entering {
+  animation: cfToastEnter 300ms ease-out;
+}
+
+.cf-toast--leaving {
+  animation: cfToastLeave 200ms ease-in forwards;
+}
+
+.cf-toast__body {
+  padding: 1rem;
+}
+
+.cf-toast__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.cf-toast__icon-wrap {
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+}
+
+.cf-toast__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.cf-toast__icon--success {
+  color: #22c55e;
+}
+
+.cf-toast__icon--error {
+  color: #ef4444;
+}
+
+.cf-toast__icon--warning {
+  color: #eab308;
+}
+
+.cf-toast__icon--info {
+  color: #3b82f6;
+}
+
+.cf-toast__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.cf-toast__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cf-toast__message {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #0f172a;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.cf-toast__message--subtle {
+  margin-top: 0.25rem;
+  color: #475569;
+}
+
+.cf-toast__action {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0891b2;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.cf-toast__action:hover {
+  color: #0e7490;
+}
+
+.cf-toast__close {
+  margin: -0.25rem;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  padding: 0.25rem;
+  color: #94a3b8;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.cf-toast__close:hover {
+  background: #f8fafc;
+  color: #475569;
+}
+
+.cf-toast__close-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.cf-toast__progress-track {
+  height: 0.25rem;
+  background: #f1f5f9;
+}
+
+.cf-toast__progress {
+  height: 100%;
+  width: 100%;
+  animation-name: cfToastProgressShrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.cf-toast__progress--success {
+  background: #22c55e;
+}
+
+.cf-toast__progress--error {
+  background: #ef4444;
+}
+
+.cf-toast__progress--warning {
+  background: #eab308;
+}
+
+.cf-toast__progress--info {
+  background: #3b82f6;
+}
+
+html.dark .cf-toast {
+  border-color: rgba(51, 65, 85, 0.9);
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.5);
+}
+
+html.dark .cf-toast__title,
+html.dark .cf-toast__message {
+  color: #e2e8f0;
+}
+
+html.dark .cf-toast__message--subtle {
+  color: #94a3b8;
+}
+
+html.dark .cf-toast__action {
+  color: #67e8f9;
+}
+
+html.dark .cf-toast__action:hover {
+  color: #a5f3fc;
+}
+
+html.dark .cf-toast__close {
+  color: #64748b;
+}
+
+html.dark .cf-toast__close:hover {
+  background: rgba(30, 41, 59, 0.9);
+  color: #e2e8f0;
+}
+
+html.dark .cf-toast__progress-track {
+  background: rgba(30, 41, 59, 0.9);
+}
+
+@keyframes cfToastEnter {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cfToastLeave {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes cfToastProgressShrink {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+}
+
+@media (max-width: 640px) {
+  .cf-toast-viewport {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+  }
+}

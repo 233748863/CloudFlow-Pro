@@ -8,6 +8,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BackendRoot = Join-Path $Root "cloudflow-backend"
 $ReactFrontendRoot = Join-Path $Root "cloudflow-frontend"
+$TauriFrontendRoot = Join-Path $Root "cloudflow-frontend-tauri"
 $RuntimeRoot = Join-Path $Root ".cloudflow-runtime"
 $LogRoot = Join-Path $RuntimeRoot "logs"
 $LocalDefaultSharedPassword = "Juwangkeji@2025"
@@ -65,9 +66,52 @@ $FrontendServices = @(
         Port = 3000
         Root = $ReactFrontendRoot
         PackageManager = "npm.cmd"
+        Arguments = @("run", "dev", "--", "--host", "0.0.0.0", "--port", "3000")
         ProcessPatterns = @("cloudflow-frontend", "vite")
+    },
+    @{
+        Name = "frontend-tauri"
+        DisplayName = "Tauri 桌面端"
+        Port = 3001
+        Root = $TauriFrontendRoot
+        PackageManager = "npm.cmd"
+        Arguments = @("run", "tauri:dev")
+        ProcessPatterns = @("cloudflow-frontend-tauri")
+        ReadyProcessPatterns = @("vite")
+        WindowStyle = "Normal"
+        LaunchMessage = "已拉起桌面应用（devUrl http://localhost:3001）"
     }
 )
+
+function Test-ServiceField {
+    param(
+        [object]$Service,
+        [string]$Name
+    )
+
+    if ($Service -is [System.Collections.IDictionary]) {
+        return $Service.Contains($Name)
+    }
+
+    return $Service.PSObject.Properties.Name -contains $Name
+}
+
+function Get-ServiceField {
+    param(
+        [object]$Service,
+        [string]$Name
+    )
+
+    if (-not (Test-ServiceField -Service $Service -Name $Name)) {
+        return $null
+    }
+
+    if ($Service -is [System.Collections.IDictionary]) {
+        return $Service[$Name]
+    }
+
+    return $Service.$Name
+}
 
 function Get-EnvValue {
     param([string]$Name)
@@ -360,10 +404,9 @@ function Get-ListenerProcess {
 function Get-ServiceManagementPort {
     param([object]$Service)
 
-    if ($Service.PSObject.Properties.Name -contains "ManagementPort" -and
-        $Service.ManagementPort -is [int] -and
-        $Service.ManagementPort -gt 0) {
-        return [int]$Service.ManagementPort
+    $managementPort = Get-ServiceField -Service $Service -Name "ManagementPort"
+    if ($managementPort -is [int] -and $managementPort -gt 0) {
+        return [int]$managementPort
     }
 
     return $null
@@ -390,6 +433,32 @@ function Test-FrontendProcess {
     }
 
     foreach ($pattern in $Service.ProcessPatterns) {
+        if ($Process.CommandLine -notlike "*$pattern*") {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+function Test-FrontendReadyProcess {
+    param(
+        [object]$Service,
+        [object]$Process
+    )
+
+    if ($null -eq $Process -or [string]::IsNullOrWhiteSpace($Process.CommandLine)) {
+        return $false
+    }
+
+    $readyProcessPatterns = Get-ServiceField -Service $Service -Name "ReadyProcessPatterns"
+    $patterns = if ($null -ne $readyProcessPatterns) {
+        @($readyProcessPatterns)
+    } else {
+        @($Service.ProcessPatterns)
+    }
+
+    foreach ($pattern in $patterns) {
         if ($Process.CommandLine -notlike "*$pattern*") {
             return $false
         }
@@ -526,8 +595,9 @@ function Get-ServicePorts {
     if ($null -ne $managementPort) {
         $ports += $managementPort
     }
-    if ($Service.PSObject.Properties.Name -contains "ExtraPorts" -and $null -ne $Service.ExtraPorts) {
-        $ports += $Service.ExtraPorts
+    $extraPorts = Get-ServiceField -Service $Service -Name "ExtraPorts"
+    if ($null -ne $extraPorts) {
+        $ports += $extraPorts
     }
 
     return $ports |
@@ -883,12 +953,20 @@ function Start-FrontendService {
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
     $outLog = Join-Path $LogRoot "$($Service.Name)-$stamp.out.log"
     $errLog = Join-Path $LogRoot "$($Service.Name)-$stamp.err.log"
+    $serviceArguments = Get-ServiceField -Service $Service -Name "Arguments"
+    $arguments = if ($null -ne $serviceArguments) {
+        @($serviceArguments)
+    } else {
+        @("run", "dev", "--", "--host", "0.0.0.0", "--port", "$($Service.Port)")
+    }
+    $serviceWindowStyle = Get-ServiceField -Service $Service -Name "WindowStyle"
+    $windowStyle = if ([string]::IsNullOrWhiteSpace($serviceWindowStyle)) { "Hidden" } else { $serviceWindowStyle }
 
     Start-Process `
         -FilePath $packageCommand.Source `
-        -ArgumentList @("run", "dev", "--", "--host", "0.0.0.0", "--port", "$($Service.Port)") `
+        -ArgumentList $arguments `
         -WorkingDirectory $Service.Root `
-        -WindowStyle Hidden `
+        -WindowStyle $windowStyle `
         -RedirectStandardOutput $outLog `
         -RedirectStandardError $errLog `
         -PassThru |
@@ -1003,7 +1081,7 @@ foreach ($service in $FrontendServices) {
         ErrLog = $startedFrontend.ErrLog
         ExpectedProcess = {
             param($service, $process)
-            Test-FrontendProcess -Service $service -Process $process
+            Test-FrontendReadyProcess -Service $service -Process $process
         }
     }
 }
@@ -1047,6 +1125,11 @@ if ($failed.Count -gt 0) {
 
 Write-Host "CloudFlow 前后端已启动。"
 foreach ($service in $FrontendServices) {
-    Write-Host ("{0}：http://localhost:{1}" -f $service.DisplayName, $service.Port)
+    $launchMessage = Get-ServiceField -Service $service -Name "LaunchMessage"
+    if (-not [string]::IsNullOrWhiteSpace($launchMessage)) {
+        Write-Host ("{0}：{1}" -f $service.DisplayName, $launchMessage)
+    } else {
+        Write-Host ("{0}：http://localhost:{1}" -f $service.DisplayName, $service.Port)
+    }
 }
 Write-Host "网关：http://localhost:9000"
