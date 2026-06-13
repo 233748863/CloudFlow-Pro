@@ -196,8 +196,14 @@ interface AuthInfoResponse {
   [key: string]: unknown;
 }
 
-export const getInfo = async (): Promise<UserInfo> => {
-  const data = await request.get<AuthInfoResponse>('/auth/info');
+interface GetInfoOptions {
+  silent?: boolean;
+}
+
+export const getInfo = async (options?: GetInfoOptions): Promise<UserInfo> => {
+  const data = await request.get<AuthInfoResponse>('/auth/info', {
+    silent: options?.silent,
+  });
   // 后端返回格式 { user: {...}, roles: [...], permissions: [...] }
   // 需要将其扁平化为 UserInfo 格式
   const user = (data?.user || data) as Record<string, unknown> & { dept?: { deptName?: string } };
