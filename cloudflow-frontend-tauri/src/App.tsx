@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CustomTitleBar } from './components/layout/CustomTitleBar';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { router } from './router';
@@ -88,7 +89,12 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <AppInner />
+            <div className="cf-desktop-shell">
+              <CustomTitleBar />
+              <div className="cf-desktop-content">
+                <AppInner />
+              </div>
+            </div>
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

@@ -104,6 +104,7 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
   html,
   body,
   #root {
+    height: 100%;
     min-height: 100%;
   }
 
@@ -195,6 +196,19 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
 }
 
 @layer components {
+  .cf-desktop-shell {
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 32px;
+  }
+
+  .cf-desktop-content {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .btn {
     display: inline-flex;
     align-items: center;
@@ -636,6 +650,28 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
   html.dark .cf-side-link-active:hover {
     background: color-mix(in srgb, var(--cf-primary-500) 22%, rgba(2, 6, 23, 0.94));
     color: rgb(204 251 241);
+  }
+
+  .cf-titlebar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 32px;
+    color: rgb(71 85 105);
+    transition: all 0.15s ease;
+  }
+
+  .cf-titlebar-btn:hover {
+    color: rgb(15 23 42);
+  }
+
+  html.dark .cf-titlebar-btn {
+    color: rgb(148 163 184);
+  }
+
+  html.dark .cf-titlebar-btn:hover {
+    color: rgb(226 232 240);
   }
 
   .cf-filter-chip {

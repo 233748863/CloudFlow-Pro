@@ -242,7 +242,7 @@ export const MainLayout = () => {
 
   if (loading || menuLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-slate-600 dark:bg-slate-950 dark:text-slate-300">
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-slate-600 dark:bg-slate-950 dark:text-slate-300">
         <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-[0_18px_36px_rgba(2,6,23,0.42)]">
           <img src="/icon.svg" alt="CloudFlow Pro" className="h-12 w-12 object-contain" />
         </div>
@@ -259,12 +259,12 @@ export const MainLayout = () => {
   }
 
   return (
-    <div className="relative h-screen overflow-hidden bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative h-full overflow-hidden bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
       <div className="pointer-events-none fixed inset-0 bg-mesh-gradient dark:opacity-60" />
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200/80 bg-white/86 backdrop-blur-xl transition-[width] duration-300 dark:border-slate-800 dark:bg-slate-950/90',
+          'absolute bottom-0 left-0 top-0 z-40 flex flex-col border-r border-slate-200/80 bg-white/86 backdrop-blur-xl transition-[width] duration-300 dark:border-slate-800 dark:bg-slate-950/90',
           sidebarCollapsed ? 'w-[72px]' : 'w-64',
         )}
       >
@@ -400,7 +400,7 @@ export const MainLayout = () => {
 
       <div
         className={cn(
-          'relative flex h-screen min-h-0 flex-col overflow-hidden transition-[padding] duration-300',
+          'relative flex h-full min-h-0 flex-col overflow-hidden transition-[padding] duration-300',
           sidebarCollapsed ? 'pl-[72px]' : 'pl-64',
         )}
       >
