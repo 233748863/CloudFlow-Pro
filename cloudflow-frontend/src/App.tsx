@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CustomTitleBar } from './components/layout/CustomTitleBar';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { router } from './router';
@@ -15,6 +16,7 @@ import { SYS_PAGE_DEFAULT_PAGE_SIZE } from './constants/sysConfig';
 import { dictDataApi } from './services/api/dict';
 import { transformDictData } from './utils/dictMapper';
 import { queryKeys } from './lib/queryClient';
+import { isTauriRuntime } from './services/desktopConfig';
 
 setNavigator((to, opts) => {
   void router.navigate(to, { replace: opts?.replace });
@@ -83,12 +85,23 @@ function AppInner() {
 }
 
 function App() {
+  const appInner = isTauriRuntime() ? (
+    <div className="cf-desktop-shell">
+      <CustomTitleBar />
+      <div className="cf-desktop-content">
+        <AppInner />
+      </div>
+    </div>
+  ) : (
+    <AppInner />
+  );
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <AppInner />
+            {appInner}
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

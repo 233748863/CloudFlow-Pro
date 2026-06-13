@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Eye, EyeOff, Loader2, Lock, LogIn, Mail, ShieldAlert, UserPlus, Users } from 'lucide-react';
+import { Building2, Eye, EyeOff, Loader2, Lock, LogIn, Mail, RefreshCcw, ShieldAlert, UserPlus, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AuthCaptchaDialog } from '@/components/auth/AuthExperienceShell';
@@ -27,6 +27,11 @@ type RegisterFormState = {
 
 const resolveModeByPathname = (pathname: string): AuthMode =>
   pathname === '/register' ? 'register' : 'login';
+
+const TENANT_RETRY_WINDOW_MS = 30000;
+const TENANT_RETRY_INTERVAL_MS = 2000;
+const TENANT_REQUEST_TIMEOUT_MS = 5000;
+const TENANT_LOAD_ERROR_MESSAGE = '后端服务暂未就绪，请确认服务已启动后重试';
 
 type TenantSelectProps = {
   value: string;
@@ -75,7 +80,9 @@ export const AuthPage: React.FC = () => {
   const [registerError, setRegisterError] = useState('');
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
   const [tenantLoading, setTenantLoading] = useState(true);
+  const [tenantRetrying, setTenantRetrying] = useState(false);
   const [tenantLoadError, setTenantLoadError] = useState('');
+  const [tenantReloadKey, setTenantReloadKey] = useState(0);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
@@ -115,45 +122,110 @@ export const AuthPage: React.FC = () => {
 
   useEffect(() => {
     let active = true;
+    let completed = false;
+    let retryTimer: number | null = null;
+    let deadlineTimer: number | null = null;
+    const controllers = new Set<AbortController>();
 
-    const loadTenants = async () => {
-      setTenantLoading(true);
-      setTenantLoadError('');
-      try {
-        const options = await getTenantOptions();
-        if (!active) {
-          return;
-        }
-        setTenantOptions(options);
-        if (options.length === 1) {
-          const tenantCode = options[0].tenantCode;
-          setLoginForm((prev) => ({ ...prev, tenantCode: prev.tenantCode || tenantCode }));
-          setRegisterForm((prev) => ({ ...prev, tenantCode: prev.tenantCode || tenantCode }));
-        }
-      } catch (error: any) {
-        logger.error('Load tenant options error:', error);
-        if (active) {
-          setTenantLoadError(error.message || '租户列表加载失败');
-        }
-      } finally {
-        if (active) {
-          setTenantLoading(false);
-        }
+    const stopTimers = () => {
+      if (retryTimer !== null) {
+        window.clearInterval(retryTimer);
+        retryTimer = null;
+      }
+      if (deadlineTimer !== null) {
+        window.clearTimeout(deadlineTimer);
+        deadlineTimer = null;
       }
     };
 
+    const abortPendingRequests = () => {
+      controllers.forEach((controller) => controller.abort());
+      controllers.clear();
+    };
+
+    const finishWithOptions = (options: TenantOption[]) => {
+      if (!active || completed) {
+        return;
+      }
+      completed = true;
+      stopTimers();
+      abortPendingRequests();
+      setTenantOptions(options);
+      setTenantLoadError('');
+      setTenantRetrying(false);
+      setTenantLoading(false);
+      if (options.length === 1) {
+        const tenantCode = options[0].tenantCode;
+        setLoginForm((prev) => ({ ...prev, tenantCode: prev.tenantCode || tenantCode }));
+        setRegisterForm((prev) => ({ ...prev, tenantCode: prev.tenantCode || tenantCode }));
+      }
+    };
+
+    const finishWithError = () => {
+      if (!active || completed) {
+        return;
+      }
+      completed = true;
+      stopTimers();
+      abortPendingRequests();
+      setTenantLoadError(TENANT_LOAD_ERROR_MESSAGE);
+      setTenantRetrying(false);
+      setTenantLoading(false);
+    };
+
+    const loadTenants = async () => {
+      if (!active || completed) {
+        return;
+      }
+
+      const controller = new AbortController();
+      controllers.add(controller);
+
+      try {
+        const options = await getTenantOptions({
+          silent: true,
+          timeout: TENANT_REQUEST_TIMEOUT_MS,
+          signal: controller.signal,
+        });
+        finishWithOptions(options);
+      } catch (error: any) {
+        if (!active || completed || error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError') {
+          return;
+        }
+        logger.warn('Load tenant options retry failed:', error);
+      } finally {
+        controllers.delete(controller);
+      }
+    };
+
+    setTenantOptions([]);
+    setTenantLoading(true);
+    setTenantRetrying(true);
+    setTenantLoadError('');
+
     void loadTenants();
+    retryTimer = window.setInterval(() => {
+      void loadTenants();
+    }, TENANT_RETRY_INTERVAL_MS);
+    deadlineTimer = window.setTimeout(finishWithError, TENANT_RETRY_WINDOW_MS);
 
     return () => {
       active = false;
+      completed = true;
+      stopTimers();
+      abortPendingRequests();
     };
-  }, []);
+  }, [tenantReloadKey]);
 
   const switchMode = (nextMode: AuthMode) => {
     setLoginError('');
     setRegisterError('');
     setMode(nextMode);
     navigate(nextMode === 'login' ? '/login' : '/register');
+  };
+
+  const handleReloadTenants = () => {
+    setTenantReloadKey((prev) => prev + 1);
   };
 
   const handleLoginSubmit = (event: React.FormEvent) => {
@@ -272,7 +344,18 @@ export const AuthPage: React.FC = () => {
   const currentError = isLogin ? loginError : registerError;
   const currentYear = new Date().getFullYear();
   const tenantSelectDisabled = tenantLoading || tenantOptions.length === 0;
-  const tenantPlaceholder = tenantLoading ? '租户加载中' : '请选择租户';
+  const tenantPlaceholder = tenantLoading ? '租户加载中' : tenantLoadError ? '租户加载失败' : '请选择租户';
+  const tenantStatus = tenantRetrying ? (
+    <p className="cf-auth-hint">后端服务启动中，正在自动重试</p>
+  ) : tenantLoadError ? (
+    <div className="cf-auth-tenant-status">
+      <p className="cf-auth-hint cf-auth-hint--error">{tenantLoadError}</p>
+      <button type="button" className="cf-auth-retry-button" onClick={handleReloadTenants}>
+        <RefreshCcw size={14} />
+        重新加载
+      </button>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -316,7 +399,7 @@ export const AuthPage: React.FC = () => {
                       placeholder={tenantPlaceholder}
                       options={tenantOptions}
                     />
-                    {tenantLoadError ? <p className="cf-auth-hint cf-auth-hint--error">{tenantLoadError}</p> : null}
+                    {tenantStatus}
                   </div>
 
                   <div>
@@ -411,7 +494,7 @@ export const AuthPage: React.FC = () => {
                       placeholder={tenantPlaceholder}
                       options={tenantOptions}
                     />
-                    {tenantLoadError ? <p className="cf-auth-hint cf-auth-hint--error">{tenantLoadError}</p> : null}
+                    {tenantStatus}
                   </div>
 
                   <div>

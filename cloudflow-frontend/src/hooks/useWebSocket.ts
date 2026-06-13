@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { getAuthToken } from '@/utils/authStorage';
+import { buildHttpUrl, buildWebSocketUrl, loadDesktopRuntimeConfig } from '@/services/desktopConfig';
 
 interface WebSocketMessage {
     type: string;
@@ -58,8 +59,9 @@ export const useWebSocket = () => {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3000);
+            const runtimeConfig = await loadDesktopRuntimeConfig();
             // 使用 OPTIONS 请求探测白名单路径，不会触发 401
-            await fetch('/api/auth/login', {
+            await fetch(buildHttpUrl(runtimeConfig.apiBaseUrl, '/auth/login'), {
                 method: 'OPTIONS',
                 signal: controller.signal,
             });
@@ -91,6 +93,8 @@ export const useWebSocket = () => {
             wsRef.current = null;
         }
 
+        const runtimeConfig = await loadDesktopRuntimeConfig();
+
         // 如果从未成功连接过，先探测后端是否可达
         if (!hasConnectedRef.current) {
             const available = await isBackendAvailable();
@@ -104,10 +108,8 @@ export const useWebSocket = () => {
         // 组件可能在 await 期间卸载
         if (unmountedRef.current) return;
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
         // P3-6：token 不再随 URL 传输（避免进入 access log / 浏览器历史），改由首帧 AUTH 消息发送
-        const wsUrl = `${protocol}//${host}/ws/notifications`;
+        const wsUrl = buildWebSocketUrl(runtimeConfig, '/ws/notifications');
 
         const ws = new WebSocket(wsUrl);
         authOkRef.current = false;

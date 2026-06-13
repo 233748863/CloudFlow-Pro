@@ -3,8 +3,9 @@ import { toast } from 'sonner';
 import { API_TIMEOUT, API_SUCCESS_CODE, API_ERROR_CODES } from '@/constants/api';
 import { handleApiError, ApiErrorResponse } from '@/utils/errorHandler';
 import { clearAuthSession } from '@/utils/sessionCleanup';
-import { getCurrentUserSnapshot } from '@/utils/authStorage';
+import { getAuthToken, getCurrentUserSnapshot } from '@/utils/authStorage';
 import { navigateTo } from '@/utils/navigation';
+import { isTauriRuntime, loadDesktopRuntimeConfig } from '@/services/desktopConfig';
 
 const appBasePath = import.meta.env.BASE_URL === '/'
   ? ''
@@ -180,14 +181,26 @@ function redirectToLoginWhenUnauthorized(options: { silent?: boolean } = {}) {
 
 // 请求拦截器
 request.interceptors.request.use(
-  config => {
+  async config => {
+    const runtimeConfig = await loadDesktopRuntimeConfig();
+    config.baseURL = runtimeConfig.apiBaseUrl;
+    if (isTauriRuntime()) {
+      config.withCredentials = false;
+    }
+
     // 检查网络状态
+    const isSilent = config.silent;
     if (!isOnline) {
-      toast.error('网络连接已断开，请检查网络设置');
+      if (!isSilent) {
+        toast.error('网络连接已断开，请检查网络设置');
+      }
       return Promise.reject(new Error('网络连接已断开'));
     }
 
-    // Token 通过 httpOnly cookie 自动携带，无需手动设置 Authorization header
+    const token = getAuthToken();
+    if (token) {
+      config.headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+    }
 
     // 从 AuthContext 维护的 in-memory 快照取 tenantId 并添加到请求头
     const user = getCurrentUserSnapshot();
@@ -250,19 +263,23 @@ request.interceptors.response.use(
     return res.data;
   },
   (error: AxiosError<ApiResponse | ApiErrorResponse>) => {
+    const isSilent = error.config?.silent;
+
     // 处理超时错误
     if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      toast.error('请求超时，请稍后重试');
+      if (!isSilent) {
+        toast.error('请求超时，请稍后重试');
+      }
       return Promise.reject(new Error('请求超时'));
     }
 
     // 处理网络错误
     if (error.message === 'Network Error' || !isOnline) {
-      toast.error('网络连接失败，请检查网络设置');
+      if (!isSilent) {
+        toast.error('网络连接失败，请检查网络设置');
+      }
       return Promise.reject(new Error('网络连接失败'));
     }
-
-    const isSilent = error.config?.silent;
 
     // 全局处理 401 未授权；静默请求只清状态，不弹提示。
     if (error.response && error.response.status === 401) {

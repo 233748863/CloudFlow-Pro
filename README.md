@@ -89,6 +89,7 @@ CloudFlow Pro 是一个面向企业办公、流程审批、人力资源和客户
 | 服务 | 模块 | 默认端口 | 说明 |
 | --- | --- | --- | --- |
 | 前端开发服务 | `cloudflow-frontend` | `3000` | Vite，本地开发入口 |
+| Tauri 桌面开发服务 | `cloudflow-frontend` | `3001` | Tauri devUrl，复用同一套 React 源码 |
 | 网关 | `cloudflow-gateway` | `9000` | 统一入口，路由 `/auth`、`/workflow`、`/oa`、`/crm`、`/hr`、`/ws` |
 | 认证服务 | `cloudflow-auth` | `9001` | 登录、租户、系统管理、文件、日志 |
 | 工作流服务 | `cloudflow-service-workflow` | `9002` | 流程引擎、流程监控、模板、版本、发布 |
@@ -119,7 +120,8 @@ CloudFlow Pro/
 │   ├── src/components/                 # 业务组件和通用组件
 │   ├── src/services/api/               # 前端 API 封装
 │   ├── src/stores/                     # Zustand 状态
-│   └── src/utils/                      # 工具函数
+│   ├── src/utils/                      # 工具函数
+│   └── src-tauri/                      # Tauri 桌面壳配置、Rust 入口和图标
 ├── config/                             # Nacos Data ID 配置文件
 ├── docker/                             # 服务镜像、Nginx、监控配置
 ├── docker-compose.yml                  # 容器编排，覆盖基础设施、微服务、前端与监控
@@ -219,6 +221,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\start-cloudflow.ps1
 ### 🌐 6. 访问入口
 
 - 前端：`http://localhost:3000`
+- Tauri devUrl：`http://localhost:3001`
 - 网关：`http://localhost:9000`
 - API 文档：`http://localhost:9000/doc.html`
 - Nacos：`http://localhost:8848/nacos`
@@ -247,6 +250,13 @@ mvn -Dspring-boot.run.mainClass=com.cloudflow.auth.AuthApplication spring-boot:r
 ```powershell
 cd .\cloudflow-frontend
 npm run dev
+```
+
+Tauri 桌面端启动：
+
+```powershell
+cd .\cloudflow-frontend
+npm run tauri:dev
 ```
 
 ## 🐳 Docker Compose
@@ -303,6 +313,7 @@ mvn -DskipTests "-Dmaven.test.skip=true" "-Dmdep.analyze.skip=true" install
 cd .\cloudflow-frontend
 npm run type-check
 npm run build
+npm run build:tauri
 ```
 
 ## ⚙️ 配置说明

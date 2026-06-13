@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const isTauriMode = mode === 'tauri';
     return {
       build: {
         rollupOptions: {
@@ -66,7 +67,8 @@ export default defineConfig(({ mode }) => {
         },
       },
       server: {
-        port: 3000,
+        port: isTauriMode ? 3001 : 3000,
+        strictPort: true,
         host: '0.0.0.0',
         headers: {
           'X-Frame-Options': 'SAMEORIGIN',
@@ -91,7 +93,7 @@ export default defineConfig(({ mode }) => {
       plugins: [
         react(), 
         tailwindcss(),
-        VitePWA({
+        ...(!isTauriMode ? [VitePWA({
           registerType: 'autoUpdate',
           includeAssets: ['icon.svg'],
           manifest: {
@@ -123,7 +125,7 @@ export default defineConfig(({ mode }) => {
                 }
              ]
           }
-        })
+        })] : [])
       ],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),

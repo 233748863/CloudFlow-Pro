@@ -80,6 +80,7 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     --cf-surface-muted: rgba(248, 250, 252, 0.86);
     --cf-border: rgba(226, 232, 240, 0.92);
     --cf-border-strong: rgba(203, 213, 225, 0.92);
+    --cf-window-bg: rgb(248 250 252);
     --cf-text: #0f172a;
     --cf-text-muted: #64748b;
     --cf-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
@@ -94,6 +95,7 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     --cf-surface-muted: rgba(15, 23, 42, 0.72);
     --cf-border: rgba(51, 65, 85, 0.82);
     --cf-border-strong: rgba(71, 85, 105, 0.9);
+    --cf-window-bg: rgb(2 6 23);
     --cf-text: #e2e8f0;
     --cf-text-muted: #94a3b8;
     --cf-shadow-sm: 0 1px 3px rgba(2, 6, 23, 0.2), 0 1px 2px rgba(2, 6, 23, 0.26);
@@ -104,7 +106,11 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
   html,
   body,
   #root {
+    height: 100%;
     min-height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: var(--cf-window-bg);
   }
 
   html {
@@ -195,6 +201,24 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
 }
 
 @layer components {
+  .cf-desktop-shell {
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 32px;
+    background: var(--cf-window-bg);
+    border: 0;
+    outline: 0;
+    box-shadow: none;
+  }
+
+  .cf-desktop-content {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--cf-window-bg);
+  }
+
   .btn {
     display: inline-flex;
     align-items: center;
@@ -636,6 +660,28 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
   html.dark .cf-side-link-active:hover {
     background: color-mix(in srgb, var(--cf-primary-500) 22%, rgba(2, 6, 23, 0.94));
     color: rgb(204 251 241);
+  }
+
+  .cf-titlebar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 32px;
+    color: rgb(71 85 105);
+    transition: all 0.15s ease;
+  }
+
+  .cf-titlebar-btn:hover {
+    color: rgb(15 23 42);
+  }
+
+  html.dark .cf-titlebar-btn {
+    color: rgb(148 163 184);
+  }
+
+  html.dark .cf-titlebar-btn:hover {
+    color: rgb(226 232 240);
   }
 
   .cf-filter-chip {

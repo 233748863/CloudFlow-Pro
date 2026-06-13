@@ -14,7 +14,6 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BackendRoot = Join-Path $Root "cloudflow-backend"
 $ReactFrontendRoot = Join-Path $Root "cloudflow-frontend"
-$TauriFrontendRoot = Join-Path $Root "cloudflow-frontend-tauri"
 $RuntimeRoot = Join-Path $Root ".cloudflow-runtime"
 $LogRoot = Join-Path $RuntimeRoot "logs"
 $LocalDefaultSharedPassword = "Juwangkeji@2025"
@@ -73,17 +72,17 @@ $FrontendServices = @(
         Root = $ReactFrontendRoot
         PackageManager = "npm.cmd"
         Arguments = @("run", "dev", "--", "--host", "0.0.0.0", "--port", "3000")
-        ProcessPatterns = @("cloudflow-frontend\node_modules", "vite")
+        ProcessPatterns = @("cloudflow-frontend\node_modules", "vite", "3000")
     },
     @{
         Name = "frontend-tauri"
         DisplayName = "Tauri 桌面端"
         Port = 3001
-        Root = $TauriFrontendRoot
+        Root = $ReactFrontendRoot
         PackageManager = "npm.cmd"
         Arguments = @("run", "tauri:dev")
-        ProcessPatterns = @("cloudflow-frontend-tauri")
-        ReadyProcessPatterns = @("vite")
+        ProcessPatterns = @("cloudflow-frontend", "tauri")
+        ReadyProcessPatterns = @("cloudflow-frontend\node_modules", "vite", "3001")
         WindowStyle = "Hidden"
         LaunchMessage = "已拉起桌面应用（devUrl http://localhost:3001）"
     }

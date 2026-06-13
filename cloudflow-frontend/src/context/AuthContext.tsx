@@ -123,7 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const login = async (token: string) => {
-    // Store token in memory for WebSocket connections (httpOnly cookie handles HTTP requests)
+    // Store token in memory for HTTP Authorization and WebSocket AUTH frame.
     setAuthToken(token);
     await refreshUser();
   };

@@ -1,4 +1,5 @@
 import request from '@/services/api/request';
+import type { AxiosRequestConfig } from 'axios';
 import { Role } from '@/types';
 
 // ==================== 系统管理类型定义 ====================
@@ -156,8 +157,8 @@ export interface RegisterData {
   captchaToken?: string; // 验证码通过后的令牌
 }
 
-export const getTenantOptions = (): Promise<TenantOption[]> => {
-  return request.get('/auth/tenant/options');
+export const getTenantOptions = (config?: AxiosRequestConfig): Promise<TenantOption[]> => {
+  return request.get('/auth/tenant/options', config);
 };
 
 export const login = async (

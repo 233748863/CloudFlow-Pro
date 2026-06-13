@@ -5,7 +5,8 @@
 
 .cf-auth-page {
   position: relative;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -66,7 +67,7 @@
   position: relative;
   z-index: 1;
   display: flex;
-  min-height: 100vh;
+  min-height: 100%;
   width: 100%;
   flex-direction: column;
   align-items: center;
@@ -247,6 +248,43 @@
 
 .cf-auth-hint--error {
   color: #b91c1c;
+}
+
+.cf-auth-tenant-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.cf-auth-tenant-status .cf-auth-hint {
+  margin: 0;
+}
+
+.cf-auth-retry-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid rgba(20, 184, 166, 0.36);
+  border-radius: 0.5rem;
+  background: rgba(240, 253, 250, 0.92);
+  padding: 0.3125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0f766e;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.cf-auth-retry-button:hover {
+  border-color: rgba(13, 148, 136, 0.58);
+  background: rgba(204, 251, 241, 0.96);
+  color: #0f5f59;
 }
 
 .cf-auth-error {
@@ -434,6 +472,22 @@ html.dark .cf-auth-input:focus {
 
 html.dark .cf-auth-input-toggle:hover {
   color: #cbd5e1;
+}
+
+html.dark .cf-auth-hint--error {
+  color: #fca5a5;
+}
+
+html.dark .cf-auth-retry-button {
+  border-color: rgba(45, 212, 191, 0.28);
+  background: rgba(15, 118, 110, 0.22);
+  color: #99f6e4;
+}
+
+html.dark .cf-auth-retry-button:hover {
+  border-color: rgba(94, 234, 212, 0.5);
+  background: rgba(15, 118, 110, 0.36);
+  color: #ccfbf1;
 }
 
 html.dark .cf-auth-error {

@@ -1,4 +1,4 @@
-// Token 由 httpOnly cookie 携带于 HTTP 请求；为 WebSocket 握手（不带 cookie）保留 in-memory 副本。
+// Token 仅保存在内存；HTTP 请求头与 WebSocket 首帧共用这一份。
 let inMemoryToken: string | null = null;
 
 export const getAuthToken = (): string | null => inMemoryToken;
