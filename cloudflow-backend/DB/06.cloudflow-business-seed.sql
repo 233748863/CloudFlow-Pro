@@ -420,9 +420,6 @@ WHERE id BETWEEN 9901 AND 99599;
 DELETE FROM cloud_flow_db.sys_file
 WHERE file_id BETWEEN 91000 AND 99999;
 
-DELETE FROM cloud_flow_db.sys_log
-WHERE log_id BETWEEN 91000 AND 99999;
-
 DELETE FROM cloud_flow_db.outbox_event
 WHERE id BETWEEN 91000 AND 91099
    OR event_id LIKE 'seed_evt_%';
@@ -3643,6 +3640,41 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (1, '生效', 'ACTIVE', 'oa_contract_threshold_status', 'success'),
 (2, '停用', 'INACTIVE', 'oa_contract_threshold_status', 'default');
 -- <<< BIZ_ENUM_DICT_END
+
+-- HR 字典缺项修复：精确重写目标键值，避免 sys_dict_data 无唯一键时重复插入。
+INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
+('员工类型', 'employee_type', 'HR员工类型枚举'),
+('HR合同类型', 'hr_contract_type', '劳动/劳务/实习/全职/兼职');
+
+UPDATE cloud_flow_db.sys_dict_type
+SET dict_name = CASE dict_type
+    WHEN 'employee_type' THEN '员工类型'
+    WHEN 'hr_contract_type' THEN 'HR合同类型'
+    ELSE dict_name
+  END,
+  remark = CASE dict_type
+    WHEN 'employee_type' THEN 'HR员工类型枚举'
+    WHEN 'hr_contract_type' THEN '劳动/劳务/实习/全职/兼职'
+    ELSE remark
+  END
+WHERE dict_type IN ('employee_type', 'hr_contract_type');
+
+DELETE FROM cloud_flow_db.sys_dict_data
+WHERE (dict_type = 'employee_type' AND dict_value IN ('FULL_TIME', 'PART_TIME', 'INTERN', 'CONTRACTOR'))
+   OR (dict_type = 'hr_contract_type' AND dict_value IN ('LABOR', 'SERVICE', 'INTERN', 'FULL_TIME', 'PART_TIME'));
+
+INSERT INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '全职', 'FULL_TIME', 'employee_type', 'success', '全职员工'),
+(2, '兼职', 'PART_TIME', 'employee_type', 'info', '兼职员工'),
+(3, '实习', 'INTERN', 'employee_type', 'info', '实习生'),
+(4, '外包', 'CONTRACTOR', 'employee_type', 'warning', '外包人员');
+
+INSERT INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '劳动合同', 'LABOR', 'hr_contract_type', 'default'),
+(2, '劳务合同', 'SERVICE', 'hr_contract_type', 'default'),
+(3, '实习协议', 'INTERN', 'hr_contract_type', 'default'),
+(4, '全职合同', 'FULL_TIME', 'hr_contract_type', 'default'),
+(5, '兼职合同', 'PART_TIME', 'hr_contract_type', 'default');
 
 -- 12. 初始化系统参数数据
 -- config_scope: 0=全局（所有租户共享） 1=租户（每个租户可独立配置）
@@ -7709,11 +7741,7 @@ DELETE FROM cloud_flow_db.oa_consumable WHERE consumable_id IN (9001,9002,9003,9
 
 DELETE FROM cloud_flow_db.sys_file WHERE file_id IN (91001,91002,91003,91004);
 
-DELETE FROM cloud_flow_db.sys_log WHERE log_id IN (91001,91002,91003,91004);
-
 DELETE FROM cloud_flow_db.sys_file WHERE file_id BETWEEN 92000 AND 92300;
-
-DELETE FROM cloud_flow_db.sys_log WHERE log_id BETWEEN 92000 AND 92300;
 
 DELETE FROM cloud_flow_db.oa_work_task WHERE task_id IN (9401,9402,9403,9404,9405,9406,9407,9408,9409,9410,9411,9412,9413,9414);
 
@@ -10351,9 +10379,6 @@ INSERT IGNORE INTO cloud_flow_db.crm_assignment_rule (
 -- =========================================================
 -- 九、组织扩充后的运营轨迹数据：操作日志、前端异常、HR审计、催办效果
 -- =========================================================
-
-DELETE FROM cloud_flow_db.sys_log
-WHERE log_id IN (93011,93012,93013,93014,93015,93016,93017,93018);
 
 DELETE FROM cloud_flow_db.oa_frontend_error_log
 WHERE id IN (99511,99512,99513,99514,99515,99516);
