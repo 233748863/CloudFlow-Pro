@@ -1,6 +1,12 @@
 ﻿param(
 [int]$TimeoutSeconds = 180,
-[string]$BackendBuildThreads = "1C"
+[string]$BackendBuildThreads = "1C",
+[switch]$All,
+[switch]$Backend,
+[Alias("React")]
+[switch]$ReactFrontend,
+[Alias("Tauri")]
+[switch]$TauriDesktop
 )
 
 $ErrorActionPreference = "Stop"
@@ -67,7 +73,7 @@ $FrontendServices = @(
         Root = $ReactFrontendRoot
         PackageManager = "npm.cmd"
         Arguments = @("run", "dev", "--", "--host", "0.0.0.0", "--port", "3000")
-        ProcessPatterns = @("cloudflow-frontend", "vite")
+        ProcessPatterns = @("cloudflow-frontend\node_modules", "vite")
     },
     @{
         Name = "frontend-tauri"
@@ -78,8 +84,27 @@ $FrontendServices = @(
         Arguments = @("run", "tauri:dev")
         ProcessPatterns = @("cloudflow-frontend-tauri")
         ReadyProcessPatterns = @("vite")
-        WindowStyle = "Normal"
+        WindowStyle = "Hidden"
         LaunchMessage = "已拉起桌面应用（devUrl http://localhost:3001）"
+    }
+)
+
+$noLaunchTargetSpecified = -not ($All -or $Backend -or $ReactFrontend -or $TauriDesktop)
+$StartBackend = $All -or $Backend -or $noLaunchTargetSpecified
+$StartReactFrontend = $All -or $ReactFrontend -or $noLaunchTargetSpecified
+$StartTauriDesktop = $All -or $TauriDesktop -or $noLaunchTargetSpecified
+
+$selectedFrontendNames = @()
+if ($StartReactFrontend) {
+    $selectedFrontendNames += "frontend"
+}
+if ($StartTauriDesktop) {
+    $selectedFrontendNames += "frontend-tauri"
+}
+
+$SelectedFrontendServices = @(
+    $FrontendServices | Where-Object {
+        $selectedFrontendNames -contains $_.Name
     }
 )
 
@@ -634,9 +659,11 @@ function Stop-BackendModuleProcesses {
 }
 
 function Stop-FrontendProcesses {
+    param([object[]]$Services = $FrontendServices)
+
     $matchedProcesses = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
         Where-Object {
-            foreach ($service in $FrontendServices) {
+            foreach ($service in $Services) {
                 if (Test-FrontendProcess -Service $service -Process $_) {
                     return $true
                 }
@@ -1055,25 +1082,47 @@ function Wait-AllServicesReady {
 New-RuntimeDirectories
 Import-DotEnvFile
 Initialize-LocalEnvironment
-Assert-LocalDependencies
 
-Write-Host "启动 CloudFlow 前后端..."
+if ($StartBackend) {
+    Assert-LocalDependencies
+}
+
+$launchTargets = @()
+if ($StartBackend) {
+    $launchTargets += "后端"
+}
+if ($StartReactFrontend) {
+    $launchTargets += "React 前端"
+}
+if ($StartTauriDesktop) {
+    $launchTargets += "Tauri 桌面端"
+}
+
+Write-Host ("启动 CloudFlow：{0}..." -f ($launchTargets -join "、"))
 
 $pending = @()
-foreach ($service in $BackendServices) {
-    Stop-BackendModuleProcesses -Service $service
-    Stop-PortListeners -Service $service
-    Wait-PortsReleased -Service $service -MaxWaitSeconds 10
+if ($StartBackend) {
+    foreach ($service in $BackendServices) {
+        Stop-BackendModuleProcesses -Service $service
+        Stop-PortListeners -Service $service
+        Wait-PortsReleased -Service $service -MaxWaitSeconds 10
+    }
 }
 
-Stop-FrontendProcesses
-foreach ($service in $FrontendServices) {
-    Stop-PortListeners -Service $service
-    Wait-PortsReleased -Service $service -MaxWaitSeconds 10
+if ($SelectedFrontendServices.Count -gt 0) {
+    Stop-FrontendProcesses -Services $SelectedFrontendServices
+    foreach ($service in $SelectedFrontendServices) {
+        Stop-PortListeners -Service $service
+        Wait-PortsReleased -Service $service -MaxWaitSeconds 10
+    }
 }
 
-$nacosSync = Start-NacosConfigurationSync
-foreach ($service in $FrontendServices) {
+$nacosSync = $null
+if ($StartBackend) {
+    $nacosSync = Start-NacosConfigurationSync
+}
+
+foreach ($service in $SelectedFrontendServices) {
     $startedFrontend = Start-FrontendService -Service $service
     $pending += @{
         Service = $startedFrontend.Service
@@ -1086,45 +1135,54 @@ foreach ($service in $FrontendServices) {
     }
 }
 
-$installResult = Install-BackendDependencies
-if (-not $installResult.Success) {
-    foreach ($service in $FrontendServices) {
-        Stop-PortListeners -Service $service
+if ($StartBackend) {
+    $installResult = Install-BackendDependencies
+    if (-not $installResult.Success) {
+        if ($SelectedFrontendServices.Count -gt 0) {
+            Stop-FrontendProcesses -Services $SelectedFrontendServices
+            foreach ($service in $SelectedFrontendServices) {
+                Stop-PortListeners -Service $service
+            }
+        }
+        Write-Host "backend    编译失败，查看日志：$($installResult.OutLog)"
+        if (Test-Path $installResult.ErrLog) {
+            Write-Host "backend    错误日志：$($installResult.ErrLog)"
+        }
+        exit $installResult.ExitCode
     }
-    Write-Host "backend    编译失败，查看日志：$($installResult.OutLog)"
-    if (Test-Path $installResult.ErrLog) {
-        Write-Host "backend    错误日志：$($installResult.ErrLog)"
-    }
-    exit $installResult.ExitCode
-}
 
-Wait-NacosConfigurationSync -SyncJob $nacosSync
+    Wait-NacosConfigurationSync -SyncJob $nacosSync
+}
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $failed = @()
 
-$startedBackends = @()
-foreach ($service in $BackendServices) {
-    $started = Start-BackendService -Service $service
-    $startedBackends += @{
-        Service = $started.Service
-        OutLog = $started.OutLog
-        ErrLog = $started.ErrLog
+if ($StartBackend) {
+    $startedBackends = @()
+    foreach ($service in $BackendServices) {
+        $started = Start-BackendService -Service $service
+        $startedBackends += @{
+            Service = $started.Service
+            OutLog = $started.OutLog
+            ErrLog = $started.ErrLog
+        }
     }
+
+    $initialFailed = @(Wait-BackendServicesReady -PendingServices $startedBackends -Deadline $deadline)
+    $failed += @(Retry-BackendServicesConcurrently -Services $initialFailed -Deadline $deadline)
 }
 
-$initialFailed = @(Wait-BackendServicesReady -PendingServices $startedBackends -Deadline $deadline)
-$failed += @(Retry-BackendServicesConcurrently -Services $initialFailed -Deadline $deadline)
-
-$failed += @(Wait-AllServicesReady -PendingServices $pending -Deadline $deadline)
+if ($pending.Count -gt 0) {
+    $failed += @(Wait-AllServicesReady -PendingServices $pending -Deadline $deadline)
+}
 
 if ($failed.Count -gt 0) {
     Write-Host "启动未完成，查看日志：$LogRoot"
     exit 1
 }
 
-Write-Host "CloudFlow 前后端已启动。"
-foreach ($service in $FrontendServices) {
+Write-Host ("CloudFlow 已启动：{0}。" -f ($launchTargets -join "、"))
+foreach ($service in $SelectedFrontendServices) {
     $launchMessage = Get-ServiceField -Service $service -Name "LaunchMessage"
     if (-not [string]::IsNullOrWhiteSpace($launchMessage)) {
         Write-Host ("{0}：{1}" -f $service.DisplayName, $launchMessage)
@@ -1132,4 +1190,6 @@ foreach ($service in $FrontendServices) {
         Write-Host ("{0}：http://localhost:{1}" -f $service.DisplayName, $service.Port)
     }
 }
-Write-Host "网关：http://localhost:9000"
+if ($StartBackend) {
+    Write-Host "网关：http://localhost:9000"
+}

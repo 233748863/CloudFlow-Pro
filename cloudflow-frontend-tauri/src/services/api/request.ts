@@ -189,8 +189,11 @@ request.interceptors.request.use(
     }
 
     // 检查网络状态
+    const isSilent = config.silent;
     if (!isOnline) {
-      toast.error('网络连接已断开，请检查网络设置');
+      if (!isSilent) {
+        toast.error('网络连接已断开，请检查网络设置');
+      }
       return Promise.reject(new Error('网络连接已断开'));
     }
 
@@ -260,19 +263,23 @@ request.interceptors.response.use(
     return res.data;
   },
   (error: AxiosError<ApiResponse | ApiErrorResponse>) => {
+    const isSilent = error.config?.silent;
+
     // 处理超时错误
     if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      toast.error('请求超时，请稍后重试');
+      if (!isSilent) {
+        toast.error('请求超时，请稍后重试');
+      }
       return Promise.reject(new Error('请求超时'));
     }
 
     // 处理网络错误
     if (error.message === 'Network Error' || !isOnline) {
-      toast.error('网络连接失败，请检查网络设置');
+      if (!isSilent) {
+        toast.error('网络连接失败，请检查网络设置');
+      }
       return Promise.reject(new Error('网络连接失败'));
     }
-
-    const isSilent = error.config?.silent;
 
     // 全局处理 401 未授权；静默请求只清状态，不弹提示。
     if (error.response && error.response.status === 401) {
