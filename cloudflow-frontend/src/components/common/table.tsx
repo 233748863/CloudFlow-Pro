@@ -113,13 +113,16 @@ TableHead.displayName = 'TableHead';
 const TableActionHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className = '', ...props }, ref) => (
-  <TableHead
-    ref={ref}
-    className={cn('w-[12rem] text-center whitespace-nowrap', className)}
-    {...props}
-  />
-));
+>(({ className = '', ...props }, ref) => {
+  const hasAlignment = className.includes('text-left') || className.includes('text-center') || className.includes('text-right');
+  return (
+    <TableHead
+      ref={ref}
+      className={cn('w-[12rem] whitespace-nowrap', !hasAlignment && 'text-right pr-6', className)}
+      {...props}
+    />
+  );
+});
 
 TableActionHead.displayName = 'TableActionHead';
 

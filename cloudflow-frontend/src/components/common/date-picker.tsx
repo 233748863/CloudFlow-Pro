@@ -89,10 +89,10 @@ function getEstimatedDropdownHeight(type: PickerMode): number {
 
 function getDropdownWidth(type: PickerMode, triggerWidth: number): number {
   if (type === 'time') {
-    return 184;
+    return Math.max(triggerWidth, 184);
   }
   if (type === 'datetime-local') {
-    return 420;
+    return Math.max(triggerWidth, 420);
   }
   return Math.max(triggerWidth, 288);
 }
@@ -388,10 +388,10 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
     <div
       className={cn(
         'flex bg-white dark:bg-slate-950',
-        isRow ? 'h-64 w-max flex-row' : 'h-52 w-full flex-col border-t border-slate-100 md:h-[300px] md:border-l md:border-t-0 dark:border-slate-800',
+        isRow ? 'h-64 w-full flex-row' : 'h-52 w-full flex-col border-t border-slate-100 md:h-[300px] md:border-l md:border-t-0 dark:border-slate-800',
       )}
     >
-      <div className={cn('flex min-h-0 flex-col', isRow ? 'w-[5.25rem] border-r border-slate-100 dark:border-slate-800' : 'flex-1 border-b border-slate-100 dark:border-slate-800')}>
+      <div className={cn('flex min-h-0 flex-col', isRow ? 'flex-1 border-r border-slate-100 dark:border-slate-800' : 'flex-1 border-b border-slate-100 dark:border-slate-800')}>
         <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
           时
         </div>
@@ -416,7 +416,7 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
         </div>
       </div>
 
-      <div className={cn('flex min-h-0 flex-col', isRow ? 'w-[5.25rem]' : 'flex-1')}>
+      <div className={cn('flex min-h-0 flex-col', isRow ? 'flex-1' : 'flex-1')}>
         <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
           分
         </div>

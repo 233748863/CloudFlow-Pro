@@ -23,13 +23,13 @@ export const UserDashboardQuickActions: React.FC<UserDashboardQuickActionsProps>
       </h2>
     </div>
 
-    <div className="space-y-3 p-4">
+    <div className="space-y-3 p-4 bg-gradient-to-b from-white/40 to-slate-50/10 dark:from-slate-900/20 dark:to-slate-950/10">
       {actions.map((action) => (
         <button
           key={action.label}
           type="button"
           onClick={action.onClick}
-          className="group flex w-full items-center gap-4 rounded-xl bg-slate-50 p-4 text-left transition-colors hover:bg-slate-100 dark:bg-slate-900/70 dark:hover:bg-slate-900"
+          className="group flex w-full items-center gap-4 rounded-xl border border-slate-100/50 bg-white/40 p-4 text-left shadow-[0_2px_8px_-2px_rgba(15,23,42,0.01)] transition-all duration-300 hover:translate-x-1 hover:bg-white/80 dark:border-slate-800/30 dark:bg-slate-950/20 dark:hover:bg-slate-950/60"
         >
           <div
             className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${action.toneClassName}`}

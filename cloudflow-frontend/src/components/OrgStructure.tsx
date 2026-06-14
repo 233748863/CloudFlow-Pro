@@ -392,7 +392,7 @@ const DeptNode: React.FC<{
           className={cn(
             'flex min-h-11 w-full items-center gap-2 rounded-xl border px-2 py-2 text-left transition',
             isSelected
-              ? 'border-primary-200 bg-primary-50 text-primary-900 shadow-sm dark:border-primary-900/70 dark:bg-primary-950/30 dark:text-primary-100'
+              ? 'border-teal-200/50 bg-teal-500/10 text-teal-700 shadow-sm dark:border-teal-900/40 dark:bg-teal-950/20 dark:text-teal-200'
               : 'border-transparent text-gray-600 hover:border-gray-100 hover:bg-white hover:text-gray-900 dark:text-gray-300 dark:hover:border-dark-700/50 dark:hover:bg-dark-800/50 dark:hover:text-gray-100',
           )}
           style={{ paddingLeft: `${level * 18 + 8}px` }}
@@ -425,7 +425,7 @@ const DeptNode: React.FC<{
             <span className={cn(
               'flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border',
               isSelected
-                ? 'border-primary-200 bg-white text-primary-700 dark:border-primary-900/70 dark:bg-primary-950/50 dark:text-primary-200'
+                ? 'border-teal-200 bg-white text-teal-600 dark:border-teal-900/40 dark:bg-teal-950/50 dark:text-teal-200'
                 : 'border-gray-100 bg-gray-50 text-gray-400 dark:border-dark-700/50 dark:bg-dark-800 dark:text-gray-500',
             )}>
               <Building2 size={15} />
@@ -1174,42 +1174,6 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
               </span>
             </button>
 
-            {selectedDept ? (
-              <div className="rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-3 dark:border-dark-700/50 dark:bg-dark-800/50">
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {selectedDept.deptName}
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {countDeptChildren(selectedDept)} 个下级部门
-                    </div>
-                  </div>
-                  <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(selectedDept.status || '0'))}>
-                    {(selectedDept.status || '0') === '0' ? '正常' : '停用'}
-                  </span>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <Button variant="outline" size="sm" className="px-2" onClick={() => openCreateDeptDialog(selectedDept.deptId)}>
-                    <Plus size={14} />
-                    子部门
-                  </Button>
-                  <Button variant="outline" size="sm" className="px-2" onClick={() => openEditDeptDialog(selectedDept)}>
-                    <Edit3 size={14} />
-                    编辑
-                  </Button>
-                  <Button variant="outline" size="sm" className="px-2" onClick={() => setMigrateDeptSource(selectedDept)}>
-                    <ArrowRightLeft size={14} />
-                    迁移成员
-                  </Button>
-                  <Button variant="outline" size="sm" className="px-2 text-rose-600 hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200" onClick={() => setPendingDeleteDept(selectedDept)}>
-                    <Trash2 size={14} />
-                    删除
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
             <div className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50/50 dark:border-dark-700/50 dark:bg-dark-800/30">
               <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2 dark:border-dark-700/50">
                 <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -1257,10 +1221,50 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
 
       {/* 右侧：用户表格 */}
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-dark-700/50 dark:bg-dark-800/50">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-dark-700/50">
-          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {selectedDept ? `${selectedDept.deptName}` : '成员'}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-dark-700/50">
+          <div className="min-w-0">
+            {selectedDept ? (
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                    {selectedDept.deptName}
+                  </h3>
+                  <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium scale-90 origin-left', getStatusBadgeClassName(selectedDept.status || '0'))}>
+                    {(selectedDept.status || '0') === '0' ? '正常' : '停用'}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  包含 {countDeptChildren(selectedDept)} 个子部门 · 负责人: <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedDept.leader || '未指定'}</span> {selectedDept.phone ? `· 电话: ${selectedDept.phone}` : ''}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">全部成员</h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium">展示全组织架构下的所有在职成员</p>
+              </div>
+            )}
           </div>
+
+          {selectedDept ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" className="rounded-xl border-slate-200/60 shadow-sm text-xs font-semibold px-3 py-1.5 h-9" onClick={() => openCreateDeptDialog(selectedDept.deptId)}>
+                <Plus size={13} className="mr-1 text-teal-600 dark:text-teal-400" />
+                新增子部门
+              </Button>
+              <Button variant="outline" size="sm" className="rounded-xl border-slate-200/60 shadow-sm text-xs font-semibold px-3 py-1.5 h-9" onClick={() => openEditDeptDialog(selectedDept)}>
+                <Edit3 size={13} className="mr-1 text-teal-600 dark:text-teal-400" />
+                编辑部门
+              </Button>
+              <Button variant="outline" size="sm" className="rounded-xl border-slate-200/60 shadow-sm text-xs font-semibold px-3 py-1.5 h-9" onClick={() => setMigrateDeptSource(selectedDept)}>
+                <ArrowRightLeft size={13} className="mr-1 text-teal-600 dark:text-teal-400" />
+                迁移成员
+              </Button>
+              <Button variant="outline" size="sm" className="rounded-xl border-slate-200/60 shadow-sm text-xs font-semibold px-3 py-1.5 h-9 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/20" onClick={() => setPendingDeleteDept(selectedDept)}>
+                <Trash2 size={13} className="mr-1" />
+                删除部门
+              </Button>
+            </div>
+          ) : null}
         </div>
         <div className="p-4">
           <div className="rounded-xl border border-gray-100 dark:border-dark-700/50">

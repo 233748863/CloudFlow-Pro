@@ -116,19 +116,22 @@ export const UserDashboardStats: React.FC<UserDashboardStatsProps> = ({ stats })
   return (
     <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
       {cards.map((card) => (
-        <div key={card.label} className="card p-4">
-          <div className="flex items-center gap-3">
-            <div className={card.wrapClassName}>
+        <div
+          key={card.label}
+          className="card p-5 rounded-2xl border-slate-100/80 dark:border-slate-800/50 hover-scale-premium bg-gradient-to-br from-white/95 to-slate-50/30 dark:from-slate-900/95 dark:to-slate-950/30 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.02)]"
+        >
+          <div className="flex items-center gap-4">
+            <div className={`${card.wrapClassName} rounded-xl p-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.01)] transition-transform duration-300 hover:scale-105`}>
               <span className={card.iconClassName}>{card.icon}</span>
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 tracking-wide uppercase">
                 {card.label}
               </p>
-              <p className={`text-xl font-bold ${card.valueClassName}`}>
+              <p className={`text-2xl font-bold tracking-tight mt-0.5 ${card.valueClassName}`}>
                 {typeof card.value === 'number' ? card.value.toLocaleString() : card.value}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{card.meta}</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">{card.meta}</p>
             </div>
           </div>
         </div>

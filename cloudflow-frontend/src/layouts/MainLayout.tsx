@@ -264,7 +264,7 @@ export const MainLayout = () => {
 
       <aside
         className={cn(
-          'absolute bottom-0 left-0 top-0 z-40 flex flex-col border-r border-slate-200/80 bg-white/86 backdrop-blur-xl transition-[width] duration-300 dark:border-slate-800 dark:bg-slate-950/90',
+          'absolute bottom-4 left-4 top-4 z-40 flex flex-col rounded-2xl border border-slate-200/50 bg-white/70 backdrop-blur-xl shadow-xl transition-[width] duration-300 dark:border-slate-800/40 dark:bg-slate-950/60',
           sidebarCollapsed ? 'w-[72px]' : 'w-64',
         )}
       >
@@ -299,10 +299,13 @@ export const MainLayout = () => {
                     title={`${item.groupLabel} / ${item.label}`}
                     onClick={() => item.path && navigate(buildRouteKey(item.path, item.query))}
                     className={cn(
-                      'cf-side-link h-10 w-10 justify-center gap-0 px-0',
-                      active && 'cf-side-link-active',
+                      'cf-side-link h-10 w-10 justify-center gap-0 px-0 relative transition-all duration-300',
+                      active && 'cf-side-link-active shadow-sm scale-105',
                     )}
                   >
+                    {active && (
+                      <span className="absolute left-0 top-1/4 bottom-1/4 w-0.5 rounded-r bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.8)]" />
+                    )}
                     <item.icon size={18} />
                   </button>
                 );
@@ -340,20 +343,26 @@ export const MainLayout = () => {
 
                     {expanded ? (
                       <div className="ml-4 mt-2 space-y-1 border-l border-slate-200 pl-3 dark:border-slate-800">
-                        {group.children?.map((child) => (
-                          <button
-                            key={child.id}
-                            type="button"
-                            onClick={() => child.path && navigate(buildRouteKey(child.path, child.query))}
-                            className={cn(
-                              'cf-side-link cf-side-link-sm',
-                              isActive(child.path, child.query) && 'cf-side-link-active',
-                            )}
-                          >
-                            <child.icon size={16} className="shrink-0" />
-                            <span className="truncate">{child.label}</span>
-                          </button>
-                        ))}
+                        {group.children?.map((child) => {
+                          const active = isActive(child.path, child.query);
+                          return (
+                            <button
+                              key={child.id}
+                              type="button"
+                              onClick={() => child.path && navigate(buildRouteKey(child.path, child.query))}
+                              className={cn(
+                                'cf-side-link cf-side-link-sm relative pl-7 transition-all duration-300',
+                                active && 'cf-side-link-active shadow-sm translate-x-1',
+                              )}
+                            >
+                              {active && (
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.8)] animate-pulse" />
+                              )}
+                              <child.icon size={16} className="shrink-0" />
+                              <span className="truncate">{child.label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : null}
                   </div>
@@ -400,18 +409,18 @@ export const MainLayout = () => {
 
       <div
         className={cn(
-          'relative flex h-full min-h-0 flex-col overflow-hidden transition-[padding] duration-300',
-          sidebarCollapsed ? 'pl-[72px]' : 'pl-64',
+          'relative flex h-full min-h-0 flex-col overflow-hidden transition-[padding] duration-300 pr-4',
+          sidebarCollapsed ? 'pl-[104px]' : 'pl-[296px]',
         )}
       >
-        <header className="glass sticky top-0 z-30 border-b border-slate-200/70 dark:border-slate-800/70">
-          <div className="flex h-16 items-center justify-between px-4 md:px-6">
+        <header className="sticky top-0 z-30 mt-4 rounded-2xl border border-slate-200/50 bg-white/70 backdrop-blur-md shadow-sm dark:border-slate-800/40 dark:bg-slate-950/60">
+          <div className="flex h-14 items-center justify-between px-4 md:px-6">
             <div className="min-w-0">
               <div className="hidden lg:block">
-                <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <h1 className="truncate text-base font-semibold text-slate-900 dark:text-slate-100">
                   {activeLabel.item}
                 </h1>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{activeLabel.group}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">{activeLabel.group}</p>
               </div>
             </div>
 
@@ -425,7 +434,7 @@ export const MainLayout = () => {
 
         <main
           ref={mainScrollRef}
-          className="hide-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-6 lg:p-8"
+          className="hide-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-6 md:p-8 lg:p-10 premium-glass-card rounded-2xl mt-3 mb-4"
         >
           <div className="animate-fade-in">
             <Outlet />
