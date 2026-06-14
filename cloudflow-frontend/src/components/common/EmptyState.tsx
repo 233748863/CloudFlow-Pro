@@ -38,23 +38,27 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   action,
   className,
 }) => (
-  <div className={cn('empty-state', className)}>
-    <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-900">
-      {icon || <Inbox className="empty-state-icon h-10 w-10" />}
+  <div className={cn('empty-state py-16', className)}>
+    <div className="premium-empty-glow mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-teal-500/5 text-teal-600 shadow-[inset_0_0_20px_rgba(20,184,166,0.05)] dark:bg-teal-500/10 dark:text-teal-400">
+      {icon || <Inbox className="empty-state-icon h-12 w-12" />}
     </div>
-    <h3 className="empty-state-title">{title}</h3>
-    {(description || message) ? <p className="empty-state-description">{description || message}</p> : null}
+    <h3 className="empty-state-title text-xl">{title}</h3>
+    {(description || message) ? (
+      <p className="empty-state-description mt-2 text-slate-500 dark:text-slate-400">
+        {description || message}
+      </p>
+    ) : null}
     {action ? (
-      <div className="mt-6">{action}</div>
+      <div className="mt-8">{action}</div>
     ) : actionText ? (
-      <div className="mt-6">
+      <div className="mt-8">
         {actionTo ? (
-          <Link className="btn btn-primary btn-md" to={actionTo}>
+          <Link className="btn btn-primary rounded-xl px-6 py-2.5 shadow-lg" to={actionTo}>
             {actionIcon ? <Plus className="mr-2 h-4 w-4" /> : null}
             {actionText}
           </Link>
         ) : (
-          <Button onClick={onAction}>
+          <Button className="rounded-xl px-6 py-2.5 shadow-lg" onClick={onAction}>
             {actionIcon ? <Plus className="mr-2 h-4 w-4" /> : null}
             {actionText}
           </Button>

@@ -273,16 +273,20 @@ export const Workplace = () => {
     }
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 p-6 animate-fade-in">
-        {filteredWorkflows.map((workflow) => {
+      <div className="stagger-container grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 p-6">
+        {filteredWorkflows.map((workflow, index) => {
           const workflowTags = normalizeWorkflowTags(workflow.tags);
           const categoryLabel =
             getWorkflowCategoryLabel(workflow.category) || workflow.category || '未分类';
+          const staggerClass = `stagger-item-${Math.min(index + 1, 10)}`;
 
           return (
             <div
               key={workflow.id}
-              className="group relative flex flex-col justify-between rounded-2xl border border-slate-100/60 bg-white/40 p-5 shadow-[0_2px_12px_-3px_rgba(15,23,42,0.01)] transition-all duration-300 hover:-translate-y-1 hover:bg-white/80 hover:shadow-[0_12px_24px_rgba(15,23,42,0.04)] dark:border-slate-800/30 dark:bg-slate-950/20 dark:hover:bg-slate-950/50"
+              className={cn(
+                "group relative flex flex-col justify-between rounded-2xl border border-slate-100/60 bg-white/40 p-5 shadow-[0_2px_12px_-3px_rgba(15,23,42,0.01)] transition-all duration-300 hover:-translate-y-1 hover:bg-white/80 hover:shadow-[0_12px_24px_rgba(15,23,42,0.04)] dark:border-slate-800/30 dark:bg-slate-950/20 dark:hover:bg-slate-950/50",
+                staggerClass
+              )}
             >
               <div>
                 <div className="flex items-start justify-between gap-3">

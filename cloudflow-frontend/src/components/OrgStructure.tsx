@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Download,
   Edit3,
   Eye,
   Plus,
@@ -379,21 +380,29 @@ const DeptNode: React.FC<{
   const childDepartments = countDeptChildren(dept);
 
   return (
-    <div className="select-none">
+    <div className="select-none relative">
       <div className="group relative">
         {level > 0 ? (
-          <span
-            className="pointer-events-none absolute bottom-0 top-0 w-px bg-gray-200/70 dark:bg-gray-800"
-            style={{ left: `${level * 18 + 15}px` }}
-          />
+          <>
+            {/* 竖向虚线连接线 */}
+            <span
+              className="pointer-events-none absolute top-0 bottom-0 border-l border-dashed border-slate-200/80 dark:border-slate-800/60"
+              style={{ left: `${(level - 1) * 18 + 20}px`, width: '1px' }}
+            />
+            {/* 横向折肘虚线 */}
+            <span
+              className="pointer-events-none absolute top-[18px] border-t border-dashed border-slate-200/80 dark:border-slate-800/60"
+              style={{ left: `${(level - 1) * 18 + 20}px`, width: '10px', height: '1px' }}
+            />
+          </>
         ) : null}
 
         <div
           className={cn(
-            'flex min-h-11 w-full items-center gap-2 rounded-xl border px-2 py-2 text-left transition',
+            'flex h-9 w-full items-center gap-1.5 rounded-xl border border-transparent px-2 text-left transition-all duration-300',
             isSelected
               ? 'border-teal-200/50 bg-teal-500/10 text-teal-700 shadow-sm dark:border-teal-900/40 dark:bg-teal-950/20 dark:text-teal-200'
-              : 'border-transparent text-gray-600 hover:border-gray-100 hover:bg-white hover:text-gray-900 dark:text-gray-300 dark:hover:border-dark-700/50 dark:hover:bg-dark-800/50 dark:hover:text-gray-100',
+              : 'text-slate-600 hover:bg-white/80 hover:text-slate-900 dark:text-slate-300 dark:hover:border-slate-800/50 dark:hover:bg-slate-900/40 dark:hover:text-slate-100',
           )}
           style={{ paddingLeft: `${level * 18 + 8}px` }}
         >
@@ -407,13 +416,11 @@ const DeptNode: React.FC<{
               onToggle(dept.deptId);
             }}
             className={cn(
-              'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-gray-400 transition',
-              hasChildren
-                ? 'hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-700 dark:hover:text-gray-200'
-                : 'cursor-default disabled:opacity-100',
+              'flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800',
+              hasChildren ? 'cursor-pointer' : 'cursor-default disabled:opacity-100',
             )}
           >
-            {hasChildren ? expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} /> : <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-gray-700" />}
+            {hasChildren ? expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />}
           </button>
 
           <button
@@ -423,30 +430,20 @@ const DeptNode: React.FC<{
             className="flex min-w-0 flex-1 items-center gap-2 text-left"
           >
             <span className={cn(
-              'flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border',
+              'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border text-xs',
               isSelected
                 ? 'border-teal-200 bg-white text-teal-600 dark:border-teal-900/40 dark:bg-teal-950/50 dark:text-teal-200'
-                : 'border-gray-100 bg-gray-50 text-gray-400 dark:border-dark-700/50 dark:bg-dark-800 dark:text-gray-500',
+                : 'border-slate-100 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-500',
             )}>
-              <Building2 size={15} />
+              <Building2 size={13} />
             </span>
 
-            <span className="min-w-0 flex-1">
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-semibold">{dept.deptName}</span>
-                <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(dept.status || '0'))}>
-                  {(dept.status || '0') === '0' ? '正常' : '停用'}
-                </span>
-              </span>
-              <span className="mt-0.5 block truncate text-xs text-gray-400 dark:text-gray-500">
-                {childDepartments > 0 ? `${directChildren} 个下级 / 共 ${childDepartments} 个` : dept.leader ? `负责人 ${dept.leader}` : `部门 ID ${dept.deptId}`}
-              </span>
-            </span>
+            <span className="truncate text-xs font-semibold tracking-tight">{dept.deptName}</span>
           </button>
 
           <div
             className={cn(
-              'ml-auto flex shrink-0 items-center gap-1 transition',
+              'ml-auto flex shrink-0 items-center gap-0.5 transition-all duration-300',
               isSelected
                 ? 'opacity-100'
                 : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100',
@@ -460,9 +457,9 @@ const DeptNode: React.FC<{
                 event.stopPropagation();
                 onAddChild(dept);
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-primary-50 hover:text-primary-700 dark:text-gray-400 dark:hover:bg-primary-950/30 dark:hover:text-primary-200"
+              className="flex h-5 w-5 items-center justify-center rounded-md text-slate-400 hover:bg-teal-500/10 hover:text-teal-600 dark:text-slate-400 dark:hover:bg-teal-950/30"
             >
-              <Plus size={14} />
+              <Plus size={12} />
             </button>
             <button
               type="button"
@@ -472,16 +469,16 @@ const DeptNode: React.FC<{
                 event.stopPropagation();
                 onEdit(dept);
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-dark-700 dark:hover:text-gray-100"
+              className="flex h-5 w-5 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
-              <Edit3 size={14} />
+              <Edit3 size={12} />
             </button>
           </div>
         </div>
       </div>
 
       {expanded && hasChildren ? (
-        <div className="mt-1 space-y-1">
+        <div className="mt-0.5 space-y-0.5">
           {dept.children?.map((child) => (
             <DeptNode
               key={child.deptId}
@@ -1131,25 +1128,25 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
       {/* 左侧：部门树 */}
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-dark-700/50 dark:bg-dark-800/50">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-dark-700/50">
-          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">部门</div>
-          <Button variant="outline" size="sm" onClick={() => openCreateDeptDialog(0)}>
-            <Plus size={14} />
-            新增
+      <div className="overflow-hidden rounded-2xl border border-slate-200/40 bg-white/40 shadow-sm dark:border-slate-800/40 dark:bg-slate-950/20 backdrop-blur-md">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100/60 px-5 py-4 dark:border-slate-800/40">
+          <div className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">组织架构树</div>
+          <Button variant="outline" size="sm" className="rounded-xl border-slate-200/60 h-8 text-xs font-semibold px-2.5 shadow-sm" onClick={() => openCreateDeptDialog(0)}>
+            <Plus size={14} className="mr-1 text-teal-600 dark:text-teal-400" />
+            新增根部门
           </Button>
         </div>
         <div className="p-4">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="relative">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+              <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <Input
                 value={deptSearch}
                 onChange={(event) => setDeptSearch(event.target.value)}
-                className="pl-10"
-                placeholder="搜索部门名称或负责人"
+                className="pl-10 h-10 rounded-xl bg-white/60 dark:bg-slate-950/30 border-slate-200/60 dark:border-slate-800/60"
+                placeholder="搜索部门名称、负责人..."
               />
             </div>
 
@@ -1157,47 +1154,53 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
               type="button"
               onClick={() => setSelectedDeptId(null)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition',
+                'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all duration-300',
                 selectedDeptId === null
-                  ? 'border-primary-200 bg-primary-50 text-primary-900 shadow-sm dark:border-primary-900/70 dark:bg-primary-950/30 dark:text-primary-100'
-                  : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200 hover:bg-gray-50 dark:border-dark-700/50 dark:bg-dark-800/50 dark:text-gray-200 dark:hover:border-dark-600 dark:hover:bg-dark-700/50',
+                  ? 'border-teal-200/50 bg-teal-500/10 text-teal-700 shadow-sm dark:border-teal-900/40 dark:bg-teal-950/20 dark:text-teal-200'
+                  : 'border-slate-100/60 bg-white/40 text-slate-600 hover:border-slate-200 hover:bg-white/80 dark:border-slate-800/40 dark:bg-slate-950/10 dark:text-slate-300 dark:hover:bg-slate-950/30',
               )}
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-100 bg-gray-50 text-gray-500 dark:border-dark-700/50 dark:bg-dark-800 dark:text-gray-400">
+              <span className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors",
+                selectedDeptId === null 
+                  ? "border-teal-200 bg-white text-teal-600 dark:border-teal-900/40 dark:bg-teal-950/50" 
+                  : "border-slate-100 bg-slate-50/50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/50"
+              )}>
                 <Building2 size={17} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">全部部门</span>
-                <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
-                  {totalDepartments} 个部门 / {activeDepartments} 个正常
+                <span className="block text-sm font-bold tracking-tight">全组织成员</span>
+                <span className="mt-0.5 block text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                  {totalDepartments} 部门 / {activeDepartments} 正常运行
                 </span>
               </span>
             </button>
 
-            <div className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50/50 dark:border-dark-700/50 dark:bg-dark-800/30">
-              <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2 dark:border-dark-700/50">
-                <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {deptSearch ? `匹配 ${filteredDepartments} 个部门` : `组织树 ${totalDepartments} 个部门`}
+            <div className="overflow-hidden rounded-xl border border-slate-100/60 bg-slate-50/30 dark:border-slate-800/40 dark:bg-slate-950/10">
+              <div className="flex items-center justify-between border-b border-slate-100/60 px-3 py-2.5 dark:border-slate-800/40 bg-slate-50/40 dark:bg-slate-900/20">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {deptSearch ? `搜索到 ${filteredDepartments} 个结果` : `部门层级树`}
                 </div>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={expandAllDepartments} className="rounded-lg px-2 py-1 text-xs text-gray-500 transition hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-dark-800 dark:hover:text-gray-100">
-                    展开
+                  <button type="button" onClick={expandAllDepartments} className="rounded-md px-2 py-0.5 text-[10px] font-bold text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/30 transition-colors">
+                    全部展开
                   </button>
-                  <button type="button" onClick={collapseAllDepartments} className="rounded-lg px-2 py-1 text-xs text-gray-500 transition hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-dark-800 dark:hover:text-gray-100">
-                    收起
+                  <div className="w-px h-2.5 bg-slate-200 dark:bg-slate-800" />
+                  <button type="button" onClick={collapseAllDepartments} className="rounded-md px-2 py-0.5 text-[10px] font-bold text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900/40 transition-colors">
+                    全部折叠
                   </button>
                 </div>
               </div>
 
-              <div className="max-h-[62vh] overflow-y-auto p-2">
+              <div className="max-h-[62vh] overflow-y-auto p-2 hide-scrollbar">
                 {deptLoading ? (
-                  <InlineState title="正在加载部门树..." loading className="py-12" />
+                  <InlineState title="正在构筑部门模型..." loading className="py-12 scale-90" />
                 ) : deptError ? (
-                  <InlineState icon={<Building2 className="h-5 w-5" />} title="部门树加载失败" description={deptError} className="py-12" />
+                  <InlineState icon={<Building2 className="h-5 w-5" />} title="模型加载失败" description={deptError} className="py-12 scale-90" />
                 ) : filteredDeptTree.length === 0 ? (
-                  <InlineState icon={<Building2 className="h-5 w-5" />} title="暂无匹配部门" description={deptSearch ? '请调整部门搜索条件后重试。' : '当前还没有部门数据。'} className="py-12" />
+                  <InlineState icon={<Building2 className="h-5 w-5" />} title="无匹配项" description={deptSearch ? '请尝试其他关键词。' : '暂无组织数据。'} className="py-12 scale-90" />
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {filteredDeptTree.map((dept) => (
                       <DeptNode
                         key={dept.deptId}
@@ -1220,8 +1223,8 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
       </div>
 
       {/* 右侧：用户表格 */}
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-dark-700/50 dark:bg-dark-800/50">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-dark-700/50">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/40 bg-white/40 shadow-sm dark:border-slate-800/40 dark:bg-slate-950/20 backdrop-blur-md">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100/60 px-5 py-4 dark:border-slate-800/40">
           <div className="min-w-0">
             {selectedDept ? (
               <div>
@@ -1234,13 +1237,13 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                   </span>
                 </div>
                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  包含 {countDeptChildren(selectedDept)} 个子部门 · 负责人: <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedDept.leader || '未指定'}</span> {selectedDept.phone ? `· 电话: ${selectedDept.phone}` : ''}
+                  包含 {countDeptChildren(selectedDept)} 个子部门 · 负责人: <span className="font-semibold text-slate-700 dark:text-slate-200">{selectedDept.leader || '未指定'}</span> {selectedDept.phone ? `· 电话: ${selectedDept.phone}` : ''}
                 </div>
               </div>
             ) : (
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">全部成员</h3>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium">展示全组织架构下的所有在职成员</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">组织成员全览</h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium">展示全组织架构下的所有成员数据</p>
               </div>
             )}
           </div>
@@ -1267,22 +1270,28 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
           ) : null}
         </div>
         <div className="p-4">
-          <div className="rounded-xl border border-gray-100 dark:border-dark-700/50">
-            <div className="flex flex-col gap-3 border-b border-gray-100 px-4 py-3 dark:border-dark-700/50 xl:flex-row xl:items-center xl:justify-between">
-              <div className="relative min-w-0 flex-1">
-                <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+          <div className="rounded-xl border border-slate-100/60 bg-slate-50/20 dark:border-slate-800/40 dark:bg-slate-900/10">
+            <div className="flex flex-col gap-3 border-b border-slate-100/60 px-5 py-4 dark:border-slate-800/40 xl:flex-row xl:items-center xl:justify-between bg-white/20 dark:bg-slate-950/20">
+              <div className="relative min-w-0 flex-1 max-w-md">
+                <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
                   value={userSearch}
                   onChange={(event) => setUserSearch(event.target.value)}
-                  className="pl-10"
-                  placeholder="搜索成员姓名、账号、邮箱或手机号"
+                  className="pl-10 h-10 rounded-xl bg-white/60 dark:bg-slate-950/30 border-slate-200/60 dark:border-slate-800/60"
+                  placeholder="搜索成员姓名、账号、手机号..."
                 />
               </div>
-              {userSearch ? (
-                <Button variant="outline" onClick={() => setUserSearch('')}>
-                  清空搜索
+              <div className="flex items-center gap-3">
+                {userSearch ? (
+                  <Button variant="ghost" size="sm" className="text-xs text-slate-500 hover:text-slate-900" onClick={() => setUserSearch('')}>
+                    清空搜索
+                  </Button>
+                ) : null}
+                <Button variant="outline" size="sm" className="rounded-xl border-slate-200/60 shadow-sm h-9">
+                  <Download size={14} className="mr-1.5" />
+                  导出数据
                 </Button>
-              ) : null}
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -1299,7 +1308,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                     <TableActionHead className="w-56">操作</TableActionHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="stagger-container">
                   {userLoading ? (
                     <TableStateRow colSpan={8} title="正在加载成员列表..." loading />
                   ) : userError ? (
@@ -1311,8 +1320,8 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                       description={userSearch ? '请调整成员搜索条件后重试。' : selectedDept ? '当前部门暂无成员。' : '当前没有可展示的成员数据。'}
                     />
                   ) : (
-                    filteredUsers.map((user) => (
-                      <TableRow key={user.userId}>
+                    filteredUsers.map((user, index) => (
+                      <TableRow key={user.userId} className={`stagger-item-${Math.min(index + 1, 10)}`}>
                         <TableCell className="py-4">
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-100 bg-gray-50 text-sm font-semibold text-gray-700 dark:border-dark-700/50 dark:bg-dark-800 dark:text-gray-200">

@@ -43,18 +43,20 @@ export const PageLoading: React.FC<PageLoadingProps> = ({
       aria-busy="true"
       className={cn('flex items-center justify-center', container, className)}
     >
-      <div className="flex flex-col items-center gap-4 px-6 text-center">
-        <LoadingSpinner size={size} color="primary" />
-        {tip && (
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            {tip}
-          </p>
-        )}
-        {description && (
-          <p className="max-w-sm text-xs text-slate-400 dark:text-slate-500">
-            {description}
-          </p>
-        )}
+      <div className="flex flex-col items-center gap-6 px-6 text-center animate-fade-in">
+        <div className="premium-loader-orbit" />
+        <div className="space-y-1.5">
+          {tip && (
+            <p className="text-base font-bold tracking-tight text-slate-800 dark:text-slate-100">
+              {tip}
+            </p>
+          )}
+          {description && (
+            <p className="max-w-sm text-xs font-medium text-slate-400 dark:text-slate-500">
+              {description}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

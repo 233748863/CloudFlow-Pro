@@ -518,8 +518,8 @@ const VehicleList: React.FC = () => {
                   <col className="w-[9.25rem]" />
                   <col className="w-32" />
                   <col className="w-32" />
-                  <col className="w-24" />
-                </colgroup>
+                  <col className="w-32" />
+                  </colgroup>
                 <TableHeader className="sticky top-0 z-10">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
                     <TableHead className="px-3 py-3">

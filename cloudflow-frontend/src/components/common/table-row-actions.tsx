@@ -426,7 +426,7 @@ export function ActionCell({
 }) {
   const { visibleActions, overflowActions } = useActionLayout(actions, maxVisibleActions);
   return (
-    <div className={cn('flex items-start gap-1.5', alignClassMap[align], className)}>
+    <div className={cn('flex flex-nowrap whitespace-nowrap items-center gap-1.5 w-full', alignClassMap[align], className)}>
       {visibleActions.map((action, index) => (
         <ActionItemButton key={action.key ?? `${action.label}-${index}`} action={action} layout={buttonLayout} />
       ))}
