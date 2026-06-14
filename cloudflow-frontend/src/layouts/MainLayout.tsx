@@ -264,7 +264,7 @@ export const MainLayout = () => {
 
       <aside
         className={cn(
-          'absolute bottom-4 left-4 top-4 z-40 flex flex-col rounded-2xl border border-slate-200/50 bg-white/70 backdrop-blur-xl shadow-xl transition-[width] duration-300 dark:border-slate-800/40 dark:bg-slate-950/60',
+          'absolute bottom-4 left-4 top-4 z-50 flex flex-col rounded-2xl border border-slate-200/50 bg-white/70 backdrop-blur-xl shadow-xl transition-[width] duration-300 dark:border-slate-800/40 dark:bg-slate-950/60',
           sidebarCollapsed ? 'w-[72px]' : 'w-64',
         )}
       >

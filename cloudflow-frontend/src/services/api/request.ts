@@ -152,17 +152,21 @@ window.addEventListener('online', () => { isOnline = true; });
 window.addEventListener('offline', () => { isOnline = false; });
 
 function redirectToLoginWhenUnauthorized(options: { silent?: boolean } = {}) {
-  if (options.silent) {
-    clearAuthSession();
-    window.dispatchEvent(new Event('cloudflow:auth-expired'));
-    return;
-  }
-
   // 并发去重：多个请求同时 401 时只处理一次
   if (isRedirectingToLogin) {
     return;
   }
   isRedirectingToLogin = true;
+
+  if (options.silent) {
+    clearAuthSession();
+    window.dispatchEvent(new Event('cloudflow:auth-expired'));
+    // 延迟重置去重状态，避免并发静默请求时发生死锁或拦截失效，同时预防高频并发 401 引发 React 重绘溢出
+    setTimeout(() => {
+      isRedirectingToLogin = false;
+    }, 1500);
+    return;
+  }
 
   if (isForcePasswordChangeUser()) {
     isRedirectingToLogin = false; // 强制改密不跳转，重置标志位
@@ -177,6 +181,11 @@ function redirectToLoginWhenUnauthorized(options: { silent?: boolean } = {}) {
   if (window.location.pathname !== loginPath) {
     navigateTo(loginPath, { replace: true });
   }
+
+  // 延迟重置非静默跳转的标志位，确保在软跳转期间或之后，下一次 Token 过期时拦截功能依然可用
+  setTimeout(() => {
+    isRedirectingToLogin = false;
+  }, 1500);
 }
 
 // 请求拦截器
