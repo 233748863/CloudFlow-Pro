@@ -14,8 +14,13 @@ public class PageQuery {
 
     /**
      * 构建 MyBatis-Plus 分页对象
+     * 增加大页保护，最大允许单页 100 条记录
      */
     public <T> Page<T> build() {
-        return new Page<>(pageNum, pageSize);
+        int size = (pageSize == null || pageSize <= 0) ? 10 : pageSize;
+        if (size > 100) {
+            size = 100;
+        }
+        return new Page<>(pageNum, size);
     }
 }

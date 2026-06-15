@@ -1119,22 +1119,6 @@ if ($SelectedFrontendServices.Count -gt 0) {
 $nacosSync = $null
 if ($StartBackend) {
     $nacosSync = Start-NacosConfigurationSync
-}
-
-foreach ($service in $SelectedFrontendServices) {
-    $startedFrontend = Start-FrontendService -Service $service
-    $pending += @{
-        Service = $startedFrontend.Service
-        OutLog = $startedFrontend.OutLog
-        ErrLog = $startedFrontend.ErrLog
-        ExpectedProcess = {
-            param($service, $process)
-            Test-FrontendReadyProcess -Service $service -Process $process
-        }
-    }
-}
-
-if ($StartBackend) {
     $installResult = Install-BackendDependencies
     if (-not $installResult.Success) {
         if ($SelectedFrontendServices.Count -gt 0) {
@@ -1171,8 +1155,21 @@ if ($StartBackend) {
     $failed += @(Retry-BackendServicesConcurrently -Services $initialFailed -Deadline $deadline)
 }
 
+foreach ($service in $SelectedFrontendServices) {
+    $startedFrontend = Start-FrontendService -Service $service
+    $pending += @{
+        Service = $startedFrontend.Service
+        OutLog = $startedFrontend.OutLog
+        ErrLog = $startedFrontend.ErrLog
+        ExpectedProcess = {
+            param($service, $process)
+            Test-FrontendReadyProcess -Service $service -Process $process
+        }
+    }
+}
+
 if ($pending.Count -gt 0) {
-    $failed += @(Wait-AllServicesReady -PendingServices $pending -Deadline $deadline)
+    $failed += @(Wait-AllServicesReady -PendingServices $pending -Deadline ((Get-Date).AddSeconds($TimeoutSeconds)))
 }
 
 if ($failed.Count -gt 0) {

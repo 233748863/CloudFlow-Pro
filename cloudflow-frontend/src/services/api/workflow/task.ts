@@ -26,7 +26,7 @@ export async function getTodoTasks(params?: {
   logApiCall("GET", "/workflow/wf/todo", params);
   const query: Record<string, unknown> = {
     pageNum: params?.pageNum || 1,
-    pageSize: params?.pageSize || 999,
+    pageSize: params?.pageSize || 100,
   };
   if (params?.keyword) query["params[keyword]"] = params.keyword;
   if (params?.processDefKey) query["params[processDefKey]"] = params.processDefKey;

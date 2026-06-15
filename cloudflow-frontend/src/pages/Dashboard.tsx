@@ -344,13 +344,13 @@ export const Dashboard = () => {
       await Promise.allSettled([
         getTodoTasks({
           pageNum: 1,
-          pageSize: 80,
+          pageSize: 20,
           startTimeFrom: startDate,
           startTimeTo: endDate,
         }),
         getMyInstances({
           pageNum: 1,
-          pageSize: 80,
+          pageSize: 20,
           startTimeFrom: startDate,
           startTimeTo: endDate,
         }),

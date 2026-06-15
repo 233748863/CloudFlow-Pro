@@ -30,12 +30,18 @@ export const MobileTasks: React.FC = () => {
   const fetchTasks = useCallback(async () => {
     try {
       const [tasksRes, countsRes] = await Promise.allSettled([
-        getTodoTasks(),
+        getTodoTasks({ pageNum: 1, pageSize: 20 }),
         getTasksCount(),
       ]);
 
-      if (tasksRes.status === 'fulfilled' && Array.isArray(tasksRes.value)) {
-        setTasks(tasksRes.value as Task[]);
+      if (tasksRes.status === 'fulfilled' && tasksRes.value) {
+        const val = tasksRes.value;
+        if (Array.isArray(val)) {
+          setTasks(val as Task[]);
+        } else if (val && typeof val === 'object') {
+          const list = (val as any).records || (val as any).rows || [];
+          setTasks(list as Task[]);
+        }
       }
 
       if (countsRes.status === 'fulfilled' && countsRes.value) {
