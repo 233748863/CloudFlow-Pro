@@ -43,7 +43,8 @@ public class RedisCacheConfig {
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
-        cacheConfigurations.put("oa_workplace_summary", defaultConfig.entryTtl(Duration.ofMinutes(2)));
+        cacheConfigurations.put("oa_workplace_summary_core", defaultConfig.entryTtl(Duration.ofSeconds(60)));
+        cacheConfigurations.put("oa_workplace_summary_enrichment", defaultConfig.entryTtl(Duration.ofMinutes(2)));
 
         return new TenantRedisCacheManager(
                 RedisCacheWriter.nonLockingRedisCacheWriter(connectionFactory),

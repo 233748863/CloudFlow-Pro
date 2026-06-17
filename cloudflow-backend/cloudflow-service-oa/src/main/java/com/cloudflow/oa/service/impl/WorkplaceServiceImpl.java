@@ -24,6 +24,7 @@ import com.cloudflow.oa.util.OaContractConstants;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -36,6 +37,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -46,7 +51,8 @@ import java.util.stream.Collectors;
 @Service
 public class WorkplaceServiceImpl implements IWorkplaceService {
 
-    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary#120s";
+    private static final String WORKPLACE_SUMMARY_CORE_CACHE = "oa_workplace_summary_core#60s";
+    private static final String WORKPLACE_SUMMARY_ENRICHMENT_CACHE = "oa_workplace_summary_enrichment#120s";
 
     @Autowired
     private RemoteWorkflowService remoteWorkflowService;
@@ -75,9 +81,23 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     @Autowired
     private IOaContractMilestoneService oaContractMilestoneService;
 
+    @Autowired
+    @Qualifier("taskExecutor")
+    private Executor taskExecutor;
+
     @Override
-    @Cacheable(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#userId")
+    @Cacheable(cacheNames = WORKPLACE_SUMMARY_CORE_CACHE, key = "#userId")
     public WorkplaceSummaryDTO getWorkplaceSummary(Long userId) {
+        return buildCoreSummary(userId);
+    }
+
+    @Override
+    @Cacheable(cacheNames = WORKPLACE_SUMMARY_ENRICHMENT_CACHE, key = "#userId")
+    public WorkplaceSummaryDTO getWorkplaceSummaryEnrichment(Long userId) {
+        return buildEnrichment(userId);
+    }
+
+    private WorkplaceSummaryDTO buildCoreSummary(Long userId) {
         WorkplaceSummaryDTO summary = new WorkplaceSummaryDTO();
         Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth = new HashMap<>();
         summary.setServiceHealth(serviceHealth);
@@ -105,9 +125,8 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                 R<Map<String, Integer>> countResult = remoteWorkflowService.getTasksCount();
                 if (countResult != null && countResult.getCode() == 200 && countResult.getData() != null) {
                     Map<String, Integer> counts = countResult.getData();
-                    // 待办任务 = todo + doing 的总和
-                    int todoCount = counts.getOrDefault("todo", 0);
-                    int doingCount = counts.getOrDefault("doing", 0);
+                    int todoCount = firstCount(counts, "todoCount", "todo", "pending");
+                    int doingCount = firstCount(counts, "doingCount", "doing");
                     statistics.setPendingTasks(todoCount + doingCount);
                     stats.setPendingTasks(todoCount + doingCount);
                     markService(serviceHealth, "workflow", true, "OK");
@@ -226,12 +245,10 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             }
 
             summary.setTodayItems(buildTodayItems(todayEvents, announcements));
-            List<WorkplaceSummaryDTO.TodayItem> crmTodos = loadCrmTodos(serviceHealth);
-            summary.setTodayItems(mergeTodayItems(summary.getTodayItems(), crmTodos));
-            summary.setRiskItems(loadRiskItems(serviceHealth, stats, userId));
-            List<WorkplaceSummaryDTO.ActivityItem> activities = getTimeline(userId, 8);
-            stats.setRecentActivities(activities.size());
-            summary.setRecentActivities(activities);
+            summary.setRiskItems(new ArrayList<>());
+            summary.setRecentActivities(new ArrayList<>());
+            stats.setOpenRisks(0);
+            stats.setRecentActivities(0);
             if (!serviceHealth.containsKey("oa")) {
                 markService(serviceHealth, "oa", true, "OK");
             }
@@ -250,6 +267,50 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             markService(serviceHealth, "oa", false, "工作台聚合失败");
         }
         
+        return summary;
+    }
+
+    private WorkplaceSummaryDTO buildEnrichment(Long userId) {
+        WorkplaceSummaryDTO summary = new WorkplaceSummaryDTO();
+        Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth = new ConcurrentHashMap<>();
+        WorkplaceSummaryDTO.Stats stats = new WorkplaceSummaryDTO.Stats();
+        summary.setStats(stats);
+        summary.setServiceHealth(serviceHealth);
+        summary.setTodayItems(new ArrayList<>());
+        summary.setRiskItems(new ArrayList<>());
+        summary.setRecentActivities(new ArrayList<>());
+
+        CompletableFuture<RemoteCrmWorkplaceService.CrmDashboardWorkplaceResponse> crmFuture =
+                supplyAsync(() -> loadCrmWorkplace(serviceHealth), null, "crm", serviceHealth, "CRM 工作台不可用");
+        CompletableFuture<List<WorkplaceSummaryDTO.RiskItem>> oaRisksFuture =
+                supplyAsync(() -> loadOaRiskItems(serviceHealth), new ArrayList<>(), "oa.risk", serviceHealth, "风险服务不可用");
+        CompletableFuture<List<WorkplaceSummaryDTO.RiskItem>> hrRisksFuture =
+                supplyAsync(() -> loadHrReminders(serviceHealth, userId), new ArrayList<>(), "hr", serviceHealth, "HR 提醒不可用");
+        CompletableFuture<List<WorkplaceSummaryDTO.RiskItem>> contractRisksFuture =
+                supplyAsync(() -> {
+                    List<WorkplaceSummaryDTO.RiskItem> items = loadContractMilestoneRisks();
+                    markService(serviceHealth, "oa.contract", true, "OK");
+                    return items;
+                }, new ArrayList<>(), "oa.contract", serviceHealth, "合同履约风险不可用");
+        CompletableFuture<List<WorkplaceSummaryDTO.ActivityItem>> oaActivitiesFuture =
+                supplyAsync(() -> loadOaActivities(8, serviceHealth), new ArrayList<>(), "oa.timeline", serviceHealth, "OA 动态不可用");
+
+        RemoteCrmWorkplaceService.CrmDashboardWorkplaceResponse crmWorkplace = crmFuture.join();
+        List<WorkplaceSummaryDTO.TodayItem> crmTodos = mapCrmTodos(crmWorkplace);
+        List<WorkplaceSummaryDTO.RiskItem> crmRisks = mapCrmRisks(crmWorkplace);
+        List<WorkplaceSummaryDTO.ActivityItem> crmActivities = mapCrmActivities(crmWorkplace);
+
+        List<WorkplaceSummaryDTO.RiskItem> mergedRisks = mergeRisks(oaRisksFuture.join(), crmRisks, 8);
+        mergedRisks = mergeRisks(mergedRisks, hrRisksFuture.join(), 8);
+        mergedRisks = mergeRisks(mergedRisks, contractRisksFuture.join(), 8);
+
+        List<WorkplaceSummaryDTO.ActivityItem> activities = mergeActivities(oaActivitiesFuture.join(), crmActivities, 8);
+
+        summary.setTodayItems(crmTodos);
+        summary.setRiskItems(mergedRisks);
+        summary.setRecentActivities(activities);
+        stats.setOpenRisks(mergedRisks.size());
+        stats.setRecentActivities(activities.size());
         return summary;
     }
     
@@ -307,15 +368,136 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     public List<WorkplaceSummaryDTO.ActivityItem> getTimeline(Long userId, Integer limit) {
         int safeLimit = normalizeLimit(limit, 20);
         try {
-            List<WorkplaceSummaryDTO.ActivityItem> oaActivities = oaTraceEventService.listRecent(safeLimit).stream()
-                    .map(this::toActivityItem)
-                    .collect(Collectors.toList());
+            List<WorkplaceSummaryDTO.ActivityItem> oaActivities = loadOaActivities(safeLimit, new HashMap<>());
             List<WorkplaceSummaryDTO.ActivityItem> crmActivities = loadCrmActivities();
             return mergeActivities(oaActivities, crmActivities, safeLimit);
         } catch (Exception e) {
             log.warn("获取工作台最近动态失败", e);
             return new ArrayList<>();
         }
+    }
+
+    private <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier,
+                                                 T fallback,
+                                                 String serviceName,
+                                                 Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth,
+                                                 String failureMessage) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return supplier.get();
+            } catch (Exception e) {
+                log.warn("获取工作台补充数据失败，source={}", serviceName, e);
+                markService(serviceHealth, serviceName, false, failureMessage);
+                return fallback;
+            }
+        }, taskExecutor);
+    }
+
+    private RemoteCrmWorkplaceService.CrmDashboardWorkplaceResponse loadCrmWorkplace(
+            Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth) {
+        try {
+            var response = remoteCrmWorkplaceService.getDashboardWorkplace();
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                markService(serviceHealth, "crm", false, "CRM 工作台返回异常");
+                return null;
+            }
+            markService(serviceHealth, "crm", true, "OK");
+            return response.getData();
+        } catch (Exception e) {
+            log.warn("获取 CRM 工作台失败", e);
+            markService(serviceHealth, "crm", false, "CRM 工作台不可用");
+            return null;
+        }
+    }
+
+    private List<WorkplaceSummaryDTO.RiskItem> loadOaRiskItems(
+            Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth) {
+        try {
+            List<OaRiskAlert> risks = loadScopedOaRisks();
+            markService(serviceHealth, "oa.risk", true, "OK");
+            return risks.stream().map(this::toRiskItem).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("获取 OA 风险失败", e);
+            markService(serviceHealth, "oa.risk", false, "风险服务不可用");
+            return new ArrayList<>();
+        }
+    }
+
+    private List<WorkplaceSummaryDTO.ActivityItem> loadOaActivities(
+            int limit,
+            Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth) {
+        try {
+            List<WorkplaceSummaryDTO.ActivityItem> activities = oaTraceEventService.listRecent(limit).stream()
+                    .map(this::toActivityItem)
+                    .collect(Collectors.toList());
+            markService(serviceHealth, "oa.timeline", true, "OK");
+            return activities;
+        } catch (Exception e) {
+            log.warn("获取 OA 动态失败", e);
+            markService(serviceHealth, "oa.timeline", false, "OA 动态不可用");
+            return new ArrayList<>();
+        }
+    }
+
+    private List<WorkplaceSummaryDTO.TodayItem> mapCrmTodos(
+            RemoteCrmWorkplaceService.CrmDashboardWorkplaceResponse workplace) {
+        if (workplace == null || workplace.getTodos() == null) {
+            return new ArrayList<>();
+        }
+        return workplace.getTodos().stream().map(item -> {
+            WorkplaceSummaryDTO.TodayItem mapped = new WorkplaceSummaryDTO.TodayItem();
+            mapped.setId(item.getId());
+            mapped.setType(item.getBusinessType());
+            mapped.setModule(item.getModule());
+            mapped.setSourceLabel(item.getSourceLabel());
+            mapped.setTitle(item.getTitle());
+            mapped.setDescription(item.getDescription());
+            mapped.setStatus(item.getStatus());
+            mapped.setPath(item.getPath());
+            mapped.setTime(null);
+            return mapped;
+        }).limit(4).collect(Collectors.toList());
+    }
+
+    private List<WorkplaceSummaryDTO.RiskItem> mapCrmRisks(
+            RemoteCrmWorkplaceService.CrmDashboardWorkplaceResponse workplace) {
+        if (workplace == null || workplace.getRisks() == null) {
+            return new ArrayList<>();
+        }
+        return workplace.getRisks().stream().map(item -> {
+            WorkplaceSummaryDTO.RiskItem mapped = new WorkplaceSummaryDTO.RiskItem();
+            mapped.setId(parseLongId(item.getId()));
+            mapped.setBusinessType(item.getBusinessType());
+            mapped.setBusinessId(item.getBusinessId());
+            mapped.setModule(item.getModule());
+            mapped.setSourceLabel(item.getSourceLabel());
+            mapped.setTitle(item.getTitle());
+            mapped.setDescription(item.getDescription());
+            mapped.setLevel(item.getLevel());
+            mapped.setStatus(item.getStatus());
+            mapped.setPath(item.getPath());
+            return mapped;
+        }).collect(Collectors.toList());
+    }
+
+    private List<WorkplaceSummaryDTO.ActivityItem> mapCrmActivities(
+            RemoteCrmWorkplaceService.CrmDashboardWorkplaceResponse workplace) {
+        if (workplace == null || workplace.getActivities() == null) {
+            return new ArrayList<>();
+        }
+        return workplace.getActivities().stream().map(item -> {
+            WorkplaceSummaryDTO.ActivityItem mapped = new WorkplaceSummaryDTO.ActivityItem();
+            mapped.setId(item.getId());
+            mapped.setType(item.getBusinessType());
+            mapped.setModule(item.getModule());
+            mapped.setSourceLabel(item.getSourceLabel());
+            mapped.setTitle(item.getTitle());
+            mapped.setContent(item.getContent());
+            mapped.setOperatorName(item.getOperatorName());
+            mapped.setEventTime(item.getEventTime());
+            mapped.setPath(item.getPath());
+            return mapped;
+        }).collect(Collectors.toList());
     }
 
     private List<WorkplaceSummaryDTO.TodayItem> buildTodayItems(List<SysScheduleEvent> events,
@@ -479,57 +661,11 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     }
 
     private List<WorkplaceSummaryDTO.TodayItem> loadCrmTodos(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth) {
-        try {
-            var response = remoteCrmWorkplaceService.getDashboardWorkplace();
-            if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getTodos() == null) {
-                markService(serviceHealth, "crm.todo", false, "CRM 待办返回异常");
-                return new ArrayList<>();
-            }
-            markService(serviceHealth, "crm.todo", true, "OK");
-            return response.getData().getTodos().stream().map(item -> {
-                WorkplaceSummaryDTO.TodayItem mapped = new WorkplaceSummaryDTO.TodayItem();
-                mapped.setId(item.getId());
-                mapped.setType(item.getBusinessType());
-                mapped.setModule(item.getModule());
-                mapped.setSourceLabel(item.getSourceLabel());
-                mapped.setTitle(item.getTitle());
-                mapped.setDescription(item.getDescription());
-                mapped.setStatus(item.getStatus());
-                mapped.setPath(item.getPath());
-                mapped.setTime(null);
-                return mapped;
-            }).limit(4).collect(Collectors.toList());
-        } catch (Exception e) {
-            log.warn("获取 CRM 待办失败", e);
-            markService(serviceHealth, "crm.todo", false, "CRM 待办不可用");
-            return new ArrayList<>();
-        }
+        return mapCrmTodos(loadCrmWorkplace(serviceHealth));
     }
 
     private List<WorkplaceSummaryDTO.RiskItem> loadCrmRisks() {
-        try {
-            var response = remoteCrmWorkplaceService.getDashboardWorkplace();
-            if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getRisks() == null) {
-                return new ArrayList<>();
-            }
-            return response.getData().getRisks().stream().map(item -> {
-                WorkplaceSummaryDTO.RiskItem mapped = new WorkplaceSummaryDTO.RiskItem();
-                mapped.setId(parseLongId(item.getId()));
-                mapped.setBusinessType(item.getBusinessType());
-                mapped.setBusinessId(item.getBusinessId());
-                mapped.setModule(item.getModule());
-                mapped.setSourceLabel(item.getSourceLabel());
-                mapped.setTitle(item.getTitle());
-                mapped.setDescription(item.getDescription());
-                mapped.setLevel(item.getLevel());
-                mapped.setStatus(item.getStatus());
-                mapped.setPath(item.getPath());
-                return mapped;
-            }).collect(Collectors.toList());
-        } catch (Exception e) {
-            log.warn("获取 CRM 风险失败", e);
-            return new ArrayList<>();
-        }
+        return mapCrmRisks(loadCrmWorkplace(new HashMap<>()));
     }
 
     private List<WorkplaceSummaryDTO.RiskItem> loadHrReminders(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth,
@@ -595,28 +731,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     }
 
     private List<WorkplaceSummaryDTO.ActivityItem> loadCrmActivities() {
-        try {
-            var response = remoteCrmWorkplaceService.getDashboardWorkplace();
-            if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getActivities() == null) {
-                return new ArrayList<>();
-            }
-            return response.getData().getActivities().stream().map(item -> {
-                WorkplaceSummaryDTO.ActivityItem mapped = new WorkplaceSummaryDTO.ActivityItem();
-                mapped.setId(item.getId());
-                mapped.setType(item.getBusinessType());
-                mapped.setModule(item.getModule());
-                mapped.setSourceLabel(item.getSourceLabel());
-                mapped.setTitle(item.getTitle());
-                mapped.setContent(item.getContent());
-                mapped.setOperatorName(item.getOperatorName());
-                mapped.setEventTime(item.getEventTime());
-                mapped.setPath(item.getPath());
-                return mapped;
-            }).collect(Collectors.toList());
-        } catch (Exception e) {
-            log.warn("获取 CRM 动态失败", e);
-            return new ArrayList<>();
-        }
+        return mapCrmActivities(loadCrmWorkplace(new HashMap<>()));
     }
 
     private List<WorkplaceSummaryDTO.TodayItem> mergeTodayItems(List<WorkplaceSummaryDTO.TodayItem> oaItems,
@@ -666,6 +781,19 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private int firstCount(Map<String, Integer> counts, String... keys) {
+        if (counts == null || keys == null) {
+            return 0;
+        }
+        for (String key : keys) {
+            Integer value = counts.get(key);
+            if (value != null) {
+                return value;
+            }
+        }
+        return 0;
     }
 
     private void markService(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth,

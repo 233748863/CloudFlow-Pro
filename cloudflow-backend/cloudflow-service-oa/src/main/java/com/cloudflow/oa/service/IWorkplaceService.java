@@ -17,6 +17,14 @@ public interface IWorkplaceService {
      * @return 工作台概览数据
      */
     WorkplaceSummaryDTO getWorkplaceSummary(Long userId);
+
+    /**
+     * 获取工作台慢数据补充。
+     *
+     * @param userId 用户ID
+     * @return 工作台慢数据补充
+     */
+    WorkplaceSummaryDTO getWorkplaceSummaryEnrichment(Long userId);
     
     /**
      * 获取最近任务

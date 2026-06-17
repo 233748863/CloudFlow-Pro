@@ -6,6 +6,20 @@ spring:
     openfeign:
       circuitbreaker:
         enabled: true
+      client:
+        config:
+          cloudflow-service-crm:
+            connect-timeout: 1000
+            read-timeout: 2000
+            logger-level: BASIC
+          cloudflow-service-hr:
+            connect-timeout: 1000
+            read-timeout: 2000
+            logger-level: BASIC
+          cloudflow-service-workflow:
+            connect-timeout: 1000
+            read-timeout: 2000
+            logger-level: BASIC
   # ==================== 多数据源配置（dynamic-datasource） ====================
   # 使用 @DS("数据源名") 注解在 Mapper 层切换数据源
   # 不加 @DS 注解的 Mapper 默认使用 primary 指定的数据源
@@ -123,6 +137,18 @@ feign:
       default:
         connect-timeout: 5000
         read-timeout: 10000
+      cloudflow-service-crm:
+        connect-timeout: 1000
+        read-timeout: 2000
+        logger-level: BASIC
+      cloudflow-service-hr:
+        connect-timeout: 1000
+        read-timeout: 2000
+        logger-level: BASIC
+      cloudflow-service-workflow:
+        connect-timeout: 1000
+        read-timeout: 2000
+        logger-level: BASIC
 
 logging:
   level:

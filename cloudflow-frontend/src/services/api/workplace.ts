@@ -88,6 +88,11 @@ export interface ServiceHealth {
   message?: string;
 }
 
+export type WorkplaceSummaryEnrichment = Pick<
+  WorkplaceSummary,
+  'todayItems' | 'riskItems' | 'recentActivities' | 'serviceHealth' | 'stats'
+>;
+
 // 最近任务数据类型
 export interface RecentTask {
   taskId: string;
@@ -106,6 +111,13 @@ export interface RecentTask {
  */
 export const getWorkplaceSummary = async (): Promise<WorkplaceSummary> => {
   return request.get('/oa/workplace/summary') as Promise<WorkplaceSummary>;
+};
+
+/**
+ * 获取工作台慢数据补充
+ */
+export const getWorkplaceSummaryEnrichment = async (): Promise<WorkplaceSummaryEnrichment> => {
+  return request.get('/oa/workplace/summary/enrichment') as Promise<WorkplaceSummaryEnrichment>;
 };
 
 /**

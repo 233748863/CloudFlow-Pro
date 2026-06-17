@@ -34,6 +34,17 @@ public class WorkplaceController {
     }
 
     /**
+     * 获取工作台慢数据补充
+     * 聚合数据：跨模块待办、风险、最近动态、服务健康状态
+     */
+    @GetMapping("/summary/enrichment")
+    @SaCheckPermission("oa:workplace:view")
+    public R<WorkplaceSummaryDTO> getSummaryEnrichment() {
+        Long userId = UserContext.getUserId();
+        return R.ok(workplaceService.getWorkplaceSummaryEnrichment(userId));
+    }
+
+    /**
      * 获取最近任务
      * 返回用户最近操作的任务列表
      */
@@ -54,4 +65,3 @@ public class WorkplaceController {
         return R.ok(workplaceService.getTimeline(userId, limit));
     }
 }
-

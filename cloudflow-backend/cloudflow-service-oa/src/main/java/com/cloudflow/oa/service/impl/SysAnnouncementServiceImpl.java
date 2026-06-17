@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @Service
 public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, SysAnnouncement> implements ISysAnnouncementService {
 
-    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary#120s";
+    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary_core#60s";
 
     @Autowired
     private SysAnnouncementReadMapper readMapper;

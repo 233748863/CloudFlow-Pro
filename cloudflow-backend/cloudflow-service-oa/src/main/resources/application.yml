@@ -15,6 +15,20 @@ spring:
     openfeign:
       circuitbreaker:
         enabled: true
+      client:
+        config:
+          cloudflow-service-crm:
+            connect-timeout: 1000
+            read-timeout: 2000
+            logger-level: BASIC
+          cloudflow-service-hr:
+            connect-timeout: 1000
+            read-timeout: 2000
+            logger-level: BASIC
+          cloudflow-service-workflow:
+            connect-timeout: 1000
+            read-timeout: 2000
+            logger-level: BASIC
     nacos:
       server-addr: ${NACOS_SERVER:127.0.0.1:8848}
       username: ${NACOS_USERNAME:}

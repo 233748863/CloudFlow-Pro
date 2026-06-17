@@ -28,7 +28,7 @@ import java.util.Map;
 @Service
 public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, SysScheduleEvent> implements ISysScheduleService {
 
-    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary#120s";
+    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary_core#60s";
 
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DATE_ONLY = DateTimeFormatter.ofPattern("yyyy-MM-dd");

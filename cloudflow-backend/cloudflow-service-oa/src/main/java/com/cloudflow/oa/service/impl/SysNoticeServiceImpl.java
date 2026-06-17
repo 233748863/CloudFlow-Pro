@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class SysNoticeServiceImpl implements ISysNoticeService {
 
-    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary#120s";
+    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary_core#60s";
 
     private final SysNoticeMapper noticeMapper;
     private final NotificationWebSocketHandler webSocketHandler;

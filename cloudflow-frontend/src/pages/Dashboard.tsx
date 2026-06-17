@@ -37,7 +37,13 @@ import {
   UserDashboardTodoItem,
   UserDashboardTodoPanel,
 } from '@/components/user/dashboard';
-import { getWorkplaceSummary, RiskItem, TodayItem } from '@/services/api/workplace';
+import {
+  getWorkplaceSummary,
+  getWorkplaceSummaryEnrichment,
+  RiskItem,
+  TodayItem,
+  WorkplaceSummary,
+} from '@/services/api/workplace';
 import { tenantStorage } from '@/utils/tenantStorage';
 
 type DashboardGranularity = 'day' | 'hour';
@@ -132,6 +138,14 @@ const extractRows = <T,>(response: unknown): T[] => {
 
 const safeNumber = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? value : 0;
+
+const mergeById = <T extends { id: string | number }>(base: T[], extra: T[], limit: number) => {
+  const merged = new Map<string, T>();
+  [...base, ...extra].forEach((item) => {
+    merged.set(String(item.id), item);
+  });
+  return Array.from(merged.values()).slice(0, limit);
+};
 
 const parsePercent = (value?: string) => {
   if (!value) return 0;
@@ -278,6 +292,7 @@ export const Dashboard = () => {
   const [granularity, setGranularity] = useState<DashboardGranularity>('day');
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingPanels, setLoadingPanels] = useState(true);
+  const [loadingWorkplacePanels, setLoadingWorkplacePanels] = useState(true);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState<Set<string>>(() => {
     try {
       const stored = tenantStorage.get('read_announcements');
@@ -290,6 +305,7 @@ export const Dashboard = () => {
   // 仪表盘顶部统计卡固定读取真实统计接口，保证与业务状态一致。
   const loadOverview = async () => {
     setLoadingOverview(true);
+    setLoadingWorkplacePanels(true);
 
     const today = formatLocalDate(new Date());
     const [taskStatsResult, copyCountResult, announcementsResult, schedulesResult, workplaceSummaryResult] =
@@ -326,7 +342,9 @@ export const Dashboard = () => {
         .map((item) => String(item.announcementId)),
     });
 
+    let coreWorkplaceSummary: WorkplaceSummary | null = null;
     if (workplaceSummaryResult.status === 'fulfilled' && workplaceSummaryResult.value) {
+      coreWorkplaceSummary = workplaceSummaryResult.value;
       setWorkplacePanels({
         todos: workplaceSummaryResult.value.todayItems || [],
         risks: workplaceSummaryResult.value.riskItems || [],
@@ -334,6 +352,19 @@ export const Dashboard = () => {
     }
 
     setLoadingOverview(false);
+    void loadWorkplaceEnrichment(coreWorkplaceSummary);
+  };
+
+  const loadWorkplaceEnrichment = async (coreSummary?: WorkplaceSummary | null) => {
+    try {
+      const enrichment = await getWorkplaceSummaryEnrichment();
+      setWorkplacePanels((current) => ({
+        todos: mergeById(coreSummary?.todayItems || current.todos, enrichment.todayItems || [], 8),
+        risks: mergeById(coreSummary?.riskItems || current.risks, enrichment.riskItems || [], 8),
+      }));
+    } finally {
+      setLoadingWorkplacePanels(false);
+    }
   };
 
   // 图表和最近活动跟随时间范围切换，直接读取筛选后的真实列表数据。
@@ -684,8 +715,8 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <UserDashboardTodoPanel items={workplaceTodoItems} loading={loadingOverview && workplaceTodoItems.length === 0} />
-        <UserDashboardRiskPanel items={workplaceRiskItems} loading={loadingOverview && workplaceRiskItems.length === 0} />
+        <UserDashboardTodoPanel items={workplaceTodoItems} loading={loadingWorkplacePanels && workplaceTodoItems.length === 0} />
+        <UserDashboardRiskPanel items={workplaceRiskItems} loading={loadingWorkplacePanels && workplaceRiskItems.length === 0} />
       </div>
     </div>
   );

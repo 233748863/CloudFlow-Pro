@@ -7,11 +7,11 @@ import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { toast } from 'sonner';
-import { getWorkplaceSummary, getRecentTasks } from '@/services/api/workplace';
+import { getRecentTasks } from '@/services/api/workplace';
 import { getTodaySchedule } from '@/services/api/schedule';
 import { getUnreadCount } from '@/services/api/notice';
 import { getTasksCount } from '@/services/api/workflow';
-import type { WorkplaceSummary, RecentTask } from '@/services/api/workplace';
+import type { RecentTask } from '@/services/api/workplace';
 import type { SysScheduleEvent } from '@/types';
 
 // 统计数据类型
@@ -42,24 +42,12 @@ export const MobileDashboard: React.FC = () => {
       setError(null);
 
       // 并行请求所有数据
-      const [summaryData, tasksData, schedulesData, unreadData, taskCountData] = await Promise.allSettled([
-        getWorkplaceSummary(),
+      const [tasksData, schedulesData, unreadData, taskCountData] = await Promise.allSettled([
         getRecentTasks(5),
         getTodaySchedule(),
         getUnreadCount(),
         getTasksCount(),
       ]);
-
-      // 处理工作台概览
-      if (summaryData.status === 'fulfilled' && summaryData.value) {
-        const summary = summaryData.value;
-        setStats(prev => ({
-          ...prev,
-          pendingTasks: summary.statistics?.pendingTasks ?? prev.pendingTasks,
-          todaySchedules: summary.statistics?.todaySchedules ?? prev.todaySchedules,
-          unreadMessages: summary.statistics?.unreadMessages ?? prev.unreadMessages,
-        }));
-      }
 
       // 处理最近任务
       if (tasksData.status === 'fulfilled' && Array.isArray(tasksData.value)) {
@@ -81,15 +69,15 @@ export const MobileDashboard: React.FC = () => {
 
       // 处理任务统计（优先使用独立接口的数据）
       if (taskCountData.status === 'fulfilled' && taskCountData.value) {
-        const counts = taskCountData.value;
+        const counts = taskCountData.value as unknown as Record<string, number | undefined>;
         setStats(prev => ({
           ...prev,
-          pendingTasks: counts.pending ?? prev.pendingTasks,
+          pendingTasks: counts.todoCount ?? counts.todo ?? counts.pending ?? prev.pendingTasks,
         }));
       }
 
       // 检查是否所有请求都失败了
-      const allFailed = [summaryData, tasksData, schedulesData, unreadData, taskCountData]
+      const allFailed = [tasksData, schedulesData, unreadData, taskCountData]
         .every(r => r.status === 'rejected');
       if (allFailed) {
         setError('无法加载数据，请检查网络连接');
