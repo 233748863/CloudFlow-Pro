@@ -716,6 +716,18 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(504, '用车记录',   5, 5, '/admin/vehicle/usage', 'pages/admin/vehicle/VehicleUsageList', NULL, 0, 0, 'C', '0', '0', 'oa:vehicle:usage',   'Car',             'admin', NOW(), '', null, '用车记录');
 
 
+UPDATE cloud_flow_db.sys_menu
+SET menu_name = '车辆管理', parent_id = 5, order_num = 3, path = '/admin/vehicle/list', component = 'pages/admin/vehicle/VehicleList', query = NULL, menu_type = 'C', visible = '0', status = '0', perms = 'oa:vehicle:list', icon = 'Car', update_by = 'admin', update_time = NOW(), remark = '车辆管理'
+WHERE menu_id = 502;
+
+UPDATE cloud_flow_db.sys_menu
+SET menu_name = '用车申请', parent_id = 5, order_num = 4, path = '/admin/vehicle/booking', component = 'pages/admin/vehicle/VehicleBooking', query = NULL, menu_type = 'C', visible = '0', status = '0', perms = 'oa:vehicle:booking', icon = 'Car', update_by = 'admin', update_time = NOW(), remark = '用车申请'
+WHERE menu_id = 503;
+
+UPDATE cloud_flow_db.sys_menu
+SET menu_name = '用车记录', parent_id = 5, order_num = 5, path = '/admin/vehicle/usage', component = 'pages/admin/vehicle/VehicleUsageList', query = NULL, menu_type = 'C', visible = '0', status = '0', perms = 'oa:vehicle:usage', icon = 'Car', update_by = 'admin', update_time = NOW(), remark = '用车记录'
+WHERE menu_id = 504;
+
 -- 系统管理 (parent_id=6)
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(600, '用户管理',   6, 1, '/system/users',       'pages/system/UserList',        NULL, 0, 0, 'C', '0', '0', 'system:user:list',           'Users',           'admin', NOW(), '', null, '用户管理');
 

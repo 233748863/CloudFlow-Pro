@@ -5,6 +5,7 @@ import { RouteGuard } from '@/components/common/RouteGuard';
 import { Result404, Result500 } from '@/components/common/result';
 import { useBackendMenus } from '@/hooks/useBackendMenus';
 import type { MenuItem } from '@/services/api/menu';
+import { applyKnownMenuRouteFix } from '@/utils/menuRouteFixes';
 
 type PageModule = Record<string, unknown> & {
   default?: React.ComponentType;
@@ -57,12 +58,14 @@ const findMenuByLocation = (
 
   const visit = (items: MenuItem[]): MenuItem | null => {
     for (const item of items) {
-      if (isVisibleMenuPage(item)) {
-        const targetPath = normalizeRoutePath(item.path);
-        const targetSearch = getMenuSearch(item);
+      const fixedItem = applyKnownMenuRouteFix(item);
+
+      if (isVisibleMenuPage(fixedItem)) {
+        const targetPath = normalizeRoutePath(fixedItem.path);
+        const targetSearch = getMenuSearch(fixedItem);
         const queryMatches = targetSearch ? currentSearch === targetSearch : true;
         if (targetPath === pathname && queryMatches) {
-          return item;
+          return fixedItem;
         }
       }
 

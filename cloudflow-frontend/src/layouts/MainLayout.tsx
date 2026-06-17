@@ -19,6 +19,7 @@ import type { MenuItem as ApiMenuItem } from '@/services/api/menu';
 import { getIcon } from '@/utils/iconMapper';
 import { cn } from '@/utils/cn';
 import { tenantStorage } from '@/utils/tenantStorage';
+import { applyKnownMenuRouteFix } from '@/utils/menuRouteFixes';
 
 interface MenuTreeItem {
   id: string;
@@ -54,7 +55,8 @@ export const MainLayout = () => {
 
   const convertApiMenusToMenuTree = (apiMenus: ApiMenuItem[]): MenuTreeItem[] => {
     const parseMenuItem = (item: ApiMenuItem): MenuTreeItem => {
-      const rawPath = item.path || '';
+      const fixedItem = applyKnownMenuRouteFix(item);
+      const rawPath = fixedItem.path || '';
       const [purePath, inlineQuery] = rawPath.split('?');
       
       const children = item.children
@@ -62,11 +64,11 @@ export const MainLayout = () => {
         .map(parseMenuItem) || [];
 
       return {
-        id: String(item.menuId),
-        label: item.menuName,
-        icon: getIcon(item.icon),
+        id: String(fixedItem.menuId),
+        label: fixedItem.menuName,
+        icon: getIcon(fixedItem.icon),
         path: purePath || rawPath,
-        query: item.query || inlineQuery,
+        query: fixedItem.query || inlineQuery,
         children,
       };
     };
