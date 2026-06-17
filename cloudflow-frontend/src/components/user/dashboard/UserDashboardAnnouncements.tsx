@@ -51,10 +51,10 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
                 key={id}
                 type="button"
                 onClick={() => onOpenItem(id)}
-                className={`group rounded-2xl border p-4 text-left transition-all ${
+                className={`cf-interactive-card group rounded-2xl border p-4 text-left ${
                   isRead
-                    ? 'border-slate-200 bg-slate-50/80 hover:bg-white dark:border-slate-800 dark:bg-slate-900/70 dark:hover:bg-slate-900'
-                    : 'border-cyan-200 bg-cyan-50/70 hover:bg-cyan-50 dark:border-cyan-900 dark:bg-cyan-950/20 dark:hover:bg-cyan-950/30'
+                    ? 'border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/70'
+                    : 'border-cyan-200 bg-cyan-50/70 dark:border-cyan-900 dark:bg-cyan-950/20'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">

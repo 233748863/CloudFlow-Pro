@@ -44,7 +44,7 @@ export const UserDashboardRiskPanel: React.FC<UserDashboardRiskPanelProps> = ({
               key={item.id}
               type="button"
               onClick={item.onClick}
-              className="group flex w-full items-center justify-between rounded-xl bg-slate-50 p-4 text-left transition-colors hover:bg-slate-100 dark:bg-slate-900/70 dark:hover:bg-slate-900"
+              className="cf-interactive-card group flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 text-left dark:border-slate-800 dark:bg-slate-900/70"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">

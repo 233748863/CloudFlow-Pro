@@ -225,7 +225,7 @@ export const BorrowManagementPage: React.FC = () => {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <div className="cf-section-card px-4 py-3">
           <div className="mb-2.5 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
             <TrendingUp className="h-4 w-4 text-cyan-600" />
             借还趋势
@@ -245,7 +245,7 @@ export const BorrowManagementPage: React.FC = () => {
             })}
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <div className="cf-section-card px-4 py-3">
           <div className="mb-2.5 text-sm font-medium text-slate-900 dark:text-slate-100">资源使用排行</div>
           <div className="space-y-2.5">
             {(stats?.resourceUsage || []).slice(0, 5).map((item) => (
@@ -460,5 +460,4 @@ export const BorrowManagementPage: React.FC = () => {
 };
 
 export default BorrowManagementPage;
-
 

@@ -132,7 +132,7 @@ const SummaryMetric: React.FC<SummaryMetricProps> = ({ label, value, tone = 'def
   }[tone];
 
   return (
-    <div className={`min-w-[7rem] rounded-lg border px-3 py-2 ${toneClassName}`}>
+    <div className={`cf-summary-metric ${toneClassName}`}>
       <div className="text-[11px] leading-none text-current opacity-70">{label}</div>
       <div className="mt-1 text-sm font-semibold leading-none">{value}</div>
     </div>
@@ -505,7 +505,7 @@ const VehicleList: React.FC = () => {
               </div>
             ) : null}
             <div className="overflow-x-auto">
-              <Table disableScrollWrapper className="min-w-[1556px] table-auto">
+              <Table disableScrollWrapper className="min-w-[1640px] table-fixed">
                 <colgroup>
                   <col className="w-11" />
                   <col className="w-32" />
@@ -518,7 +518,7 @@ const VehicleList: React.FC = () => {
                   <col className="w-[9.25rem]" />
                   <col className="w-32" />
                   <col className="w-32" />
-                  <col className="w-32" />
+                  <col className="w-44" />
                   </colgroup>
                 <TableHeader className="sticky top-0 z-10">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
@@ -535,7 +535,9 @@ const VehicleList: React.FC = () => {
                     <TableHead className="px-3 py-3">保险 / 年检</TableHead>
                     <TableHead className="px-3 py-3">30天成本</TableHead>
                     <TableHead className="px-3 py-3">风险</TableHead>
-                    <TableHead className="px-2 py-3 text-right">操作</TableHead>
+                    <TableHead className="sticky right-0 z-20 bg-slate-50 px-4 py-3 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.55)] dark:bg-slate-900">
+                      操作
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -637,7 +639,7 @@ const VehicleList: React.FC = () => {
                               <WarningTags value={vehicle.warningTags} compact maxVisible={1} />
                             </div>
                           </TableCell>
-                          <TableCell className="px-2 py-2.5 text-right">
+                          <TableCell className="sticky right-0 z-10 bg-white px-4 py-2.5 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.5)] dark:bg-slate-950">
                             <TableRowActions
                               align="end"
                               maxVisibleActions={1}
@@ -966,4 +968,3 @@ const VehicleList: React.FC = () => {
 };
 
 export default VehicleList;
-

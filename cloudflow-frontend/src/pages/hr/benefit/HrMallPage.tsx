@@ -210,7 +210,7 @@ export const HrMallPage: React.FC = () => {
         {filtered.map((it) => (
           <div
             key={it.id}
-            className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-950/60"
+            className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/60"
           >
             <button
               type="button"

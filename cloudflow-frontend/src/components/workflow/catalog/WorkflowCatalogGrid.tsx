@@ -49,7 +49,7 @@ export const WorkflowCatalogGrid: React.FC<WorkflowCatalogGridProps> = ({
                 key={workflow.id}
                 type="button"
                 onClick={() => onStart(workflow)}
-                className="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-[0_14px_28px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-950/88 dark:hover:border-cyan-900 dark:hover:shadow-[0_14px_28px_rgba(2,6,23,0.36)]"
+                className="cf-interactive-card group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm dark:border-slate-800 dark:bg-slate-950/88"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge badge-primary">{categoryLabel}</span>

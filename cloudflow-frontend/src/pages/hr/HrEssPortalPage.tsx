@@ -14,6 +14,7 @@ import { Button } from '@/components/common';
 import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { cn } from '@/utils/cn';
 import {
   HrEssPortalSummary,
   getEssPortalSummary,
@@ -43,7 +44,11 @@ const SummaryCard: React.FC<{
       type="button"
       onClick={onClick}
       disabled={!onClick}
-      className={`group relative flex flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-gradient-to-br p-5 text-left shadow-sm transition hover:shadow-md disabled:cursor-default dark:border-slate-800 dark:from-slate-900 ${toneClass[tone]}`}
+      className={cn(
+        'relative flex flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-gradient-to-br p-5 text-left shadow-sm disabled:cursor-default dark:border-slate-800 dark:from-slate-900',
+        onClick && 'cf-interactive-card',
+        toneClass[tone],
+      )}
     >
       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 backdrop-blur dark:bg-slate-900/50">
         {icon}

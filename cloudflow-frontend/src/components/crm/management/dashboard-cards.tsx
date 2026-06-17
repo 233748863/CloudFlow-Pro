@@ -84,7 +84,7 @@ export const DashboardActionCard = ({
     <button
       type="button"
       onClick={onAction}
-      className="group w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left transition-all duration-200 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+      className="cf-interactive-card group w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left dark:border-slate-800 dark:bg-slate-900/60"
     >
       <div className="flex items-start gap-3">
         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneStyle.icon}`}>
@@ -129,7 +129,7 @@ export const DashboardFeedItem = ({
     <button
       type="button"
       onClick={onAction}
-      className="group w-full rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 text-left transition-all duration-200 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+      className="cf-interactive-card group w-full rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 text-left dark:border-slate-800 dark:bg-slate-900/60"
     >
       <div className="flex items-start gap-3">
         <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${toneStyle.icon}`}>

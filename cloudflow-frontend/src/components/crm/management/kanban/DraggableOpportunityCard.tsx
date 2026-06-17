@@ -18,7 +18,7 @@ export const DraggableOpportunityCard: React.FC<{
       ref={setNodeRef}
       type="button"
       style={style}
-      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm shadow-sm transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
+      className="cf-interactive-card w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm shadow-sm dark:border-slate-800 dark:bg-slate-900"
       onClick={onClick}
       {...listeners}
       {...attributes}

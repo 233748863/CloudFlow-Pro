@@ -40,7 +40,7 @@ export const UserDashboardRecentApplications: React.FC<UserDashboardRecentApplic
               key={String(item.id || item.processInstanceId || item.businessKey)}
               type="button"
               onClick={onViewAll}
-              className="group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left transition-all hover:border-sky-200 hover:bg-white dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-sky-900 dark:hover:bg-slate-900"
+              className="cf-interactive-card group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left dark:border-slate-800 dark:bg-slate-900/70"
             >
               <div className="flex min-w-0 items-center gap-4">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-200">

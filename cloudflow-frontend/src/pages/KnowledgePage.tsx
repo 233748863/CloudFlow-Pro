@@ -929,7 +929,7 @@ const KnowledgePage: React.FC = () => {
                   key={tpl.id}
                   type="button"
                   onClick={() => void applyTemplate(tpl)}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-sky-400 hover:bg-sky-50/50 dark:border-slate-700 dark:hover:bg-slate-800/40"
+                  className="cf-interactive-card w-full rounded-xl border border-slate-200 px-4 py-3 text-left dark:border-slate-700"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tpl.templateName}</div>

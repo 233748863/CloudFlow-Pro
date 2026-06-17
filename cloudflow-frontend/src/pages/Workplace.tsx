@@ -284,7 +284,7 @@ export const Workplace = () => {
             <div
               key={workflow.id}
               className={cn(
-                "group relative flex flex-col justify-between rounded-2xl border border-slate-100/60 bg-white/40 p-5 shadow-[0_2px_12px_-3px_rgba(15,23,42,0.01)] transition-all duration-300 hover:-translate-y-1 hover:bg-white/80 hover:shadow-[0_12px_24px_rgba(15,23,42,0.04)] dark:border-slate-800/30 dark:bg-slate-950/20 dark:hover:bg-slate-950/50",
+                "relative flex flex-col justify-between rounded-2xl border border-slate-100/60 bg-white/40 p-5 shadow-[0_2px_12px_-3px_rgba(15,23,42,0.01)] dark:border-slate-800/30 dark:bg-slate-950/20",
                 staggerClass
               )}
             >
@@ -299,7 +299,7 @@ export const Workplace = () => {
                   </div>
                 </div>
 
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mt-4 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mt-4">
                   {workflow.name}
                 </h3>
 
@@ -324,7 +324,7 @@ export const Workplace = () => {
                 </div>
                 <Button size="sm" className="btn-primary py-1 px-3.5 text-xs rounded-xl shadow-sm" onClick={() => handleStartClick(workflow)}>
                   发起
-                  <ArrowRight className="ml-1 h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>

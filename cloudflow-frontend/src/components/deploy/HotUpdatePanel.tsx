@@ -239,11 +239,11 @@ export const HotUpdatePanel: React.FC = () => {
                       resetExecutionState();
                     }}
                     className={[
-                      'rounded-xl border px-4 py-3 text-left transition-all duration-200',
+                      'rounded-xl border px-4 py-3 text-left',
                       option.cardClassName,
                       active
                         ? 'ring-2 ring-[rgba(20,184,166,0.24)]'
-                        : 'opacity-90 hover:border-slate-300 hover:opacity-100 dark:hover:border-slate-600',
+                        : 'cf-interactive-card opacity-90 hover:opacity-100',
                     ].join(' ')}
                   >
                     <div className="flex items-center justify-between gap-2">

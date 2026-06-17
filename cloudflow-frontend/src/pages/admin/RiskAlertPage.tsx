@@ -105,7 +105,7 @@ const SummaryMetric: React.FC<SummaryMetricProps> = ({ label, value, tone = 'def
   }[tone];
 
   return (
-    <div className={`min-w-[7rem] rounded-lg border px-3 py-2 ${toneClassName}`}>
+    <div className={`cf-summary-metric ${toneClassName}`}>
       <div className="text-[11px] leading-none text-current opacity-70">{label}</div>
       <div className="mt-1 text-sm font-semibold leading-none">{value}</div>
     </div>
@@ -629,4 +629,3 @@ export const RiskAlertPage: React.FC = () => {
 };
 
 export default RiskAlertPage;
-

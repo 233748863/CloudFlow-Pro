@@ -1,14 +1,19 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
 
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  interactive?: boolean;
+}
+
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className = '', ...props }, ref) => (
+  CardProps
+>(({ className = '', interactive = false, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      'rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-sm transition-all duration-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-100 dark:shadow-[0_16px_32px_rgba(2,6,23,0.34)]',
+      'rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-100 dark:shadow-[0_16px_32px_rgba(2,6,23,0.34)]',
+      interactive && 'cf-interactive-card',
       className,
     )}
     {...props}

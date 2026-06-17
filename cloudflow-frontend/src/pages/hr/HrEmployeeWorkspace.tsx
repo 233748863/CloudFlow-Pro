@@ -932,7 +932,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     {contracts.map((item) => (
                       <article
                         key={item.id}
-                        className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] transition hover:border-cyan-200 hover:shadow-[0_20px_44px_-28px_rgba(8,145,178,0.35)] dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-cyan-900"
+                        className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] dark:border-slate-800 dark:bg-slate-950/50"
                       >
                         <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1059,7 +1059,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                       return (
                         <article
                           key={item.id}
-                          className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] transition hover:border-cyan-200 hover:shadow-[0_20px_44px_-28px_rgba(8,145,178,0.35)] dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-cyan-900"
+                          className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] dark:border-slate-800 dark:bg-slate-950/50"
                         >
                           <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1173,7 +1173,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     {contacts.map((item) => (
                       <article
                         key={item.id}
-                        className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] transition hover:border-cyan-200 hover:shadow-[0_20px_44px_-28px_rgba(8,145,178,0.35)] dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-cyan-900"
+                        className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] dark:border-slate-800 dark:bg-slate-950/50"
                       >
                         <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

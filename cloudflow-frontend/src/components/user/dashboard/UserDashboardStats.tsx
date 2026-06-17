@@ -118,10 +118,10 @@ export const UserDashboardStats: React.FC<UserDashboardStatsProps> = ({ stats })
       {cards.map((card) => (
         <div
           key={card.label}
-          className="card p-5 rounded-2xl border-slate-100/80 dark:border-slate-800/50 hover-scale-premium bg-gradient-to-br from-white/95 to-slate-50/30 dark:from-slate-900/95 dark:to-slate-950/30 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.02)]"
+          className="card p-5 rounded-2xl border-slate-100/80 dark:border-slate-800/50 bg-gradient-to-br from-white/95 to-slate-50/30 dark:from-slate-900/95 dark:to-slate-950/30 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.02)]"
         >
           <div className="flex items-center gap-4">
-            <div className={`${card.wrapClassName} rounded-xl p-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.01)] transition-transform duration-300 hover:scale-105`}>
+            <div className={`${card.wrapClassName} rounded-xl p-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.01)]`}>
               <span className={card.iconClassName}>{card.icon}</span>
             </div>
             <div className="min-w-0">

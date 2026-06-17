@@ -207,11 +207,11 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                       resetExecutionState();
                     }}
                     className={[
-                      'w-full rounded-2xl border p-4 text-left transition-all duration-200',
+                      'w-full rounded-2xl border p-4 text-left',
                       option.cardClassName,
                       active
                         ? 'ring-2 ring-[rgba(20,184,166,0.28)] shadow-[0_16px_36px_rgba(15,23,42,0.08)] dark:shadow-[0_16px_40px_rgba(2,6,23,0.28)]'
-                        : 'opacity-88 hover:-translate-y-0.5 hover:opacity-100',
+                        : 'cf-interactive-card opacity-88 hover:opacity-100',
                     ].join(' ')}
                   >
                     <div className="flex items-center justify-between gap-3">

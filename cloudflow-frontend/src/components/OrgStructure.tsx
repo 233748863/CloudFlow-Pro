@@ -1161,7 +1161,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                 'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all duration-300',
                 selectedDeptId === null
                   ? 'border-teal-200/50 bg-teal-500/10 text-teal-700 shadow-sm dark:border-teal-900/40 dark:bg-teal-950/20 dark:text-teal-200'
-                  : 'border-slate-100/60 bg-white/40 text-slate-600 hover:border-slate-200 hover:bg-white/80 dark:border-slate-800/40 dark:bg-slate-950/10 dark:text-slate-300 dark:hover:bg-slate-950/30',
+                  : 'cf-interactive-card border-slate-100/60 bg-white/40 text-slate-600 dark:border-slate-800/40 dark:bg-slate-950/10 dark:text-slate-300',
               )}
             >
               <span className={cn(

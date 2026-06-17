@@ -881,7 +881,7 @@ export const PaymentRequestPage: React.FC = () => {
                         href={url}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 transition hover:border-cyan-200 hover:bg-slate-50 hover:text-cyan-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+                        className="cf-interactive-card flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
                       >
                         <Paperclip size={14} />
                         <span className="truncate">{label}</span>
@@ -911,5 +911,4 @@ export const PaymentRequestPage: React.FC = () => {
 };
 
 export default PaymentRequestPage;
-
 

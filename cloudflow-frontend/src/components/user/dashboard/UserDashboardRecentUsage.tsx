@@ -49,7 +49,7 @@ export const UserDashboardRecentUsage: React.FC<UserDashboardRecentUsageProps> =
               key={item.id}
               type="button"
               onClick={item.onClick}
-              className="group flex w-full items-center justify-between rounded-xl border border-slate-100/50 bg-white/40 p-4 text-left shadow-[0_2px_8px_-2px_rgba(15,23,42,0.01)] transition-all duration-300 hover:translate-x-1 hover:bg-white/80 dark:border-slate-800/30 dark:bg-slate-950/20 dark:hover:bg-slate-950/60"
+              className="cf-interactive-card group flex w-full items-center justify-between rounded-xl border border-slate-100/50 bg-white/40 p-4 text-left shadow-[0_2px_8px_-2px_rgba(15,23,42,0.01)] dark:border-slate-800/30 dark:bg-slate-950/20"
             >
               <div className="flex min-w-0 items-center gap-4">
                 <div

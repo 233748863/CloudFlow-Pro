@@ -40,7 +40,7 @@ export const UserDashboardSchedules: React.FC<UserDashboardSchedulesProps> = ({
               key={String(item.eventId || item.id)}
               type="button"
               onClick={onViewAll}
-              className="group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left transition-all hover:border-amber-200 hover:bg-white dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-amber-900 dark:hover:bg-slate-900"
+              className="cf-interactive-card group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left dark:border-slate-800 dark:bg-slate-900/70"
             >
               <div className="flex min-w-0 items-center gap-4">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200">

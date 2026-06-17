@@ -333,7 +333,7 @@ export default function CrmCustomerWorkspacePage() {
                   <button
                     key={`${item.type}-${item.code}`}
                     type="button"
-                    className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
+                    className="cf-interactive-card flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm dark:border-slate-800 dark:bg-slate-900"
                     onClick={() => {
                       const target = item.linkTarget || '';
                       if (target.includes('#')) {
@@ -385,7 +385,7 @@ export default function CrmCustomerWorkspacePage() {
                   <button
                     key={item.id}
                     type="button"
-                    className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
+                    className="cf-interactive-card flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm dark:border-slate-800 dark:bg-slate-900"
                     onClick={() => navigate(item.path || '/')}
                   >
                     <span>{item.title || '-'}</span>
@@ -400,7 +400,7 @@ export default function CrmCustomerWorkspacePage() {
                   <button
                     key={item.id}
                     type="button"
-                    className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
+                    className="cf-interactive-card flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm dark:border-slate-800 dark:bg-slate-900"
                     onClick={() => navigate(item.path || '/')}
                   >
                     <span>{item.title || '-'}</span>

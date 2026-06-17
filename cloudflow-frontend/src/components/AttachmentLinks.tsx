@@ -33,7 +33,7 @@ export const AttachmentLinks: React.FC<AttachmentLinksProps> = ({
             target="_blank"
             rel="noreferrer"
             className={[
-              'inline-flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 transition hover:border-cyan-200 hover:bg-slate-50 hover:text-cyan-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:text-cyan-200',
+              'cf-interactive-card inline-flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
               compact ? 'max-w-[12rem] px-2.5 py-1.5' : 'w-full px-4 py-3',
             ].join(' ')}
           >
