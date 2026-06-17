@@ -458,7 +458,7 @@ const TrendCard: React.FC<{
               const value = Math.round((maxValue / 4) * index);
               const lineY = y(value);
               return (
-                <g key={value}>
+                <g key={`grid-${index}-${value}`}>
                   <line
                     x1={padding.left}
                     y1={lineY}
