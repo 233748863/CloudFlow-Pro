@@ -13390,7 +13390,7 @@ INSERT IGNORE INTO cloud_flow_db.crm_approval
  JSON_OBJECT('levelBefore','VIP','levelAfter','NORMAL','reason','本年无签约'), 13, '何嘉树', 112, '销售部', 'APPROVED', 'PI-CRM-LEVEL-2026-0005', '通过：本年无签约。', '客户分级降级', 0, 'he_sales', '2026-05-01 09:00:00', 'he_sales', '2026-05-02 14:00:00');
 
 -- =========================================================
--- 第二批 P0 菜单种子 (GOV-P0-1 黑白名单 / OA-P0-1 车辆油耗 / OA-P0-3 合同金额阈值)
+-- 第二批 P0 菜单种子 (GOV-P0-1 黑白名单 / OA-P0-3 合同金额阈值)
 -- =========================================================
 
 -- GOV-P0-1 IP 黑白名单 (parent_id=6 系统治理)
@@ -13404,12 +13404,6 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(651, '用户拉黑',      650,  1, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'system:userBlacklist:add',  '#',               'admin', NOW(), '', null, '用户拉黑');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(652, '解除拉黑',      650,  2, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'system:userBlacklist:remove','#',              'admin', NOW(), '', null, '解除用户拉黑');
 
--- OA-P0-1 车辆油耗 (parent_id=502 车辆管理)
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(655, '油耗记录',      502,  1, '/admin/vehicle/fuel',       'pages/admin/vehicle/VehicleFuelPage', NULL, 0, 0, 'C', '0', '0', 'oa:vehicleFuel:list',       'Fuel',            'admin', NOW(), '', null, '车辆油耗台账 (OA-P0-1)');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(656, '油耗新增',      655,  1, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'oa:vehicleFuel:add',        '#',               'admin', NOW(), '', null, '油耗记录新增');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(657, '油耗编辑',      655,  2, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'oa:vehicleFuel:edit',       '#',               'admin', NOW(), '', null, '油耗记录编辑');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(658, '油耗删除',      655,  3, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'oa:vehicleFuel:remove',     '#',               'admin', NOW(), '', null, '油耗记录删除');
-
 -- OA-P0-3 合同金额阈值 (parent_id=2 办公协同 OA 根目录)
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(660, '合同金额阈值',   2, 19, '/oa/contract-threshold',    'pages/oa/ContractThresholdPage',    NULL, 0, 0, 'C', '0', '0', 'oa:contract:threshold:list','SlidersHorizontal','admin', NOW(), '', null, '合同金额审批阈值 (OA-P0-3)');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(661, '阈值新增',      660,  1, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'oa:contract:threshold:add', '#',               'admin', NOW(), '', null, '合同阈值新增');
@@ -13419,7 +13413,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 -- 角色授权扩散: admin (role_id=1) 自动获取新增菜单
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
 SELECT 1, menu_id, 100000 FROM cloud_flow_db.sys_menu
-WHERE menu_id IN (645, 646, 647, 648, 650, 651, 652, 655, 656, 657, 658, 660, 661, 662, 663);
+WHERE menu_id IN (645, 646, 647, 648, 650, 651, 652, 660, 661, 662, 663);
 
 -- =========================================================
 -- 第二批 P0 演示数据

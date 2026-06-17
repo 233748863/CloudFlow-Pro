@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Kanban,
   LayoutList,
@@ -193,10 +194,15 @@ const TaskCompactWorkCard = ({
   );
 };
 
-export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
-  const { user, hasPermission } = useAuth();
+const resolveTaskListMode = (pathname: string): TaskListPageMode =>
+  pathname === '/my-apps' ? 'applications' : 'pending';
 
-  const [centerMode, setCenterMode] = useState<ApprovalCenterMode>(type);
+export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
+  const location = useLocation();
+  const { user, hasPermission } = useAuth();
+  const effectiveType = type || resolveTaskListMode(location.pathname);
+
+  const [centerMode, setCenterMode] = useState<ApprovalCenterMode>(effectiveType);
   const [tasks, setTasks] = useState<UnifiedTask[]>([]);
   const [rawTasks, setRawTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -236,9 +242,9 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
   const canUpdateWorkTaskStatus = hasPermission('oa:work-task:status');
 
   useEffect(() => {
-    setCenterMode(type);
+    setCenterMode(effectiveType);
     setPageNum(1);
-  }, [type]);
+  }, [effectiveType]);
 
   const fetchTasks = useCallback(
     async (showLoading = true) => {
@@ -374,7 +380,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
       todoStartTimeTo,
       todoStartUserName,
       centerMode,
-      type,
+      effectiveType,
       user,
       canListWorkTasks,
     ],

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
@@ -14,7 +14,8 @@ import { TenantSwitcher } from '@/components/TenantSwitcher';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { getRouters, type MenuItem as ApiMenuItem } from '@/services/api/menu';
+import { useBackendMenus } from '@/hooks/useBackendMenus';
+import type { MenuItem as ApiMenuItem } from '@/services/api/menu';
 import { getIcon } from '@/utils/iconMapper';
 import { cn } from '@/utils/cn';
 import { tenantStorage } from '@/utils/tenantStorage';
@@ -48,32 +49,37 @@ export const MainLayout = () => {
   useWebSocket();
 
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
-  const [menuTree, setMenuTree] = useState<MenuTreeItem[]>([]);
-  const [menuLoading, setMenuLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readStoredSidebarState());
+  const { data: backendMenus = [], isLoading: menuLoading, isError: menuLoadFailed, error: menuLoadError } = useBackendMenus(Boolean(user));
 
-  const convertApiMenusToMenuTree = (apiMenus: ApiMenuItem[]): MenuTreeItem[] =>
-    apiMenus
+  const convertApiMenusToMenuTree = (apiMenus: ApiMenuItem[]): MenuTreeItem[] => {
+    const parseMenuItem = (item: ApiMenuItem): MenuTreeItem => {
+      const rawPath = item.path || '';
+      const [purePath, inlineQuery] = rawPath.split('?');
+      
+      const children = item.children
+        ?.filter((child) => child.visible === '0' && (child.menuType === 'C' || child.menuType === 'M'))
+        .map(parseMenuItem) || [];
+
+      return {
+        id: String(item.menuId),
+        label: item.menuName,
+        icon: getIcon(item.icon),
+        path: purePath || rawPath,
+        query: item.query || inlineQuery,
+        children,
+      };
+    };
+
+    return apiMenus
       .filter((menu) => menu.menuType === 'M' && menu.visible === '0')
-      .map((group) => ({
-        id: String(group.menuId),
-        label: group.menuName,
-        icon: getIcon(group.icon),
-        children:
-          group.children
-            ?.filter((child) => child.menuType === 'C' && child.visible === '0')
-            .map((child) => {
-              const rawPath = child.path || '';
-              const [purePath, inlineQuery] = rawPath.split('?');
-              return {
-                id: String(child.menuId),
-                label: child.menuName,
-                icon: getIcon(child.icon),
-                path: purePath || rawPath,
-                query: child.query || inlineQuery,
-              };
-            }) || [],
-      }));
+      .map(parseMenuItem);
+  };
+
+  const menuTree = useMemo(
+    () => convertApiMenusToMenuTree(backendMenus),
+    [backendMenus],
+  );
 
   const buildRouteKey = (path?: string, query?: string) => {
     if (!path) {
@@ -120,25 +126,45 @@ export const MainLayout = () => {
   }, [sidebarCollapsed]);
 
   useEffect(() => {
-    const loadMenus = async () => {
-      try {
-        const menus = await getRouters();
-        setMenuTree(convertApiMenusToMenuTree(menus));
-      } catch (error) {
-        console.error('加载菜单失败:', error);
-        setMenuTree([]);
-      } finally {
-        setMenuLoading(false);
+    if (menuLoadFailed) {
+      console.error('加载菜单失败:', menuLoadError);
+    }
+  }, [menuLoadFailed, menuLoadError]);
+
+  // 核心优化：预先计算所有当前活动的菜单和分组 ID，以便在渲染时进行 O(1) 的极速高亮和状态匹配，告别递归计算
+  const activeMenuIds = useMemo(() => {
+    const activeIds = new Set<string>();
+
+    const checkActive = (items: MenuTreeItem[]): boolean => {
+      let anyActive = false;
+      for (const item of items) {
+        let active = false;
+        if (item.path && matchesMenuRoute(item.path, item.query)) {
+          active = true;
+        }
+        if (item.children && item.children.length > 0) {
+          const childActive = checkActive(item.children);
+          if (childActive) {
+            active = true;
+          }
+        }
+        if (active) {
+          activeIds.add(item.id);
+          anyActive = true;
+        }
       }
+      return anyActive;
     };
 
-    if (user) {
-      void loadMenus();
-      return;
-    }
+    menuTree.forEach((group) => {
+      const groupActive = checkActive(group.children || []);
+      if (groupActive) {
+        activeIds.add(group.id);
+      }
+    });
 
-    setMenuLoading(false);
-  }, [user]);
+    return activeIds;
+  }, [location.pathname, location.search, menuTree]);
 
   useEffect(() => {
     if (sidebarCollapsed) {
@@ -146,24 +172,26 @@ export const MainLayout = () => {
     }
 
     setExpandedGroups((prev) => {
-      for (const group of menuTree) {
-        const match = group.children?.find((child) => matchesMenuRoute(child.path, child.query));
+      let next = [...prev];
+      let changed = false;
 
-        if (match && !prev.includes(group.id)) {
-          return [...prev, group.id];
+      activeMenuIds.forEach((id) => {
+        if (!next.includes(id)) {
+          next.push(id);
+          changed = true;
         }
-      }
+      });
 
-      return prev;
+      return changed ? next : prev;
     });
-  }, [location.pathname, location.search, menuTree, sidebarCollapsed]);
+  }, [activeMenuIds, sidebarCollapsed]);
 
-  useLayoutEffect(() => {
+  // 性能优化：将原本阻塞浏览器重绘的 useLayoutEffect 滚动重置，改为非阻塞的异步 useEffect，配合微延迟，防止多次触发强制布局（Layout Thrashing），彻底解决点击延迟
+  useEffect(() => {
     if (!mainScrollRef.current) {
       return;
     }
 
-    // 路由切换后重置主内容滚动位置，保证 sticky header 下的首屏一致。
     const resetScrollPosition = () => {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -172,30 +200,29 @@ export const MainLayout = () => {
     };
 
     resetScrollPosition();
-    let nestedRafId = 0;
-    const rafId = window.requestAnimationFrame(() => {
-      resetScrollPosition();
-      nestedRafId = window.requestAnimationFrame(() => {
-        resetScrollPosition();
-      });
-    });
 
-    return () => {
-      window.cancelAnimationFrame(rafId);
-      window.cancelAnimationFrame(nestedRafId);
-    };
+    // 针对异步加载和动态高度组件，在下一个宏任务周期执行最终修正
+    const timerId = setTimeout(resetScrollPosition, 100);
+    return () => clearTimeout(timerId);
   }, [location.pathname, location.search]);
 
-  const flatItems = useMemo(
-    () =>
-      menuTree.flatMap((group) =>
-        (group.children || []).map((child) => ({
-          ...child,
-          groupLabel: group.label,
-        })),
-      ),
-    [menuTree],
-  );
+  const flatItems = useMemo(() => {
+    const flatten = (items: MenuTreeItem[], groupLabel: string): any[] => {
+      return items.flatMap((item) => {
+        if (item.path) {
+          return [{
+            ...item,
+            groupLabel,
+          }];
+        }
+        if (item.children && item.children.length > 0) {
+          return flatten(item.children, `${groupLabel} / ${item.label}`);
+        }
+        return [];
+      });
+    };
+    return menuTree.flatMap((group) => flatten(group.children || [], group.label));
+  }, [menuTree]);
 
   const isActive = (path?: string, query?: string) => matchesMenuRoute(path, query);
 
@@ -214,12 +241,31 @@ export const MainLayout = () => {
       };
     }
 
+    const findActiveItem = (items: MenuTreeItem[]): { group: string; item: string } | null => {
+      for (const item of items) {
+        if (item.path && isActive(item.path, item.query)) {
+          return {
+            group: '',
+            item: item.label,
+          };
+        }
+        if (item.children && item.children.length > 0) {
+          const res = findActiveItem(item.children);
+          if (res) {
+            res.group = item.label;
+            return res;
+          }
+        }
+      }
+      return null;
+    };
+
     for (const group of menuTree) {
-      const child = group.children?.find((item) => isActive(item.path, item.query));
-      if (child) {
+      const res = findActiveItem(group.children || []);
+      if (res) {
         return {
-          group: group.label,
-          item: child.label,
+          group: res.group || group.label,
+          item: res.item,
         };
       }
     }
@@ -238,6 +284,88 @@ export const MainLayout = () => {
 
   const toggleThemeMode = () => {
     setThemeMode(resolvedTheme === 'dark' ? 'light' : 'dark');
+  };
+
+  const renderExpandedMenuItems = (items: MenuTreeItem[], depth = 1) => {
+    const containerClassName = cn(
+      depth === 1
+        ? 'ml-4 mt-2 space-y-1 border-l border-slate-200 pl-3 dark:border-slate-800'
+        : 'ml-3 mt-1 space-y-1 border-l border-slate-100 pl-2 dark:border-slate-800',
+    );
+
+    return (
+      <div className={containerClassName}>
+        {items.map((item) => {
+          const hasChildren = Boolean(item.children?.length);
+          const expanded = expandedGroups.includes(item.id);
+          const active = activeMenuIds.has(item.id);
+          const parentActive = hasChildren && active && !expanded;
+          const Icon = item.icon;
+
+          const handleItemClick = () => {
+            if (item.path) {
+              navigate(buildRouteKey(item.path, item.query));
+              return;
+            }
+            if (hasChildren) {
+              toggleGroup(item.id);
+            }
+          };
+
+          return (
+            <div key={item.id} className="space-y-1">
+              <button
+                type="button"
+                onClick={handleItemClick}
+                className={cn(
+                  'cf-side-link cf-side-link-sm relative transition-all duration-300',
+                  hasChildren ? '' : 'pl-7',
+                  active && !hasChildren && 'cf-side-link-active',
+                  parentActive && 'cf-side-link-active',
+                )}
+              >
+                {active && !hasChildren ? (
+                  <span className="absolute left-2.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.8)] animate-pulse" />
+                ) : null}
+                <Icon size={depth > 1 ? 14 : 16} className="shrink-0" />
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <span className="truncate">{item.label}</span>
+                  {hasChildren ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={expanded ? `收起${item.label}` : `展开${item.label}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleGroup(item.id);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          toggleGroup(item.id);
+                        }
+                      }}
+                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                    >
+                      <ChevronDown
+                        size={14}
+                        className={cn(
+                          'transition-transform duration-200',
+                          expanded ? 'rotate-180' : '',
+                        )}
+                      />
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+
+              {hasChildren && expanded ? renderExpandedMenuItems(item.children || [], depth + 1) : null}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   if (loading || menuLoading) {
@@ -291,7 +419,7 @@ export const MainLayout = () => {
           {sidebarCollapsed ? (
             <div className="space-y-1">
               {flatItems.map((item) => {
-                const active = isActive(item.path, item.query);
+                const active = activeMenuIds.has(item.id);
                 return (
                   <button
                     key={item.id}
@@ -300,7 +428,7 @@ export const MainLayout = () => {
                     onClick={() => item.path && navigate(buildRouteKey(item.path, item.query))}
                     className={cn(
                       'cf-side-link h-10 w-10 justify-center gap-0 px-0 relative transition-all duration-300',
-                      active && 'cf-side-link-active shadow-sm scale-105',
+                      active && 'cf-side-link-active',
                     )}
                   >
                     {active && (
@@ -315,7 +443,7 @@ export const MainLayout = () => {
             <div className="space-y-4">
               {menuTree.map((group) => {
                 const expanded = expandedGroups.includes(group.id);
-                const groupActive = Boolean(group.children?.some((child) => isActive(child.path, child.query)));
+                const groupActive = activeMenuIds.has(group.id);
                 const parentButtonActive = groupActive && !expanded;
 
                 return (
@@ -341,30 +469,7 @@ export const MainLayout = () => {
                       </span>
                     </button>
 
-                    {expanded ? (
-                      <div className="ml-4 mt-2 space-y-1 border-l border-slate-200 pl-3 dark:border-slate-800">
-                        {group.children?.map((child) => {
-                          const active = isActive(child.path, child.query);
-                          return (
-                            <button
-                              key={child.id}
-                              type="button"
-                              onClick={() => child.path && navigate(buildRouteKey(child.path, child.query))}
-                              className={cn(
-                                'cf-side-link cf-side-link-sm relative pl-7 transition-all duration-300',
-                                active && 'cf-side-link-active shadow-sm translate-x-1',
-                              )}
-                            >
-                              {active && (
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.8)] animate-pulse" />
-                              )}
-                              <child.icon size={16} className="shrink-0" />
-                              <span className="truncate">{child.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : null}
+                    {expanded ? renderExpandedMenuItems(group.children || []) : null}
                   </div>
                 );
               })}
