@@ -146,13 +146,17 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
               <span className="text-xs text-slate-400 dark:text-slate-500">字段 {index + 1}</span>
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => onRemove(field.id)}
-              className="rounded-md p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
+              className="!h-7 !w-7 !rounded-md !p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
+              aria-label="删除字段"
+              title="删除字段"
             >
               <Trash2 size={15} />
-            </button>
+            </Button>
           </div>
 
           <Input
@@ -168,17 +172,19 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
             <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs text-slate-500 dark:text-slate-400">选项</span>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     const newOptions = [...(field.options || []), `选项${(field.options?.length || 0) + 1}`];
                     onUpdate(field.id, { options: newOptions });
                   }}
-                  className="inline-flex items-center gap-1 text-xs text-cyan-600 transition-colors hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+                  className="!h-6 !gap-1 !rounded-md !px-2 !py-0 text-xs text-cyan-600 shadow-none hover:bg-cyan-50 hover:text-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200"
                 >
                   <Plus size={12} />
                   新增
-                </button>
+                </Button>
               </div>
 
               <div className="space-y-1.5">
@@ -195,16 +201,20 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
                       placeholder={`选项 ${idx + 1}`}
                     />
                     {(field.options?.length || 0) > 1 ? (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => {
                           const newOptions = (field.options || []).filter((_, i) => i !== idx);
                           onUpdate(field.id, { options: newOptions });
                         }}
-                        className="rounded-md p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
+                        className="!h-7 !w-7 !rounded-md !p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
+                        aria-label="删除选项"
+                        title="删除选项"
                       >
                         <X size={14} />
-                      </button>
+                      </Button>
                     ) : null}
                   </div>
                 ))}
@@ -300,13 +310,17 @@ const FormPreview: React.FC<{
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{formName}</div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">预览填写，不会写入真实数据。</div>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onCancel}
-          className="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          className="!h-8 !w-8 !rounded-md !p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          aria-label="关闭预览"
+          title="关闭预览"
         >
           <X size={18} />
-        </button>
+        </Button>
       </div>
 
       <div className="max-h-[60vh] space-y-5 overflow-y-auto px-4 py-4">
@@ -494,17 +508,18 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
           {FIELD_TYPES.map((item) => {
             const Icon = item.icon;
             return (
-              <button
+              <Button
                 key={item.type}
                 type="button"
+                variant="outline"
                 onClick={() => addField(item.type)}
-                className="flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-sm text-slate-700 transition-colors hover:border-cyan-200 hover:bg-cyan-50 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:border-cyan-900/70 dark:hover:bg-cyan-950/20"
+                className="w-full !justify-start gap-3 rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-sm text-slate-700 shadow-none hover:border-cyan-200 hover:bg-cyan-50 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:border-cyan-900/70 dark:hover:bg-cyan-950/20"
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-cyan-600 dark:border-slate-800 dark:bg-slate-950 dark:text-cyan-300">
                   <Icon size={15} />
                 </span>
                 <span>{item.label}</span>
-              </button>
+              </Button>
             );
           })}
         </div>

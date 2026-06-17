@@ -687,15 +687,17 @@ export const PurchaseRequestPage: React.FC = () => {
                       <Input className="h-10" value={formatAmount(Number(item.quantity || 0) * Number(item.unitPrice || 0))} disabled />
                     </div>
                     <div className="flex items-end justify-end">
-                      <button
+                      <Button
                         type="button"
+                        variant="destructive"
+                        size="icon"
                         onClick={() => removeItem(index)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 transition-colors hover:bg-rose-50 dark:border-rose-900 dark:bg-slate-950 dark:text-rose-300"
+                        className="h-10 w-10 rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:bg-slate-950 dark:text-rose-300"
                         aria-label="删除明细"
                         title="删除明细"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                   <div className="mt-2 text-xs text-slate-500">
@@ -869,4 +871,3 @@ export const PurchaseRequestPage: React.FC = () => {
 };
 
 export default PurchaseRequestPage;
-

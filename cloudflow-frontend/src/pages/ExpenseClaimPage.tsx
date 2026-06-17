@@ -849,15 +849,17 @@ export const ExpenseClaimPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-end justify-end">
-                      <button
+                      <Button
                         type="button"
+                        variant="destructive"
+                        size="icon"
                         onClick={() => removeItem(index)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900 dark:bg-slate-950 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                        className="h-10 w-10 rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900 dark:bg-slate-950 dark:text-rose-300 dark:hover:bg-rose-950/30"
                         aria-label="删除明细"
                         title="删除明细"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </Button>
                     </div>
                   </div>
 
@@ -1003,5 +1005,4 @@ export const ExpenseClaimPage: React.FC = () => {
 };
 
 export default ExpenseClaimPage;
-
 

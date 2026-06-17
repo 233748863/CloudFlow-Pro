@@ -3,7 +3,7 @@ import { Building2, Eye, EyeOff, Loader2, Lock, LogIn, Mail, RefreshCcw, ShieldA
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AuthCaptchaDialog } from '@/components/auth/AuthExperienceShell';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common';
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import { getTenantOptions, login as apiLogin, register as apiRegister, type TenantOption } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
@@ -516,10 +516,10 @@ export const AuthPage: React.FC = () => {
   ) : tenantLoadError ? (
     <div className="cf-auth-tenant-status">
       <p className="cf-auth-hint cf-auth-hint--error">{tenantLoadError}</p>
-      <button type="button" className="cf-auth-retry-button" onClick={handleReloadTenants}>
+      <Button type="button" variant="soft" size="sm" className="cf-auth-retry-button" onClick={handleReloadTenants}>
         <RefreshCcw size={12} />
         重新加载
-      </button>
+      </Button>
     </div>
   ) : null;
 
@@ -632,13 +632,15 @@ export const AuthPage: React.FC = () => {
                       className="cf-auth-input"
                       style={{ paddingLeft: '0.75rem' }}
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="soft"
+                      size="sm"
                       onClick={handleSaveCustomApiUrl}
                       className="cf-auth-retry-button !h-10"
                     >
                       保存
-                    </button>
+                    </Button>
                   </div>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
                     适用于局域网、专有网络及私有部署环境。留空保存即恢复系统默认。
@@ -783,7 +785,7 @@ export const AuthPage: React.FC = () => {
                     </div>
                   ) : null}
 
-                  <button
+                  <Button
                     type="submit"
                     disabled={pendingAction === 'login'}
                     className="cf-auth-submit"
@@ -799,7 +801,7 @@ export const AuthPage: React.FC = () => {
                         登录
                       </>
                     )}
-                  </button>
+                  </Button>
                 </form>
               ) : (
                 <form onSubmit={handleRegisterSubmit} className="cf-auth-form">
@@ -960,7 +962,7 @@ export const AuthPage: React.FC = () => {
                     </div>
                   ) : null}
 
-                  <button
+                  <Button
                     type="submit"
                     disabled={pendingAction === 'register'}
                     className="cf-auth-submit"
@@ -976,7 +978,7 @@ export const AuthPage: React.FC = () => {
                         创建账号
                       </>
                     )}
-                  </button>
+                  </Button>
                 </form>
               )}
             </div>

@@ -449,30 +449,34 @@ const DeptNode: React.FC<{
                 : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100',
             )}
           >
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               title="新增子部门"
               aria-label="新增子部门"
               onClick={(event) => {
                 event.stopPropagation();
                 onAddChild(dept);
               }}
-              className="flex h-5 w-5 items-center justify-center rounded-md text-slate-400 hover:bg-teal-500/10 hover:text-teal-600 dark:text-slate-400 dark:hover:bg-teal-950/30"
+              className="!h-5 !w-5 !rounded-md !p-0 text-slate-400 hover:bg-teal-500/10 hover:text-teal-600 dark:text-slate-400 dark:hover:bg-teal-950/30"
             >
               <Plus size={12} />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               title="编辑部门"
               aria-label="编辑部门"
               onClick={(event) => {
                 event.stopPropagation();
                 onEdit(dept);
               }}
-              className="flex h-5 w-5 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              className="!h-5 !w-5 !rounded-md !p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               <Edit3 size={12} />
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -1182,13 +1186,13 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                   {deptSearch ? `搜索到 ${filteredDepartments} 个结果` : `部门层级树`}
                 </div>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={expandAllDepartments} className="rounded-md px-2 py-0.5 text-[10px] font-bold text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/30 transition-colors">
+                  <Button type="button" variant="ghost" size="sm" onClick={expandAllDepartments} className="!h-5 !rounded-md !px-2 !py-0.5 !text-[10px] !font-bold !text-teal-600 shadow-none hover:bg-teal-50 dark:!text-teal-400 dark:hover:bg-teal-950/30">
                     全部展开
-                  </button>
+                  </Button>
                   <div className="w-px h-2.5 bg-slate-200 dark:bg-slate-800" />
-                  <button type="button" onClick={collapseAllDepartments} className="rounded-md px-2 py-0.5 text-[10px] font-bold text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900/40 transition-colors">
+                  <Button type="button" variant="ghost" size="sm" onClick={collapseAllDepartments} className="!h-5 !rounded-md !px-2 !py-0.5 !text-[10px] !font-bold !text-slate-500 shadow-none hover:bg-slate-100 dark:!text-slate-400 dark:hover:bg-slate-900/40">
                     全部折叠
-                  </button>
+                  </Button>
                 </div>
               </div>
 
