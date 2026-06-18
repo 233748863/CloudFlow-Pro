@@ -61,6 +61,13 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String sid = session.getId();
+        Long handshakeUserId = toLong(session.getAttributes().get("userId"));
+        if (handshakeUserId != null && Boolean.TRUE.equals(session.getAttributes().get("handshakeAuthenticated"))) {
+            registerAuthenticatedSession(session, handshakeUserId);
+            sendQuietly(session, MSG_AUTH_OK);
+            return;
+        }
+
         authenticated.put(sid, Boolean.FALSE);
         authTimer.schedule(() -> {
             if (Boolean.FALSE.equals(authenticated.get(sid))) {
@@ -111,9 +118,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
                 closeQuietly(session, CloseStatus.NOT_ACCEPTABLE);
                 return;
             }
-            session.getAttributes().put("userId", userId);
-            userSessions.put(userId, session);
-            authenticated.put(sid, Boolean.TRUE);
+            registerAuthenticatedSession(session, userId);
             sendQuietly(session, MSG_AUTH_OK);
             return;
         }
@@ -157,14 +162,30 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     }
 
     private Long extractUserId(Map<String, Object> userMap) {
-        Object userIdObj = userMap.get("userId");
-        if (userIdObj instanceof Long) {
-            return (Long) userIdObj;
+        return toLong(userMap.get("userId"));
+    }
+
+    private void registerAuthenticatedSession(WebSocketSession session, Long userId) {
+        session.getAttributes().put("userId", userId);
+        userSessions.put(userId, session);
+        authenticated.put(session.getId(), Boolean.TRUE);
+    }
+
+    private Long toLong(Object value) {
+        if (value instanceof Long longValue) {
+            return longValue;
         }
-        if (userIdObj instanceof Number) {
-            return ((Number) userIdObj).longValue();
+        if (value instanceof Number number) {
+            return number.longValue();
         }
-        return null;
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private void sendQuietly(WebSocketSession session, String payload) {

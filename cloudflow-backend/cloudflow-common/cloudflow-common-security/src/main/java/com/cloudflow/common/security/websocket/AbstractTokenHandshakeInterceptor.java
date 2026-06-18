@@ -1,5 +1,6 @@
 package com.cloudflow.common.security.websocket;
 
+import com.cloudflow.common.security.cookie.AuthCookieSupport;
 import com.cloudflow.common.security.core.TokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,7 @@ import java.util.Map;
 /**
  * WebSocket 握手鉴权模板（P2-3 下沉到 cloudflow-common-security）
  *
- * 适用于"URL query 携带 token"的 WebSocket 握手方案（注意：token 进入 access log / 浏览器历史，仅在内网或可信场景使用）。
+ * 适用于 WebSocket 握手鉴权，按请求头、URL token 参数、HttpOnly Cookie 的顺序解析 Token。
  * <p>
  * 提供给子类的扩展点：
  * <ul>
@@ -89,9 +90,9 @@ public abstract class AbstractTokenHandshakeInterceptor implements HandshakeInte
             return false;
         }
 
-        String token = servletRequest.getServletRequest().getParameter("token");
+        String token = AuthCookieSupport.resolveRawToken(servletRequest.getServletRequest());
         if (!StringUtils.hasText(token)) {
-            log.warn("{} 握手失败: 缺少 token 参数", moduleName());
+            log.warn("{} 握手失败: 缺少 token", moduleName());
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             return false;
         }

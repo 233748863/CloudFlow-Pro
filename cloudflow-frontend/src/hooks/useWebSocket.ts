@@ -79,7 +79,7 @@ export const useWebSocket = () => {
         if (unmountedRef.current) return;
 
         const token = getAuthToken();
-        if (!token || !user) return;
+        if (!user) return;
 
         // 关闭已有连接
         if (wsRef.current) {
@@ -119,7 +119,10 @@ export const useWebSocket = () => {
                 ws.close();
                 return;
             }
-            // 握手完成后立即发送鉴权首帧
+            // 有内存 token 时继续走首帧鉴权；刷新后没有内存 token 时由后端握手 Cookie 鉴权。
+            if (!token) {
+                return;
+            }
             try {
                 ws.send(JSON.stringify({ type: 'AUTH', token }));
             } catch (e) {
