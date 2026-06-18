@@ -1,15 +1,18 @@
 package com.cloudflow.gateway.filter;
 
 import com.cloudflow.common.core.constant.SecurityConstants;
+import com.cloudflow.common.security.cookie.AuthCookieSupport;
 import com.cloudflow.common.security.core.TokenService;
 import com.cloudflow.gateway.config.GatewayAuthProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpCookie;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -18,6 +21,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -70,6 +74,10 @@ public class AuthFilter implements GlobalFilter, Ordered {
         Map<String, Object> loginUser = tokenService.verifyToken(rawToken);
         if (loginUser == null) {
             return unauthorized(exchange);
+        }
+
+        if (hasAuthCookie(exchange)) {
+            refreshAuthCookies(exchange, rawToken);
         }
 
         String tenantIdStr = resolveTenantId(loginUser);
@@ -125,25 +133,19 @@ public class AuthFilter implements GlobalFilter, Ordered {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
+        clearAuthCookies(exchange);
         String body = "{\"code\":401,\"msg\":\"未授权或Token已过期\"}";
         DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));
     }
 
     private String resolveCookieToken(ServerWebExchange exchange) {
-        try {
-            if (exchange.getRequest().getCookies().containsKey("Authorization")) {
-                return exchange.getRequest().getCookies().getFirst("Authorization") != null
-                        ? exchange.getRequest().getCookies().getFirst("Authorization").getValue()
-                        : null;
-            }
-        } catch (Exception ignored) {
-        }
-        return null;
+        HttpCookie cookie = exchange.getRequest().getCookies().getFirst(AuthCookieSupport.AUTH_COOKIE_NAME);
+        return cookie != null ? cookie.getValue() : null;
     }
 
     private String resolveRawToken(ServerWebExchange exchange) {
-        String token = exchange.getRequest().getHeaders().getFirst("Authorization");
+        String token = exchange.getRequest().getHeaders().getFirst(AuthCookieSupport.AUTH_COOKIE_NAME);
         if (token == null || token.isBlank()) {
             token = resolveCookieToken(exchange);
         }
@@ -154,10 +156,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
         if (token == null || token.isBlank()) {
             return null;
         }
-        if (token.startsWith("Bearer ")) {
-            return token.substring("Bearer ".length());
-        }
-        return token;
+        return AuthCookieSupport.unwrapBearerToken(token);
     }
 
     private String resolveTenantId(Map<String, Object> loginUser) {
@@ -175,5 +174,66 @@ public class AuthFilter implements GlobalFilter, Ordered {
     @Override
     public int getOrder() {
         return -100;
+    }
+
+    private boolean hasAuthCookie(ServerWebExchange exchange) {
+        return exchange.getRequest().getCookies().getFirst(AuthCookieSupport.AUTH_COOKIE_NAME) != null;
+    }
+
+    private void refreshAuthCookies(ServerWebExchange exchange, String rawToken) {
+        if (!StringUtils.hasText(rawToken)) {
+            return;
+        }
+        boolean secure = isSecureRequest(exchange.getRequest());
+        long maxAgeSeconds = tokenService.getExpirationSeconds();
+        String csrfToken = resolveCsrfCookie(exchange);
+        if (!StringUtils.hasText(csrfToken)) {
+            csrfToken = AuthCookieSupport.newCsrfToken();
+        }
+        addResponseCookie(exchange, AuthCookieSupport.AUTH_COOKIE_NAME, rawToken, true, secure, maxAgeSeconds);
+        addResponseCookie(exchange, AuthCookieSupport.CSRF_COOKIE_NAME, csrfToken, false, secure, maxAgeSeconds);
+    }
+
+    private void clearAuthCookies(ServerWebExchange exchange) {
+        boolean secure = isSecureRequest(exchange.getRequest());
+        addResponseCookie(exchange, AuthCookieSupport.AUTH_COOKIE_NAME, "", true, secure, 0);
+        addResponseCookie(exchange, AuthCookieSupport.CSRF_COOKIE_NAME, "", false, secure, 0);
+    }
+
+    private String resolveCsrfCookie(ServerWebExchange exchange) {
+        HttpCookie cookie = exchange.getRequest().getCookies().getFirst(AuthCookieSupport.CSRF_COOKIE_NAME);
+        return cookie != null ? cookie.getValue() : null;
+    }
+
+    private void addResponseCookie(ServerWebExchange exchange,
+                                   String name,
+                                   String value,
+                                   boolean httpOnly,
+                                   boolean secure,
+                                   long maxAgeSeconds) {
+        ResponseCookie cookie = ResponseCookie.from(name, value)
+                .httpOnly(httpOnly)
+                .secure(secure)
+                .path("/")
+                .sameSite(AuthCookieSupport.SAME_SITE)
+                .maxAge(Duration.ofSeconds(Math.max(maxAgeSeconds, 0)))
+                .build();
+        exchange.getResponse().addCookie(cookie);
+    }
+
+    private boolean isSecureRequest(ServerHttpRequest request) {
+        if (request == null) {
+            return false;
+        }
+        String scheme = request.getURI().getScheme();
+        if ("https".equalsIgnoreCase(scheme) || "wss".equalsIgnoreCase(scheme)) {
+            return true;
+        }
+        String forwardedProto = request.getHeaders().getFirst("X-Forwarded-Proto");
+        if (StringUtils.hasText(forwardedProto) && "https".equalsIgnoreCase(forwardedProto)) {
+            return true;
+        }
+        String forwardedSsl = request.getHeaders().getFirst("X-Forwarded-Ssl");
+        return StringUtils.hasText(forwardedSsl) && "on".equalsIgnoreCase(forwardedSsl);
     }
 }

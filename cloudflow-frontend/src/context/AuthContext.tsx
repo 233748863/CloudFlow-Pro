@@ -5,7 +5,7 @@ import { User } from '@/types';
 import { getInfo, logout as logoutApi, switchTenant as switchTenantApi, type UserInfo } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 import { clearAuthSession } from '@/utils/sessionCleanup';
-import { getAuthToken, setAuthToken, setCurrentUserSnapshot } from '@/utils/authStorage';
+import { setAuthToken, setCurrentUserSnapshot } from '@/utils/authStorage';
 import { queryClient } from '@/lib/queryClient';
 import { tenantStorage } from '@/utils/tenantStorage';
 import { resetWorkflowDesignCaches } from '@/pages/workflowDesignCache';
@@ -64,11 +64,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const currentPath = window.location.pathname;
       const shouldSkipProbe = currentPath.endsWith('/login') || currentPath.endsWith('/register');
       if (shouldSkipProbe) {
-        setLoading(false);
-        return;
-      }
-
-      if (!getAuthToken()) {
         setLoading(false);
         return;
       }

@@ -11,6 +11,10 @@ const appBasePath = import.meta.env.BASE_URL === '/'
   ? ''
   : import.meta.env.BASE_URL.replace(/\/$/, '');
 
+const CSRF_COOKIE_NAME = 'XSRF-TOKEN';
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+const UNSAFE_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+
 // 定义标准 API 响应接口
 export interface ApiResponse<T = any> {
   code: number;
@@ -42,6 +46,26 @@ function getResponseErrorMessage(data: unknown, fallback = '网络请求失败')
 function isForcePasswordChangeUser() {
   const user = getCurrentUserSnapshot();
   return Boolean(user?.forcePasswordChange);
+}
+
+function getCookieValue(name: string) {
+  if (typeof document === 'undefined' || !document.cookie) {
+    return '';
+  }
+
+  const encodedName = `${encodeURIComponent(name)}=`;
+  const cookies = document.cookie.split(';');
+  for (const item of cookies) {
+    const cookie = item.trim();
+    if (cookie.startsWith(encodedName)) {
+      return decodeURIComponent(cookie.slice(encodedName.length));
+    }
+  }
+  return '';
+}
+
+function isUnsafeMethod(method?: string) {
+  return UNSAFE_METHODS.has((method || 'get').toLowerCase());
 }
 
 // 扩展 AxiosRequestConfig 以支持静默模式
@@ -192,8 +216,9 @@ function redirectToLoginWhenUnauthorized(options: { silent?: boolean } = {}) {
 request.interceptors.request.use(
   async config => {
     const runtimeConfig = await loadDesktopRuntimeConfig();
+    const tauriRuntime = isTauriRuntime();
     config.baseURL = runtimeConfig.apiBaseUrl;
-    if (isTauriRuntime()) {
+    if (tauriRuntime) {
       config.withCredentials = false;
     }
 
@@ -209,6 +234,13 @@ request.interceptors.request.use(
     const token = getAuthToken();
     if (token) {
       config.headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+    }
+
+    if (!tauriRuntime && isUnsafeMethod(config.method)) {
+      const csrfToken = getCookieValue(CSRF_COOKIE_NAME);
+      if (csrfToken) {
+        config.headers[CSRF_HEADER_NAME] = csrfToken;
+      }
     }
 
     // 从 AuthContext 维护的 in-memory 快照取 tenantId 并添加到请求头

@@ -32,6 +32,7 @@ import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.core.utils.IpUtils;
+import com.cloudflow.common.security.cookie.AuthCookieSupport;
 import com.cloudflow.common.security.core.TokenService;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,7 +40,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.LocalDateTime;
@@ -364,8 +364,9 @@ public class AuthController {
 
     @GetMapping("/info")
     @SaCheckPermission("system:auth:info")
-    public R<DynamicMapVO> info(HttpServletRequest request) {
-        Map<String, Object> userMap = requireLoginUser(request);
+    public R<DynamicMapVO> info(HttpServletRequest request, HttpServletResponse response) {
+        String rawToken = resolveRawToken(request);
+        Map<String, Object> userMap = requireLoginUser(rawToken);
 
         Long userId = toLong(userMap.get("userId"));
         String username = extractUsername(userMap, userId);
@@ -421,6 +422,8 @@ public class AuthController {
         data.put("roles", resolveStringCollection(userMap.get("roles"), userInfo.getRoles()));
         data.put("permissions", resolveStringCollection(userMap.get("permissions"), userInfo.getPermissions()));
         data.put("forcePasswordChange", forcePasswordChange);
+
+        setAuthCookie(request, response, rawToken);
 
         return R.ok(DynamicMapVO.from(data));
     }
@@ -543,7 +546,11 @@ public class AuthController {
     }
 
     private Map<String, Object> requireLoginUser(HttpServletRequest request) {
-        Map<String, Object> userMap = resolveLoginUser(request);
+        return requireLoginUser(resolveRawToken(request));
+    }
+
+    private Map<String, Object> requireLoginUser(String rawToken) {
+        Map<String, Object> userMap = tokenService.verifyToken(rawToken);
         if (userMap == null) {
             throw new ServiceException("Token已过期或无效", ErrorCodeConstants.UNAUTHORIZED);
         }
@@ -567,58 +574,15 @@ public class AuthController {
     }
 
     private String resolveRawToken(HttpServletRequest request) {
-        String token = request.getHeader("Authorization");
-        if (!StringUtils.hasText(token)) {
-            token = resolveCookieToken(request);
-        }
-        return unwrapBearerToken(token);
+        return AuthCookieSupport.resolveRawToken(request);
     }
 
-    private static final String AUTH_COOKIE_NAME = "Authorization";
-
     private void setAuthCookie(HttpServletRequest request, HttpServletResponse response, String token) {
-        Cookie cookie = new Cookie(AUTH_COOKIE_NAME, unwrapBearerToken(token));
-        cookie.setHttpOnly(true);
-        cookie.setSecure(isSecureRequest(request));
-        cookie.setPath("/");
-        cookie.setAttribute("SameSite", "Lax");
-        cookie.setMaxAge(7 * 24 * 60 * 60);
-        response.addCookie(cookie);
+        AuthCookieSupport.addAuthCookies(request, response, token, tokenService.getExpirationSeconds());
     }
 
     private void clearAuthCookie(HttpServletRequest request, HttpServletResponse response) {
-        Cookie cookie = new Cookie(AUTH_COOKIE_NAME, "");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(isSecureRequest(request));
-        cookie.setPath("/");
-        cookie.setAttribute("SameSite", "Lax");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
-    }
-
-    private boolean isSecureRequest(HttpServletRequest request) {
-        if (request == null) {
-            return false;
-        }
-        if (request.isSecure()) {
-            return true;
-        }
-        String forwardedProto = request.getHeader("X-Forwarded-Proto");
-        if (StringUtils.hasText(forwardedProto) && "https".equalsIgnoreCase(forwardedProto)) {
-            return true;
-        }
-        String forwardedSsl = request.getHeader("X-Forwarded-Ssl");
-        return StringUtils.hasText(forwardedSsl) && "on".equalsIgnoreCase(forwardedSsl);
-    }
-
-    private String unwrapBearerToken(String token) {
-        if (!StringUtils.hasText(token)) {
-            return null;
-        }
-        if (token.startsWith("Bearer ")) {
-            return token.substring("Bearer ".length());
-        }
-        return token;
+        AuthCookieSupport.clearAuthCookies(request, response);
     }
 
     private Long toLong(Object value) {
@@ -834,19 +798,6 @@ public class AuthController {
             return false;
         }
         return rolesObj != null && "ADMIN".equalsIgnoreCase(String.valueOf(rolesObj));
-    }
-
-    public static String resolveCookieToken(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return null;
-        }
-        for (Cookie cookie : cookies) {
-            if (AUTH_COOKIE_NAME.equals(cookie.getName()) && StringUtils.hasText(cookie.getValue())) {
-                return cookie.getValue();
-            }
-        }
-        return null;
     }
 
     public static class TenantOption {

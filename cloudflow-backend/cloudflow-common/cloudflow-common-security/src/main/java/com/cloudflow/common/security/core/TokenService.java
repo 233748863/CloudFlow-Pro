@@ -56,6 +56,13 @@ public class TokenService {
     }
 
     /**
+     * 获取 Token 过期时间，单位：秒。Cookie 登录态使用同一时长，避免浏览器会话与服务端会话不一致。
+     */
+    public long getExpirationSeconds() {
+        return getExpiration() * SECONDS_PER_MINUTE;
+    }
+
+    /**
      * 创建登录态并返回原始 Token。
      */
     public String createToken(Map<String, Object> loginUser) {
@@ -68,7 +75,7 @@ public class TokenService {
             throw new IllegalArgumentException("登录用户缺少 userId");
         }
 
-        long timeoutSeconds = getExpiration() * SECONDS_PER_MINUTE;
+        long timeoutSeconds = getExpirationSeconds();
 
         SaLoginParameter loginParameter = new SaLoginParameter()
                 .setTimeout(timeoutSeconds)
