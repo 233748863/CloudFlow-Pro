@@ -179,7 +179,10 @@ public class SysApiRatelimitRuleServiceImpl implements ISysApiRatelimitRuleServi
             throw new IllegalArgumentException("路径模板必填");
         }
         if (rule.getRps() == null || rule.getRps() <= 0) {
-            throw new IllegalArgumentException("RPS 必须 > 0");
+            throw new IllegalArgumentException("限流次数必须 > 0");
+        }
+        if (rule.getWindowSeconds() == null || rule.getWindowSeconds() <= 0) {
+            rule.setWindowSeconds(1);
         }
         if (rule.getTenantId() == null) {
             rule.setTenantId(100000L);

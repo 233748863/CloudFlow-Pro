@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <ul>
  *   <li>启动期从 Redis Hash {@code cloudflow:ratelimit:rules:active} 加载全量 ACTIVE 规则。</li>
  *   <li>订阅 Redis pubsub 通道 {@code cloudflow:ratelimit:rules}，收到 RELOAD 后即时刷新本地缓存。</li>
- *   <li>每个请求按 {@code priority} 升序匹配规则；命中后用 INCR + EXPIRE 做秒级令牌桶。</li>
+ *   <li>每个请求按 {@code priority} 升序匹配规则；命中后用 INCR + EXPIRE 做时间窗口计数。</li>
  *   <li>超额行为：REJECT 直接 429；LOG 仅记日志放行；QUEUE 当前按 LOG 处理（后续可扩展为延迟放行）。</li>
  * </ul>
  *
@@ -128,6 +128,7 @@ public class DynamicRateLimitFilter implements GlobalFilter, Ordered {
         String counterKey = COUNTER_KEY_PREFIX + hit.getId() + ":" + dimensionKey;
         int rps = hit.getRps() == null ? 0 : hit.getRps();
         int burst = hit.getBurst() == null ? rps : Math.max(rps, hit.getBurst());
+        int windowSeconds = hit.getWindowSeconds() == null || hit.getWindowSeconds() <= 0 ? 1 : hit.getWindowSeconds();
         if (rps <= 0) {
             return chain.filter(exchange);
         }
@@ -135,7 +136,7 @@ public class DynamicRateLimitFilter implements GlobalFilter, Ordered {
         return reactiveStringRedisTemplate.opsForValue().increment(counterKey)
                 .flatMap(count -> {
                     Mono<Boolean> ensureTtl = (count != null && count == 1L)
-                            ? reactiveStringRedisTemplate.expire(counterKey, Duration.ofSeconds(1)).onErrorReturn(true)
+                            ? reactiveStringRedisTemplate.expire(counterKey, Duration.ofSeconds(windowSeconds)).onErrorReturn(true)
                             : Mono.just(true);
                     return ensureTtl.then(Mono.just(count == null ? 0L : count));
                 })

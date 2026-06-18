@@ -36,6 +36,7 @@ public class SysApiRatelimitRule implements Serializable {
     private String dimension;
     private Integer rps;
     private Integer burst;
+    private Integer windowSeconds;
     /** ACTIVE / INACTIVE */
     private String status;
     private Integer priority;

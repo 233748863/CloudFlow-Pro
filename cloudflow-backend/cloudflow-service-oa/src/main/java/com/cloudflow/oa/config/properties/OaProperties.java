@@ -1,11 +1,10 @@
 package com.cloudflow.oa.config.properties;
 
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,8 +14,6 @@ import org.springframework.stereotype.Component;
  */
 @Data
 @Component
-@RefreshScope
-@ConfigurationProperties(prefix = "cloudflow.oa")
 public class OaProperties {
 
     @Autowired
@@ -43,52 +40,48 @@ public class OaProperties {
     @PostConstruct
     public void loadFromSysConfig() {
         announcement.setDefaultExpireDays(
-                sysConfigHelper.getTenantInt("sys.announcement.defaultExpireDays", announcement.getDefaultExpireDays()));
+                sysConfigHelper.getTenantInt(SysConfigKeys.ANNOUNCEMENT_DEFAULT_EXPIRE_DAYS, announcement.getDefaultExpireDays()));
         announcement.setMaxAttachmentSize(
-                sysConfigHelper.getTenantInt("sys.announcement.maxAttachmentSize", announcement.getMaxAttachmentSize()));
+                sysConfigHelper.getTenantInt(SysConfigKeys.ANNOUNCEMENT_MAX_ATTACHMENT_SIZE, announcement.getMaxAttachmentSize()));
         announcement.setAllowAnonymousRead(
-                sysConfigHelper.getTenantBoolean("sys.announcement.allowAnonymous", announcement.getAllowAnonymousRead()));
+                sysConfigHelper.getTenantBoolean(SysConfigKeys.ANNOUNCEMENT_ALLOW_ANONYMOUS, announcement.getAllowAnonymousRead()));
 
         asset.setQrCodePrefix(
-                sysConfigHelper.getTenantValue("sys.asset.qrCodePrefix", asset.getQrCodePrefix()));
+                sysConfigHelper.getTenantValue(SysConfigKeys.ASSET_QR_CODE_PREFIX, asset.getQrCodePrefix()));
         asset.setDepreciationMethod(
-                sysConfigHelper.getTenantValue("sys.asset.depreciationMethod", asset.getDepreciationMethod()));
+                sysConfigHelper.getTenantValue(SysConfigKeys.ASSET_DEPRECIATION_METHOD, asset.getDepreciationMethod()));
         asset.setEnableQrCode(
-                sysConfigHelper.getTenantBoolean("sys.asset.enableQrCode", asset.getEnableQrCode()));
+                sysConfigHelper.getTenantBoolean(SysConfigKeys.ASSET_ENABLE_QR_CODE, asset.getEnableQrCode()));
         asset.setQrCodeSize(
-                sysConfigHelper.getTenantInt("sys.asset.qrCodeSize", asset.getQrCodeSize()));
+                sysConfigHelper.getTenantInt(SysConfigKeys.ASSET_QR_CODE_SIZE, asset.getQrCodeSize()));
 
         vehicle.setMaxBookingDays(
-                sysConfigHelper.getTenantInt("sys.vehicle.maxBookingDays", vehicle.getMaxBookingDays()));
+                sysConfigHelper.getTenantInt(SysConfigKeys.VEHICLE_MAX_BOOKING_DAYS, vehicle.getMaxBookingDays()));
         vehicle.setAdvanceBookingHours(
-                sysConfigHelper.getTenantInt("sys.vehicle.advanceBookingHours", vehicle.getAdvanceBookingHours()));
+                sysConfigHelper.getTenantInt(SysConfigKeys.VEHICLE_ADVANCE_BOOKING_HOURS, vehicle.getAdvanceBookingHours()));
         vehicle.setAllowConcurrentBooking(
-                sysConfigHelper.getTenantBoolean("sys.vehicle.allowConcurrent", vehicle.getAllowConcurrentBooking()));
+                sysConfigHelper.getTenantBoolean(SysConfigKeys.VEHICLE_ALLOW_CONCURRENT, vehicle.getAllowConcurrentBooking()));
         vehicle.setFuelPriceUpdateCron(
-                sysConfigHelper.getTenantValue("sys.vehicle.fuelPriceUpdateCron", vehicle.getFuelPriceUpdateCron()));
+                sysConfigHelper.getTenantValue(SysConfigKeys.VEHICLE_FUEL_PRICE_UPDATE_CRON, vehicle.getFuelPriceUpdateCron()));
 
         meetingRoom.setMaxBookingHours(
-                sysConfigHelper.getTenantInt("sys.meetingRoom.maxBookingHours", meetingRoom.getMaxBookingHours()));
+                sysConfigHelper.getTenantInt(SysConfigKeys.MEETING_ROOM_MAX_BOOKING_HOURS, meetingRoom.getMaxBookingHours()));
         meetingRoom.setAutoReleaseMinutes(
-                sysConfigHelper.getTenantInt("sys.meetingRoom.autoReleaseMinutes", meetingRoom.getAutoReleaseMinutes()));
+                sysConfigHelper.getTenantInt(SysConfigKeys.MEETING_ROOM_AUTO_RELEASE_MINUTES, meetingRoom.getAutoReleaseMinutes()));
         meetingRoom.setAdvanceBookingHours(
-                sysConfigHelper.getTenantInt("sys.meetingRoom.advanceBookingHours", meetingRoom.getAdvanceBookingHours()));
+                sysConfigHelper.getTenantInt(SysConfigKeys.MEETING_ROOM_ADVANCE_BOOKING_HOURS, meetingRoom.getAdvanceBookingHours()));
         meetingRoom.setAllowConcurrentBooking(
-                sysConfigHelper.getTenantBoolean("sys.meetingRoom.allowConcurrent", meetingRoom.getAllowConcurrentBooking()));
+                sysConfigHelper.getTenantBoolean(SysConfigKeys.MEETING_ROOM_ALLOW_CONCURRENT, meetingRoom.getAllowConcurrentBooking()));
 
         errorReport.setEnabled(
-                sysConfigHelper.getTenantBoolean("sys.errorReport.enabled", errorReport.getEnabled()));
+                sysConfigHelper.getTenantBoolean(SysConfigKeys.ERROR_REPORT_ENABLED, errorReport.getEnabled()));
         errorReport.setAllowAnonymousPath(
-                sysConfigHelper.getTenantValue("sys.errorReport.allowAnonymousPath", errorReport.getAllowAnonymousPath()));
-        errorReport.setIpLimitCount(
-                sysConfigHelper.getTenantInt("sys.errorReport.ipLimitCount", errorReport.getIpLimitCount()));
-        errorReport.setIpLimitWindowSeconds(
-                sysConfigHelper.getTenantInt("sys.errorReport.ipLimitWindowSeconds", errorReport.getIpLimitWindowSeconds()));
+                sysConfigHelper.getTenantValue(SysConfigKeys.ERROR_REPORT_ALLOW_ANONYMOUS_PATH, errorReport.getAllowAnonymousPath()));
 
         sync.setConflictStrategy(
-                sysConfigHelper.getTenantValue("sys.sync.conflictStrategy", sync.getConflictStrategy()));
+                sysConfigHelper.getTenantValue(SysConfigKeys.SYNC_CONFLICT_STRATEGY, sync.getConflictStrategy()));
         sync.setTimeToleranceSeconds(
-                sysConfigHelper.getTenantInt("sys.sync.timeToleranceSeconds", sync.getTimeToleranceSeconds()));
+                sysConfigHelper.getTenantInt(SysConfigKeys.SYNC_TIME_TOLERANCE_SECONDS, sync.getTimeToleranceSeconds()));
     }
 
     public AnnouncementConfig getAnnouncement() {
@@ -170,12 +163,6 @@ public class OaProperties {
 
         /** 允许上报的前端路径前缀 */
         private String allowAnonymousPath = "/dashboard";
-
-        /** IP 限流窗口内最大请求数 */
-        private Integer ipLimitCount = 20;
-
-        /** IP 限流窗口时长，单位秒 */
-        private Integer ipLimitWindowSeconds = 60;
     }
 
     @Data

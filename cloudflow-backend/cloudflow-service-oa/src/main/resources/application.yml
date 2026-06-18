@@ -79,13 +79,6 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
-# Sa-Token 本地后备配置（Nacos cloudflow-common.yaml 不可用时生效）
-cloudflow:
-  security:
-    token:
-      expiration: 1440
-      refresh-time: 20
-
 sa-token:
   token-name: Authorization
   token-prefix: Bearer

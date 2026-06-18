@@ -33,7 +33,6 @@ spring:
       password: ${REDIS_PASSWORD}
       database: 0
 
-# Sa-Token 安全配置（本地后备，Nacos 配置优先）
 cloudflow:
   # 本地文件存储根目录
   profile: /data/cloudflow/profile
@@ -61,10 +60,6 @@ cloudflow:
     access-policy: 1
     prefix: upload
     domain:
-  security:
-    token:
-      expiration: 1440
-      refresh-time: 20
 
 sa-token:
   token-name: Authorization

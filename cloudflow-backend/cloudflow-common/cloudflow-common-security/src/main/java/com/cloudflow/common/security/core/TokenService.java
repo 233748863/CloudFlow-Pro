@@ -3,7 +3,7 @@ package com.cloudflow.common.security.core;
 import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
-import com.cloudflow.common.config.properties.SecurityProperties;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -27,9 +27,8 @@ public class TokenService {
 
     private static final long MILLIS_SECOND = 1000L;
     private static final long SECONDS_PER_MINUTE = 60L;
-
-    @Autowired
-    private SecurityProperties securityProperties;
+    private static final int DEFAULT_TOKEN_EXPIRATION_MINUTES = 30;
+    private static final int DEFAULT_TOKEN_REFRESH_TIME_MINUTES = 20;
 
     @Autowired(required = false)
     private SysConfigHelper sysConfigHelper;
@@ -39,10 +38,10 @@ public class TokenService {
      */
     private int getExpiration() {
         if (sysConfigHelper != null) {
-            return sysConfigHelper.getGlobalInt("sys.security.token.expiration",
-                    securityProperties.getToken().getExpiration());
+            return sysConfigHelper.getGlobalInt(SysConfigKeys.SECURITY_TOKEN_EXPIRATION,
+                    DEFAULT_TOKEN_EXPIRATION_MINUTES);
         }
-        return securityProperties.getToken().getExpiration();
+        return DEFAULT_TOKEN_EXPIRATION_MINUTES;
     }
 
     /**
@@ -50,10 +49,10 @@ public class TokenService {
      */
     private int getRefreshTime() {
         if (sysConfigHelper != null) {
-            return sysConfigHelper.getGlobalInt("sys.security.token.refreshTime",
-                    securityProperties.getToken().getRefreshTime());
+            return sysConfigHelper.getGlobalInt(SysConfigKeys.SECURITY_TOKEN_REFRESH_TIME,
+                    DEFAULT_TOKEN_REFRESH_TIME_MINUTES);
         }
-        return securityProperties.getToken().getRefreshTime();
+        return DEFAULT_TOKEN_REFRESH_TIME_MINUTES;
     }
 
     /**

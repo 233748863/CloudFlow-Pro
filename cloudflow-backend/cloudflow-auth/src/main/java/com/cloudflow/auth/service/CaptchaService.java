@@ -1,8 +1,8 @@
 package com.cloudflow.auth.service;
 
-import com.cloudflow.auth.config.properties.CaptchaProperties;
 import com.cloudflow.auth.utils.SliderPuzzleUtil;
 import com.cloudflow.common.core.utils.IdUtils;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -19,37 +19,39 @@ public class CaptchaService {
     private StringRedisTemplate redisTemplate;
 
     @Autowired
-    private CaptchaProperties captchaProperties;
-
-    @Autowired
     private SysConfigHelper sysConfigHelper;
+
+    private static final int DEFAULT_TOLERANCE = 8;
+    private static final int DEFAULT_TTL = 300;
+    private static final int DEFAULT_DAILY_LIMIT = 100;
+    private static final int DEFAULT_PASS_TOKEN_TTL = 120;
 
     /**
      * 获取验证码容错值（全局配置，所有租户统一）
      */
     private int getTolerance() {
-        return sysConfigHelper.getGlobalInt("sys.captcha.tolerance", captchaProperties.getTolerance());
+        return sysConfigHelper.getGlobalInt(SysConfigKeys.CAPTCHA_TOLERANCE, DEFAULT_TOLERANCE);
     }
 
     /**
      * 获取验证码有效期（秒，全局配置）
      */
     private int getTtl() {
-        return sysConfigHelper.getGlobalInt("sys.captcha.ttl", captchaProperties.getTtl().intValue());
+        return sysConfigHelper.getGlobalInt(SysConfigKeys.CAPTCHA_TTL, DEFAULT_TTL);
     }
 
     /**
      * 获取每日单IP验证次数限制（全局配置）
      */
     private int getDailyLimit() {
-        return sysConfigHelper.getGlobalInt("sys.captcha.dailyLimit", captchaProperties.getDailyLimit());
+        return sysConfigHelper.getGlobalInt(SysConfigKeys.CAPTCHA_DAILY_LIMIT, DEFAULT_DAILY_LIMIT);
     }
 
     /**
      * 获取验证通过Token有效期（秒，全局配置）
      */
     private int getPassTokenTtl() {
-        return sysConfigHelper.getGlobalInt("sys.captcha.passTokenTtl", captchaProperties.getPassTokenTtl().intValue());
+        return sysConfigHelper.getGlobalInt(SysConfigKeys.CAPTCHA_PASS_TOKEN_TTL, DEFAULT_PASS_TOKEN_TTL);
     }
 
     private static final String CAPTCHA_KEY = "CAPTCHA:CODE:";

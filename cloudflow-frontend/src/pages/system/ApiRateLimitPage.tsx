@@ -51,6 +51,7 @@ const DEFAULT_FORM: SysApiRatelimitRule = {
   dimension: 'IP',
   rps: 10,
   burst: 20,
+  windowSeconds: 1,
   status: 'ACTIVE',
   priority: 100,
   rejectStrategy: 'REJECT',
@@ -213,7 +214,11 @@ export const ApiRateLimitPage = () => {
       return;
     }
     if (!formData.rps || formData.rps <= 0) {
-      toast.error('RPS 必须大于 0');
+      toast.error('限流次数必须大于 0');
+      return;
+    }
+    if (!formData.windowSeconds || formData.windowSeconds <= 0) {
+      toast.error('时间窗口必须大于 0 秒');
       return;
     }
     try {
@@ -226,6 +231,7 @@ export const ApiRateLimitPage = () => {
         remark: formData.remark?.trim() || '',
         rps: Number(formData.rps),
         burst: formData.burst ? Number(formData.burst) : undefined,
+        windowSeconds: Number(formData.windowSeconds),
         priority: Number(formData.priority || 100),
       };
       if (editing?.id) {
@@ -394,7 +400,7 @@ export const ApiRateLimitPage = () => {
                       <TableHead>名称</TableHead>
                       <TableHead>路径 / 方法</TableHead>
                       <TableHead>维度</TableHead>
-                      <TableHead className="text-center">RPS / Burst</TableHead>
+                      <TableHead className="text-center">次数 / 突发 / 窗口</TableHead>
                       <TableHead className="text-center">优先级</TableHead>
                       <TableHead>策略</TableHead>
                       <TableHead>状态</TableHead>
@@ -441,6 +447,8 @@ export const ApiRateLimitPage = () => {
                               {rule.rps}
                               <span className="mx-1 text-slate-400">/</span>
                               {rule.burst ?? rule.rps}
+                              <span className="mx-1 text-slate-400">@</span>
+                              {rule.windowSeconds ?? 1}s
                             </span>
                           </TableCell>
                           <TableCell className="text-center">{rule.priority}</TableCell>
@@ -585,7 +593,7 @@ export const ApiRateLimitPage = () => {
               </Select>
             </div>
             <div>
-              <label className={fieldLabelClassName}>RPS (每秒上限) *</label>
+              <label className={fieldLabelClassName}>次数上限 *</label>
               <Input
                 type="number"
                 min={1}
@@ -594,7 +602,7 @@ export const ApiRateLimitPage = () => {
               />
             </div>
             <div>
-              <label className={fieldLabelClassName}>Burst (令牌桶容量)</label>
+              <label className={fieldLabelClassName}>突发上限</label>
               <Input
                 type="number"
                 min={1}
@@ -602,7 +610,16 @@ export const ApiRateLimitPage = () => {
                 onChange={(e) =>
                   setFormData((c) => ({ ...c, burst: e.target.value === '' ? undefined : Number(e.target.value) }))
                 }
-                placeholder="默认 = RPS"
+                placeholder="默认 = 次数上限"
+              />
+            </div>
+            <div>
+              <label className={fieldLabelClassName}>时间窗口(秒) *</label>
+              <Input
+                type="number"
+                min={1}
+                value={formData.windowSeconds ?? 1}
+                onChange={(e) => setFormData((c) => ({ ...c, windowSeconds: Number(e.target.value) }))}
               />
             </div>
             <div>

@@ -81,10 +81,6 @@ mybatis-plus:
 cloudflow:
   encrypt:
     enabled: false
-  security:
-    token:
-      expiration: 1440
-      refresh-time: 20
   tenant:
     enabled: true
     column: tenant_id
@@ -99,16 +95,6 @@ cloudflow:
       - wf_callback_dead_letter
       - wf_reconcile_alert
     default-tenant-id: 100000
-  workflow:
-    script:
-      enabled: false
-      timeout-ms: 5000
-    task:
-      # 任务办理人归属严格校验：true=必须 task.assignee 本人发起加签/减签/委派；false=跳过校验（仅 @SaCheckPermission 兜底）
-      strict-owner: true
-      # 持有该权限码的账号跨人操作时放行（admin 通过 sys_role_menu 默认绑定，见 06.cloudflow-business-seed.sql 1100）
-      override-permission: workflow:task:override
-
 sa-token:
   token-name: Authorization
   token-prefix: Bearer

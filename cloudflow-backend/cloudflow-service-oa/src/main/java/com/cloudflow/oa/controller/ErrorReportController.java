@@ -3,8 +3,6 @@ package com.cloudflow.oa.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.IpUtils;
-import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
-import com.cloudflow.common.ratelimiter.enums.LimitType;
 import com.cloudflow.oa.config.properties.OaProperties;
 import com.cloudflow.oa.domain.FrontendErrorLog;
 import com.cloudflow.oa.service.IFrontendErrorLogService;
@@ -46,13 +44,6 @@ public class ErrorReportController {
      */
     @PostMapping
     @SaCheckPermission("oa:error-report:create")
-    @RateLimiter(
-            key = "error-report",
-            count = 20,
-            time = 60,
-            limitType = LimitType.IP,
-            message = "错误上报过于频繁，请稍后再试"
-    )
     public R report(@RequestBody FrontendErrorLog errorLog, HttpServletRequest request) {
         try {
             if (!Boolean.TRUE.equals(oaProperties.getErrorReport().getEnabled())) {
@@ -89,4 +80,3 @@ public class ErrorReportController {
         return StringUtils.hasText(errorLog.getUrl()) && errorLog.getUrl().contains(allowAnonymousPath);
     }
 }
-

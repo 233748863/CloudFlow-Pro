@@ -16,6 +16,7 @@ export interface SysApiRatelimitRule {
   dimension: RateLimitDimension;
   rps: number;
   burst?: number;
+  windowSeconds?: number;
   status: RateLimitStatus;
   priority: number;
   rejectStrategy: RateLimitStrategy;

@@ -71,7 +71,19 @@ WHERE tenant_id = 100000
 
 DELETE FROM cloud_flow_db.sys_api_ratelimit_rule
 WHERE tenant_id IN (0, 100000)
-  AND rule_code IN ('auth.login.guard', 'workflow.start.guard', 'oa.contract.read.guard', 'global.heavy.api.guard');
+  AND rule_code IN (
+      'auth.login.guard',
+      'auth.register.guard',
+      'auth.captcha.slider.guard',
+      'auth.captcha.check.guard',
+      'auth.tenant.options.guard',
+      'auth.logout.guard',
+      'auth.switch-tenant.guard',
+      'workflow.start.guard',
+      'oa.error-report.guard',
+      'oa.contract.read.guard',
+      'global.heavy.api.guard'
+  );
 
 DELETE FROM cloud_flow_db.sys_post
 WHERE post_id BETWEEN 1 AND 11;
@@ -3836,6 +3848,14 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(60, 100000, '会议室-提前
 
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(61, 100000, '会议室-是否允许并发预订',       'sys.meetingRoom.allowConcurrent','false',   'Y', '1', 'admin', NOW(), '', null, '同一会议室是否允许时间段重叠预订');
 
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(167, 100000, '错误上报-是否启用',             'sys.errorReport.enabled',       'true',     'Y', '1', 'admin', NOW(), '', null, '是否接收前端错误上报');
+
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(168, 100000, '错误上报-允许路径前缀',         'sys.errorReport.allowAnonymousPath','/dashboard','Y','1','admin', NOW(), '', null, '允许上报的前端URL片段');
+
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(169, 100000, '离线同步-冲突策略',             'sys.sync.conflictStrategy',      'LAST_WRITE_WINS','Y','1','admin', NOW(), '', null, '离线同步数据冲突处理策略');
+
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(170, 100000, '离线同步-时间容差(秒)',         'sys.sync.timeToleranceSeconds',  '5',        'Y', '1', 'admin', NOW(), '', null, '离线同步时间戳比较容差秒数');
+
 -- 加密配置（全局：安全策略统一管控）
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(62, 100000, '加密-是否启用字段加密',         'sys.encrypt.enabled',           'true',     'Y', '0', 'admin', NOW(), '', null, '是否启用数据库字段加密功能');
 
@@ -3879,12 +3899,19 @@ WHERE tenant_id = 100000
 
 -- GOV-P1-1: API 动态限流规则演示数据
 INSERT IGNORE INTO cloud_flow_db.sys_api_ratelimit_rule
-(tenant_id, rule_code, rule_name, service_name, path_pattern, http_method, dimension, rps, burst, status, priority, reject_strategy, remark, deleted, create_by, create_time, update_by, update_time)
+(tenant_id, rule_code, rule_name, service_name, path_pattern, http_method, dimension, rps, burst, window_seconds, status, priority, reject_strategy, remark, deleted, create_by, create_time, update_by, update_time)
 VALUES
-(100000, 'auth.login.guard',       '登录接口限流',           'cloudflow-auth',        '/auth/login',           'POST', 'IP',     5,  10, 'ACTIVE', 10,  'REJECT', '登录接口防爆破，IP 维度 5RPS', 0, 'admin', NOW(), '', NOW()),
-(100000, 'workflow.start.guard',   '流程发起限流',           'cloudflow-service-workflow', '/workflow/start',  'POST', 'USER',   20, 50, 'ACTIVE', 20,  'REJECT', '单用户发起流程并发保护', 0, 'admin', NOW(), '', NOW()),
-(100000, 'oa.contract.read.guard', '合同列表读保护',         'cloudflow-service-oa',  '/oa/contract/page',     'GET',  'TENANT', 50, 100,'ACTIVE', 30,  'LOG',    '高频读保护，记录但不拦截', 0, 'admin', NOW(), '', NOW()),
-(100000, 'global.heavy.api.guard', '重型 API 全局保护',      NULL,                    '/**/export/**',         'ALL',  'GLOBAL', 30, 60, 'INACTIVE', 100,'REJECT', '导出类接口全局保护，默认关闭', 0, 'admin', NOW(), '', NOW());
+(100000, 'auth.login.guard',       '登录接口限流',           'cloudflow-auth',        '/auth/login',           'POST', 'IP',     5,  5,  60, 'ACTIVE', 10,  'REJECT', '登录接口防爆破，IP 维度 5 次/分钟', 0, 'admin', NOW(), '', NOW()),
+(100000, 'auth.register.guard',    '注册接口限流',           'cloudflow-auth',        '/auth/register',        'POST', 'IP',     3,  3,  60, 'ACTIVE', 11,  'REJECT', '注册接口防刷，IP 维度 3 次/分钟', 0, 'admin', NOW(), '', NOW()),
+(100000, 'auth.captcha.slider.guard', '滑块验证码获取限流',   'cloudflow-auth',        '/auth/captcha/slider',  'GET',  'IP',    20, 20, 60, 'ACTIVE', 12, 'REJECT', '验证码获取防刷，IP 维度 20 次/分钟', 0, 'admin', NOW(), '', NOW()),
+(100000, 'auth.captcha.check.guard',  '滑块验证码校验限流',   'cloudflow-auth',        '/auth/captcha/check',   'POST', 'IP',    20, 20, 60, 'ACTIVE', 13, 'REJECT', '验证码校验防刷，IP 维度 20 次/分钟', 0, 'admin', NOW(), '', NOW()),
+(100000, 'auth.tenant.options.guard', '租户列表获取限流',     'cloudflow-auth',        '/auth/tenant/options',  'GET',  'IP',    30, 30, 60, 'ACTIVE', 14, 'REJECT', '租户列表防刷，IP 维度 30 次/分钟', 0, 'admin', NOW(), '', NOW()),
+(100000, 'auth.logout.guard',        '退出登录限流',           'cloudflow-auth',        '/auth/logout',          'POST', 'USER',  30, 30, 60, 'ACTIVE', 15, 'REJECT', '退出登录防刷，用户维度 30 次/分钟', 0, 'admin', NOW(), '', NOW()),
+(100000, 'auth.switch-tenant.guard', '切换租户限流',           'cloudflow-auth',        '/auth/switchTenant',    'POST', 'USER',  10, 10, 60, 'ACTIVE', 16, 'REJECT', '切换租户防刷，用户维度 10 次/分钟', 0, 'admin', NOW(), '', NOW()),
+(100000, 'workflow.start.guard',    '流程发起限流',           'cloudflow-service-workflow', '/workflow/start',  'POST', 'USER',   20, 20, 60, 'ACTIVE', 20,  'REJECT', '单用户发起流程并发保护', 0, 'admin', NOW(), '', NOW()),
+(100000, 'oa.error-report.guard',   '错误上报限流',           'cloudflow-service-oa',   '/oa/error-report',      'POST', 'IP',    20, 20, 60, 'ACTIVE', 21,  'REJECT', '前端错误上报防刷，IP 维度 20 次/分钟', 0, 'admin', NOW(), '', NOW()),
+(100000, 'oa.contract.read.guard',  '合同列表读保护',         'cloudflow-service-oa',   '/oa/contract/page',     'GET',  'TENANT', 50, 50, 60, 'ACTIVE', 30,  'LOG',    '高频读保护，记录但不拦截', 0, 'admin', NOW(), '', NOW()),
+(100000, 'global.heavy.api.guard',  '重型 API 全局保护',      NULL,                     '/**/export/**',         'ALL',  'GLOBAL', 30, 30, 60, 'INACTIVE', 100,'REJECT', '导出类接口全局保护，默认关闭', 0, 'admin', NOW(), '', NOW());
 
 -- =========================================================
 -- Phase 2: 性能优化与监控告警配置（全局）
@@ -3962,10 +3989,16 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(122, 100000, '工作流-健�
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(124, 100000, '工作流-启动流程限流(次/分钟)',   'sys.workflow.rateLimit.startProcess',         '10',        'Y', '0', 'admin', NOW(), '', null, '每用户每分钟最大启动流程次数');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(125, 100000, '工作流-处理任务限流(次/分钟)',   'sys.workflow.rateLimit.completeTask',         '30',        'Y', '0', 'admin', NOW(), '', null, '每用户每分钟最大处理任务次数');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(126, 100000, '工作流-催办限流(次/小时)',       'sys.workflow.rateLimit.urgeTask',             '5',         'Y', '0', 'admin', NOW(), '', null, '每用户每小时最大催办次数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(164, 100000, '工作流-启动流程限流窗口(秒)',     'sys.workflow.rateLimit.startProcess.windowSeconds', '60', 'Y', '0', 'admin', NOW(), '', null, '启动流程限流统计窗口秒数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(165, 100000, '工作流-处理任务限流窗口(秒)',     'sys.workflow.rateLimit.completeTask.windowSeconds', '60', 'Y', '0', 'admin', NOW(), '', null, '处理任务限流统计窗口秒数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(166, 100000, '工作流-催办限流窗口(秒)',         'sys.workflow.rateLimit.urgeTask.windowSeconds', '3600', 'Y', '0', 'admin', NOW(), '', null, '催办限流统计窗口秒数');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(127, 100000, '工作流-超时提醒阈值(毫秒)',      'sys.workflow.timeout.remindThresholdMs',      '3600000',   'Y', '0', 'admin', NOW(), '', null, '任务/流程达到提醒级别的耗时阈值');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(128, 100000, '工作流-超时警告阈值(毫秒)',      'sys.workflow.timeout.warningThresholdMs',     '7200000',   'Y', '0', 'admin', NOW(), '', null, '任务/流程达到警告级别的耗时阈值');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(129, 100000, '工作流-超时严重阈值(毫秒)',      'sys.workflow.timeout.criticalThresholdMs',    '14400000',  'Y', '0', 'admin', NOW(), '', null, '任务/流程达到严重级别的耗时阈值');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(130, 100000, '工作流-升级扫描默认阈值(毫秒)',  'sys.workflow.timeout.escalation.defaultScanThresholdMs', '60000', 'Y', '0', 'admin', NOW(), '', null, '未配置升级链时默认扫描任务超时的最小耗时');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(154, 100000, '工作流-任务归属严格校验',       'sys.workflow.task.strictOwner',               'true',      'Y', '0', 'admin', NOW(), '', null, '任务加签/减签/委派等操作是否必须由当前办理人发起');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(155, 100000, '工作流-跨人操作权限码',         'sys.workflow.task.overridePermission',        'workflow:task:override', 'Y', '0', 'admin', NOW(), '', null, '持有该权限码的账号可跳过任务归属校验');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(156, 100000, '工作流-脚本执行超时(毫秒)',      'sys.workflow.script.timeoutMs',               '5000',      'Y', '0', 'admin', NOW(), '', null, '进程内脚本节点执行超时阈值');
 
 -- OA
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(111, 100000, 'OA-合同高额阈值(元)',           'sys.oa.contract.highAmountThreshold',        '100000',    'Y', '1', 'admin', NOW(), '', null, '合同金额超过此值视为高额,触发风险扫描');
@@ -3990,6 +4023,10 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(139, 100000, 'HR-人才盘点
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(140, 100000, 'HR-继任计划流程Key',            'sys.hr.talent.successionProcessKey',         'wf_hr_talent_succession', 'Y', '1', 'admin', NOW(), '', null, '继任计划发布审批流程定义Key');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(141, 100000, 'HR-培训报名流程Key',            'sys.hr.training.enrollmentProcessKey',       'wf_hr_training_enrollment', 'Y', '1', 'admin', NOW(), '', null, '培训报名审批流程定义Key');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(142, 100000, 'HR-工伤认定流程Key',            'sys.hr.injury.determinationProcessKey',      'wf_hr_work_injury', 'Y', '1', 'admin', NOW(), '', null, '工伤认定审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(159, 100000, 'HR-业务规则默认降级策略',       'sys.hr.businessRule.fallback.default',       'WARN',      'Y', '0', 'admin', NOW(), '', null, '业务规则服务不可用时的默认处理策略: PASS/WARN/DENY');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(160, 100000, 'HR-请假额度规则降级策略',       'sys.hr.businessRule.fallback.hr.leave.quota.limit', 'PASS', 'Y', '0', 'admin', NOW(), '', null, '请假额度规则服务不可用时的处理策略');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(161, 100000, 'HR-OA报销金额规则降级策略',     'sys.hr.businessRule.fallback.oa.expense.amount.limit', 'WARN', 'Y', '0', 'admin', NOW(), '', null, 'OA报销金额规则服务不可用时的处理策略');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(162, 100000, 'HR-OA合同风险规则降级策略',     'sys.hr.businessRule.fallback.oa.contract.risk.threshold', 'DENY', 'Y', '0', 'admin', NOW(), '', null, 'OA合同风险规则服务不可用时的处理策略');
 
 -- CRM
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(143, 100000, 'CRM-低优先级工单SLA(小时)',     'sys.crm.ticket.sla.lowHours',                '72',        'Y', '1', 'admin', NOW(), '', null, '低优先级工单默认SLA小时数');
@@ -4005,9 +4042,12 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(150, 100000, 'CRM-工单SLA�
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(151, 100000, '网关-租户状态缓存秒数',         'sys.gateway.tenant.statusCacheSeconds',      '60',        'Y', '0', 'admin', NOW(), '', null, '网关租户状态本地缓存过期秒数');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(152, 100000, '网关-租户状态缓存容量',         'sys.gateway.tenant.statusCacheMaxSize',      '1024',      'Y', '0', 'admin', NOW(), '', null, '网关租户状态本地缓存最大条数');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(153, 100000, '网关-租户状态查询超时(秒)',     'sys.gateway.tenant.statusTimeoutSeconds',    '3',         'Y', '0', 'admin', NOW(), '', null, '网关调用认证服务查询租户状态超时秒数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(157, 100000, '网关-认证白名单',               'sys.gateway.auth.whitelist',                 '/auth/login,/auth/register,/auth/tenant/options,/auth/captcha/**,/oa/announcement/public,/oa/announcement/public/**,/ws/**', 'Y', '0', 'admin', NOW(), '', null, '无需登录校验的网关路径,多个路径用英文逗号分隔');
 
 -- 认证
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(118, 100000, '认证-默认头像API',              'sys.auth.avatar.apiUrl',                     'https://api.dicebear.com/7.x/avataaars/svg', 'Y', '0', 'admin', NOW(), '', null, '注册/无头像用户使用的默认头像API');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(158, 100000, '认证-单文件上传大小上限',       'sys.auth.fileUpload.maxSize',                '10485760',  'Y', '0', 'admin', NOW(), '', null, '单文件上传大小上限,单位字节');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(163, 100000, '认证-允许上传扩展名',           'sys.auth.fileUpload.allowedExtensions',      'bmp,gif,jpg,jpeg,png,doc,docx,xls,xlsx,ppt,pptx,html,htm,txt,rar,zip,gz,bz2,mp4,avi,rmvb,pdf', 'Y', '0', 'admin', NOW(), '', null, '允许上传的文件扩展名,多个值用英文逗号分隔');
 
 -- 通用
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(119, 100000, '通用-敏感数据递归深度',         'sys.sensitive.maxRecursionDepth',            '8',         'Y', '0', 'admin', NOW(), '', null, '敏感字段脱敏递归遍历最大深度,防止循环引用');

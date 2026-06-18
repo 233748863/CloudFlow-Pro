@@ -11,13 +11,36 @@ public final class SysConfigKeys {
     public static final String CONFIG_CHANGE_CHANNEL = "sys:config:change";
 
     public static final String GATEWAY_DEFAULT_TENANT_ID = "sys.gateway.defaultTenantId";
+    public static final String GATEWAY_AUTH_WHITELIST = "sys.gateway.auth.whitelist";
     public static final String GATEWAY_TENANT_STATUS_CACHE_SECONDS = "sys.gateway.tenant.statusCacheSeconds";
     public static final String GATEWAY_TENANT_STATUS_CACHE_MAX_SIZE = "sys.gateway.tenant.statusCacheMaxSize";
     public static final String GATEWAY_TENANT_STATUS_TIMEOUT_SECONDS = "sys.gateway.tenant.statusTimeoutSeconds";
 
+    public static final String AUTH_FILE_UPLOAD_MAX_SIZE = "sys.auth.fileUpload.maxSize";
+    public static final String AUTH_FILE_UPLOAD_ALLOWED_EXTENSIONS = "sys.auth.fileUpload.allowedExtensions";
+
+    public static final String SECURITY_TOKEN_EXPIRATION = "sys.security.token.expiration";
+    public static final String SECURITY_TOKEN_REFRESH_TIME = "sys.security.token.refreshTime";
+
+    public static final String CAPTCHA_TOLERANCE = "sys.captcha.tolerance";
+    public static final String CAPTCHA_TTL = "sys.captcha.ttl";
+    public static final String CAPTCHA_DAILY_LIMIT = "sys.captcha.dailyLimit";
+    public static final String CAPTCHA_PASS_TOKEN_TTL = "sys.captcha.passTokenTtl";
+    public static final String CAPTCHA_WIDTH = "sys.captcha.width";
+    public static final String CAPTCHA_HEIGHT = "sys.captcha.height";
+    public static final String CAPTCHA_PUZZLE_SIZE = "sys.captcha.puzzleSize";
+    public static final String CAPTCHA_CIRCLE_RADIUS = "sys.captcha.circleRadius";
+
     public static final String WORKFLOW_RATE_LIMIT_START_PROCESS = "sys.workflow.rateLimit.startProcess";
+    public static final String WORKFLOW_RATE_LIMIT_START_PROCESS_WINDOW_SECONDS = "sys.workflow.rateLimit.startProcess.windowSeconds";
     public static final String WORKFLOW_RATE_LIMIT_COMPLETE_TASK = "sys.workflow.rateLimit.completeTask";
+    public static final String WORKFLOW_RATE_LIMIT_COMPLETE_TASK_WINDOW_SECONDS = "sys.workflow.rateLimit.completeTask.windowSeconds";
     public static final String WORKFLOW_RATE_LIMIT_URGE_TASK = "sys.workflow.rateLimit.urgeTask";
+    public static final String WORKFLOW_RATE_LIMIT_URGE_TASK_WINDOW_SECONDS = "sys.workflow.rateLimit.urgeTask.windowSeconds";
+    public static final String WORKFLOW_TASK_STRICT_OWNER = "sys.workflow.task.strictOwner";
+    public static final String WORKFLOW_TASK_OVERRIDE_PERMISSION = "sys.workflow.task.overridePermission";
+    public static final String WORKFLOW_SCRIPT_ENABLED = "sys.workflow.script.enabled";
+    public static final String WORKFLOW_SCRIPT_TIMEOUT_MS = "sys.workflow.script.timeoutMs";
     public static final String WORKFLOW_TIMEOUT_REMIND_THRESHOLD_MS = "sys.workflow.timeout.remindThresholdMs";
     public static final String WORKFLOW_TIMEOUT_WARNING_THRESHOLD_MS = "sys.workflow.timeout.warningThresholdMs";
     public static final String WORKFLOW_TIMEOUT_CRITICAL_THRESHOLD_MS = "sys.workflow.timeout.criticalThresholdMs";
@@ -35,6 +58,27 @@ public final class SysConfigKeys {
     public static final String HR_TALENT_SUCCESSION_PROCESS_KEY = "sys.hr.talent.successionProcessKey";
     public static final String HR_TRAINING_ENROLLMENT_PROCESS_KEY = "sys.hr.training.enrollmentProcessKey";
     public static final String HR_INJURY_DETERMINATION_PROCESS_KEY = "sys.hr.injury.determinationProcessKey";
+    public static final String HR_BUSINESS_RULE_FALLBACK_PREFIX = "sys.hr.businessRule.fallback.";
+
+    public static final String ANNOUNCEMENT_DEFAULT_EXPIRE_DAYS = "sys.announcement.defaultExpireDays";
+    public static final String ANNOUNCEMENT_MAX_ATTACHMENT_SIZE = "sys.announcement.maxAttachmentSize";
+    public static final String ANNOUNCEMENT_ALLOW_ANONYMOUS = "sys.announcement.allowAnonymous";
+    public static final String ASSET_QR_CODE_PREFIX = "sys.asset.qrCodePrefix";
+    public static final String ASSET_DEPRECIATION_METHOD = "sys.asset.depreciationMethod";
+    public static final String ASSET_ENABLE_QR_CODE = "sys.asset.enableQrCode";
+    public static final String ASSET_QR_CODE_SIZE = "sys.asset.qrCodeSize";
+    public static final String VEHICLE_MAX_BOOKING_DAYS = "sys.vehicle.maxBookingDays";
+    public static final String VEHICLE_ADVANCE_BOOKING_HOURS = "sys.vehicle.advanceBookingHours";
+    public static final String VEHICLE_ALLOW_CONCURRENT = "sys.vehicle.allowConcurrent";
+    public static final String VEHICLE_FUEL_PRICE_UPDATE_CRON = "sys.vehicle.fuelPriceUpdateCron";
+    public static final String MEETING_ROOM_MAX_BOOKING_HOURS = "sys.meetingRoom.maxBookingHours";
+    public static final String MEETING_ROOM_AUTO_RELEASE_MINUTES = "sys.meetingRoom.autoReleaseMinutes";
+    public static final String MEETING_ROOM_ADVANCE_BOOKING_HOURS = "sys.meetingRoom.advanceBookingHours";
+    public static final String MEETING_ROOM_ALLOW_CONCURRENT = "sys.meetingRoom.allowConcurrent";
+    public static final String ERROR_REPORT_ENABLED = "sys.errorReport.enabled";
+    public static final String ERROR_REPORT_ALLOW_ANONYMOUS_PATH = "sys.errorReport.allowAnonymousPath";
+    public static final String SYNC_CONFLICT_STRATEGY = "sys.sync.conflictStrategy";
+    public static final String SYNC_TIME_TOLERANCE_SECONDS = "sys.sync.timeToleranceSeconds";
 
     public static final String CRM_TICKET_SLA_LOW_HOURS = "sys.crm.ticket.sla.lowHours";
     public static final String CRM_TICKET_SLA_MEDIUM_HOURS = "sys.crm.ticket.sla.mediumHours";

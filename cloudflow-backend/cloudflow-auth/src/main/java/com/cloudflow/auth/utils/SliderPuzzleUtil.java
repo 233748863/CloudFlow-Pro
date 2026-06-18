@@ -1,5 +1,6 @@
 package com.cloudflow.auth.utils;
 
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +46,7 @@ public class SliderPuzzleUtil {
     /** 获取背景图宽度 */
     private static int getWidth() {
         if (configHelper != null) {
-            return configHelper.getGlobalInt("sys.captcha.width", DEFAULT_WIDTH);
+            return configHelper.getGlobalInt(SysConfigKeys.CAPTCHA_WIDTH, DEFAULT_WIDTH);
         }
         return DEFAULT_WIDTH;
     }
@@ -53,7 +54,7 @@ public class SliderPuzzleUtil {
     /** 获取背景图高度 */
     private static int getHeight() {
         if (configHelper != null) {
-            return configHelper.getGlobalInt("sys.captcha.height", DEFAULT_HEIGHT);
+            return configHelper.getGlobalInt(SysConfigKeys.CAPTCHA_HEIGHT, DEFAULT_HEIGHT);
         }
         return DEFAULT_HEIGHT;
     }
@@ -61,7 +62,7 @@ public class SliderPuzzleUtil {
     /** 获取拼图块逻辑宽度 */
     private static int getPuzzleSize() {
         if (configHelper != null) {
-            return configHelper.getGlobalInt("sys.captcha.puzzleSize", DEFAULT_PUZZLE_SIZE);
+            return configHelper.getGlobalInt(SysConfigKeys.CAPTCHA_PUZZLE_SIZE, DEFAULT_PUZZLE_SIZE);
         }
         return DEFAULT_PUZZLE_SIZE;
     }
@@ -69,7 +70,7 @@ public class SliderPuzzleUtil {
     /** 获取凸出圆弧半径 */
     private static int getCircleR() {
         if (configHelper != null) {
-            return configHelper.getGlobalInt("sys.captcha.circleRadius", DEFAULT_CIRCLE_R);
+            return configHelper.getGlobalInt(SysConfigKeys.CAPTCHA_CIRCLE_RADIUS, DEFAULT_CIRCLE_R);
         }
         return DEFAULT_CIRCLE_R;
     }

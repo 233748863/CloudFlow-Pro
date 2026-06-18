@@ -29,8 +29,6 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
-import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
-import com.cloudflow.common.ratelimiter.enums.LimitType;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.core.utils.IpUtils;
@@ -123,7 +121,6 @@ public class AuthController {
 
     @PostMapping("/login")
     @RepeatSubmit.Disabled
-    @RateLimiter(count = 5, time = 60, limitType = LimitType.IP, message = "登录过于频繁，请稍后再试")
     public R<DynamicMapVO> login(@RequestBody @Validated LoginBody form, HttpServletRequest request, HttpServletResponse response) {
         long startAt = System.currentTimeMillis();
         String username = trimValue(form.getUsername());
@@ -297,7 +294,6 @@ public class AuthController {
 
     @PostMapping("/register")
     @RepeatSubmit.Disabled
-    @RateLimiter(count = 3, time = 60, limitType = LimitType.IP, message = "注册过于频繁，请稍后再试")
     public R<?> register(@RequestBody @Validated RegisterBody registerBody, HttpServletRequest request) {
         if (!captchaService.validatePassToken(registerBody.getCaptchaToken(), getClientIp(request))) {
             return R.fail("验证码失效或错误，请重新验证");
@@ -346,7 +342,6 @@ public class AuthController {
     }
 
     @GetMapping("/tenant/options")
-    @RateLimiter(count = 30, time = 60, limitType = LimitType.IP, message = "租户列表获取过于频繁，请稍后再试")
     public R<List<TenantOption>> tenantOptions() {
         List<SysTenant> tenants = TenantBroker.applyWithoutTenant(ignored ->
                 sysTenantService.list(
@@ -510,7 +505,6 @@ public class AuthController {
      */
     @PostMapping("/logout")
     @RepeatSubmit.Disabled
-    @RateLimiter(count = 30, time = 60, limitType = LimitType.USER, message = "操作过于频繁，请稍后再试")
     @SaCheckPermission("system:auth:logout")
     public R<?> logout(HttpServletRequest request, HttpServletResponse response) {
         String rawToken = resolveRawToken(request);
@@ -782,7 +776,6 @@ public class AuthController {
      */
     @PostMapping("/switchTenant")
     @RepeatSubmit.Disabled
-    @RateLimiter(count = 10, time = 60, limitType = LimitType.USER, message = "切换租户过于频繁，请稍后再试")
     @SaCheckPermission("system:tenant:switch")
     public R<DynamicMapVO> switchTenant(@RequestBody SwitchTenantDTO dto, HttpServletRequest request, HttpServletResponse response) {
         String rawToken = resolveRawToken(request);

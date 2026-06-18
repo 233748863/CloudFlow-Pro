@@ -41,11 +41,6 @@ spring:
             - Path=/auth/login
           filters:
             - StripPrefix=1
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 5
-                redis-rate-limiter.burstCapacity: 10
-                key-resolver: "#{@ipKeyResolver}"
 
         - id: auth-register
           uri: lb://cloudflow-auth
@@ -53,11 +48,6 @@ spring:
             - Path=/auth/register
           filters:
             - StripPrefix=1
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 2
-                redis-rate-limiter.burstCapacity: 5
-                key-resolver: "#{@ipKeyResolver}"
 
         - id: auth-captcha-slider
           uri: lb://cloudflow-auth
@@ -65,11 +55,6 @@ spring:
             - Path=/auth/captcha/slider
           filters:
             - StripPrefix=1
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@ipKeyResolver}"
 
         - id: auth-captcha-check
           uri: lb://cloudflow-auth
@@ -77,11 +62,6 @@ spring:
             - Path=/auth/captcha/check
           filters:
             - StripPrefix=1
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@ipKeyResolver}"
 
         - id: cloudflow-workflow
           uri: lb://cloudflow-service-workflow
@@ -96,11 +76,6 @@ spring:
             - Path=/workflow/start
           filters:
             - StripPrefix=1
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 20
-                redis-rate-limiter.burstCapacity: 50
-                key-resolver: "#{@userKeyResolver}"
 
         - id: cloudflow-service-oa
           uri: lb://cloudflow-service-oa
@@ -150,25 +125,6 @@ spring:
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
       database: 0
-
-# Fallback Sa-Token config (used if Nacos cloudflow-common.yaml is unavailable)
-cloudflow:
-  security:
-    token:
-      expiration: 1440
-      refresh-time: 20
-  gateway:
-    auth:
-      # 网关认证白名单（P2-2：配置化，支持 Nacos 动态刷新）
-      # 留空时回退到 GatewayAuthProperties.DEFAULT_WHITELIST 兜底，确保登录链路始终可用
-      whitelist:
-        - /auth/login
-        - /auth/register
-        - /auth/tenant/options
-        - /auth/captcha/**
-        - /oa/announcement/public
-        - /oa/announcement/public/**
-        - /ws/**
 
 sa-token:
   token-name: Authorization

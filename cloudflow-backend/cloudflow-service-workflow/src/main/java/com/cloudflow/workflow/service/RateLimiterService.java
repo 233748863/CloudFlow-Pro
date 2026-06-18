@@ -39,7 +39,7 @@ public class RateLimiterService {
     public void checkStartProcessLimit(Long userId) {
         checkLimit("sys:ratelimit:start:" + userId,
                 runtimeSysConfigService.getInt(SysConfigKeys.WORKFLOW_RATE_LIMIT_START_PROCESS, 10),
-                60,
+                runtimeSysConfigService.getInt(SysConfigKeys.WORKFLOW_RATE_LIMIT_START_PROCESS_WINDOW_SECONDS, 60),
                 "启动流程");
     }
 
@@ -52,7 +52,7 @@ public class RateLimiterService {
     public void checkCompleteTaskLimit(Long userId) {
         checkLimit("sys:ratelimit:complete:" + userId,
                 runtimeSysConfigService.getInt(SysConfigKeys.WORKFLOW_RATE_LIMIT_COMPLETE_TASK, 30),
-                60,
+                runtimeSysConfigService.getInt(SysConfigKeys.WORKFLOW_RATE_LIMIT_COMPLETE_TASK_WINDOW_SECONDS, 60),
                 "处理任务");
     }
 
@@ -65,7 +65,7 @@ public class RateLimiterService {
     public void checkUrgeTaskLimit(Long userId) {
         checkLimit("sys:ratelimit:urge:" + userId,
                 runtimeSysConfigService.getInt(SysConfigKeys.WORKFLOW_RATE_LIMIT_URGE_TASK, 5),
-                3600,
+                runtimeSysConfigService.getInt(SysConfigKeys.WORKFLOW_RATE_LIMIT_URGE_TASK_WINDOW_SECONDS, 3600),
                 "催办");
     }
 
