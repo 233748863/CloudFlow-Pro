@@ -1,1 +1,5 @@
-export { default } from '@/components/crm/management';
+import CrmManagement from '@/components/crm/management';
+
+const CrmManagementPage = () => <CrmManagement />;
+
+export default CrmManagementPage;

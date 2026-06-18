@@ -340,15 +340,15 @@ export const DutySchedulePage: React.FC = () => {
               <Table className="min-w-[1080px]">
                 <TableHeader className="sticky top-0 z-10">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">标题</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">类型</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">值班日期</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">班次</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">值班人</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">地点</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">签到 / 签退</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
-                    <TableActionHead className="w-56 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
+                    <TableHead className="px-4 py-3 text-left">标题</TableHead>
+                    <TableHead className="px-4 py-3 text-left">类型</TableHead>
+                    <TableHead className="px-4 py-3 text-left">值班日期</TableHead>
+                    <TableHead className="px-4 py-3 text-left">班次</TableHead>
+                    <TableHead className="px-4 py-3 text-left">值班人</TableHead>
+                    <TableHead className="px-4 py-3 text-left">地点</TableHead>
+                    <TableHead className="px-4 py-3 text-left">签到 / 签退</TableHead>
+                    <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                    <TableActionHead className="w-56 px-4 py-3 text-right">操作</TableActionHead>
                   </TableRow>
                 </TableHeader>
 
@@ -671,5 +671,4 @@ export const DutySchedulePage: React.FC = () => {
 };
 
 export default DutySchedulePage;
-
 

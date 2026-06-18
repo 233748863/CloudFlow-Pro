@@ -687,11 +687,11 @@ const AssetList: React.FC = () => {
               <Table className="min-w-[980px]">
                 <TableHeader className="sticky top-0 z-10">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">资产编码</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">资产信息</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">价格 / 位置</TableHead>
-                    <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
+                    <TableHead className="px-4 py-3 text-left">资产编码</TableHead>
+                    <TableHead className="px-4 py-3 text-left">资产信息</TableHead>
+                    <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                    <TableHead className="px-4 py-3 text-left">价格 / 位置</TableHead>
+                    <TableActionHead className="px-4 py-3 text-right">操作</TableActionHead>
                   </TableRow>
                 </TableHeader>
 
@@ -1154,5 +1154,4 @@ const AssetList: React.FC = () => {
 };
 
 export default AssetList;
-
 

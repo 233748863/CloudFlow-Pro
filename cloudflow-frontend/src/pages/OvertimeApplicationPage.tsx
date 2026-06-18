@@ -486,25 +486,25 @@ export const OvertimeApplicationPage: React.FC = () => {
               <table className="w-full min-w-[1100px]">
                 <TableHeader className="sticky top-0 z-10">
                   <tr>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       申请单号
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       加班类型
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       时间区间
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       时长
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       补偿方式
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       状态
                     </TableHead>
-                    <TableActionHead className="w-56 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableActionHead className="w-56 px-4 py-3 text-right">
                       当前操作
                     </TableActionHead>
                   </tr>
@@ -778,4 +778,3 @@ export const OvertimeApplicationPage: React.FC = () => {
 };
 
 export default OvertimeApplicationPage;
-

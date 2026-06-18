@@ -336,10 +336,10 @@ export const ContactPage: React.FC = () => {
                 <Table className="min-w-[860px]">
                   <TableHeader className="sticky top-0 z-10">
                     <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">联系人</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">组织</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">联系方式</TableHead>
-                      <TableActionHead className="w-24 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
+                      <TableHead className="px-4 py-3 text-left">联系人</TableHead>
+                      <TableHead className="px-4 py-3 text-left">组织</TableHead>
+                      <TableHead className="px-4 py-3 text-left">联系方式</TableHead>
+                      <TableActionHead className="w-24 px-4 py-3 text-right">操作</TableActionHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">

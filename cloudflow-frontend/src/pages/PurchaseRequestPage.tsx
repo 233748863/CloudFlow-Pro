@@ -760,11 +760,11 @@ export const PurchaseRequestPage: React.FC = () => {
                   <table className="w-full min-w-[760px]">
                     <thead className="bg-slate-50/80 dark:bg-slate-900/70">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs text-slate-500">耗材</th>
-                        <th className="px-4 py-3 text-left text-xs text-slate-500">数量</th>
-                        <th className="px-4 py-3 text-left text-xs text-slate-500">单价</th>
-                        <th className="px-4 py-3 text-left text-xs text-slate-500">金额</th>
-                        <th className="px-4 py-3 text-left text-xs text-slate-500">已入库</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">耗材</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">数量</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">单价</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">金额</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">已入库</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -816,10 +816,10 @@ export const PurchaseRequestPage: React.FC = () => {
             <table className="w-full min-w-[720px]">
               <thead className="bg-slate-50/80 dark:bg-slate-900/70">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs text-slate-500">耗材</th>
-                  <th className="px-4 py-3 text-left text-xs text-slate-500">申请数量</th>
-                  <th className="px-4 py-3 text-left text-xs text-slate-500">已入库</th>
-                  <th className="px-4 py-3 text-left text-xs text-slate-500">本次入库</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">耗材</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">申请数量</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">已入库</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">本次入库</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

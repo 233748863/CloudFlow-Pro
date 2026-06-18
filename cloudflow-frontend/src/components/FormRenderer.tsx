@@ -205,7 +205,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
             handleChange(field, value === SELECT_NONE_VALUE ? '' : value)
           }
         >
-          <SelectTrigger className={cn('h-11 rounded-xl', hasError && 'border-red-300 bg-red-50')}>
+          <SelectTrigger className={cn('rounded-xl', hasError && 'border-red-300 bg-red-50')}>
             <SelectValue placeholder={field.placeholder || '请选择'} />
           </SelectTrigger>
           <SelectContent>
@@ -227,7 +227,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
           value={rawValue ?? ''}
           placeholder={field.placeholder}
           onChange={(event) => handleChange(field, event.target.value)}
-          className={cn('h-11', hasError && 'border-red-300 bg-red-50')}
+          className={cn(hasError && 'border-red-300 bg-red-50')}
         />
       );
     }
@@ -240,7 +240,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
         onChange={(event) =>
           handleChange(field, normalizeFieldValue(field.type, event.target.value))
         }
-        className={cn('h-11', controlClassName)}
+        className={controlClassName}
       />
     );
   };

@@ -48,6 +48,7 @@ export * from './date-picker';
 export * from './EmptyState';
 export * from './ErrorBoundary';
 export { FilterChip } from './filter-chip';
+export * from './form-layout';
 export { LoadingSpinner } from './LoadingSpinner';
 export { PageLoading } from './PageLoading';
 export { ResultPage } from './ResultPage';

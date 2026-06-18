@@ -502,15 +502,15 @@ export const BusinessTripPage: React.FC = () => {
               <table className="w-full min-w-[1180px]">
                 <TableHeader className="sticky top-0 z-10">
                   <tr>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">出差单号</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">出差人 / 部门</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">行程 / 项目</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">日期</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">天数</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">交通</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">预算</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
-                    <TableActionHead className="w-44 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
+                    <TableHead className="px-4 py-3 text-left">出差单号</TableHead>
+                    <TableHead className="px-4 py-3 text-left">出差人 / 部门</TableHead>
+                    <TableHead className="px-4 py-3 text-left">行程 / 项目</TableHead>
+                    <TableHead className="px-4 py-3 text-left">日期</TableHead>
+                    <TableHead className="px-4 py-3 text-left">天数</TableHead>
+                    <TableHead className="px-4 py-3 text-left">交通</TableHead>
+                    <TableHead className="px-4 py-3 text-left">预算</TableHead>
+                    <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                    <TableActionHead className="w-44 px-4 py-3 text-right">操作</TableActionHead>
                   </tr>
                 </TableHeader>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -986,4 +986,3 @@ export const BusinessTripPage: React.FC = () => {
 };
 
 export default BusinessTripPage;
-

@@ -185,7 +185,7 @@ export const WorkspaceMetricCard: React.FC<WorkspaceMetricCardProps> = ({
   valueClassName,
   className,
 }) => (
-  <div className={cn('stat-card items-start rounded-2xl', defaultMetricToneClassName, className)}>
+    <div className={cn('stat-card items-start rounded-xl', defaultMetricToneClassName, className)}>
     {aside ? <div className="shrink-0">{aside}</div> : null}
     <div className="min-w-0 flex-1">
       <div className="stat-label">{label}</div>

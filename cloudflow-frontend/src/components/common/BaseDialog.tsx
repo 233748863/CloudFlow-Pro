@@ -55,7 +55,9 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   };
   const resolvedMaxWidthClassName = maxWidthClassName || widthClassMap[width];
   const hasCustomPanelMaxHeight = Boolean(panelClassName && /(^|\s)!?max-h-/.test(panelClassName));
-  const hasCustomBodyOverflow = Boolean(bodyClassName && /(^|\s)!?overflow(?:-[xy])?-/.test(bodyClassName));
+  const hasCustomBodyOverflow = Boolean(
+    bodyClassName && /(^|\s)!?overflow(?:-[xy])?-(auto|scroll|hidden|clip)(\s|$)/.test(bodyClassName),
+  );
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -104,8 +106,8 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       <div
         ref={dialogRef}
         className={cn(
-          'w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/80 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)]',
-          'flex flex-col',
+          'w-full !overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/80 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)]',
+          'cf-dialog-panel flex flex-col',
           !hasCustomPanelMaxHeight && 'max-h-[95vh] sm:max-h-[90vh]',
           resolvedMaxWidthClassName,
           panelClassName,
@@ -139,9 +141,9 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
         </div>
         <div
           className={cn(
-            'min-h-0 flex-1 px-4 py-3 sm:px-6 sm:py-4',
-            !hasCustomBodyOverflow && 'overflow-y-auto',
+            'cf-dialog-body min-h-0 flex-1 overscroll-contain px-4 py-3 sm:px-6 sm:py-4',
             bodyClassName,
+            !hasCustomBodyOverflow && '!overflow-y-auto',
           )}
         >
           {children}
@@ -150,6 +152,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
           <div
             className={cn(
               'flex flex-shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800 dark:bg-slate-900/70',
+              'cf-dialog-footer',
               footerClassName,
             )}
           >

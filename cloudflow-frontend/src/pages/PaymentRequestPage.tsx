@@ -487,28 +487,28 @@ export const PaymentRequestPage: React.FC = () => {
               <table className="w-full min-w-[1180px]">
                 <TableHeader className="sticky top-0 z-10">
                   <tr>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       付款单号
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       收款方 / 账户
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       申请人 / 部门
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       类型 / 日期
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       金额
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       付款事由
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       状态
                     </TableHead>
-                    <TableActionHead className="w-40 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableActionHead className="w-40 px-4 py-3 text-right">
                       当前操作
                     </TableActionHead>
                   </tr>
@@ -911,4 +911,3 @@ export const PaymentRequestPage: React.FC = () => {
 };
 
 export default PaymentRequestPage;
-

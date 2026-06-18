@@ -171,7 +171,7 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
       aria-expanded={open}
       aria-haspopup="listbox"
       className={cn(
-        'cf-control flex h-10 items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm',
+        'cf-control flex !h-10 min-h-10 items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm',
         !hasExplicitWidth && 'w-full',
         open && 'cf-control-active',
         className,

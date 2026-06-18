@@ -20,7 +20,7 @@ export const TableSurfaceCard = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
+      'overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
       fill && 'flex min-h-[40rem] flex-col',
       className,
     )}

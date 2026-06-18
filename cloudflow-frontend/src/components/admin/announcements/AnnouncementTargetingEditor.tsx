@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Building2,
+  Check,
   ChevronDown,
   ChevronRight,
   Search,
@@ -29,6 +30,9 @@ interface AnnouncementTargetingEditorProps {
   onScopeTypeChange: (scopeType: AnnouncementScope) => void;
   onScopeValueChange: (scopeValue: string) => void;
 }
+
+const selectedTargetListClass = 'flex max-h-20 flex-wrap gap-1 overflow-y-auto pr-1';
+const targetOptionListClass = 'max-h-32 overflow-y-auto p-2';
 
 const flattenDepts = (
   depts: DeptItem[],
@@ -104,13 +108,18 @@ const DeptTreePicker: React.FC<{
     return (
       <div key={node.deptId}>
         <div
-          className="group flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-cyan-50/60 dark:hover:bg-cyan-950/20"
-          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+          className={cn(
+            'group flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors',
+            isSelected
+              ? 'bg-cyan-50 text-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-100'
+              : 'hover:bg-slate-50 dark:hover:bg-slate-900/70',
+          )}
+          style={{ paddingLeft: `${depth * 14 + 8}px` }}
         >
           <button
             type="button"
             onClick={() => toggleExpand(node.deptId)}
-            className="flex h-5 w-5 shrink-0 items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-white hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-950 dark:hover:text-slate-300"
           >
             {hasChildren ? (
               isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
@@ -124,15 +133,17 @@ const DeptTreePicker: React.FC<{
             onClick={() => toggleDept(node.deptId)}
             className={cn(
               'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-              isSelected ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 hover:border-cyan-300 dark:border-slate-700 dark:hover:border-cyan-800',
+              isSelected
+                ? 'border-cyan-500 bg-cyan-500 text-white'
+                : 'border-slate-300 bg-white hover:border-cyan-300 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-cyan-800',
             )}
           >
-            {isSelected ? <div className="h-2 w-2 rounded-full bg-white" /> : null}
+            {isSelected ? <Check size={11} strokeWidth={3} /> : null}
           </button>
 
-          <Building2 size={14} className="ml-1 shrink-0 text-amber-500 dark:text-amber-300" />
+          <Building2 size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
           <span
-            className="flex-1 truncate text-sm font-medium text-slate-700 select-none dark:text-slate-200"
+            className="flex-1 truncate text-sm font-medium select-none"
             onClick={() => toggleExpand(node.deptId)}
           >
             {node.deptName}
@@ -144,13 +155,13 @@ const DeptTreePicker: React.FC<{
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950/88 dark:ring-slate-800/70">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
       {selectedDepts.length > 0 ? (
-        <div className="border-b border-slate-100 bg-cyan-50/80 p-3 dark:border-slate-800 dark:bg-cyan-950/20">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600">
+        <div className="border-b border-slate-100 bg-cyan-50/70 p-3 dark:border-slate-800 dark:bg-cyan-950/20">
+          <div className="mb-2 text-xs font-medium text-cyan-700 dark:text-cyan-200">
             已选部门
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className={selectedTargetListClass}>
             {selectedDepts.map((dept) => (
               <span
                 key={dept.deptId}
@@ -179,14 +190,14 @@ const DeptTreePicker: React.FC<{
           <Input
             type="text"
             className="h-10 rounded-xl pl-9 text-sm"
-            placeholder="搜索部门..."
+            placeholder="搜索部门"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
       </div>
 
-      <div className="max-h-48 overflow-y-auto p-2">
+      <div className={targetOptionListClass}>
         {deptTree.length === 0 ? (
           <WorkspaceInlineState title="暂无部门数据" className="py-6" />
         ) : (
@@ -244,13 +255,13 @@ const RoleListPicker: React.FC<{
   });
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950/88 dark:ring-slate-800/70">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
       {selectedRoles.length > 0 ? (
-        <div className="border-b border-slate-100 bg-cyan-50/80 p-3 dark:border-slate-800 dark:bg-cyan-950/20">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600">
+        <div className="border-b border-slate-100 bg-cyan-50/70 p-3 dark:border-slate-800 dark:bg-cyan-950/20">
+          <div className="mb-2 text-xs font-medium text-cyan-700 dark:text-cyan-200">
             已选角色
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className={selectedTargetListClass}>
             {selectedRoles.map((role) => {
               const id = getRoleIdentifier(role);
 
@@ -283,14 +294,14 @@ const RoleListPicker: React.FC<{
           <Input
             type="text"
             className="h-10 rounded-xl pl-9 text-sm"
-            placeholder="搜索角色..."
+            placeholder="搜索角色"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
       </div>
 
-      <div className="max-h-48 overflow-y-auto p-2">
+      <div className={targetOptionListClass}>
         {roles.length === 0 ? (
           <WorkspaceInlineState title="加载中或暂无角色数据" className="py-6" />
         ) : filteredRoles.length === 0 ? (
@@ -303,7 +314,12 @@ const RoleListPicker: React.FC<{
             return (
               <div
                 key={id}
-                className="group flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-cyan-50/60 dark:hover:bg-cyan-950/20"
+                className={cn(
+                  'group flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors',
+                  isSelected
+                    ? 'bg-cyan-50 text-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-100'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-900/70',
+                )}
                 onClick={() => toggleRole(id)}
               >
                 <button
@@ -311,14 +327,14 @@ const RoleListPicker: React.FC<{
                   className={cn(
                     'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
                     isSelected
-                      ? 'border-cyan-500 bg-cyan-500'
-                      : 'border-slate-300 group-hover:border-cyan-300 dark:border-slate-700 dark:group-hover:border-cyan-800',
+                      ? 'border-cyan-500 bg-cyan-500 text-white'
+                      : 'border-slate-300 bg-white group-hover:border-cyan-300 dark:border-slate-700 dark:bg-slate-950 dark:group-hover:border-cyan-800',
                   )}
                 >
-                  {isSelected ? <div className="h-2 w-2 rounded-full bg-white" /> : null}
+                  {isSelected ? <Check size={11} strokeWidth={3} /> : null}
                 </button>
-                <Shield size={14} className="shrink-0 text-emerald-500 dark:text-emerald-300" />
-                <span className="flex-1 truncate text-sm font-medium text-slate-700 select-none dark:text-slate-200">
+                <Shield size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                <span className="flex-1 truncate text-sm font-medium select-none">
                   {role.roleName || role.name}
                 </span>
               </div>
@@ -345,35 +361,50 @@ export const AnnouncementTargetingEditor: React.FC<AnnouncementTargetingEditorPr
     {
       value: AnnouncementScope.ALL,
       title: '全员可见',
-      description: '不限制范围，公告发布后全体员工都可查看。',
+      description: '全体员工可查看',
       icon: <Users size={16} />,
     },
     {
       value: AnnouncementScope.DEPT,
       title: '按部门定向',
-      description: '只面向指定部门发布，适合组织通知和部门公告。',
+      description: '仅指定部门可查看',
       icon: <Building2 size={16} />,
     },
     {
       value: AnnouncementScope.ROLE,
       title: '按角色定向',
-      description: '只面向指定角色发布，适合岗位制度和权限提醒。',
+      description: '仅指定角色可查看',
       icon: <Shield size={16} />,
     },
   ];
+  const activeCard = cards.find((card) => card.value === scopeType) || cards[0];
+  const targetCount = scopeType === AnnouncementScope.ALL
+    ? 0
+    : scopeValue.split(',').filter(Boolean).length;
+  const statusText = scopeType === AnnouncementScope.ALL
+    ? '全员'
+    : `${targetCount} 个目标`;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">发布范围</div>
-          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {scopeType === AnnouncementScope.ALL ? '当前为全员可见。' : '当前为定向发布，请继续选择目标对象。'}
+    <div className="max-h-[calc(90vh-10rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100 dark:bg-cyan-950/30 dark:text-cyan-200 dark:ring-cyan-900">
+            {activeCard.icon}
+          </span>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">发布范围</div>
+            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+              {activeCard.title} · {statusText}
+            </div>
           </div>
         </div>
+        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+          {statusText}
+        </span>
       </div>
 
-      <div className="mt-4 grid gap-3 min-[1180px]:grid-cols-3">
+      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         {cards.map((card) => {
           const active = scopeType === card.value;
 
@@ -383,19 +414,36 @@ export const AnnouncementTargetingEditor: React.FC<AnnouncementTargetingEditorPr
               type="button"
               onClick={() => onScopeTypeChange(card.value)}
               className={cn(
-                'rounded-xl border px-4 py-4 text-left transition-all',
+                'flex w-full items-center gap-3 border-b border-slate-100 px-3 py-3 text-left transition-colors last:border-b-0 dark:border-slate-800',
                 active
-                  ? 'border-cyan-500 bg-cyan-50/60 shadow-sm ring-1 ring-cyan-200 dark:border-cyan-700 dark:bg-cyan-950/20 dark:ring-cyan-900'
-                  : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700',
+                  ? 'bg-cyan-50/80 dark:bg-cyan-950/24'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-900/70',
               )}
             >
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-                <span className={cn('inline-flex h-8 w-8 items-center justify-center rounded-xl', active ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-950/40 dark:text-cyan-200' : 'bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-400')}>
-                  {card.icon}
-                </span>
-                {card.title}
+              <span
+                className={cn(
+                  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
+                  active
+                    ? 'bg-white text-cyan-700 shadow-sm ring-1 ring-cyan-100 dark:bg-slate-950 dark:text-cyan-200 dark:ring-cyan-900'
+                    : 'bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-400',
+                )}
+              >
+                {card.icon}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{card.title}</div>
+                <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{card.description}</div>
               </div>
-              <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{card.description}</div>
+              <span
+                className={cn(
+                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
+                  active
+                    ? 'border-cyan-500 bg-cyan-500 text-white'
+                    : 'border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950',
+                )}
+              >
+                {active ? <Check size={12} strokeWidth={3} /> : null}
+              </span>
             </button>
           );
         })}

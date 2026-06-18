@@ -46,6 +46,14 @@ interface ConfirmState {
   danger?: boolean;
 }
 
+type ExpenseFormItem = ExpenseItem & {
+  clientKey: string;
+};
+
+type ExpenseClaimForm = Omit<ExpenseClaim, 'items'> & {
+  items: ExpenseFormItem[];
+};
+
 const formatAmount = (value?: number | null) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
     return '-';
@@ -57,7 +65,11 @@ const formatAmount = (value?: number | null) => {
   })}`;
 };
 
-const createDefaultItem = (): ExpenseItem => ({
+const createExpenseItemKey = () =>
+  `expense-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const createDefaultItem = (): ExpenseFormItem => ({
+  clientKey: createExpenseItemKey(),
   expenseType: 'TRANSPORT',
   amount: 0,
   expenseDate: '',
@@ -65,7 +77,17 @@ const createDefaultItem = (): ExpenseItem => ({
   receiptUrl: '',
 });
 
-const createDefaultForm = (): ExpenseClaim => ({
+const withClientKey = (item: ExpenseItem): ExpenseFormItem => ({
+  ...item,
+  clientKey: (item as ExpenseFormItem).clientKey || createExpenseItemKey(),
+});
+
+const stripClientKey = (item: ExpenseFormItem): ExpenseItem => {
+  const { clientKey: _clientKey, ...payload } = item;
+  return payload;
+};
+
+const createDefaultForm = (): ExpenseClaimForm => ({
   category: 'TRAVEL',
   description: '',
   items: [createDefaultItem()],
@@ -73,6 +95,8 @@ const createDefaultForm = (): ExpenseClaim => ({
 
 const getReceiptList = (receiptUrl?: string) =>
   normalizeAttachmentUrls(receiptUrl);
+
+const expenseItemControlClass = '!h-10 h-10 min-h-10';
 
 const InlineState: React.FC<{
   title: string;
@@ -157,7 +181,7 @@ export const ExpenseClaimPage: React.FC = () => {
   const [currentClaim, setCurrentClaim] = useState<ExpenseClaim | null>(null);
   const [detailClaim, setDetailClaim] = useState<ExpenseClaim | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [formData, setFormData] = useState<ExpenseClaim>(createDefaultForm());
+  const [formData, setFormData] = useState<ExpenseClaimForm>(createDefaultForm());
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [projectOptions, setProjectOptions] = useState<Project[]>([]);
   const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
@@ -283,7 +307,7 @@ export const ExpenseClaimPage: React.FC = () => {
       setFormData({
         ...createDefaultForm(),
         ...response,
-        items: response.items?.length ? response.items : [createDefaultItem()],
+        items: response.items?.length ? response.items.map(withClientKey) : [createDefaultItem()],
       });
       setShowDialog(true);
     } catch (error) {
@@ -312,7 +336,11 @@ export const ExpenseClaimPage: React.FC = () => {
     const totalAmount = formData.items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
     try {
-      const payload = { ...formData, totalAmount };
+      const payload: ExpenseClaim = {
+        ...formData,
+        totalAmount,
+        items: formData.items.map(stripClientKey),
+      };
       if (currentClaim?.id) {
         await expenseClaimApi.edit(payload);
         toast.success('更新成功');
@@ -411,7 +439,7 @@ export const ExpenseClaimPage: React.FC = () => {
     setFormData((prev) => {
       const nextItems = [...(prev.items || [])];
       nextItems.splice(index, 1);
-      return { ...prev, items: nextItems.length ? nextItems : [createDefaultItem()] };
+      return { ...prev, items: nextItems };
     });
   };
 
@@ -521,25 +549,25 @@ export const ExpenseClaimPage: React.FC = () => {
               <table className="w-full min-w-[1080px]">
                 <TableHeader className="sticky top-0 z-10">
                   <tr>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       报销单号
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       申请人 / 部门
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       类别 / 明细
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       金额
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       说明
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       状态
                     </TableHead>
-                    <TableActionHead className="w-40 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableActionHead className="w-40 px-4 py-3 text-right">
                       当前操作
                     </TableActionHead>
                   </tr>
@@ -652,10 +680,10 @@ export const ExpenseClaimPage: React.FC = () => {
         width="wide"
         footer={(
           <>
-            <Button variant="outline" onClick={closeFormDialog}>
+            <Button type="button" variant="outline" onClick={closeFormDialog}>
               取消
             </Button>
-            <Button onClick={() => void handleSave()} disabled={!hasPermission(currentClaim ? 'oa:expense:edit' : 'oa:expense:add')}>
+            <Button type="button" onClick={() => void handleSave()} disabled={!hasPermission(currentClaim ? 'oa:expense:edit' : 'oa:expense:add')}>
               保存
             </Button>
           </>
@@ -785,23 +813,23 @@ export const ExpenseClaimPage: React.FC = () => {
           <div className="rounded-lg border border-slate-200 px-4 py-4 dark:border-slate-800">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="text-sm font-medium text-slate-900 dark:text-slate-100">费用明细</div>
-              <Button size="sm" onClick={addItem}>
+              <Button type="button" size="sm" onClick={addItem} className="h-10">
                 <Plus size={14} className="mr-1.5" />
                 添加明细
               </Button>
             </div>
 
             <div className="space-y-2">
-              {formData.items?.map((item, index) => (
+              {formData.items?.length ? formData.items.map((item, index) => (
                 <div
-                  key={`${index}-${item.expenseDate || 'draft'}`}
+                  key={item.clientKey}
                   className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/60"
                 >
-                  <div className="grid gap-3 lg:grid-cols-[160px_120px_160px_minmax(0,1fr)_40px]">
+                  <div className="grid gap-3 md:grid-cols-[minmax(140px,1fr)_120px_160px_minmax(160px,1.2fr)_40px] md:items-end">
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">费用类型</Label>
                       <Select value={item.expenseType} onValueChange={(value) => updateItem(index, 'expenseType', value)}>
-                        <SelectTrigger className="h-10">
+                        <SelectTrigger className={expenseItemControlClass}>
                           <SelectValue placeholder="请选择费用类型" />
                         </SelectTrigger>
                         <SelectContent>
@@ -817,7 +845,7 @@ export const ExpenseClaimPage: React.FC = () => {
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">金额</Label>
                       <Input
-                        className="h-10"
+                        className={expenseItemControlClass}
                         type="number"
                         value={item.amount || ''}
                         onChange={(event) => updateItem(index, 'amount', parseFloat(event.target.value) || 0)}
@@ -830,7 +858,7 @@ export const ExpenseClaimPage: React.FC = () => {
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">费用日期</Label>
                       <DatePicker
-                        className="h-10"
+                        className={expenseItemControlClass}
                         type="date"
                         value={item.expenseDate}
                         onChange={(event) => updateItem(index, 'expenseDate', event.target.value)}
@@ -840,7 +868,7 @@ export const ExpenseClaimPage: React.FC = () => {
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">费用说明</Label>
                       <Input
-                        className="h-10"
+                        className={expenseItemControlClass}
                         type="text"
                         value={item.description || ''}
                         onChange={(event) => updateItem(index, 'description', event.target.value)}
@@ -854,7 +882,7 @@ export const ExpenseClaimPage: React.FC = () => {
                         variant="destructive"
                         size="icon"
                         onClick={() => removeItem(index)}
-                        className="h-10 w-10 rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900 dark:bg-slate-950 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                        className="h-10 w-10 rounded-lg"
                         aria-label="删除明细"
                         title="删除明细"
                       >
@@ -873,7 +901,13 @@ export const ExpenseClaimPage: React.FC = () => {
                     />
                   </div>
                 </div>
-              ))}
+              )) : (
+                <InlineState
+                  title="暂无费用明细"
+                  description="点击添加明细录入报销费用。"
+                  className="rounded-lg border border-dashed border-slate-200 bg-slate-50/80 py-8 dark:border-slate-800 dark:bg-slate-900/60"
+                />
+              )}
             </div>
           </div>
         </div>
@@ -939,11 +973,11 @@ export const ExpenseClaimPage: React.FC = () => {
                   <table className="w-full min-w-[820px]">
                     <thead className="bg-slate-50/80 dark:bg-slate-900/70">
                       <tr>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">费用类型</th>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">金额</th>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">费用日期</th>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">说明</th>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">凭证</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">费用类型</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">金额</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">费用日期</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">说明</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">凭证</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1005,4 +1039,3 @@ export const ExpenseClaimPage: React.FC = () => {
 };
 
 export default ExpenseClaimPage;
-

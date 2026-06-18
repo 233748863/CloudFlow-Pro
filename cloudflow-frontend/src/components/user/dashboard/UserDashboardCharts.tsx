@@ -2,8 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { PieChart, RefreshCw, TrendingUp } from 'lucide-react';
 import {
   Button,
+  Card,
+  DatePicker,
   EmptyState,
-  Input,
+  Label,
   LoadingSpinner,
   Select,
   SelectContent,
@@ -159,7 +161,7 @@ const DistributionCard: React.FC<{
       : null;
 
   return (
-    <div className="card relative h-full overflow-hidden p-4">
+    <Card className="relative h-full overflow-hidden p-4">
       {loading ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/65 backdrop-blur-sm dark:bg-slate-950/70">
           <LoadingSpinner size="lg" />
@@ -324,7 +326,7 @@ const DistributionCard: React.FC<{
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 };
 
@@ -383,7 +385,7 @@ const TrendCard: React.FC<{
     `${linePath(key)} L${x(trend.length - 1)},${y(0)} L${x(0)},${y(0)} Z`;
 
   return (
-    <div className="card relative flex h-full flex-col overflow-hidden p-4">
+    <Card className="relative flex h-full flex-col overflow-hidden p-4">
       {loading ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/65 backdrop-blur-sm dark:bg-slate-950/70">
           <LoadingSpinner size="lg" />
@@ -572,7 +574,7 @@ const TrendCard: React.FC<{
           </svg>
         </div>
       )}
-    </div>
+    </Card>
   );
 };
 
@@ -589,25 +591,35 @@ export const UserDashboardCharts: React.FC<UserDashboardChartsProps> = ({
   onRefresh,
 }) => (
   <div className="space-y-6">
-    <div className="card p-4">
+    <Card className="p-4">
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="w-[152px]">
-            <div className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Label
+              htmlFor="dashboard-start-date"
+              className="mb-1.5 block text-xs text-slate-500 dark:text-slate-400"
+            >
               开始日期
-            </div>
-            <Input
+            </Label>
+            <DatePicker
+              id="dashboard-start-date"
               type="date"
+              className="h-10"
               value={startDate}
               onChange={(event) => onStartDateChange(event.target.value)}
             />
           </div>
           <div className="w-[152px]">
-            <div className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Label
+              htmlFor="dashboard-end-date"
+              className="mb-1.5 block text-xs text-slate-500 dark:text-slate-400"
+            >
               结束日期
-            </div>
-            <Input
+            </Label>
+            <DatePicker
+              id="dashboard-end-date"
               type="date"
+              className="h-10"
               value={endDate}
               onChange={(event) => onEndDateChange(event.target.value)}
             />
@@ -615,9 +627,9 @@ export const UserDashboardCharts: React.FC<UserDashboardChartsProps> = ({
         </div>
 
         <div className="min-w-[132px]">
-          <div className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <Label className="mb-1.5 block text-xs text-slate-500 dark:text-slate-400">
             聚合粒度
-          </div>
+          </Label>
           <Select
             value={granularity}
             onValueChange={(value) => onGranularityChange(value as 'day' | 'hour')}
@@ -639,7 +651,7 @@ export const UserDashboardCharts: React.FC<UserDashboardChartsProps> = ({
           </Button>
         </div>
       </div>
-    </div>
+    </Card>
 
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <DistributionCard loading={loading} items={distribution} />

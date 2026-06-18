@@ -370,14 +370,14 @@ export const VisitorPage: React.FC = () => {
               <Table className="min-w-[1020px]">
                 <TableHeader className="sticky top-0 z-10">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">访客</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">单位</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">来访日期</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">被访人</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">来访事由</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">通行码</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
-                    <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
+                    <TableHead className="px-4 py-3 text-left">访客</TableHead>
+                    <TableHead className="px-4 py-3 text-left">单位</TableHead>
+                    <TableHead className="px-4 py-3 text-left">来访日期</TableHead>
+                    <TableHead className="px-4 py-3 text-left">被访人</TableHead>
+                    <TableHead className="px-4 py-3 text-left">来访事由</TableHead>
+                    <TableHead className="px-4 py-3 text-left">通行码</TableHead>
+                    <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                    <TableActionHead className="px-4 py-3 text-right">操作</TableActionHead>
                   </TableRow>
                 </TableHeader>
 
@@ -681,5 +681,4 @@ export const VisitorPage: React.FC = () => {
 };
 
 export default VisitorPage;
-
 

@@ -66,7 +66,7 @@ export const DialogContent = ({
     >
       <div
         className={cn(
-          'relative z-10 grid w-full max-h-[90vh] gap-4 overflow-y-auto border border-slate-200 bg-white p-5 shadow-[0_22px_44px_rgba(15,23,42,0.14)] duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-2xl md:w-full dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_22px_44px_rgba(2,6,23,0.52)]',
+          'cf-dialog-panel relative z-10 grid w-full max-h-[95vh] gap-4 overflow-y-auto overscroll-contain border border-slate-200 bg-white p-5 shadow-[0_22px_44px_rgba(15,23,42,0.14)] duration-200 animate-in fade-in-0 zoom-in-95 sm:max-h-[90vh] sm:rounded-2xl md:w-full dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_22px_44px_rgba(2,6,23,0.52)]',
           !disableDefaultMaxWidth && 'sm:max-w-lg',
           className
         )}
@@ -85,17 +85,29 @@ export const DialogContent = ({
 };
 
 export const DialogHeader = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col space-y-1.5 text-center sm:text-left ${className}`} {...props} />
+  <div
+    className={cn(
+      'cf-dialog-header sticky top-0 z-10 -mx-5 -mt-5 flex flex-col space-y-1.5 border-b border-slate-100 bg-white px-5 py-4 pr-14 text-center sm:text-left dark:border-slate-800 dark:bg-slate-950',
+      className,
+    )}
+    {...props}
+  />
 );
 
 export const DialogTitle = ({ className = '', ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h2 className={`text-xl font-semibold leading-none tracking-tight text-slate-800 dark:text-slate-100 ${className}`} {...props} />
+  <h2 className={cn('text-lg font-semibold leading-none tracking-tight text-slate-800 dark:text-slate-100', className)} {...props} />
 );
 
 export const DialogDescription = ({ className = '', ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-  <p className={`text-sm text-slate-500 mt-1.5 dark:text-slate-400 ${className}`} {...props} />
+  <p className={cn('mt-1.5 text-sm text-slate-500 dark:text-slate-400', className)} {...props} />
 );
 
 export const DialogFooter = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 ${className}`} {...props} />
+  <div
+    className={cn(
+      'cf-dialog-footer sticky bottom-0 z-10 -mx-5 -mb-5 flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/95 px-5 py-4 backdrop-blur sm:flex-row sm:justify-end dark:border-slate-800 dark:bg-slate-900/95',
+      className,
+    )}
+    {...props}
+  />
 );

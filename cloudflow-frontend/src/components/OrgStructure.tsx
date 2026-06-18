@@ -242,7 +242,7 @@ const DepartmentSelect: React.FC<{
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-11 w-full items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 text-left text-sm text-gray-700 shadow-sm transition hover:border-gray-300 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:border-gray-600"
+        className="cf-control flex h-10 w-full items-center justify-between rounded-xl px-4 text-left text-sm transition"
       >
         <span className="truncate">
           {selected?.dept.deptName || (value === 0 && showRoot ? '顶级部门' : placeholder)}
@@ -251,7 +251,7 @@ const DepartmentSelect: React.FC<{
       </button>
 
       {open ? (
-        <div className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_24px_48px_rgba(2,6,23,0.46)]">
+        <div className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_24px_48px_rgba(2,6,23,0.46)]">
           {showRoot ? (
             <SideNavItem
               size="sm"
@@ -608,7 +608,7 @@ const DeptFormDialog: React.FC<{
             value={form.status}
             onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}
           >
-            <SelectTrigger className="h-11 rounded-2xl">
+            <SelectTrigger className="rounded-xl">
               <SelectValue placeholder="请选择状态" />
             </SelectTrigger>
             <SelectContent>

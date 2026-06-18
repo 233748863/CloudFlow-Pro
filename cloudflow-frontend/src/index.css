@@ -230,6 +230,7 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     font-size: 0.875rem;
     font-weight: 500;
     line-height: 1.25rem;
+    min-height: 2.5rem;
     white-space: nowrap;
     transition:
       color 0.2s ease,
@@ -352,6 +353,7 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     padding: 0.4375rem 0.75rem;
     font-size: 0.75rem;
     line-height: 1rem;
+    min-height: 2.25rem;
   }
 
   .btn-md {
@@ -359,6 +361,7 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     padding: 0.625rem 1rem;
     font-size: 0.875rem;
     line-height: 1.25rem;
+    min-height: 2.5rem;
   }
 
   .btn-lg {
@@ -366,6 +369,7 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     padding: 0.75rem 1.25rem;
     font-size: 0.9375rem;
     line-height: 1.375rem;
+    min-height: 2.75rem;
   }
 
   .btn-xl {
@@ -373,6 +377,7 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     padding: 0.875rem 1.5rem;
     font-size: 1rem;
     line-height: 1.5rem;
+    min-height: 3rem;
   }
 
   .btn-icon {
@@ -476,8 +481,8 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    border: 1px solid rgb(226 232 240);
-    background: white;
+    border: 1px solid var(--cf-border);
+    background: var(--cf-surface-strong);
     border-radius: 0.75rem;
     padding: 0.75rem 1rem;
     box-shadow: var(--cf-shadow-sm);
@@ -497,9 +502,9 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
   }
 
   .cf-section-card {
-    border: 1px solid rgb(226 232 240);
-    background: white;
-    border-radius: 1rem;
+    border: 1px solid var(--cf-border);
+    background: var(--cf-surface-strong);
+    border-radius: 0.75rem;
     padding: 1rem;
     box-shadow: var(--cf-shadow-sm);
   }
@@ -568,6 +573,29 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     opacity: 0.6;
     box-shadow: none;
     background: color-mix(in srgb, var(--cf-surface-muted) 92%, var(--cf-bg) 8%);
+  }
+
+  .cf-dialog-panel {
+    border-radius: 0.875rem;
+    background: var(--cf-surface-strong);
+    box-shadow: var(--cf-shadow-lg);
+  }
+
+  .cf-dialog-body {
+    scrollbar-gutter: stable;
+  }
+
+  .cf-dialog-footer .btn,
+  .cf-dialog-footer button {
+    min-height: 2.5rem;
+  }
+
+  .cf-dialog-header {
+    background: var(--cf-surface-strong);
+  }
+
+  .cf-dialog-footer {
+    background: color-mix(in srgb, var(--cf-surface-muted) 90%, var(--cf-surface-strong) 10%);
   }
 
   .cf-option-active {

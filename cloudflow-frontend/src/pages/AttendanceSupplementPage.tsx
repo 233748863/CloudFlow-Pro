@@ -446,25 +446,25 @@ export const AttendanceSupplementPage: React.FC = () => {
               <table className="w-full min-w-[980px]">
                 <TableHeader className="sticky top-0 z-10">
                   <tr>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       补录单号
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       补录日期
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       打卡类型
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       补录时间
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       原因
                     </TableHead>
-                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableHead className="px-4 py-3 text-left">
                       状态
                     </TableHead>
-                    <TableActionHead className="w-52 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <TableActionHead className="w-52 px-4 py-3 text-right">
                       当前操作
                     </TableActionHead>
                   </tr>
@@ -699,4 +699,3 @@ export const AttendanceSupplementPage: React.FC = () => {
 };
 
 export default AttendanceSupplementPage;
-
