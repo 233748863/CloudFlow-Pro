@@ -12,6 +12,7 @@ import { VersionRollbackManagement } from '@/components/deploy/VersionRollbackMa
 import { DeployStatistics } from '@/components/deploy/DeployStatistics';
 import { HotUpdatePanel } from '@/components/deploy/HotUpdatePanel';
 import { SegmentedControl, SegmentedControlItem } from '@/components/common';
+import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
 
 type DeployTabKey = 'windows' | 'approvals' | 'rollback' | 'hotupdate' | 'statistics';
 
@@ -79,7 +80,7 @@ export const DeployManagement: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+      <TableSurfaceCard>
         <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
@@ -107,7 +108,7 @@ export const DeployManagement: React.FC = () => {
             </SegmentedControl>
           </div>
         </div>
-      </div>
+      </TableSurfaceCard>
 
       {renderActivePanel()}
     </div>
