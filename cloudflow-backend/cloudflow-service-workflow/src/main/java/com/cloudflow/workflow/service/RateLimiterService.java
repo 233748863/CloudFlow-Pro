@@ -1,11 +1,12 @@
 package com.cloudflow.workflow.service;
 
 import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.workflow.exception.RateLimitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
@@ -26,17 +27,8 @@ public class RateLimiterService {
     @Autowired
     private RedisCache redisCache;
 
-    /** 每用户每分钟最大启动流程次数 */
-    @Value("${workflow.rate-limit.start-process:10}")
-    private int startProcessLimit;
-
-    /** 每用户每分钟最大完成任务次数 */
-    @Value("${workflow.rate-limit.complete-task:30}")
-    private int completeTaskLimit;
-
-    /** 每用户每小时最大催办次数 */
-    @Value("${workflow.rate-limit.urge-task:5}")
-    private int urgeTaskLimit;
+    @Autowired
+    private RuntimeSysConfigService runtimeSysConfigService;
 
     /**
      * 检查启动流程限流
@@ -45,7 +37,10 @@ public class RateLimiterService {
      * @throws RateLimitException 超过限流阈值时抛出
      */
     public void checkStartProcessLimit(Long userId) {
-        checkLimit("sys:ratelimit:start:" + userId, startProcessLimit, 60, "启动流程");
+        checkLimit("sys:ratelimit:start:" + userId,
+                runtimeSysConfigService.getInt(SysConfigKeys.WORKFLOW_RATE_LIMIT_START_PROCESS, 10),
+                60,
+                "启动流程");
     }
 
     /**
@@ -55,7 +50,10 @@ public class RateLimiterService {
      * @throws RateLimitException 超过限流阈值时抛出
      */
     public void checkCompleteTaskLimit(Long userId) {
-        checkLimit("sys:ratelimit:complete:" + userId, completeTaskLimit, 60, "处理任务");
+        checkLimit("sys:ratelimit:complete:" + userId,
+                runtimeSysConfigService.getInt(SysConfigKeys.WORKFLOW_RATE_LIMIT_COMPLETE_TASK, 30),
+                60,
+                "处理任务");
     }
 
     /**
@@ -65,7 +63,10 @@ public class RateLimiterService {
      * @throws RateLimitException 超过限流阈值时抛出
      */
     public void checkUrgeTaskLimit(Long userId) {
-        checkLimit("sys:ratelimit:urge:" + userId, urgeTaskLimit, 3600, "催办");
+        checkLimit("sys:ratelimit:urge:" + userId,
+                runtimeSysConfigService.getInt(SysConfigKeys.WORKFLOW_RATE_LIMIT_URGE_TASK, 5),
+                3600,
+                "催办");
     }
 
     /**

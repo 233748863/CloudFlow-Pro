@@ -6,6 +6,8 @@ import com.cloudflow.auth.domain.SysConfig;
 import com.cloudflow.auth.mapper.SysConfigMapper;
 import com.cloudflow.auth.service.ISysConfigService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.redis.config.SysConfigChangeEvent;
+import com.cloudflow.common.redis.config.SysConfigChangePublisher;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ import java.util.List;
 public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig> implements ISysConfigService {
 
     private final SysConfigHelper sysConfigHelper;
+    private final SysConfigChangePublisher sysConfigChangePublisher;
 
     /** 全局配置作用域标识 */
     private static final String SCOPE_GLOBAL = "0";
@@ -110,6 +113,7 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
         boolean result = super.save(entity);
         if (result) {
             setCacheByScope(entity);
+            publishChange(entity, "SAVE");
             log.info("新增系统配置并同步缓存: {} = {} (scope={})",
                     entity.getConfigKey(), entity.getConfigValue(), entity.getConfigScope());
         }
@@ -137,6 +141,7 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
         boolean result = super.updateById(entity);
         if (result) {
             setCacheByScope(entity);
+            publishChange(entity, "UPDATE");
             log.info("更新系统配置并同步缓存: {} = {} (scope={})",
                     entity.getConfigKey(), entity.getConfigValue(), entity.getConfigScope());
         }
@@ -153,6 +158,7 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
         boolean result = super.removeById(id);
         if (result && config != null) {
             removeCacheByScope(config);
+            publishChange(config, "DELETE");
             log.info("删除系统配置并清除缓存: {} (scope={})", config.getConfigKey(), config.getConfigScope());
         }
         return result;
@@ -172,5 +178,17 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
     private void removeCacheByScope(SysConfig config) {
         String scope = config.getConfigScope() != null ? config.getConfigScope() : "1";
         sysConfigHelper.removeConfigCache(config.getConfigKey(), scope);
+    }
+
+    private void publishChange(SysConfig config, String operation) {
+        if (config == null) {
+            return;
+        }
+        sysConfigChangePublisher.publish(new SysConfigChangeEvent(
+                config.getConfigKey(),
+                config.getConfigScope(),
+                config.getTenantId(),
+                operation
+        ));
     }
 }

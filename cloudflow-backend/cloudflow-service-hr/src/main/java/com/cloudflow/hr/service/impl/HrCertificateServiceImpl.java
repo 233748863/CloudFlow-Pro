@@ -6,6 +6,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -26,7 +28,6 @@ import com.cloudflow.hr.service.dto.HrFileDownload;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -58,12 +59,7 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
     private final WorkflowServiceClient workflowServiceClient;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
-
-    @Value("${cloudflow.hr.certificate.company-name:CloudFlow 科技有限公司}")
-    private String companyName;
-
-    @Value("${cloudflow.hr.certificate.process-key:wf_hr_certificate_request}")
-    private String processDefinitionKey;
+    private final RuntimeSysConfigService runtimeSysConfigService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -161,7 +157,9 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
     public void startCertificateWorkflow(HrCertificateRequest request) {
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(request.getTenantId());
-        dto.setProcessDefinitionKey(processDefinitionKey);
+        dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
+                SysConfigKeys.HR_CERTIFICATE_PROCESS_KEY,
+                "wf_hr_certificate_request"));
         dto.setBusinessType("HR_CERTIFICATE_REQUEST");
         dto.setBusinessId(request.getId());
         dto.setBusinessNo(request.getRequestNo());
@@ -227,7 +225,9 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         vars.put("requestNo", request.getRequestNo());
         vars.put("title", titleOf(request.getCertificateType()));
         vars.put("body", bodyOf(request));
-        vars.put("companyName", companyName);
+        vars.put("companyName", runtimeSysConfigService.getString(
+                SysConfigKeys.HR_CERTIFICATE_COMPANY_NAME,
+                "CloudFlow 科技有限公司"));
         vars.put("issueDate", LocalDate.now().format(ISSUE_DATE));
 
         HrEmployee employee = employeeMapper.selectById(request.getEmployeeId());

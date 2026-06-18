@@ -4,6 +4,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmServiceTicket;
@@ -12,7 +14,6 @@ import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmServiceTicketService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -27,18 +28,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
     private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
 
     private final ICrmCustomerService crmCustomerService;
-
-    @Value("${cloudflow.crm.ticket.sla.low-hours:72}")
-    private int lowSeveritySlaHours;
-
-    @Value("${cloudflow.crm.ticket.sla.medium-hours:24}")
-    private int mediumSeveritySlaHours;
-
-    @Value("${cloudflow.crm.ticket.sla.high-hours:8}")
-    private int highSeveritySlaHours;
-
-    @Value("${cloudflow.crm.ticket.sla.critical-hours:4}")
-    private int criticalSeveritySlaHours;
+    private final RuntimeSysConfigService runtimeSysConfigService;
 
     @Override
     public PageResult<CrmServiceTicket> queryPage(CrmServiceTicket query, PageQuery pageQuery) {
@@ -203,14 +193,14 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
 
     private int resolveSlaHours(String severity) {
         if (CrmConstants.TicketSeverity.CRITICAL.equalsIgnoreCase(severity)) {
-            return criticalSeveritySlaHours;
+            return runtimeSysConfigService.getInt(SysConfigKeys.CRM_TICKET_SLA_CRITICAL_HOURS, 4);
         }
         if (CrmConstants.TicketSeverity.HIGH.equalsIgnoreCase(severity)) {
-            return highSeveritySlaHours;
+            return runtimeSysConfigService.getInt(SysConfigKeys.CRM_TICKET_SLA_HIGH_HOURS, 8);
         }
         if (CrmConstants.TicketSeverity.MEDIUM.equalsIgnoreCase(severity)) {
-            return mediumSeveritySlaHours;
+            return runtimeSysConfigService.getInt(SysConfigKeys.CRM_TICKET_SLA_MEDIUM_HOURS, 24);
         }
-        return lowSeveritySlaHours;
+        return runtimeSysConfigService.getInt(SysConfigKeys.CRM_TICKET_SLA_LOW_HOURS, 72);
     }
 }

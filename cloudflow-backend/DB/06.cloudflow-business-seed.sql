@@ -3959,6 +3959,13 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(110, 100000, '工作流-健�
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(120, 100000, '工作流-健康度可控档成功率(%)',   'sys.workflow.health.controllable.successRate', '85.0',     'Y', '0', 'admin', NOW(), '', null, '工作流监控可控档成功率下限');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(121, 100000, '工作流-健康度可控档超时率(%)',   'sys.workflow.health.controllable.timeoutRate', '12.0',     'Y', '0', 'admin', NOW(), '', null, '工作流监控可控档超时率上限');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(122, 100000, '工作流-健康度可控档异常率(%)',   'sys.workflow.health.controllable.exceptionRate', '8.0',    'Y', '0', 'admin', NOW(), '', null, '工作流监控可控档异常率上限');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(124, 100000, '工作流-启动流程限流(次/分钟)',   'sys.workflow.rateLimit.startProcess',         '10',        'Y', '0', 'admin', NOW(), '', null, '每用户每分钟最大启动流程次数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(125, 100000, '工作流-处理任务限流(次/分钟)',   'sys.workflow.rateLimit.completeTask',         '30',        'Y', '0', 'admin', NOW(), '', null, '每用户每分钟最大处理任务次数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(126, 100000, '工作流-催办限流(次/小时)',       'sys.workflow.rateLimit.urgeTask',             '5',         'Y', '0', 'admin', NOW(), '', null, '每用户每小时最大催办次数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(127, 100000, '工作流-超时提醒阈值(毫秒)',      'sys.workflow.timeout.remindThresholdMs',      '3600000',   'Y', '0', 'admin', NOW(), '', null, '任务/流程达到提醒级别的耗时阈值');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(128, 100000, '工作流-超时警告阈值(毫秒)',      'sys.workflow.timeout.warningThresholdMs',     '7200000',   'Y', '0', 'admin', NOW(), '', null, '任务/流程达到警告级别的耗时阈值');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(129, 100000, '工作流-超时严重阈值(毫秒)',      'sys.workflow.timeout.criticalThresholdMs',    '14400000',  'Y', '0', 'admin', NOW(), '', null, '任务/流程达到严重级别的耗时阈值');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(130, 100000, '工作流-升级扫描默认阈值(毫秒)',  'sys.workflow.timeout.escalation.defaultScanThresholdMs', '60000', 'Y', '0', 'admin', NOW(), '', null, '未配置升级链时默认扫描任务超时的最小耗时');
 
 -- OA
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(111, 100000, 'OA-合同高额阈值(元)',           'sys.oa.contract.highAmountThreshold',        '100000',    'Y', '1', 'admin', NOW(), '', null, '合同金额超过此值视为高额,触发风险扫描');
@@ -3971,6 +3978,33 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(115, 100000, 'HR-社保个人
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(116, 100000, 'HR-分页上限',                   'sys.hr.maxPageSize',                         '500',       'Y', '0', 'admin', NOW(), '', null, 'HR模块通用查询单页最大条数');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(117, 100000, 'HR-工作地点预警天数',           'sys.hr.workplace.reminderDays',              '15',        'Y', '1', 'admin', NOW(), '', null, '工作地点合同到期 MEDIUM 档预警提前天数(应 >= reminderDaysHigh)');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(123, 100000, 'HR-工作地点紧急预警天数',       'sys.hr.workplace.reminderDaysHigh',          '7',         'Y', '1', 'admin', NOW(), '', null, '工作地点合同到期 HIGH 档紧急预警提前天数(应 <= reminderDays)');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(131, 100000, 'HR-证明公司名称',               'sys.hr.certificate.companyName',             'CloudFlow 科技有限公司', 'Y', '1', 'admin', NOW(), '', null, '证明开具/培训证书展示的公司名称');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(132, 100000, 'HR-证明开具流程Key',            'sys.hr.certificate.processKey',              'wf_hr_certificate_request', 'Y', '1', 'admin', NOW(), '', null, '证明开具审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(133, 100000, 'HR-福利申领流程Key',            'sys.hr.benefit.requestProcessKey',           'wf_hr_benefit_request', 'Y', '1', 'admin', NOW(), '', null, '福利申领审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(134, 100000, 'HR-合同签署流程Key',            'sys.hr.contract.signProcessKey',             'wf_hr_contract_sign', 'Y', '1', 'admin', NOW(), '', null, '电子合同签署审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(135, 100000, 'HR-合同签署有效期(天)',         'sys.hr.contract.defaultExpireDays',          '7',         'Y', '1', 'admin', NOW(), '', null, '发起合同签署后默认过期天数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(136, 100000, 'HR-劳动争议流程Key',            'sys.hr.dispute.processKey',                  'wf_hr_labor_dispute', 'Y', '1', 'admin', NOW(), '', null, '劳动争议审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(137, 100000, 'HR-商城订单流程Key',            'sys.hr.mall.orderProcessKey',                'wf_hr_mall_order', 'Y', '1', 'admin', NOW(), '', null, '积分商城订单审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(138, 100000, 'HR-商城审批阈值(积分)',         'sys.hr.mall.approvalThreshold',              '5000',      'Y', '1', 'admin', NOW(), '', null, '积分订单达到此值后进入审批');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(139, 100000, 'HR-人才盘点流程Key',            'sys.hr.talent.reviewProcessKey',             'wf_hr_talent_review', 'Y', '1', 'admin', NOW(), '', null, '人才盘点发布审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(140, 100000, 'HR-继任计划流程Key',            'sys.hr.talent.successionProcessKey',         'wf_hr_talent_succession', 'Y', '1', 'admin', NOW(), '', null, '继任计划发布审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(141, 100000, 'HR-培训报名流程Key',            'sys.hr.training.enrollmentProcessKey',       'wf_hr_training_enrollment', 'Y', '1', 'admin', NOW(), '', null, '培训报名审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(142, 100000, 'HR-工伤认定流程Key',            'sys.hr.injury.determinationProcessKey',      'wf_hr_work_injury', 'Y', '1', 'admin', NOW(), '', null, '工伤认定审批流程定义Key');
+
+-- CRM
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(143, 100000, 'CRM-低优先级工单SLA(小时)',     'sys.crm.ticket.sla.lowHours',                '72',        'Y', '1', 'admin', NOW(), '', null, '低优先级工单默认SLA小时数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(144, 100000, 'CRM-中优先级工单SLA(小时)',     'sys.crm.ticket.sla.mediumHours',             '24',        'Y', '1', 'admin', NOW(), '', null, '中优先级工单默认SLA小时数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(145, 100000, 'CRM-高优先级工单SLA(小时)',     'sys.crm.ticket.sla.highHours',               '8',         'Y', '1', 'admin', NOW(), '', null, '高优先级工单默认SLA小时数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(146, 100000, 'CRM-严重工单SLA(小时)',         'sys.crm.ticket.sla.criticalHours',           '4',         'Y', '1', 'admin', NOW(), '', null, '严重工单默认SLA小时数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(147, 100000, 'CRM-跟进逾期天数',              'sys.crm.notification.followUpInactiveDays',  '14',        'Y', '1', 'admin', NOW(), '', null, '客户超过此天数未跟进时提醒');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(148, 100000, 'CRM-回款到期提前天数',          'sys.crm.notification.receivableLookAheadDays','7',        'Y', '1', 'admin', NOW(), '', null, '回款到期提醒提前天数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(149, 100000, 'CRM-商机停滞天数',              'sys.crm.notification.opportunityStalledDays','14',        'Y', '1', 'admin', NOW(), '', null, '商机超过此天数未推进时提醒');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(150, 100000, 'CRM-工单SLA提醒提前小时',       'sys.crm.notification.ticketSlaReminderHours','2',         'Y', '1', 'admin', NOW(), '', null, '工单SLA到期前提醒小时数');
+
+-- 网关
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(151, 100000, '网关-租户状态缓存秒数',         'sys.gateway.tenant.statusCacheSeconds',      '60',        'Y', '0', 'admin', NOW(), '', null, '网关租户状态本地缓存过期秒数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(152, 100000, '网关-租户状态缓存容量',         'sys.gateway.tenant.statusCacheMaxSize',      '1024',      'Y', '0', 'admin', NOW(), '', null, '网关租户状态本地缓存最大条数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(153, 100000, '网关-租户状态查询超时(秒)',     'sys.gateway.tenant.statusTimeoutSeconds',    '3',         'Y', '0', 'admin', NOW(), '', null, '网关调用认证服务查询租户状态超时秒数');
 
 -- 认证
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(118, 100000, '认证-默认头像API',              'sys.auth.avatar.apiUrl',                     'https://api.dicebear.com/7.x/avataaars/svg', 'Y', '0', 'admin', NOW(), '', null, '注册/无头像用户使用的默认头像API');

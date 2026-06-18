@@ -7,6 +7,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -23,7 +25,6 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -51,9 +52,7 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
     private final IHrTrainingArchiveService archiveService;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
-
-    @Value("${cloudflow.hr.training.enrollment-process-key:wf_hr_training_enrollment}")
-    private String processDefinitionKey;
+    private final RuntimeSysConfigService runtimeSysConfigService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -198,7 +197,9 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
     public void startTrainingEnrollmentWorkflow(HrTrainingEnrollment enrollment) {
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(enrollment.getTenantId());
-        dto.setProcessDefinitionKey(processDefinitionKey);
+        dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
+                SysConfigKeys.HR_TRAINING_ENROLLMENT_PROCESS_KEY,
+                "wf_hr_training_enrollment"));
         dto.setBusinessType("HR_TRAINING_ENROLLMENT");
         dto.setBusinessId(enrollment.getId());
         dto.setBusinessNo(String.valueOf(enrollment.getSessionId()));

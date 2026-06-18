@@ -2,9 +2,12 @@ package com.cloudflow.gateway.filter;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Cache;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigChangeEvent;
+import com.cloudflow.common.redis.config.SysConfigChangeListener;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -29,30 +32,31 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class TenantStatusChecker {
+public class TenantStatusChecker implements SysConfigChangeListener {
 
     /** auth 服务在 Nacos 注册的服务名 */
     private static final String AUTH_SERVICE_NAME = "cloudflow-auth";
 
     private final WebClient webClient;
+    private final RuntimeSysConfigService runtimeSysConfigService;
 
     private Cache<Long, Boolean> cache;
 
-    @Value("${cloudflow.gateway.tenant.status-cache-seconds:60}")
-    private long statusCacheSeconds;
-
-    @Value("${cloudflow.gateway.tenant.status-cache-max-size:1024}")
-    private long statusCacheMaxSize;
-
-    public TenantStatusChecker(WebClient.Builder tenantStatusWebClientBuilder) {
+    public TenantStatusChecker(WebClient.Builder tenantStatusWebClientBuilder,
+                               RuntimeSysConfigService runtimeSysConfigService) {
         this.webClient = tenantStatusWebClientBuilder.build();
+        this.runtimeSysConfigService = runtimeSysConfigService;
     }
 
     @PostConstruct
     public void init() {
         this.cache = Caffeine.newBuilder()
-                .expireAfterWrite(Duration.ofSeconds(statusCacheSeconds))
-                .maximumSize(statusCacheMaxSize)
+                .expireAfterWrite(Duration.ofSeconds(runtimeSysConfigService.getLong(
+                        SysConfigKeys.GATEWAY_TENANT_STATUS_CACHE_SECONDS,
+                        60L)))
+                .maximumSize(runtimeSysConfigService.getLong(
+                        SysConfigKeys.GATEWAY_TENANT_STATUS_CACHE_MAX_SIZE,
+                        1024L))
                 .build();
     }
 
@@ -72,7 +76,9 @@ public class TenantStatusChecker {
                 .uri("http://" + AUTH_SERVICE_NAME + "/inner/auth/tenant/status/{id}", tenantId)
                 .retrieve()
                 .bodyToMono(Map.class)
-                .timeout(Duration.ofSeconds(3))
+                .timeout(Duration.ofSeconds(runtimeSysConfigService.getLong(
+                        SysConfigKeys.GATEWAY_TENANT_STATUS_TIMEOUT_SECONDS,
+                        3L)))
                 .map(this::parseAvailable)
                 .doOnNext(ok -> cache.put(tenantId, ok))
                 .onErrorResume(ex -> {
@@ -95,5 +101,15 @@ public class TenantStatusChecker {
         // 兼容直接返回 {available, reason} 不包 R 的情况
         Object available = body.get("available");
         return !Boolean.FALSE.equals(available);
+    }
+
+    @Override
+    public void onSysConfigChanged(SysConfigChangeEvent event) {
+        String key = event.configKey();
+        if (SysConfigKeys.GATEWAY_TENANT_STATUS_CACHE_SECONDS.equals(key)
+                || SysConfigKeys.GATEWAY_TENANT_STATUS_CACHE_MAX_SIZE.equals(key)) {
+            init();
+            log.info("网关租户状态缓存配置已刷新: key={}", key);
+        }
     }
 }

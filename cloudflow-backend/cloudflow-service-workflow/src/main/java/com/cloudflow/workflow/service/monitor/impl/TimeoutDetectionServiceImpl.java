@@ -3,6 +3,8 @@ package com.cloudflow.workflow.service.monitor.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.support.TenantIterator;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeDef;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistry;
@@ -36,7 +38,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,18 +82,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     private final SysDeptMapper sysDeptMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
-
-    @Value("${workflow.timeout.remind.threshold:3600000}")
-    private Long remindThreshold;
-
-    @Value("${workflow.timeout.warning.threshold:7200000}")
-    private Long warningThreshold;
-
-    @Value("${workflow.timeout.critical.threshold:14400000}")
-    private Long criticalThreshold;
-
-    @Value("${workflow.timeout.escalation.default-scan-threshold-ms:60000}")
-    private Long defaultEscalationScanThreshold;
+    private final RuntimeSysConfigService runtimeSysConfigService;
 
     /**
      * 定时检测超时任务，每 5 分钟执行一次。
@@ -176,7 +166,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
         WfEscalationChain first = escalationChainMapper.selectPage(new Page<>(1, 1, false), wrapper)
                 .getRecords().stream().findFirst().orElse(null);
         if (first == null || first.getTimeoutMinutes() == null || first.getTimeoutMinutes() <= 0) {
-            return defaultEscalationScanThreshold;
+            return runtimeSysConfigService.getLong(SysConfigKeys.WORKFLOW_TIMEOUT_ESCALATION_SCAN_THRESHOLD_MS, 60000L);
         }
         return Math.max(60000L, first.getTimeoutMinutes() * 60000L);
     }
@@ -783,11 +773,11 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
      * 根据超时时长确定告警级别。
      */
     private String determineTimeoutLevel(Long duration) {
-        if (duration >= criticalThreshold) {
+        if (duration >= criticalThreshold()) {
             return "CRITICAL";
-        } else if (duration >= warningThreshold) {
+        } else if (duration >= warningThreshold()) {
             return "WARNING";
-        } else if (duration >= remindThreshold) {
+        } else if (duration >= remindThreshold()) {
             return "REMIND";
         }
         return null;
@@ -814,14 +804,26 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     private Long getThresholdByLevel(String level) {
         switch (level) {
             case "REMIND":
-                return remindThreshold;
+                return remindThreshold();
             case "WARNING":
-                return warningThreshold;
+                return warningThreshold();
             case "CRITICAL":
-                return criticalThreshold;
+                return criticalThreshold();
             default:
-                return remindThreshold;
+                return remindThreshold();
         }
+    }
+
+    private long remindThreshold() {
+        return runtimeSysConfigService.getLong(SysConfigKeys.WORKFLOW_TIMEOUT_REMIND_THRESHOLD_MS, 3600000L);
+    }
+
+    private long warningThreshold() {
+        return runtimeSysConfigService.getLong(SysConfigKeys.WORKFLOW_TIMEOUT_WARNING_THRESHOLD_MS, 7200000L);
+    }
+
+    private long criticalThreshold() {
+        return runtimeSysConfigService.getLong(SysConfigKeys.WORKFLOW_TIMEOUT_CRITICAL_THRESHOLD_MS, 14400000L);
     }
 
     /**

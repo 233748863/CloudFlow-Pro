@@ -3,6 +3,8 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrTrainingCertificate;
@@ -23,7 +25,6 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -60,9 +61,7 @@ public class HrTrainingCertificateServiceImpl implements IHrTrainingCertificateS
     private final HrPdfRenderer pdfRenderer;
     private final HrFileStorage fileStorage;
     private final IHrTrainingArchiveService archiveService;
-
-    @Value("${cloudflow.hr.certificate.company-name:CloudFlow 科技有限公司}")
-    private String companyName;
+    private final RuntimeSysConfigService runtimeSysConfigService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -176,7 +175,9 @@ public class HrTrainingCertificateServiceImpl implements IHrTrainingCertificateS
     private Map<String, Object> buildVariables(HrTrainingCertificate cert) {
         Map<String, Object> vars = new LinkedHashMap<>();
         vars.put("certNo", cert.getCertNo());
-        vars.put("companyName", companyName);
+        vars.put("companyName", runtimeSysConfigService.getString(
+                SysConfigKeys.HR_CERTIFICATE_COMPANY_NAME,
+                "CloudFlow 科技有限公司"));
         vars.put("issueDate", cert.getIssueDate() == null
                 ? LocalDate.now().format(ISSUE_DATE_DISPLAY)
                 : cert.getIssueDate().format(ISSUE_DATE_DISPLAY));

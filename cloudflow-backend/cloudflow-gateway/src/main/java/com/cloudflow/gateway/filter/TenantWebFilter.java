@@ -1,8 +1,9 @@
 package com.cloudflow.gateway.filter;
 
 import com.cloudflow.common.core.constant.SecurityConstants;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
@@ -22,15 +23,17 @@ import reactor.core.publisher.Mono;
 @Component
 public class TenantWebFilter implements WebFilter, Ordered {
 
-    /** 默认租户ID，从配置文件读取，未配置时使用 100000 */
-    @Value("${cloudflow.tenant.default-tenant-id:100000}")
-    private String defaultTenantId;
+    private final RuntimeSysConfigService runtimeSysConfigService;
+
+    public TenantWebFilter(RuntimeSysConfigService runtimeSysConfigService) {
+        this.runtimeSysConfigService = runtimeSysConfigService;
+    }
     
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String resolvedTenantId = exchange.getRequest().getHeaders().getFirst(SecurityConstants.TENANT_ID_HEADER);
         if (!StringUtils.hasText(resolvedTenantId)) {
-            resolvedTenantId = defaultTenantId;
+            resolvedTenantId = runtimeSysConfigService.getString(SysConfigKeys.GATEWAY_DEFAULT_TENANT_ID, "100000");
             log.debug("未找到租户ID，使用默认值: {}", resolvedTenantId);
         } else {
             log.debug("从请求头获取租户ID: {}", resolvedTenantId);

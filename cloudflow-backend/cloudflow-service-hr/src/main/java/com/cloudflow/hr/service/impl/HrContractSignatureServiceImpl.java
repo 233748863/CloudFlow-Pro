@@ -6,6 +6,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -22,7 +24,6 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -48,12 +49,7 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
     private final WorkflowServiceClient workflowServiceClient;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
-
-    @Value("${cloudflow.hr.contract.sign-process-key:wf_hr_contract_sign}")
-    private String processDefinitionKey;
-
-    @Value("${cloudflow.hr.contract.default-expire-days:7}")
-    private int defaultExpireDays;
+    private final RuntimeSysConfigService runtimeSysConfigService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -78,7 +74,9 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
         signature.setSignMethod(StringUtils.hasText(payload == null ? null : payload.getSignMethod())
                 ? payload.getSignMethod() : "E_SIGN");
         signature.setSignStatus("PENDING");
-        signature.setExpireTime(LocalDateTime.now().plusDays(defaultExpireDays));
+        signature.setExpireTime(LocalDateTime.now().plusDays(runtimeSysConfigService.getInt(
+                SysConfigKeys.HR_CONTRACT_DEFAULT_EXPIRE_DAYS,
+                7)));
         signature.setRemark(payload == null ? null : payload.getRemark());
         signature.setDeleted(0);
         signature.setCreateBy(currentUserName());
@@ -183,7 +181,9 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
         HrEmployeeContract contract = employeeContractMapper.selectById(signature.getContractId());
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(signature.getTenantId());
-        dto.setProcessDefinitionKey(processDefinitionKey);
+        dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
+                SysConfigKeys.HR_CONTRACT_SIGN_PROCESS_KEY,
+                "wf_hr_contract_sign"));
         dto.setBusinessType("HR_CONTRACT_SIGN");
         dto.setBusinessId(signature.getId());
         dto.setBusinessNo(String.valueOf(signature.getContractId()));

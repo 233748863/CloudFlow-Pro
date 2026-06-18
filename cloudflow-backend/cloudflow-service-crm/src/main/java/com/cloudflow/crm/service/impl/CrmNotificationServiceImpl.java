@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.event.SystemNoticeDispatchEvent;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.support.TenantIterator;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
@@ -18,7 +20,6 @@ import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmNotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -41,18 +42,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     private final TenantIterator tenantIterator;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
-
-    @Value("${cloudflow.crm.notification.follow-up-inactive-days:14}")
-    private int followUpInactiveDays;
-
-    @Value("${cloudflow.crm.notification.receivable-look-ahead-days:7}")
-    private int receivableLookAheadDays;
-
-    @Value("${cloudflow.crm.notification.opportunity-stalled-days:14}")
-    private int opportunityStalledDays;
-
-    @Value("${cloudflow.crm.notification.ticket-sla-reminder-hours:2}")
-    private int ticketSlaReminderHours;
+    private final RuntimeSysConfigService runtimeSysConfigService;
 
     public CrmNotificationServiceImpl(CrmCustomerMapper customerMapper,
                                       CrmReceivableMapper receivableMapper,
@@ -61,7 +51,8 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
                                       ICrmCustomerService crmCustomerService,
                                       TenantIterator tenantIterator,
                                       OutboxPublisher outboxPublisher,
-                                      ObjectMapper objectMapper) {
+                                      ObjectMapper objectMapper,
+                                      RuntimeSysConfigService runtimeSysConfigService) {
         this.customerMapper = customerMapper;
         this.receivableMapper = receivableMapper;
         this.opportunityMapper = opportunityMapper;
@@ -70,6 +61,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
         this.tenantIterator = tenantIterator;
         this.outboxPublisher = outboxPublisher;
         this.objectMapper = objectMapper;
+        this.runtimeSysConfigService = runtimeSysConfigService;
     }
 
     /** 每天 09:00 触发跟进逾期 / 回款到期 / 商机停滞通知。 */
@@ -112,7 +104,8 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
 
     @Override
     public int dispatchFollowUpOverdue() {
-        LocalDateTime threshold = LocalDateTime.now().minusDays(followUpInactiveDays);
+        int inactiveDays = followUpInactiveDays();
+        LocalDateTime threshold = LocalDateTime.now().minusDays(inactiveDays);
         List<CrmCustomer> rows = customerMapper.selectList(new LambdaQueryWrapper<CrmCustomer>()
                 .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmCustomer::getPoolFlag, CrmConstants.CustomerPoolFlag.OUT_OF_POOL)
@@ -123,7 +116,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
             String title = "跟进逾期提醒：" + customer.getCustomerName();
             String content = String.format("客户【%s】已超过 %d 天未跟进，建议尽快联系。最近跟进时间：%s",
                     customer.getCustomerName(),
-                    followUpInactiveDays,
+                    inactiveDays,
                     customer.getLastFollowUpTime() == null ? "无" : customer.getLastFollowUpTime().toString());
             if (publish(title, content, "1", "M", customer.getTenantId(), customer.getOwnerId())) {
                 count++;
@@ -135,7 +128,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     @Override
     public int dispatchReceivableDue() {
         LocalDate today = LocalDate.now();
-        LocalDate windowEnd = today.plusDays(receivableLookAheadDays);
+        LocalDate windowEnd = today.plusDays(receivableLookAheadDays());
         List<CrmReceivable> rows = receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
                 .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .ne(CrmReceivable::getStatus, CrmConstants.ReceivableStatus.RECEIVED)
@@ -161,7 +154,8 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
 
     @Override
     public int dispatchStalledOpportunity() {
-        LocalDateTime threshold = LocalDateTime.now().minusDays(opportunityStalledDays);
+        int stalledDays = opportunityStalledDays();
+        LocalDateTime threshold = LocalDateTime.now().minusDays(stalledDays);
         List<CrmOpportunity> rows = opportunityMapper.selectList(new LambdaQueryWrapper<CrmOpportunity>()
                 .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmOpportunity::getStatus, CrmConstants.OpportunityStatus.OPEN)
@@ -174,7 +168,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
             String content = String.format("商机【%s】当前阶段【%s】，已超过 %d 天未推进。客户：%s。",
                     opportunity.getOpportunityName(),
                     opportunity.getStage(),
-                    opportunityStalledDays,
+                    stalledDays,
                     opportunity.getCustomerName());
             if (publish(title, content, "1", "M", opportunity.getTenantId(), opportunity.getOwnerId())) {
                 count++;
@@ -186,7 +180,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     @Override
     public int dispatchTicketSlaDue() {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime reminderWindow = now.plusHours(ticketSlaReminderHours);
+        LocalDateTime reminderWindow = now.plusHours(ticketSlaReminderHours());
         List<CrmServiceTicket> rows = serviceTicketMapper.selectList(new LambdaQueryWrapper<CrmServiceTicket>()
                 .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .isNotNull(CrmServiceTicket::getOwnerId)
@@ -247,5 +241,21 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
             log.warn("CRM publish owner notice failed: {} - {}", title, e.getMessage());
             return false;
         }
+    }
+
+    private int followUpInactiveDays() {
+        return runtimeSysConfigService.getInt(SysConfigKeys.CRM_NOTIFICATION_FOLLOW_UP_INACTIVE_DAYS, 14);
+    }
+
+    private int receivableLookAheadDays() {
+        return runtimeSysConfigService.getInt(SysConfigKeys.CRM_NOTIFICATION_RECEIVABLE_LOOK_AHEAD_DAYS, 7);
+    }
+
+    private int opportunityStalledDays() {
+        return runtimeSysConfigService.getInt(SysConfigKeys.CRM_NOTIFICATION_OPPORTUNITY_STALLED_DAYS, 14);
+    }
+
+    private int ticketSlaReminderHours() {
+        return runtimeSysConfigService.getInt(SysConfigKeys.CRM_NOTIFICATION_TICKET_SLA_REMINDER_HOURS, 2);
     }
 }

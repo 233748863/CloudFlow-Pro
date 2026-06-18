@@ -47,7 +47,7 @@ public class OaProperties {
         announcement.setMaxAttachmentSize(
                 sysConfigHelper.getTenantInt("sys.announcement.maxAttachmentSize", announcement.getMaxAttachmentSize()));
         announcement.setAllowAnonymousRead(
-                sysConfigHelper.getTenantBoolean("sys.announcement.allowAnonymousRead", announcement.getAllowAnonymousRead()));
+                sysConfigHelper.getTenantBoolean("sys.announcement.allowAnonymous", announcement.getAllowAnonymousRead()));
 
         asset.setQrCodePrefix(
                 sysConfigHelper.getTenantValue("sys.asset.qrCodePrefix", asset.getQrCodePrefix()));
@@ -63,7 +63,7 @@ public class OaProperties {
         vehicle.setAdvanceBookingHours(
                 sysConfigHelper.getTenantInt("sys.vehicle.advanceBookingHours", vehicle.getAdvanceBookingHours()));
         vehicle.setAllowConcurrentBooking(
-                sysConfigHelper.getTenantBoolean("sys.vehicle.allowConcurrentBooking", vehicle.getAllowConcurrentBooking()));
+                sysConfigHelper.getTenantBoolean("sys.vehicle.allowConcurrent", vehicle.getAllowConcurrentBooking()));
         vehicle.setFuelPriceUpdateCron(
                 sysConfigHelper.getTenantValue("sys.vehicle.fuelPriceUpdateCron", vehicle.getFuelPriceUpdateCron()));
 
@@ -74,7 +74,7 @@ public class OaProperties {
         meetingRoom.setAdvanceBookingHours(
                 sysConfigHelper.getTenantInt("sys.meetingRoom.advanceBookingHours", meetingRoom.getAdvanceBookingHours()));
         meetingRoom.setAllowConcurrentBooking(
-                sysConfigHelper.getTenantBoolean("sys.meetingRoom.allowConcurrentBooking", meetingRoom.getAllowConcurrentBooking()));
+                sysConfigHelper.getTenantBoolean("sys.meetingRoom.allowConcurrent", meetingRoom.getAllowConcurrentBooking()));
 
         errorReport.setEnabled(
                 sysConfigHelper.getTenantBoolean("sys.errorReport.enabled", errorReport.getEnabled()));
@@ -89,6 +89,36 @@ public class OaProperties {
                 sysConfigHelper.getTenantValue("sys.sync.conflictStrategy", sync.getConflictStrategy()));
         sync.setTimeToleranceSeconds(
                 sysConfigHelper.getTenantInt("sys.sync.timeToleranceSeconds", sync.getTimeToleranceSeconds()));
+    }
+
+    public AnnouncementConfig getAnnouncement() {
+        loadFromSysConfig();
+        return announcement;
+    }
+
+    public AssetConfig getAsset() {
+        loadFromSysConfig();
+        return asset;
+    }
+
+    public VehicleConfig getVehicle() {
+        loadFromSysConfig();
+        return vehicle;
+    }
+
+    public MeetingRoomConfig getMeetingRoom() {
+        loadFromSysConfig();
+        return meetingRoom;
+    }
+
+    public ErrorReportConfig getErrorReport() {
+        loadFromSysConfig();
+        return errorReport;
+    }
+
+    public SyncConfig getSync() {
+        loadFromSysConfig();
+        return sync;
     }
 
     @Data

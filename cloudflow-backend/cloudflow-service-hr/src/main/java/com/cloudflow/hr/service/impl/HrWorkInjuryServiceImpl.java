@@ -7,6 +7,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
+import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -24,7 +26,6 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -45,9 +46,7 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
     private final WorkflowServiceClient workflowServiceClient;
     private final ObjectMapper objectMapper;
     private final OutboxPublisher outboxPublisher;
-
-    @Value("${cloudflow.hr.injury.determination-process-key:wf_hr_work_injury}")
-    private String injuryProcessKey;
+    private final RuntimeSysConfigService runtimeSysConfigService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -129,7 +128,9 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
     public void startWorkInjuryWorkflow(HrWorkInjury injury) {
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(currentTenantId());
-        dto.setProcessDefinitionKey(injuryProcessKey);
+        dto.setProcessDefinitionKey(runtimeSysConfigService.getString(
+                SysConfigKeys.HR_INJURY_DETERMINATION_PROCESS_KEY,
+                "wf_hr_work_injury"));
         dto.setBusinessType("HR_WORK_INJURY");
         dto.setBusinessId(injury.getId());
         dto.setBusinessNo(injury.getInjuryNo());
