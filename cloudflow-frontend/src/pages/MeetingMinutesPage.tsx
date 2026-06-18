@@ -475,7 +475,7 @@ const MeetingMinutesPage: React.FC = () => {
             <div className="space-y-2">
               <Label>会议标题</Label>
               <Input
-                className="h-11"
+                className="!h-11 min-h-11"
                 value={formData.meetingTitle}
                 onChange={(e) => setFormData((f) => ({ ...f, meetingTitle: e.target.value }))}
               />
@@ -497,7 +497,7 @@ const MeetingMinutesPage: React.FC = () => {
             <div className="space-y-2">
               <Label>会议时间</Label>
               <DatePicker
-                className="h-11"
+                className="!h-11 min-h-11"
                 type="datetime-local"
                 value={formData.meetingTime || ''}
                 onChange={(e) => setFormData((f) => ({ ...f, meetingTime: e.target.value }))}
@@ -540,8 +540,9 @@ const MeetingMinutesPage: React.FC = () => {
               <div className="space-y-2">
                 {decisions.map((d, idx) => (
                   <div key={idx} className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
-                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_8rem_2rem]">
+                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_8rem_2.75rem]">
                       <Input
+                        className="!h-11 min-h-11"
                         placeholder="决议事项"
                         value={d.title || ''}
                         onChange={(e) => updateDecisionAt(idx, { title: e.target.value })}
@@ -557,10 +558,11 @@ const MeetingMinutesPage: React.FC = () => {
                         placeholder="选择责任人"
                       />
                       <DatePicker
+                        className="!h-11 min-h-11"
                         value={d.dueDate || ''}
                         onChange={(e) => updateDecisionAt(idx, { dueDate: e.target.value })}
                       />
-                      <Button size="icon" variant="ghost" onClick={() => removeDecisionAt(idx)}>
+                      <Button className="!h-11 !w-11" size="icon" variant="ghost" onClick={() => removeDecisionAt(idx)}>
                         <Trash2 className="h-3.5 w-3.5 text-rose-500" />
                       </Button>
                     </div>

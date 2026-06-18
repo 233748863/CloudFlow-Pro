@@ -700,7 +700,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
             setOpen(!open);
           }}
           className={cn(
-            'cf-control group flex !h-10 min-h-10 w-full items-center gap-2 rounded-xl px-4 text-left text-sm',
+            'cf-control group flex h-10 min-h-10 w-full items-center gap-2 rounded-xl px-4 text-left text-sm',
             open && 'cf-control-active',
             className,
           )}
