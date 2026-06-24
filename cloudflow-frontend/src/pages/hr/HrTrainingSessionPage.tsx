@@ -7,6 +7,7 @@ import {
   BaseDialog,
   Button,
   ConfirmDialog,
+  DatePicker,
   Input,
   Label,
   Pagination,
@@ -38,6 +39,7 @@ import { useAuth } from '@/context/AuthContext';
 import { normalizeRows, formatDateTimeValue } from './hrShared';
 import { DictLabel } from '@/components/common/DictLabel';
 import { useDict } from '@/hooks/useDict';
+import { toLocalDatetimeString } from '@/utils/dateFormat';
 
 const defaultForm: HrTrainingSessionPayload = {
   courseId: 0,
@@ -227,7 +229,7 @@ export const HrTrainingSessionPage: React.FC = () => {
                     <TableRowActions
                       align="end"
                       actions={[
-                        { key: 'edit', label: '编辑', semantic: 'edit', permissionKey: 'hr:training:session:edit', onClick: () => { setEditingId(row.id); setForm(row); setOpen(true); } },
+                        { key: 'edit', label: '编辑', semantic: 'edit', permissionKey: 'hr:training:session:edit', onClick: () => { setEditingId(row.id); setForm({ ...row, startTime: toLocalDatetimeString(row.startTime), endTime: toLocalDatetimeString(row.endTime) }); setOpen(true); } },
                         { key: 'register', label: '开放报名', semantic: 'enable', permissionKey: 'hr:training:session:edit', onClick: () => void handleAction(row, 'register'), hidden: row.status !== 'PLANNED' },
                         { key: 'start', label: '开始', semantic: 'process', permissionKey: 'hr:training:session:edit', onClick: () => void handleAction(row, 'start'), hidden: row.status !== 'REGISTERING' },
                         { key: 'complete', label: '完成', semantic: 'confirm', permissionKey: 'hr:training:session:edit', onClick: () => void handleAction(row, 'complete'), hidden: row.status !== 'ONGOING' },
@@ -282,8 +284,8 @@ export const HrTrainingSessionPage: React.FC = () => {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>开始时间</Label><Input type="datetime-local" value={form.startTime?.slice(0, 16) ?? ''} onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))} /></div>
-            <div><Label>结束时间</Label><Input type="datetime-local" value={form.endTime?.slice(0, 16) ?? ''} onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))} /></div>
+            <div><Label>开始时间</Label><DatePicker type="datetime-local" value={form.startTime ?? ''} onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))} /></div>
+            <div><Label>结束时间</Label><DatePicker type="datetime-local" value={form.endTime ?? ''} min={form.startTime || undefined} onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>地点</Label><Input value={form.location ?? ''} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} /></div>

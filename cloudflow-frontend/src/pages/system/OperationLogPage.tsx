@@ -23,6 +23,7 @@ import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   LoadingSpinner,
   Select,
@@ -446,7 +447,7 @@ export const OperationLogPage: React.FC = () => {
               </div>
 
               <div className="w-full sm:w-40">
-                <Input
+                <DatePicker
                   type="date"
                   value={filters.startTime}
                   onChange={(event) =>
@@ -457,7 +458,7 @@ export const OperationLogPage: React.FC = () => {
               </div>
 
               <div className="w-full sm:w-40">
-                <Input
+                <DatePicker
                   type="date"
                   value={filters.endTime}
                   onChange={(event) =>
@@ -679,4 +680,3 @@ export const OperationLogPage: React.FC = () => {
 };
 
 export default OperationLogPage;
-

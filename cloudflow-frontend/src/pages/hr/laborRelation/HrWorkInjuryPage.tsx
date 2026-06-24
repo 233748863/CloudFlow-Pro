@@ -5,6 +5,7 @@ import {
   BaseDialog,
   Button,
   ConfirmDialog,
+  DatePicker,
   EmployeeSelector,
   Input,
   Label,
@@ -35,6 +36,7 @@ import { formatDateTimeValue, hasWorkflowStatus, normalizeRows } from '../hrShar
 import { StageTimeline } from '../components/StageTimeline';
 import { DictLabel } from '@/components/common/DictLabel';
 import { useDict } from '@/hooks/useDict';
+import { toLocalDatetimeString } from '@/utils/dateFormat';
 
 const statusFlow = ['REPORTED', 'INVESTIGATING', 'DETERMINING', 'DETERMINED', 'COMPENSATING', 'REHABILITATING', 'CLOSED'];
 
@@ -89,7 +91,7 @@ export const HrWorkInjuryPage: React.FC = () => {
     setEditing(row);
     setForm({
       employeeId: row.employeeId,
-      occurredAt: row.occurredAt,
+      occurredAt: toLocalDatetimeString(row.occurredAt),
       location: row.location,
       eventDescription: row.eventDescription,
       injuryPart: row.injuryPart,
@@ -252,7 +254,7 @@ export const HrWorkInjuryPage: React.FC = () => {
             </div>
             <div>
               <Label>发生时间</Label>
-              <Input type="datetime-local" value={String(form.occurredAt ?? '').slice(0, 16)} onChange={(e) => setForm({ ...form, occurredAt: e.target.value })} />
+              <DatePicker type="datetime-local" value={String(form.occurredAt ?? '')} onChange={(e) => setForm({ ...form, occurredAt: e.target.value })} />
             </div>
             <div>
               <Label>地点</Label>

@@ -7,6 +7,7 @@ import {
   BaseDialog,
   Button,
   ConfirmDialog,
+  DatePicker,
   Input,
   Label,
   Pagination,
@@ -33,7 +34,7 @@ import {
   updateDevelopmentAction,
 } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
-import { formatDateValue, normalizeRows } from '../hrShared';
+import { formatDateValue, normalizeRows, toDateInputValue } from '../hrShared';
 import { DictLabel } from '@/components/common/DictLabel';
 import { useDict } from '@/hooks/useDict';
 
@@ -246,8 +247,8 @@ export const HrTalentDevelopmentPage: React.FC = () => {
                             actionName: row.actionName,
                             mentorId: row.mentorId ? String(row.mentorId) : '',
                             trainingSessionId: row.trainingSessionId ? String(row.trainingSessionId) : '',
-                            startDate: row.startDate ?? '',
-                            endDate: row.endDate ?? '',
+                            startDate: toDateInputValue(row.startDate),
+                            endDate: toDateInputValue(row.endDate),
                             description: row.description ?? '',
                           });
                           setOpen(true);
@@ -310,8 +311,25 @@ export const HrTalentDevelopmentPage: React.FC = () => {
             <div><Label>培训班次 ID</Label><Input value={form.trainingSessionId} onChange={(e) => setForm((p) => ({ ...p, trainingSessionId: e.target.value }))} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>开始日期</Label><Input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} /></div>
-            <div><Label>结束日期</Label><Input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} /></div>
+            <div>
+              <Label>开始日期</Label>
+              <DatePicker
+                className="h-10"
+                type="date"
+                value={form.startDate}
+                onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>结束日期</Label>
+              <DatePicker
+                className="h-10"
+                type="date"
+                value={form.endDate}
+                min={form.startDate || undefined}
+                onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
+              />
+            </div>
           </div>
           <div><Label>说明</Label><Textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={3} /></div>
         </div>

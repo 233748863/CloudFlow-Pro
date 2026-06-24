@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import {
   Button,
   ConfirmDialog,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -45,7 +46,7 @@ import {
   deleteEmergencyContact,
   resolveCurrentEmployee,
 } from '@/services/api/hr';
-import { normalizeRows } from '../hrShared';
+import { normalizeRows, toDateInputValue } from '../hrShared';
 
 const relationshipOptions = ['配偶', '父亲', '母亲', '子女', '兄弟姐妹', '其他'];
 
@@ -280,7 +281,7 @@ const FamilyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
                   <td className="px-4 py-3">
                     <TableRowActions
                       actions={[
-                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => { setEditingId(row.id); setForm({ ...row, idCardNo: '' }); setOpen(true); } },
+                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => { setEditingId(row.id); setForm({ ...row, birthDate: toDateInputValue(row.birthDate), idCardNo: '' }); setOpen(true); } },
                         { key: 'delete', semantic: 'delete', label: '删除', onClick: () => setDeleteTarget(row) },
                       ]}
                     />
@@ -317,7 +318,7 @@ const FamilyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
             </Select>
           </div>
           <div><Label>身份证号{editingId ? '（留空则保留原值）' : ''}</Label><Input value={form.idCardNo || ''} onChange={(e) => setForm((p) => ({ ...p, idCardNo: e.target.value }))} /></div>
-          <div><Label>生日</Label><Input type="date" value={form.birthDate || ''} onChange={(e) => setForm((p) => ({ ...p, birthDate: e.target.value }))} /></div>
+          <div><Label>生日</Label><DatePicker type="date" value={form.birthDate || ''} onChange={(e) => setForm((p) => ({ ...p, birthDate: e.target.value }))} /></div>
           <div><Label>职业</Label><Input value={form.occupation || ''} onChange={(e) => setForm((p) => ({ ...p, occupation: e.target.value }))} /></div>
           <div><Label>联系方式</Label><Input value={form.phone || ''} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></div>
           <div className="flex items-center gap-2">

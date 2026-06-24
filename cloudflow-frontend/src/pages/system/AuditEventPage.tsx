@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
+  DatePicker,
   Input,
   LoadingSpinner,
   Pagination,
@@ -140,8 +141,8 @@ export const AuditEventPage = () => {
                 <Input value={filters.businessId} onChange={(event) => setFilters((current) => ({ ...current, businessId: event.target.value }))} placeholder="业务ID" className="h-10" />
                 <Input value={filters.eventType} onChange={(event) => setFilters((current) => ({ ...current, eventType: event.target.value }))} placeholder="事件类型" className="h-10" />
                 <Input value={filters.operatorName} onChange={(event) => setFilters((current) => ({ ...current, operatorName: event.target.value }))} placeholder="操作人" className="h-10" />
-                <Input type="datetime-local" value={filters.beginTime} onChange={(event) => setFilters((current) => ({ ...current, beginTime: event.target.value }))} className="h-10" />
-                <Input type="datetime-local" value={filters.endTime} onChange={(event) => setFilters((current) => ({ ...current, endTime: event.target.value }))} className="h-10" />
+                <DatePicker type="datetime-local" value={filters.beginTime} onChange={(event) => setFilters((current) => ({ ...current, beginTime: event.target.value }))} className="h-10" />
+                <DatePicker type="datetime-local" value={filters.endTime} onChange={(event) => setFilters((current) => ({ ...current, endTime: event.target.value }))} className="h-10" />
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button type="submit" size="sm">查询</Button>
@@ -239,4 +240,3 @@ export const AuditEventPage = () => {
 };
 
 export default AuditEventPage;
-

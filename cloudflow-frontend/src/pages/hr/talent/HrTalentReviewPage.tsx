@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
+  DatePicker,
   Input,
   Label,
   Pagination,
@@ -34,7 +35,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { DictLabel } from '@/components/common/DictLabel';
 import { useDict } from '@/hooks/useDict';
-import { formatDateTimeValue, normalizeRows } from '../hrShared';
+import { formatDateTimeValue, normalizeRows, toDateInputValue } from '../hrShared';
 
 const defaultForm: HrTalentReviewPayload = {
   reviewNo: '',
@@ -218,7 +219,7 @@ export const HrTalentReviewPage: React.FC = () => {
                     <TableRowActions
                       align="end"
                       actions={[
-                        { key: 'edit', label: '编辑', semantic: 'edit', permissionKey: 'hr:talent:review:edit', onClick: () => { setEditingId(row.id); setForm({ ...row }); setOpen(true); } },
+                        { key: 'edit', label: '编辑', semantic: 'edit', permissionKey: 'hr:talent:review:edit', onClick: () => { setEditingId(row.id); setForm({ ...row, deadline: toDateInputValue(row.deadline) }); setOpen(true); } },
                         { key: 'snapshot', label: '拉取业绩', semantic: 'process', permissionKey: 'hr:talent:review:edit', onClick: () => { setSnapshotReview(row); setSnapshotOpen(true); }, hidden: !(row.status === 'DRAFT' || row.status === 'IN_PROGRESS') },
                         { key: 'publish', label: '发起发布', semantic: 'submit', permissionKey: 'hr:talent:review:edit', onClick: () => void handlePublish(row), hidden: !(row.status === 'IN_PROGRESS' || row.status === 'CALIBRATING') },
                       ]}
@@ -285,7 +286,7 @@ export const HrTalentReviewPage: React.FC = () => {
             </div>
             <div><Label>范围值</Label><Input value={form.scopeValue ?? ''} onChange={(e) => setForm((p) => ({ ...p, scopeValue: e.target.value }))} placeholder="部门ID/岗位ID/留空全员" /></div>
           </div>
-          <div><Label>截止日期</Label><Input type="date" value={form.deadline ?? ''} onChange={(e) => setForm((p) => ({ ...p, deadline: e.target.value }))} /></div>
+          <div><Label>截止日期</Label><DatePicker type="date" value={form.deadline ?? ''} onChange={(e) => setForm((p) => ({ ...p, deadline: e.target.value }))} /></div>
           <div><Label>说明</Label><Input value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} /></div>
         </div>
       </BaseDialog>

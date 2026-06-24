@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -34,6 +35,13 @@ import { DictLabel } from '@/components/common/DictLabel';
 import { useDict } from '@/hooks/useDict';
 
 const defaultForm = { sessionNo: '', scheduledAt: '', location: '', agenda: '', minutes: '', status: 'PLANNED' };
+
+const toDateTimePickerValue = (value?: string | null) => {
+  if (!value) return '';
+  const text = String(value).trim();
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})/);
+  return match ? `${match[1]}T${match[2]}` : text;
+};
 
 export const HrTalentCalibrationPage: React.FC = () => {
   const { hasPermission } = useAuth();
@@ -87,7 +95,7 @@ export const HrTalentCalibrationPage: React.FC = () => {
     setEditing(s);
     setForm({
       sessionNo: s.sessionNo ?? '',
-      scheduledAt: s.scheduledAt ?? '',
+      scheduledAt: toDateTimePickerValue(s.scheduledAt),
       location: s.location ?? '',
       agenda: s.agenda ?? '',
       minutes: s.minutes ?? '',
@@ -215,7 +223,15 @@ export const HrTalentCalibrationPage: React.FC = () => {
         <div className="space-y-3">
           <div><Label>会议编号</Label><Input value={form.sessionNo} onChange={(e) => setForm((p) => ({ ...p, sessionNo: e.target.value }))} placeholder="留空自动生成" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>时间</Label><Input type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm((p) => ({ ...p, scheduledAt: e.target.value }))} /></div>
+            <div>
+              <Label>时间</Label>
+              <DatePicker
+                className="h-10"
+                type="datetime-local"
+                value={form.scheduledAt}
+                onChange={(e) => setForm((p) => ({ ...p, scheduledAt: e.target.value }))}
+              />
+            </div>
             <div><Label>地点</Label><Input value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} /></div>
           </div>
           <div>

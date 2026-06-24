@@ -15,6 +15,7 @@ import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   LoadingSpinner,
   Table,
@@ -273,7 +274,7 @@ export const AuditLogPage: React.FC = () => {
               </div>
 
               <div className="w-full sm:w-40">
-                <Input
+                <DatePicker
                   type="date"
                   value={filters.startTime}
                   onChange={(event) =>
@@ -284,7 +285,7 @@ export const AuditLogPage: React.FC = () => {
               </div>
 
               <div className="w-full sm:w-40">
-                <Input
+                <DatePicker
                   type="date"
                   value={filters.endTime}
                   onChange={(event) =>
@@ -459,4 +460,3 @@ export const AuditLogPage: React.FC = () => {
 };
 
 export default AuditLogPage;
-
