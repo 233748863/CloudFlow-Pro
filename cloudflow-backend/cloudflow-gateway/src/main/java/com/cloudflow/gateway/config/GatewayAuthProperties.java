@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -57,7 +58,14 @@ public class GatewayAuthProperties implements SysConfigChangeListener {
             effectiveWhitelist = DEFAULT_WHITELIST;
             return;
         }
-        effectiveWhitelist = runtimeSysConfigService.getCsv(SysConfigKeys.GATEWAY_AUTH_WHITELIST, DEFAULT_WHITELIST);
+        List<String> configuredWhitelist = runtimeSysConfigService.getCsv(SysConfigKeys.GATEWAY_AUTH_WHITELIST, List.of());
+        if (configuredWhitelist.isEmpty()) {
+            effectiveWhitelist = DEFAULT_WHITELIST;
+            return;
+        }
+        LinkedHashSet<String> mergedWhitelist = new LinkedHashSet<>(configuredWhitelist);
+        mergedWhitelist.addAll(DEFAULT_WHITELIST);
+        effectiveWhitelist = List.copyOf(mergedWhitelist);
     }
 
     @Override
