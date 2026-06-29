@@ -20,6 +20,7 @@ import com.cloudflow.auth.service.PasswordService;
 import com.cloudflow.auth.service.PasswordPolicyService;
 import com.cloudflow.auth.service.ILoginLogService;
 import com.cloudflow.auth.service.ISysTenantService;
+import com.cloudflow.auth.service.ILegalAgreementService;
 import com.cloudflow.auth.service.ForcePasswordChangeService;
 import com.cloudflow.auth.service.LoginRiskNoticeService;
 import com.cloudflow.auth.service.UserLoginHistoryService;
@@ -119,6 +120,9 @@ public class AuthController {
     @Autowired
     private com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
 
+    @Autowired
+    private ILegalAgreementService legalAgreementService;
+
     @PostMapping("/login")
     @RepeatSubmit.Disabled
     public R<DynamicMapVO> login(@RequestBody @Validated LoginBody form, HttpServletRequest request, HttpServletResponse response) {
@@ -160,6 +164,19 @@ public class AuthController {
             );
             int lockMinutes = sysConfigHelper.getConfigInt("sys.user.login.lockTime", 15);
             return R.fail("登录失败次数过多，账号已锁定 " + lockMinutes + " 分钟，请稍后再试");
+        }
+
+        try {
+            legalAgreementService.assertCurrentReleaseAccepted(tenant, form.getLegalReleaseCode());
+        } catch (ServiceException ex) {
+            loginLogService.recordLoginFailure(
+                username,
+                tenant.getTenantId(),
+                request,
+                ex.getMessage(),
+                System.currentTimeMillis() - startAt
+            );
+            return R.fail(ex.getMessage());
         }
 
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
@@ -285,6 +302,7 @@ public class AuthController {
         );
 
         setAuthCookie(request, response, token);
+        legalAgreementService.recordConsent(user, form.getLegalReleaseCode(), request, "LOGIN");
 
         Map<String, Object> result = new HashMap<>();
         result.put("token", token);
@@ -308,6 +326,12 @@ public class AuthController {
         String tenantError = validateTenantAvailable(tenant, true);
         if (tenantError != null) {
             return R.fail(tenantError);
+        }
+
+        try {
+            legalAgreementService.assertCurrentReleaseAccepted(tenant, registerBody.getLegalReleaseCode());
+        } catch (ServiceException ex) {
+            return R.fail(ex.getMessage());
         }
 
         String emailDomainError = validateEmailDomainAllowed(tenant, registerBody.getEmail());
@@ -334,6 +358,7 @@ public class AuthController {
 
         try {
             sysUserService.insertUser(user);
+            legalAgreementService.recordConsent(user, registerBody.getLegalReleaseCode(), request, "REGISTER");
         } catch (IllegalStateException ex) {
             return R.fail(ex.getMessage());
         }

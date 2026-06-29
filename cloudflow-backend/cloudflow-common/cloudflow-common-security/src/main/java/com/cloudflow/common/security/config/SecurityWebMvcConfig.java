@@ -36,6 +36,8 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
             "/auth/register",
             "/tenant/options",
             "/auth/tenant/options",
+            "/legal/public/**",
+            "/auth/legal/public/**",
             "/captcha/**",
             "/auth/captcha/**",
             "/doc.html",

@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Building2,
   Check,
+  ExternalLink,
   Eye,
   EyeOff,
+  FileText,
   Loader2,
   Lock,
   LogIn,
@@ -20,7 +22,17 @@ import { toast } from 'sonner';
 import { AuthCaptchaDialog } from '@/components/auth/AuthExperienceShell';
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
-import { getTenantOptions, login as apiLogin, register as apiRegister, type TenantOption } from '@/services/api/auth';
+import {
+  getActiveLegalRelease,
+  getLegalDocument,
+  getTenantOptions,
+  login as apiLogin,
+  register as apiRegister,
+  type LegalDocumentDetail,
+  type LegalDocumentSummary,
+  type LegalRelease,
+  type TenantOption,
+} from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 import './auth-page.css';
 
@@ -103,12 +115,15 @@ const cloudRows: CloudChip[][] = [
   ],
 ];
 
-const agreementDocuments = [
-  { id: 'terms', title: '服务条款' },
-  { id: 'privacy', title: '隐私政策' },
-  { id: 'security', title: '安全规范' },
-  { id: 'regions', title: '部署与支持范围' },
+const fallbackAgreementDocuments: LegalDocumentSummary[] = [
+  { docType: 'terms', title: '服务条款' },
+  { docType: 'privacy', title: '隐私政策' },
+  { docType: 'security', title: '安全规范' },
+  { docType: 'regions', title: '部署与支持范围' },
 ];
+
+const normalizeDocumentType = (doc: LegalDocumentSummary) =>
+  doc.docType || '';
 
 const TenantSelect: React.FC<TenantSelectProps> = ({
   value,
@@ -196,6 +211,12 @@ export const AuthPage: React.FC = () => {
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [publicAccepted, setPublicAccepted] = useState(false);
   const [agreementVisible, setAgreementVisible] = useState(true);
+  const [legalRelease, setLegalRelease] = useState<LegalRelease | null>(null);
+  const [legalLoading, setLegalLoading] = useState(true);
+  const [legalError, setLegalError] = useState('');
+  const [activeLegalDocument, setActiveLegalDocument] = useState<LegalDocumentDetail | null>(null);
+  const [legalDocumentLoading, setLegalDocumentLoading] = useState(false);
+  const [legalDocumentError, setLegalDocumentError] = useState('');
 
   const loginUsernameRef = useRef<HTMLInputElement>(null);
   const loginPasswordRef = useRef<HTMLInputElement>(null);
@@ -213,6 +234,13 @@ export const AuthPage: React.FC = () => {
     confirmPassword: '',
     email: '',
   });
+
+  const selectedTenantCode = (mode === 'login' ? loginForm.tenantCode : registerForm.tenantCode)
+    || loginForm.tenantCode
+    || registerForm.tenantCode;
+  const agreementDocuments = legalRelease?.documents?.length
+    ? legalRelease.documents
+    : fallbackAgreementDocuments;
 
   useEffect(() => {
     if (routeMode !== mode) {
@@ -366,6 +394,43 @@ export const AuthPage: React.FC = () => {
     };
   }, [tenantReloadKey]);
 
+  useEffect(() => {
+    let active = true;
+    const loadLegalRelease = async () => {
+      setLegalLoading(true);
+      setLegalError('');
+      try {
+        const release = await getActiveLegalRelease(selectedTenantCode || undefined);
+        if (!active) {
+          return;
+        }
+        setLegalRelease(release);
+        setAgreementAccepted(false);
+        setPublicAccepted(false);
+        setAgreementVisible(true);
+      } catch (error: any) {
+        if (!active) {
+          return;
+        }
+        logger.warn('加载条款配置失败:', error);
+        setLegalRelease(null);
+        setAgreementAccepted(false);
+        setPublicAccepted(false);
+        setAgreementVisible(true);
+        setLegalError(error?.message || '条款暂未配置，请联系管理员');
+      } finally {
+        if (active) {
+          setLegalLoading(false);
+        }
+      }
+    };
+
+    void loadLegalRelease();
+    return () => {
+      active = false;
+    };
+  }, [selectedTenantCode]);
+
   const switchMode = (nextMode: AuthMode) => {
     setLoginError('');
     setRegisterError('');
@@ -384,6 +449,29 @@ export const AuthPage: React.FC = () => {
   };
 
   const ensureAgreementReady = (intent: AuthMode) => {
+    if (legalLoading) {
+      const message = '条款配置加载中，请稍后再试';
+      if (intent === 'login') {
+        setLoginError(message);
+      } else {
+        setRegisterError(message);
+      }
+      triggerShakeFeedback();
+      return false;
+    }
+
+    if (!legalRelease?.releaseCode) {
+      const message = legalError || '条款暂未配置，请联系管理员';
+      if (intent === 'login') {
+        setLoginError(message);
+      } else {
+        setRegisterError(message);
+      }
+      setAgreementVisible(true);
+      triggerShakeFeedback();
+      return false;
+    }
+
     if (!agreementAccepted) {
       const message = intent === 'register' ? '继续注册前需要先同意最新条款' : '继续登录前需要先同意最新条款';
       if (intent === 'login') {
@@ -558,7 +646,13 @@ export const AuthPage: React.FC = () => {
 
     try {
       if (currentIntent === 'login') {
-        const response = await apiLogin(loginForm.tenantCode, loginForm.username.trim(), loginForm.password, token);
+        const response = await apiLogin(
+          loginForm.tenantCode,
+          loginForm.username.trim(),
+          loginForm.password,
+          token,
+          legalRelease?.releaseCode,
+        );
         if (response?.token) {
           if (rememberMe) {
             saveAccountHistory(loginForm.tenantCode, loginForm.username.trim());
@@ -588,6 +682,7 @@ export const AuthPage: React.FC = () => {
         confirmPassword: registerForm.confirmPassword,
         email: registerForm.email.trim(),
         captchaToken: token,
+        legalReleaseCode: legalRelease?.releaseCode,
       });
 
       setLoginForm({
@@ -621,6 +716,14 @@ export const AuthPage: React.FC = () => {
   };
 
   const acceptAgreement = () => {
+    if (legalLoading) {
+      toast.info('条款配置加载中，请稍后再试');
+      return;
+    }
+    if (!legalRelease?.releaseCode) {
+      toast.error(legalError || '条款暂未配置，请联系管理员');
+      return;
+    }
     setAgreementAccepted(true);
     setAgreementVisible(false);
     setLoginError('');
@@ -633,6 +736,36 @@ export const AuthPage: React.FC = () => {
     setAgreementVisible(false);
   };
 
+  const openLegalDocument = async (doc: LegalDocumentSummary) => {
+    const docType = normalizeDocumentType(doc);
+    if (!docType || !legalRelease?.releaseCode) {
+      toast.error('条款暂未配置，请联系管理员');
+      return;
+    }
+
+    setLegalDocumentLoading(true);
+    setLegalDocumentError('');
+    setActiveLegalDocument(null);
+    try {
+      const detail = await getLegalDocument(legalRelease.releaseCode, docType, selectedTenantCode || undefined);
+      setActiveLegalDocument(detail);
+    } catch (error: any) {
+      logger.warn('加载条款文档失败:', error);
+      setLegalDocumentError(error?.message || `${doc.title}暂未配置`);
+    } finally {
+      setLegalDocumentLoading(false);
+    }
+  };
+
+  const handleAgreementLinkClick = (docType: string) => {
+    const doc = agreementDocuments.find((item) => normalizeDocumentType(item) === docType);
+    if (!doc) {
+      toast.error('条款暂未配置，请联系管理员');
+      return;
+    }
+    void openLegalDocument(doc);
+  };
+
   const handlePlaceholderAction = (label: string) => {
     toast.info(`${label}暂未配置`);
   };
@@ -643,7 +776,12 @@ export const AuthPage: React.FC = () => {
   const formsDisabled = !agreementAccepted;
   const tenantSelectDisabled = formsDisabled || tenantLoading || tenantOptions.length === 0;
   const tenantPlaceholder = tenantLoading ? '租户加载中' : tenantLoadError ? '租户加载失败' : '请选择租户';
-  const canSubmit = agreementAccepted && publicAccepted && pendingAction === null;
+  const canSubmit = agreementAccepted
+    && publicAccepted
+    && Boolean(legalRelease?.releaseCode)
+    && !legalLoading
+    && !legalError
+    && pendingAction === null;
   const tenantStatus = tenantRetrying ? (
     <p className="cf-auth-hint">后端服务启动中，正在自动重试</p>
   ) : tenantLoadError ? (
@@ -915,9 +1053,9 @@ export const AuthPage: React.FC = () => {
                       />
                       <span>
                         我已阅读并同意
-                        <button type="button" onClick={() => handlePlaceholderAction('服务条款')}>服务条款</button>、
-                        <button type="button" onClick={() => handlePlaceholderAction('隐私政策')}>隐私政策</button>、
-                        <button type="button" onClick={() => handlePlaceholderAction('安全规范')}>安全规范</button>
+                        <button type="button" onClick={() => handleAgreementLinkClick('terms')}>服务条款</button>、
+                        <button type="button" onClick={() => handleAgreementLinkClick('privacy')}>隐私政策</button>、
+                        <button type="button" onClick={() => handleAgreementLinkClick('security')}>安全规范</button>
                       </span>
                     </label>
 
@@ -1129,9 +1267,9 @@ export const AuthPage: React.FC = () => {
                       />
                       <span>
                         我已阅读并同意
-                        <button type="button" onClick={() => handlePlaceholderAction('服务条款')}>服务条款</button>、
-                        <button type="button" onClick={() => handlePlaceholderAction('隐私政策')}>隐私政策</button>、
-                        <button type="button" onClick={() => handlePlaceholderAction('安全规范')}>安全规范</button>
+                        <button type="button" onClick={() => handleAgreementLinkClick('terms')}>服务条款</button>、
+                        <button type="button" onClick={() => handleAgreementLinkClick('privacy')}>隐私政策</button>、
+                        <button type="button" onClick={() => handleAgreementLinkClick('security')}>安全规范</button>
                       </span>
                     </label>
 
@@ -1188,31 +1326,116 @@ export const AuthPage: React.FC = () => {
               </span>
               <div>
                 <div className="cf-auth-agreement-title-row">
-                  <h2 id="cf-auth-agreement-title">条款更新通知</h2>
-                  <span>2026-03-31</span>
+                  <h2 id="cf-auth-agreement-title">{legalRelease?.title || '条款更新通知'}</h2>
+                  <span>{legalRelease?.effectiveDate || '待配置'}</span>
                 </div>
-                <p>CloudFlow Pro 服务条款已于 2026-03-31 更新。在继续使用服务之前，请仔细阅读并同意以下条款。</p>
+                <p>
+                  {legalLoading
+                    ? '正在加载最新条款配置。'
+                    : legalError
+                      ? legalError
+                      : legalRelease?.description || '在继续使用服务之前，请仔细阅读并同意以下条款。'}
+                </p>
               </div>
             </div>
             <div className="cf-auth-agreement-body">
               <p>相关文档</p>
-              <div className="cf-auth-agreement-doc-grid">
-                {agreementDocuments.map((doc) => (
-                  <button
-                    key={doc.id}
-                    type="button"
-                    className="cf-auth-agreement-doc-card"
-                    onClick={() => handlePlaceholderAction(doc.title)}
-                  >
-                    <ShieldCheck size={16} />
-                    <span>{doc.title}</span>
-                  </button>
-                ))}
-              </div>
+              {legalLoading ? (
+                <div className="cf-auth-agreement-state">
+                  <Loader2 size={16} className="cf-auth-spin" />
+                  <span>正在加载条款</span>
+                </div>
+              ) : legalError ? (
+                <div className="cf-auth-agreement-state is-error">
+                  <ShieldAlert size={16} />
+                  <span>{legalError}</span>
+                </div>
+              ) : (
+                <div className="cf-auth-agreement-doc-grid">
+                  {agreementDocuments.map((doc) => (
+                    <button
+                      key={normalizeDocumentType(doc)}
+                      type="button"
+                      className="cf-auth-agreement-doc-card"
+                      onClick={() => void openLegalDocument(doc)}
+                    >
+                      <ShieldCheck size={16} />
+                      <span>{doc.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="cf-auth-agreement-actions">
               <button type="button" onClick={rejectAgreement}>拒绝</button>
-              <button type="button" onClick={acceptAgreement}>同意并继续</button>
+              <button type="button" onClick={acceptAgreement} disabled={legalLoading || Boolean(legalError)}>
+                同意并继续
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {activeLegalDocument || legalDocumentLoading || legalDocumentError ? (
+        <div className="cf-auth-agreement-overlay" role="dialog" aria-modal="true" aria-labelledby="cf-auth-document-title">
+          <div className="cf-auth-agreement-panel cf-auth-document-panel">
+            <div className="cf-auth-agreement-head">
+              <span className="cf-auth-agreement-icon">
+                <FileText size={21} />
+              </span>
+              <div>
+                <div className="cf-auth-agreement-title-row">
+                  <h2 id="cf-auth-document-title">{activeLegalDocument?.title || '条款文档'}</h2>
+                  {activeLegalDocument?.version ? <span>{activeLegalDocument.version}</span> : null}
+                </div>
+                <p>{legalRelease?.title || 'CloudFlow Pro 条款文档'}</p>
+              </div>
+            </div>
+            <div className="cf-auth-agreement-body">
+              {legalDocumentLoading ? (
+                <div className="cf-auth-agreement-state">
+                  <Loader2 size={16} className="cf-auth-spin" />
+                  <span>正在加载文档</span>
+                </div>
+              ) : legalDocumentError ? (
+                <div className="cf-auth-agreement-state is-error">
+                  <ShieldAlert size={16} />
+                  <span>{legalDocumentError}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="cf-auth-document-content">
+                    {(activeLegalDocument?.content || '文档正文暂未配置')
+                      .split('\n')
+                      .filter((line) => line.trim().length > 0)
+                      .map((line, index) => (
+                        <p key={`${activeLegalDocument?.docType || 'doc'}-${index}`}>{line}</p>
+                      ))}
+                  </div>
+                  {activeLegalDocument?.externalUrl ? (
+                    <a
+                      className="cf-auth-document-link"
+                      href={activeLegalDocument.externalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink size={15} />
+                      打开正式文件
+                    </a>
+                  ) : null}
+                </>
+              )}
+            </div>
+            <div className="cf-auth-agreement-actions cf-auth-document-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveLegalDocument(null);
+                  setLegalDocumentError('');
+                }}
+              >
+                关闭
+              </button>
             </div>
           </div>
         </div>

@@ -162,7 +162,17 @@ WHERE tenant_id = 100000
    OR approval_id BETWEEN 91000 AND 91999;
 
 DELETE FROM cloud_flow_db.sys_config
-WHERE config_id BETWEEN 1 AND 92;
+WHERE config_id BETWEEN 1 AND 92
+   OR config_id IN (157);
+
+DELETE FROM cloud_flow_db.sys_legal_consent
+WHERE release_code = 'legal-2026-03-31';
+
+DELETE FROM cloud_flow_db.sys_legal_document
+WHERE release_code = 'legal-2026-03-31';
+
+DELETE FROM cloud_flow_db.sys_legal_release
+WHERE release_code = 'legal-2026-03-31';
 
 DELETE FROM cloud_flow_db.wf_form_definition
 WHERE form_id IN (
@@ -4094,7 +4104,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(150, 100000, 'CRM-工单SLA�
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(151, 100000, '网关-租户状态缓存秒数',         'sys.gateway.tenant.statusCacheSeconds',      '60',        'Y', '0', 'admin', NOW(), '', null, '网关租户状态本地缓存过期秒数');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(152, 100000, '网关-租户状态缓存容量',         'sys.gateway.tenant.statusCacheMaxSize',      '1024',      'Y', '0', 'admin', NOW(), '', null, '网关租户状态本地缓存最大条数');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(153, 100000, '网关-租户状态查询超时(秒)',     'sys.gateway.tenant.statusTimeoutSeconds',    '3',         'Y', '0', 'admin', NOW(), '', null, '网关调用认证服务查询租户状态超时秒数');
-INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(157, 100000, '网关-认证白名单',               'sys.gateway.auth.whitelist',                 '/auth/login,/auth/register,/auth/tenant/options,/auth/captcha/**,/oa/announcement/public,/oa/announcement/public/**,/ws/**', 'Y', '0', 'admin', NOW(), '', null, '无需登录校验的网关路径,多个路径用英文逗号分隔');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(157, 100000, '网关-认证白名单',               'sys.gateway.auth.whitelist',                 '/auth/login,/auth/register,/auth/tenant/options,/auth/legal/public/**,/auth/captcha/**,/oa/announcement/public,/oa/announcement/public/**,/ws/**', 'Y', '0', 'admin', NOW(), '', null, '无需登录校验的网关路径,多个路径用英文逗号分隔');
 
 -- 认证
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(118, 100000, '认证-默认头像API',              'sys.auth.avatar.apiUrl',                     'https://api.dicebear.com/7.x/avataaars/svg', 'Y', '0', 'admin', NOW(), '', null, '注册/无头像用户使用的默认头像API');
@@ -4103,6 +4113,28 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(163, 100000, '认证-允许�
 
 -- 通用
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(119, 100000, '通用-敏感数据递归深度',         'sys.sensitive.maxRecursionDepth',            '8',         'Y', '0', 'admin', NOW(), '', null, '敏感字段脱敏递归遍历最大深度,防止循环引用');
+
+-- 登录条款默认发布批次与初始文案
+INSERT IGNORE INTO cloud_flow_db.sys_legal_release
+  (release_id, tenant_id, release_code, title, effective_date, description, status, create_by, create_time, update_by, update_time, remark)
+VALUES
+  (1, 0, 'legal-2026-03-31', 'CloudFlow Pro 服务条款更新通知', '2026-03-31', '继续使用 CloudFlow Pro 前，请阅读并同意以下条款。', 'PUBLISHED', 'admin', NOW(), 'admin', NOW(), '初始化登录条款发布批次');
+
+INSERT IGNORE INTO cloud_flow_db.sys_legal_document
+  (document_id, release_id, tenant_id, release_code, doc_type, title, version, content, external_url, required, sort_order, status, create_by, create_time, update_by, update_time, remark)
+VALUES
+  (1, 1, 0, 'legal-2026-03-31', 'terms', '服务条款', '2026-03-31',
+   'CloudFlow Pro 为企业协同、流程审批、客户管理、人事管理和系统运维提供软件服务。用户应使用合法账号访问系统，妥善保管登录凭证，不得借用、转让或共享账号。用户在系统内提交、审批、上传、导出的业务数据，应符合所在组织的管理制度和适用法律要求。平台可能因系统维护、安全升级或异常处置短时调整服务能力，并会尽力降低对正常业务的影响。',
+   NULL, 1, 1, '0', 'admin', NOW(), 'admin', NOW(), '初始化服务条款文案'),
+  (2, 1, 0, 'legal-2026-03-31', 'privacy', '隐私政策', '2026-03-31',
+   'CloudFlow Pro 会处理账号信息、租户信息、登录记录、操作日志、业务表单、附件和系统运行数据，用于身份认证、权限控制、业务协同、安全审计和服务优化。平台按最小必要原则使用数据，并通过访问控制、日志审计和加密能力保护敏感信息。未经授权，平台不会向无关第三方提供用户数据；因法律法规、监管要求或组织授权需要提供的除外。',
+   NULL, 1, 2, '0', 'admin', NOW(), 'admin', NOW(), '初始化隐私政策文案'),
+  (3, 1, 0, 'legal-2026-03-31', 'security', '安全规范', '2026-03-31',
+   '用户应使用强密码并定期更新，不得绕过验证码、权限校验、审计日志或租户隔离机制。管理员应按岗位职责分配权限，及时停用离职、转岗或异常账号。发现账号泄露、越权访问、异常登录、数据误删或系统漏洞时，应立即通知系统管理员并配合处置。平台会记录必要的安全日志，用于风险排查和责任追溯。',
+   NULL, 1, 3, '0', 'admin', NOW(), 'admin', NOW(), '初始化安全规范文案'),
+  (4, 1, 0, 'legal-2026-03-31', 'regions', '部署与支持范围', '2026-03-31',
+   'CloudFlow Pro 支持本地开发环境、私有化部署环境和授权的生产环境。标准支持范围包括系统启动、登录认证、权限配置、核心业务模块访问、数据库初始化、网关路由和基础运维排查。第三方网络、浏览器插件、非授权代码修改、外部数据库故障、客户自定义脚本和未纳入交付范围的集成问题，不属于默认支持范围，可按项目约定另行处理。',
+   NULL, 1, 4, '0', 'admin', NOW(), 'admin', NOW(), '初始化部署与支持范围文案');
 
 -- =========================================================
 -- 一-C. 硬编码收口新增字典（档位映射,sys_dict_type + sys_dict_data）

@@ -21,4 +21,6 @@ public class RegisterBody {
     
     private String captchaToken;
 
+    private String legalReleaseCode;
+
 }

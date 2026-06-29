@@ -110,6 +110,34 @@ export interface TenantOption {
   tenantName: string;
 }
 
+export interface LegalDocumentSummary {
+  docType: string;
+  title: string;
+  version?: string;
+  required?: boolean;
+  sortOrder?: number;
+  hasContent?: boolean;
+  hasExternalUrl?: boolean;
+}
+
+export interface LegalRelease {
+  releaseCode: string;
+  title: string;
+  effectiveDate: string;
+  description?: string;
+  documents: LegalDocumentSummary[];
+}
+
+export interface LegalDocumentDetail {
+  releaseCode: string;
+  docType: string;
+  title: string;
+  version?: string;
+  content?: string;
+  externalUrl?: string;
+  required?: boolean;
+}
+
 export interface UserInfo {
   userId: number;
   userName: string;
@@ -155,6 +183,7 @@ export interface RegisterData {
   email?: string;
   nickName?: string;
   captchaToken?: string; // 验证码通过后的令牌
+  legalReleaseCode?: string;
 }
 
 export const getTenantOptions = (config?: AxiosRequestConfig): Promise<TenantOption[]> => {
@@ -166,8 +195,9 @@ export const login = async (
   username: string,
   password: string,
   captchaToken: string,
+  legalReleaseCode?: string,
 ): Promise<LoginResponse> => {
-  return request.post('/auth/login', { tenantCode, username, password, captchaToken });
+  return request.post('/auth/login', { tenantCode, username, password, captchaToken, legalReleaseCode });
 };
 
 /**
@@ -179,6 +209,28 @@ export const logout = async (): Promise<void> => {
 
 export const register = async (data: RegisterData): Promise<void> => {
   return request.post('/auth/register', { ...data });
+};
+
+export const getActiveLegalRelease = (tenantCode?: string): Promise<LegalRelease> => {
+  return request.get('/auth/legal/public/active', {
+    params: tenantCode ? { tenantCode } : undefined,
+    silent: true,
+  });
+};
+
+export const getLegalDocument = (
+  releaseCode: string,
+  docType: string,
+  tenantCode?: string,
+): Promise<LegalDocumentDetail> => {
+  return request.get('/auth/legal/public/document', {
+    params: {
+      releaseCode,
+      docType,
+      ...(tenantCode ? { tenantCode } : {}),
+    },
+    silent: true,
+  });
 };
 
 export const getCaptcha = (): Promise<CaptchaResponse> => {

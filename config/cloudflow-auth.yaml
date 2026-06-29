@@ -133,6 +133,7 @@ auth:
     - /auth/login
     - /auth/register
     - /auth/captcha
+    - /auth/legal/public/**
     - /auth/refresh-token
     - /actuator/health
 

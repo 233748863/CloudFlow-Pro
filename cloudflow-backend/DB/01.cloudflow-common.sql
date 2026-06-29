@@ -488,6 +488,71 @@ CREATE TABLE sys_config (
   KEY idx_config_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='系统参数配置表';
 
+-- 16. 登录条款发布批次
+DROP TABLE IF EXISTS sys_legal_release;
+CREATE TABLE sys_legal_release (
+  release_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '发布批次ID',
+  tenant_id         BIGINT(20)      NOT NULL DEFAULT 0 COMMENT '租户ID，0表示全局默认',
+  release_code      VARCHAR(64)     NOT NULL COMMENT '发布批次编码',
+  title             VARCHAR(120)    NOT NULL COMMENT '发布标题',
+  effective_date    DATE            NOT NULL COMMENT '生效日期',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '发布说明',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT/PUBLISHED/ARCHIVED',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (release_id),
+  UNIQUE KEY uk_legal_release_code_tenant (tenant_id, release_code),
+  KEY idx_legal_release_active (tenant_id, status, effective_date)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='登录条款发布批次表';
+
+-- 17. 登录条款文档
+DROP TABLE IF EXISTS sys_legal_document;
+CREATE TABLE sys_legal_document (
+  document_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '文档ID',
+  release_id        BIGINT(20)      NOT NULL COMMENT '发布批次ID',
+  tenant_id         BIGINT(20)      NOT NULL DEFAULT 0 COMMENT '租户ID，0表示全局默认',
+  release_code      VARCHAR(64)     NOT NULL COMMENT '发布批次编码',
+  doc_type          VARCHAR(32)     NOT NULL COMMENT '文档类型：terms/privacy/security/regions',
+  title             VARCHAR(120)    NOT NULL COMMENT '文档标题',
+  version           VARCHAR(32)     NOT NULL COMMENT '文档版本',
+  content           MEDIUMTEXT      DEFAULT NULL COMMENT '正文内容',
+  external_url      VARCHAR(500)    DEFAULT NULL COMMENT '外部文档链接',
+  required          TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '是否必读',
+  sort_order        INT             NOT NULL DEFAULT 100 COMMENT '排序',
+  status            CHAR(1)         NOT NULL DEFAULT '0' COMMENT '状态：0正常 1停用',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (document_id),
+  UNIQUE KEY uk_legal_doc_release_type (release_id, doc_type),
+  KEY idx_legal_doc_release (tenant_id, release_code, sort_order)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='登录条款文档表';
+
+-- 18. 登录条款同意记录
+DROP TABLE IF EXISTS sys_legal_consent;
+CREATE TABLE sys_legal_consent (
+  consent_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '同意记录ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '用户ID',
+  user_name         VARCHAR(64)     NOT NULL COMMENT '用户名',
+  release_code      VARCHAR(64)     NOT NULL COMMENT '发布批次编码',
+  document_snapshot VARCHAR(2000)   DEFAULT NULL COMMENT '同意时文档快照',
+  accepted_at       DATETIME        NOT NULL COMMENT '同意时间',
+  accepted_ip       VARCHAR(64)     DEFAULT NULL COMMENT '同意IP',
+  user_agent        VARCHAR(512)    DEFAULT NULL COMMENT '浏览器User-Agent',
+  source            VARCHAR(20)     NOT NULL DEFAULT 'LOGIN' COMMENT '来源：LOGIN/REGISTER/ADMIN',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (consent_id),
+  UNIQUE KEY uk_legal_consent_user_release (tenant_id, user_id, release_code),
+  KEY idx_legal_consent_release_time (tenant_id, release_code, accepted_at)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='登录条款同意记录表';
+
 -- 16. 业务规则表
 DROP TABLE IF EXISTS sys_business_rule;
 CREATE TABLE sys_business_rule (

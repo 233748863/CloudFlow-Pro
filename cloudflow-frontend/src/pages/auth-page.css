@@ -1117,6 +1117,60 @@
   color: var(--auth-primary);
 }
 
+.cf-auth-agreement-state {
+  display: flex;
+  min-height: 104px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.cf-auth-agreement-state.is-error {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.cf-auth-document-panel {
+  width: min(680px, 100%);
+}
+
+.cf-auth-document-content {
+  display: grid;
+  gap: 12px;
+}
+
+.cf-auth-document-content p {
+  margin: 0;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.cf-auth-document-link {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  border-radius: 10px;
+  color: var(--auth-primary);
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.cf-auth-document-link:hover {
+  color: var(--auth-primary-dark);
+  text-decoration: underline;
+}
+
 .cf-auth-agreement-actions {
   display: grid;
   flex: 0 0 auto;
@@ -1146,6 +1200,12 @@
   background: #f8fafc;
 }
 
+.cf-auth-agreement-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}
+
 .cf-auth-agreement-actions button:active {
   transform: scale(0.985);
 }
@@ -1159,6 +1219,10 @@
 
 .cf-auth-agreement-actions button:last-child:hover {
   background: var(--auth-primary-dark);
+}
+
+.cf-auth-document-actions {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 @media (min-width: 821px) and (max-height: 760px) {
@@ -1893,6 +1957,30 @@ html.dark .cf-auth-agreement-doc-card {
 html.dark .cf-auth-agreement-doc-card:hover {
   border-color: rgba(103, 232, 249, 0.28);
   background: rgba(30, 41, 59, 0.9);
+}
+
+html.dark .cf-auth-agreement-state {
+  border-color: rgba(51, 65, 85, 0.88);
+  background: rgba(15, 23, 42, 0.72);
+  color: #cbd5e1;
+}
+
+html.dark .cf-auth-agreement-state.is-error {
+  border-color: rgba(248, 113, 113, 0.38);
+  background: rgba(127, 29, 29, 0.24);
+  color: #fca5a5;
+}
+
+html.dark .cf-auth-document-content p {
+  color: #dbeafe;
+}
+
+html.dark .cf-auth-document-link {
+  color: #67e8f9;
+}
+
+html.dark .cf-auth-document-link:hover {
+  color: #a5f3fc;
 }
 
 html.dark .cf-auth-agreement-actions {

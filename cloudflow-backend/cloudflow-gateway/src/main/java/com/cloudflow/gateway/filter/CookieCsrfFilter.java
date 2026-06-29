@@ -41,6 +41,7 @@ public class CookieCsrfFilter implements GlobalFilter, Ordered {
             "/auth/register",
             "/auth/captcha/**",
             "/auth/tenant/options",
+            "/auth/legal/public/**",
             "/ws/**"
     );
 
