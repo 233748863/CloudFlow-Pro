@@ -19,6 +19,8 @@ import {
   type HotUpdateRecord,
 } from '@/services/api/workflow';
 import { Button, Input, Label } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
+import { cn } from '@/utils/cn';
 import {
   HOT_UPDATE_MODE_OPTIONS,
   type MigrationMode,
@@ -35,25 +37,26 @@ const SummaryMiniCard: React.FC<{
   icon: React.ReactNode;
   toneClassName: string;
 }> = ({ label, value, icon, toneClassName }) => (
-  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex items-center gap-3">
-      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${toneClassName}`}>{icon}</div>
-      <div className="min-w-0">
-        <div className="text-[11px] text-slate-500 dark:text-slate-400">{label}</div>
-        <div className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{value}</div>
-      </div>
+  <article className="admin-source-stat rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] shadow-none dark:border-slate-800 dark:bg-slate-950">
+    <div className={`admin-source-stat-icon ${toneClassName}`}>{icon}</div>
+    <div className="min-w-0">
+      <p>{label}</p>
+      <strong>{value}</strong>
     </div>
-  </div>
+  </article>
 );
 
-const PanelCard: React.FC<{
+const SurfaceBlock: React.FC<{
   title: string;
   description?: string;
   aside?: React.ReactNode;
   children: React.ReactNode;
-}> = ({ title, description, aside, children }) => (
-  <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+  className?: string;
+  contentClassName?: string;
+  wrapperClassName?: string;
+}> = ({ title, description, aside, children, className, contentClassName, wrapperClassName }) => (
+  <InnerTableSurface className={className} wrapperClassName={cn('p-0', wrapperClassName)}>
+    <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div>
         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
         {description ? (
@@ -62,8 +65,8 @@ const PanelCard: React.FC<{
       </div>
       {aside ? <div className="flex items-center gap-2">{aside}</div> : null}
     </div>
-    <div className="p-4">{children}</div>
-  </section>
+    <div className={cn('p-4', contentClassName)}>{children}</div>
+  </InnerTableSurface>
 );
 
 export const HotUpdatePanel: React.FC = () => {
@@ -172,8 +175,8 @@ export const HotUpdatePanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <PanelCard
+    <div className="admin-source-content-grid">
+      <SurfaceBlock
         title="流程热更新"
         description="先分析影响，再生成一次性确认令牌，最后执行迁移。"
         aside={(
@@ -194,10 +197,10 @@ export const HotUpdatePanel: React.FC = () => {
           </div>
         )}
       >
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <div className="space-y-4">
+        <div className="grid gap-4">
+          <div className="admin-source-content-grid">
             <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label htmlFor="hotupdate-process-key" className="text-slate-700 dark:text-slate-200">
                   流程 Key
                 </Label>
@@ -215,7 +218,7 @@ export const HotUpdatePanel: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
                 <div className="text-[11px] text-slate-500 dark:text-slate-400">当前模式</div>
                 <div className={`mt-1 flex items-center gap-2 text-sm font-semibold ${modeMeta.accentClassName}`}>
                   {modeMeta.icon}
@@ -234,16 +237,17 @@ export const HotUpdatePanel: React.FC = () => {
                   <button
                     key={option.value}
                     type="button"
+                    data-active={active ? 'true' : 'false'}
                     onClick={() => {
                       setMode(option.value);
                       resetExecutionState();
                     }}
                     className={[
-                      'rounded-xl border px-4 py-3 text-left',
+                      'rounded-md border px-4 py-3 text-left transition-colors',
                       option.cardClassName,
                       active
-                        ? 'ring-2 ring-[rgba(20,184,166,0.24)]'
-                        : 'cf-interactive-card opacity-90 hover:opacity-100',
+                        ? ''
+                        : 'admin-option-surface',
                     ].join(' ')}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -251,7 +255,7 @@ export const HotUpdatePanel: React.FC = () => {
                         {option.icon}
                         {option.label}
                       </div>
-                      <span className="rounded-full border border-current/10 bg-white/70 px-2 py-0.5 text-[10px] dark:bg-slate-950/40">
+                      <span className="rounded-md border border-current/15 bg-[var(--cf-surface-muted)] px-2 py-0.5 text-[10px] dark:bg-slate-900">
                         {option.badge}
                       </span>
                     </div>
@@ -287,7 +291,7 @@ export const HotUpdatePanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+          <div className="grid gap-3 sm:grid-cols-3">
             <SummaryMiniCard
               label="影响实例"
               value={result?.totalInstances ?? 0}
@@ -308,67 +312,64 @@ export const HotUpdatePanel: React.FC = () => {
             />
           </div>
         </div>
-      </PanelCard>
+      </SurfaceBlock>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.9fr)]">
-        <PanelCard
+      <div className="grid gap-4">
+        <SurfaceBlock
           title="实例明细"
           description="按实例查看迁移结果、当前节点与失败原因。"
+          contentClassName="p-0"
         >
           {result?.details.length ? (
-            <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-              <div className="max-h-[28rem] overflow-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900">
-                    <tr className="text-left text-slate-500 dark:text-slate-400">
-                      <th className="px-4 py-3 font-medium">流程编号</th>
-                      <th className="px-4 py-3 font-medium">当前节点</th>
-                      <th className="px-4 py-3 font-medium">状态</th>
-                      <th className="px-4 py-3 font-medium">说明</th>
+            <table className="unity-data-table admin-source-table min-w-[760px]">
+              <thead className="sticky top-0">
+                <tr>
+                  <th>流程编号</th>
+                  <th>当前节点</th>
+                  <th>状态</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.details.map((item) => {
+                  const statusMeta = getHotUpdateStatusMeta(item.status);
+                  return (
+                    <tr key={item.instanceId}>
+                      <td className="align-top">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">
+                          {item.processNo || item.instanceId.slice(0, 8)}
+                        </div>
+                        <div className="mt-1 font-mono text-xs text-slate-400 dark:text-slate-500">
+                          {item.instanceId}
+                        </div>
+                      </td>
+                      <td className="align-top text-slate-600 dark:text-slate-300">
+                        {item.currentNodeTitle || item.currentNodeKey || '-'}
+                      </td>
+                      <td className="align-top">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${statusMeta.className}`}
+                        >
+                          {statusMeta.icon}
+                          {statusMeta.label}
+                        </span>
+                      </td>
+                      <td className="align-top text-slate-500 dark:text-slate-400">
+                        {item.reason || '-'}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {result.details.map((item) => {
-                      const statusMeta = getHotUpdateStatusMeta(item.status);
-                      return (
-                        <tr key={item.instanceId} className="bg-white dark:bg-slate-950/40">
-                          <td className="px-4 py-3 align-top">
-                            <div className="font-medium text-slate-900 dark:text-slate-100">
-                              {item.processNo || item.instanceId.slice(0, 8)}
-                            </div>
-                            <div className="mt-1 font-mono text-xs text-slate-400 dark:text-slate-500">
-                              {item.instanceId}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top text-slate-600 dark:text-slate-300">
-                            {item.currentNodeTitle || item.currentNodeKey || '-'}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${statusMeta.className}`}
-                            >
-                              {statusMeta.icon}
-                              {statusMeta.label}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 align-top text-slate-500 dark:text-slate-400">
-                            {item.reason || '-'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  );
+                })}
+              </tbody>
+            </table>
           ) : (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+            <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
               先执行影响分析，再查看实例结果。
             </div>
           )}
-        </PanelCard>
+        </SurfaceBlock>
 
-        <PanelCard
+        <SurfaceBlock
           title="分析结果"
           description={
             result
@@ -376,15 +377,15 @@ export const HotUpdatePanel: React.FC = () => {
               : '版本跨度、迁移结果和执行确认会显示在这里。'
           }
         >
-          <div className="space-y-4">
+          <div className="admin-source-content-grid">
             {result ? (
               <>
                 <div
                   className={[
-                    'rounded-xl border px-4 py-3',
+                    'rounded-md border px-4 py-3',
                     result.success
-                      ? 'border-emerald-200 bg-emerald-50/90 dark:border-emerald-500/20 dark:bg-emerald-500/10'
-                      : 'border-rose-200 bg-rose-50/90 dark:border-rose-500/20 dark:bg-rose-500/10',
+                        ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20'
+                      : 'border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/20',
                   ].join(' ')}
                 >
                   <div className="flex items-center gap-2 text-sm font-semibold">
@@ -398,11 +399,11 @@ export const HotUpdatePanel: React.FC = () => {
                   {result.fromVersion > 0 ? (
                     <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span>版本迁移</span>
-                      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 dark:border-slate-700 dark:bg-slate-950">
+                      <span className="badge badge-gray">
                         V{result.fromVersion}
                       </span>
                       <ArrowRight size={12} />
-                      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 dark:border-slate-700 dark:bg-slate-950">
+                      <span className="badge badge-gray">
                         V{result.toVersion}
                       </span>
                     </div>
@@ -425,7 +426,7 @@ export const HotUpdatePanel: React.FC = () => {
                     label="已跳过"
                     value={result.skippedCount}
                     icon={<Clock3 size={16} />}
-                    toneClassName="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    toneClassName="bg-[var(--cf-surface-muted)] text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                   />
                   <SummaryMiniCard
                     label="失败"
@@ -442,7 +443,7 @@ export const HotUpdatePanel: React.FC = () => {
                 </div>
 
                 {shouldRequireConfirm(result) ? (
-                  <label className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100">
+                  <label className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100">
                     <input
                       type="checkbox"
                       checked={confirmed}
@@ -456,64 +457,68 @@ export const HotUpdatePanel: React.FC = () => {
                 ) : null}
               </>
             ) : (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+              <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                 先输入流程 Key 并选择迁移模式。
               </div>
             )}
           </div>
-        </PanelCard>
+        </SurfaceBlock>
       </div>
 
       {showHistory ? (
-        <PanelCard
+        <SurfaceBlock
           title="热更新历史"
           description="按流程 Key 查看既往迁移记录。"
+          contentClassName="p-0"
         >
           {historyLoading ? (
-            <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-5 py-8 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+            <div className="flex items-center justify-center gap-2 px-5 py-6 text-sm text-slate-500 dark:text-slate-400">
               <Loader2 size={16} className="animate-spin" />
               正在加载历史记录
             </div>
           ) : history.length > 0 ? (
-            <div className="space-y-3">
-              {history.map((record) => {
-                const summary = getHotUpdateRecordSummary(record);
-                return (
-                  <div
-                    key={record.id}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/60"
-                  >
-                    <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                      <div>
-                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {summary.title}
+            <table className="unity-data-table admin-source-table min-w-[760px]">
+              <thead>
+                <tr>
+                  <th>版本</th>
+                  <th>迁移模式</th>
+                  <th>执行信息</th>
+                  <th>结果</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((record) => {
+                  const summary = getHotUpdateRecordSummary(record);
+                  return (
+                    <tr key={record.id}>
+                      <td className="font-medium text-slate-900 dark:text-slate-100">{summary.title}</td>
+                      <td>{summary.modeLabel}</td>
+                      <td>
+                        <div>{summary.executedAt}</div>
+                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">执行人 {record.executedBy || '-'}</div>
+                      </td>
+                      <td>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          <span className="badge border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300">
+                            迁移 {record.migratedCount}
+                          </span>
+                          <span className="badge badge-gray">跳过 {record.skippedCount}</span>
+                          <span className="badge border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/20 dark:text-rose-300">
+                            失败 {record.failedCount}
+                          </span>
                         </div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          {summary.modeLabel} · {summary.executedAt} · 执行人 {record.executedBy || '-'}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                          迁移 {record.migratedCount}
-                        </span>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                          跳过 {record.skippedCount}
-                        </span>
-                        <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
-                          失败 {record.failedCount}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           ) : (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+            <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
               暂无热更新记录。
             </div>
           )}
-        </PanelCard>
+        </SurfaceBlock>
       ) : null}
     </div>
   );

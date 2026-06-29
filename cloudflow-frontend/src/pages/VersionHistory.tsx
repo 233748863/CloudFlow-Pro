@@ -15,6 +15,7 @@ import { cn } from '@/utils/cn';
 import request from '@/services/api/request';
 import { ApiErrorResponse, handleApiError, showSuccess, showWarning } from '@/utils/errorHandler';
 import { useWorkflowPermission } from '../hooks/useWorkflowPermission';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface VersionHistoryProps {
   workflowId: string;
@@ -121,7 +122,7 @@ const StatePanel: React.FC<{
   action?: React.ReactNode;
 }> = ({ title, description, loading = false, action }) => (
   <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-    <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3">
       {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <History className="h-5 w-5" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -136,7 +137,7 @@ const DetailRows: React.FC<{
   children: React.ReactNode;
   className?: string;
 }> = ({ children, className }) => (
-  <div className={cn('overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800', className)}>
+  <div className={cn('card overflow-hidden', className)}>
     {children}
   </div>
 );
@@ -149,7 +150,7 @@ const DetailRow: React.FC<{
 }> = ({ label, value, alignStart = false, className }) => (
   <div
     className={cn(
-      'flex flex-col gap-1 border-b border-slate-100 px-3.5 py-2.5 last:border-b-0 dark:border-slate-800 sm:flex-row sm:justify-between sm:gap-4',
+      'flex flex-col gap-1 border-b border-slate-200 px-3.5 py-2.5 last:border-b-0 dark:border-slate-800 sm:flex-row sm:justify-between sm:gap-4',
       alignStart ? 'sm:items-start' : 'sm:items-center',
       className,
     )}
@@ -176,7 +177,7 @@ const RefinedCompareNodeSection: React.FC<{
   }
 
   return (
-    <section className="space-y-2.5">
+    <section className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
         <span className="text-xs text-slate-400 dark:text-slate-500">{items.length}</span>
@@ -184,7 +185,7 @@ const RefinedCompareNodeSection: React.FC<{
 
       <DetailRows>
         {items.map((node) => (
-          <div key={node.nodeId} className="border-b border-slate-100 px-3.5 py-2.5 last:border-b-0 dark:border-slate-800">
+          <div key={node.nodeId} className="border-b border-slate-200 px-3.5 py-2.5 last:border-b-0 dark:border-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{node.nodeName}</div>
@@ -201,7 +202,7 @@ const RefinedCompareNodeSection: React.FC<{
                       key={`${node.nodeId}-${change.path}-${index}`}
                       label={change.path}
                       value={
-                        <div className="space-y-1 text-xs leading-6 text-slate-500 dark:text-slate-300">
+                        <div className="flex flex-col gap-1 text-xs leading-6 text-slate-500 dark:text-slate-300">
                           <div>
                             <span className="mr-2 text-slate-400 dark:text-slate-500">旧值</span>
                             <span>{formatValue(change.oldValue)}</span>
@@ -236,7 +237,7 @@ const RefinedCompareEdgeSection: React.FC<{
   }
 
   return (
-    <section className="space-y-2.5">
+    <section className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">连线变化</div>
         <span className="text-xs text-slate-400 dark:text-slate-500">{addedEdges.length + removedEdges.length}</span>
@@ -266,6 +267,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
   workflowId,
   workflowCreatorId,
   workflowName,
+  workflowDescription,
   onBack,
 }) => {
   const { isAdmin, canViewVersionHistory } = useWorkflowPermission();
@@ -465,34 +467,91 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
   if (!hasViewPermission) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white px-6 py-10 text-center dark:border-slate-800 dark:bg-slate-950/88">
-        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-          <History className="h-5 w-5" />
-        </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">没有权限查看版本历史</div>
-        <div className="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">当前流程的版本历史仅对流程创建者和管理员开放。</div>
-        {onBack ? (
-          <div className="mt-4">
-            <Button type="button" variant="outline" onClick={onBack}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              返回上一页
-            </Button>
-          </div>
-        ) : null}
-      </div>
+      <section className="admin-source-page">
+        <TablePageLayout
+          actions={(
+            <header className="admin-source-header">
+              <div>
+                <p className="admin-source-kicker">WORKFLOW VERSIONS</p>
+                <h2>{workflowName || '流程'}版本历史</h2>
+                <span>当前流程的版本历史仅对流程创建者和管理员开放</span>
+              </div>
+              {onBack ? (
+                <div className="admin-source-controls">
+                  <Button type="button" variant="outline" onClick={onBack}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    返回上一页
+                  </Button>
+                </div>
+              ) : null}
+            </header>
+          )}
+          table={(
+            <InnerTableSurface>
+              <div className="px-6 py-10 text-center">
+                <div className="admin-source-stat-icon mx-auto mb-3 flex h-10 w-10 items-center justify-center text-slate-400 dark:text-slate-500">
+                  <History className="h-5 w-5" />
+                </div>
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">没有权限查看版本历史</div>
+                <div className="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">当前流程的版本历史仅对流程创建者和管理员开放。</div>
+              </div>
+            </InnerTableSurface>
+          )}
+        />
+      </section>
     );
   }
 
-  return (
-    <div className="space-y-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            {workflowName || '流程'}版本历史
-          </h1>
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">WORKFLOW VERSIONS</p>
+          <h2>{workflowName || '流程'}版本历史</h2>
+          <span>{workflowDescription || '查看流程定义版本、对比差异并执行回滚'}</span>
         </div>
+      </header>
 
-        <div className="flex flex-wrap items-center gap-2">
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <span className="admin-source-stat-icon"><History size={20} /></span>
+          <div className="min-w-0">
+            <p>版本总数</p>
+            <strong>{versions.length}</strong>
+            <span>当前流程历史版本</span>
+          </div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <span className="admin-source-stat-icon"><Clock3 size={20} /></span>
+          <div className="min-w-0">
+            <p>当前版本</p>
+            <strong>{currentVersion ? `v${currentVersion.versionNumber}` : '-'}</strong>
+            <span>{currentVersion ? formatDateTime(currentVersion.createdAt) : '未生成版本'}</span>
+          </div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <span className="admin-source-stat-icon"><RotateCcw size={20} /></span>
+          <div className="min-w-0">
+            <p>回滚版本</p>
+            <strong>{rollbackCount}</strong>
+            <span>历史回滚记录</span>
+          </div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <span className="admin-source-stat-icon"><ArrowRightLeft size={20} /></span>
+          <div className="min-w-0">
+            <p>已选对比</p>
+            <strong>{selectedVersions.length}/2</strong>
+            <span>选择两个版本后对比</span>
+          </div>
+        </article>
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+      <section className="card admin-users-toolbar">
+        <div className="admin-users-toolbar-actions">
           {onBack ? (
             <Button type="button" variant="outline" size="sm" onClick={onBack}>
               <ArrowLeft className="h-4 w-4" />
@@ -507,10 +566,17 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             {comparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRightLeft className="h-4 w-4" />}
             对比
           </Button>
+          {selectedVersions.length > 0 ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setSelectedVersions([])}>
+              清空选择
+            </Button>
+          ) : null}
         </div>
-      </div>
+      </section>
+  );
 
-      <div className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+  const pageContent = (
+      <InnerTableSurface className="flex min-h-0 flex-1 flex-col" wrapperClassName="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
           <div className="min-w-0">
             <div className="text-sm font-medium text-slate-900 dark:text-slate-100">版本时间线</div>
@@ -519,11 +585,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             </div>
           </div>
 
-          {selectedVersions.length > 0 ? (
-            <Button type="button" variant="outline" size="sm" onClick={() => setSelectedVersions([])}>
-              清空选择
-            </Button>
-          ) : null}
+          <span className="admin-users-filter-count">版本 {versions.length}</span>
         </div>
 
         {loading ? (
@@ -531,7 +593,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
         ) : versions.length === 0 ? (
           <StatePanel title="暂无版本历史" description="当前流程还没有可供查看的历史版本。" />
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="divide-y divide-slate-200 dark:divide-slate-800">
             {versions.map((version, index) => {
               const isSelected = selectedVersions.includes(version.id);
               const changeType = getChangeTypeMeta(version.changeType);
@@ -541,7 +603,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                   key={version.id}
                   className={cn(
                     'px-4 py-2 transition-colors',
-                    isSelected ? 'bg-slate-50 dark:bg-slate-900/40' : 'hover:bg-slate-50 dark:hover:bg-slate-900/40',
+                    isSelected ? 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/40' : 'hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/40',
                   )}
                 >
                   <div className="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
@@ -551,7 +613,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleVersionSelection(version.id)}
-                          className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950"
+                          className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
                           aria-label={`选择版本 v${version.versionNumber}`}
                         />
                         {index !== versions.length - 1 ? (
@@ -561,7 +623,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
                       <div className="min-w-0 flex-1 space-y-1.5">
                         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                          <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                             v{version.versionNumber}
                           </span>
                           {index === 0 ? (
@@ -605,7 +667,16 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             })}
           </div>
         )}
-      </div>
+      </InnerTableSurface>
+  );
+
+  return (
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageContent}
+      />
 
       <BaseDialog
         open={showCompareModal && Boolean(comparison)}
@@ -621,7 +692,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
         )}
       >
         {comparison ? (
-          <div className="space-y-4">
+          <div className="admin-dialog-stack">
             <DetailRows>
               <DetailRow label="对比范围" value={`v${comparison.fromVersion} -> v${comparison.toVersion}`} />
               <DetailRow
@@ -680,7 +751,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
         )}
       >
         {rollbackVersion ? (
-          <div className="space-y-3.5">
+          <div className="admin-dialog-stack">
             <DetailRows>
               <DetailRow label="目标版本" value={`v${rollbackVersion.versionNumber}`} />
               <DetailRow label="提交时间" value={formatDateTime(rollbackVersion.createdAt)} />
@@ -702,7 +773,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                         type="checkbox"
                         checked={forceRollback}
                         onChange={(event) => setForceRollback(event.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950"
+                        className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
                       />
                     强制回滚
                   </label>
@@ -710,8 +781,8 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               </DetailRows>
             ) : null}
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+            <div className="admin-dialog-field">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 回滚原因 <span className="text-slate-400 dark:text-slate-500">*</span>
               </label>
               <Textarea
@@ -759,7 +830,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
           </>
         )}
       >
-        <div className="space-y-3">
+        <div className="admin-dialog-stack">
           <DetailRows>
             <DetailRow label="提示" value={warningData?.message || '-'} alignStart />
             {warningData?.description ? (
@@ -771,13 +842,13 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               type="checkbox"
               checked={warningConfirmed}
               onChange={(event) => setWarningConfirmed(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
             />
             我已了解风险，确认继续强制回滚
           </label>
         </div>
       </BaseDialog>
-    </div>
+    </section>
   );
 };
 

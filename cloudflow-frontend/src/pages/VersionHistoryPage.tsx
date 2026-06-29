@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, History } from 'lucide-react';
 import request from '@/services/api/request';
 import { Button } from '@/components/common';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { VersionHistory } from './VersionHistory';
 
 interface WorkflowInfo {
@@ -15,19 +16,36 @@ interface WorkflowInfo {
 }
 
 const InvalidState: React.FC<{ onBack: () => void }> = ({ onBack }) => (
-  <div className="rounded-lg border border-slate-200 bg-white px-6 py-9 text-center dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-      <History className="h-5 w-5" />
-    </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">无效的流程 ID</div>
-    <div className="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">未能从当前地址中识别流程编号。</div>
-    <div className="mt-4">
-      <Button type="button" variant="outline" size="sm" onClick={onBack}>
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        返回上一页
-      </Button>
-    </div>
-  </div>
+  <section className="admin-source-page">
+    <TablePageLayout
+      actions={(
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">WORKFLOW VERSIONS</p>
+            <h2>版本历史</h2>
+            <span>未能从当前地址中识别流程编号</span>
+          </div>
+          <div className="admin-source-controls">
+            <Button type="button" variant="outline" size="sm" onClick={onBack}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              返回上一页
+            </Button>
+          </div>
+        </header>
+      )}
+      table={(
+        <InnerTableSurface>
+          <div className="px-6 py-9 text-center">
+            <div className="admin-source-stat-icon mx-auto mb-3 flex h-10 w-10 items-center justify-center text-slate-400 dark:text-slate-500">
+              <History className="h-5 w-5" />
+            </div>
+            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">无效的流程 ID</div>
+            <div className="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">未能从当前地址中识别流程编号。</div>
+          </div>
+        </InnerTableSurface>
+      )}
+    />
+  </section>
 );
 
 export const VersionHistoryPage: React.FC = () => {

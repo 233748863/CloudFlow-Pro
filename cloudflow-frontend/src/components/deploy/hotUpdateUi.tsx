@@ -33,7 +33,7 @@ export const HOT_UPDATE_MODE_OPTIONS: Array<{
     icon: <ShieldCheck size={18} />,
     accentClassName: 'text-emerald-600 dark:text-emerald-300',
     cardClassName:
-      'border-emerald-200/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-100',
+      'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-800 data-[active=true]:border-emerald-500 data-[active=true]:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:data-[active=true]:border-emerald-600 dark:data-[active=true]:bg-emerald-950/20',
   },
   {
     value: 'FORCE',
@@ -44,7 +44,7 @@ export const HOT_UPDATE_MODE_OPTIONS: Array<{
     icon: <Zap size={18} />,
     accentClassName: 'text-amber-600 dark:text-amber-300',
     cardClassName:
-      'border-amber-200/80 bg-amber-50/80 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100',
+      'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-800 data-[active=true]:border-amber-500 data-[active=true]:bg-amber-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:data-[active=true]:border-amber-600 dark:data-[active=true]:bg-amber-950/20',
   },
   {
     value: 'RESTART',
@@ -55,7 +55,7 @@ export const HOT_UPDATE_MODE_OPTIONS: Array<{
     icon: <Siren size={18} />,
     accentClassName: 'text-rose-600 dark:text-rose-300',
     cardClassName:
-      'border-rose-200/80 bg-rose-50/80 text-rose-900 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-100',
+      'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-800 data-[active=true]:border-rose-500 data-[active=true]:bg-rose-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:data-[active=true]:border-rose-600 dark:data-[active=true]:bg-rose-950/20',
   },
 ];
 
@@ -70,35 +70,35 @@ export const getHotUpdateStatusMeta = (status: HotUpdateStatus) => {
         label: '已迁移',
         icon: <CheckCircle2 size={14} />,
         className:
-          'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300',
+          'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300',
       };
     case 'SKIPPED':
       return {
         label: '已跳过',
         icon: <Clock3 size={14} />,
         className:
-          'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+          'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
       };
     case 'FAILED':
       return {
         label: '失败',
         icon: <AlertTriangle size={14} />,
         className:
-          'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300',
+          'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/20 dark:text-rose-300',
       };
     case 'RESTARTED':
       return {
         label: '已重启',
         icon: <RefreshCw size={14} />,
         className:
-          'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300',
+          'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300',
       };
     default:
       return {
         label: status,
         icon: <Clock3 size={14} />,
         className:
-          'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+          'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
       };
   }
 };

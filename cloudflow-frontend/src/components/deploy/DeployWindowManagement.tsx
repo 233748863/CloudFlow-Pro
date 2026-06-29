@@ -5,20 +5,11 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import {
   BaseDialog,
   ConfirmDialog,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableRowActions,
 } from '@/components/common';
 import { Button, Input, Textarea } from '@/components/common';
 import { DatePicker } from '@/components/common/date-picker';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common/select';
-import { FilterBar } from '@/components/layout';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 import {
   DeployWindow,
@@ -89,8 +80,8 @@ const InlineState: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ title, description, loading = false }) => (
-  <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-    {loading ? <Clock3 className="mb-3 h-5 w-5 animate-pulse text-slate-400 dark:text-slate-500" /> : null}
+  <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+    {loading ? <Clock3 className="mb-3 h-5 w-5 text-slate-400 dark:text-slate-500" /> : null}
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
     {description ? (
       <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
@@ -105,25 +96,23 @@ const TableStateRow: React.FC<{
   title: string;
   loading?: boolean;
 }> = ({ colSpan, title, loading = false }) => (
-  <TableRow>
-    <TableCell colSpan={colSpan} className="py-14">
+  <tr>
+    <td colSpan={colSpan} className="py-10">
       <InlineState title={title} loading={loading} />
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const DetailRows: React.FC<{
   children: React.ReactNode;
   className?: string;
 }> = ({ children, className }) => (
-  <div
-    className={cn(
-      'overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800',
-      className,
-    )}
+  <InnerTableSurface
+    className={className}
+    wrapperClassName="divide-y divide-slate-100 dark:divide-slate-800"
   >
     {children}
-  </div>
+  </InnerTableSurface>
 );
 
 const DetailRow: React.FC<{
@@ -133,7 +122,7 @@ const DetailRow: React.FC<{
 }> = ({ label, value, alignStart = false }) => (
   <div
     className={cn(
-      'flex flex-col gap-1 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800 sm:flex-row sm:gap-4',
+      'flex flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-4',
       alignStart ? 'sm:items-start' : 'sm:items-center',
     )}
   >
@@ -298,107 +287,92 @@ export const DeployWindowManagement: React.FC = () => {
     }
   };
 
-  const filters = (
-    <FilterBar
-      stats={[
-        { label: '共', value: `${summary.total} 条` },
-        { label: '启用', value: `${summary.enabledCount} 条` },
-        { label: '禁用', value: `${summary.disabledCount} 条` },
-      ]}
-      actions={[
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void loadWindows()} disabled={loading}>
-          <RefreshCw className="h-4 w-4" />
-          刷新
-        </Button>,
-        <Button key="create" size="sm" onClick={handleOpenCreate}>
-          <Plus className="h-4 w-4" />
-          新建窗口
-        </Button>,
-      ]}
-    />
-  );
-
-  const table = (
-    <TableSurfaceCard>
-      <Table wrapperClassName="overflow-x-auto">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="min-w-[260px]">窗口</TableHead>
-            <TableHead className="w-28">类型</TableHead>
-            <TableHead className="w-40">时段</TableHead>
-            <TableHead className="min-w-[160px]">规则</TableHead>
-            <TableHead className="w-24">状态</TableHead>
-            <TableActionHead>操作</TableActionHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {loading ? (
-            <TableStateRow colSpan={6} title="正在读取发布窗口" loading />
-          ) : windows.length === 0 ? (
-            <TableStateRow colSpan={6} title="暂无发布窗口" />
-          ) : (
-            windows.map((window) => (
-              <TableRow key={window.id} className={!window.isEnabled ? 'bg-slate-50/60 dark:bg-slate-900/40' : undefined}>
-                <TableCell>
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {window.windowName}
-                    </div>
-                    <div
-                      className="mt-1 truncate text-xs leading-5 text-slate-500 dark:text-slate-400"
-                      title={window.description?.trim() || undefined}
-                    >
-                      {window.description?.trim() || '-'}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{getWindowTypeLabel(window.windowType)}</TableCell>
-                <TableCell className="whitespace-nowrap">{window.startTime} - {window.endTime}</TableCell>
-                <TableCell className="max-w-[180px] whitespace-normal text-slate-600 dark:text-slate-300">
-                  {getScheduleLabel(window)}
-                </TableCell>
-                <TableCell>{window.isEnabled ? '启用' : '禁用'}</TableCell>
-                <TableCell className="pr-4">
-                  <TableRowActions
-                    align="end"
-                    overflowLabel="更多"
-                    buttonLayout="compact"
-                    actions={[
-                      {
-                        label: '编辑窗口',
-                        icon: <Edit2 className="h-3.5 w-3.5" />,
-                        onClick: () => handleEdit(window),
-                        semantic: 'edit',
-                        isPrimary: true,
-                      },
-                      {
-                        label: window.isEnabled ? '禁用窗口' : '启用窗口',
-                        icon: window.isEnabled ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />,
-                        onClick: () => handleToggle(window.id, window.isEnabled),
-                        semantic: window.isEnabled ? 'disable' : 'enable',
-                        danger: window.isEnabled,
-                      },
-                      {
-                        label: '删除窗口',
-                        icon: <Trash2 className="h-3.5 w-3.5" />,
-                        onClick: () => setDeleteTarget(window),
-                        semantic: 'delete',
-                        danger: true,
-                      },
-                    ]}
-                  />
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </TableSurfaceCard>
-  );
-
   return (
     <>
-      <TablePageLayout className="gap-4" filters={filters} table={table} />
+      <section className="table-scroll-container admin-inner-table-surface deploy-window-workbench">
+        <div className="admin-source-section-head deploy-window-toolbar border-b border-slate-200 dark:border-slate-800">
+          <div className="flex flex-wrap gap-2">
+            <span className="badge badge-info">共 {summary.total} 条</span>
+            <span className="badge badge-success">启用 {summary.enabledCount} 条</span>
+            <span className="badge badge-gray">禁用 {summary.disabledCount} 条</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => void loadWindows()} disabled={loading}>
+              <RefreshCw className="h-4 w-4" />
+              刷新
+            </Button>
+            <Button size="sm" onClick={handleOpenCreate}>
+              <Plus className="h-4 w-4" />
+              新建窗口
+            </Button>
+          </div>
+        </div>
+
+        <div className="table-wrapper deploy-window-table">
+        <table className="unity-data-table admin-source-table min-w-[920px]">
+            <thead>
+              <tr>
+                <th>窗口</th>
+                <th>类型</th>
+                <th>时段</th>
+                <th>规则</th>
+                <th>状态</th>
+                <th className="text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <TableStateRow colSpan={6} title="正在读取发布窗口" loading />
+              ) : windows.length === 0 ? (
+                <TableStateRow colSpan={6} title="暂无发布窗口" />
+              ) : (
+                windows.map((window) => (
+                  <tr key={window.id} className={!window.isEnabled ? 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/40' : undefined}>
+                    <td>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                          {window.windowName}
+                        </div>
+                        <div
+                          className="mt-1 truncate text-xs leading-5 text-slate-500 dark:text-slate-400"
+                          title={window.description?.trim() || undefined}
+                        >
+                          {window.description?.trim() || '-'}
+                        </div>
+                      </div>
+                    </td>
+                    <td>{getWindowTypeLabel(window.windowType)}</td>
+                    <td className="whitespace-nowrap">{window.startTime} - {window.endTime}</td>
+                    <td className="max-w-[180px] whitespace-normal text-slate-600 dark:text-slate-300">
+                      {getScheduleLabel(window)}
+                    </td>
+                    <td><span className={`badge ${window.isEnabled ? 'badge-success' : 'badge-gray'}`}>{window.isEnabled ? '启用' : '禁用'}</span></td>
+                    <td>
+                      <div className="admin-users-row-actions justify-end">
+                        <button type="button" title="编辑窗口" aria-label="编辑窗口" onClick={() => handleEdit(window)}>
+                          <Edit2 size={15} />
+                        </button>
+                        <button
+                          className={window.isEnabled ? 'danger' : undefined}
+                          type="button"
+                          title={window.isEnabled ? '禁用窗口' : '启用窗口'}
+                          aria-label={window.isEnabled ? '禁用窗口' : '启用窗口'}
+                          onClick={() => handleToggle(window.id, window.isEnabled)}
+                        >
+                          {window.isEnabled ? <PowerOff size={15} /> : <Power size={15} />}
+                        </button>
+                        <button className="danger" type="button" title="删除窗口" aria-label="删除窗口" onClick={() => setDeleteTarget(window)}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+        </table>
+        </div>
+      </section>
 
       <BaseDialog
         open={showDialog}
@@ -414,7 +388,7 @@ export const DeployWindowManagement: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-4 pr-1">
+        <div className="admin-source-content-grid pr-1">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
               <label className={fieldLabelClassName}>
@@ -521,10 +495,10 @@ export const DeployWindowManagement: React.FC = () => {
                         })
                       }
                       className={cn(
-                        'h-10 rounded-lg px-3 text-sm transition-colors',
+                        'h-10 rounded-md px-3 text-sm transition-colors',
                         selected
-                          ? 'bg-[color:var(--cf-primary-50)] text-[color:var(--cf-primary-700)] ring-1 ring-[color:var(--cf-primary-200)] dark:bg-cyan-950/40 dark:text-cyan-100 dark:ring-cyan-800'
-                          : 'text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:ring-slate-800 dark:hover:bg-slate-900 dark:hover:text-slate-100',
+                          ? 'bg-[color:var(--cf-primary-50)] text-[color:var(--cf-primary-700)] border border-[color:var(--cf-primary-200)] dark:bg-cyan-950/40 dark:text-cyan-100 dark:border-cyan-800'
+                          : 'text-slate-500 border border-slate-200 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-400 dark:border-slate-800 dark:hover:bg-slate-900 dark:hover:text-slate-100',
                       )}
                     >
                       {day.label}

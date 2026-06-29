@@ -26,11 +26,11 @@ export const DeployActionButton: React.FC<DeployActionButtonProps> = ({
     variant="ghost"
     size="sm"
     className={cn(
-      'gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium shadow-none',
+      'gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium shadow-none',
       'disabled:bg-transparent disabled:text-slate-300 disabled:hover:bg-transparent dark:disabled:text-slate-600',
       danger
         ? 'text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+        : 'text-slate-500 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
       className,
     )}
   >

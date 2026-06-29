@@ -18,6 +18,7 @@ import {
   type HotUpdateRecord,
 } from '@/services/api/workflow';
 import { Button } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   WorkspaceDialogShell,
   WorkspaceMetricCard,
@@ -151,13 +152,13 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
       maxWidthClassName="w-full sm:max-w-4xl lg:max-w-5xl"
       bodyClassName="overflow-y-auto !px-0 !py-0"
       headerAside={(
-        <div className="hidden items-center gap-2 rounded-full border border-cyan-200/70 bg-cyan-50/90 px-3 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200 md:inline-flex">
+        <div className="hidden items-center gap-2 rounded-md border border-cyan-200/70 bg-cyan-50/90 px-3 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200 md:inline-flex">
           <Sparkles size={14} />
           Hot Update
         </div>
       )}
     >
-      <div className="space-y-4 bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.12),transparent_26%),linear-gradient(180deg,rgba(248,250,252,0.74),rgba(255,255,255,0.88))] px-4 py-4 dark:bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.12),transparent_26%),linear-gradient(180deg,rgba(2,6,23,0.74),rgba(2,6,23,0.92))] sm:px-6 sm:py-5">
+      <div className="admin-dialog-stack bg-[var(--cf-bg)] px-4 py-4 dark:bg-slate-950 sm:px-6 sm:py-5">
         <div className="grid gap-3 md:grid-cols-3">
           <WorkspaceMetricCard label="流程 Key" value={processKey} hint="迁移目标定义" />
           <WorkspaceMetricCard label="当前模式" value={modeMeta.label} hint={modeMeta.summary} />
@@ -168,7 +169,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
           />
         </div>
 
-        <div className="rounded-2xl border border-white/70 bg-white/85 p-1.5 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-950/70">
+        <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1.5 shadow-none dark:border-slate-800 dark:bg-slate-950">
           <div className="flex flex-wrap gap-2">
             <Button
               variant={activeTab === 'execute' ? 'default' : 'ghost'}
@@ -189,12 +190,12 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
         </div>
 
         {activeTab === 'execute' ? (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+          <div className="grid gap-4">
             <WorkspaceSectionCard
               eyebrow="Mode"
               title="迁移模式"
               description="同一套模式定义与发布管理页保持一致，避免弹窗和主入口语义分叉。"
-              bodyClassName="space-y-3"
+              bodyClassName="admin-dialog-stack"
             >
               {HOT_UPDATE_MODE_OPTIONS.map((option) => {
                 const active = option.value === mode;
@@ -207,11 +208,11 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                       resetExecutionState();
                     }}
                     className={[
-                      'w-full rounded-2xl border p-4 text-left',
+                      'w-full rounded-md border p-4 text-left',
                       option.cardClassName,
                       active
-                        ? 'ring-2 ring-[rgba(20,184,166,0.28)] shadow-[0_16px_36px_rgba(15,23,42,0.08)] dark:shadow-[0_16px_40px_rgba(2,6,23,0.28)]'
-                        : 'cf-interactive-card opacity-88 hover:opacity-100',
+                        ? 'border-cyan-300 bg-[var(--cf-surface-strong)] dark:border-cyan-800'
+                        : 'admin-option-surface',
                     ].join(' ')}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -219,7 +220,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                         {option.icon}
                         {option.label}
                       </div>
-                      <span className="rounded-full border border-current/10 bg-white/70 px-2 py-0.5 text-[10px] font-semibold dark:bg-slate-950/40">
+                      <span className="rounded-md border border-current/10 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-[10px] font-semibold dark:bg-slate-950/40">
                         {option.badge}
                       </span>
                     </div>
@@ -238,7 +239,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                   ? result.message || '分析完成'
                   : '先分析影响，再生成确认令牌并执行热更新。'
               }
-              bodyClassName="space-y-4"
+              bodyClassName="admin-dialog-stack"
               headerAside={(
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleAnalyze} disabled={loading}>
@@ -270,7 +271,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                 <>
                   <div
                     className={[
-                      'rounded-2xl border px-4 py-4',
+                      'rounded-md border px-4 py-4',
                       result.success
                         ? 'border-emerald-200 bg-emerald-50/90 dark:border-emerald-500/20 dark:bg-emerald-500/10'
                         : 'border-rose-200 bg-rose-50/90 dark:border-rose-500/20 dark:bg-rose-500/10',
@@ -304,53 +305,51 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                   </div>
 
                   {result.details.length > 0 ? (
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-                      <div className="max-h-64 overflow-auto">
-                        <table className="min-w-full text-sm">
-                          <thead className="sticky top-0 bg-slate-50/95 backdrop-blur dark:bg-slate-900/95">
-                            <tr className="text-left text-slate-500 dark:text-slate-400">
-                              <th className="px-4 py-3 font-medium">流程编号</th>
-                              <th className="px-4 py-3 font-medium">当前节点</th>
-                              <th className="px-4 py-3 font-medium">状态</th>
-                              <th className="px-4 py-3 font-medium">原因</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {result.details.map((item) => {
-                              const statusMeta = getHotUpdateStatusMeta(item.status);
-                              return (
-                                <tr
-                                  key={item.instanceId}
-                                  className="bg-white/90 transition-colors hover:bg-slate-50/90 dark:bg-slate-950/40 dark:hover:bg-slate-900/70"
-                                >
-                                  <td className="px-4 py-3">
-                                    {item.processNo || item.instanceId.slice(0, 8)}
-                                  </td>
-                                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                                    {item.currentNodeTitle || item.currentNodeKey || '-'}
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <span
-                                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${statusMeta.className}`}
-                                    >
-                                      {statusMeta.icon}
-                                      {statusMeta.label}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                                    {item.reason || '-'}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                    <InnerTableSurface className="max-h-64">
+                      <table className="unity-data-table admin-source-table min-w-[760px]">
+                        <thead className="sticky top-0">
+                          <tr className="text-left text-slate-500 dark:text-slate-400">
+                            <th className="px-4 py-3 font-medium">流程编号</th>
+                            <th className="px-4 py-3 font-medium">当前节点</th>
+                            <th className="px-4 py-3 font-medium">状态</th>
+                            <th className="px-4 py-3 font-medium">原因</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                          {result.details.map((item) => {
+                            const statusMeta = getHotUpdateStatusMeta(item.status);
+                            return (
+                              <tr
+                                key={item.instanceId}
+                                className="bg-[var(--cf-surface-strong)] transition-colors hover:bg-[var(--cf-surface-muted)] dark:bg-slate-950 dark:hover:bg-slate-900/70"
+                              >
+                                <td className="px-4 py-3">
+                                  {item.processNo || item.instanceId.slice(0, 8)}
+                                </td>
+                                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                                  {item.currentNodeTitle || item.currentNodeKey || '-'}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${statusMeta.className}`}
+                                  >
+                                    {statusMeta.icon}
+                                    {statusMeta.label}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                                  {item.reason || '-'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </InnerTableSurface>
                   ) : null}
 
                   {shouldRequireConfirm(result) ? (
-                    <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100">
+                    <label className="flex items-start gap-3 rounded-md border border-amber-200 bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-amber-900 dark:border-amber-500/20 dark:bg-slate-900/70 dark:text-amber-100">
                       <input
                         type="checkbox"
                         checked={confirmed}
@@ -364,7 +363,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                   ) : null}
                 </>
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+                <div className="rounded-md border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
                   先执行影响分析，再在这里确认迁移结果。
                 </div>
               )}
@@ -375,10 +374,10 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
             eyebrow="History"
             title="热更新历史"
             description="查看这个流程 Key 的既往迁移记录。"
-            bodyClassName="space-y-3"
+            bodyClassName="admin-dialog-stack"
           >
             {historyLoading ? (
-              <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 px-5 py-8 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+              <div className="flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-5 py-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
                 <Loader2 size={16} className="animate-spin" />
                 正在加载历史记录
               </div>
@@ -388,7 +387,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                 return (
                   <div
                     key={record.id}
-                    className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/60"
+                    className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-4 shadow-none dark:border-slate-800 dark:bg-slate-950"
                   >
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
@@ -400,13 +399,13 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                        <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                           迁移 {record.migratedCount}
                         </span>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                           跳过 {record.skippedCount}
                         </span>
-                        <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                        <span className="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
                           失败 {record.failedCount}
                         </span>
                       </div>
@@ -415,7 +414,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                 );
               })
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+              <div className="rounded-md border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
                 暂无热更新记录。
               </div>
             )}

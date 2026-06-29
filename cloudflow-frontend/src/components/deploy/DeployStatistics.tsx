@@ -3,6 +3,7 @@ import { BarChart3, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { Button } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common/select';
 import { cn } from '@/utils/cn';
 import { getProcessDefinitions } from '@/services/api/workflow';
@@ -31,7 +32,7 @@ const InlineState: React.FC<{
   icon?: React.ReactNode;
   loading?: boolean;
 }> = ({ title, description, icon, loading = false }) => (
-  <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+  <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
     {loading ? (
       <RefreshCw className="mb-3 h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
     ) : icon ? (
@@ -50,14 +51,12 @@ const DetailRows: React.FC<{
   children: React.ReactNode;
   className?: string;
 }> = ({ children, className }) => (
-  <div
-    className={cn(
-      'overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800',
-      className,
-    )}
+  <InnerTableSurface
+    className={className}
+    wrapperClassName="divide-y divide-slate-100 dark:divide-slate-800"
   >
     {children}
-  </div>
+  </InnerTableSurface>
 );
 
 const DetailRow: React.FC<{
@@ -67,7 +66,7 @@ const DetailRow: React.FC<{
 }> = ({ label, value, alignStart = false }) => (
   <div
     className={cn(
-      'flex flex-col gap-1 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800 sm:flex-row sm:gap-4',
+      'flex flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-4',
       alignStart ? 'sm:items-start' : 'sm:items-center',
     )}
   >
@@ -175,85 +174,95 @@ export const DeployStatistics: React.FC = () => {
   }, [stats]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <div className="w-full sm:w-72">
-          <Select value={selectedProcess} onValueChange={setSelectedProcess}>
-            <SelectTrigger>
-              <SelectValue placeholder="请选择流程" />
-            </SelectTrigger>
-            <SelectContent>
-              {processes.map((item) => (
-                <SelectItem key={String(item.definitionId)} value={String(item.definitionId)}>
-                  {item.processName || item.processKey || String(item.definitionId)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <div className="admin-source-content-grid">
+      <section className="card admin-users-toolbar">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="w-full sm:w-72">
+            <Select value={selectedProcess} onValueChange={setSelectedProcess}>
+              <SelectTrigger>
+                <SelectValue placeholder="请选择流程" />
+              </SelectTrigger>
+              <SelectContent>
+                {processes.map((item) => (
+                  <SelectItem key={String(item.definitionId)} value={String(item.definitionId)}>
+                    {item.processName || item.processKey || String(item.definitionId)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
-          <span>{selectedProcessMeta?.processName || selectedProcessMeta?.processKey || '未选择流程'}</span>
-          <span>发布 {derived.totalDeploys}</span>
-          <span>成功率 {derived.successRate.toFixed(1)}%</span>
-          <span>回滚率 {derived.rollbackRate.toFixed(1)}%</span>
-        </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="badge badge-gray">{selectedProcessMeta?.processName || selectedProcessMeta?.processKey || '未选择流程'}</span>
+            <span className="badge badge-gray">发布 {derived.totalDeploys}</span>
+            <span className="badge badge-gray">成功率 {derived.successRate.toFixed(1)}%</span>
+            <span className="badge badge-gray">回滚率 {derived.rollbackRate.toFixed(1)}%</span>
+          </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void loadStatistics()} disabled={!selectedProcess}>
-            <RefreshCw className="h-4 w-4" />
-            刷新
-          </Button>
+          <div className="admin-users-toolbar-actions ml-auto">
+            <Button variant="outline" size="sm" onClick={() => void loadStatistics()} disabled={!selectedProcess}>
+              <RefreshCw className="h-4 w-4" />
+              刷新
+            </Button>
+          </div>
         </div>
-      </div>
+      </section>
 
       {!selectedProcess ? (
-        <InlineState icon={<BarChart3 className="h-5 w-5" />} title="请先选择流程" />
+        <InnerTableSurface>
+          <InlineState icon={<BarChart3 className="h-5 w-5" />} title="请先选择流程" />
+        </InnerTableSurface>
       ) : loading ? (
-        <InlineState title="正在读取发布统计" loading />
+        <InnerTableSurface>
+          <InlineState title="正在读取发布统计" loading />
+        </InnerTableSurface>
       ) : !stats ? (
-        <InlineState icon={<BarChart3 className="h-5 w-5" />} title="暂无统计数据" />
+        <InnerTableSurface>
+          <InlineState icon={<BarChart3 className="h-5 w-5" />} title="暂无统计数据" />
+        </InnerTableSurface>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="hidden bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 dark:bg-slate-900/70 dark:text-slate-400 md:grid md:grid-cols-[160px_140px_minmax(0,1fr)] md:items-center">
-              <span>指标</span>
-              <span>当前值</span>
-              <span>说明</span>
-            </div>
-
-            {[
-              {
-                label: '发布成功',
-                value: `${derived.successCount}/${derived.totalDeploys || 0}`,
-                note: `成功率 ${derived.successRate.toFixed(1)}%`,
-              },
-              {
-                label: '回滚记录',
-                value: `${derived.rollbackCount}/${derived.totalDeploys || 0}`,
-                note: `回滚率 ${derived.rollbackRate.toFixed(1)}%`,
-              },
-              {
-                label: '版本快照',
-                value: `${derived.snapshotCount}`,
-                note: derived.latestVersion > 0 ? `当前版本 v${derived.latestVersion}` : '暂无版本',
-              },
-              {
-                label: '发布密度',
-                value: derived.deployDensity === '--' ? '--' : `${derived.deployDensity} 次/版本`,
-                note: `健康度 ${derived.healthLabel}`,
-              },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="grid gap-2 border-t border-slate-200 px-4 py-4 first:border-t-0 dark:border-slate-800 md:grid-cols-[160px_140px_minmax(0,1fr)] md:items-center"
-              >
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.label}</div>
-                <div className="text-sm text-slate-700 dark:text-slate-200">{item.value}</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400">{item.note}</div>
-              </div>
-            ))}
-          </div>
+        <div className="grid gap-4">
+          <InnerTableSurface>
+            <table className="unity-data-table admin-source-table min-w-[680px]">
+                <thead>
+                  <tr>
+                    <th>指标</th>
+                    <th>当前值</th>
+                    <th>说明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    {
+                      label: '发布成功',
+                      value: `${derived.successCount}/${derived.totalDeploys || 0}`,
+                      note: `成功率 ${derived.successRate.toFixed(1)}%`,
+                    },
+                    {
+                      label: '回滚记录',
+                      value: `${derived.rollbackCount}/${derived.totalDeploys || 0}`,
+                      note: `回滚率 ${derived.rollbackRate.toFixed(1)}%`,
+                    },
+                    {
+                      label: '版本快照',
+                      value: `${derived.snapshotCount}`,
+                      note: derived.latestVersion > 0 ? `当前版本 v${derived.latestVersion}` : '暂无版本',
+                    },
+                    {
+                      label: '发布密度',
+                      value: derived.deployDensity === '--' ? '--' : `${derived.deployDensity} 次/版本`,
+                      note: `健康度 ${derived.healthLabel}`,
+                    },
+                  ].map((item) => (
+                    <tr key={item.label}>
+                      <td><strong className="text-slate-900 dark:text-slate-100">{item.label}</strong></td>
+                      <td>{item.value}</td>
+                      <td>{item.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+            </table>
+          </InnerTableSurface>
 
           <DetailRows className="self-start">
             <DetailRow label="流程" value={selectedProcessMeta?.processName || selectedProcessMeta?.processKey || '-'} />

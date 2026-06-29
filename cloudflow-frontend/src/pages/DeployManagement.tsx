@@ -11,8 +11,7 @@ import { DeployApprovalManagement } from '@/components/deploy/DeployApprovalMana
 import { VersionRollbackManagement } from '@/components/deploy/VersionRollbackManagement';
 import { DeployStatistics } from '@/components/deploy/DeployStatistics';
 import { HotUpdatePanel } from '@/components/deploy/HotUpdatePanel';
-import { SegmentedControl, SegmentedControlItem } from '@/components/common';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type DeployTabKey = 'windows' | 'approvals' | 'rollback' | 'hotupdate' | 'statistics';
 
@@ -78,40 +77,74 @@ export const DeployManagement: React.FC = () => {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <TableSurfaceCard>
-        <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-              {activeTabMeta.label}
-            </div>
-            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {activeTabMeta.description}
-            </div>
-          </div>
+  const pageActions = (
+    <header className="admin-source-header">
+      <div>
+        <p className="admin-source-kicker">DEPLOYMENT OPS</p>
+        <h2>发布管理</h2>
+        <span>{activeTabMeta.description}</span>
+      </div>
+    </header>
+  );
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-900/70">
-            <SegmentedControl className="min-h-9 flex-wrap !bg-transparent !p-0">
-              {tabOptions.map((item) => (
-                <SegmentedControlItem
-                  key={item.key}
-                  size="sm"
-                  active={activeTab === item.key}
-                  onClick={() => setActiveTab(item.key)}
-                  className="gap-1.5"
-                >
-                  {item.icon}
-                  {item.label}
-                </SegmentedControlItem>
-              ))}
-            </SegmentedControl>
+  const pageFilters = (
+      <section className="card admin-deploy-command-strip">
+        <div className="admin-deploy-status-grid">
+          {tabOptions.map((item, index) => {
+            const active = activeTab === item.key;
+            const tone = index === 0 ? 'blue' : index === 1 ? 'green' : index === 2 ? 'amber' : index === 3 ? 'violet' : 'slate';
+            return (
+              <button
+                key={item.key}
+                type="button"
+                aria-pressed={active}
+                className={`admin-deploy-status-cell tone-${tone} ${active ? 'is-active' : ''}`}
+                onClick={() => setActiveTab(item.key)}
+              >
+                <span className="admin-deploy-status-icon">{item.icon}</span>
+                <span className="admin-deploy-status-copy">
+                  <strong>{item.label}</strong>
+                  <em>{active ? '当前模块' : item.description}</em>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="admin-deploy-context-rail">
+          <span>{activeTabMeta.description}</span>
+          <div>
+            {tabOptions.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                data-active={activeTab === item.key ? 'true' : 'false'}
+                onClick={() => setActiveTab(item.key)}
+              >
+              {item.icon}
+              {item.label}
+              </button>
+            ))}
           </div>
         </div>
-      </TableSurfaceCard>
+      </section>
+  );
 
-      {renderActivePanel()}
-    </div>
+  const pageContent = (
+      <div className="admin-source-content">
+        <div className="grid gap-4">
+          {renderActivePanel()}
+        </div>
+      </div>
+  );
+
+  return (
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageContent}
+      />
+    </section>
   );
 };
 
