@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, FilterChip } from '@/components/common';
 import { SearchInput } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 interface WorkflowCategoryOption {
   label: string;
@@ -34,13 +35,13 @@ export const WorkflowCatalogFilters: React.FC<WorkflowCatalogFiltersProps> = ({
   onTagToggle,
   onClearFilters,
 }) => (
-  <section className="card overflow-hidden">
-    <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+  <InnerTableSurface className="overflow-hidden">
+    <div className="p-4 admin-source-section-head border-b border-slate-200 dark:border-slate-800">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">流程筛选</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <strong>流程筛选</strong>
+        <span>
           按名称、分类和标签快速定位可发起流程。
-        </p>
+        </span>
       </div>
       <div className="flex flex-wrap gap-2">
         <span className="badge badge-gray">标签池 {allTags.length}</span>
@@ -48,7 +49,7 @@ export const WorkflowCatalogFilters: React.FC<WorkflowCatalogFiltersProps> = ({
       </div>
     </div>
 
-    <div className="space-y-4 p-6">
+    <div className="p-4 admin-dialog-stack">
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
         <SearchInput
           value={searchTerm}
@@ -60,7 +61,7 @@ export const WorkflowCatalogFilters: React.FC<WorkflowCatalogFiltersProps> = ({
             清空筛选
           </Button>
         ) : (
-          <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+          <div className="p-4 inline-flex min-h-10 items-center border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
             当前未应用额外筛选
           </div>
         )}
@@ -99,5 +100,5 @@ export const WorkflowCatalogFilters: React.FC<WorkflowCatalogFiltersProps> = ({
         </div>
       ) : null}
     </div>
-  </section>
+  </InnerTableSurface>
 );

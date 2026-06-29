@@ -45,7 +45,7 @@ export const BRANCH_STRATEGY_LABELS: Record<string, string> = {
 };
 
 const neutralNodeVisual = {
-  bg: "bg-white dark:bg-slate-950/88",
+  bg: "bg-[var(--cf-surface-strong)] dark:bg-slate-950",
   iconBg: "bg-cyan-50 dark:bg-cyan-950/30",
   iconColor: "text-cyan-700 dark:text-cyan-200",
   border: "border-slate-200 dark:border-slate-800",
@@ -76,13 +76,13 @@ export const NODE_VISUAL: Record<
 };
 
 export const studioSidePanelClassName =
-  "fixed right-0 top-0 z-50 flex h-full w-[20rem] flex-col border-l border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950";
+  "fixed right-0 top-0 z-50 flex h-full w-[20rem] flex-col border-l border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950";
 
 export const studioSubtleBlockClassName =
-  "border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950";
+  "border border-slate-200 bg-[var(--cf-surface-strong)] p-3 dark:border-slate-800 dark:bg-slate-950";
 
 export const studioQuickAddMenuClassName =
-  "workflow-quick-add-menu absolute left-1/2 z-[100] min-w-[176px] -translate-x-1/2 rounded-md border border-cyan-100 bg-white p-2 dark:border-cyan-950/40 dark:bg-slate-950";
+  "workflow-quick-add-menu absolute left-1/2 z-[100] min-w-[176px] -translate-x-1/2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 dark:border-slate-800 dark:bg-slate-950";
 
 export const studioSectionTitleClassName =
   "text-[11px] font-medium text-cyan-700 dark:text-cyan-300";

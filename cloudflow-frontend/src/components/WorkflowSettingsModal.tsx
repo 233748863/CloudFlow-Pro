@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BaseDialog } from '@/components/common';
 import { Button } from '@/components/common';
 import { Input } from './common/input';
+import { Textarea } from './common/textarea';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './common/select';
 import { getDeptTree } from '../services/api/auth';
 import { FormDefinition } from '../types';
@@ -15,7 +16,7 @@ const SELECT_NONE_VALUE = '__NONE__';
 const sectionTitleClassName = 'text-xs font-medium text-cyan-700 dark:text-cyan-300';
 const fieldLabelClassName = 'mb-1 block text-[11px] text-slate-500 dark:text-slate-400';
 const loadingBlockClassName =
-  'w-full border border-slate-200 bg-white p-3 text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500';
+  'w-full rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500';
 
 interface WorkflowSettingsModalProps {
   open: boolean;
@@ -194,8 +195,8 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
         </div>
       )}
     >
-      <div className="space-y-3">
-        <div className="space-y-2">
+      <div className="admin-dialog-stack">
+        <div className="admin-dialog-field">
           <div className={sectionTitleClassName}>基本信息</div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -203,7 +204,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
               <Input
                 value={workflowName}
                 disabled
-                className="bg-slate-50 text-slate-500 dark:bg-slate-900 dark:text-slate-300"
+                className="bg-[var(--cf-surface-muted)] text-slate-500 dark:bg-slate-900 dark:text-slate-300"
               />
             </div>
             <div>
@@ -211,23 +212,23 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
               <Input
                 value={workflowKey}
                 disabled
-                className="bg-slate-50 font-mono text-slate-500 dark:bg-slate-900 dark:text-slate-300"
+                className="bg-[var(--cf-surface-muted)] font-mono text-slate-500 dark:bg-slate-900 dark:text-slate-300"
               />
             </div>
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <label className={sectionTitleClassName}>流程描述</label>
-          <textarea
+          <Textarea
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="请输入流程描述"
-            className="min-h-[96px] w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+            className="min-h-[96px] resize-none"
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <label className={sectionTitleClassName}>流程分类</label>
           <Select
             value={category || SELECT_NONE_VALUE}
@@ -247,7 +248,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
           </Select>
         </div>
 
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <label className={sectionTitleClassName}>流程标签</label>
           <Input
             value={tagText}
@@ -256,7 +257,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <label className={sectionTitleClassName}>关联表单</label>
           {loadingForms ? (
             <div className={loadingBlockClassName}>加载表单列表中...</div>
@@ -280,10 +281,10 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
           )}
         </div>
 
-        <div className="space-y-3 border-t border-slate-200 pt-3 dark:border-slate-800">
+        <div className="admin-dialog-stack border-t border-slate-200 pt-3 dark:border-slate-800">
           <div className={sectionTitleClassName}>启动权限</div>
 
-          <div className="space-y-2">
+          <div className="admin-dialog-field">
             <span className={fieldLabelClassName}>谁可以启动此流程</span>
             <Select
               value={startPermissionType}
@@ -305,7 +306,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
           </div>
 
           {startPermissionType === 'ROLE' ? (
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <span className={fieldLabelClassName}>选择角色</span>
               {loadingPermissions ? (
                 <div className={loadingBlockClassName}>加载角色列表中...</div>
@@ -330,7 +331,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
           ) : null}
 
           {startPermissionType === 'DEPT' ? (
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <span className={fieldLabelClassName}>选择部门</span>
               {loadingPermissions ? (
                 <div className={loadingBlockClassName}>加载部门列表中...</div>
@@ -355,7 +356,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
           ) : null}
 
           {startPermissionType === 'USER' ? (
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <span className={fieldLabelClassName}>选择用户</span>
               {loadingPermissions ? (
                 <div className={loadingBlockClassName}>加载用户列表中...</div>

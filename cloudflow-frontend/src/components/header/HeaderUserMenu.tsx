@@ -82,53 +82,51 @@ export const HeaderUserMenu: React.FC = () => {
       <button
         type="button"
         onClick={() => setDropdownOpen((prev) => !prev)}
-        className="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+        className="app-user-menu-button"
         aria-label="用户菜单"
         aria-expanded={dropdownOpen}
         aria-haspopup="menu"
       >
-        <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 text-sm font-medium text-white shadow-sm">
+        <div className="app-avatar">
           {avatar ? (
             <img src={avatar} alt={displayName} className="h-full w-full object-cover" />
           ) : (
-            initials
+            <div className="default-avatar default-avatar--xs" role="img" aria-label={`${displayName} avatar`}>
+              <span className="default-avatar-glow" aria-hidden="true" />
+              <span className="default-avatar-ring" aria-hidden="true" />
+              <span className="default-avatar-initials">{initials}</span>
+            </div>
           )}
         </div>
-        <div className="hidden min-w-0 text-left md:block">
-          <div className="max-w-[9rem] truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-            {displayName}
-          </div>
-          <div className="max-w-[9rem] truncate text-xs capitalize text-slate-500 dark:text-slate-400">
-            {subtitle}
-          </div>
+        <div className="app-user-meta">
+          <div>{displayName}</div>
+          <span>{subtitle}</span>
         </div>
         <ChevronDown
           size={14}
-          className={`hidden text-slate-400 transition-transform duration-200 md:block ${
+          className={`app-user-chevron text-slate-400 transition-transform duration-200 ${
             dropdownOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
       <div
-        className={`absolute right-0 z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 transition-all duration-150 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/70 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)] ${
+        className={`dropdown app-user-dropdown transition-all duration-150 ${
           dropdownOpen
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
         }`}
       >
-        <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{displayName}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            {user.email || user.username || '-'}
-          </div>
+        <div className="app-user-dropdown-head">
+          <div>{displayName}</div>
+          <span>{user.email || user.username || '-'}</span>
         </div>
 
         <div className="py-1">
           <button
             type="button"
             onClick={() => handleNavigate('/profile')}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900"
+            className="dropdown-item"
           >
             <User size={16} />
             个人资料
@@ -137,7 +135,7 @@ export const HeaderUserMenu: React.FC = () => {
           <button
             type="button"
             onClick={() => handleNavigate('/office/announcement')}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900"
+            className="dropdown-item"
           >
             <Bell size={16} />
             公告中心
@@ -145,7 +143,7 @@ export const HeaderUserMenu: React.FC = () => {
         </div>
 
         {user.email || user.phone ? (
-          <div className="border-t border-slate-100 px-4 py-2.5 dark:border-slate-800">
+          <div className="border-t border-slate-200 px-3 py-2.5 dark:border-slate-800">
             {user.email ? (
               <div className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <Mail size={14} className="mt-0.5 shrink-0" />
@@ -172,14 +170,14 @@ export const HeaderUserMenu: React.FC = () => {
           </div>
         ) : null}
 
-        <div className="border-t border-slate-100 py-1 dark:border-slate-800">
+        <div className="border-t border-slate-200 py-1 dark:border-slate-800">
           <button
             type="button"
             onClick={async () => {
               closeDropdown();
               await logout();
             }}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30"
+            className="dropdown-item text-red-600 dark:text-red-300"
           >
             <LogOut size={16} />
             退出登录

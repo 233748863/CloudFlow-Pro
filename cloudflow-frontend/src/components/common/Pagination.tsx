@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from './select';
 
 interface PaginationProps {
   total: number;
@@ -15,43 +15,26 @@ interface PaginationProps {
 }
 
 function buildVisiblePages(currentPage: number, totalPages: number): Array<number | string> {
-  const pages: Array<number | string> = [];
-  const maxVisible = 7;
-
-  if (totalPages <= maxVisible) {
-    for (let index = 1; index <= totalPages; index += 1) {
-      pages.push(index);
-    }
-    return pages;
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
   }
 
-  pages.push(1);
-
-  const start = Math.max(2, currentPage - 2);
-  const end = Math.min(totalPages - 1, currentPage + 2);
-
-  if (start > 2) {
-    pages.push('...');
+  if (currentPage <= 3) {
+    return [1, 2, 3, '...', totalPages];
   }
 
-  for (let index = start; index <= end; index += 1) {
-    pages.push(index);
+  if (currentPage >= totalPages - 2) {
+    return [1, '...', totalPages - 2, totalPages - 1, totalPages];
   }
 
-  if (end < totalPages - 1) {
-    pages.push('...');
-  }
-
-  pages.push(totalPages);
-
-  return pages;
+  return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
 }
 
 export const Pagination: React.FC<PaginationProps> = ({
   total,
   page,
   pageSize,
-  pageSizeOptions = [10, 20, 50, 100],
+  pageSizeOptions = [10, 20, 50],
   showPageSizeSelector = true,
   showJump = false,
   onPageChange,
@@ -82,44 +65,96 @@ export const Pagination: React.FC<PaginationProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 dark:border-slate-800 dark:bg-slate-950/88">
-      <div className="flex flex-1 items-center justify-between sm:hidden">
+    <div className="pagination-bar cf-pagination flex items-center justify-between">
+      <div className="pagination-mobile flex flex-1 items-center justify-between sm:hidden">
         <Button variant="outline" size="sm" onClick={() => goToPage(page - 1)} disabled={page === 1}>
-          上一页
+          <ChevronLeft size={15} /> 上一页
         </Button>
-        <span className="text-sm text-slate-600 dark:text-slate-300">
-          第 {page} / {totalPages} 页
-        </span>
         <Button variant="outline" size="sm" onClick={() => goToPage(page + 1)} disabled={page === totalPages}>
-          下一页
+          下一页 <ChevronRight size={15} />
         </Button>
       </div>
 
-      <div className="hidden w-full items-center justify-between gap-6 sm:flex">
-        <div className="flex flex-wrap items-center gap-4">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            显示第 <span className="font-medium text-slate-900 dark:text-slate-100">{fromItem}</span>{' '}
-            到 <span className="font-medium text-slate-900 dark:text-slate-100">{toItem}</span>{' '}
-            条，共 <span className="font-medium text-slate-900 dark:text-slate-100">{total}</span> 条
-          </p>
+      <div className="pagination-desktop hidden w-full items-center justify-between gap-4 sm:flex">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          显示 <span className="font-medium text-slate-900 dark:text-slate-100">{fromItem}</span>{' '}
+          至 <span className="font-medium text-slate-900 dark:text-slate-100">{toItem}</span>{' '}
+          共 <span className="font-medium text-slate-900 dark:text-slate-100">{total}</span> 条结果
+        </p>
 
+        <div className="pagination-actions flex items-center gap-2">
           {showPageSizeSelector ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600 dark:text-slate-300">每页</span>
-              <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
-                <SelectTrigger className="h-9 w-20 rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {pageSizeOptions.map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <span className="text-sm text-slate-600 dark:text-slate-300">每页:</span>
+              <div className="unity-select">
+                <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
+                  <SelectTrigger>
+                    <span className="pagination-size-value">{pageSize}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           ) : null}
+
+          <button
+            type="button"
+            className="pagination-btn"
+            onClick={() => goToPage(page - 1)}
+            disabled={page === 1}
+            aria-label="上一页"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {visiblePages.map((pageItem, index) => {
+            const key = `${pageItem}-${index}`;
+            const active = pageItem === page;
+
+            if (typeof pageItem !== 'number') {
+              return (
+                <span
+                  key={key}
+                  className="pagination-ellipsis cf-pagination-ellipsis"
+                >
+                  {pageItem}
+                </span>
+              );
+            }
+
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => goToPage(pageItem)}
+                className={[
+                  'pagination-btn cf-pagination-page',
+                  active
+                    ? 'active is-active'
+                    : '',
+                ].join(' ')}
+                aria-current={active ? 'page' : undefined}
+              >
+                {pageItem}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            className="pagination-btn"
+            onClick={() => goToPage(page + 1)}
+            disabled={page === totalPages}
+            aria-label="下一页"
+          >
+            <ChevronRight size={16} />
+          </button>
 
           {showJump ? (
             <div className="flex items-center gap-2">
@@ -129,7 +164,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                 type="number"
                 min={1}
                 max={totalPages}
-                className="h-9 w-20 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                className="cf-control h-9 w-20 rounded-md px-3 text-sm"
                 placeholder="页码"
                 onChange={(event) => setJumpPage(event.target.value)}
                 onKeyUp={(event) => {
@@ -143,63 +178,6 @@ export const Pagination: React.FC<PaginationProps> = ({
               </Button>
             </div>
           ) : null}
-        </div>
-
-        <div className="flex items-center rounded-xl">
-          <Button
-            variant="outline"
-            size="icon"
-            className="rounded-r-none border-r-0"
-            onClick={() => goToPage(page - 1)}
-            disabled={page === 1}
-            aria-label="上一页"
-          >
-            <ChevronLeft size={16} />
-          </Button>
-
-          {visiblePages.map((pageItem, index) => {
-            const key = `${pageItem}-${index}`;
-            const active = pageItem === page;
-
-            if (typeof pageItem !== 'number') {
-              return (
-                <span
-                  key={key}
-                  className="inline-flex h-10 min-w-10 items-center justify-center border border-slate-200 bg-white px-3 text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500"
-                >
-                  {pageItem}
-                </span>
-              );
-            }
-
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => goToPage(pageItem)}
-                className={[
-                  'inline-flex h-10 min-w-10 items-center justify-center border px-3 text-sm font-medium transition-colors',
-                  active
-                    ? 'relative z-10 border-cyan-500 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-200'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
-                ].join(' ')}
-                aria-current={active ? 'page' : undefined}
-              >
-                {pageItem}
-              </button>
-            );
-          })}
-
-          <Button
-            variant="outline"
-            size="icon"
-            className="rounded-l-none border-l-0"
-            onClick={() => goToPage(page + 1)}
-            disabled={page === totalPages}
-            aria-label="下一页"
-          >
-            <ChevronRight size={16} />
-          </Button>
         </div>
       </div>
     </div>

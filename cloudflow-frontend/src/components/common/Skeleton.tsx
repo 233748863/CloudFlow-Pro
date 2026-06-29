@@ -26,12 +26,12 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   const variantClasses = {
     text: 'rounded-md',
     circular: 'rounded-full',
-    rectangular: 'rounded-lg',
+    rectangular: 'rounded-md',
   };
 
   const animationClasses = {
     pulse: 'animate-pulse',
-    wave: 'animate-shimmer bg-gradient-to-r from-slate-200/60 via-slate-100/60 to-slate-200/60 bg-[length:200%_100%] dark:from-slate-800/70 dark:via-slate-700/60 dark:to-slate-800/70',
+    wave: 'animate-pulse bg-slate-200/60 dark:bg-slate-800/70',
     none: '',
   };
 
@@ -60,7 +60,7 @@ export const SkeletonText: React.FC<{ lines?: number; className?: string }> = ({
   className,
 }) => {
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn('grid gap-2', className)}>
       {Array.from({ length: lines }).map((_, i) => (
         <Skeleton
           key={i}
@@ -78,7 +78,7 @@ export const SkeletonText: React.FC<{ lines?: number; className?: string }> = ({
  */
 export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => {
   return (
-    <div className={cn('space-y-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800', className)}>
+    <div className={cn('grid gap-3 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-4 dark:border-slate-800 dark:bg-slate-950', className)}>
       <Skeleton height={20} width="60%" />
       <SkeletonText lines={2} />
       <div className="flex gap-2">
@@ -98,7 +98,7 @@ export const SkeletonTable: React.FC<{ rows?: number; columns?: number; classNam
   className,
 }) => {
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn('grid gap-2', className)}>
       {/* 表头 */}
       <div className="flex gap-4 border-b border-slate-200 pb-2 dark:border-slate-800">
         {Array.from({ length: columns }).map((_, i) => (
@@ -125,11 +125,11 @@ export const SkeletonList: React.FC<{ items?: number; className?: string }> = ({
   className,
 }) => {
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('grid gap-3', className)}>
       {Array.from({ length: items }).map((_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton variant="circular" width={40} height={40} />
-          <div className="flex-1 space-y-2">
+          <div className="grid flex-1 gap-2">
             <Skeleton height={16} width="70%" />
             <Skeleton height={12} width="40%" />
           </div>
@@ -147,9 +147,9 @@ export const SkeletonForm: React.FC<{ fields?: number; className?: string }> = (
   className,
 }) => {
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn('admin-dialog-stack', className)}>
       {Array.from({ length: fields }).map((_, i) => (
-        <div key={i} className="space-y-2">
+        <div key={i} className="admin-dialog-field">
           <Skeleton height={14} width={100} />
           <Skeleton height={40} />
         </div>

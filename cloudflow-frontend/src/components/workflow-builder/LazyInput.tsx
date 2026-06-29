@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Input } from "../common/input";
+import { Textarea } from "../common/textarea";
 
 /**
  * P2-4: 减少历史撤销记录污染的本地化受控组件。
@@ -98,9 +99,9 @@ export const LazyTextarea = ({
   };
 
   return (
-    <textarea
+    <Textarea
       {...props}
-      className={`min-h-[88px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-800 ${className || ""}`}
+      className={`min-h-[88px] ${className || ""}`}
       value={val || ""}
       onChange={(e: any) => {
         const next = e.target.value;

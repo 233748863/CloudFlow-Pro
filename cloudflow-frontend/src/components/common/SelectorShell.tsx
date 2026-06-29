@@ -119,19 +119,19 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
   const renderAvatar = (option: SelectorShellOption) => {
     if (!showAvatar) return null;
     return (
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-[color:var(--cf-primary-600)] dark:bg-slate-900 dark:text-[rgb(204,251,241)]">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-sm font-medium text-[color:var(--cf-primary-600)] dark:bg-slate-900 dark:text-[rgb(204,251,241)]">
         {option.label[0] || '?'}
       </div>
     );
   };
 
   return (
-    <div ref={triggerRef} className={cn('relative', className)}>
+    <div ref={triggerRef} className={cn('relative min-w-0 w-full max-w-full', className)}>
       <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
-          'cf-control min-h-[44px] rounded-xl px-3.5 py-2.5',
-          disabled ? 'cursor-not-allowed bg-slate-50 dark:bg-slate-900' : 'cursor-pointer',
+          'cf-control min-h-[44px] w-full max-w-full overflow-hidden rounded-md px-3.5 py-2.5',
+          disabled ? 'cursor-not-allowed bg-[var(--cf-surface-muted)] dark:bg-slate-900' : 'cursor-pointer',
           isOpen && 'cf-control-active',
         )}
       >
@@ -142,7 +142,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
             {selectedOptions.map((opt) => (
               <span
                 key={opt.id}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
               >
                 {opt.label}
                 {!disabled && (
@@ -152,7 +152,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
                       e.stopPropagation();
                       onRemove(opt.id);
                     }}
-                    className="rounded-full p-0.5 transition hover:bg-slate-200 dark:hover:bg-slate-800"
+                    className="rounded-md p-0.5 transition hover:bg-slate-200 dark:hover:bg-slate-800"
                   >
                     <X size={12} />
                   </button>
@@ -161,18 +161,18 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
             ))}
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-sm text-slate-800 dark:text-slate-100">{selectedOptions[0].label}</span>
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+              <span className="min-w-0 truncate text-sm text-slate-800 dark:text-slate-100">{selectedOptions[0].label}</span>
               {selectedOptions[0].subLabel && (
-                <span className="truncate text-xs text-slate-400">{selectedOptions[0].subLabel}</span>
+                <span className="min-w-0 flex-1 truncate text-xs text-slate-400">{selectedOptions[0].subLabel}</span>
               )}
             </div>
             {allowClear && !disabled && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="rounded-full p-0.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="rounded-md p-0.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 aria-label="清空"
               >
                 <X size={14} />
@@ -190,7 +190,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
           />
           <div
             className={cn(
-              'fixed z-[80] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]',
+              'fixed z-[80] overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] shadow-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none',
             )}
             style={{
               top: dropdownPlacement === 'top' ? dropdownPos.top - 6 : dropdownPos.top + 6,
@@ -208,7 +208,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="cf-control h-10 w-full rounded-xl pl-8 pr-3 text-sm"
+                className="cf-control h-10 w-full rounded-md pl-8 pr-3 text-sm"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -232,7 +232,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
                         ? 'cursor-not-allowed text-slate-300 dark:text-slate-600'
                         : isSelected
                           ? 'cf-option-active cursor-pointer'
-                          : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900',
+                          : 'cursor-pointer hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900',
                     )}
                   >
                     <div

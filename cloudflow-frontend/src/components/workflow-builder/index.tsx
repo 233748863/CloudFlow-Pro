@@ -1222,7 +1222,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     <FlowNodeReadContext.Provider value={flowNodeReadValue}>
       <FlowNodeActionsContext.Provider value={flowNodeActionsValue}>
         <FlowNodeUiContext.Provider value={flowNodeUiValue}>
-          <div className="workflow-studio-shell relative flex h-full flex-col overflow-hidden bg-white dark:bg-slate-950">
+          <div className="relative flex h-full flex-col overflow-hidden bg-[var(--cf-bg)] dark:bg-slate-950">
             <WorkflowToolbar
               workflowName={workflowName}
               workflowKey={workflowKey}
@@ -1248,7 +1248,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
             <div
               ref={canvasRef}
-              className={`workflow-studio-canvas relative flex flex-1 justify-center overflow-hidden bg-slate-50/60 p-4 transition-all duration-300 ease-out dark:bg-slate-950 ${isPanning ? "cursor-grabbing" : "cursor-default"} ${selectedGraphNode ? "mr-[24rem]" : ""}`}
+            className={`workflow-studio-canvas relative flex flex-1 justify-center overflow-hidden bg-[var(--cf-bg)] p-4 transition-all duration-300 ease-out dark:bg-slate-950 ${isPanning ? "cursor-grabbing" : "cursor-default"} ${selectedGraphNode ? "mr-[24rem]" : ""}`}
               onPointerDown={(e) => {
                 if (
                   (e.button === 0 && e.target === canvasRef.current) ||
@@ -1280,20 +1280,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
                 if (e.target === canvasRef.current) handleFitToViewport();
               }}
             >
-              <div
-                className="absolute inset-0 pointer-events-none workflow-studio-grid"
-                style={{
-                  background:
-                    "radial-gradient(rgba(148,163,184,0.22) 0.8px, transparent 0.8px)",
-                  backgroundSize: "24px 24px",
-                  backgroundPosition: `${panOrigin.x}px ${panOrigin.y}px`,
-                }}
-              />
+              <div className="absolute inset-0 pointer-events-none workflow-studio-grid bg-transparent" />
 
-              <div className="workflow-studio-zoom absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950">
+              <div className="workflow-studio-zoom absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1 dark:border-slate-800 dark:bg-slate-950">
                 <button
                   onClick={handleZoomOut}
-                  className="rounded p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
+                  className="rounded p-1.5 text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:text-slate-300 dark:hover:bg-slate-900"
                   title="缩小"
                 >
                   <ZoomOut size={16} />
@@ -1303,7 +1295,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
                 </span>
                 <button
                   onClick={handleZoomIn}
-                  className="rounded p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
+                  className="rounded p-1.5 text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:text-slate-300 dark:hover:bg-slate-900"
                   title="放大"
                 >
                   <ZoomIn size={16} />
@@ -1311,7 +1303,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
                 <div className="mx-0.5 h-4 w-px bg-slate-200 dark:bg-slate-800" />
                 <button
                   onClick={handleZoomReset}
-                  className="rounded p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
+                  className="rounded p-1.5 text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:text-slate-300 dark:hover:bg-slate-900"
                   title="重置缩放"
                 >
                   <Maximize2 size={16} />
@@ -1319,7 +1311,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
               </div>
 
               {isDraggingGlobal && (
-                <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                   <Move size={14} /> 拖拽节点到连接线上的"拖到这里"区域即可移动
                 </div>
               )}

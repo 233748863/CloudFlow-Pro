@@ -57,7 +57,7 @@ const InlineState: React.FC<{
   icon?: React.ReactNode;
   loading?: boolean;
 }> = ({ title, description, icon, loading = false }) => (
-  <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+  <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
     {loading ? (
       <Loader2 className="mb-3 h-4 w-4 animate-spin text-slate-400 dark:text-slate-500" />
     ) : icon ? (
@@ -77,7 +77,7 @@ const MetaField: React.FC<{
   value: React.ReactNode;
 }> = ({ label, value }) => (
   <div className="px-4 py-3">
-    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
       {label}
     </div>
     <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -97,7 +97,7 @@ const CodePreviewPanel = ({
 
   if (!code.trim()) {
     return (
-      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+      <div className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-800">
         <InlineState
           icon={meta.icon}
           title="暂无代码内容"
@@ -108,11 +108,11 @@ const CodePreviewPanel = ({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+    <div className="source-code-preview-panel overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
+      <div className="source-code-preview-head flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
               {meta.icon}
             </span>
             <span className="truncate">{meta.fileName}</span>
@@ -124,9 +124,9 @@ const CodePreviewPanel = ({
         </span>
       </div>
 
-      <div className="bg-slate-950 p-3 sm:p-4">
-        <div className="overflow-auto rounded-xl border border-slate-800 bg-slate-950 px-4 py-4">
-          <pre className="min-h-[30rem] whitespace-pre font-mono text-[13px] leading-6 text-slate-100">
+      <div className="source-code-preview-shell bg-slate-950 p-3 sm:p-4">
+        <div className="source-code-preview-scroll overflow-auto rounded-md border border-slate-800 bg-slate-950 px-4 py-4">
+          <pre className="whitespace-pre font-mono text-[13px] leading-6 text-slate-100">
             <code className={cn('block min-w-max', meta.accentClassName)}>{code}</code>
           </pre>
         </div>
@@ -190,8 +190,8 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
   };
 
   return (
-    <div className="divide-y divide-slate-200 dark:divide-slate-800">
-      <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
+    <div className="source-code-viewer divide-y divide-slate-200 dark:divide-slate-800">
+      <div className="source-code-toolbar flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
         <div className="min-w-0">
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
             {workflow.name}
@@ -224,7 +224,7 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
         </div>
       </div>
 
-      <div className="grid gap-0 md:grid-cols-4">
+      <div className="source-code-meta-grid grid gap-0 md:grid-cols-4">
         <MetaField label="流程 Key" value={workflow.key} />
         <MetaField label="版本" value={`v${workflow.version}`} />
         <MetaField label="表单绑定" value={workflow.formId || '未绑定'} />
@@ -239,8 +239,8 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
         />
       </div>
 
-      <div className="px-4 py-4 sm:px-5">
-        <div className="flex flex-col gap-3">
+      <div className="source-code-body px-4 py-4 sm:px-5">
+        <div className="source-code-body-inner flex flex-col gap-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <SegmentedControl className="min-h-9">
               <SegmentedControlItem
@@ -268,7 +268,7 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
           </div>
 
           {generatedCode.loading ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
               <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <Loader2 size={14} className="animate-spin" />
                 正在生成最新代码产物，当前预览会在完成后自动替换。

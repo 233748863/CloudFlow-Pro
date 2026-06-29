@@ -139,13 +139,13 @@ export const PropertyPanel = ({
 
   return (
     <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
         <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
           节点设置
         </div>
         <button
           onClick={onClose}
-          className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+          className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1.5 text-slate-400 transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
         >
           <X size={18} />
         </button>
@@ -165,8 +165,8 @@ export const PropertyPanel = ({
             </button>
           )}
         </div>
-        <div className="space-y-3">
-          <div className="space-y-2.5">
+        <div className="grid gap-3">
+          <div className="admin-dialog-field">
             <div className={studioSectionTitleClassName}>基础信息</div>
             <div>
               <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -180,7 +180,7 @@ export const PropertyPanel = ({
             </div>
           </div>
           {node.type === NodeType.APPROVAL && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>审批人设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -258,7 +258,7 @@ export const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.PARALLEL && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>会签设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -348,7 +348,7 @@ export const PropertyPanel = ({
           )}
           {(node.type === NodeType.APPROVAL ||
             node.type === NodeType.MANUAL) && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>表单权限</div>
               <div className="flex items-center justify-between gap-3 border border-slate-200 px-3 py-2 dark:border-slate-800">
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
@@ -365,7 +365,7 @@ export const PropertyPanel = ({
           )}
           {(node.type === NodeType.APPROVAL ||
             node.type === NodeType.MANUAL) && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>SLA 超时设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -402,7 +402,7 @@ export const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.NOTIFICATION && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>通知设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -476,7 +476,7 @@ export const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.SCRIPT && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>脚本设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -562,7 +562,7 @@ export const PropertyPanel = ({
                       请求头 (JSON)
                     </span>
                     <LazyTextarea
-                      className="min-h-[64px] rounded-lg bg-slate-50/60 font-mono text-[11px] dark:bg-slate-950"
+                      className="min-h-[64px] rounded-md bg-[var(--cf-surface-muted)] font-mono text-[11px] dark:bg-slate-950"
                       placeholder='{"Content-Type": "application/json"}'
                       value={formData.props?.apiHeaders || ""}
                       onChange={(val: any) =>
@@ -578,7 +578,7 @@ export const PropertyPanel = ({
                       请求体 (JSON)
                     </span>
                     <LazyTextarea
-                      className="min-h-[64px] rounded-lg bg-slate-50/60 font-mono text-[11px] dark:bg-slate-950"
+                      className="min-h-[64px] rounded-md bg-[var(--cf-surface-muted)] font-mono text-[11px] dark:bg-slate-950"
                       placeholder='{"amount": "${amount}"}'
                       value={formData.props?.apiBody || ""}
                       onChange={(val: any) =>
@@ -606,7 +606,7 @@ export const PropertyPanel = ({
                 />
                 <label
                   htmlFor="continueOnError"
-                  className="text-xs text-slate-600"
+                  className="text-xs text-slate-600 dark:text-slate-300"
                 >
                   出错时继续执行
                 </label>
@@ -614,7 +614,7 @@ export const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.TIMER && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>定时设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -674,7 +674,7 @@ export const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.SUBPROCESS && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>子流程设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -722,7 +722,7 @@ export const PropertyPanel = ({
                 />
                 <label
                   htmlFor="waitForCompletion"
-                  className="text-xs text-slate-600"
+                  className="text-xs text-slate-600 dark:text-slate-300"
                 >
                   等待子流程完成
                 </label>
@@ -730,7 +730,7 @@ export const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.COPY && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>抄送设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -809,7 +809,7 @@ export const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.MANUAL && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>人工任务设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -923,7 +923,7 @@ export const PropertyPanel = ({
             </div>
           )}
           {branchCount > 0 && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3">
               <div className={studioSectionTitleClassName}>分支规则</div>
               <Select
                 value={normalizedBranchStrategy}
@@ -942,7 +942,7 @@ export const PropertyPanel = ({
               </Select>
             </div>
           )}
-          <div className="space-y-2 pt-3 border-t border-slate-100/80">
+          <div className="admin-dialog-field border-t border-slate-200 pt-3">
             <div className={studioSectionTitleClassName}>条件设置</div>
             <div>
               <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -968,11 +968,11 @@ export const PropertyPanel = ({
             NodeType.SUBPROCESS,
             NodeType.COPY,
           ].includes(node.type as NodeType) && (
-            <div className="space-y-2 pt-3 border-t border-slate-100/80 pb-3">
+            <div className="admin-dialog-field border-t border-slate-200 pt-3 pb-3">
               <div className={studioSectionTitleClassName}>高级设置</div>
 
               <div className={studioSubtleBlockClassName}>
-                <span className="text-xs text-slate-600 font-medium">
+                <span className="text-xs text-slate-600 font-medium dark:text-slate-300">
                   节点重试策略
                 </span>
                 <div className="grid grid-cols-2 gap-3 mt-2">
@@ -1014,11 +1014,11 @@ export const PropertyPanel = ({
               </div>
 
               <div className={studioSubtleBlockClassName}>
-                <span className="text-xs text-slate-600 font-medium mb-1 block">
+                <span className="text-xs text-slate-600 font-medium mb-1 block dark:text-slate-300">
                   输入映射 (Inputs JSON)
                 </span>
                 <LazyTextarea
-                  className="min-h-[64px] rounded-lg bg-white font-mono text-[11px] dark:bg-slate-950"
+                  className="min-h-[64px] rounded-md bg-[var(--cf-surface-strong)] font-mono text-[11px] dark:bg-slate-950"
                   placeholder='{"orderId": "formData.id"}'
                   value={
                     formData.inputs
@@ -1045,11 +1045,11 @@ export const PropertyPanel = ({
               </div>
 
               <div className={studioSubtleBlockClassName}>
-                <span className="text-xs text-slate-600 font-medium mb-1 block">
+                <span className="text-xs text-slate-600 font-medium mb-1 block dark:text-slate-300">
                   输出映射 (Outputs JSON)
                 </span>
                 <LazyTextarea
-                  className="min-h-[64px] rounded-lg bg-white font-mono text-[11px] dark:bg-slate-950"
+                  className="min-h-[64px] rounded-md bg-[var(--cf-surface-strong)] font-mono text-[11px] dark:bg-slate-950"
                   placeholder='{"formData.status": "resultStatus"}'
                   value={
                     formData.outputs

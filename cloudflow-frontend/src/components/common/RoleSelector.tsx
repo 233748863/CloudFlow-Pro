@@ -94,8 +94,8 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
       <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
-          'cf-control min-h-[44px] rounded-xl px-3.5 py-2.5',
-          disabled ? 'cursor-not-allowed bg-slate-50 dark:bg-slate-900' : 'cursor-pointer',
+          'cf-control min-h-[44px] rounded-md px-3.5 py-2.5',
+          disabled ? 'cursor-not-allowed bg-[var(--cf-surface-muted)] dark:bg-slate-900' : 'cursor-pointer',
           isOpen && 'cf-control-active',
         )}
       >
@@ -106,12 +106,12 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
             {selectedRoles.map((role) => (
               <span
                 key={getRoleKey(role)}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
               >
                 <Shield size={10} className="text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]" />
                 {role.name}
                 {!disabled && (
-                  <button onClick={(e) => handleRemove(role, e)} className="rounded-full p-0.5 transition hover:bg-slate-200 dark:hover:bg-slate-800">
+                  <button onClick={(e) => handleRemove(role, e)} className="rounded-md p-0.5 transition hover:bg-slate-200 dark:hover:bg-slate-800">
                     <X size={12} />
                   </button>
                 )}
@@ -122,7 +122,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
       </div>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 mt-1.5 max-h-64 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]">
+        <div className="absolute z-50 mt-1.5 max-h-64 w-full overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] shadow-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
           <div className="border-b border-slate-200 p-2 dark:border-slate-800">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -131,7 +131,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="搜索角色..."
-                className="cf-control h-10 w-full rounded-xl pl-8 pr-3 text-sm"
+                className="cf-control h-10 w-full rounded-md pl-8 pr-3 text-sm"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -152,11 +152,11 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                     onClick={() => handleToggle(role)}
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2 transition-colors dark:hover:bg-slate-900',
-                      isSelected ? 'cf-option-active' : 'hover:bg-slate-50',
+                      isSelected ? 'cf-option-active' : 'hover:bg-[var(--cf-surface-muted)]',
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-[color:var(--cf-primary-600)] dark:bg-slate-900 dark:text-[rgb(204,251,241)]">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-[color:var(--cf-primary-600)] dark:bg-slate-900 dark:text-[rgb(204,251,241)]">
                         <Shield size={16} />
                       </div>
                       <div>

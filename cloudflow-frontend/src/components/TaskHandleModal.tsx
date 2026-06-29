@@ -52,37 +52,37 @@ const statusMetaMap: Record<
     label: '待处理',
     icon: <Clock3 size={12} />,
     className:
-      'border border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
+      'border border-cyan-200 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200',
   },
   [TaskStatus.APPROVED]: {
     label: '已通过',
     icon: <CheckCircle2 size={12} />,
     className:
-      'border border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+      'border border-emerald-200 bg-[var(--cf-surface-strong)] text-emerald-700 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-200',
   },
   [TaskStatus.REJECTED]: {
     label: '已拒绝',
     icon: <XCircle size={12} />,
     className:
-      'border border-rose-100 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+      'border border-rose-200 bg-[var(--cf-surface-strong)] text-rose-700 dark:border-rose-800 dark:bg-slate-950 dark:text-rose-200',
   },
   [TaskStatus.RETURNED]: {
     label: '已退回',
     icon: <ArrowLeftCircle size={12} />,
     className:
-      'border border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+      'border border-amber-200 bg-[var(--cf-surface-strong)] text-amber-700 dark:border-amber-800 dark:bg-slate-950 dark:text-amber-200',
   },
   [TaskStatus.DELEGATED]: {
     label: '已转办',
     icon: <UserPlus size={12} />,
     className:
-      'border border-teal-100 bg-teal-50 text-teal-700 dark:border-teal-900 dark:bg-teal-950/30 dark:text-teal-200',
+      'border border-cyan-200 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-800 dark:bg-slate-950 dark:text-cyan-200',
   },
   [TaskStatus.TIMED_OUT]: {
     label: '已超时',
     icon: <AlertTriangle size={12} />,
     className:
-      'border border-orange-100 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200',
+      'border border-orange-200 bg-[var(--cf-surface-strong)] text-orange-700 dark:border-orange-800 dark:bg-slate-950 dark:text-orange-200',
   },
 };
 
@@ -95,7 +95,7 @@ const TaskModalBadge = ({
 }) => (
   <span
     className={cn(
-      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium',
+      'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium',
       className,
     )}
   >
@@ -116,7 +116,7 @@ const TaskModalPanel = ({
 }) => (
   <section
     className={cn(
-      'rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950',
+      'card p-4',
       className,
     )}
   >
@@ -142,7 +142,7 @@ const TaskField = ({
   valueClassName?: string;
 }) => (
   <div className={cn('space-y-1', className)}>
-    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
       {label}
     </div>
     <div className={cn('break-words text-sm text-slate-900 dark:text-slate-100', valueClassName)}>
@@ -160,7 +160,7 @@ const TaskEmptyBlock = ({
   description?: string;
   loading?: boolean;
 }) => (
-  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center dark:border-slate-800">
+  <div className="rounded-md border border-dashed border-slate-200 px-4 py-10 text-center dark:border-slate-800">
     {loading ? <LoadingSpinner size="sm" className="mx-auto" /> : null}
     <div className={cn('text-sm font-medium text-slate-700 dark:text-slate-200', loading && 'mt-3')}>
       {title}
@@ -193,10 +193,10 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
   const isCompleted = step.status === 'completed';
   const isActive = step.status === 'active';
   const dotClass = isCompleted
-    ? 'bg-emerald-500 ring-emerald-100 dark:ring-emerald-950/50'
+    ? 'border-emerald-600 bg-[var(--cf-surface-strong)] dark:border-emerald-500 dark:bg-slate-950'
     : isActive
-      ? 'bg-cyan-500 ring-cyan-100 dark:ring-cyan-950/50'
-      : 'bg-slate-300 ring-slate-100 dark:bg-slate-600 dark:ring-slate-900';
+      ? 'border-cyan-600 bg-[var(--cf-surface-strong)] dark:border-cyan-500 dark:bg-slate-950'
+      : 'border-slate-300 bg-[var(--cf-surface-strong)] dark:border-slate-700 dark:bg-slate-950';
   const lineClass = isCompleted
     ? 'bg-emerald-400 dark:bg-emerald-700'
     : 'bg-slate-200 dark:bg-slate-800';
@@ -209,10 +209,10 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
             className={cn(
               'flex h-5 w-5 items-center justify-center rounded-md border',
               isCompleted
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200'
+                ? 'border-emerald-200 bg-[var(--cf-surface-strong)] text-emerald-700 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-200'
                 : isActive
-                  ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
-                  : 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500',
+                  ? 'border-cyan-200 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200'
+                  : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500',
             )}
           >
             {step.nodeType === 'PARALLEL' ? <GitBranch size={11} /> : <GitMerge size={11} />}
@@ -238,15 +238,15 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
                     const branchCompleted = branchStep.status === 'completed';
                     const branchActive = branchStep.status === 'active';
                     const branchDotClass = branchCompleted
-                      ? 'bg-emerald-500 ring-emerald-100 dark:ring-emerald-950/50'
+                      ? 'border-emerald-600 bg-[var(--cf-surface-strong)] dark:border-emerald-500 dark:bg-slate-950'
                       : branchActive
-                        ? 'bg-cyan-500 ring-cyan-100 dark:ring-cyan-950/50'
-                        : 'bg-slate-300 ring-slate-100 dark:bg-slate-600 dark:ring-slate-900';
+                        ? 'border-cyan-600 bg-[var(--cf-surface-strong)] dark:border-cyan-500 dark:bg-slate-950'
+                        : 'border-slate-300 bg-[var(--cf-surface-strong)] dark:border-slate-700 dark:bg-slate-950';
 
                     return (
                       <div key={`${branchStep.nodeKey}-${branchStepIndex}`} className="flex items-start">
                         <div className="flex min-w-[54px] max-w-[68px] flex-col items-center">
-                          <div className={cn('h-2.5 w-2.5 rounded-full ring-2', branchDotClass)} />
+                          <div className={cn('h-2.5 w-2.5 rounded-sm border', branchDotClass)} />
                           <span
                             className={cn(
                               'mt-1 text-center text-[8px] leading-tight',
@@ -265,7 +265,7 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
                               : branchStep.approverDescription}
                           </span>
                           {branchStep.signType ? (
-                            <TaskModalBadge className="mt-1 border border-amber-100 bg-amber-50 text-[7px] text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                            <TaskModalBadge className="mt-1 border border-amber-200 bg-[var(--cf-surface-strong)] text-[7px] text-amber-700 dark:border-amber-800 dark:bg-slate-950 dark:text-amber-200">
                               {branchStep.signType === 'ALL'
                                 ? '全签'
                                 : branchStep.signType === 'ANY'
@@ -295,7 +295,7 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
   return (
     <div key={`${step.nodeKey}-${index}`} className="flex items-start">
       <div className="flex min-w-[62px] max-w-[74px] flex-col items-center">
-        <div className={cn('h-3 w-3 rounded-full ring-2', dotClass)} />
+        <div className={cn('h-3 w-3 rounded-sm border', dotClass)} />
         <span
           className={cn(
             'mt-1 text-center text-[9px] leading-tight',
@@ -321,7 +321,7 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
           {isCompleted && step.operatorName ? step.operatorName : step.approverDescription}
         </span>
         {step.signType ? (
-          <TaskModalBadge className="mt-1 border border-amber-100 bg-amber-50 text-[7px] text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          <TaskModalBadge className="mt-1 border border-amber-200 bg-[var(--cf-surface-strong)] text-[7px] text-amber-700 dark:border-amber-800 dark:bg-slate-950 dark:text-amber-200">
             <Users size={8} />
             {step.signType === 'ALL'
               ? '全签'
@@ -477,7 +477,7 @@ export const TaskHandleModal = ({
     label: task.status,
     icon: null,
     className:
-      'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+      'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
   };
   const showAllButtons = !task.buttonPermissions || task.buttonPermissions.length === 0;
   const hasBtn = (code: string) => showAllButtons || task.buttonPermissions!.includes(code);
@@ -702,7 +702,7 @@ export const TaskHandleModal = ({
             {activeTab === 'trace' && !delegationMode && !rejectMode ? (
               <ProcessTrace instanceId={task.processInstanceId} variant="default" />
             ) : rejectMode ? (
-              <div className="mx-auto max-w-3xl space-y-4">
+              <div className="admin-source-content-grid mx-auto max-w-3xl">
                 <TaskModalPanel
                   title="选择驳回目标"
                   description="只能选择历史上已处理过的节点作为驳回目标，驳回后流程将回退到该节点。"
@@ -710,7 +710,7 @@ export const TaskHandleModal = ({
                   {!historyNodesLoaded ? (
                     <TaskEmptyBlock title="正在加载历史节点..." loading />
                   ) : historyNodes.length > 0 ? (
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
                       {historyNodes.map((node) => (
                         <button
                           key={node.key}
@@ -719,8 +719,8 @@ export const TaskHandleModal = ({
                           className={cn(
                             'flex w-full items-center gap-3 px-4 py-3 text-left transition first:pt-0 last:pb-0',
                             rejectTargetNode === node.key
-                              ? 'rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-200'
-                              : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900/60',
+                              ? 'rounded-md border border-cyan-200 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200'
+                              : 'text-slate-700 hover:bg-[var(--cf-surface-muted)] dark:text-slate-200 dark:hover:bg-slate-900/60',
                           )}
                         >
                           <CornerUpLeft
@@ -766,7 +766,7 @@ export const TaskHandleModal = ({
                 </div>
               </div>
             ) : delegationMode ? (
-              <div className="mx-auto max-w-4xl space-y-4">
+              <div className="admin-source-content-grid mx-auto max-w-4xl">
                 <TaskModalPanel
                   title="选择转办对象"
                   description="转办后当前待办会转交给新的处理人，原审批轨迹会保留本次操作记录。"
@@ -774,7 +774,7 @@ export const TaskHandleModal = ({
                   {visibleDelegateUsers.length === 0 ? (
                     <TaskEmptyBlock title="暂无可转办用户" />
                   ) : (
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
                       {visibleDelegateUsers.map((user) => {
                         const active = delegateUser === user.id;
                         return (
@@ -785,14 +785,14 @@ export const TaskHandleModal = ({
                             className={cn(
                               'flex w-full items-center gap-3 px-4 py-3 text-left transition first:pt-0 last:pb-0',
                               active
-                                ? 'rounded-lg bg-cyan-50 dark:bg-cyan-950/20'
-                                : 'hover:bg-slate-50 dark:hover:bg-slate-900/60',
+                                ? 'rounded-md border border-cyan-200 bg-[var(--cf-surface-strong)] dark:border-cyan-900 dark:bg-slate-950'
+                                : 'hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/60',
                             )}
                           >
                             {user.avatar ? (
-                              <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-full object-cover" />
+                              <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-md object-cover" />
                             ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-sm font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
                                 {user.name?.slice(0, 1) || 'U'}
                               </div>
                             )}
@@ -828,7 +828,7 @@ export const TaskHandleModal = ({
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="admin-dialog-stack">
                 <TaskModalPanel title="基本信息" description="查看当前任务的节点状态、摘要和责任信息。">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">
@@ -840,7 +840,7 @@ export const TaskHandleModal = ({
                           {statusMeta.icon}
                           {statusMeta.label}
                         </TaskModalBadge>
-                        <TaskModalBadge className="border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                        <TaskModalBadge className="border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                           当前节点 {task.nodeName || task.currentNodeName || '-'}
                         </TaskModalBadge>
                       </div>
@@ -864,7 +864,7 @@ export const TaskHandleModal = ({
                   </div>
 
                   {!canAct && !viewOnly && task.status === TaskStatus.PENDING ? (
-                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                    <div className="mt-4 rounded-md border border-amber-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-slate-950 dark:text-amber-200">
                       您当前没有处理权限。当前待办归属：{task.assigneeRole || '指定人员'}。
                     </div>
                   ) : null}
@@ -872,8 +872,8 @@ export const TaskHandleModal = ({
 
                 {task.totalSteps && task.totalSteps > 0 ? (
                   <TaskModalPanel title="流程进度">
-                    <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-                      <div className="space-y-4">
+                    <div className="grid gap-4">
+                      <div className="admin-dialog-stack">
                         <TaskField
                           label="当前进度"
                           value={`${task.currentStepIndex || '-'} / ${task.totalSteps}`}
@@ -888,14 +888,14 @@ export const TaskHandleModal = ({
                           <span>完成度</span>
                           <span>{progressRate}%</span>
                         </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-md bg-slate-200 dark:bg-slate-800">
                           <div
-                            className="h-full rounded-full bg-cyan-600 dark:bg-cyan-400"
+                            className="h-full rounded-md bg-cyan-600 dark:bg-cyan-400"
                             style={{ width: `${progressRate}%` }}
                           />
                         </div>
                         {task.stepsDetail && task.stepsDetail.length > 0 ? (
-                          <div className="mt-4 flex items-start gap-0 overflow-x-auto pb-1">
+                          <div className="admin-horizontal-scroll mt-4 flex items-start gap-0 pb-1">
                             {task.stepsDetail.map((step, index) =>
                               renderStepNode(step, index, task.stepsDetail?.length || 0),
                             )}
@@ -924,11 +924,11 @@ export const TaskHandleModal = ({
                   </TaskModalPanel>
                 ) : null}
 
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-                  <div className="space-y-4">
+                <div className="grid gap-4">
+                  <div className="admin-dialog-stack">
                     {task.formId && !currentFormDef ? (
                       <TaskModalPanel title="表单定义缺失">
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                        <div className="rounded-md border border-amber-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-slate-950 dark:text-amber-200">
                           未加载到表单定义，当前显示原始业务字段。
                         </div>
                       </TaskModalPanel>
@@ -976,14 +976,14 @@ export const TaskHandleModal = ({
 
                     {attachmentFiles.length > 0 ? (
                       <TaskModalPanel title="附件">
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                        <div className="divide-y divide-slate-200 dark:divide-slate-800">
                           {attachmentFiles.map((file, index) => (
                             <div
                               key={`${file.url}-${index}`}
                               className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <div className="min-w-0 flex items-center gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                                   <FileText size={15} />
                                 </div>
                                 <div className="min-w-0">
@@ -1021,10 +1021,10 @@ export const TaskHandleModal = ({
                     ) : null}
                   </div>
 
-                  <div className="space-y-4 xl:border-l xl:border-slate-200 xl:pl-5 dark:xl:border-slate-800">
+                  <div className="admin-dialog-stack">
                     {task.logs && task.logs.length > 0 ? (
                       <TaskModalPanel title="流转记录">
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                        <div className="divide-y divide-slate-200 dark:divide-slate-800">
                           {task.logs.map((log, index) => (
                             <div key={`${log.time}-${index}`} className="py-3 first:pt-0 last:pb-0">
                               <div className="flex items-start justify-between gap-3">
@@ -1054,7 +1054,7 @@ export const TaskHandleModal = ({
 
                 {canAct && !viewOnly ? (
                   <TaskModalPanel title="审批操作">
-                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
+                    <div className="grid gap-4">
                       <Textarea
                         rows={5}
                         placeholder="请输入审批意见..."
@@ -1062,7 +1062,7 @@ export const TaskHandleModal = ({
                         onChange={(event) => setComment(event.target.value)}
                       />
 
-                      <div className="space-y-3 xl:border-l xl:border-slate-200 xl:pl-5 dark:xl:border-slate-800">
+                      <div className="grid gap-3">
                         {hasBtn('ADD_SIGN') ? (
                           <div className="grid gap-2 sm:grid-cols-2">
                             <Button
@@ -1091,7 +1091,7 @@ export const TaskHandleModal = ({
                         ) : null}
 
                         {confirmAction ? (
-                          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/20">
+                          <div className="rounded-md border border-amber-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-amber-800 dark:bg-slate-950">
                             <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-200">
                               <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                               <div className="flex-1">

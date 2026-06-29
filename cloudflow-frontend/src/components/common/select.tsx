@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Search } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 const SELECT_ITEM_DISPLAY_NAME = 'CloudFlowSelectItem';
@@ -58,6 +58,85 @@ const collectSelectLabels = (
   return next;
 };
 
+const getTextContent = (node: React.ReactNode): string => {
+  if (node === null || node === undefined || typeof node === 'boolean') {
+    return '';
+  }
+
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(getTextContent).join(' ');
+  }
+
+  if (React.isValidElement<{ children?: React.ReactNode; label?: React.ReactNode }>(node)) {
+    return getTextContent(node.props.label ?? node.props.children);
+  }
+
+  return '';
+};
+
+const countSelectItems = (node: React.ReactNode): number => {
+  let count = 0;
+
+  React.Children.forEach(node, (child) => {
+    if (!React.isValidElement<{ children?: React.ReactNode }>(child)) {
+      return;
+    }
+
+    if (isSelectItemType(child.type)) {
+      count += 1;
+      return;
+    }
+
+    if (child.props.children) {
+      count += countSelectItems(child.props.children);
+    }
+  });
+
+  return count;
+};
+
+const filterSelectChildren = (
+  node: React.ReactNode,
+  normalizedQuery: string,
+): { children: React.ReactNode; count: number } => {
+  let count = 0;
+
+  const children = React.Children.map(node, (child) => {
+    if (!React.isValidElement<{ children?: React.ReactNode; label?: React.ReactNode }>(child)) {
+      return child;
+    }
+
+    if (isSelectItemType(child.type)) {
+      const text = getTextContent(child.props.label ?? child.props.children).toLowerCase();
+      const matched = !normalizedQuery || text.includes(normalizedQuery);
+      if (matched) {
+        count += 1;
+        return child;
+      }
+      return null;
+    }
+
+    if (!child.props.children) {
+      return child;
+    }
+
+    const filtered = filterSelectChildren(child.props.children, normalizedQuery);
+    count += filtered.count;
+
+    if (normalizedQuery && filtered.count === 0) {
+      return null;
+    }
+
+    return React.cloneElement(child, undefined, filtered.children);
+  });
+
+  return { children, count };
+};
+
 const SelectContext = React.createContext<{
   value?: string;
   onValueChange?: (value: string) => void;
@@ -66,6 +145,11 @@ const SelectContext = React.createContext<{
   setOpen: (open: boolean) => void;
   labels: Record<string, React.ReactNode>;
   registerLabel: (value: string, label: React.ReactNode) => void;
+  searchable: boolean;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  searchPlaceholder: string;
+  emptyText: string;
   containerRef: React.RefObject<HTMLDivElement | null>;
   dropdownRef: React.RefObject<HTMLDivElement | null>;
 }>({
@@ -74,6 +158,11 @@ const SelectContext = React.createContext<{
   setOpen: () => {},
   labels: {},
   registerLabel: () => {},
+  searchable: false,
+  searchQuery: '',
+  setSearchQuery: () => {},
+  searchPlaceholder: '搜索...',
+  emptyText: '没有匹配的选项',
   containerRef: { current: null },
   dropdownRef: { current: null },
 });
@@ -83,21 +172,30 @@ export const Select = ({
   value,
   onValueChange,
   disabled = false,
+  searchable = 'auto',
+  searchPlaceholder = '搜索...',
+  emptyText = '没有匹配的选项',
 }: {
   children: React.ReactNode;
   value?: string;
   onValueChange?: (value: string) => void;
   disabled?: boolean;
+  searchable?: boolean | 'auto';
+  searchPlaceholder?: string;
+  emptyText?: string;
 }) => {
   const [open, setOpen] = useState(false);
   const [labels, setLabels] = useState<Record<string, React.ReactNode>>({});
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const staticLabels = React.useMemo(() => collectSelectLabels(children), [children]);
+  const optionCount = React.useMemo(() => countSelectItems(children), [children]);
   const mergedLabels = React.useMemo(
     () => ({ ...staticLabels, ...labels }),
     [staticLabels, labels],
   );
+  const searchEnabled = searchable === 'auto' ? optionCount > 5 : searchable;
 
   const registerLabel = useCallback((val: string, label: React.ReactNode) => {
     setLabels((prev) => {
@@ -132,6 +230,12 @@ export const Select = ({
   }, [open]);
 
   useEffect(() => {
+    if (!open) {
+      setSearchQuery('');
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (disabled && open) {
       setOpen(false);
     }
@@ -147,6 +251,11 @@ export const Select = ({
         setOpen,
         labels: mergedLabels,
         registerLabel,
+        searchable: searchEnabled,
+        searchQuery,
+        setSearchQuery,
+        searchPlaceholder,
+        emptyText,
         containerRef,
         dropdownRef,
       }}
@@ -171,9 +280,10 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
       aria-expanded={open}
       aria-haspopup="listbox"
       className={cn(
-        'cf-control flex h-10 min-h-10 items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm',
+        'select-trigger cf-control flex h-10 min-h-10 items-center justify-between rounded-md px-3.5 py-2.5 text-left text-sm',
         !hasExplicitWidth && 'w-full',
-        open && 'cf-control-active',
+        open && 'select-trigger-open cf-control-active',
+        disabled && 'select-trigger-disabled',
         className,
       )}
       onClick={() => {
@@ -189,13 +299,15 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
       }}
     >
       {children}
-      <ChevronDown
-        size={16}
-        className={cn(
-          'ml-2 shrink-0 text-slate-400 transition-transform duration-200',
-          open && 'rotate-180 text-[color:var(--cf-primary-600)] dark:text-[color:rgb(204_251_241)]',
-        )}
-      />
+      <span className="select-icon ml-2 shrink-0">
+        <ChevronDown
+          size={18}
+          className={cn(
+            'transition-transform duration-200',
+            open && 'rotate-180 text-[color:var(--cf-primary-600)] dark:text-[color:rgb(204_251_241)]',
+          )}
+        />
+      </span>
     </button>
   );
 };
@@ -209,7 +321,7 @@ export const SelectValue = ({ placeholder }: { placeholder?: string }) => {
   return (
     <span
       className={cn(
-        'min-w-0 flex-1 truncate',
+        'select-value min-w-0 flex-1 truncate',
         hasValue ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500',
       )}
     >
@@ -219,7 +331,17 @@ export const SelectValue = ({ placeholder }: { placeholder?: string }) => {
 };
 
 export const SelectContent = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
-  const { open, containerRef, dropdownRef } = React.useContext(SelectContext);
+  const {
+    open,
+    searchable,
+    searchQuery,
+    setSearchQuery,
+    searchPlaceholder,
+    emptyText,
+    setOpen,
+    containerRef,
+    dropdownRef,
+  } = React.useContext(SelectContext);
   const [placement, setPlacement] = useState({
     top: 0,
     left: 0,
@@ -228,6 +350,7 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
   });
   const [positionReady, setPositionReady] = useState(false);
   const measurementPassRef = useRef(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const explicitWidth = className
     .split(/\s+/)
@@ -301,17 +424,25 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
     };
   }, [open, updatePlacement]);
 
+  useEffect(() => {
+    if (open && searchable && positionReady) {
+      searchInputRef.current?.focus();
+    }
+  }, [open, positionReady, searchable]);
+
   if (!open || typeof document === 'undefined') {
     return null;
   }
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filtered = filterSelectChildren(children, normalizedQuery);
 
   return createPortal(
     <div
       ref={dropdownRef}
       role="listbox"
       className={cn(
-        'fixed z-[160] overflow-y-auto rounded-xl border border-slate-200 bg-white text-slate-900 shadow-[0_18px_36px_rgba(15,23,42,0.12)]',
-        'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]',
+        'select-dropdown-portal fixed z-[160] overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-900 shadow-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:shadow-none',
         className,
       )}
       style={{
@@ -323,7 +454,29 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
         pointerEvents: positionReady ? undefined : 'none',
       }}
     >
-      <div className="p-1.5">{children}</div>
+      {searchable ? (
+        <div className="select-search">
+          <Search size={16} className="shrink-0 text-slate-400" />
+          <input
+            ref={searchInputRef}
+            className="select-search-input cf-control"
+            value={searchQuery}
+            type="text"
+            placeholder={searchPlaceholder}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setOpen(false);
+              }
+            }}
+          />
+        </div>
+      ) : null}
+      <div className="select-options">
+        {filtered.count > 0 ? filtered.children : <div className="select-empty">{emptyText}</div>}
+      </div>
     </div>,
     document.body,
   );
@@ -334,13 +487,14 @@ type SelectItemProps = {
   value: string;
   label?: React.ReactNode;
   className?: string;
+  disabled?: boolean;
 };
 
 type SelectItemComponent = React.FC<SelectItemProps> & {
   __CF_SELECT_ITEM__?: boolean;
 };
 
-export const SelectItem: SelectItemComponent = ({ children, value, label, className = '' }) => {
+export const SelectItem: SelectItemComponent = ({ children, value, label, className = '', disabled = false }) => {
   const { value: selectedValue, onValueChange, setOpen, registerLabel } = React.useContext(SelectContext);
   const isSelected = selectedValue === value;
 
@@ -353,23 +507,23 @@ export const SelectItem: SelectItemComponent = ({ children, value, label, classN
       role="option"
       aria-selected={isSelected}
       className={cn(
-        'relative flex w-full cursor-pointer items-center rounded-lg py-2.5 pl-8 pr-3 text-sm transition-colors',
+        'select-option relative flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-2.5 text-sm transition-colors',
+        disabled && 'select-option-disabled cursor-not-allowed opacity-40',
         isSelected
-          ? 'cf-option-active'
-          : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white',
+          ? 'select-option-selected cf-option-active'
+          : 'text-slate-700 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white',
         className,
       )}
       onClick={() => {
+        if (disabled) return;
         onValueChange?.(value);
         setOpen(false);
       }}
     >
+      <div className="select-option-label min-w-0 flex-1 overflow-hidden text-left">{children}</div>
       {isSelected ? (
-        <span className="absolute left-2.5 flex h-4 w-4 items-center justify-center">
-          <Check size={14} className="text-[color:var(--cf-primary-600)] dark:text-[color:rgb(204_251_241)]" />
-        </span>
+        <Check size={16} className="select-check shrink-0 text-[color:var(--cf-primary-600)] dark:text-[color:rgb(204_251_241)]" />
       ) : null}
-      {children}
     </div>
   );
 };

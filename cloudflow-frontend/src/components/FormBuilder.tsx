@@ -56,11 +56,11 @@ const FIELD_TYPES: Array<{ type: FormFieldType; label: string; icon: React.Eleme
 ];
 
 const FIELD_TYPE_STYLES: Record<FormFieldType, string> = {
-  TEXT: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200',
-  TEXTAREA: 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/70 dark:bg-teal-950/30 dark:text-teal-200',
-  NUMBER: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200',
-  DATE: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200',
-  SELECT: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200',
+  TEXT: 'border-cyan-200 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200',
+  TEXTAREA: 'border-cyan-200 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200',
+  NUMBER: 'border-amber-200 bg-[var(--cf-surface-strong)] text-amber-700 dark:border-amber-900 dark:bg-slate-950 dark:text-amber-200',
+  DATE: 'border-sky-200 bg-[var(--cf-surface-strong)] text-sky-700 dark:border-sky-900 dark:bg-slate-950 dark:text-sky-200',
+  SELECT: 'border-emerald-200 bg-[var(--cf-surface-strong)] text-emerald-700 dark:border-emerald-900 dark:bg-slate-950 dark:text-emerald-200',
 };
 
 const PreviewControl: React.FC<{ field: FormField }> = ({ field }) => {
@@ -70,7 +70,7 @@ const PreviewControl: React.FC<{ field: FormField }> = ({ field }) => {
 
   if (field.type === 'SELECT') {
     return (
-      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-500">
+      <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-500">
         请选择
       </div>
     );
@@ -119,9 +119,9 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
     <div
       ref={setNodeRef}
       style={style}
-      className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none"
+      className="card min-w-0 px-4 py-3"
     >
-      <div className="flex gap-3">
+      <div className="flex min-w-0 gap-3">
         <button
           type="button"
           {...attributes}
@@ -131,7 +131,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           <GripVertical size={18} />
         </button>
 
-        <div className="min-w-0 flex-1 space-y-3">
+        <div className="grid min-w-0 flex-1 gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span
@@ -169,7 +169,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           <PreviewControl field={field} />
 
           {field.type === 'SELECT' ? (
-            <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+            <div className="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs text-slate-500 dark:text-slate-400">选项</span>
                 <Button
@@ -180,14 +180,14 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
                     const newOptions = [...(field.options || []), `选项${(field.options?.length || 0) + 1}`];
                     onUpdate(field.id, { options: newOptions });
                   }}
-                  className="!h-6 !gap-1 !rounded-md !px-2 !py-0 text-xs text-cyan-600 shadow-none hover:bg-cyan-50 hover:text-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200"
+                  className="!h-6 !gap-1 !rounded-md !px-2 !py-0 text-xs text-cyan-600 shadow-none hover:bg-[var(--cf-surface-muted)] hover:text-cyan-700 dark:text-cyan-300 dark:hover:bg-slate-900 dark:hover:text-cyan-200"
                 >
                   <Plus size={12} />
                   新增
                 </Button>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="grid gap-1.5">
                 {(field.options || []).map((option, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <Input
@@ -223,7 +223,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           ) : null}
 
           {(field.type === 'TEXT' || field.type === 'NUMBER') ? (
-            <div className="grid gap-2 border-t border-slate-100 pt-3 dark:border-slate-800 md:grid-cols-2">
+            <div className="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800 md:grid-cols-2">
               <div>
                 <div className="mb-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                   <Code size={12} />
@@ -251,7 +251,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
             </div>
           ) : null}
 
-          <div className="flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+          <div className="flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
             <span className="text-xs text-slate-500 dark:text-slate-400">必填项</span>
             <Switch checked={field.required} onCheckedChange={(checked) => onUpdate(field.id, { required: checked })} />
           </div>
@@ -304,8 +304,8 @@ const FormPreview: React.FC<{
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+    <div className="card admin-source-panel no-padding overflow-hidden">
+      <div className="p-4 admin-source-section-head flex items-center justify-between">
         <div>
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{formName}</div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">预览填写，不会写入真实数据。</div>
@@ -315,7 +315,7 @@ const FormPreview: React.FC<{
           variant="ghost"
           size="icon"
           onClick={onCancel}
-          className="!h-8 !w-8 !rounded-md !p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          className="!h-8 !w-8 !rounded-md !p-0 text-slate-400 hover:bg-[var(--cf-surface-muted)] hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           aria-label="关闭预览"
           title="关闭预览"
         >
@@ -323,10 +323,10 @@ const FormPreview: React.FC<{
         </Button>
       </div>
 
-      <div className="max-h-[60vh] space-y-5 overflow-y-auto px-4 py-4">
+      <div className="grid max-h-[60vh] gap-4 overflow-y-auto px-4 py-4">
         {fields.map((field) => (
-          <div key={field.id} className="space-y-2">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+          <div key={field.id} className="admin-dialog-field">
+            <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
               {field.label}
               {field.required ? <span className="ml-1 text-rose-500">*</span> : null}
             </label>
@@ -498,13 +498,13 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
   };
 
   return (
-    <div className="flex h-full gap-3">
-      <aside className="flex w-[13rem] shrink-0 flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
+    <div className="form-builder-shell flex h-full min-w-0 flex-col xl:flex-row">
+      <section className="form-builder-palette flex w-full shrink-0 flex-col p-3 xl:w-[13rem]">
         <div className="border-b border-slate-200 pb-3 dark:border-slate-800">
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">组件库</div>
         </div>
 
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-1">
           {FIELD_TYPES.map((item) => {
             const Icon = item.icon;
             return (
@@ -513,9 +513,9 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
                 type="button"
                 variant="outline"
                 onClick={() => addField(item.type)}
-                className="w-full !justify-start gap-3 rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-sm text-slate-700 shadow-none hover:border-cyan-200 hover:bg-cyan-50 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:border-cyan-900/70 dark:hover:bg-cyan-950/20"
+                className="w-full !justify-start gap-3 border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2.5 text-left text-sm text-slate-700 shadow-none hover:border-cyan-200 hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-cyan-900 dark:hover:bg-slate-900"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-cyan-600 dark:border-slate-800 dark:bg-slate-950 dark:text-cyan-300">
+                <span className="admin-source-stat-icon !h-7 !w-7 !flex-none text-cyan-600 dark:text-cyan-300">
                   <Icon size={15} />
                 </span>
                 <span>{item.label}</span>
@@ -523,10 +523,10 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
             );
           })}
         </div>
-      </aside>
+      </section>
 
-      <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <section className="form-builder-editor flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="p-4 admin-source-section-head flex flex-wrap items-center gap-3">
           <Input
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
@@ -553,16 +553,16 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-slate-50/40 p-4 dark:bg-slate-950/40">
+        <div className="flex-1 overflow-y-auto bg-[var(--cf-surface-muted)] p-4 dark:bg-slate-950">
           {previewing ? (
             <div className="mx-auto max-w-2xl">
               {previewData ? (
-                <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
-                  <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="card admin-source-panel no-padding overflow-hidden">
+                  <div className="p-4 admin-source-section-head">
                     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">模拟提交结果</div>
                   </div>
-                  <div className="space-y-4 p-4">
-                    <pre className="max-h-80 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200">
+                  <div className="grid gap-4 p-4">
+                    <pre className="max-h-80 overflow-auto bg-[var(--cf-surface-muted)] p-4 text-sm text-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
                       {JSON.stringify(previewData, null, 2)}
                     </pre>
                     <div className="flex flex-wrap gap-2">
@@ -580,7 +580,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
                   </div>
                 </div>
               ) : fields.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-16 text-center text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-500">
+                <div className="px-4 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
                   先添加字段，再预览填写。
                 </div>
               ) : (
@@ -596,10 +596,10 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
               )}
             </div>
           ) : (
-            <div className="mx-auto max-w-3xl space-y-3">
+            <div className="admin-source-content-grid mx-auto max-w-3xl">
               {fields.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-16 text-center text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-500">
-                  从左侧组件库添加字段。
+                <div className="px-4 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
+                  从组件库添加字段。
                 </div>
               ) : null}
 

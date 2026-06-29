@@ -97,7 +97,7 @@ const FlowNodeInner = ({
       <div className={`relative group ${showQuickAdd ? "z-50" : ""}`}>
         {/* 节点卡片 */}
         <div
-          className={`workflow-node-card relative z-10 w-[13rem] cursor-pointer rounded-md border transition-colors duration-150 ${visual.bg} ${
+          className={`relative z-10 w-[13rem] cursor-pointer rounded-md border transition-colors duration-150 ${visual.bg} ${
             isDragging
               ? "scale-[0.98] border-slate-300 opacity-40"
               : isInvalid
@@ -129,7 +129,7 @@ const FlowNodeInner = ({
         >
           <div className="p-3">
             <div className="flex items-start gap-2">
-              <div className="mt-0.5 flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+              <div className="mt-0.5 flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
                 <NIcon size={14} className={visual.iconColor} />
               </div>
               <div className="min-w-0 flex-1">
@@ -142,7 +142,7 @@ const FlowNodeInner = ({
                       {/* P1-5: 共享 END 节点视觉标识，与普通 END 区分 */}
                       {isSharedEndNode && (
                         <span
-                          className="inline-flex shrink-0 items-center gap-0.5 rounded-sm border border-slate-200 bg-slate-50 px-1 py-px text-[10px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+                          className="inline-flex shrink-0 items-center gap-0.5 rounded-sm border border-slate-200 bg-[var(--cf-surface-muted)] px-1 py-px text-[10px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
                           title="多分支汇聚点，不可在此处插入节点"
                         >
                           <GitMerge size={10} /> 汇聚
@@ -202,7 +202,7 @@ const FlowNodeInner = ({
                 className={`flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
                   showQuickAdd
                     ? "border-cyan-600 bg-cyan-600 text-white dark:border-cyan-400 dark:bg-cyan-500 dark:text-white"
-                    : "border-slate-200 bg-white text-slate-500 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+                    : "border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
                 }`}
                 title={showQuickAdd ? "关闭菜单" : "在此之前添加节点"}
               >
@@ -286,7 +286,7 @@ const FlowNodeInner = ({
                 className={`flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
                   showQuickAdd
                     ? "border-cyan-600 bg-cyan-600 text-white dark:border-cyan-400 dark:bg-cyan-500 dark:text-white"
-                    : "border-slate-200 bg-white text-slate-500 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+                    : "border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
                 }`}
                 title={showQuickAdd ? "关闭菜单" : "添加节点"}
               >
@@ -343,7 +343,7 @@ const FlowNodeInner = ({
                       </button>
                     );
                   })}
-                  <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+                  <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-800">
                     <button
                       className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-600 transition-colors hover:bg-cyan-50 hover:text-cyan-700 dark:text-slate-300 dark:hover:bg-cyan-950/20 dark:hover:text-cyan-200"
                       onClick={(e) => {
@@ -366,7 +366,7 @@ const FlowNodeInner = ({
       {branchChildIds.length > 0 && (
         <div className="flex flex-col items-center w-full flex-none">
           <div className={`h-6 w-0.5 ${workflowConnectorLineClassName}`}></div>
-          <div className="z-10 -mb-[1px] h-2.5 w-2.5 rotate-45 border border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900"></div>
+          <div className="z-10 -mb-[1px] h-2.5 w-2.5 rotate-45 border border-slate-300 bg-[var(--cf-surface-muted)] dark:border-slate-700 dark:bg-slate-900"></div>
           <div className="relative flex w-full justify-center text-center">
             {branchChildIds.map((branchId, index) => (
               <div
@@ -390,7 +390,7 @@ const FlowNodeInner = ({
                 </div>
 
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
-                  <div className="whitespace-nowrap rounded-sm bg-slate-50/95 px-1 text-[10px] font-medium text-slate-500 dark:bg-slate-950/95 dark:text-slate-400">
+                  <div className="whitespace-nowrap rounded-sm bg-[var(--cf-surface-muted)] px-1 text-[10px] font-medium text-slate-500 dark:bg-slate-950/95 dark:text-slate-400">
                     分支 {index + 1}
                   </div>
                 </div>
@@ -436,7 +436,7 @@ const FlowNodeInner = ({
                   )}
                 </div>
               ))}
-              <div className="absolute left-1/2 top-0 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950"></div>
+              <div className="absolute left-1/2 top-0 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-slate-300 bg-[var(--cf-surface-strong)] dark:border-slate-700 dark:bg-slate-950"></div>
             </div>
           )}
           {sharedEndNodeId && sharedEndDisplayNode && (

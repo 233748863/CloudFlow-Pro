@@ -77,13 +77,13 @@ export const CustomTitleBar: React.FC = () => {
     <div
       onPointerDown={handleDragStart}
       onDoubleClick={handleMaximize}
-      className="cf-titlebar fixed left-0 right-0 top-0 z-50 flex h-8 select-none items-center justify-between border-b border-slate-200/70 bg-white transition-colors dark:border-slate-800/70 dark:bg-slate-950"
+      className="cf-titlebar fixed left-0 right-0 top-0 z-50 flex h-8 select-none items-center justify-between border-b border-slate-200/70 bg-[var(--cf-surface-strong)] transition-colors dark:border-slate-800/70 dark:bg-slate-950"
     >
       <div className="flex h-full items-center gap-2 px-3">
-        <div className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-lg border border-cyan-100/80 bg-white shadow-sm dark:border-cyan-950/40 dark:bg-slate-900">
+        <div className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-md border border-cyan-100/80 bg-[var(--cf-surface-strong)] shadow-none dark:border-cyan-950/40 dark:bg-slate-900">
           <img src="/icon.svg" alt="CloudFlow Pro" className="h-4 w-4 object-contain" />
         </div>
-        <span className="text-[13px] font-semibold tracking-[-0.01em] text-slate-700 dark:text-slate-300">
+        <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
           CloudFlow Pro
         </span>
       </div>
@@ -94,7 +94,7 @@ export const CustomTitleBar: React.FC = () => {
           onClick={handleMinimize}
           className={cn(
             'cf-titlebar-btn',
-            'hover:bg-slate-100 dark:hover:bg-slate-800',
+            'hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-800',
           )}
           title="最小化"
         >
@@ -106,7 +106,7 @@ export const CustomTitleBar: React.FC = () => {
           onClick={handleMaximize}
           className={cn(
             'cf-titlebar-btn',
-            'hover:bg-slate-100 dark:hover:bg-slate-800',
+            'hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-800',
           )}
           title={isMaximized ? '还原' : '最大化'}
         >

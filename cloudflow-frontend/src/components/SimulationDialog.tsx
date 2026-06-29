@@ -19,6 +19,7 @@ import {
   type SimulationResult,
 } from '@/services/api/workflow';
 import { Button, Switch, Textarea } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   WorkspaceDialogShell,
   WorkspaceMetricCard,
@@ -36,7 +37,7 @@ const getNodeStatusMeta = (detail: SimulationNodeDetail) => {
     return {
       icon: <XCircle size={14} className="text-slate-400 dark:text-slate-500" />,
       badgeClassName:
-        'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+        'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
       badgeLabel: '未到达',
     };
   }
@@ -144,13 +145,13 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
       maxWidthClassName="w-full sm:max-w-5xl lg:max-w-6xl"
       bodyClassName="overflow-y-auto !px-0 !py-0"
       headerAside={(
-        <div className="hidden items-center gap-2 rounded-full border border-cyan-200/70 bg-cyan-50/90 px-3 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200 md:inline-flex">
+        <div className="hidden items-center gap-2 rounded-md border border-cyan-200/70 bg-cyan-50/90 px-3 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200 md:inline-flex">
           <Sparkles size={14} />
           Simulation
         </div>
       )}
     >
-      <div className="space-y-4 bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.12),transparent_26%),linear-gradient(180deg,rgba(248,250,252,0.74),rgba(255,255,255,0.88))] px-4 py-4 dark:bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.12),transparent_26%),linear-gradient(180deg,rgba(2,6,23,0.74),rgba(2,6,23,0.92))] sm:px-6 sm:py-5">
+      <div className="admin-dialog-stack px-4 py-4 sm:px-6 sm:py-5">
         <div className="grid gap-3 md:grid-cols-3">
           {metrics.map((item) => (
             <WorkspaceMetricCard
@@ -159,7 +160,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
               value={item.value}
               hint={item.hint}
               aside={(
-                <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${item.iconClassName}`}>
+                <div className={`admin-source-stat-icon !h-11 !w-11 !flex-none ${item.iconClassName}`}>
                   {item.icon}
                 </div>
               )}
@@ -167,12 +168,12 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
           ))}
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.92fr)]">
+        <div className="grid gap-4">
           <WorkspaceSectionCard
             eyebrow="Config"
             title="模拟配置"
             description="JSON 变量用于条件分支求值；开启“模拟所有分支”后，会忽略条件结果并穷举可能路径。"
-            bodyClassName="space-y-4"
+            bodyClassName="admin-dialog-stack"
             headerAside={(
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={handleValidate} disabled={loading}>
@@ -186,7 +187,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
               </div>
             )}
           >
-            <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
+            <div className="p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                 <FileJson size={16} />
                 模拟变量 JSON
@@ -202,7 +203,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   模拟所有分支
@@ -230,13 +231,13 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                   : '当前流程定义存在错误或不可达问题。'
                 : '执行模拟或结构验证后，这里汇总错误、警告和可达性。'
             }
-            bodyClassName="space-y-4"
+            bodyClassName="admin-dialog-stack"
           >
             {result ? (
               <>
                 <div
                   className={[
-                    'rounded-2xl border px-4 py-4',
+                    'px-4 py-4',
                     result.success
                       ? 'border-emerald-200 bg-emerald-50/90 dark:border-emerald-500/20 dark:bg-emerald-500/10'
                       : 'border-rose-200 bg-rose-50/90 dark:border-rose-500/20 dark:bg-rose-500/10',
@@ -258,9 +259,9 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                 </div>
 
                 {result.errors.length > 0 ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-4 dark:border-rose-500/20 dark:bg-rose-500/10">
+                  <div className="border-rose-200 bg-rose-50/90 px-4 py-4 dark:border-rose-500/20 dark:bg-rose-500/10">
                     <div className="text-sm font-semibold text-rose-700 dark:text-rose-300">错误</div>
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-2 grid gap-2">
                       {result.errors.map((item, index) => (
                         <div key={`${item}-${index}`} className="flex items-start gap-2 text-sm text-rose-700 dark:text-rose-300">
                           <XCircle size={14} className="mt-0.5 shrink-0" />
@@ -272,9 +273,9 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                 ) : null}
 
                 {result.warnings.length > 0 ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-4 dark:border-amber-500/20 dark:bg-amber-500/10">
+                  <div className="border-amber-200 bg-amber-50/90 px-4 py-4 dark:border-amber-500/20 dark:bg-amber-500/10">
                     <div className="text-sm font-semibold text-amber-700 dark:text-amber-300">警告</div>
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-2 grid gap-2">
                       {result.warnings.map((item, index) => (
                         <div key={`${item}-${index}`} className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300">
                           <AlertTriangle size={14} className="mt-0.5 shrink-0" />
@@ -286,13 +287,13 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                 ) : null}
 
                 {result.unreachableNodes.length > 0 ? (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-4 dark:border-slate-700 dark:bg-slate-900/70">
+                  <div className="bg-[var(--cf-surface-muted)] px-4 py-4 dark:bg-slate-900/70">
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">不可达节点</div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {result.unreachableNodes.map((nodeId) => (
                         <span
                           key={nodeId}
-                          className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                          className="badge badge-gray"
                         >
                           {nodeId}
                         </span>
@@ -302,7 +303,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                 ) : null}
               </>
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+              <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                 暂无模拟结果。
               </div>
             )}
@@ -314,18 +315,18 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
             eyebrow="Paths"
             title={`执行路径 (${result.paths.length})`}
             description="每条路径代表一次可能的节点命中顺序，终止类型用于识别正常结束、条件终止或异常终止。"
-            bodyClassName="space-y-3"
+            bodyClassName="admin-dialog-stack"
           >
             {result.paths.map((path, index) => (
               <div
                 key={`${path.terminationType}-${index}`}
-                className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/60"
+                className="px-4 py-4"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   {path.nodeTitles.map((title, nodeIndex) => (
                     <React.Fragment key={`${title}-${nodeIndex}`}>
                       {nodeIndex > 0 ? <ArrowSeparator /> : null}
-                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+                      <span className="badge border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300">
                         {title}
                       </span>
                     </React.Fragment>
@@ -346,64 +347,62 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
             description="节点详情 = 单个节点在本次模拟中的到达状态、条件求值与参与人解析结果。"
             bodyClassName="overflow-hidden"
           >
-            <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-              <div className="max-h-[28rem] overflow-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="sticky top-0 bg-slate-50/95 backdrop-blur dark:bg-slate-900/95">
-                    <tr className="text-left text-slate-500 dark:text-slate-400">
-                      <th className="px-4 py-3 font-medium">节点</th>
-                      <th className="px-4 py-3 font-medium">类型</th>
-                      <th className="px-4 py-3 font-medium">状态</th>
-                      <th className="px-4 py-3 font-medium">条件</th>
-                      <th className="px-4 py-3 font-medium">参与人</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {result.nodeDetails.map((detail) => {
-                      const statusMeta = getNodeStatusMeta(detail);
-                      return (
-                        <tr
-                          key={detail.nodeId}
-                          className="bg-white/90 transition-colors hover:bg-slate-50/90 dark:bg-slate-950/40 dark:hover:bg-slate-900/70"
-                        >
-                          <td className="px-4 py-3 align-top">
-                            <div className={detail.reached ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}>
-                              {detail.title || detail.nodeId}
-                            </div>
-                            <div className="mt-1 text-xs font-mono text-slate-400 dark:text-slate-500">
-                              {detail.nodeId}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top text-slate-600 dark:text-slate-300">
-                            {detail.nodeType}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${statusMeta.badgeClassName}`}
-                            >
-                              {statusMeta.icon}
-                              {statusMeta.badgeLabel}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 align-top text-slate-500 dark:text-slate-400">
-                            {detail.conditionResult === null || detail.conditionResult === undefined
-                              ? '-'
-                              : detail.conditionResult
-                                ? '条件满足'
-                                : '条件不满足'}
-                          </td>
-                          <td className="px-4 py-3 align-top text-slate-500 dark:text-slate-400">
-                            {detail.resolvedAssignees.length > 0
-                              ? detail.resolvedAssignees.join(', ')
-                              : '-'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <InnerTableSurface className="max-h-[28rem]">
+              <table className="unity-data-table admin-source-table min-w-[860px]">
+                <thead className="sticky top-0">
+                  <tr>
+                    <th>节点</th>
+                    <th>类型</th>
+                    <th>状态</th>
+                    <th>条件</th>
+                    <th>参与人</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.nodeDetails.map((detail) => {
+                    const statusMeta = getNodeStatusMeta(detail);
+                    return (
+                      <tr
+                        key={detail.nodeId}
+                        className="transition-colors"
+                      >
+                        <td className="align-top">
+                          <div className={detail.reached ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}>
+                            {detail.title || detail.nodeId}
+                          </div>
+                          <div className="mt-1 text-xs font-mono text-slate-400 dark:text-slate-500">
+                            {detail.nodeId}
+                          </div>
+                        </td>
+                        <td className="align-top text-slate-600 dark:text-slate-300">
+                          {detail.nodeType}
+                        </td>
+                        <td className="align-top">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${statusMeta.badgeClassName}`}
+                          >
+                            {statusMeta.icon}
+                            {statusMeta.badgeLabel}
+                          </span>
+                        </td>
+                        <td className="align-top text-slate-500 dark:text-slate-400">
+                          {detail.conditionResult === null || detail.conditionResult === undefined
+                            ? '-'
+                            : detail.conditionResult
+                              ? '条件满足'
+                              : '条件不满足'}
+                        </td>
+                        <td className="align-top text-slate-500 dark:text-slate-400">
+                          {detail.resolvedAssignees.length > 0
+                            ? detail.resolvedAssignees.join(', ')
+                            : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </InnerTableSurface>
           </WorkspaceSectionCard>
         ) : null}
       </div>

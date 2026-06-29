@@ -13,7 +13,7 @@ const Table = React.forwardRef<
   const tableElement = (
     <table
       ref={ref}
-      className={cn('w-full caption-bottom text-sm', className)}
+      className={cn('unity-data-table w-full caption-bottom text-sm', className)}
       {...props}
     />
   );
@@ -38,8 +38,8 @@ const TableHeader = React.forwardRef<
   <thead
     ref={ref}
     className={cn(
-      'border-b border-slate-200 bg-slate-50 [&_tr]:border-b [&_tr]:border-slate-200',
-      'dark:border-slate-800 dark:bg-slate-900/70 dark:[&_tr]:border-slate-800',
+      'border-b border-slate-200 bg-[var(--cf-surface-muted)] [&_tr]:border-b [&_tr]:border-slate-200',
+      'dark:border-slate-800 dark:bg-slate-900/60 dark:[&_tr]:border-slate-800',
       className,
     )}
     {...props}
@@ -68,8 +68,8 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      'border-t border-slate-200 bg-slate-50 font-medium [&>tr]:last:border-b-0',
-      'dark:border-slate-800 dark:bg-slate-900/70',
+      'border-t border-slate-200 bg-[var(--cf-surface-muted)] font-medium [&>tr]:last:border-b-0',
+      'dark:border-slate-800 dark:bg-slate-900/60',
       className,
     )}
     {...props}
@@ -85,7 +85,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      'border-b border-slate-100 transition-colors hover:bg-slate-50 data-[state=selected]:bg-cyan-50/40 dark:border-slate-800 dark:hover:bg-slate-900/80 dark:data-[state=selected]:bg-cyan-950/30',
+      'border-b border-slate-200 transition-colors hover:bg-[var(--cf-surface-muted)] data-[state=selected]:bg-cyan-50/40 dark:border-slate-800 dark:hover:bg-slate-900/70 dark:data-[state=selected]:bg-cyan-950/30',
       className,
     )}
     {...props}
@@ -101,7 +101,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'px-4 py-3 text-left align-middle text-sm font-medium normal-case tracking-normal whitespace-nowrap text-slate-500 dark:text-slate-400 [&:has([role=checkbox])]:pr-0',
+      'px-4 py-3 text-left align-middle text-xs font-medium whitespace-nowrap text-slate-500 dark:text-slate-400 [&:has([role=checkbox])]:pr-0',
       className,
     )}
     {...props}

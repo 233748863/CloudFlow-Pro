@@ -23,7 +23,7 @@ export const AttachmentLinks: React.FC<AttachmentLinksProps> = ({
   }
 
   return (
-    <div className={compact ? 'flex flex-wrap gap-1.5' : 'space-y-2'}>
+    <div className={compact ? 'flex flex-wrap gap-1.5' : 'grid gap-2'}>
       {attachments.map((url) => {
         const label = getAttachmentDisplayName(url);
         return (
@@ -33,7 +33,7 @@ export const AttachmentLinks: React.FC<AttachmentLinksProps> = ({
             target="_blank"
             rel="noreferrer"
             className={[
-              'cf-interactive-card inline-flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
+              'admin-option-surface inline-flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
               compact ? 'max-w-[12rem] px-2.5 py-1.5' : 'w-full px-4 py-3',
             ].join(' ')}
           >

@@ -36,7 +36,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   metaClassName,
   className,
 }) => (
-  <div className={cn('stat-card', interactive && 'cf-interactive-card', className)}>
+  <div className={cn('stat-card', interactive && 'stat-card-interactive', className)}>
     {icon ? (
       <div className={cn('stat-icon', iconVariantClassMap[iconVariant], iconClassName)}>{icon}</div>
     ) : null}

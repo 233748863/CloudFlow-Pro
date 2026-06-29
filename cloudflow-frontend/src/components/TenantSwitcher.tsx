@@ -183,19 +183,10 @@ export const TenantSwitcher: React.FC = () => {
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label={`当前租户：${currentTenantName}`}
-        className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 disabled:cursor-wait disabled:opacity-70 dark:hover:bg-slate-800"
+        className="app-header-action hidden md:inline-flex disabled:cursor-wait disabled:opacity-70"
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-          <Building2 size={15} />
-        </div>
-        <div className="hidden min-w-0 flex-1 sm:block">
-          <div className="truncate text-sm font-semibold text-slate-700 dark:text-slate-100">
-            {currentTenantName}
-          </div>
-          <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-            {currentTenantIdText}
-          </div>
-        </div>
+        <Building2 size={16} />
+        <span className="hidden max-w-[7.5rem] truncate 2xl:inline">{currentTenantName}</span>
         {switching ? (
           <Loader2 size={14} className="shrink-0 animate-spin text-slate-400 dark:text-slate-500" />
         ) : (
@@ -209,7 +200,7 @@ export const TenantSwitcher: React.FC = () => {
       </button>
 
       <div
-        className={`absolute right-0 top-full z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 transition-all duration-150 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/70 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)] ${
+        className={`dropdown right-0 mt-2 w-56 overflow-hidden transition-all duration-150 ${
           isOpen
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
@@ -238,15 +229,15 @@ export const TenantSwitcher: React.FC = () => {
                   onClick={() => void handleSwitchTenant(tenant.tenantId)}
                   disabled={switching}
                   title={`${tenantName} ${tenantIdText}`}
-                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-900 ${
+                  className={`dropdown-item gap-3 px-3 py-2.5 ${
                     active ? 'bg-cyan-50 dark:bg-cyan-950/30' : ''
                   } ${switching ? 'cursor-not-allowed opacity-70' : ''}`}
                 >
                   <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${
                       active
                         ? 'border-cyan-200 bg-cyan-100 text-cyan-600 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-300'
-                        : 'border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500'
+                        : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500'
                     }`}
                   >
                     <Building2 size={15} />

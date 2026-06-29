@@ -21,7 +21,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   className,
   labelClassName,
 }) => (
-  <div className={cn('space-y-2', className)}>
+  <div className={cn('admin-dialog-field', className)}>
     {label ? (
       <Label className={cn('text-sm font-medium text-slate-700 dark:text-slate-300', labelClassName)}>
         {label}
@@ -46,7 +46,7 @@ export const DialogSection = React.forwardRef<HTMLDivElement, DialogSectionProps
     <section
       ref={ref}
       className={cn(
-        'rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/72',
+        'p-4 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950/72',
         className,
       )}
       {...props}
@@ -60,7 +60,7 @@ export const DialogSection = React.forwardRef<HTMLDivElement, DialogSectionProps
           {headerAside ? <div className="flex shrink-0 flex-wrap items-center gap-2">{headerAside}</div> : null}
         </div>
       ) : null}
-      <div className={cn('min-w-0', bodyClassName)}>{children}</div>
+      <div className={cn('admin-dialog-stack min-w-0', bodyClassName)}>{children}</div>
     </section>
   ),
 );
@@ -98,7 +98,7 @@ interface DetailItemProps {
 }
 
 export const DetailItem: React.FC<DetailItemProps> = ({ label, value, className, valueClassName }) => (
-  <div className={cn('min-w-0 border-b border-slate-100 py-2.5 dark:border-slate-800', className)}>
+  <div className={cn('min-w-0 border-b border-slate-200 py-2.5 dark:border-slate-800', className)}>
     <div className="text-xs leading-5 text-slate-500 dark:text-slate-400">{label}</div>
     <div className={cn('mt-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100', valueClassName)}>
       {value}

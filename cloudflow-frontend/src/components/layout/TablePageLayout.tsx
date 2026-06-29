@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
 
 interface TablePageLayoutProps {
@@ -7,28 +7,33 @@ interface TablePageLayoutProps {
   table: React.ReactNode;
   pagination?: React.ReactNode;
   className?: string;
+  tableSurfaceClassName?: string;
 }
 
-interface TableSurfaceCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  fill?: boolean;
+interface InnerTableSurfaceProps extends React.HTMLAttributes<HTMLDivElement> {
+  wrapperClassName?: string;
 }
 
-export const TableSurfaceCard = React.forwardRef<
+export const InnerTableSurface = React.forwardRef<
   HTMLDivElement,
-  TableSurfaceCardProps
->(({ className = '', fill = false, ...props }, ref) => (
+  InnerTableSurfaceProps
+>(({ className = '', wrapperClassName = '', children, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      'overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
-      fill && 'flex min-h-[40rem] flex-col',
+      'table-scroll-container admin-inner-table-surface',
       className,
+      'h-auto flex-none overflow-visible',
     )}
     {...props}
-  />
+  >
+    <div className={cn('table-wrapper', wrapperClassName, 'flex-none overflow-x-auto overflow-y-visible')}>
+      {children}
+    </div>
+  </div>
 ));
 
-TableSurfaceCard.displayName = 'TableSurfaceCard';
+InnerTableSurface.displayName = 'InnerTableSurface';
 
 export const TablePageLayout: React.FC<TablePageLayoutProps> = ({
   actions,
@@ -36,15 +41,48 @@ export const TablePageLayout: React.FC<TablePageLayoutProps> = ({
   table,
   pagination,
   className,
-}) => (
-  <div className={cn('flex flex-col gap-6', className)}>
-      {actions ? <div className="flex-shrink-0">{actions}</div> : null}
-      {filters ? <div className="flex-shrink-0">{filters}</div> : null}
+  tableSurfaceClassName,
+}) => {
+  const [mobileMode, setMobileMode] = useState(false);
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        {table}
+  useEffect(() => {
+    const syncMobileMode = () => {
+      setMobileMode(window.innerWidth < 1024);
+    };
+
+    syncMobileMode();
+    window.addEventListener('resize', syncMobileMode);
+
+    return () => window.removeEventListener('resize', syncMobileMode);
+  }, []);
+
+  return (
+    <div
+      className={cn(
+        'table-page-layout flex flex-col gap-5',
+        mobileMode && 'mobile-mode',
+        className,
+      )}
+    >
+      {actions ? <div className="layout-section-fixed flex-shrink-0">{actions}</div> : null}
+      {filters ? <div className="layout-section-fixed flex-shrink-0">{filters}</div> : null}
+
+      <div className="layout-section-scrollable flex min-w-0 flex-none flex-col">
+        <div
+          className={cn(
+            'table-page-layout-surface',
+            pagination && 'has-pagination',
+            tableSurfaceClassName,
+          )}
+        >
+          {table}
+        </div>
       </div>
-
-      {pagination ? <div className="flex-shrink-0">{pagination}</div> : null}
+      {pagination ? (
+        <div className="layout-section-fixed table-page-layout-pagination flex-shrink-0">
+          {pagination}
+        </div>
+      ) : null}
     </div>
-);
+  );
+};

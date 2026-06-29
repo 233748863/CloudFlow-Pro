@@ -24,7 +24,7 @@ const InlineBadge = ({
 }) => (
   <span
     className={cn(
-      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+      'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium',
       className,
     )}
   >
@@ -87,11 +87,11 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
           onDragLeave={() => setHoverColumn((current) => (current === column.id ? null : current))}
           onDrop={(event) => handleDrop(event, column.id)}
           className={cn(
-            'flex min-h-[24rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950',
+            'flex min-h-[24rem] flex-col overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950',
             hoverColumn === column.id && 'border-cyan-300 dark:border-cyan-700',
           )}
         >
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+          <div className="flex items-center justify-between border-b border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50">
             <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{column.title}</div>
             <div className="text-xs text-slate-500 dark:text-slate-400">{column.tasks.length} 条</div>
           </div>
@@ -102,7 +102,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                 当前列暂无内容
               </div>
             ) : (
-              <div className="space-y-3 p-3">
+              <div className="grid gap-3 p-3">
                 {column.tasks.map((task) => {
                   const isProcessTask = task.type === 'PROCESS';
                   const isOverdue = Boolean(
@@ -123,9 +123,9 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                         handleDragStart(event, task.id);
                       }}
                       onDragEnd={clearDragState}
-                      onClick={() => onTaskClick(task)}
-                      className={cn(
-                        'rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:bg-slate-900/70',
+                    onClick={() => onTaskClick(task)}
+                    className={cn(
+                        'rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 transition-colors hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900/70',
                         draggedTaskId === task.id && 'opacity-50',
                       )}
                     >
@@ -146,7 +146,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                         <InlineBadge
                           className={
                             isProcessTask
-                              ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300'
+                              ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300'
                               : task.status === WorkTaskStatus.DONE
                                 ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200'
                                 : task.status === WorkTaskStatus.DOING
@@ -159,14 +159,14 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                       </div>
 
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <InlineBadge className="border-slate-200 bg-white text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                        <InlineBadge className="border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                           创建 {formatDate(task.createdTime)}
                         </InlineBadge>
                         <InlineBadge
                           className={cn(
                             isOverdue
                               ? 'border-rose-100 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200'
-                              : 'border-slate-200 bg-white text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
+                              : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
                           )}
                         >
                           <Clock size={12} />

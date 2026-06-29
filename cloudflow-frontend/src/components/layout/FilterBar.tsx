@@ -18,11 +18,11 @@ export interface FilterBarStat {
 }
 
 export interface FilterBarProps {
-  /** 左侧带 Search 图标的搜索输入框 */
+  /** 带 Search 图标的搜索输入框 */
   search?: FilterBarSearch;
-  /** 左侧筛选控件(通常是 Select) */
+  /** 筛选控件(通常是 Select) */
   filters?: React.ReactNode[];
-  /** 左侧内联统计 pills */
+  /** 内联统计 pills */
   stats?: FilterBarStat[];
   /** 右对齐操作按钮区(搜索/清空条件/新增 等) */
   actions?: React.ReactNode[];
@@ -30,13 +30,12 @@ export interface FilterBarProps {
 }
 
 /**
- * 统一的列表页筛选卡。admin + HR 共用,容器规格固定为 rounded-xl px-4 py-3,
- * 左侧承载搜索/筛选/统计,右侧主操作右对齐。
+ * 统一的列表页筛选栏。主区域承载搜索/筛选/统计,操作区保持末端对齐。
  */
 export const FilterBar: React.FC<FilterBarProps> = ({ search, filters, stats, actions, className }) => (
   <div
     className={cn(
-      'flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between',
+      'card cf-filter-bar flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between',
       className,
     )}
   >
@@ -59,9 +58,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({ search, filters, stats, ac
         <React.Fragment key={index}>{node}</React.Fragment>
       ))}
       {stats?.length ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-2">
           {stats.map((stat, index) => (
-            <span key={index}>
+            <span key={index} className="cf-filter-stat">
               {stat.label}
               {stat.label ? ' ' : ''}
               {stat.value}

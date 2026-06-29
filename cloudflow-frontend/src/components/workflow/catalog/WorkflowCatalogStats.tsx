@@ -1,6 +1,5 @@
 import React from 'react';
 import { Filter, FolderOpen, FormInput, GitMerge } from 'lucide-react';
-import { StatCard } from '@/components/common';
 
 interface WorkflowCatalogStatsProps {
   workflowCount: number;
@@ -17,34 +16,38 @@ export const WorkflowCatalogStats: React.FC<WorkflowCatalogStatsProps> = ({
   categoryCount,
   hasActiveFilters,
 }) => (
-  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    <StatCard
-      title="已发布流程"
-      value={workflowCount.toLocaleString()}
-      icon={<GitMerge size={20} />}
-      iconVariant="primary"
-      meta="按流程 key 保留最新可发起版本"
-    />
-    <StatCard
-      title="当前筛选"
-      value={filteredCount.toLocaleString()}
-      icon={<Filter size={20} />}
-      iconVariant="warning"
-      meta={hasActiveFilters ? '已应用搜索、分类或标签条件' : '当前显示全部可发起流程'}
-    />
-    <StatCard
-      title="已绑表单"
-      value={boundFormCount.toLocaleString()}
-      icon={<FormInput size={20} />}
-      iconVariant="success"
-      meta="支持直接拉起表单发起流程"
-    />
-    <StatCard
-      title="流程分类"
-      value={categoryCount.toLocaleString()}
-      icon={<FolderOpen size={20} />}
-      iconVariant="gray"
-      meta="用于目录归类与快速定位"
-    />
+  <div className="admin-source-stat-grid">
+    <article className="card admin-source-stat admin-source-tone-blue">
+      <span className="admin-source-stat-icon"><GitMerge size={20} /></span>
+      <div className="min-w-0">
+        <p>已发布流程</p>
+        <strong>{workflowCount.toLocaleString()}</strong>
+        <span>按流程 key 保留最新可发起版本</span>
+      </div>
+    </article>
+    <article className="card admin-source-stat admin-source-tone-amber">
+      <span className="admin-source-stat-icon"><Filter size={20} /></span>
+      <div className="min-w-0">
+        <p>当前筛选</p>
+        <strong>{filteredCount.toLocaleString()}</strong>
+        <span>{hasActiveFilters ? '已应用搜索、分类或标签条件' : '当前显示全部可发起流程'}</span>
+      </div>
+    </article>
+    <article className="card admin-source-stat admin-source-tone-green">
+      <span className="admin-source-stat-icon"><FormInput size={20} /></span>
+      <div className="min-w-0">
+        <p>已绑表单</p>
+        <strong>{boundFormCount.toLocaleString()}</strong>
+        <span>支持直接拉起表单发起流程</span>
+      </div>
+    </article>
+    <article className="card admin-source-stat admin-source-tone-violet">
+      <span className="admin-source-stat-icon"><FolderOpen size={20} /></span>
+      <div className="min-w-0">
+        <p>流程分类</p>
+        <strong>{categoryCount.toLocaleString()}</strong>
+        <span>用于目录归类与快速定位</span>
+      </div>
+    </article>
   </div>
 );

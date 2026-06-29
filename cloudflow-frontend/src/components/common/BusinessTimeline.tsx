@@ -101,8 +101,8 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <div className="table-scroll-container admin-inner-table-surface admin-source-panel no-padding">
+      <div className="p-4 admin-source-section-head flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
         <div className="flex flex-wrap items-center gap-2">
           <Input
@@ -142,21 +142,21 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
           <LoadingSpinner size="lg" />
         </div>
       ) : visibleRows.length ? (
-        <div className="space-y-3">
+        <div className="grid gap-3 p-4">
           {visibleRows.map((event, index) => {
             const snapshotOpen = expandedSnapshotId === event.id;
             const diff = diffs[event.id];
             return (
               <div key={event.id} className="flex gap-3">
                 <div className="flex flex-col items-center">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-200">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-200">
                     <Clock3 size={14} />
                   </div>
                   {index < visibleRows.length - 1 ? (
                     <div className="mt-2 h-full w-px bg-slate-200 dark:bg-slate-800" />
                   ) : null}
                 </div>
-                <div className="min-w-0 flex-1 rounded-lg border border-slate-100 px-3 py-3 dark:border-slate-800">
+                <div className="min-w-0 flex-1 px-3 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                       {event.title || event.eventType}
@@ -168,9 +168,9 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                     <span>{event.operatorName || 'system'}</span>
-                    <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                    <span className="h-1 w-1 rounded-sm bg-slate-300 dark:bg-slate-700" />
                     <span>{event.businessType}#{event.businessId}</span>
-                    <span className="rounded-full border border-slate-200 px-2 py-0.5 dark:border-slate-700">{event.eventType}</span>
+                    <span className="badge badge-gray">{event.eventType}</span>
                     {event.snapshotJson ? (
                       <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setExpandedSnapshotId(snapshotOpen ? null : event.id)}>
                         {snapshotOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -178,23 +178,23 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
                       </Button>
                     ) : null}
                     <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => void toggleDiff(event.id)}>
-                      <Diff size={13} className={cn(diffLoadingId === event.id && 'animate-pulse')} />
+                      <Diff size={13} className={cn(diffLoadingId === event.id && 'text-cyan-600 dark:text-cyan-300')} />
                       差异
                     </Button>
                   </div>
                   {snapshotOpen ? (
-                    <pre className="mt-3 max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">
+                    <pre className="mt-3 max-h-64 overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                       {formatJson(event.snapshotJson)}
                     </pre>
                   ) : null}
                   {diff ? (
-                    <div className="mt-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                    <div className="mt-3 p-3">
                       {diff.changedFields?.length ? (
-                        <div className="space-y-2">
+                        <div className="admin-dialog-field">
                           {diff.changedFields.map((field) => (
                             <div key={field.field} className="grid gap-2 text-xs md:grid-cols-[150px_1fr_1fr]">
                               <div className="font-mono text-slate-500">{field.field}</div>
-                              <div className="rounded bg-slate-50 px-2 py-1 text-slate-500 dark:bg-slate-900">{String(field.beforeValue ?? '-')}</div>
+                              <div className="rounded bg-[var(--cf-surface-muted)] px-2 py-1 text-slate-500 dark:bg-slate-900">{String(field.beforeValue ?? '-')}</div>
                               <div className="rounded bg-emerald-50 px-2 py-1 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200">{String(field.afterValue ?? '-')}</div>
                             </div>
                           ))}
@@ -210,7 +210,7 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
           })}
         </div>
       ) : (
-        <div className="py-8 text-center text-sm text-slate-400">暂无链路事件</div>
+        <div className="py-6 text-center text-sm text-slate-400">暂无链路事件</div>
       )}
     </div>
   );

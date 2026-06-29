@@ -75,7 +75,7 @@ const STATUS_MAP: Record<ResultStatus, StatusConfig> = {
     title: '网络连接异常',
     subTitle: '请检查网络后重试，或稍后再试。',
     iconWrap:
-      'border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/50',
+      'border-slate-200 bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-900/50',
     iconColor: 'text-slate-500 dark:text-slate-300',
   },
   success: {
@@ -163,7 +163,7 @@ const DefaultExtra: React.FC<{ status: ResultStatus }> = ({ status }) => {
 
 /**
  * 统一的"结果页"组件（含错误页 401/403/404/500/network 与成功/警告态）。
- * 视觉规范沿用现有的 radial-gradient + rounded-[28px] 卡片风格，统一图标外框、按钮组合与暗黑模式。
+ * 视觉规范沿用统一的后台结果面板风格，统一图标外框、按钮组合与暗黑模式。
  */
 export const ResultPage: React.FC<ResultPageProps> = ({
   status,
@@ -178,32 +178,32 @@ export const ResultPage: React.FC<ResultPageProps> = ({
   const Icon = cfg.icon;
 
   const container = fullscreen
-    ? 'fixed inset-0 z-[60] flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-6 py-12'
-    : 'flex min-h-[60vh] items-center justify-center bg-slate-50/80 dark:bg-slate-950/70 px-6 py-12';
+    ? 'fixed inset-0 z-[60] flex items-center justify-center bg-[var(--cf-bg)] px-6 py-10 dark:bg-slate-950'
+    : 'flex min-h-[60vh] items-center justify-center bg-[var(--cf-surface-muted)]/80 px-6 py-10 dark:bg-slate-950/70';
 
   const effectiveTitle = title ?? cfg.title;
   const effectiveSubTitle = subTitle ?? cfg.subTitle;
 
   return (
     <div className={cn(container, className)}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.2)] dark:border-slate-800 dark:bg-slate-950">
-        <div className="bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.12),_transparent_40%),linear-gradient(135deg,_rgba(248,250,252,0.98),_rgba(255,255,255,0.92))] px-6 py-10 sm:px-8 dark:bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_transparent_38%),linear-gradient(135deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.92))]">
+      <div className="card w-full max-w-2xl">
+        <div className="p-4 px-6 py-7">
           <div
             className={cn(
-              'mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border',
+              'mb-4 flex h-12 w-12 items-center justify-center rounded-md border',
               cfg.iconWrap,
             )}
           >
-            <Icon size={28} className={cfg.iconColor} />
+            <Icon size={24} className={cfg.iconColor} />
           </div>
-          <div className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-600 dark:text-cyan-300">
+          <div className="text-xs font-semibold text-cyan-600 dark:text-cyan-300">
             {cfg.code}
           </div>
-          <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="mt-3 text-xl font-semibold text-slate-900 dark:text-slate-100">
             {effectiveTitle}
           </h1>
           {effectiveSubTitle && (
-            <p className="mt-3 max-w-xl text-sm sm:text-base leading-7 text-slate-600 dark:text-slate-400">
+            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-400">
               {effectiveSubTitle}
             </p>
           )}

@@ -95,7 +95,7 @@ export const DictSelect: React.FC<DictSelectProps> = ({
   // Loading 状态
   if (isLoading) {
     return (
-      <div className={cn('cf-control h-10 rounded-xl px-4 py-2.5', className)}>
+      <div className={cn('cf-control h-10 rounded-md px-4 py-2.5', className)}>
         <span className="text-sm text-slate-400">加载中...</span>
       </div>
     );
@@ -122,7 +122,7 @@ export const DictSelect: React.FC<DictSelectProps> = ({
             ) : showBadge ? (
               <span
                 className={cn(
-                  'inline-flex items-center rounded-lg border px-2 py-0.5 text-xs font-medium',
+                  'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium',
                   item.fullClass,
                 )}
               >

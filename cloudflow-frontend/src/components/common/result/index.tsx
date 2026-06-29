@@ -50,7 +50,7 @@ export const Result500: React.FC<Result500Props> = ({
         <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
           查看错误详情
         </summary>
-        <pre className="mt-2 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
           {error.stack}
         </pre>
       </details>

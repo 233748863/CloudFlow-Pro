@@ -16,7 +16,7 @@ interface SearchInputProps
 
 export const SearchInput: React.FC<SearchInputProps> = ({
   value,
-  placeholder = '鎼滅储',
+  placeholder = '搜索...',
   debounceMs = 300,
   onChange,
   onSearch,
@@ -39,14 +39,12 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   }, [debounceMs, onSearch, value]);
 
   return (
-    <div className={cn('relative w-full', className)}>
-      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-        <Search size={16} className="text-slate-400" />
-      </div>
+    <div className={cn('admin-source-search-field relative w-full', className)}>
+      <Search size={16} aria-hidden="true" />
       <Input
         value={value}
         type="text"
-        className={cn('pl-10', inputClassName)}
+        className={cn(inputClassName)}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
         {...props}

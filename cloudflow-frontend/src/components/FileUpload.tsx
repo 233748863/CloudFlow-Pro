@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { getAttachmentDisplayName, getAttachmentRawValue, isAttachmentImage } from '@/utils/attachment';
 import { useConfigInt, useConfigValue } from '../hooks/useSystemConfig';
 import { SYS_UPLOAD_MAX_FILE_SIZE, SYS_UPLOAD_ALLOWED_TYPES } from '../constants/sysConfig';
+import { cn } from '@/utils/cn';
 
 /** 已上传文件信息 */
 interface UploadedFile {
@@ -27,8 +28,6 @@ interface FileUploadProps {
   disabled?: boolean;
   /** 提示文字 */
   hint?: string;
-  /** 视觉风格 */
-  variant?: 'default' | 'glass';
 }
 
 /**
@@ -42,7 +41,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   accept,
   disabled = false,
   hint,
-  variant = 'default',
 }) => {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +53,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const resolvedAccept = accept ?? allowedTypes.split(',').map(t => `.${t.trim()}`).join(',');
   // 如果外部未传入 hint，则根据配置动态生成
   const resolvedHint = hint ?? `支持 ${allowedTypes} 格式，单文件不超过 ${maxFileSizeMB}MB`;
-  const isGlass = variant === 'glass';
 
   // 解析当前已上传的文件列表
   const fileList: UploadedFile[] = value
@@ -117,19 +114,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="admin-dialog-stack gap-2.5">
       {/* 已上传文件列表 */}
       {fileList.length > 0 && (
-        <div className="space-y-2">
+        <div className="grid gap-2">
           {fileList.map((file, index) => (
             <div
               key={index}
-              className={[
-                'group flex items-center gap-2 rounded-lg border p-2 transition',
-                isGlass
-                  ? 'rounded-xl border-slate-200 bg-white shadow-sm'
-                  : 'border-slate-200 bg-slate-50',
-              ].join(' ')}
+              className="p-4 group flex items-center gap-2 border border-slate-200 bg-[var(--cf-surface-muted)] p-2 transition dark:border-slate-800 dark:bg-slate-900"
             >
               {/* 文件图标 */}
               {isAttachmentImage(file.raw) ? (
@@ -138,7 +130,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 <FileText size={16} className="text-slate-500 flex-shrink-0" />
               )}
               {/* 文件名 */}
-              <span className="text-sm text-slate-700 truncate flex-1" title={file.name}>
+              <span className="text-sm text-slate-700 truncate flex-1 dark:text-slate-300" title={file.name}>
                 {decodeURIComponent(file.name)}
               </span>
               {/* 删除按钮 */}
@@ -146,10 +138,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 <button
                   type="button"
                   onClick={() => handleRemove(index)}
-                  className={[
-                    'flex-shrink-0 text-slate-400 transition-opacity hover:text-red-500',
-                    isGlass ? 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100',
-                  ].join(' ')}
+                  className="flex-shrink-0 text-slate-400 opacity-100 transition-opacity hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:text-red-300"
                   title="删除"
                 >
                   <X size={14} />
@@ -163,13 +152,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       {/* 上传按钮 */}
       {!disabled && fileList.length < maxCount && (
         <label
-          className={[
-            'flex cursor-pointer items-center gap-2 border-2 border-dashed px-3 py-2 transition-colors',
-            isGlass
-              ? 'rounded-xl border-slate-200 bg-white shadow-sm hover:border-cyan-200 hover:bg-slate-50'
-              : 'rounded-xl border-slate-300 hover:border-cyan-300 hover:bg-cyan-50',
-            uploading ? 'cursor-not-allowed opacity-60' : '',
-          ].join(' ')}
+          className={cn(
+            'p-4 flex cursor-pointer items-center gap-2 border-2 border-dashed border-slate-300 px-3 py-2 transition-colors hover:border-cyan-300 hover:bg-cyan-50 dark:border-slate-700 dark:hover:border-cyan-800 dark:hover:bg-slate-900/70',
+            uploading && 'cursor-not-allowed opacity-60',
+          )}
         >
           <input
             ref={inputRef}
@@ -196,7 +182,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* 提示文字 */}
       {resolvedHint && (
-        <p className={`text-xs ${isGlass ? 'text-slate-500' : 'text-slate-400'}`}>{resolvedHint}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">{resolvedHint}</p>
       )}
     </div>
   );

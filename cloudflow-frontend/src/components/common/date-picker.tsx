@@ -19,7 +19,6 @@ interface DatePickerProps {
   max?: string;
   id?: string;
   name?: string;
-  variant?: 'default' | 'glass';
 }
 
 interface DropdownPlacement {
@@ -190,36 +189,36 @@ function CalendarPanel({
   };
 
   return (
-    <div className="bg-white p-3 dark:bg-slate-950">
-      <div className="mb-2.5 flex items-center justify-between">
+    <div className="cf-date-panel">
+      <div className="cf-date-panel-header">
         <button
           type="button"
           onClick={goToPrevMonth}
-          className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+          className="cf-date-nav-button"
         >
           <ChevronLeft size={16} />
         </button>
-        <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+        <span className="cf-date-title">
           {year}年 {MONTH_NAMES[month]}
         </span>
         <button
           type="button"
           onClick={goToNextMonth}
-          className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+          className="cf-date-nav-button"
         >
           <ChevronRight size={16} />
         </button>
       </div>
 
-      <div className="mb-1 grid grid-cols-7 gap-1">
+      <div className="cf-date-weekdays">
         {WEEKDAY_NAMES.map((name) => (
-          <div key={name} className="py-1 text-center text-xs font-medium text-slate-400">
+          <div key={name} className="cf-date-weekday">
             {name}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="cf-date-grid">
         {prevDays.map((day) => (
           (() => {
             const targetYear = month === 0 ? year - 1 : year;
@@ -239,10 +238,8 @@ function CalendarPanel({
                   goToPrevMonth();
                 }}
                 className={cn(
-                  'h-8 rounded-lg text-[11px] transition-colors',
-                  disabled
-                    ? 'cursor-not-allowed text-slate-200 dark:text-slate-700'
-                    : 'text-slate-300 hover:bg-slate-50 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-400',
+                  'cf-date-cell cf-date-cell-outside',
+                  disabled && 'is-disabled',
                 )}
               >
                 {day}
@@ -272,14 +269,10 @@ function CalendarPanel({
                 onSelectDate(year, month, day);
               }}
               className={cn(
-                'h-8 rounded-lg text-[11px] font-medium transition-all',
-                isDisabled
-                  ? 'cursor-not-allowed text-slate-300 dark:text-slate-700'
-                  : isSelected
-                  ? 'bg-[color:var(--cf-primary-500)] text-white font-semibold shadow-[0_10px_20px_rgba(20,184,166,0.18)]'
-                  : isToday
-                    ? 'bg-[rgba(240,253,250,0.96)] text-[color:var(--cf-primary-700)] font-semibold ring-1 ring-[rgba(153,246,228,0.96)] dark:bg-[rgba(20,184,166,0.18)] dark:text-[rgb(204,251,241)] dark:ring-[rgba(20,184,166,0.28)]'
-                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-slate-100',
+                'cf-date-cell',
+                isDisabled && 'is-disabled',
+                isSelected && 'is-selected',
+                isToday && !isSelected && 'is-today',
               )}
             >
               {day}
@@ -306,10 +299,8 @@ function CalendarPanel({
                   goToNextMonth();
                 }}
                 className={cn(
-                  'h-8 rounded-lg text-[11px] transition-colors',
-                  disabled
-                    ? 'cursor-not-allowed text-slate-200 dark:text-slate-700'
-                    : 'text-slate-300 hover:bg-slate-50 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-400',
+                  'cf-date-cell cf-date-cell-outside',
+                  disabled && 'is-disabled',
                 )}
               >
                 {day}
@@ -319,12 +310,12 @@ function CalendarPanel({
         ))}
       </div>
 
-      <div className="mt-2.5 border-t border-slate-100 pt-2.5 dark:border-slate-800">
-        <div className="hide-scrollbar flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+      <div className="cf-date-quickbar">
+        <div className="cf-date-quickrow hide-scrollbar">
           <button
             type="button"
             onClick={() => (onQuickDate ? onQuickDate('today') : undefined)}
-            className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+            className="cf-date-quick-button"
           >
             今天
           </button>
@@ -333,28 +324,28 @@ function CalendarPanel({
               <button
                 type="button"
                 onClick={() => onQuickDate('tomorrow')}
-                className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                className="cf-date-quick-button"
               >
                 明天
               </button>
               <button
                 type="button"
                 onClick={() => onQuickDate('weekend')}
-                className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                className="cf-date-quick-button"
               >
                 本周末
               </button>
               <button
                 type="button"
                 onClick={() => onQuickDate('nextMonday')}
-                className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                className="cf-date-quick-button"
               >
                 下周一
               </button>
               <button
                 type="button"
                 onClick={() => onQuickDate('monthEnd')}
-                className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                className="cf-date-quick-button"
               >
                 本月末
               </button>
@@ -387,15 +378,15 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
   return (
     <div
       className={cn(
-        'flex bg-white dark:bg-slate-950',
-        isRow ? 'h-64 w-full flex-row' : 'h-52 w-full flex-col border-t border-slate-100 md:h-[300px] md:border-l md:border-t-0 dark:border-slate-800',
+        'cf-time-panel',
+        isRow ? 'is-row' : 'is-column',
       )}
     >
-      <div className={cn('flex min-h-0 flex-col', isRow ? 'flex-1 border-r border-slate-100 dark:border-slate-800' : 'flex-1 border-b border-slate-100 dark:border-slate-800')}>
-        <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+      <div className="cf-time-section">
+        <div className="cf-time-title">
           时
         </div>
-        <div ref={hourRef} className="hide-scrollbar flex-1 overflow-y-auto overflow-x-hidden">
+        <div ref={hourRef} className="cf-time-list hide-scrollbar">
           {Array.from({ length: 24 }, (_, i) => (
             <button
               key={i}
@@ -403,11 +394,8 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
               data-selected={i === hour}
               onClick={() => onChangeTime(i, minute)}
               className={cn(
-                'mx-1 my-0.5 rounded-md py-1.5 text-center text-[11px] transition-colors',
-                isRow ? 'w-[calc(100%-0.5rem)]' : 'w-full',
-                i === hour
-                  ? 'bg-[color:var(--cf-primary-500)] text-white font-semibold shadow-[0_10px_20px_rgba(20,184,166,0.18)]'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
+                'cf-time-option',
+                i === hour && 'is-selected',
               )}
             >
               {pad(i)}
@@ -416,11 +404,11 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
         </div>
       </div>
 
-      <div className={cn('flex min-h-0 flex-col', isRow ? 'flex-1' : 'flex-1')}>
-        <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+      <div className="cf-time-section">
+        <div className="cf-time-title">
           分
         </div>
-        <div ref={minuteRef} className="hide-scrollbar flex-1 overflow-y-auto overflow-x-hidden">
+        <div ref={minuteRef} className="cf-time-list hide-scrollbar">
           {Array.from({ length: 60 }, (_, i) => (
             <button
               key={i}
@@ -428,11 +416,8 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
               data-selected={i === minute}
               onClick={() => onChangeTime(hour, i)}
               className={cn(
-                'mx-1 my-0.5 rounded-md py-1.5 text-center text-[11px] transition-colors',
-                isRow ? 'w-[calc(100%-0.5rem)]' : 'w-full',
-                i === minute
-                  ? 'bg-[color:var(--cf-primary-500)] text-white font-semibold shadow-[0_10px_20px_rgba(20,184,166,0.18)]'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
+                'cf-time-option',
+                i === minute && 'is-selected',
               )}
             >
               {pad(i)}
@@ -680,7 +665,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           if (typeof ref === 'function') ref(node);
           else if (ref) ref.current = node;
         }}
-        className={`relative ${open ? 'z-[120]' : 'z-0'}`}
+        className={cn('cf-date-picker', open && 'is-open')}
       >
         <input type="hidden" id={id} name={name} value={value} required={required} />
 
@@ -700,7 +685,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
             setOpen(!open);
           }}
           className={cn(
-            'cf-control group flex h-10 min-h-10 w-full items-center gap-2 rounded-xl px-4 text-left text-sm',
+            'cf-date-trigger cf-control group flex h-10 min-h-10 w-full items-center gap-2 rounded-md px-4 text-left text-sm',
             open && 'cf-control-active',
             className,
           )}
@@ -708,33 +693,23 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           {type === 'time' ? (
             <Clock
               size={14}
-              className={cn(
-                'shrink-0',
-                open
-                  ? 'text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]'
-                  : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300',
-              )}
+              className="cf-date-trigger-icon"
             />
           ) : (
             <Calendar
               size={14}
-              className={cn(
-                'shrink-0',
-                open
-                  ? 'text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]'
-                  : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300',
-              )}
+              className="cf-date-trigger-icon"
             />
           )}
 
-          <span className={cn('flex-1 truncate', displayText ? 'text-slate-700 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500')}>
+          <span className={cn('cf-date-trigger-value', !displayText && 'is-placeholder')}>
             {displayText || placeholder || defaultPlaceholder}
           </span>
 
           {value && !disabled ? (
             <X
               size={14}
-              className="shrink-0 cursor-pointer text-slate-300 transition-colors hover:text-slate-600"
+              className="cf-date-clear"
               onClick={handleClear}
             />
           ) : null}
@@ -744,7 +719,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           ? createPortal(
               <div
                 ref={dropdownRef}
-                className="fixed z-[160] flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_22px_46px_rgba(15,23,42,0.14)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_22px_46px_rgba(2,6,23,0.52)]"
+                className={cn('cf-date-dropdown', type === 'datetime-local' && 'is-datetime', type === 'time' && 'is-time')}
                 style={{
                   top: placement.top,
                   left: placement.left,
@@ -754,9 +729,9 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                   pointerEvents: positionReady ? undefined : 'none',
                 }}
               >
-                <div className="flex items-stretch">
+                <div className="cf-date-dropdown-main">
                   {type === 'date' || type === 'datetime-local' ? (
-                    <div className={cn('shrink-0', type === 'date' ? 'w-full' : 'basis-[82%]')}>
+                    <div className={cn('cf-date-calendar-slot', type === 'date' ? 'is-full' : 'is-datetime')}>
                       <CalendarPanel
                         year={viewYear}
                         month={viewMonth}
@@ -773,7 +748,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                   ) : null}
 
                   {type === 'time' || type === 'datetime-local' ? (
-                    <div className={cn('shrink-0', type === 'time' ? 'w-full' : 'basis-[18%] border-l border-slate-100 dark:border-slate-800')}>
+                    <div className={cn('cf-date-time-slot', type === 'time' ? 'is-full' : 'is-datetime')}>
                       <TimePanel
                         hour={tempHour}
                         minute={tempMinute}
@@ -785,8 +760,8 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                 </div>
 
                 {type === 'datetime-local' ? (
-                  <div className="w-full border-t border-slate-100 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-900">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="cf-date-footer">
+                    <div className="cf-date-footer-quickrow">
                       {[
                         { key: 'now', label: '此刻' },
                         { key: 'round', label: '整点' },
@@ -799,15 +774,15 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                           type="button"
                           disabled={disabled}
                           onClick={() => applyQuickDateTime(item.key as 'now' | 'round' | 'add15' | 'add30' | 'add60')}
-                          className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                          className="cf-date-quick-button"
                         >
                           {item.label}
                         </button>
                       ))}
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between gap-3">
-                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                    <div className="cf-date-footer-actions">
+                      <span className="cf-date-summary">
                         {currentDate ? `${toDisplayDate(formatDate(currentDate.year, currentDate.month, currentDate.day))} ${formatTime(tempHour, tempMinute)}` : '请选择日期'}
                       </span>
                       <Button

@@ -1,6 +1,7 @@
 import React from 'react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 type PageLoadingSize = 'md' | 'lg' | 'xl';
 
@@ -33,7 +34,7 @@ export const PageLoading: React.FC<PageLoadingProps> = ({
   className,
 }) => {
   const container = fullscreen
-    ? 'fixed inset-0 z-[60] bg-white/80 backdrop-blur-sm dark:bg-slate-950/80'
+    ? 'fixed inset-0 z-[60] bg-slate-950/48'
     : `flex w-full ${minHeight}`;
 
   return (
@@ -43,21 +44,24 @@ export const PageLoading: React.FC<PageLoadingProps> = ({
       aria-busy="true"
       className={cn('flex items-center justify-center', container, className)}
     >
-      <div className="flex flex-col items-center gap-6 px-6 text-center animate-fade-in">
-        <div className="premium-loader-orbit" />
+      <InnerTableSurface
+        className="w-auto max-w-sm"
+        wrapperClassName="flex flex-col items-center justify-center gap-4 px-6 py-5 text-center"
+      >
+        <LoadingSpinner size={size} />
         <div className="space-y-1.5">
           {tip && (
-            <p className="text-base font-bold tracking-tight text-slate-800 dark:text-slate-100">
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               {tip}
             </p>
           )}
           {description && (
-            <p className="max-w-sm text-xs font-medium text-slate-400 dark:text-slate-500">
+            <p className="max-w-sm text-xs text-slate-500 dark:text-slate-400">
               {description}
             </p>
           )}
         </div>
-      </div>
+      </InnerTableSurface>
     </div>
   );
 };

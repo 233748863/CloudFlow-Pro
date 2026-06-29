@@ -42,17 +42,17 @@ export const WorkflowToolbar = ({
   saving,
 }: WorkflowToolbarProps) => {
   return (
-    <div className="workflow-studio-toolbar relative z-20 flex min-h-[56px] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-950">
+    <div className="workflow-studio-toolbar relative z-20 flex min-h-[56px] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-2 dark:border-slate-800 dark:bg-slate-950">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <Input
-            className="h-8 w-48 max-w-full rounded-md border-slate-200 bg-white px-3 text-sm font-medium shadow-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+            className="h-8 w-48 max-w-full rounded-md border-slate-200 bg-[var(--cf-surface-strong)] px-3 text-sm font-medium shadow-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
             value={workflowName}
             onChange={(e) => onNameChange(e.target.value)}
             placeholder="流程名称"
           />
           <Input
-            className="h-8 w-36 max-w-full rounded-md border-slate-200 bg-white px-3 font-mono text-[11px] shadow-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+            className="h-8 w-36 max-w-full rounded-md border-slate-200 bg-[var(--cf-surface-strong)] px-3 font-mono text-[11px] shadow-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
             value={workflowKey}
             onChange={(e) => onKeyChange(e.target.value)}
             placeholder="流程 Key"
@@ -111,13 +111,13 @@ export const WorkflowToolbar = ({
             模拟测试
           </Button>
         )}
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950">
+        <div className="flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-1 dark:border-slate-800 dark:bg-slate-950">
           <Button
             variant="ghost"
             size="icon"
             onClick={onUndo}
             disabled={!canUndo}
-            className={`h-7 w-7 rounded-md p-0 ${!canUndo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`}
+            className={`h-7 w-7 rounded-md p-0 ${!canUndo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`}
             title="撤销 (Ctrl+Z)"
           >
             <Undo2 size={16} />
@@ -127,7 +127,7 @@ export const WorkflowToolbar = ({
             size="icon"
             onClick={onRedo}
             disabled={!canRedo}
-            className={`h-7 w-7 rounded-md p-0 ${!canRedo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`}
+            className={`h-7 w-7 rounded-md p-0 ${!canRedo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`}
             title="重做 (Ctrl+Y)"
           >
             <Redo2 size={16} />
@@ -141,7 +141,7 @@ export const WorkflowToolbar = ({
           className="shrink-0 gap-1.5 whitespace-nowrap"
         >
           {saving ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-700 border-t-transparent dark:border-slate-200 dark:border-t-transparent"></div>
+            <div className="h-4 w-4 animate-spin rounded-md border-2 border-slate-700 border-t-transparent dark:border-slate-200 dark:border-t-transparent"></div>
           ) : null}
           {saving ? "保存中..." : "保存"}
         </Button>
@@ -152,7 +152,7 @@ export const WorkflowToolbar = ({
           className="shrink-0 gap-1.5 whitespace-nowrap"
         >
           {saving ? (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <div className="h-4 w-4 animate-spin rounded-md border-2 border-white border-t-transparent"></div>
           ) : null}
           {saving ? "发布中..." : "发布"}
         </Button>

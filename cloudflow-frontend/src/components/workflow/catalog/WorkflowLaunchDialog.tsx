@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { BaseDialog, ModalOverlay } from '@/components/common';
+import { BaseDialog } from '@/components/common';
 import { Button, EmptyState, LoadingSpinner } from '@/components/common';
 import { FormRenderer } from '@/components/FormRenderer';
 import type { FormDefinition, WorkflowDefinition } from '@/types';
@@ -29,11 +29,7 @@ export const WorkflowLaunchDialog: React.FC<WorkflowLaunchDialogProps> = ({
   }
 
   if (workflow.formId && boundForm) {
-    return (
-      <ModalOverlay className="p-4">
-        <FormRenderer formDef={boundForm} onCancel={onClose} onSubmit={onSubmit} />
-      </ModalOverlay>
-    );
+    return <FormRenderer formDef={boundForm} onCancel={onClose} onSubmit={onSubmit} />;
   }
 
   if (workflow.formId && loadingBoundForm) {
@@ -83,7 +79,7 @@ export const WorkflowLaunchDialog: React.FC<WorkflowLaunchDialogProps> = ({
               ? `无法加载绑定表单：${boundFormError}`
               : '流程绑定的表单可能已被删除，或当前账号暂无访问权限，请联系管理员检查流程配置。'
           }
-          className="py-8"
+          className="py-6"
         />
       </BaseDialog>
     );
@@ -108,7 +104,7 @@ export const WorkflowLaunchDialog: React.FC<WorkflowLaunchDialogProps> = ({
         icon={<AlertTriangle className="h-10 w-10 text-amber-500" />}
         title="未绑定表单"
         description="该流程尚未配置输入表单，当前无法直接发起。"
-        className="py-8"
+        className="py-6"
       />
     </BaseDialog>
   );

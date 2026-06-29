@@ -78,8 +78,8 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
         </div>
       }
     >
-      <form id="force-password-change-form" onSubmit={submit} className="space-y-4">
-        <div className="space-y-2">
+      <form id="force-password-change-form" onSubmit={submit} className="admin-dialog-stack">
+        <div className="admin-dialog-field">
           <Label htmlFor="force-password-old" className={passwordLabelClassName}>
             当前密码
           </Label>
@@ -92,7 +92,7 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
             required
           />
         </div>
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <Label htmlFor="force-password-new" className={passwordLabelClassName}>
             新密码
           </Label>
@@ -105,7 +105,7 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
             required
           />
         </div>
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <Label htmlFor="force-password-confirm" className={passwordLabelClassName}>
             确认新密码
           </Label>

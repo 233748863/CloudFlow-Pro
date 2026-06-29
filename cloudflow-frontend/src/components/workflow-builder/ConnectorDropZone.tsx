@@ -42,13 +42,13 @@ export const ConnectorDropZone = ({
   return (
     <div className="flex flex-col items-center relative py-1">
       <div
-        className={`h-10 w-0.5 transition-all ${isOver ? "bg-slate-500 dark:bg-slate-300" : "bg-slate-300 dark:bg-slate-700"}`}
+        className={`h-10 w-0.5 transition-all ${isOver ? "bg-cyan-600 dark:bg-cyan-300" : "bg-slate-300 dark:bg-slate-700"}`}
       ></div>
       <div
         className={`workflow-studio-dropzone absolute left-1/2 top-1/2 z-20 flex h-8 w-28 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-dashed transition-colors ${
           isOver
             ? "border-cyan-300 bg-cyan-50 dark:border-cyan-700 dark:bg-cyan-950/20"
-            : "border-slate-300 bg-white hover:border-cyan-200 hover:bg-cyan-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/20"
+            : "border-slate-300 bg-[var(--cf-surface-strong)] hover:border-cyan-200 hover:bg-cyan-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/20"
         }`}
         onDragOver={(e) => {
           e.preventDefault();

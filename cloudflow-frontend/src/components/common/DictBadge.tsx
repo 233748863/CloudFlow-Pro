@@ -48,7 +48,7 @@ export const DictBadge: React.FC<DictBadgeProps> = ({
 
   if (isLoading) {
     return (
-      <span className="inline-block h-6 w-16 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+      <span className="inline-block h-6 w-16 animate-pulse rounded-md bg-slate-200 dark:bg-slate-800" />
     );
   }
 
@@ -57,17 +57,17 @@ export const DictBadge: React.FC<DictBadgeProps> = ({
 
   // 根据 variant 选择样式类
   const variantClass =
-    variant === 'ring' ? 'ring-1' : variant === 'solid' ? '' : 'border';
+    variant === 'solid' ? '' : 'border';
 
   // 使用字典项的 fullClass，如果没有则使用默认样式
   const colorClass =
     item?.fullClass ||
-    'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
+    'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
 
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-lg px-2 py-1 text-xs font-medium',
+        'inline-flex items-center rounded-md px-2 py-1 text-xs font-medium',
         variantClass,
         colorClass,
         className,

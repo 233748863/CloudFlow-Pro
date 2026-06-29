@@ -127,7 +127,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-xl border',
+              'admin-source-stat-icon !h-9 !w-9 !flex-none',
               mode === 'add'
                 ? 'border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
                 : 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
@@ -146,10 +146,10 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
     >
       <div className="flex h-full flex-col">
         <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-          <div className="space-y-4">
+          <div className="admin-dialog-stack">
             <div
               className={cn(
-                'rounded-[24px] border px-4 py-4',
+                'px-4 py-4',
                 mode === 'add'
                   ? 'border-cyan-200 bg-cyan-50/80 dark:border-cyan-900 dark:bg-cyan-950/20'
                   : 'border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/20',
@@ -185,7 +185,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="p-4">
               <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">选择人员</div>
               <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 支持按姓名或账号搜索可选审批人。
@@ -221,16 +221,16 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                           type="button"
                           onClick={() => toggleUser(Number(user.id))}
                           className={cn(
-                            'flex items-center gap-3 rounded-[20px] border px-4 py-3 text-left transition',
+                            'flex items-center gap-3 px-4 py-3 text-left transition',
                             active
-                              ? 'border-cyan-300 bg-cyan-50 shadow-sm dark:border-cyan-800 dark:bg-cyan-950/30'
-                              : 'border-slate-200 bg-slate-50 hover:border-cyan-200 hover:bg-white dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-cyan-900 dark:hover:bg-slate-950',
+                              ? 'border-cyan-300 bg-cyan-50 dark:border-cyan-800 dark:bg-cyan-950/30'
+                              : 'bg-[var(--cf-surface-muted)] hover:border-cyan-200 hover:bg-[var(--cf-surface-strong)] dark:bg-slate-900/70 dark:hover:border-cyan-900 dark:hover:bg-slate-950',
                           )}
                         >
                           {user.avatar ? (
-                            <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-full object-cover" />
+                            <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-md object-cover" />
                           ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-sm font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
                               {user.name?.slice(0, 1) || 'U'}
                             </div>
                           )}
@@ -257,7 +257,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">操作说明</div>
@@ -266,7 +266,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                   </div>
                 </div>
                 {selectedUserIds.length > 0 ? (
-                  <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+                  <span className="badge border border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
                     已选择 {selectedUserIds.length} 人
                   </span>
                 ) : null}
@@ -285,7 +285,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
           </div>
         </div>
 
-        <div className="border-t border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+        <div className="px-5 py-4">
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={onClose} disabled={submitting}>
               取消

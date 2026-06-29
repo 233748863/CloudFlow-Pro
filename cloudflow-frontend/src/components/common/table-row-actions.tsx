@@ -105,7 +105,7 @@ const DEFAULT_ACTION_PRESETS: Record<ActionSemanticKey, ActionPreset> = {
 
 const toneClassMap: Record<TableRowActionTone, string> = {
   primary: 'text-cyan-700 hover:bg-cyan-50 hover:text-cyan-800 dark:text-cyan-300 dark:hover:bg-cyan-950/40 dark:hover:text-cyan-100',
-  neutral: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+  neutral: 'text-slate-600 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
   success: 'text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-100',
   warning: 'text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/40 dark:hover:text-amber-100',
   danger: 'text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-100',
@@ -220,9 +220,10 @@ function useActionLayout(actions: TableRowActionItem[], maxVisibleActions: numbe
 interface ActionItemButtonProps {
   action: TableRowActionItem;
   layout: 'stacked' | 'menu' | 'compact';
+  iconOnly?: boolean;
 }
 
-function ActionItemButton({ action, layout }: ActionItemButtonProps) {
+function ActionItemButton({ action, layout, iconOnly = false }: ActionItemButtonProps) {
   const tone = resolveTone(action);
   const label = action.label || getPreset(action).label;
   const passthroughClassName = layout === 'menu'
@@ -241,20 +242,24 @@ function ActionItemButton({ action, layout }: ActionItemButtonProps) {
       title={action.tooltip ?? action.title ?? label}
       aria-label={action.tooltip ?? action.title ?? label}
       className={cn(
-        layout === 'stacked'
-          ? 'h-auto min-w-[3.75rem] flex-col gap-0.5 rounded-xl border-0 px-2 py-1.5 text-[11px] font-medium shadow-none'
+        iconOnly && layout !== 'menu'
+          ? 'h-8 w-8 min-w-8 rounded-md p-0 text-xs font-medium shadow-none'
+          : layout === 'stacked'
+          ? 'h-auto min-w-[3.5rem] flex-col gap-0.5 rounded-md border-0 px-2 py-1.5 text-[11px] font-medium shadow-none'
           : layout === 'compact'
-            ? 'h-8 min-w-0 gap-1 rounded-lg px-2.5 text-xs font-medium shadow-none'
-            : 'h-auto w-full justify-start gap-2 rounded-lg px-3 py-2 text-xs font-medium shadow-none',
+            ? 'h-8 min-w-0 gap-1 rounded-md px-2.5 text-xs font-medium shadow-none'
+            : 'h-auto w-full justify-start gap-2 rounded-md px-3 py-2 text-xs font-medium shadow-none',
         'disabled:border-transparent disabled:bg-transparent disabled:text-slate-300 disabled:hover:bg-transparent',
         toneClassMap[tone],
         passthroughClassName,
       )}
     >
       {resolveIcon(action) ? <span className="shrink-0">{resolveIcon(action)}</span> : null}
-      <span className={cn(layout === 'stacked' ? 'leading-tight text-center whitespace-normal' : 'leading-none whitespace-nowrap')}>
-        {label}
-      </span>
+      {iconOnly && layout !== 'menu' ? null : (
+        <span className={cn(layout === 'stacked' ? 'leading-tight text-center whitespace-normal' : 'leading-none whitespace-nowrap')}>
+          {label}
+        </span>
+      )}
     </Button>
   );
 }
@@ -263,9 +268,10 @@ interface ActionOverflowMenuProps {
   actions: TableRowActionItem[];
   label: string;
   compact?: boolean;
+  iconOnly?: boolean;
 }
 
-function ActionOverflowMenu({ actions, label, compact = false }: ActionOverflowMenuProps) {
+function ActionOverflowMenu({ actions, label, compact = false, iconOnly = false }: ActionOverflowMenuProps) {
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<OverflowMenuPlacement>({
     top: 0,
@@ -364,7 +370,7 @@ function ActionOverflowMenu({ actions, label, compact = false }: ActionOverflowM
     ? createPortal(
       <div
         ref={menuRef}
-        className="fixed z-[160] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-800 dark:bg-slate-950"
+        className="fixed z-[160] overflow-y-auto rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 shadow-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none"
         style={{
           top: placement.top,
           left: placement.left,
@@ -393,16 +399,20 @@ function ActionOverflowMenu({ actions, label, compact = false }: ActionOverflowM
         size="sm"
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          compact
-            ? 'h-8 min-w-0 gap-1 rounded-lg px-2.5 text-xs font-medium'
-            : 'h-auto min-w-[3.75rem] flex-col gap-0.5 rounded-xl px-2 py-1.5 text-[11px] font-medium',
-          'border-0 text-slate-600 shadow-none hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+          iconOnly
+            ? 'h-8 w-8 min-w-8 rounded-md p-0 text-xs font-medium'
+            : compact
+            ? 'h-8 min-w-0 gap-1 rounded-md px-2.5 text-xs font-medium'
+            : 'h-auto min-w-[3.5rem] flex-col gap-0.5 rounded-md px-2 py-1.5 text-[11px] font-medium',
+          'border-0 text-slate-600 shadow-none hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
         )}
         title={label}
         aria-label={label}
       >
         <MoreHorizontal size={16} />
-        <span className={cn(compact ? 'leading-none whitespace-nowrap' : 'leading-tight text-center whitespace-normal')}>{label}</span>
+        {iconOnly ? null : (
+          <span className={cn(compact ? 'leading-none whitespace-nowrap' : 'leading-tight text-center whitespace-normal')}>{label}</span>
+        )}
       </Button>
       {menu}
     </div>
@@ -416,6 +426,7 @@ export function ActionCell({
   maxVisibleActions = 2,
   overflowLabel = '更多操作',
   buttonLayout = 'stacked',
+  iconOnly = false,
 }: {
   actions: TableRowActionItem[];
   className?: string;
@@ -423,14 +434,15 @@ export function ActionCell({
   maxVisibleActions?: number;
   overflowLabel?: string;
   buttonLayout?: 'stacked' | 'compact';
+  iconOnly?: boolean;
 }) {
   const { visibleActions, overflowActions } = useActionLayout(actions, maxVisibleActions);
   return (
     <div className={cn('flex flex-nowrap whitespace-nowrap items-center gap-1.5 w-full', alignClassMap[align], className)}>
       {visibleActions.map((action, index) => (
-        <ActionItemButton key={action.key ?? `${action.label}-${index}`} action={action} layout={buttonLayout} />
+        <ActionItemButton key={action.key ?? `${action.label}-${index}`} action={action} layout={buttonLayout} iconOnly={iconOnly} />
       ))}
-      <ActionOverflowMenu actions={overflowActions} label={overflowLabel} compact={buttonLayout === 'compact'} />
+      <ActionOverflowMenu actions={overflowActions} label={overflowLabel} compact={buttonLayout === 'compact'} iconOnly={iconOnly} />
     </div>
   );
 }
@@ -522,7 +534,7 @@ export function TableRowActions({
             title={action.tooltip ?? action.title ?? action.label}
             aria-label={action.tooltip ?? action.title ?? action.label}
             className={cn(
-              'gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium shadow-none',
+              'gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium shadow-none',
               toneClassMap[resolveTone(action)],
               action.className,
             )}
@@ -545,6 +557,7 @@ export function TableRowActions({
       maxVisibleActions={computedMaxVisibleActions}
       overflowLabel={overflowLabel}
       buttonLayout={buttonLayout}
+      iconOnly={iconOnly}
       className={className}
     />
   );

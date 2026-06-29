@@ -11,8 +11,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     | 'destructive'
     | 'warning'
     | 'success'
-    | 'soft'
-    | 'contrast';
+    | 'soft';
   size?: 'default' | 'sm' | 'lg' | 'xl' | 'icon';
 }
 
@@ -36,7 +35,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         break;
       case 'link':
         variantStyles =
-          '!rounded-none !border-transparent !bg-transparent !px-0 !py-0 !text-cyan-700 !shadow-none underline-offset-4 hover:!bg-transparent hover:text-cyan-800 hover:underline dark:!text-cyan-300 dark:hover:text-cyan-200';
+          '!rounded-none !border-transparent !bg-transparent !px-0 !py-0 !text-[#0d95b5] !shadow-none underline-offset-4 hover:!bg-transparent hover:!text-[#0b7894] hover:underline dark:!text-cyan-200 dark:hover:!text-cyan-100';
         break;
       case 'secondary':
         variantStyles = 'btn-secondary';
@@ -52,9 +51,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         break;
       case 'soft':
         variantStyles = 'btn-soft';
-        break;
-      case 'contrast':
-        variantStyles = 'btn-contrast';
         break;
     }
 

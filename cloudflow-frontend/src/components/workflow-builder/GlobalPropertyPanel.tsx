@@ -54,20 +54,20 @@ export const GlobalPropertyPanel = ({
 
   return (
     <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
         <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
           全局属性
         </div>
         <button
           onClick={onClose}
-          className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+          className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1.5 text-slate-400 transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
         >
           <X size={18} />
         </button>
       </div>
       <div className="custom-scrollbar flex-1 overflow-y-auto p-4">
-        <div className="space-y-3">
-          <div className="space-y-2.5">
+        <div className="grid gap-3">
+          <div className="admin-dialog-field">
             <div className={studioSectionTitleClassName}>基础信息</div>
 
             <div>
@@ -131,7 +131,7 @@ export const GlobalPropertyPanel = ({
             </div>
           </div>
 
-          <div className="space-y-2 pt-3 border-t border-slate-100/80">
+          <div className="admin-dialog-field border-t border-slate-200 pt-3 dark:border-slate-800">
             <div className={studioSectionTitleClassName}>发起权限</div>
             <div>
               <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">

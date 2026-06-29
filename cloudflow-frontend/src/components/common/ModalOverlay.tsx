@@ -67,7 +67,7 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
   return createPortal(
     <div
       className={cn(
-        'fixed inset-0 z-50 flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-slate-950/48 p-2 backdrop-blur-sm sm:p-4',
+        'modal-overlay fixed inset-0 z-50 flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-slate-950/48 p-2 sm:p-4',
         className,
       )}
       role={role}

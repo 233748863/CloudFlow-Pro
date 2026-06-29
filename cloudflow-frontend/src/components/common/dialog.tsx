@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { X } from 'lucide-react';
 
 import { ModalOverlay } from '@/components/common/ModalOverlay';
 import { cn } from '@/utils/cn';
@@ -60,24 +61,24 @@ export const DialogContent = ({
 
   return (
     <ModalOverlay
-      className="items-start justify-center bg-slate-900/32 p-0 transition-opacity animate-in fade-in-0 sm:items-center"
+      className="items-start justify-center bg-slate-950/48 p-3 sm:items-center sm:p-4"
       closeOnClickOutside
       onClose={() => onOpenChange(false)}
     >
       <div
         className={cn(
-          'cf-dialog-panel relative z-10 grid w-full max-h-[95vh] gap-4 overflow-y-auto overscroll-contain border border-slate-200 bg-white p-5 shadow-[0_22px_44px_rgba(15,23,42,0.14)] duration-200 animate-in fade-in-0 zoom-in-95 sm:max-h-[90vh] sm:rounded-2xl md:w-full dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_22px_44px_rgba(2,6,23,0.52)]',
+          'modal-content cf-dialog-panel relative z-10 grid w-full max-h-[95vh] gap-4 overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-4 shadow-none sm:max-h-[90vh] md:w-full dark:border-slate-800 dark:bg-slate-950',
           !disableDefaultMaxWidth && 'sm:max-w-lg',
           className
         )}
       >
         {children}
         <button
-          className="absolute right-4 top-4 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:pointer-events-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          className="modal-close absolute right-3 top-3 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 text-slate-400 transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:pointer-events-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
           onClick={() => onOpenChange(false)}
         >
           <span className="sr-only">关闭</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+          <X className="h-4 w-4" />
         </button>
       </div>
     </ModalOverlay>
@@ -87,7 +88,7 @@ export const DialogContent = ({
 export const DialogHeader = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      'cf-dialog-header sticky top-0 z-10 -mx-5 -mt-5 flex flex-col space-y-1.5 border-b border-slate-100 bg-white px-5 py-4 pr-14 text-center sm:text-left dark:border-slate-800 dark:bg-slate-950',
+      'modal-header cf-dialog-header sticky top-0 z-10 -mx-4 -mt-4 flex flex-col gap-1.5 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 pr-12 text-center sm:text-left dark:border-slate-800 dark:bg-slate-950',
       className,
     )}
     {...props}
@@ -95,17 +96,17 @@ export const DialogHeader = ({ className = '', ...props }: React.HTMLAttributes<
 );
 
 export const DialogTitle = ({ className = '', ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h2 className={cn('text-lg font-semibold leading-none tracking-tight text-slate-800 dark:text-slate-100', className)} {...props} />
+  <h2 className={cn('modal-title text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100', className)} {...props} />
 );
 
 export const DialogDescription = ({ className = '', ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-  <p className={cn('mt-1.5 text-sm text-slate-500 dark:text-slate-400', className)} {...props} />
+  <p className={cn('text-xs leading-5 text-slate-500 dark:text-slate-400', className)} {...props} />
 );
 
 export const DialogFooter = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      'cf-dialog-footer sticky bottom-0 z-10 -mx-5 -mb-5 flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/95 px-5 py-4 backdrop-blur sm:flex-row sm:justify-end dark:border-slate-800 dark:bg-slate-900/95',
+      'modal-footer cf-dialog-footer sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 sm:flex-row sm:justify-end dark:border-slate-800 dark:bg-slate-900/95',
       className,
     )}
     {...props}

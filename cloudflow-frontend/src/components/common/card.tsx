@@ -12,8 +12,8 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'rounded-xl border border-slate-200 bg-white text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-100 dark:shadow-[0_16px_32px_rgba(2,6,23,0.34)]',
-      interactive && 'cf-interactive-card',
+      'card text-slate-950 dark:text-slate-100',
+      interactive && 'admin-option-surface',
       className,
     )}
     {...props}
@@ -28,7 +28,7 @@ const CardHeader = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex flex-col space-y-1.5 p-5 border-b border-slate-100/60 dark:border-slate-800/40', className)}
+    className={cn('p-4 flex flex-col gap-1.5 border-b border-slate-200 dark:border-slate-800', className)}
     {...props}
   />
 ));
@@ -41,7 +41,7 @@ const CardTitle = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn('text-xl font-semibold leading-none tracking-tight', className)}
+    className={cn('text-base font-semibold leading-tight text-slate-900 dark:text-slate-100', className)}
     {...props}
   />
 ));
@@ -54,7 +54,7 @@ const CardDescription = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <p
     ref={ref}
-    className={cn('text-sm text-slate-500 dark:text-slate-400', className)}
+    className={cn('text-xs leading-5 text-slate-500 dark:text-slate-400', className)}
     {...props}
   />
 ));
@@ -65,7 +65,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className = '', ...props }, ref) => (
-  <div ref={ref} className={cn('p-5 pt-0', className)} {...props} />
+  <div ref={ref} className={cn('p-4', className)} {...props} />
 ));
 
 CardContent.displayName = 'CardContent';
@@ -76,7 +76,7 @@ const CardFooter = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex items-center p-5 pt-0', className)}
+    className={cn('p-4 flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800', className)}
     {...props}
   />
 ));

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Ban, Eye, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, TableRowActions } from '@/components/common';
+import { Button } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { recallProcess } from '../services/api/workflow';
 import { Task, TaskStatus } from '../types';
@@ -44,7 +44,7 @@ const statusBadgeMap: Record<string, { label: string; className: string }> = {
   [TaskStatus.DELEGATED]: {
     label: '已转办',
     className:
-      'border-teal-100 bg-teal-50 text-teal-700 dark:border-teal-900/60 dark:bg-teal-950/30 dark:text-teal-200',
+      'border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200',
   },
   [TaskStatus.TIMED_OUT]: {
     label: '已超时',
@@ -62,7 +62,7 @@ const InlineBadge = ({
 }) => (
   <span
     className={cn(
-      'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
+      'inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-[11px] font-medium',
       className,
     )}
   >
@@ -140,7 +140,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   }
 
   return (
-    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="divide-y divide-slate-200 dark:divide-slate-800">
       {tasks.map((task) => {
         const canRecall = showRecallButton && task.status === TaskStatus.PENDING;
         const overdue = isOverdue(task);
@@ -166,7 +166,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                 onTaskClick?.(task);
               }
             }}
-            className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40"
+            className="transition-colors hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/40"
           >
             <div className="flex flex-col gap-3 px-4 py-4 lg:grid lg:grid-cols-[minmax(0,1.9fr)_200px_160px_auto] lg:items-center">
               <div className="min-w-0">
@@ -196,14 +196,14 @@ export const TaskList: React.FC<TaskListProps> = ({
                 ) : null}
               </div>
 
-              <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-100 lg:pl-6 dark:lg:border-slate-800">
+              <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
                 <div>当前处理人</div>
                 <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
                   {task.assigneeName || task.assigneeId || '待认领'}
                 </div>
               </div>
 
-              <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-100 lg:pl-6 dark:lg:border-slate-800">
+              <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
                 <div>流程进度</div>
                 <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
                   {progressText}
@@ -211,7 +211,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               </div>
 
               <div
-                className="flex flex-wrap items-center justify-end gap-2 lg:border-l lg:border-slate-100 lg:pl-6 dark:lg:border-slate-800"
+                className="flex flex-wrap items-center justify-end gap-2 lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800"
                 onClick={(event) => event.stopPropagation()}
               >
                 {canRecall && confirmRecall === task.id ? (
@@ -230,31 +230,32 @@ export const TaskList: React.FC<TaskListProps> = ({
                     </Button>
                   </>
                 ) : (
-                  <TableRowActions
-                    align="end"
-                    className="gap-1"
-                    actions={[
-                      {
-                        label: actionLabel,
-                        icon: <Eye size={14} />,
-                        onClick: (event) => {
-                          event.stopPropagation();
-                          onTaskClick?.(task);
-                        },
-                        tone: 'neutral',
-                      },
-                      {
-                        label: '撤回',
-                        icon: <RotateCcw size={14} />,
-                        onClick: (event) => {
+                  <div className="admin-users-row-actions">
+                    <button
+                      type="button"
+                      title={actionLabel}
+                      aria-label={actionLabel}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onTaskClick?.(task);
+                      }}
+                    >
+                      <Eye size={15} />
+                    </button>
+                    {canRecall ? (
+                      <button
+                        type="button"
+                        title="撤回"
+                        aria-label="撤回"
+                        onClick={(event) => {
                           event.stopPropagation();
                           setConfirmRecall(task.id);
-                        },
-                        tone: 'warning',
-                        hidden: !canRecall,
-                      },
-                    ]}
-                  />
+                        }}
+                      >
+                        <RotateCcw size={15} />
+                      </button>
+                    ) : null}
+                  </div>
                 )}
               </div>
             </div>

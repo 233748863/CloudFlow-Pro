@@ -61,6 +61,7 @@ export {
   ResultNetworkError,
 } from './result';
 export { Pagination } from './Pagination';
+export { ListResultFooter } from './ListResultFooter';
 export * from './PermissionGuard';
 export * from './RoleSelector';
 export * from './RouteGuard';

@@ -47,9 +47,30 @@ const VEHICLE_MENU_ROUTE_FIXES_BY_NAME = Object.values(VEHICLE_MENU_ROUTE_FIXES_
     return acc;
   }, {});
 
+const WORKFLOW_MENU_ROUTE_FIXES_BY_ID: Record<number, Partial<MenuRouteLike>> = {
+  400: {
+    menuName: '创建流程',
+  },
+  404: {
+    menuName: '流程管理',
+  },
+};
+
+const WORKFLOW_MENU_ROUTE_FIXES_BY_PATH: Record<string, Partial<MenuRouteLike>> = {
+  '/workflow': {
+    menuName: '创建流程',
+  },
+  '/workflow/management': {
+    menuName: '流程管理',
+  },
+};
+
 export const applyKnownMenuRouteFix = <T extends MenuRouteLike>(item: T): T => {
   const menuId = Number(item.menuId);
+  const path = item.path?.split('?')[0];
   const fix = (Number.isFinite(menuId) ? VEHICLE_MENU_ROUTE_FIXES_BY_ID[menuId] : undefined)
+    ?? (Number.isFinite(menuId) ? WORKFLOW_MENU_ROUTE_FIXES_BY_ID[menuId] : undefined)
+    ?? (path ? WORKFLOW_MENU_ROUTE_FIXES_BY_PATH[path] : undefined)
     ?? (item.menuName ? VEHICLE_MENU_ROUTE_FIXES_BY_NAME[item.menuName] : undefined);
 
   return fix ? ({ ...item, ...fix } as T) : item;

@@ -8,7 +8,7 @@ export interface CandidateChipItem {
   value: string;
   /** 主显示名称 */
   label: string;
-  /** 右侧次级文本 (可选: 角色 key / 用户名) */
+  /** 次级文本 (可选: 角色 key / 用户名) */
   caption?: string;
 }
 
@@ -83,7 +83,7 @@ export const CandidateChipList = ({
               onChange={(e) => setSearchText(e.target.value)}
             />
           )}
-          <div className="max-h-[168px] overflow-y-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+          <div className="max-h-[168px] overflow-y-auto rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
             {filtered.length === 0 ? (
               <div className="py-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
                 {emptyText}
@@ -97,19 +97,19 @@ export const CandidateChipList = ({
                     onClick={() => onToggle(item.value)}
                     className={`flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-[11px] transition-colors ${
                       isSelected
-                        ? "bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                        : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900/80"
+                        ? "bg-[var(--cf-surface-muted)] text-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        : "text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:text-slate-300 dark:hover:bg-slate-900/80"
                     }`}
                   >
                     <div
                       className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
                         isSelected
-                          ? "border-slate-700 bg-slate-700 dark:border-slate-200 dark:bg-slate-200"
+                          ? "border-slate-700 bg-slate-700 dark:border-cyan-500 dark:bg-cyan-500"
                           : "border-slate-300 dark:border-slate-700"
                       }`}
                     >
                       {isSelected && (
-                        <span className="text-[10px] text-white dark:text-slate-900">
+                        <span className="text-[10px] text-white">
                           ✓
                         </span>
                       )}
@@ -132,7 +132,7 @@ export const CandidateChipList = ({
                 return (
                   <span
                     key={v}
-                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
+                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-1.5 py-0.5 text-[10px] text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
                   >
                     {item?.label || v}
                     <button

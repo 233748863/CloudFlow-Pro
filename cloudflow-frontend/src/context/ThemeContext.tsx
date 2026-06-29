@@ -3,7 +3,8 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
 
-const STORAGE_KEY = 'cf-theme';
+const STORAGE_KEY = 'unity2-theme';
+const LEGACY_STORAGE_KEY = 'cf-theme';
 
 interface ThemeContextValue {
   themeMode: ThemeMode;
@@ -22,7 +23,7 @@ function getStoredThemeMode(): ThemeMode {
     return 'system';
   }
 
-  const storedValue = window.localStorage.getItem(STORAGE_KEY);
+  const storedValue = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
   return isThemeMode(storedValue) ? storedValue : 'system';
 }
 
@@ -79,6 +80,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, themeMode);
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     applyResolvedTheme(themeMode === 'system' ? systemTheme : themeMode);
   }, [systemTheme, themeMode]);
 
