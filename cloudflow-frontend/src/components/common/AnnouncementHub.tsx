@@ -4,10 +4,10 @@ import { AnnouncementPopup } from '@/components/common/AnnouncementPopup';
 
 interface AnnouncementHubProps {
   enabled?: boolean;
+  showPopup?: boolean;
 }
 
-export const AnnouncementHub: React.FC<AnnouncementHubProps> = ({ enabled = true }) => {
+export const AnnouncementHub: React.FC<AnnouncementHubProps> = ({ enabled = true, showPopup = false }) => {
   useAnnouncementSync(enabled);
-  return <AnnouncementPopup />;
+  return showPopup ? <AnnouncementPopup /> : null;
 };
-

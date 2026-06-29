@@ -1,15 +1,87 @@
 .cf-announcement-layer,
 .cf-announcement-popup-layer {
+  background: rgba(0, 0, 0, 0.5);
   animation: cfAnnouncementOverlayIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .cf-announcement-panel,
 .cf-announcement-popup-panel {
-  animation: cfAnnouncementPanelIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  max-height: calc(100dvh - 48px);
+  flex-direction: column;
+  border-color: #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  animation: cfAnnouncementPanelIn 0.18s ease-out;
+}
+
+.cf-announcement-panel > .relative:first-child,
+.cf-announcement-popup-panel > .relative:first-child {
+  flex: 0 0 auto;
+  border-bottom-color: #e5e7eb;
+  background: #f8fafc;
 }
 
 .cf-announcement-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  background: #fff;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.cf-announcement-panel h2,
+.cf-announcement-panel h3,
+.cf-announcement-popup-panel h2,
+.cf-announcement-popup-panel h3 {
+  color: #111827;
+  letter-spacing: 0;
+}
+
+.cf-announcement-panel button,
+.cf-announcement-popup-panel button {
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.cf-announcement-panel button:active,
+.cf-announcement-popup-panel button:active {
+  transform: scale(0.98);
+}
+
+.cf-announcement-panel button:focus-visible,
+.cf-announcement-popup-panel button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 149, 181, 0.16);
+}
+
+.cf-announcement-panel > .border-t,
+.cf-announcement-popup-panel > .border-t {
+  flex: 0 0 auto;
+  border-top-color: #e5e7eb;
+  background: #f8fafc;
+}
+
+.cf-announcement-panel .admin-dialog-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.cf-announcement-panel .admin-dialog-stack > div:last-child,
+.cf-announcement-panel .cf-announcement-scroll > div > .border,
+.cf-announcement-popup-panel .cf-announcement-scroll > div > .border {
+  border-color: #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.cf-announcement-panel .group:hover,
+.cf-announcement-popup-panel .group:hover {
+  background: #f8fafc;
 }
 
 .cf-announcement-scroll::-webkit-scrollbar {
@@ -21,20 +93,77 @@
 }
 
 .cf-announcement-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #cbd5e1, #94a3b8);
+  background: #cbd5e1;
   border-radius: 4px;
 }
 
 .cf-announcement-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #94a3b8, #64748b);
+  background: #94a3b8;
 }
 
-.dark .cf-announcement-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #4b5563, #374151);
+html.dark .cf-announcement-layer,
+html.dark .cf-announcement-popup-layer {
+  background: rgba(2, 6, 23, 0.7);
 }
 
-.dark .cf-announcement-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #6b7280, #4b5563);
+html.dark .cf-announcement-panel,
+html.dark .cf-announcement-popup-panel {
+  border-color: #334155;
+  background: #0f172a;
+  box-shadow: none;
+}
+
+html.dark .cf-announcement-panel > .relative:first-child,
+html.dark .cf-announcement-popup-panel > .relative:first-child,
+html.dark .cf-announcement-panel > .border-t,
+html.dark .cf-announcement-popup-panel > .border-t {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+html.dark .cf-announcement-scroll {
+  background: #0f172a;
+}
+
+html.dark .cf-announcement-panel h2,
+html.dark .cf-announcement-panel h3,
+html.dark .cf-announcement-popup-panel h2,
+html.dark .cf-announcement-popup-panel h3 {
+  color: #f8fafc;
+}
+
+html.dark .cf-announcement-panel .admin-dialog-stack > div:last-child,
+html.dark .cf-announcement-panel .cf-announcement-scroll > div > .border,
+html.dark .cf-announcement-popup-panel .cf-announcement-scroll > div > .border {
+  border-color: #334155;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+html.dark .cf-announcement-panel .group:hover,
+html.dark .cf-announcement-popup-panel .group:hover {
+  background: #1e293b;
+}
+
+html.dark .cf-announcement-scroll::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+html.dark .cf-announcement-scroll::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+@media (max-width: 640px) {
+  .cf-announcement-layer,
+  .cf-announcement-popup-layer {
+    padding: 12px;
+    padding-top: 12px;
+  }
+
+  .cf-announcement-panel,
+  .cf-announcement-popup-panel {
+    max-height: calc(100dvh - 24px);
+  }
 }
 
 @keyframes cfAnnouncementOverlayIn {
@@ -50,11 +179,11 @@
 @keyframes cfAnnouncementPanelIn {
   from {
     opacity: 0;
-    transform: scale(0.94) translateY(-12px);
+    transform: translateY(-6px);
   }
 
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }

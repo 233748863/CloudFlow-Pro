@@ -35,20 +35,20 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
         type="button"
         onClick={onClick}
         className={cn(
-          `group flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition-colors dark:border-slate-800 ${
+          `group flex w-full items-start gap-3 border-b border-slate-200 px-4 py-4 text-left transition-colors dark:border-slate-800 ${
             unread
-              ? 'bg-teal-50/55 hover:bg-teal-50 dark:bg-teal-950/12 dark:hover:bg-teal-950/22'
-              : 'bg-white hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900/70'
+              ? 'bg-[var(--cf-surface-muted)] hover:bg-[var(--cf-surface-strong)] dark:bg-slate-900/70 dark:hover:bg-slate-900'
+              : 'bg-[var(--cf-surface-strong)] hover:bg-[var(--cf-surface-muted)] dark:bg-slate-950 dark:hover:bg-slate-900/70'
           }`,
           className,
         )}
       >
         <div
           className={cn(
-            'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border',
+            'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border',
             unread
-              ? 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/80 dark:bg-teal-950/30 dark:text-teal-200'
-              : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
+              ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/80 dark:bg-cyan-950/30 dark:text-cyan-200'
+              : 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
           )}
         >
           {unread ? typeMeta.icon : <CheckCircle2 size={16} />}
@@ -58,21 +58,21 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${typeMeta.className}`}>
+                <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold ${typeMeta.className}`}>
                   {unread ? <Bell size={11} /> : typeMeta.icon}
                   {typeMeta.label}
                 </span>
-                <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${priorityMeta.className}`}>
+                <span className={`inline-flex rounded-md px-2.5 py-1 text-[11px] font-semibold ${priorityMeta.className}`}>
                   {priorityMeta.label}
                 </span>
                 {announcement.isTop === 1 ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
                     <Pin size={10} />
                     置顶
                   </span>
                 ) : null}
                 {unread ? (
-                  <span className="rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-700 dark:border-teal-900/80 dark:bg-teal-950/30 dark:text-teal-200">
+                  <span className="rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900/80 dark:bg-cyan-950/30 dark:text-cyan-200">
                     未读
                   </span>
                 ) : null}
@@ -106,22 +106,22 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
       type="button"
       onClick={onClick}
       className={cn(
-        `group relative flex w-full items-start gap-4 overflow-hidden rounded-2xl border px-4 py-4 text-left transition-colors ${
+        `group relative flex w-full items-start gap-4 overflow-hidden rounded-md border px-4 py-4 text-left transition-colors ${
           unread
-            ? 'border-cyan-200 bg-white shadow-sm hover:border-cyan-300 hover:bg-cyan-50/70 dark:border-cyan-900 dark:bg-slate-950 dark:hover:bg-cyan-950/20'
-            : 'border-slate-200 bg-white shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900'
+            ? 'border-cyan-200 bg-[var(--cf-surface-strong)] shadow-none hover:border-cyan-300 hover:bg-[var(--cf-surface-muted)] dark:border-cyan-900 dark:bg-slate-950 dark:hover:bg-slate-900'
+            : 'border-slate-200 bg-[var(--cf-surface-strong)] shadow-none hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900'
         }`,
         className,
       )}
     >
-      {unread ? <div className="absolute left-0 top-0 h-full w-1.5 bg-cyan-500" /> : null}
+      {unread ? <div className="absolute left-0 top-0 h-full w-1 bg-cyan-600" /> : null}
 
       <div
         className={cn(
-          'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border',
+          'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border',
           unread
             ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
-            : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
+            : 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
         )}
       >
         {unread ? <Bell size={18} /> : <CheckCircle2 size={18} />}
@@ -130,16 +130,16 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           {announcement.isTop === 1 ? (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
               <Pin size={10} />
               置顶
             </span>
           ) : null}
-          <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', priorityMeta.className)}>
+          <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-semibold', priorityMeta.className)}>
             {priorityMeta.label}
           </span>
           {unread ? (
-            <span className="rounded-lg border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+            <span className="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
               未读
             </span>
           ) : null}

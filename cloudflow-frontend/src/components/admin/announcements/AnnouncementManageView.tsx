@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Megaphone, RefreshCw, Search } from 'lucide-react';
+import { ArrowLeft, Bell, CheckCircle2, Megaphone, Pin, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { Announcement, AnnouncementScope, AnnouncementType } from '@/types';
@@ -18,7 +18,7 @@ import { toBackendDateString } from '@/utils/dateFormat';
 import { AnnouncementReadStatusDialog } from './AnnouncementReadStatusDialog';
 import { AnnouncementTargetingEditor, type DeptItem } from './AnnouncementTargetingEditor';
 import { AnnouncementManageTable, BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout';
 import {
   Button,
   DatePicker,
@@ -60,7 +60,7 @@ const InlineState: React.FC<{
   className?: string;
 }> = ({ title, description, icon, className }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <Megaphone className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -354,134 +354,205 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
     .filter(Boolean)
     .join(' · ');
 
-  return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <Input
-                  value={searchTitleInput}
-                  onChange={(event) => setSearchTitleInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      handleApplyFilters();
-                    }
-                  }}
-                  className="h-10 pl-10"
-                  placeholder="搜索公告标题"
-                />
-              </div>
+  const stats = useMemo(
+    () => [
+      {
+        label: '公告总数',
+        value: String(total),
+        meta: '全部记录',
+        icon: <Bell size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '已发布',
+        value: String(publishedCount),
+        meta: '当前页',
+        icon: <CheckCircle2 size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '置顶公告',
+        value: String(topCount),
+        meta: '优先展示',
+        icon: <Pin size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '高优先级',
+        value: String(urgentCount),
+        meta: '重点触达',
+        icon: <Megaphone size={18} />,
+        tone: 'violet',
+      },
+    ],
+    [publishedCount, topCount, total, urgentCount],
+  );
 
-              <div className="w-full sm:w-[170px]">
-                <Select
-                  value={filterType || 'ALL'}
-                  onValueChange={(value) => {
-                    setCurrentPage(1);
-                    setFilterType(value === 'ALL' ? '' : value);
-                  }}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部类型</SelectItem>
-                    <SelectItem value={String(AnnouncementType.NOTIFICATION)}>通知</SelectItem>
-                    <SelectItem value={String(AnnouncementType.ANNOUNCEMENT)}>公告</SelectItem>
-                    <SelectItem value={String(AnnouncementType.URGENT)}>紧急</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">ANNOUNCEMENTS</p>
+          <h2>公告管理</h2>
+          <span>发布站内公告、维护已读状态和用户触达</span>
+        </div>
+        <div className="admin-source-controls admin-announcements-controls">
+          <Button variant="outline" size="sm" onClick={() => void fetchManageList()} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : undefined} />
+            刷新
+          </Button>
+          <Button variant="outline" size="sm" onClick={onExitManage}>
+            <ArrowLeft size={16} />
+            返回公告
+          </Button>
+          <Button size="sm" onClick={openCreateDialog}>
+            <Megaphone size={16} />
+            发布公告
+          </Button>
+        </div>
+      </header>
 
-              <div className="w-full sm:w-[170px]">
-                <Select
-                  value={filterStatus || 'ALL'}
-                  onValueChange={(value) => {
-                    setCurrentPage(1);
-                    setFilterStatus(value === 'ALL' ? '' : value);
-                  }}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    <SelectItem value="0">草稿</SelectItem>
-                    <SelectItem value="1">已发布</SelectItem>
-                    <SelectItem value="2">已撤销</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {toolbarSummary}
-              </span>
+      <section className="admin-source-stat-grid admin-announcements-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
             </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
 
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={handleApplyFilters}>
-                <Search size={14} className="mr-1.5" />
-                搜索
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleResetFilters}>
-                清空筛选
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => void fetchManageList()} disabled={loading}>
-                <RefreshCw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
-                刷新
-              </Button>
-              <Button variant="outline" size="sm" onClick={onExitManage}>
-                <ArrowLeft size={14} className="mr-1.5" />
-                返回公告
-              </Button>
-              <Button size="sm" onClick={openCreateDialog}>
-                <Megaphone size={14} className="mr-1.5" />
-                发布公告
-              </Button>
+  const pageFilters = (
+      <section className="card admin-users-toolbar">
+        <div className="admin-announcements-toolbar">
+          <label className="admin-source-search">
+            <span className="input-label">搜索公告</span>
+            <div className="admin-source-search-field">
+              <Search size={16} />
+              <input
+                className="cf-control"
+                value={searchTitleInput}
+                onChange={(event) => setSearchTitleInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    handleApplyFilters();
+                  }
+                }}
+                placeholder="搜索公告标题"
+                type="search"
+              />
             </div>
+          </label>
+
+          <label>
+            <span className="input-label">类型</span>
+            <Select
+              value={filterType || 'ALL'}
+              onValueChange={(value) => {
+                setCurrentPage(1);
+                setFilterType(value === 'ALL' ? '' : value);
+              }}
+            >
+              <SelectTrigger className="h-[42px]">
+                <SelectValue placeholder="全部类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">全部类型</SelectItem>
+                <SelectItem value={String(AnnouncementType.NOTIFICATION)}>通知</SelectItem>
+                <SelectItem value={String(AnnouncementType.ANNOUNCEMENT)}>公告</SelectItem>
+                <SelectItem value={String(AnnouncementType.URGENT)}>紧急</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
+
+          <label>
+            <span className="input-label">状态</span>
+            <Select
+              value={filterStatus || 'ALL'}
+              onValueChange={(value) => {
+                setCurrentPage(1);
+                setFilterStatus(value === 'ALL' ? '' : value);
+              }}
+            >
+              <SelectTrigger className="h-[42px]">
+                <SelectValue placeholder="全部状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">全部状态</SelectItem>
+                <SelectItem value="0">草稿</SelectItem>
+                <SelectItem value="1">已发布</SelectItem>
+                <SelectItem value="2">已撤销</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
+
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{toolbarSummary}</span>
+            <Button type="button" size="sm" onClick={handleApplyFilters}>
+              搜索
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={handleResetFilters}>
+              清空
+            </Button>
           </div>
-        )}
-        table={(
-          <div className="flex min-h-[40rem] flex-col">
-            {loading ? (
-              <InlineState title="正在加载公告管理列表..." className="py-16" />
-            ) : manageList.length === 0 ? (
-              <InlineState
-                title="暂无公告记录"
-                description={hasActiveFilters ? '当前筛选条件下暂无记录。' : '可先发布公告。'}
-                className="py-16"
-              />
-            ) : (
-              <AnnouncementManageTable
-                embedded
-                announcements={manageList}
-                onEdit={openEditDialog}
-                onToggleTop={handleToggleTop}
-                onRevoke={handleRevokeRequest}
-                onDelete={handleDeleteRequest}
-                onViewStats={handleViewReadStatus}
-                deptNameMap={deptNameMap}
-                roleNameMap={roleNameMap}
-              />
-            )}
-          </div>
-        )}
-        pagination={(
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={currentPage}
-              pageSize={pageSize}
-              showPageSizeSelector={false}
-              showJump={false}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={() => {}}
+        </div>
+      </section>
+  );
+
+  const pageTable = loading ? (
+    <InnerTableSurface className="min-h-[40rem]" wrapperClassName="flex min-h-[40rem] flex-col">
+      <div className="flex min-h-[40rem] flex-col">
+            <InlineState title="正在加载公告管理列表..." className="flex-1 py-10" />
+      </div>
+    </InnerTableSurface>
+  ) : manageList.length === 0 ? (
+    <InnerTableSurface className="min-h-[40rem]" wrapperClassName="flex min-h-[40rem] flex-col">
+      <div className="flex min-h-[40rem] flex-col">
+            <InlineState
+              title="暂无公告记录"
+              description={hasActiveFilters ? '当前筛选条件下暂无记录。' : '可先发布公告。'}
+              className="flex-1 py-10"
             />
-          ) : null
-        )}
+      </div>
+    </InnerTableSurface>
+  ) : (
+            <AnnouncementManageTable
+              embedded
+              announcements={manageList}
+              onEdit={openEditDialog}
+              onToggleTop={handleToggleTop}
+              onRevoke={handleRevokeRequest}
+              onDelete={handleDeleteRequest}
+              onViewStats={handleViewReadStatus}
+              deptNameMap={deptNameMap}
+              roleNameMap={roleNameMap}
+            />
+  );
+
+  const pagePagination = total > 0 ? (
+          <Pagination
+            total={total}
+            page={currentPage}
+            pageSize={pageSize}
+            showPageSizeSelector={false}
+            showJump={false}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={() => {}}
+          />
+  ) : null;
+
+  return (
+    <section className="admin-source-page admin-announcements-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageTable}
+        pagination={pagePagination}
       />
 
       <BaseDialog
@@ -502,10 +573,10 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
           </div>
         }
       >
-        <div className="space-y-5">
+        <div className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">标题</Label>
+            <div className="admin-dialog-field md:col-span-2">
+              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">标题</Label>
               <Input
                 className="h-11"
                 value={formData.title || ''}
@@ -514,8 +585,8 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
               />
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">内容</Label>
+            <div className="admin-dialog-field md:col-span-2">
+              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">内容</Label>
               <Textarea
                 className="min-h-[160px] font-mono text-sm"
                 value={formData.content || ''}
@@ -524,8 +595,8 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">类型</Label>
+            <div className="admin-dialog-field">
+              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">类型</Label>
               <Select
                 value={String(formData.type ?? AnnouncementType.NOTIFICATION)}
                 onValueChange={(value) => setFormData({ ...formData, type: value as AnnouncementType })}
@@ -541,8 +612,8 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">优先级</Label>
+            <div className="admin-dialog-field">
+              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">优先级</Label>
               <Select
                 value={String(formData.priority ?? 'M')}
                 onValueChange={(value) => setFormData({ ...formData, priority: value as 'L' | 'M' | 'H' })}
@@ -558,8 +629,8 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">过期时间</Label>
+            <div className="admin-dialog-field">
+              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">过期时间</Label>
               <DatePicker
                 className="h-11"
                 type="datetime-local"
@@ -571,9 +642,9 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">置顶</Label>
-              <label className="flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+            <div className="admin-dialog-field">
+              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">置顶</Label>
+              <label className="admin-dialog-checkline">
                 <input
                   type="checkbox"
                   checked={formData.isTop === 1}
@@ -588,7 +659,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+          <div className="admin-dialog-subsection">
             <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">发布范围</div>
 
             <AnnouncementTargetingEditor
@@ -637,6 +708,6 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
         onRefresh={handleViewReadStatus}
         onClose={() => setIsReadStatusOpen(false)}
       />
-    </div>
+    </section>
   );
 };

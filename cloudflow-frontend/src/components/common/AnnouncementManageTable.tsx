@@ -2,8 +2,8 @@ import React from 'react';
 import { Edit, Eye, Pin, Trash2, X } from 'lucide-react';
 import type { Announcement } from '@/types';
 import { AnnouncementScope } from '@/types';
-import { TableActionHead, TableHead, TableHeader, TableRowActions } from '@/components/common';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   useAnnouncementPriorityMeta,
   useAnnouncementStatusMeta,
@@ -89,152 +89,136 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   const getStatusMeta = useAnnouncementStatusMeta();
   const getPriorityMeta = useAnnouncementPriorityMeta();
   const table = (
-    <div className="overflow-x-auto">
-      <table className="min-w-[1180px] w-full">
-        <TableHeader className="sticky top-0 z-10">
-          <tr>
-            <TableHead className="w-[30%] px-4 py-3 text-left">标题</TableHead>
-            <TableHead className="w-[18%] px-4 py-3 text-left">类型 / 优先级</TableHead>
-            <TableHead className="w-[14%] px-4 py-3 text-left">状态</TableHead>
-            <TableHead className="w-[18%] px-4 py-3 text-left">发布范围</TableHead>
-            <TableHead className="w-[20%] px-4 py-3 text-left">时间</TableHead>
-            <TableActionHead className="w-[220px] px-4 py-3">操作</TableActionHead>
-          </tr>
-        </TableHeader>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-          {announcements.map((item) => {
-            const typeMeta = getTypeMeta(item.type);
-            const statusMeta = getStatusMeta(item.status);
-            const priorityMeta = getPriorityMeta(item.priority);
+    <table className="unity-data-table admin-source-table admin-announcements-table min-w-[1180px]">
+      <thead>
+        <tr>
+          <th className="w-[30%]">标题</th>
+          <th className="w-[18%]">类型 / 优先级</th>
+          <th className="w-[14%]">状态</th>
+          <th className="w-[18%]">发布范围</th>
+          <th className="w-[20%]">时间</th>
+          <th className="w-[220px] text-right">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {announcements.map((item) => {
+          const typeMeta = getTypeMeta(item.type);
+          const statusMeta = getStatusMeta(item.status);
+          const priorityMeta = getPriorityMeta(item.priority);
 
-            return (
-              <tr key={item.announcementId} className="hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                <td className="px-4 py-3">
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate font-medium text-slate-900 dark:text-slate-100">
-                        {item.title}
+          return (
+            <tr key={item.announcementId} className="hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/60">
+              <td className="px-4 py-3">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-medium text-slate-900 dark:text-slate-100">
+                      {item.title}
+                    </span>
+                    {item.isTop === 1 ? (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                        <Pin size={10} />
+                        置顶
                       </span>
-                      {item.isTop === 1 ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                          <Pin size={10} />
-                          置顶
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {item.createTime ? new Date(item.createTime).toLocaleString() : '-'}
-                    </div>
+                    ) : null}
                   </div>
-                </td>
 
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold',
-                        typeMeta.className,
-                      )}
-                    >
-                      {typeMeta.icon}
-                      {typeMeta.label}
-                    </span>
-                    <span
-                      className={cn(
-                        'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
-                        priorityMeta.className,
-                      )}
-                    >
-                      {priorityMeta.label}
-                    </span>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {item.createTime ? new Date(item.createTime).toLocaleString() : '-'}
                   </div>
-                </td>
+                </div>
+              </td>
 
-                <td className="px-4 py-3">
+              <td className="px-4 py-3">
+                <div className="flex flex-wrap gap-2">
                   <span
                     className={cn(
-                      'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
-                      statusMeta.className,
+                      'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold',
+                      typeMeta.className,
                     )}
                   >
-                    {statusMeta.label}
+                    {typeMeta.icon}
+                    {typeMeta.label}
                   </span>
-                </td>
+                  <span
+                    className={cn(
+                      'inline-flex rounded-md px-2.5 py-1 text-xs font-semibold',
+                      priorityMeta.className,
+                    )}
+                  >
+                    {priorityMeta.label}
+                  </span>
+                </div>
+              </td>
 
-                <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                  <div className="font-medium text-slate-900 dark:text-slate-100">
-                    {formatScopeLabel(item)}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {formatScopeDisplay(item, deptNameMap, roleNameMap)}
-                  </div>
-                </td>
+              <td className="px-4 py-3">
+                <span
+                  className={cn(
+                    'inline-flex rounded-md px-2.5 py-1 text-xs font-semibold',
+                    statusMeta.className,
+                  )}
+                >
+                  {statusMeta.label}
+                </span>
+              </td>
 
-                <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-                  <div>
-                    发布时间：{item.publishTime ? new Date(item.publishTime).toLocaleString() : '-'}
-                  </div>
-                  <div className="mt-1">
-                    失效时间：{item.expireTime ? new Date(item.expireTime).toLocaleString() : '长期有效'}
-                  </div>
-                </td>
+              <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                <div className="font-medium text-slate-900 dark:text-slate-100">
+                  {formatScopeLabel(item)}
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {formatScopeDisplay(item, deptNameMap, roleNameMap)}
+                </div>
+              </td>
 
-                <td className="whitespace-nowrap px-4 py-3">
-                  <TableRowActions
-                    align="start"
-                    className="gap-1"
-                    actions={[
-                      {
-                        label: '阅读状态',
-                        icon: <Eye size={16} />,
-                        onClick: () => onViewStats(item.announcementId),
-                        tone: 'neutral',
-                      },
-                      {
-                        label: '编辑',
-                        icon: <Edit size={16} />,
-                        onClick: () => onEdit(item),
-                        tone: 'neutral',
-                      },
-                      {
-                        label: item.isTop === 1 ? '取消置顶' : '置顶',
-                        icon: <Pin size={16} />,
-                        onClick: () => onToggleTop(item.announcementId),
-                        tone: item.isTop === 1 ? 'warning' : 'neutral',
-                      },
-                      {
-                        label: '撤销',
-                        icon: <X size={16} />,
-                        onClick: () => onRevoke(item.announcementId),
-                        tone: 'warning',
-                        hidden: item.status !== '1',
-                      },
-                      {
-                        label: '删除',
-                        icon: <Trash2 size={16} />,
-                        onClick: () => onDelete(item.announcementId),
-                        tone: 'danger',
-                      },
-                    ]}
-                  />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+              <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                <div>
+                  发布时间：{item.publishTime ? new Date(item.publishTime).toLocaleString() : '-'}
+                </div>
+                <div className="mt-1">
+                  失效时间：{item.expireTime ? new Date(item.expireTime).toLocaleString() : '长期有效'}
+                </div>
+              </td>
+
+              <td>
+                <div className="admin-users-row-actions">
+                  <button type="button" title="阅读状态" onClick={() => onViewStats(item.announcementId)}>
+                    <Eye size={15} />
+                  </button>
+                  <button type="button" title="编辑" onClick={() => onEdit(item)}>
+                    <Edit size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    title={item.isTop === 1 ? '取消置顶' : '置顶'}
+                    onClick={() => onToggleTop(item.announcementId)}
+                  >
+                    <Pin size={15} />
+                  </button>
+                  {item.status === '1' ? (
+                    <button type="button" title="撤销" onClick={() => onRevoke(item.announcementId)}>
+                      <X size={15} />
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="danger"
+                    title="删除"
+                    onClick={() => onDelete(item.announcementId)}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 
   if (embedded) {
-    return table;
+    return <InnerTableSurface>{table}</InnerTableSurface>;
   }
 
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950/88 dark:ring-slate-800/70">
-      {table}
-    </div>
-  );
+  return <InnerTableSurface>{table}</InnerTableSurface>;
 };
-

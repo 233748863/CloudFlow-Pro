@@ -2,15 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCheck, RefreshCw, Search, Users } from 'lucide-react';
 import type { ReadStatsResponse } from '@/services/api/announcement';
 import { BaseDialog, Pagination } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 
 interface AnnouncementReadStatusDialogProps {
@@ -30,7 +25,7 @@ const InlineState: React.FC<{
   className?: string;
 }> = ({ title, description, icon, className }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <CheckCheck className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -99,7 +94,7 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
       onClose={onClose}
       maxWidthClassName="max-w-5xl"
       panelClassName="max-h-[92vh]"
-      bodyClassName="space-y-4"
+      bodyClassName="admin-dialog-stack"
       headerAside={
         <Button
           variant="outline"
@@ -124,7 +119,7 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
       }
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-2">
+        <div className="grid gap-2">
           <div className="text-xs text-slate-500 dark:text-slate-400">
             {`${announcementTitle ? `${announcementTitle} · ` : ''}应读 ${statsData?.expectedCount ?? 0} 人 · 已读 ${statsData?.readCount ?? 0} 人 · 未读 ${statsData?.unreadCount ?? 0} 人`}
           </div>
@@ -168,60 +163,64 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+      <div className="flex min-h-0 flex-col gap-3">
         {loading ? (
-          <InlineState title="正在加载阅读明细..." className="py-14" />
+          <InnerTableSurface>
+            <InlineState title="正在加载阅读明细..." className="py-10" />
+          </InnerTableSurface>
         ) : pagedUsers.length === 0 ? (
-          <InlineState
-            title={view === 'read'
-              ? ((statsData?.readUsers?.length ?? 0) > 0 ? '未找到匹配用户' : '暂无阅读记录')
-              : ((statsData?.unreadUsers?.length ?? 0) > 0 ? '未找到匹配用户' : '全部已读')}
-            description={
-              view === 'read'
-                ? ((statsData?.readUsers?.length ?? 0) > 0 ? '请尝试调整搜索条件。' : '这条公告还没有被任何用户读取。')
-                : ((statsData?.unreadUsers?.length ?? 0) > 0 ? '请尝试调整搜索条件。' : '目标范围内的用户已全部阅读。')
-            }
-            icon={view === 'unread' ? <Users className="h-4 w-4" /> : undefined}
-            className="py-14"
-          />
+          <InnerTableSurface>
+            <InlineState
+              title={view === 'read'
+                ? ((statsData?.readUsers?.length ?? 0) > 0 ? '未找到匹配用户' : '暂无阅读记录')
+                : ((statsData?.unreadUsers?.length ?? 0) > 0 ? '未找到匹配用户' : '全部已读')}
+              description={
+                view === 'read'
+                  ? ((statsData?.readUsers?.length ?? 0) > 0 ? '请尝试调整搜索条件。' : '这条公告还没有被任何用户读取。')
+                  : ((statsData?.unreadUsers?.length ?? 0) > 0 ? '请尝试调整搜索条件。' : '目标范围内的用户已全部阅读。')
+              }
+              icon={view === 'unread' ? <Users className="h-4 w-4" /> : undefined}
+              className="py-10"
+            />
+          </InnerTableSurface>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <Table className="min-w-[760px]">
-                <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-                  <TableRow>
-                    <TableHead>用户 ID</TableHead>
-                    <TableHead>登录账号</TableHead>
-                    <TableHead>显示名称</TableHead>
-                    <TableHead>所属部门</TableHead>
-                    <TableHead>{view === 'read' ? '阅读时间' : '状态'}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            <InnerTableSurface>
+              <table className="unity-data-table admin-source-table min-w-[760px]">
+                <thead>
+                  <tr>
+                    <th>用户 ID</th>
+                    <th>登录账号</th>
+                    <th>显示名称</th>
+                    <th>所属部门</th>
+                    <th>{view === 'read' ? '阅读时间' : '状态'}</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {pagedUsers.map((user) => (
-                    <TableRow key={`${view}-${user.userId}-${user.readTime || 'unknown'}`}>
-                      <TableCell className="py-3 text-sm text-slate-600 dark:text-slate-300">
+                    <tr key={`${view}-${user.userId}-${user.readTime || 'unknown'}`}>
+                      <td className="text-sm text-slate-600 dark:text-slate-300">
                         {user.userId}
-                      </TableCell>
-                      <TableCell className="py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
+                      </td>
+                      <td className="text-sm font-medium text-slate-900 dark:text-slate-100">
                         {user.userName || '-'}
-                      </TableCell>
-                      <TableCell className="py-3 text-sm text-slate-700 dark:text-slate-200">
+                      </td>
+                      <td className="text-sm text-slate-700 dark:text-slate-200">
                         {user.nickName || '-'}
-                      </TableCell>
-                      <TableCell className="py-3 text-sm text-slate-500 dark:text-slate-400">
+                      </td>
+                      <td className="text-sm text-slate-500 dark:text-slate-400">
                         {user.deptName || '-'}
-                      </TableCell>
-                      <TableCell className="py-3 text-sm text-slate-500 dark:text-slate-400">
+                      </td>
+                      <td className="text-sm text-slate-500 dark:text-slate-400">
                         {view === 'read'
                           ? (user.readTime ? new Date(user.readTime).toLocaleString() : '-')
                           : '未读'}
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
+                </tbody>
+              </table>
+            </InnerTableSurface>
 
             {filteredUsers.length > pageSize ? (
               <Pagination

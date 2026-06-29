@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { ArrowLeft, Bell, Check, ChevronRight, Inbox, Loader2, Mail, X } from 'lucide-react';
+import { ArrowLeft, Bell, Check, ChevronRight, Inbox, Loader2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import { BaseDialog } from '@/components/common/BaseDialog';
 import { getNoticeDetail, getNoticeList, getUnreadCount, markNoticeRead } from '@/services/api/notice';
 import type { Notice } from '@/services/api/notice';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { lockBodyScroll } from '@/utils/bodyScrollLock';
 import './announcement-overlays.css';
 
 function formatNoticeRelativeTime(timeText: string) {
@@ -119,11 +118,9 @@ export const NoticeBell: React.FC = () => {
       setIsModalOpen(false);
     };
 
-    const unlockBodyScroll = lockBodyScroll();
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      unlockBodyScroll();
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isModalOpen, selectedNotice]);
@@ -171,82 +168,53 @@ export const NoticeBell: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:scale-105 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800 ${
-          unreadCount > 0 ? 'text-blue-600 dark:text-blue-400' : ''
+        className={`relative flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-[var(--cf-surface-muted)] dark:text-slate-400 dark:hover:bg-slate-800 ${
+          unreadCount > 0 ? 'text-cyan-600 dark:text-cyan-400' : ''
         }`}
         aria-label="消息通知"
       >
         <Bell size={18} />
         {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-red-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white">
+          <span className="absolute -right-1 -top-1 min-w-[18px] rounded-md bg-red-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         ) : null}
       </button>
 
-      {isModalOpen && typeof document !== 'undefined'
-        ? createPortal(
-          <div
-            className="cf-announcement-layer fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-gradient-to-br from-black/70 via-black/60 to-black/70 p-4 pt-[8vh] backdrop-blur-md"
-            onClick={() => setIsModalOpen(false)}
+      <BaseDialog
+        open={isModalOpen}
+        title={selectedNotice ? '通知详情' : '消息通知'}
+        description={!selectedNotice ? (unreadCount > 0 ? `${unreadCount} 条未读` : '暂无未读消息') : undefined}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedNotice(null);
+        }}
+        closeOnEscape={false}
+        maxWidthClassName="w-full max-w-[680px]"
+        bodyClassName="p-0 !overflow-hidden"
+        headerAside={selectedNotice ? (
+          <button
+            type="button"
+            onClick={() => setSelectedNotice(null)}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 transition-colors hover:bg-[var(--cf-surface-muted)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
+            aria-label="返回通知列表"
           >
-            <div
-              className="cf-announcement-panel w-full max-w-[680px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-950 dark:ring-slate-700/70"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="relative overflow-hidden border-b border-gray-100/80 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 px-6 py-5 dark:border-slate-800 dark:from-blue-950/25 dark:to-slate-950">
-                <div className="relative z-10 flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      {selectedNotice ? (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedNotice(null)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/70 text-gray-600 transition hover:bg-white dark:bg-slate-900/70 dark:text-slate-300 dark:hover:bg-slate-800"
-                          aria-label="返回通知列表"
-                        >
-                          <ArrowLeft size={16} />
-                        </button>
-                      ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-                          <Bell size={16} />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <h2 className="truncate text-lg font-semibold text-gray-900 dark:text-white">
-                          {selectedNotice ? '通知详情' : '消息通知'}
-                        </h2>
-                        {!selectedNotice ? (
-                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                            {unreadCount > 0 ? `${unreadCount} 条未读` : '暂无未读消息'}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/50 text-gray-500 backdrop-blur-sm transition-all hover:bg-white hover:text-gray-700 dark:bg-slate-900/70 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                    aria-label="关闭"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                <div className="absolute right-0 top-0 h-full w-48 bg-gradient-to-l from-indigo-100/20 to-transparent dark:from-indigo-900/10" />
-              </div>
-
+            <ArrowLeft size={16} />
+          </button>
+        ) : (
+          <Bell size={16} className="text-cyan-600 dark:text-cyan-300" />
+        )}
+        zIndex={100}
+      >
               <div className="cf-announcement-scroll max-h-[65vh] overflow-y-auto">
                 {loading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-cyan-600 dark:text-cyan-300" />
                   </div>
                 ) : selectedNotice ? (
-                  <div className="space-y-5 px-6 py-5">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                      <span className="rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                  <div className="admin-dialog-stack px-6 py-5">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="rounded-md bg-cyan-50 px-2.5 py-1 font-medium text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300">
                         {getNoticeTypeLabel(selectedNotice.type)}
                       </span>
                       <span>{formatNoticeRelativeTime(selectedNotice.createTime)}</span>
@@ -254,12 +222,12 @@ export const NoticeBell: React.FC = () => {
                     </div>
 
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
                         {selectedNotice.title}
                       </h3>
                     </div>
 
-                    <div className="rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
+                    <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-4 text-sm leading-7 text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200">
                       <div className="whitespace-pre-wrap break-words">{selectedNotice.content || '暂无内容'}</div>
                     </div>
                   </div>
@@ -269,12 +237,16 @@ export const NoticeBell: React.FC = () => {
                       <button
                         key={item.id}
                         type="button"
-                        className={`group relative flex min-h-[76px] w-full items-center gap-4 border-b border-gray-100 px-6 py-4 text-left transition-all hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900/70 ${
-                          !item.isRead ? 'bg-blue-50/30 dark:bg-blue-900/5' : ''
+                        className={`group relative flex min-h-[64px] w-full items-center gap-3 border-b border-slate-200 px-5 py-3 text-left transition-colors hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:hover:bg-slate-900/70 ${
+                          !item.isRead ? 'bg-cyan-50/30 dark:bg-cyan-950/10' : ''
                         }`}
                         onClick={() => void openDetail(item)}
                       >
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20">
+                        <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md ${
+                          item.isRead
+                            ? 'bg-[var(--cf-surface-muted)] text-slate-400 dark:bg-slate-900 dark:text-slate-500'
+                            : 'bg-cyan-600 text-white'
+                        }`}>
                           {item.isRead ? <Check className="h-5 w-5" /> : <Mail className="h-5 w-5" />}
                         </div>
 
@@ -282,46 +254,42 @@ export const NoticeBell: React.FC = () => {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <h3 className="truncate text-sm font-medium text-gray-900 dark:text-white">
+                                <h3 className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                                   {item.title}
                                 </h3>
                                 {!item.isRead ? (
-                                  <span className="inline-flex h-2 w-2 rounded-full bg-blue-500" />
+                                  <span className="inline-flex h-2 w-2 rounded-sm bg-cyan-600" />
                                 ) : null}
                               </div>
-                              <p className="mt-1 line-clamp-2 text-xs text-gray-500 dark:text-gray-400">
+                              <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
                                 {item.content || '暂无内容'}
                               </p>
-                              <div className="mt-2 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                              <div className="mt-2 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
                                 <span>{getNoticeTypeLabel(item.type)}</span>
                                 <span>{formatNoticeRelativeTime(item.createTime)}</span>
                               </div>
                             </div>
-                            <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-gray-400 transition-transform group-hover:translate-x-1 dark:text-gray-600" />
+                            <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-slate-400 transition-transform group-hover:translate-x-1 dark:text-slate-600" />
                           </div>
                         </div>
 
                         {!item.isRead ? (
-                          <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-blue-500 to-indigo-600" />
+                          <div className="absolute left-0 top-0 h-full w-1 bg-cyan-600" />
                         ) : null}
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-16">
-                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-900">
-                      <Inbox size={28} className="text-gray-400 dark:text-gray-500" />
+                  <div className="flex flex-col items-center justify-center py-10">
+                    <div className="admin-source-stat-icon mb-3 h-12 w-12 border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
+                      <Inbox size={28} className="text-slate-400 dark:text-slate-500" />
                     </div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">暂无通知</p>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">新的站内信会在这里显示</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">暂无通知</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">新的站内信会在这里显示</p>
                   </div>
                 )}
               </div>
-            </div>
-          </div>,
-          document.body,
-        )
-        : null}
+      </BaseDialog>
     </div>
   );
 };

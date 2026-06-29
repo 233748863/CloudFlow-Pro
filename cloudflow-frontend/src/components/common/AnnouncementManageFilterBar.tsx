@@ -25,7 +25,7 @@ interface AnnouncementManageFilterBarProps {
   loading?: boolean;
 }
 
-// 管理区筛选栏按源码的“左侧筛选 + 右侧动作”职责组织，再兼容本项目额外的类型筛选。
+// 管理区筛选栏按“筛选控件 + 操作控件”职责组织，再兼容本项目额外的类型筛选。
 export const AnnouncementManageFilterBar: React.FC<AnnouncementManageFilterBarProps> = ({
   searchTitle,
   filterType,
@@ -51,7 +51,7 @@ export const AnnouncementManageFilterBar: React.FC<AnnouncementManageFilterBarPr
 
     <div className="w-full sm:w-40">
       <Select value={filterType || 'ALL'} onValueChange={(value) => onFilterTypeChange(value === 'ALL' ? '' : value)}>
-        <SelectTrigger className="h-10 rounded-xl">
+        <SelectTrigger className="h-10 rounded-md">
           <SelectValue placeholder="请选择" />
         </SelectTrigger>
         <SelectContent>
@@ -65,7 +65,7 @@ export const AnnouncementManageFilterBar: React.FC<AnnouncementManageFilterBarPr
 
     <div className="w-full sm:w-40">
       <Select value={filterStatus || 'ALL'} onValueChange={(value) => onFilterStatusChange(value === 'ALL' ? '' : value)}>
-        <SelectTrigger className="h-10 rounded-xl">
+        <SelectTrigger className="h-10 rounded-md">
           <SelectValue placeholder="请选择" />
         </SelectTrigger>
         <SelectContent>

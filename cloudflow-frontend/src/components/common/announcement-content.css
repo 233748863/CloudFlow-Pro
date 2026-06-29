@@ -164,7 +164,7 @@
 }
 
 .markdown-body th {
-  background: linear-gradient(135deg, #eff6ff, #eef2ff);
+  background: #eff6ff;
   font-weight: 600;
   color: #111827;
 }
@@ -181,8 +181,8 @@
   max-width: 100%;
   margin: 1.25rem 0;
   border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+  border-radius: 0.5rem;
+  box-shadow: none;
 }
 
 .markdown-body strong {
@@ -263,7 +263,7 @@ html.dark .markdown-body td {
 }
 
 html.dark .markdown-body th {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.92));
+  background: rgba(30, 41, 59, 0.92);
   color: #f8fafc;
 }
 
@@ -273,7 +273,7 @@ html.dark .markdown-body tbody tr:hover {
 
 html.dark .markdown-body img {
   border-color: #334155;
-  box-shadow: 0 10px 18px rgba(2, 6, 23, 0.4);
+  box-shadow: none;
 }
 
 html.dark .markdown-body em {
