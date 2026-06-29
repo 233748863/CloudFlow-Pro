@@ -1,27 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { Eye, Plus, RefreshCcw, Target, Trash2, UserRound } from 'lucide-react';
+import { Eye, Plus, RefreshCcw, Search, Target, Trash2, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
   Input,
   Label,
+  LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Pagination } from '@/components/common/Pagination';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { CrmLead, crmApi } from '@/services/api/crm';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
@@ -53,6 +50,15 @@ export default function CrmLeadPage() {
   const [confirmDelete, setConfirmDelete] = useState<CrmLead | null>(null);
   const [confirmConvert, setConfirmConvert] = useState<CrmLead | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / 10));
+  const stats = useMemo(
+    () => [
+      { label: '线索总数', value: String(total), meta: `当前第 ${pageNum} 页`, icon: <Target size={18} />, tone: 'blue' },
+      { label: '已转客户', value: String(rows.filter((row) => row.convertedCustomerId || row.status === 'CONVERTED').length), meta: '当前页统计', icon: <Eye size={18} />, tone: 'green' },
+      { label: '待跟进', value: String(rows.filter((row) => !row.convertedCustomerId && row.status !== 'CONVERTED').length), meta: '当前页统计', icon: <UserRound size={18} />, tone: 'amber' },
+      { label: '分页', value: `${pageNum}/${totalPages}`, meta: `每页 ${getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10)} 条`, icon: <RefreshCcw size={18} />, tone: 'violet' },
+    ],
+    [pageNum, rows, total, totalPages],
+  );
 
   const load = async () => {
     setLoading(true);
@@ -130,86 +136,132 @@ export default function CrmLeadPage() {
     }
   };
 
-  return (
-    <div className="space-y-4 animate-fade-in">
-      <TablePageLayout
-        filters={(
-          <div className="cf-filter-bar">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <Input value={leadName} onChange={(e) => { setPageNum(1); setLeadName(e.target.value); }} placeholder="线索名称" className="w-full sm:w-[220px]" />
-              <Input value={companyName} onChange={(e) => { setPageNum(1); setCompanyName(e.target.value); }} placeholder="公司名称" className="w-full sm:w-[220px]" />
-              <div className="w-full sm:w-[180px]">
-                <Select value={status} onValueChange={(value) => { setPageNum(1); setStatus(value); }}>
-                  <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{leadStatusDict.getLabel(item) || item}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+  const pageActions = (
+    <>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">CRM LEADS</p>
+            <h2>线索管理</h2>
+            <span>管理销售线索、转化状态、负责人和下一次跟进时间</span>
+          </div>
+          <div className="admin-source-controls">
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCcw size={16} className={loading ? 'animate-spin' : undefined} />
+              刷新
+            </Button>
+            <Button size="sm" onClick={() => { setEditing(null); setForm(emptyLead); setDialogOpen(true); }}>
+              <Plus size={16} />
+              新增线索
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid admin-crm-stat-grid">
+          {stats.map((stat) => (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon">{stat.icon}</div>
+              <div>
+                <p>{stat.label}</p>
+                <strong>{stat.value}</strong>
+                <span>{stat.meta}</span>
               </div>
-              <div className="text-xs text-slate-500">第 {pageNum} / {totalPages} 页，共 {total} 条</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCcw size={14} className="mr-1.5" />刷新</Button>
-              <Button size="sm" onClick={() => { setEditing(null); setForm(emptyLead); setDialogOpen(true); }}><Plus size={14} className="mr-1.5" />新增线索</Button>
+            </article>
+          ))}
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar admin-crm-toolbar">
+          <div className="admin-users-filter-grid">
+            <label className="admin-source-search">
+              <span className="input-label">搜索线索</span>
+              <div className="admin-source-search-field">
+                <Search size={16} />
+                <Input className="h-[42px]" value={leadName} onChange={(e) => { setPageNum(1); setLeadName(e.target.value); }} placeholder="线索名称" type="search" />
+              </div>
+            </label>
+            <label>
+              <span className="input-label">公司名称</span>
+              <Input value={companyName} onChange={(e) => { setPageNum(1); setCompanyName(e.target.value); }} placeholder="公司名称" />
+            </label>
+            <label>
+              <span className="input-label">状态</span>
+              <Select value={status} onValueChange={(value) => { setPageNum(1); setStatus(value); }}>
+                <SelectTrigger className="h-[42px]"><SelectValue placeholder="状态" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部状态</SelectItem>
+                  {statusOptions.map((item) => <SelectItem key={item} value={item}>{leadStatusDict.getLabel(item) || item}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">当前 {total} 项</span>
             </div>
           </div>
-        )}
-        table={(
-          <TableSurfaceCard fill>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px]">
-                <TableHeader>
-                  <tr>
-                    <TableHead>线索编号</TableHead>
-                    <TableHead>线索 / 公司</TableHead>
-                    <TableHead>联系人</TableHead>
-                    <TableHead>负责人 / 部门</TableHead>
-                    <TableHead>来源 / 行业</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>下次跟进</TableHead>
-                    <TableActionHead>操作</TableActionHead>
-                  </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {rows.map((row) => (
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface className="admin-crm-table-panel">
+            <table className="unity-data-table admin-source-table admin-crm-table min-w-[1100px]">
+              <thead>
+                <tr>
+                  <th>线索编号</th>
+                  <th>线索 / 公司</th>
+                  <th>联系人</th>
+                  <th>负责人 / 部门</th>
+                  <th>来源 / 行业</th>
+                  <th>状态</th>
+                  <th>下次跟进</th>
+                  <th className="text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={8} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-slate-500">正在加载线索数据...</span></td></tr>
+                ) : rows.length === 0 ? (
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500"><Target className="mx-auto mb-3 h-4 w-4" />暂无线索</td></tr>
+                ) : (
+                  rows.map((row) => (
                     <tr key={row.leadId}>
-                      <td className="px-4 py-3 text-sm">{row.leadNo || '-'}</td>
-                      <td className="px-4 py-3 text-sm"><div>{row.leadName}</div><div className="text-xs text-slate-500">{row.companyName || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm"><div>{row.contactName || '-'}</div><div className="text-xs text-slate-500">{row.mobile || row.phone || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm"><div>{row.ownerName || '-'}</div><div className="text-xs text-slate-500">{row.deptName || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm"><div>{row.source || '-'}</div><div className="text-xs text-slate-500">{row.industry || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm"><DictBadge dictType="crm_lead_status" value={row.status || ''} /></td>
-                      <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(row.nextFollowUpTime) || '-'}</td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          overflowLabel="更多"
-                          actions={[
-                            { label: '查看客户工作台', icon: <Eye size={14} />, onClick: () => row.convertedCustomerId ? navigate(`/office/crm/customer/${row.convertedCustomerId}`) : toast.error('该线索尚未转客户'), semantic: 'view', hidden: !row.convertedCustomerId },
-                            { label: '编辑线索', icon: <UserRound size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'crm:lead:edit' },
-                            { label: '转为客户', icon: <Target size={14} />, onClick: () => setConfirmConvert(row), hidden: !!row.convertedCustomerId || row.status === 'CONVERTED', semantic: 'submit', permissionKey: 'crm:lead:convert' },
-                            { label: '删除线索', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true, permissionKey: 'crm:lead:remove' },
-                          ]}
-                        />
+                      <td className="font-mono text-xs">{row.leadNo || '-'}</td>
+                      <td><strong>{row.leadName}</strong><small>{row.companyName || '-'}</small></td>
+                      <td><strong>{row.contactName || '-'}</strong><small>{row.mobile || row.phone || '-'}</small></td>
+                      <td><strong>{row.ownerName || '-'}</strong><small>{row.deptName || '-'}</small></td>
+                      <td><strong>{row.source || '-'}</strong><small>{row.industry || '-'}</small></td>
+                      <td><DictBadge dictType="crm_lead_status" value={row.status || ''} /></td>
+                      <td>{formatDateTimeDisplay(row.nextFollowUpTime) || '-'}</td>
+                      <td>
+                        <div className="admin-users-row-actions">
+                          {row.convertedCustomerId ? <button type="button" title="查看客户工作台" onClick={() => navigate(`/office/crm/customer/${row.convertedCustomerId}`)}><Eye size={15} /></button> : null}
+                          <button type="button" title="编辑线索" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><UserRound size={15} /></button>
+                          {!row.convertedCustomerId && row.status !== 'CONVERTED' ? <button type="button" title="转为客户" onClick={() => setConfirmConvert(row)}><Target size={15} /></button> : null}
+                          <button type="button" className="danger" title="删除线索" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
-                  {!loading && rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-16 text-center text-sm text-slate-500">
-                        <Target className="mx-auto mb-3 h-4 w-4" />
-                        暂无线索。下一步操作：新增线索，或从线索直接转客户进入 CRM 360 工作台。
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </TableSurfaceCard>
-        )}
-        pagination={total > 0 ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} /> : null}
-      />
+                  ))
+                )}
+              </tbody>
+            </table>
+        </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0
+    ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} />
+    : null;
+
+  return (
+    <>
+      <section className="admin-source-page admin-crm-page admin-crm-leads-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={dialogOpen}
@@ -285,6 +337,6 @@ export default function CrmLeadPage() {
         onCancel={() => setConfirmConvert(null)}
         onConfirm={() => confirmConvert ? void convertLead(confirmConvert) : undefined}
       />
-    </div>
+    </>
   );
 }

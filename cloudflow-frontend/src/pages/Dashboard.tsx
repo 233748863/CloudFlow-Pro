@@ -7,10 +7,10 @@ import {
   FileText,
   Megaphone,
   PlayCircle,
-  Users,
+  RefreshCw,
 } from 'lucide-react';
 import type { Announcement, SysScheduleEvent } from '@/types';
-import { PageLoading } from '@/components/common';
+import { Button, PageLoading } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import { getAnnouncementExcerpt } from '@/utils/announcementContent';
 import {
@@ -30,20 +30,9 @@ import {
   UserDashboardQuickActions,
   UserDashboardRecentUsage,
   UserDashboardRecentUsageItem,
-  UserDashboardRiskItem,
-  UserDashboardRiskPanel,
   UserDashboardStats,
   UserDashboardStatsData,
-  UserDashboardTodoItem,
-  UserDashboardTodoPanel,
 } from '@/components/user/dashboard';
-import {
-  getWorkplaceSummary,
-  getWorkplaceSummaryEnrichment,
-  RiskItem,
-  TodayItem,
-  WorkplaceSummary,
-} from '@/services/api/workplace';
 import { tenantStorage } from '@/utils/tenantStorage';
 
 type DashboardGranularity = 'day' | 'hour';
@@ -83,11 +72,6 @@ interface DashboardActivityPanels {
   applications: any[];
   announcements: Announcement[];
   schedules: SysScheduleEvent[];
-}
-
-interface WorkplacePanels {
-  todos: TodayItem[];
-  risks: RiskItem[];
 }
 
 interface DashboardTrendDraft {
@@ -138,14 +122,6 @@ const extractRows = <T,>(response: unknown): T[] => {
 
 const safeNumber = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? value : 0;
-
-const mergeById = <T extends { id: string | number }>(base: T[], extra: T[], limit: number) => {
-  const merged = new Map<string, T>();
-  [...base, ...extra].forEach((item) => {
-    merged.set(String(item.id), item);
-  });
-  return Array.from(merged.values()).slice(0, limit);
-};
 
 const parsePercent = (value?: string) => {
   if (!value) return 0;
@@ -279,10 +255,6 @@ export const Dashboard = () => {
     announcements: [],
     schedules: [],
   });
-  const [workplacePanels, setWorkplacePanels] = useState<WorkplacePanels>({
-    todos: [],
-    risks: [],
-  });
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() - 6);
@@ -292,7 +264,6 @@ export const Dashboard = () => {
   const [granularity, setGranularity] = useState<DashboardGranularity>('day');
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingPanels, setLoadingPanels] = useState(true);
-  const [loadingWorkplacePanels, setLoadingWorkplacePanels] = useState(true);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState<Set<string>>(() => {
     try {
       const stored = tenantStorage.get('read_announcements');
@@ -305,16 +276,14 @@ export const Dashboard = () => {
   // 仪表盘顶部统计卡固定读取真实统计接口，保证与业务状态一致。
   const loadOverview = async () => {
     setLoadingOverview(true);
-    setLoadingWorkplacePanels(true);
 
     const today = formatLocalDate(new Date());
-    const [taskStatsResult, copyCountResult, announcementsResult, schedulesResult, workplaceSummaryResult] =
+    const [taskStatsResult, copyCountResult, announcementsResult, schedulesResult] =
       await Promise.allSettled([
         getTaskStatistics(),
         getCopyUnreadCount(),
         getMyAnnouncements(),
         getMyEvents(today, today),
-        getWorkplaceSummary(),
       ]);
 
     const taskStats =
@@ -342,29 +311,7 @@ export const Dashboard = () => {
         .map((item) => String(item.announcementId)),
     });
 
-    let coreWorkplaceSummary: WorkplaceSummary | null = null;
-    if (workplaceSummaryResult.status === 'fulfilled' && workplaceSummaryResult.value) {
-      coreWorkplaceSummary = workplaceSummaryResult.value;
-      setWorkplacePanels({
-        todos: workplaceSummaryResult.value.todayItems || [],
-        risks: workplaceSummaryResult.value.riskItems || [],
-      });
-    }
-
     setLoadingOverview(false);
-    void loadWorkplaceEnrichment(coreWorkplaceSummary);
-  };
-
-  const loadWorkplaceEnrichment = async (coreSummary?: WorkplaceSummary | null) => {
-    try {
-      const enrichment = await getWorkplaceSummaryEnrichment();
-      setWorkplacePanels((current) => ({
-        todos: mergeById(coreSummary?.todayItems || current.todos, enrichment.todayItems || [], 8),
-        risks: mergeById(coreSummary?.riskItems || current.risks, enrichment.riskItems || [], 8),
-      }));
-    } finally {
-      setLoadingWorkplacePanels(false);
-    }
   };
 
   // 图表和最近活动跟随时间范围切换，直接读取筛选后的真实列表数据。
@@ -521,7 +468,7 @@ export const Dashboard = () => {
         icon: <PlayCircle size={20} />,
         onClick: () => navigate('/workplace'),
         toneClassName:
-          'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200',
+          'bg-[#d8f3fa] text-[#0b7894] dark:bg-cyan-950/30 dark:text-cyan-200',
       },
       {
         label: '任务中心',
@@ -538,22 +485,6 @@ export const Dashboard = () => {
         onClick: () => navigate('/announcement'),
         toneClassName:
           'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200',
-      },
-      {
-        label: '今日日程',
-        description: '打开日历，查看会议和个人安排。',
-        icon: <CalendarDays size={20} />,
-        onClick: () => navigate('/schedule'),
-        toneClassName:
-          'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
-      },
-      {
-        label: '会议室预订',
-        description: '查看会议室资源并发起预订。',
-        icon: <Users size={20} />,
-        onClick: () => navigate('/meeting-room'),
-        toneClassName:
-          'bg-sky-100 text-sky-700 dark:bg-sky-950/30 dark:text-sky-200',
       },
     ],
     [navigate],
@@ -572,7 +503,7 @@ export const Dashboard = () => {
         typeLabel: '待办审批',
         icon: <ClipboardCheck size={18} />,
         toneClassName:
-          'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200',
+          'bg-[#d8f3fa] text-[#0b7894] dark:bg-cyan-950/30 dark:text-cyan-200',
         onClick: () => navigate('/tasks'),
         sortTime: time,
       });
@@ -635,7 +566,7 @@ export const Dashboard = () => {
         typeLabel: '日程安排',
         icon: <CalendarDays size={18} />,
         toneClassName:
-          'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+          'bg-[var(--cf-surface-muted)] text-slate-700 dark:bg-slate-800 dark:text-slate-200',
         onClick: () => navigate('/schedule'),
         sortTime: time,
       });
@@ -647,32 +578,6 @@ export const Dashboard = () => {
       .map(({ sortTime, ...rest }) => rest);
   }, [activityPanels, navigate]);
 
-  const workplaceTodoItems = useMemo<UserDashboardTodoItem[]>(
-    () =>
-      workplacePanels.todos.slice(0, 6).map((item) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        status: item.status,
-        sourceLabel: item.sourceLabel || item.module || item.type,
-        onClick: () => navigate(item.path || '/'),
-      })),
-    [navigate, workplacePanels.todos],
-  );
-
-  const workplaceRiskItems = useMemo<UserDashboardRiskItem[]>(
-    () =>
-      workplacePanels.risks.slice(0, 6).map((item) => ({
-        id: String(item.id),
-        title: item.title,
-        description: item.description,
-        level: item.level,
-        sourceLabel: item.sourceLabel || item.module || item.businessType,
-        onClick: () => navigate(item.path || '/'),
-      })),
-    [navigate, workplacePanels.risks],
-  );
-
   if (!user) {
     return null;
   }
@@ -681,44 +586,69 @@ export const Dashboard = () => {
     return <PageLoading tip="工作台数据加载中…" />;
   }
 
+  const userDisplayName = user.name || user.username || 'CloudFlow User';
+  const rangeLabel = formatRangeLabel(startDate, endDate);
+
   return (
-    <div className="space-y-6">
+    <section className="admin-source-page dashboard-page admin-dashboard-page">
+      <section className="dashboard-hero dashboard-source-header">
+        <div className="dashboard-hero-copy">
+          <p className="dashboard-kicker">CLOUDFLOW WORKSPACE</p>
+          <h2>{userDisplayName}</h2>
+          <p>查看流程待办、协同趋势和最近活动记录</p>
+        </div>
+        <div className="dashboard-hero-actions dashboard-command-actions">
+          <Button type="button" variant="outline" onClick={() => {
+            void loadOverview();
+            void loadActivityPanels();
+          }} disabled={loadingOverview || loadingPanels}>
+            <RefreshCw size={16} className={loadingOverview || loadingPanels ? 'animate-spin' : undefined} />
+            刷新
+          </Button>
+          <Button type="button" variant="outline" onClick={() => navigate('/tasks')}>
+            <ClipboardCheck size={16} />
+            任务中心
+          </Button>
+          <Button type="button" onClick={() => navigate('/workplace')}>
+            <PlayCircle size={16} />
+            发起流程
+          </Button>
+        </div>
+      </section>
+
       {statsData ? <UserDashboardStats stats={statsData} /> : null}
 
-      <UserDashboardCharts
-        startDate={startDate}
-        endDate={endDate}
-        granularity={granularity}
-        loading={loadingPanels}
-        distribution={distribution}
-        trend={trendData}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
-        onGranularityChange={setGranularity}
-        onRefresh={() => {
-          void loadOverview();
-          void loadActivityPanels();
-        }}
-      />
+      <section className="dashboard-charts">
+        <UserDashboardCharts
+          startDate={startDate}
+          endDate={endDate}
+          granularity={granularity}
+          loading={loadingPanels}
+          distribution={distribution}
+          trend={trendData}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onGranularityChange={setGranularity}
+          onRefresh={() => {
+            void loadOverview();
+            void loadActivityPanels();
+          }}
+        />
+      </section>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <UserDashboardQuickActions actions={quickActions} />
+        </div>
         <div className="lg:col-span-2">
           <UserDashboardRecentUsage
             items={recentUsageItems}
             loading={loadingPanels}
-            rangeLabel={formatRangeLabel(startDate, endDate)}
+            rangeLabel={rangeLabel}
           />
         </div>
-        <div className="lg:col-span-1">
-          <UserDashboardQuickActions actions={quickActions} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <UserDashboardTodoPanel items={workplaceTodoItems} loading={loadingWorkplacePanels && workplaceTodoItems.length === 0} />
-        <UserDashboardRiskPanel items={workplaceRiskItems} loading={loadingWorkplacePanels && workplaceRiskItems.length === 0} />
-      </div>
-    </div>
+      </section>
+    </section>
   );
 };
 

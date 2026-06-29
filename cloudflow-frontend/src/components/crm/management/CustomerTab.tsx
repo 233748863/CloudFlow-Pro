@@ -11,10 +11,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
-  TableRowActions,
   Textarea,
 } from '@/components/common';
 import { crmApi, CrmCustomer } from '@/services/api/crm';
@@ -76,47 +72,43 @@ export const CustomerTab: React.FC = () => {
 
   return (
     <>
-      <table className="w-full min-w-[900px]">
-        <TableHeader>
+      <table className="unity-data-table admin-source-table admin-crm-table min-w-[900px]">
+        <thead>
           <tr>
-            <TableHead>客户</TableHead>
-            <TableHead>健康度</TableHead>
-            <TableHead>联系人 / 跟进</TableHead>
-            <TableHead>负责人</TableHead>
-            <TableHead>状态</TableHead>
-            <TableActionHead>操作</TableActionHead>
+            <th>客户</th>
+            <th>健康度</th>
+            <th>联系人 / 跟进</th>
+            <th>负责人</th>
+            <th>状态</th>
+            <th className="text-right">操作</th>
           </tr>
-        </TableHeader>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+        </thead>
+        <tbody>
           {customers.map((item) => {
             const contactCount = contacts.filter((contact) => contact.customerId === item.customerId).length;
             const followCount = followUps.filter((follow) => follow.customerId === item.customerId).length;
             return (
               <tr key={item.customerId}>
-                <td className="px-4 py-3 text-sm">
-                  <div>{item.customerName}</div>
-                  <div className="text-xs text-slate-500">{item.customerCode || '-'} / {item.customerTags || '-'}</div>
+                <td>
+                  <strong>{item.customerName}</strong>
+                  <small>{item.customerCode || '-'} / {item.customerTags || '-'}</small>
                 </td>
-                <td className="px-4 py-3 text-sm">
+                <td>
                   <div>{renderHealthBadge(item.healthLevel)}</div>
-                  <div className="mt-1 text-xs text-slate-500">{item.healthReason || '-'}</div>
+                  <small>{item.healthReason || '-'}</small>
                 </td>
-                <td className="px-4 py-3 text-sm">{contactCount} / {followCount}</td>
-                <td className="px-4 py-3 text-sm">{item.ownerName || '-'}</td>
-                <td className="px-4 py-3 text-sm">{renderStatus(item.status)}</td>
-                <td className="px-4 py-3 text-right">
-                  <TableRowActions
-                    align="end"
-                    overflowLabel="更多"
-                    actions={[
-                      { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                      { label: '编辑客户', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'customer', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:customer:edit' },
-                      { label: '释放审批', icon: <RefreshCcw size={14} />, onClick: () => { setReleaseCustomer(item); setReleaseReason(''); }, semantic: 'disable', hidden: item.poolFlag === '1', permissionKey: 'crm:approval:customer-claim' },
-                      { label: '分级审批', icon: <UserRound size={14} />, onClick: () => { setLevelCustomer(item); setLevelAction('LEVEL_UP'); setTargetLevel(item.levelCode || ''); setLevelReason(''); }, semantic: 'custom', permissionKey: 'crm:approval:customer-level' },
-                      { label: '新增联系人', icon: <UserRound size={14} />, onClick: () => openDialog({ type: 'contact', item: { ...emptyContact, customerId: item.customerId! } }), semantic: 'custom', permissionKey: 'crm:contact:add' },
-                      { label: '新增跟进', icon: <RefreshCcw size={14} />, onClick: () => openDialog({ type: 'followUp', item: { ...emptyFollowUp, customerId: item.customerId! } }), semantic: 'custom', permissionKey: 'crm:follow-up:add' },
-                    ]}
-                  />
+                <td>{contactCount} / {followCount}</td>
+                <td>{item.ownerName || '-'}</td>
+                <td>{renderStatus(item.status)}</td>
+                <td>
+                  <div className="admin-users-row-actions">
+                    <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
+                    <button type="button" title="编辑客户" onClick={() => openDialog({ type: 'customer', item })}><Handshake size={15} /></button>
+                    {item.poolFlag !== '1' ? <button type="button" title="释放审批" onClick={() => { setReleaseCustomer(item); setReleaseReason(''); }}><RefreshCcw size={15} /></button> : null}
+                    <button type="button" title="分级审批" onClick={() => { setLevelCustomer(item); setLevelAction('LEVEL_UP'); setTargetLevel(item.levelCode || ''); setLevelReason(''); }}><UserRound size={15} /></button>
+                    <button type="button" title="新增联系人" onClick={() => openDialog({ type: 'contact', item: { ...emptyContact, customerId: item.customerId! } })}><UserRound size={15} /></button>
+                    <button type="button" title="新增跟进" onClick={() => openDialog({ type: 'followUp', item: { ...emptyFollowUp, customerId: item.customerId! } })}><RefreshCcw size={15} /></button>
+                  </div>
                 </td>
               </tr>
             );

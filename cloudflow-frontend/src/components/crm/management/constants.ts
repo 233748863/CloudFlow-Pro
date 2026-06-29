@@ -113,4 +113,4 @@ export const severityLabelMap: Record<string, string> = {
   CRITICAL: '严重',
 };
 
-export const nativeSelectClassName = 'cf-control h-10 w-full rounded-xl px-4 py-2.5 text-sm appearance-auto';
+export const nativeSelectClassName = 'cf-control h-10 w-full rounded-md px-4 py-2.5 text-sm appearance-auto';

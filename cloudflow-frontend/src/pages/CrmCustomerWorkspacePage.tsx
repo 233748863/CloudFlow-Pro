@@ -2,14 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CircleDollarSign, FileText, FolderKanban, Handshake, LifeBuoy, ReceiptText, RefreshCcw, Target, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common';
-import { WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common';
 import { crmApi, CrmCustomerWorkspace, CrmRemoteProjectLink } from '@/services/api/crm';
 import { invoiceApi, Invoice } from '@/services/api/invoice';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getThresholdStatusLabel } from '@/utils/enumLabels';
 import { useDict } from '@/hooks/useDict';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type WorkspaceTab = 'overview' | 'contact' | 'opportunity' | 'quote' | 'cashflow' | 'renewal' | 'ticket' | 'project';
 
@@ -65,9 +65,59 @@ const statusLabelMap: Record<string, string> = {
 
 
 const renderHealthBadge = (level?: string) => (
-  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${healthToneMap[level || 'GREEN'] || healthToneMap.GREEN}`}>
+  <span className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${healthToneMap[level || 'GREEN'] || healthToneMap.GREEN}`}>
     {healthLabelMap[level || 'GREEN'] || level || '健康'}
   </span>
+);
+
+interface WorkspacePanelProps {
+  title: string;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+const WorkspacePanel = ({ title, description, children }: WorkspacePanelProps) => (
+  <InnerTableSurface className="admin-crm-workspace-panel">
+    <div className="admin-crm-workspace-panel-head">
+      <div>
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
+    </div>
+    <div className="admin-crm-workspace-panel-body">{children}</div>
+  </InnerTableSurface>
+);
+
+const EmptyPanel = ({ children }: { children: React.ReactNode }) => (
+  <div className="admin-crm-workspace-empty">
+    {children}
+  </div>
+);
+
+const InfoRows = ({ rows }: { rows: Array<[string, React.ReactNode]> }) => (
+  <div className="admin-crm-workspace-rows">
+    {rows.map(([label, value]) => (
+      <div key={label} className="admin-crm-workspace-row">
+        <span className="text-slate-500 dark:text-slate-400">{label}</span>
+        <strong className="text-right font-medium text-slate-900 dark:text-slate-100">{value || '-'}</strong>
+      </div>
+    ))}
+  </div>
+);
+
+const ActionListButton = ({
+  title,
+  meta,
+  onClick,
+}: {
+  title: React.ReactNode;
+  meta?: React.ReactNode;
+  onClick: () => void;
+}) => (
+  <button type="button" className="cf-side-link cf-side-link-sm w-full justify-between text-left" onClick={onClick}>
+    <span className="min-w-0 truncate">{title}</span>
+    {meta ? <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{meta}</span> : null}
+  </button>
 );
 
 const renderStatus = (status?: string) => statusLabelMap[status || ''] || status || '-';
@@ -78,18 +128,18 @@ const renderProjectCard = (
   onOpen: (projectId: number) => void,
   severityLabel: (value?: string) => string,
 ) => (
-  <Card key={item.projectId}>
-    <CardHeader className="pb-3">
-      <CardTitle className="text-base">{item.projectName || '-'}</CardTitle>
-      <div className="text-xs text-slate-500">{item.projectNo || '-'} / {renderStatus(item.status)}</div>
-    </CardHeader>
-    <CardContent className="space-y-2 text-sm">
-      <div>风险等级：{severityLabel(item.riskLevel)}</div>
-      <div>预算 / 成本：{item.budgetAmount || 0} / {item.actualCostAmount || 0}</div>
-      <div>来源：{item.sourceName || item.sourceType || '-'}</div>
-      {item.projectId ? <Button size="sm" variant="outline" onClick={() => onOpen(item.projectId!)}>查看项目工作区</Button> : null}
-    </CardContent>
-  </Card>
+  <tr key={item.projectId}>
+    <td><strong>{item.projectName || '-'}</strong><small>{item.projectNo || '-'}</small></td>
+    <td>{renderStatus(item.status)}</td>
+    <td>{severityLabel(item.riskLevel)}</td>
+    <td>{item.budgetAmount || 0} / {item.actualCostAmount || 0}</td>
+    <td>{item.sourceName || item.sourceType || '-'}</td>
+    <td>
+      <div className="admin-users-row-actions">
+        {item.projectId ? <button type="button" title="查看项目工作区" onClick={() => onOpen(item.projectId!)}><FolderKanban size={15} /></button> : null}
+      </div>
+    </td>
+  </tr>
 );
 
 export default function CrmCustomerWorkspacePage() {
@@ -146,12 +196,15 @@ export default function CrmCustomerWorkspacePage() {
   }, [numericCustomerId]);
 
   const metrics = useMemo(() => {
-    if (!workspace) return [];
+    if (!workspace?.customer) return [];
+    const opportunities = workspace.opportunities || [];
+    const receivables = workspace.receivables || [];
+    const tickets = workspace.tickets || [];
     return [
       { label: '健康度', value: renderHealthLabel(workspace.customer.healthLevel), hint: workspace.customer.healthReason || '状态正常' },
-      { label: '商机', value: workspace.opportunities.length, hint: '客户当前商机数' },
-      { label: '回款计划', value: workspace.receivables.length, hint: '含开票联动' },
-      { label: '服务工单', value: workspace.tickets.length, hint: '含高严重度工单' },
+      { label: '商机', value: opportunities.length, hint: '客户当前商机数' },
+      { label: '回款计划', value: receivables.length, hint: '含开票联动' },
+      { label: '服务工单', value: tickets.length, hint: '含高严重度工单' },
     ];
   }, [workspace]);
 
@@ -278,62 +331,101 @@ export default function CrmCustomerWorkspacePage() {
     }
   };
 
-  if (!workspace) {
-    return (
-      <div className="space-y-4">
-        <Button variant="outline" size="sm" onClick={() => navigate('/office/crm/customers')}>
-          <ArrowLeft size={14} className="mr-1.5" />返回客户管理
-        </Button>
-        <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-16 text-center text-sm text-slate-500 dark:border-slate-700">
-          {loading ? '加载客户360中...' : '未找到客户工作区数据'}
+  if (!workspace?.customer) {
+    const emptyActions = (
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">CRM CUSTOMER 360</p>
+          <h2>客户360</h2>
+          <span>客户资料、销售、合同、回款、续约、工单、项目集中工作区</span>
         </div>
-      </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => navigate('/office/crm/customers')}>
+            <ArrowLeft size={14} className="mr-1.5" />返回客户管理
+          </Button>
+        </div>
+      </header>
+    );
+
+    return (
+      <section className="admin-source-page">
+        <TablePageLayout
+          actions={emptyActions}
+          table={(
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col" wrapperClassName="flex min-h-0 flex-1 flex-col">
+              <EmptyPanel>{loading ? '加载客户360中...' : '未找到客户工作区数据'}</EmptyPanel>
+            </InnerTableSurface>
+          )}
+        />
+      </section>
     );
   }
 
-  return (
-    <div className="space-y-4 animate-fade-in">
-      <WorkspaceHeroCard
-        badge={renderHealthBadge(workspace.customer.healthLevel)}
-        title={workspace.customer.customerName}
-        description={`客户360 = 客户资料、销售、合同、回款、续约、工单、项目集中工作区。负责人 ${workspace.customer.ownerName || '-'}，最近跟进 ${formatDateTimeDisplay(workspace.customer.lastFollowUpTime)}。`}
-        actions={(
-          <>
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">CRM CUSTOMER 360</p>
+          <h2>{workspace.customer.customerName}</h2>
+          <span>负责人 {workspace.customer.ownerName || '-'}，最近跟进 {formatDateTimeDisplay(workspace.customer.lastFollowUpTime)}</span>
+        </div>
+        <div className="admin-source-controls">
+          {renderHealthBadge(workspace.customer.healthLevel)}
             <Button variant="outline" size="sm" onClick={() => navigate('/office/crm/customers')}>
               <ArrowLeft size={14} className="mr-1.5" />返回客户管理
             </Button>
             <Button size="sm" onClick={() => void load()}>
               <RefreshCcw size={14} className="mr-1.5" />刷新
             </Button>
-          </>
-        )}
-      >
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {metrics.map((item) => (
-            <WorkspaceMetricCard key={item.label} label={item.label} value={item.value} hint={item.hint} />
-          ))}
         </div>
-      </WorkspaceHeroCard>
+      </header>
 
-      <Tabs value={tab} onValueChange={(value) => setTab(value as WorkspaceTab)}>
-        <TabsList className="w-full justify-start overflow-x-auto">
-          {tabLabelMap.map((item) => (
-            <TabsTrigger key={item.value} value={item.value} className="gap-1.5">
-              {item.icon}
-              {item.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <section className="admin-source-stat-grid">
+        {metrics.map((item, index) => {
+          const icons = [Handshake, Target, ReceiptText, LifeBuoy];
+          const tones = ['admin-source-tone-blue', 'admin-source-tone-green', 'admin-source-tone-amber', 'admin-source-tone-violet'];
+          const Icon = icons[index] || CircleDollarSign;
+          return (
+            <article key={item.label} className={`card admin-source-stat ${tones[index] || 'admin-source-tone-blue'}`}>
+              <span className="admin-source-stat-icon">
+                <Icon size={18} />
+              </span>
+              <div className="min-w-0">
+                <p>{item.label}</p>
+                <strong>{item.value}</strong>
+                <span>{item.hint}</span>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+    </div>
+  );
 
-        <TabsContent value="overview" className="space-y-4">
+  const pageFilters = (
+        <section className="card admin-users-toolbar">
+          <TabsList className="w-full justify-start overflow-x-auto">
+            {tabLabelMap.map((item) => (
+              <TabsTrigger key={item.value} value={item.value} className="gap-1.5">
+                {item.icon}
+                {item.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </section>
+  );
+
+  const pageContent = (
+      <>
+        <TabsContent value="overview" className="admin-source-content-grid admin-crm-workspace-tab">
           <div className="grid gap-4 xl:grid-cols-3">
-            <WorkspaceSectionCard title="健康原因" description="点击跳转到对应业务分区。">
-              <div className="space-y-2">
+            <WorkspacePanel title="健康原因" description="点击跳转到对应业务分区。">
+              <div className="admin-dialog-stack">
                 {workspace.healthReasons.map((item) => (
-                  <button
+                  <ActionListButton
                     key={`${item.type}-${item.code}`}
-                    type="button"
-                    className="cf-interactive-card flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm dark:border-slate-800 dark:bg-slate-900"
+                    title={item.name || '-'}
+                    meta={item.level || '-'}
                     onClick={() => {
                       const target = item.linkTarget || '';
                       if (target.includes('#')) {
@@ -344,191 +436,278 @@ export default function CrmCustomerWorkspacePage() {
                         if (nextTab === 'follow-up') setTab('contact');
                       }
                     }}
-                  >
-                    <span>{item.name || '-'}</span>
-                    <span className="text-xs text-slate-500">{item.level || '-'}</span>
-                  </button>
+                  />
                 ))}
               </div>
-            </WorkspaceSectionCard>
+            </WorkspacePanel>
 
-            <WorkspaceSectionCard title="资料快照" description="客户基础资料与节奏信息。">
-              <div className="space-y-2 text-sm">
-                <div>负责人：{workspace.customer.ownerName || '-'}</div>
-                <div>电话：{workspace.customer.phone || '-'}</div>
-                <div>邮箱：{workspace.customer.email || '-'}</div>
-                <div>标签：{workspace.customer.customerTags || '-'}</div>
-                <div>下次跟进：{formatDateTimeDisplay(workspace.customer.nextFollowUpTime)}</div>
-              </div>
-            </WorkspaceSectionCard>
+            <WorkspacePanel title="资料快照" description="客户基础资料与节奏信息。">
+              <InfoRows rows={[
+                ['负责人', workspace.customer.ownerName || '-'],
+                ['电话', workspace.customer.phone || '-'],
+                ['邮箱', workspace.customer.email || '-'],
+                ['标签', workspace.customer.customerTags || '-'],
+                ['下次跟进', formatDateTimeDisplay(workspace.customer.nextFollowUpTime)],
+              ]} />
+            </WorkspacePanel>
 
-            <WorkspaceSectionCard title="经营提醒" description="当前经营动作的优先处理项。">
-              <div className="space-y-2 text-sm">
-                <div>待处理商机：{workspace.opportunities.filter((item) => !['WON', 'LOST'].includes(item.stage || '')).length}</div>
-                <div>待收回款：{workspace.receivables.filter((item) => (item.outstandingAmount || 0) > 0).length}</div>
-                <div>待续约：{workspace.renewals.filter((item) => !['WON', 'LOST', 'CLOSED'].includes(item.status || '')).length}</div>
-                <div>未关闭工单：{workspace.tickets.filter((item) => !['RESOLVED', 'CLOSED'].includes(item.status || '')).length}</div>
-              </div>
-            </WorkspaceSectionCard>
-            <WorkspaceSectionCard title="联动汇总" description="CRM 与 OA 的闭环规模。">
-              <div className="space-y-2 text-sm">
-                <div>合同 / 项目：{workspace.linkSummary?.contractCount || 0} / {workspace.linkSummary?.projectCount || 0}</div>
-                <div>预算 / 发票：{workspace.linkSummary?.budgetCount || 0} / {workspace.linkSummary?.invoiceCount || 0}</div>
-                <div>联动待办 / 风险：{workspace.linkSummary?.openTodoCount || 0} / {workspace.linkSummary?.openRiskCount || 0}</div>
-              </div>
-            </WorkspaceSectionCard>
+            <WorkspacePanel title="经营提醒" description="当前经营动作的优先处理项。">
+              <InfoRows rows={[
+                ['待处理商机', workspace.opportunities.filter((item) => !['WON', 'LOST'].includes(item.stage || '')).length],
+                ['待收回款', workspace.receivables.filter((item) => (item.outstandingAmount || 0) > 0).length],
+                ['待续约', workspace.renewals.filter((item) => !['WON', 'LOST', 'CLOSED'].includes(item.status || '')).length],
+                ['未关闭工单', workspace.tickets.filter((item) => !['RESOLVED', 'CLOSED'].includes(item.status || '')).length],
+              ]} />
+            </WorkspacePanel>
+            <WorkspacePanel title="联动汇总" description="CRM 与 OA 的闭环规模。">
+              <InfoRows rows={[
+                ['合同 / 项目', `${workspace.linkSummary?.contractCount || 0} / ${workspace.linkSummary?.projectCount || 0}`],
+                ['预算 / 发票', `${workspace.linkSummary?.budgetCount || 0} / ${workspace.linkSummary?.invoiceCount || 0}`],
+                ['联动待办 / 风险', `${workspace.linkSummary?.openTodoCount || 0} / ${workspace.linkSummary?.openRiskCount || 0}`],
+              ]} />
+            </WorkspacePanel>
           </div>
           <div className="grid gap-4 xl:grid-cols-2">
-            <WorkspaceSectionCard title="跨模块待办" description="从客户360直接进入对应 OA / CRM 处理页。">
-              <div className="space-y-2">
+            <WorkspacePanel title="跨模块待办" description="从客户360直接进入对应 OA / CRM 处理页。">
+              <div className="admin-dialog-stack">
                 {workspace.crossModuleTodos.length ? workspace.crossModuleTodos.map((item) => (
-                  <button
+                  <ActionListButton
                     key={item.id}
-                    type="button"
-                    className="cf-interactive-card flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm dark:border-slate-800 dark:bg-slate-900"
+                    title={item.title || '-'}
+                    meta={item.sourceLabel || item.module || '-'}
                     onClick={() => navigate(item.path || '/')}
-                  >
-                    <span>{item.title || '-'}</span>
-                    <span className="text-xs text-slate-500">{item.sourceLabel || item.module || '-'}</span>
-                  </button>
-                )) : <div className="text-sm text-slate-500">暂无跨模块待办</div>}
+                  />
+                )) : <EmptyPanel>暂无跨模块待办</EmptyPanel>}
               </div>
-            </WorkspaceSectionCard>
-            <WorkspaceSectionCard title="跨模块风险" description="预算阈值、发票异常和高风险链路汇总。">
-              <div className="space-y-2">
+            </WorkspacePanel>
+            <WorkspacePanel title="跨模块风险" description="预算阈值、发票异常和高风险链路汇总。">
+              <div className="admin-dialog-stack">
                 {workspace.crossModuleRisks.length ? workspace.crossModuleRisks.map((item) => (
-                  <button
+                  <ActionListButton
                     key={item.id}
-                    type="button"
-                    className="cf-interactive-card flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm dark:border-slate-800 dark:bg-slate-900"
+                    title={item.title || '-'}
+                    meta={item.level || '-'}
                     onClick={() => navigate(item.path || '/')}
-                  >
-                    <span>{item.title || '-'}</span>
-                    <span className="text-xs text-slate-500">{item.level || '-'}</span>
-                  </button>
-                )) : <div className="text-sm text-slate-500">暂无跨模块风险</div>}
+                  />
+                )) : <EmptyPanel>暂无跨模块风险</EmptyPanel>}
               </div>
-            </WorkspaceSectionCard>
+            </WorkspacePanel>
           </div>
         </TabsContent>
 
-        <TabsContent value="contact" className="space-y-4">
+        <TabsContent value="contact" className="admin-source-content-grid admin-crm-workspace-tab">
           <div className="grid gap-4 xl:grid-cols-2">
-            <WorkspaceSectionCard title="联系人" description="客户主联系人与协同联系人。">
-              <div className="space-y-2">
-                {workspace.contacts.length ? workspace.contacts.map((item) => (
-                  <div key={item.contactId} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div>{item.contactName}</div>
-                    <div className="text-xs text-slate-500">{item.position || '-'} / {item.mobile || item.phone || '-'}</div>
-                  </div>
-                )) : <div className="text-sm text-slate-500">暂无联系人</div>}
-              </div>
-            </WorkspaceSectionCard>
-            <WorkspaceSectionCard title="跟进记录" description="最近跟进与后续安排。">
-              <div className="space-y-2">
-                {workspace.followUps.length ? workspace.followUps.map((item) => (
-                  <div key={item.followUpId} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div>{item.content}</div>
-                    <div className="text-xs text-slate-500">{formatDateTimeDisplay(item.followUpTime)} / 下次 {formatDateTimeDisplay(item.nextFollowUpTime)}</div>
-                  </div>
-                )) : <div className="text-sm text-slate-500">暂无跟进记录</div>}
-              </div>
-            </WorkspaceSectionCard>
+            <WorkspacePanel title="联系人" description="客户主联系人与协同联系人。">
+              {workspace.contacts.length ? (
+                <InnerTableSurface>
+                  <table className="unity-data-table admin-source-table admin-crm-table min-w-[520px]">
+                    <thead>
+                      <tr>
+                        <th>联系人</th>
+                        <th>职位</th>
+                        <th>联系方式</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {workspace.contacts.map((item) => (
+                        <tr key={item.contactId}>
+                          <td><strong>{item.contactName}</strong></td>
+                          <td>{item.position || '-'}</td>
+                          <td>{item.mobile || item.phone || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </InnerTableSurface>
+              ) : <EmptyPanel>暂无联系人</EmptyPanel>}
+            </WorkspacePanel>
+            <WorkspacePanel title="跟进记录" description="最近跟进与后续安排。">
+              {workspace.followUps.length ? (
+                <InnerTableSurface>
+                  <table className="unity-data-table admin-source-table admin-crm-table min-w-[680px]">
+                    <thead>
+                      <tr>
+                        <th>内容</th>
+                        <th>跟进时间</th>
+                        <th>下次跟进</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {workspace.followUps.map((item) => (
+                        <tr key={item.followUpId}>
+                          <td><strong>{item.content}</strong></td>
+                          <td>{formatDateTimeDisplay(item.followUpTime)}</td>
+                          <td>{formatDateTimeDisplay(item.nextFollowUpTime)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </InnerTableSurface>
+              ) : <EmptyPanel>暂无跟进记录</EmptyPanel>}
+            </WorkspacePanel>
           </div>
         </TabsContent>
 
-        <TabsContent value="opportunity" className="space-y-4">
-          <WorkspaceSectionCard title="商机推进" description="客户当前商机与推进阶段。">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.opportunities.length ? workspace.opportunities.map((item) => (
-                <Card key={item.opportunityId}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{item.opportunityName}</CardTitle>
-                    <div className="text-xs text-slate-500">{renderStatus(item.stage)} / 预计签约 {item.expectedSignDate || '-'}</div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div>金额：{item.expectedAmount || 0}</div>
-                    <div>赢率：{item.winRate || 0}%</div>
-                    <div>负责人：{item.ownerName || '-'}</div>
-                  </CardContent>
-                </Card>
-              )) : <div className="text-sm text-slate-500">暂无商机</div>}
-            </div>
-          </WorkspaceSectionCard>
+        <TabsContent value="opportunity" className="admin-source-content-grid admin-crm-workspace-tab">
+          <WorkspacePanel title="商机推进" description="客户当前商机与推进阶段。">
+            {workspace.opportunities.length ? (
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table admin-crm-table min-w-[860px]">
+                  <thead>
+                    <tr>
+                      <th>商机</th>
+                      <th>阶段</th>
+                      <th>预计签约</th>
+                      <th>金额</th>
+                      <th>赢率</th>
+                      <th>负责人</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.opportunities.map((item) => (
+                      <tr key={item.opportunityId}>
+                        <td><strong>{item.opportunityName}</strong></td>
+                        <td>{renderStatus(item.stage)}</td>
+                        <td>{item.expectedSignDate || '-'}</td>
+                        <td>{item.expectedAmount || 0}</td>
+                        <td>{item.winRate || 0}%</td>
+                        <td>{item.ownerName || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </InnerTableSurface>
+            ) : <EmptyPanel>暂无商机</EmptyPanel>}
+          </WorkspacePanel>
         </TabsContent>
 
-        <TabsContent value="quote" className="space-y-4">
-          <WorkspaceSectionCard title="报价与合同" description="报价审批、合同联动与跳转。">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.quotes.length ? workspace.quotes.map((item) => (
-                <Card key={item.quoteId}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{item.quoteName}</CardTitle>
-                    <div className="text-xs text-slate-500">{renderStatus(item.status)} / 合同 {item.contractNo || '-'}</div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div>金额：{item.totalAmount || 0}</div>
-                    <div>负责人：{item.ownerName || '-'}</div>
-                    {item.contractId ? <Button size="sm" variant="outline" onClick={() => navigate('/office/contracts', { state: { focusContractId: item.contractId } })}>打开 OA 合同</Button> : null}
-                  </CardContent>
-                </Card>
-              )) : <div className="text-sm text-slate-500">暂无报价</div>}
-            </div>
-            <div className="mt-4 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-              <div className="text-sm font-medium">新建 OA 合同草稿</div>
-              <div className="flex flex-col gap-3 md:flex-row">
+        <TabsContent value="quote" className="admin-source-content-grid admin-crm-workspace-tab">
+          <WorkspacePanel title="报价与合同" description="报价审批、合同联动与跳转。">
+            {workspace.quotes.length ? (
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table admin-crm-table min-w-[820px]">
+                  <thead>
+                    <tr>
+                      <th>报价</th>
+                      <th>状态</th>
+                      <th>合同编号</th>
+                      <th>金额</th>
+                      <th>负责人</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.quotes.map((item) => (
+                      <tr key={item.quoteId}>
+                        <td><strong>{item.quoteName}</strong></td>
+                        <td>{renderStatus(item.status)}</td>
+                        <td>{item.contractNo || '-'}</td>
+                        <td>{item.totalAmount || 0}</td>
+                        <td>{item.ownerName || '-'}</td>
+                        <td>
+                          <div className="admin-users-row-actions">
+                            {item.contractId ? <button type="button" title="打开 OA 合同" onClick={() => navigate('/office/contracts', { state: { focusContractId: item.contractId } })}><FileText size={15} /></button> : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </InnerTableSurface>
+            ) : <EmptyPanel>暂无报价</EmptyPanel>}
+            <div className="admin-crm-workspace-draft mt-4">
+              <div className="admin-crm-workspace-draft-head">新建 OA 合同草稿</div>
+              <div className="admin-crm-workspace-draft-body">
                 <Input value={contractDraftName} onChange={(event) => setContractDraftName(event.target.value)} placeholder="合同名称，例如：景曜科技续约合同" />
                 <Button onClick={() => void createContractDraft()}>生成合同草稿</Button>
               </div>
             </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.contracts.length ? workspace.contracts.map((item) => (
-                <Card key={item.contractId}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{item.contractName}</CardTitle>
-                    <div className="text-xs text-slate-500">{renderStatus(item.status)} / 发票 {renderInvoiceStatus(item.invoiceStatus)}</div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div>合同编号：{item.contractNo || '-'}</div>
-                    <div>金额：{item.amount || 0}</div>
-                    <Button size="sm" variant="outline" onClick={() => navigate('/office/contracts', { state: { focusContractId: item.contractId } })}>打开 OA 合同</Button>
-                  </CardContent>
-                </Card>
-              )) : <div className="text-sm text-slate-500">暂无关联合同</div>}
-            </div>
-          </WorkspaceSectionCard>
+            <InnerTableSurface className="mt-4">
+              {workspace.contracts.length ? (
+                <table className="unity-data-table admin-source-table admin-crm-table min-w-[780px]">
+                  <thead>
+                    <tr>
+                      <th>合同</th>
+                      <th>状态</th>
+                      <th>发票状态</th>
+                      <th>合同编号</th>
+                      <th>金额</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.contracts.map((item) => (
+                      <tr key={item.contractId}>
+                        <td><strong>{item.contractName}</strong></td>
+                        <td>{renderStatus(item.status)}</td>
+                        <td>{renderInvoiceStatus(item.invoiceStatus)}</td>
+                        <td>{item.contractNo || '-'}</td>
+                        <td>{item.amount || 0}</td>
+                        <td>
+                          <div className="admin-users-row-actions">
+                            <button type="button" title="打开 OA 合同" onClick={() => navigate('/office/contracts', { state: { focusContractId: item.contractId } })}><FileText size={15} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <EmptyPanel>暂无关联合同</EmptyPanel>}
+            </InnerTableSurface>
+          </WorkspacePanel>
         </TabsContent>
 
-        <TabsContent value="cashflow" className="space-y-4">
+        <TabsContent value="cashflow" className="admin-source-content-grid admin-crm-workspace-tab">
           <div className="grid gap-4 xl:grid-cols-2">
-            <WorkspaceSectionCard title="回款计划" description="回款状态与开票联动。">
-              <div className="space-y-2">
-                {workspace.receivables.length ? workspace.receivables.map((item) => (
-                  <div key={item.receivableId} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div>{item.receivableName}</div>
-                    <div className="text-xs text-slate-500">{renderStatus(item.status)} / 计划 {item.plannedAmount || 0} / 未收 {item.outstandingAmount || 0}</div>
-                    <div className="text-xs text-slate-500">发票状态 {renderInvoiceStatus(item.invoiceStatus)} / 到期 {item.dueDate || '-'}</div>
-                  </div>
-                )) : <div className="text-sm text-slate-500">暂无回款计划</div>}
-              </div>
-            </WorkspaceSectionCard>
-            <WorkspaceSectionCard title="发票口径" description="发票通过 OA 发票模块维护，并实时回写 CRM 回款状态。">
-              <div className="space-y-2 text-sm">
-                <div>已绑定回款条数：{workspace.receivables.filter((item) => item.invoiceStatus && item.invoiceStatus !== 'NONE').length}</div>
-                <div>已全额核销：{workspace.receivables.filter((item) => item.invoiceStatus === 'WRITEOFF_FULL').length}</div>
-                <div>部分核销：{workspace.receivables.filter((item) => item.invoiceStatus === 'WRITEOFF_PARTIAL').length}</div>
+            <WorkspacePanel title="回款计划" description="回款状态与开票联动。">
+              {workspace.receivables.length ? (
+                <InnerTableSurface>
+                  <table className="unity-data-table admin-source-table admin-crm-table min-w-[780px]">
+                    <thead>
+                      <tr>
+                        <th>回款</th>
+                        <th>状态</th>
+                        <th>计划金额</th>
+                        <th>未收金额</th>
+                        <th>发票状态</th>
+                        <th>到期</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {workspace.receivables.map((item) => (
+                        <tr key={item.receivableId}>
+                          <td><strong>{item.receivableName}</strong></td>
+                          <td>{renderStatus(item.status)}</td>
+                          <td>{item.plannedAmount || 0}</td>
+                          <td>{item.outstandingAmount || 0}</td>
+                          <td>{renderInvoiceStatus(item.invoiceStatus)}</td>
+                          <td>{item.dueDate || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </InnerTableSurface>
+              ) : <EmptyPanel>暂无回款计划</EmptyPanel>}
+            </WorkspacePanel>
+            <WorkspacePanel title="发票口径" description="发票通过 OA 发票模块维护，并实时回写 CRM 回款状态。">
+              <InfoRows rows={[
+                ['已绑定回款条数', workspace.receivables.filter((item) => item.invoiceStatus && item.invoiceStatus !== 'NONE').length],
+                ['已全额核销', workspace.receivables.filter((item) => item.invoiceStatus === 'WRITEOFF_FULL').length],
+                ['部分核销', workspace.receivables.filter((item) => item.invoiceStatus === 'WRITEOFF_PARTIAL').length],
+              ]} />
+              <div className="mt-4">
                 <Button size="sm" variant="outline" onClick={() => navigate('/office/invoice')}>打开 OA 发票管理</Button>
               </div>
-            </WorkspaceSectionCard>
+            </WorkspacePanel>
           </div>
-          <WorkspaceSectionCard title="新建销项发票草稿" description="在客户360内直接发起 OA 发票录入。">
+          <WorkspacePanel title="新建销项发票草稿" description="在客户360内直接发起 OA 发票录入。">
             <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
               <Input value={invoiceDraftCode} onChange={(event) => setInvoiceDraftCode(event.target.value)} placeholder="发票代码，例如：044002600111" />
               <Input value={invoiceDraftNo} onChange={(event) => setInvoiceDraftNo(event.target.value)} placeholder="发票号码，例如：87654321" />
               <Button onClick={() => void createInvoiceDraft()}>生成发票草稿</Button>
             </div>
-          </WorkspaceSectionCard>
-          <WorkspaceSectionCard title="绑定回款发票" description="客户360内直接把销项发票绑定到回款计划。">
+          </WorkspacePanel>
+          <WorkspacePanel title="绑定回款发票" description="客户360内直接把销项发票绑定到回款计划。">
             <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
               <Select value={selectedBindReceivableId || 'NONE'} onValueChange={(value) => setSelectedBindReceivableId(value === 'NONE' ? '' : value)}>
                 <SelectTrigger><SelectValue placeholder="选择回款计划" /></SelectTrigger>
@@ -554,127 +733,230 @@ export default function CrmCustomerWorkspacePage() {
               </Select>
               <Button onClick={() => void bindInvoiceToReceivable()}>绑定发票</Button>
             </div>
-          </WorkspaceSectionCard>
-          <WorkspaceSectionCard title="OA 发票摘要" description="发票异常和核销状态汇总。">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.invoices.length ? workspace.invoices.map((item) => (
-                <Card key={item.invoiceId}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{item.invoiceNo || '-'}</CardTitle>
-                    <div className="text-xs text-slate-500">{renderInvoiceStatus(item.status)} / {item.invoiceDirection === 'OUTPUT' ? '销项' : '进项'}</div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div>发票代码：{item.invoiceCode || '-'}</div>
-                    <div>金额：{item.grossAmount || 0}</div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => navigate('/office/invoice')}>打开 OA 发票</Button>
-                      {item.status !== 'VOID' ? <Button size="sm" variant="outline" onClick={() => void voidInvoice(item.invoiceId)}>作废</Button> : null}
-                      {item.externalLinkUrl ? <Button size="sm" variant="outline" onClick={() => window.open(item.externalLinkUrl, '_blank')}>外链</Button> : null}
-                    </div>
-                  </CardContent>
-                </Card>
-              )) : <div className="text-sm text-slate-500">暂无 OA 发票摘要</div>}
-            </div>
-          </WorkspaceSectionCard>
-          <WorkspaceSectionCard title="回款确认" description="客户360内直接确认 CRM 回款。">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.receivables.length ? workspace.receivables.map((item) => (
-                <Card key={`confirm-${item.receivableId}`}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{item.receivableName}</CardTitle>
-                    <div className="text-xs text-slate-500">{renderStatus(item.status)} / 未收 {item.outstandingAmount || 0}</div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div>到期：{item.dueDate || '-'}</div>
-                    <Button size="sm" variant="outline" onClick={() => void confirmReceivable(item.receivableId)} disabled={item.status === 'RECEIVED'}>
-                      {item.status === 'RECEIVED' ? '已确认' : '确认回款'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )) : <div className="text-sm text-slate-500">暂无回款计划</div>}
-            </div>
-          </WorkspaceSectionCard>
+          </WorkspacePanel>
+          <WorkspacePanel title="OA 发票摘要" description="发票异常和核销状态汇总。">
+            {workspace.invoices.length ? (
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table admin-crm-table min-w-[860px]">
+                  <thead>
+                    <tr>
+                      <th>发票号码</th>
+                      <th>状态</th>
+                      <th>方向</th>
+                      <th>发票代码</th>
+                      <th>金额</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.invoices.map((item) => (
+                      <tr key={item.invoiceId}>
+                        <td><strong>{item.invoiceNo || '-'}</strong></td>
+                        <td>{renderInvoiceStatus(item.status)}</td>
+                        <td>{item.invoiceDirection === 'OUTPUT' ? '销项' : '进项'}</td>
+                        <td>{item.invoiceCode || '-'}</td>
+                        <td>{item.grossAmount || 0}</td>
+                        <td>
+                          <div className="admin-users-row-actions">
+                            <button type="button" title="打开 OA 发票" onClick={() => navigate('/office/invoice')}><ReceiptText size={15} /></button>
+                            {item.status !== 'VOID' ? <button type="button" title="作废" onClick={() => void voidInvoice(item.invoiceId)}><RefreshCcw size={15} /></button> : null}
+                            {item.externalLinkUrl ? <button type="button" title="外链" onClick={() => window.open(item.externalLinkUrl, '_blank')}><FileText size={15} /></button> : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </InnerTableSurface>
+            ) : <EmptyPanel>暂无 OA 发票摘要</EmptyPanel>}
+          </WorkspacePanel>
+          <WorkspacePanel title="回款确认" description="客户360内直接确认 CRM 回款。">
+            {workspace.receivables.length ? (
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table admin-crm-table min-w-[720px]">
+                  <thead>
+                    <tr>
+                      <th>回款</th>
+                      <th>状态</th>
+                      <th>未收金额</th>
+                      <th>到期</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.receivables.map((item) => (
+                      <tr key={`confirm-${item.receivableId}`}>
+                        <td><strong>{item.receivableName}</strong></td>
+                        <td>{renderStatus(item.status)}</td>
+                        <td>{item.outstandingAmount || 0}</td>
+                        <td>{item.dueDate || '-'}</td>
+                        <td>
+                          <Button size="sm" variant="outline" onClick={() => void confirmReceivable(item.receivableId)} disabled={item.status === 'RECEIVED'}>
+                            {item.status === 'RECEIVED' ? '已确认' : '确认回款'}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </InnerTableSurface>
+            ) : <EmptyPanel>暂无回款计划</EmptyPanel>}
+          </WorkspacePanel>
         </TabsContent>
 
-        <TabsContent value="renewal" className="space-y-4">
-          <WorkspaceSectionCard title="续约窗口" description="续约状态、风险与当前窗口。">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.renewals.length ? workspace.renewals.map((item) => (
-                <Card key={item.renewalId}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{item.renewalName}</CardTitle>
-                    <div className="text-xs text-slate-500">{renderStatus(item.status)} / 风险 {renderHealthLabel(item.riskLevel)}</div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div>续约金额：{item.renewalAmount || 0}</div>
-                    <div>当前到期：{item.currentExpireDate || '-'}</div>
-                    <div>风险原因：{item.riskReason || '-'}</div>
-                  </CardContent>
-                </Card>
-              )) : <div className="text-sm text-slate-500">暂无续约</div>}
-            </div>
-          </WorkspaceSectionCard>
+        <TabsContent value="renewal" className="admin-source-content-grid admin-crm-workspace-tab">
+          <WorkspacePanel title="续约窗口" description="续约状态、风险与当前窗口。">
+            {workspace.renewals.length ? (
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table admin-crm-table min-w-[860px]">
+                  <thead>
+                    <tr>
+                      <th>续约</th>
+                      <th>状态</th>
+                      <th>风险</th>
+                      <th>续约金额</th>
+                      <th>当前到期</th>
+                      <th>风险原因</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.renewals.map((item) => (
+                      <tr key={item.renewalId}>
+                        <td><strong>{item.renewalName}</strong></td>
+                        <td>{renderStatus(item.status)}</td>
+                        <td>{renderHealthLabel(item.riskLevel)}</td>
+                        <td>{item.renewalAmount || 0}</td>
+                        <td>{item.currentExpireDate || '-'}</td>
+                        <td>{item.riskReason || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </InnerTableSurface>
+            ) : <EmptyPanel>暂无续约</EmptyPanel>}
+          </WorkspacePanel>
         </TabsContent>
 
-        <TabsContent value="ticket" className="space-y-4">
-          <WorkspaceSectionCard title="服务工单" description="客户问题处理闭环。">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.tickets.length ? workspace.tickets.map((item) => (
-                <Card key={item.ticketId}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{item.ticketTitle}</CardTitle>
-                    <div className="text-xs text-slate-500">{renderSeverity(item.severity)} / {renderStatus(item.status)}</div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div>负责人：{item.ownerName || '-'}</div>
-                    <div>截止时间：{formatDateTimeDisplay(item.dueTime)}</div>
-                    <div>{item.description || '-'}</div>
-                  </CardContent>
-                </Card>
-              )) : <div className="text-sm text-slate-500">暂无工单</div>}
-            </div>
-          </WorkspaceSectionCard>
+        <TabsContent value="ticket" className="admin-source-content-grid admin-crm-workspace-tab">
+          <WorkspacePanel title="服务工单" description="客户问题处理闭环。">
+            {workspace.tickets.length ? (
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table admin-crm-table min-w-[900px]">
+                  <thead>
+                    <tr>
+                      <th>工单</th>
+                      <th>严重度</th>
+                      <th>状态</th>
+                      <th>负责人</th>
+                      <th>截止时间</th>
+                      <th>说明</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.tickets.map((item) => (
+                      <tr key={item.ticketId}>
+                        <td><strong>{item.ticketTitle}</strong></td>
+                        <td>{renderSeverity(item.severity)}</td>
+                        <td>{renderStatus(item.status)}</td>
+                        <td>{item.ownerName || '-'}</td>
+                        <td>{formatDateTimeDisplay(item.dueTime)}</td>
+                        <td>{item.description || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </InnerTableSurface>
+            ) : <EmptyPanel>暂无工单</EmptyPanel>}
+          </WorkspacePanel>
         </TabsContent>
 
-        <TabsContent value="project" className="space-y-4">
-          <WorkspaceSectionCard title="关联项目" description="CRM 生成或关联的 OA 项目工作区。">
-            <div className="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-              <div className="text-sm font-medium">新建 OA 项目草稿</div>
-              <div className="flex flex-col gap-3 md:flex-row">
+        <TabsContent value="project" className="admin-source-content-grid admin-crm-workspace-tab">
+          <WorkspacePanel title="关联项目" description="CRM 生成或关联的 OA 项目工作区。">
+            <div className="admin-crm-workspace-draft mb-4">
+              <div className="admin-crm-workspace-draft-head">新建 OA 项目草稿</div>
+              <div className="admin-crm-workspace-draft-body">
                 <Input value={projectDraftName} onChange={(event) => setProjectDraftName(event.target.value)} placeholder="项目名称，例如：景曜科技交付项目" />
                 <Button onClick={() => void createProjectDraft()}>生成项目草稿</Button>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.projects.length ? workspace.projects.map((item) => renderProjectCard(item, (projectId) => navigate('/office/project', { state: { focusProjectId: projectId } }), renderSeverity)) : <div className="text-sm text-slate-500">暂无关联项目</div>}
-            </div>
-          </WorkspaceSectionCard>
-          <WorkspaceSectionCard title="OA 预算摘要" description="关联项目预算执行与阈值概览。">
-            <div className="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-              <div className="text-sm font-medium">新建 OA 预算草稿</div>
-              <div className="flex flex-col gap-3 md:flex-row">
+            {workspace.projects.length ? (
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table admin-crm-table min-w-[900px]">
+                  <thead>
+                    <tr>
+                      <th>项目</th>
+                      <th>状态</th>
+                      <th>风险</th>
+                      <th>预算 / 成本</th>
+                      <th>来源</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.projects.map((item) => renderProjectCard(item, (projectId) => navigate('/office/project', { state: { focusProjectId: projectId } }), renderSeverity))}
+                  </tbody>
+                </table>
+              </InnerTableSurface>
+            ) : <EmptyPanel>暂无关联项目</EmptyPanel>}
+          </WorkspacePanel>
+          <WorkspacePanel title="OA 预算摘要" description="关联项目预算执行与阈值概览。">
+            <div className="admin-crm-workspace-draft mb-4">
+              <div className="admin-crm-workspace-draft-head">新建 OA 预算草稿</div>
+              <div className="admin-crm-workspace-draft-body">
                 <Input value={budgetDraftName} onChange={(event) => setBudgetDraftName(event.target.value)} placeholder="预算名称，例如：景曜科技项目预算" />
                 <Button onClick={() => void createBudgetDraft()}>生成预算草稿</Button>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.budgets.length ? workspace.budgets.map((item) => (
-                <Card key={item.budgetId}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{item.budgetName}</CardTitle>
-                    <div className="text-xs text-slate-500">{renderStatus(item.status)} / 阈值 {getThresholdStatusLabel(item.thresholdStatus || 'NORMAL')}</div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div>预算总额：{item.totalAmount || 0}</div>
-                    <div>已占用 / 已执行：{item.reservedAmount || 0} / {item.actualAmount || 0}</div>
-                    <Button size="sm" variant="outline" onClick={() => navigate('/office/budget')}>打开 OA 预算</Button>
-                  </CardContent>
-                </Card>
-              )) : <div className="text-sm text-slate-500">暂无 OA 预算摘要</div>}
-            </div>
-          </WorkspaceSectionCard>
+            {workspace.budgets.length ? (
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table admin-crm-table min-w-[820px]">
+                  <thead>
+                    <tr>
+                      <th>预算</th>
+                      <th>状态</th>
+                      <th>阈值</th>
+                      <th>预算总额</th>
+                      <th>已占用 / 已执行</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.budgets.map((item) => (
+                      <tr key={item.budgetId}>
+                        <td><strong>{item.budgetName}</strong></td>
+                        <td>{renderStatus(item.status)}</td>
+                        <td>{getThresholdStatusLabel(item.thresholdStatus || 'NORMAL')}</td>
+                        <td>{item.totalAmount || 0}</td>
+                        <td>{item.reservedAmount || 0} / {item.actualAmount || 0}</td>
+                        <td>
+                          <div className="admin-users-row-actions">
+                            <button type="button" title="打开 OA 预算" onClick={() => navigate('/office/budget')}><ReceiptText size={15} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </InnerTableSurface>
+            ) : <EmptyPanel>暂无 OA 预算摘要</EmptyPanel>}
+          </WorkspacePanel>
         </TabsContent>
+      </>
+  );
+
+  return (
+    <section className="admin-source-page">
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as WorkspaceTab)}
+        className="admin-crm-workspace-tabs flex min-h-0 flex-1 flex-col"
+      >
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageContent}
+        />
       </Tabs>
-    </div>
+    </section>
   );
 }

@@ -1,7 +1,6 @@
 import React from 'react';
 import { toast } from 'sonner';
 import { Eye, Handshake, Plus, RefreshCcw, Send, TriangleAlert } from 'lucide-react';
-import { TableHead, TableHeader, TableActionHead, TableRowActions } from '@/components/common';
 import { crmApi } from '@/services/api/crm';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useCrmManagement } from './store';
@@ -10,46 +9,43 @@ import { renderStatus } from './helpers';
 export const QuoteTab: React.FC = () => {
   const { quotes, openDialog, openCustomerWorkspace, setConfirm, goToContract, load } = useCrmManagement();
   return (
-    <table className="w-full min-w-[980px]">
-      <TableHeader>
+    <table className="unity-data-table admin-source-table admin-crm-table min-w-[980px]">
+      <thead>
         <tr>
-          <TableHead>报价</TableHead>
-          <TableHead>客户</TableHead>
-          <TableHead>金额</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>合同</TableHead>
-          <TableActionHead>操作</TableActionHead>
+          <th>报价</th>
+          <th>客户</th>
+          <th>金额</th>
+          <th>状态</th>
+          <th>合同</th>
+          <th className="text-right">操作</th>
         </tr>
-      </TableHeader>
-      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+      </thead>
+      <tbody>
         {quotes.map((item) => (
           <tr key={item.quoteId}>
-            <td className="px-4 py-3 text-sm">
-              <div>{item.quoteName}</div>
-              <div className="text-xs text-slate-500">{item.quoteNo || '-'}</div>
+            <td>
+              <strong>{item.quoteName}</strong>
+              <small>{item.quoteNo || '-'}</small>
             </td>
-            <td className="px-4 py-3 text-sm">{item.customerName || '-'}</td>
-            <td className="px-4 py-3 text-sm">
-              <div>{item.totalAmount || 0}</div>
-              <div className="text-xs text-slate-500">{item.quoteLines?.length || 0} 行 / 税额 {item.taxAmount || 0}</div>
+            <td>{item.customerName || '-'}</td>
+            <td>
+              <strong>{item.totalAmount || 0}</strong>
+              <small>{item.quoteLines?.length || 0} 行 / 税额 {item.taxAmount || 0}</small>
             </td>
-            <td className="px-4 py-3 text-sm">{renderStatus(item.status)}</td>
-            <td className="px-4 py-3 text-sm">{item.contractNo || '-'}</td>
-            <td className="px-4 py-3 text-right">
-              <TableRowActions
-                align="end"
-                overflowLabel="更多"
-                actions={[
-                  { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                  { label: '编辑报价', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'quote', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:quote:edit' },
-                  { label: '提交提审', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'submitQuote', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit', permissionKey: 'crm:quote:submit' },
-                  { label: '发送报价', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'sendQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'send', permissionKey: 'crm:quote:send' },
-                  { label: '接受报价', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'acceptQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'SENT', semantic: 'process', permissionKey: 'crm:quote:accept' },
-                  { label: '标记过期', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'expireQuote', item }), hidden: item.status === 'ACCEPTED' || item.status === 'EXPIRED', semantic: 'disable', permissionKey: 'crm:quote:expire' },
-                  {
-                    label: '转合同',
-                    icon: <Plus size={14} />,
-                    onClick: async () => {
+            <td>{renderStatus(item.status)}</td>
+            <td>{item.contractNo || '-'}</td>
+            <td>
+              <div className="admin-users-row-actions">
+                <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
+                <button type="button" title="编辑报价" onClick={() => openDialog({ type: 'quote', item })}><Handshake size={15} /></button>
+                {item.status === 'DRAFT' || item.status === 'REJECTED' ? <button type="button" title="提交提审" onClick={() => setConfirm({ action: 'submitQuote', item })}><Send size={15} /></button> : null}
+                {item.status === 'APPROVED' || item.status === 'DRAFT' || item.status === 'REJECTED' ? <button type="button" title="发送报价" onClick={() => setConfirm({ action: 'sendQuote', item })}><Send size={15} /></button> : null}
+                {item.status === 'APPROVED' || item.status === 'SENT' ? <button type="button" title="接受报价" onClick={() => setConfirm({ action: 'acceptQuote', item })}><RefreshCcw size={15} /></button> : null}
+                {item.status !== 'ACCEPTED' && item.status !== 'EXPIRED' ? <button type="button" title="标记过期" onClick={() => setConfirm({ action: 'expireQuote', item })}><TriangleAlert size={15} /></button> : null}
+                <button
+                  type="button"
+                  title="转合同"
+                  onClick={async () => {
                       try {
                         const contractId = await crmApi.createContractDraft(item.quoteId!);
                         toast.success(`已生成合同草稿 #${contractId}`);
@@ -58,12 +54,11 @@ export const QuoteTab: React.FC = () => {
                       } catch (error) {
                         toast.error(getErrorMessage(error, '生成合同草稿失败'));
                       }
-                    },
-                    semantic: 'custom',
-                    permissionKey: 'crm:contract:draft',
-                  },
-                ]}
-              />
+                    }}
+                >
+                  <Plus size={15} />
+                </button>
+              </div>
             </td>
           </tr>
         ))}

@@ -114,6 +114,133 @@ export const CRM_GENERIC_STATUS_LABELS: Record<string, string> = {
 export const getCrmGenericStatusLabel = (status?: string | null): string =>
   labelOf(CRM_GENERIC_STATUS_LABELS, status);
 
+// 系统文件类型（sys_file.file_type）
+// 历史数据可能保存 MIME，新上传数据保存扩展名；展示与筛选统一归一到分类枚举。
+export const SYSTEM_FILE_TYPE_CATEGORY = {
+  IMAGE: 'FILE_CATEGORY_IMAGE',
+  PDF: 'FILE_CATEGORY_PDF',
+  WORD: 'FILE_CATEGORY_WORD',
+  EXCEL: 'FILE_CATEGORY_EXCEL',
+  PPT: 'FILE_CATEGORY_PPT',
+  TEXT: 'FILE_CATEGORY_TEXT',
+  ARCHIVE: 'FILE_CATEGORY_ARCHIVE',
+  VIDEO: 'FILE_CATEGORY_VIDEO',
+  AUDIO: 'FILE_CATEGORY_AUDIO',
+  OTHER: 'FILE_CATEGORY_OTHER',
+} as const;
+
+export type SystemFileTypeCategory =
+  (typeof SYSTEM_FILE_TYPE_CATEGORY)[keyof typeof SYSTEM_FILE_TYPE_CATEGORY];
+
+export const SYSTEM_FILE_TYPE_LABELS: Record<SystemFileTypeCategory, string> = {
+  [SYSTEM_FILE_TYPE_CATEGORY.IMAGE]: '图片',
+  [SYSTEM_FILE_TYPE_CATEGORY.PDF]: 'PDF',
+  [SYSTEM_FILE_TYPE_CATEGORY.WORD]: 'Word',
+  [SYSTEM_FILE_TYPE_CATEGORY.EXCEL]: 'Excel',
+  [SYSTEM_FILE_TYPE_CATEGORY.PPT]: 'PPT',
+  [SYSTEM_FILE_TYPE_CATEGORY.TEXT]: '文本',
+  [SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE]: '压缩包',
+  [SYSTEM_FILE_TYPE_CATEGORY.VIDEO]: '视频',
+  [SYSTEM_FILE_TYPE_CATEGORY.AUDIO]: '音频',
+  [SYSTEM_FILE_TYPE_CATEGORY.OTHER]: '文件',
+};
+
+export const SYSTEM_FILE_TYPE_FILTER_OPTIONS = [
+  SYSTEM_FILE_TYPE_CATEGORY.IMAGE,
+  SYSTEM_FILE_TYPE_CATEGORY.PDF,
+  SYSTEM_FILE_TYPE_CATEGORY.WORD,
+  SYSTEM_FILE_TYPE_CATEGORY.EXCEL,
+  SYSTEM_FILE_TYPE_CATEGORY.PPT,
+  SYSTEM_FILE_TYPE_CATEGORY.TEXT,
+  SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  SYSTEM_FILE_TYPE_CATEGORY.VIDEO,
+  SYSTEM_FILE_TYPE_CATEGORY.AUDIO,
+].map((value) => ({ value, label: SYSTEM_FILE_TYPE_LABELS[value] }));
+
+const SYSTEM_FILE_TYPE_EXTENSION_CATEGORY: Record<string, SystemFileTypeCategory> = {
+  jpg: SYSTEM_FILE_TYPE_CATEGORY.IMAGE,
+  jpeg: SYSTEM_FILE_TYPE_CATEGORY.IMAGE,
+  png: SYSTEM_FILE_TYPE_CATEGORY.IMAGE,
+  gif: SYSTEM_FILE_TYPE_CATEGORY.IMAGE,
+  bmp: SYSTEM_FILE_TYPE_CATEGORY.IMAGE,
+  webp: SYSTEM_FILE_TYPE_CATEGORY.IMAGE,
+  svg: SYSTEM_FILE_TYPE_CATEGORY.IMAGE,
+  pdf: SYSTEM_FILE_TYPE_CATEGORY.PDF,
+  doc: SYSTEM_FILE_TYPE_CATEGORY.WORD,
+  docx: SYSTEM_FILE_TYPE_CATEGORY.WORD,
+  xls: SYSTEM_FILE_TYPE_CATEGORY.EXCEL,
+  xlsx: SYSTEM_FILE_TYPE_CATEGORY.EXCEL,
+  csv: SYSTEM_FILE_TYPE_CATEGORY.EXCEL,
+  ppt: SYSTEM_FILE_TYPE_CATEGORY.PPT,
+  pptx: SYSTEM_FILE_TYPE_CATEGORY.PPT,
+  txt: SYSTEM_FILE_TYPE_CATEGORY.TEXT,
+  md: SYSTEM_FILE_TYPE_CATEGORY.TEXT,
+  html: SYSTEM_FILE_TYPE_CATEGORY.TEXT,
+  htm: SYSTEM_FILE_TYPE_CATEGORY.TEXT,
+  json: SYSTEM_FILE_TYPE_CATEGORY.TEXT,
+  xml: SYSTEM_FILE_TYPE_CATEGORY.TEXT,
+  zip: SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  rar: SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  '7z': SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  tar: SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  gz: SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  bz2: SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  mp4: SYSTEM_FILE_TYPE_CATEGORY.VIDEO,
+  avi: SYSTEM_FILE_TYPE_CATEGORY.VIDEO,
+  rmvb: SYSTEM_FILE_TYPE_CATEGORY.VIDEO,
+  mov: SYSTEM_FILE_TYPE_CATEGORY.VIDEO,
+  webm: SYSTEM_FILE_TYPE_CATEGORY.VIDEO,
+  mp3: SYSTEM_FILE_TYPE_CATEGORY.AUDIO,
+  wav: SYSTEM_FILE_TYPE_CATEGORY.AUDIO,
+  aac: SYSTEM_FILE_TYPE_CATEGORY.AUDIO,
+  flac: SYSTEM_FILE_TYPE_CATEGORY.AUDIO,
+};
+
+const SYSTEM_FILE_TYPE_MIME_CATEGORY: Record<string, SystemFileTypeCategory> = {
+  'application/pdf': SYSTEM_FILE_TYPE_CATEGORY.PDF,
+  'application/msword': SYSTEM_FILE_TYPE_CATEGORY.WORD,
+  'application/doc': SYSTEM_FILE_TYPE_CATEGORY.WORD,
+  'application/docx': SYSTEM_FILE_TYPE_CATEGORY.WORD,
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    SYSTEM_FILE_TYPE_CATEGORY.WORD,
+  'application/vnd.ms-excel': SYSTEM_FILE_TYPE_CATEGORY.EXCEL,
+  'application/xls': SYSTEM_FILE_TYPE_CATEGORY.EXCEL,
+  'application/xlsx': SYSTEM_FILE_TYPE_CATEGORY.EXCEL,
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+    SYSTEM_FILE_TYPE_CATEGORY.EXCEL,
+  'application/vnd.ms-powerpoint': SYSTEM_FILE_TYPE_CATEGORY.PPT,
+  'application/ppt': SYSTEM_FILE_TYPE_CATEGORY.PPT,
+  'application/pptx': SYSTEM_FILE_TYPE_CATEGORY.PPT,
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+    SYSTEM_FILE_TYPE_CATEGORY.PPT,
+  'application/json': SYSTEM_FILE_TYPE_CATEGORY.TEXT,
+  'application/xml': SYSTEM_FILE_TYPE_CATEGORY.TEXT,
+  'application/zip': SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  'application/x-zip-compressed': SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  'application/x-rar-compressed': SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  'application/x-7z-compressed': SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  'application/gzip': SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  'application/x-tar': SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+  'application/x-bzip2': SYSTEM_FILE_TYPE_CATEGORY.ARCHIVE,
+};
+
+export const getSystemFileTypeCategory = (type?: string | null): SystemFileTypeCategory => {
+  const normalizedType = type?.trim().toLowerCase().replace(/^\./, '').split(';')[0] ?? '';
+  if (!normalizedType) return SYSTEM_FILE_TYPE_CATEGORY.OTHER;
+  if (normalizedType.startsWith('image/')) return SYSTEM_FILE_TYPE_CATEGORY.IMAGE;
+  if (normalizedType.startsWith('text/')) return SYSTEM_FILE_TYPE_CATEGORY.TEXT;
+  if (normalizedType.startsWith('video/')) return SYSTEM_FILE_TYPE_CATEGORY.VIDEO;
+  if (normalizedType.startsWith('audio/')) return SYSTEM_FILE_TYPE_CATEGORY.AUDIO;
+  return (
+    SYSTEM_FILE_TYPE_MIME_CATEGORY[normalizedType] ??
+    SYSTEM_FILE_TYPE_EXTENSION_CATEGORY[normalizedType] ??
+    SYSTEM_FILE_TYPE_CATEGORY.OTHER
+  );
+};
+
+export const getSystemFileTypeLabel = (type?: string | null): string =>
+  SYSTEM_FILE_TYPE_LABELS[getSystemFileTypeCategory(type)];
+
 // 状态 + 颜色调色板（仅保留类型与构造器，供 P2 枚举的 META 继续使用）
 export type StatusColorName = 'emerald' | 'amber' | 'rose' | 'sky' | 'slate' | 'violet' | 'orange' | 'teal';
 

@@ -1,42 +1,37 @@
 import React from 'react';
 import { Eye, LifeBuoy, RefreshCcw, Send } from 'lucide-react';
-import { TableHead, TableHeader, TableActionHead, TableRowActions } from '@/components/common';
 import { useCrmManagement } from './store';
 import { renderSeverity, renderStatus } from './helpers';
 
 export const TicketTab: React.FC = () => {
   const { tickets, openDialog, openCustomerWorkspace, setConfirm } = useCrmManagement();
   return (
-    <table className="w-full min-w-[900px]">
-      <TableHeader>
+    <table className="unity-data-table admin-source-table admin-crm-table min-w-[900px]">
+      <thead>
         <tr>
-          <TableHead>工单</TableHead>
-          <TableHead>客户</TableHead>
-          <TableHead>严重度</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>负责人</TableHead>
-          <TableActionHead>操作</TableActionHead>
+          <th>工单</th>
+          <th>客户</th>
+          <th>严重度</th>
+          <th>状态</th>
+          <th>负责人</th>
+          <th className="text-right">操作</th>
         </tr>
-      </TableHeader>
-      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+      </thead>
+      <tbody>
         {tickets.map((item) => (
           <tr key={item.ticketId}>
-            <td className="px-4 py-3 text-sm">{item.ticketTitle}</td>
-            <td className="px-4 py-3 text-sm">{item.customerName || '-'}</td>
-            <td className="px-4 py-3 text-sm">{renderSeverity(item.severity)}</td>
-            <td className="px-4 py-3 text-sm">{renderStatus(item.status)}</td>
-            <td className="px-4 py-3 text-sm">{item.ownerName || '-'}</td>
-            <td className="px-4 py-3 text-right">
-              <TableRowActions
-                align="end"
-                overflowLabel="更多"
-                actions={[
-                  { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                  { label: '编辑工单', icon: <LifeBuoy size={14} />, onClick: () => openDialog({ type: 'ticket', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:ticket:edit' },
-                  { label: '解决工单', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'resolveTicket', item: { ...item, solution: item.solution || '已处理完成' } }), hidden: item.status === 'RESOLVED' || item.status === 'CLOSED', semantic: 'process', permissionKey: 'crm:ticket:resolve' },
-                  { label: '关闭工单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'closeTicket', item }), hidden: item.status === 'CLOSED', semantic: 'disable', permissionKey: 'crm:ticket:close' },
-                ]}
-              />
+            <td><strong>{item.ticketTitle}</strong></td>
+            <td>{item.customerName || '-'}</td>
+            <td>{renderSeverity(item.severity)}</td>
+            <td>{renderStatus(item.status)}</td>
+            <td>{item.ownerName || '-'}</td>
+            <td>
+              <div className="admin-users-row-actions">
+                <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
+                <button type="button" title="编辑工单" onClick={() => openDialog({ type: 'ticket', item })}><LifeBuoy size={15} /></button>
+                {item.status !== 'RESOLVED' && item.status !== 'CLOSED' ? <button type="button" title="解决工单" onClick={() => setConfirm({ action: 'resolveTicket', item: { ...item, solution: item.solution || '已处理完成' } })}><RefreshCcw size={15} /></button> : null}
+                {item.status !== 'CLOSED' ? <button type="button" title="关闭工单" onClick={() => setConfirm({ action: 'closeTicket', item })}><Send size={15} /></button> : null}
+              </div>
             </td>
           </tr>
         ))}

@@ -18,14 +18,14 @@ export const DraggableOpportunityCard: React.FC<{
       ref={setNodeRef}
       type="button"
       style={style}
-      className="cf-interactive-card w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm shadow-sm dark:border-slate-800 dark:bg-slate-900"
+      className="admin-crm-board-card"
       onClick={onClick}
       {...listeners}
       {...attributes}
     >
-      <div>{item.opportunityName}</div>
-      <div className="mt-1 text-xs text-slate-500">{item.customerName || '-'} / 停留 {item.stageStayDays || 0} 天</div>
-      <div className="mt-1 text-xs text-slate-500">{item.expectedAmount || 0} / 赢率 {item.winRate || 0}%</div>
+      <strong>{item.opportunityName}</strong>
+      <span>{item.customerName || '-'} / 停留 {item.stageStayDays || 0} 天</span>
+      <span>{item.expectedAmount || 0} / 赢率 {item.winRate || 0}%</span>
     </button>
   );
 };

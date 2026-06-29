@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, Bell } from 'lucide-react';
 import { Button, EmptyState, LoadingSpinner } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { getAnnouncementExcerpt } from '@/utils/announcementContent';
 
 interface UserDashboardAnnouncementsProps {
@@ -18,18 +19,18 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
   onOpenList,
   onOpenItem,
 }) => (
-  <section className="card overflow-hidden">
-    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+  <InnerTableSurface className="dashboard-detail-card" wrapperClassName="flex h-full flex-col p-0">
+    <div className="p-4 admin-source-section-head border-b border-slate-200 dark:border-slate-800">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">公告提醒</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">最新通知与系统广播</p>
+        <strong>公告提醒</strong>
+        <span>最新通知与系统广播</span>
       </div>
       <Button variant="outline" size="sm" onClick={onOpenList}>
         查看全部
       </Button>
     </div>
 
-    <div className="p-6">
+    <div className="p-4">
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <LoadingSpinner size="lg" />
@@ -51,11 +52,7 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
                 key={id}
                 type="button"
                 onClick={() => onOpenItem(id)}
-                className={`cf-interactive-card group rounded-2xl border p-4 text-left ${
-                  isRead
-                    ? 'border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/70'
-                    : 'border-cyan-200 bg-cyan-50/70 dark:border-cyan-900 dark:bg-cyan-950/20'
-                }`}
+                className={`admin-dashboard-action-row group text-left ${isRead ? 'is-muted' : 'is-unread'}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -71,7 +68,7 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
                 <p className="mt-3 line-clamp-3 text-xs leading-6 text-slate-500 dark:text-slate-400">
                   {getAnnouncementExcerpt(item.summary || item.content)}
                 </p>
-                <div className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-700 dark:text-cyan-200">
+                <div className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[#0d95b5] dark:text-cyan-200">
                   打开公告
                   <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
                 </div>
@@ -81,5 +78,5 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
         </div>
       )}
     </div>
-  </section>
+  </InnerTableSurface>
 );

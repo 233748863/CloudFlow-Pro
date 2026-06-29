@@ -78,6 +78,11 @@ const WorkflowCreate = React.lazy(() =>
     default: module.WorkflowCreate,
   })),
 );
+const Workplace = React.lazy(() =>
+  import('@/pages/Workplace').then((module) => ({
+    default: module.Workplace,
+  })),
+);
 const WorkflowDesign = React.lazy(() =>
   import('@/pages/WorkflowDesign').then((module) => ({
     default: module.WorkflowDesign,
@@ -165,6 +170,10 @@ const desktopRoutes = [
           {
             path: '/workflow/create',
             element: guarded(<WorkflowCreate />, ['workflow:process:start']),
+          },
+          {
+            path: '/workplace',
+            element: guarded(<Workplace />, ['workflow:process:start']),
           },
           {
             path: '/workflow/design',

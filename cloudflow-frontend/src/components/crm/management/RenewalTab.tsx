@@ -1,7 +1,6 @@
 import React from 'react';
 import { toast } from 'sonner';
-import { Eye, Handshake, RefreshCcw, Send } from 'lucide-react';
-import { TableHead, TableHeader, TableActionHead, TableRowActions } from '@/components/common';
+import { Eye, Handshake, Send } from 'lucide-react';
 import { crmApi } from '@/services/api/crm';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useCrmManagement } from './store';
@@ -10,40 +9,33 @@ import { renderHealthLabel, renderStatus } from './helpers';
 export const RenewalTab: React.FC = () => {
   const { renewals, openDialog, openCustomerWorkspace, load } = useCrmManagement();
   return (
-    <section className="cf-section-card">
-      <div className="mb-4">
-        <div className="flex items-center gap-2 text-sm font-medium"><RefreshCcw size={16} />续约管理</div>
-        <div className="mt-1 text-xs text-slate-500">主操作 = 新增续约。审批与编辑属于次操作，放在行内。</div>
-      </div>
-      <table className="w-full">
-        <TableHeader>
+    <table className="unity-data-table admin-source-table admin-crm-table min-w-[760px]">
+      <thead>
           <tr>
-            <TableHead>名称</TableHead>
-            <TableHead>状态 / 风险</TableHead>
-            <TableHead>金额</TableHead>
-            <TableActionHead>操作</TableActionHead>
+            <th>名称</th>
+            <th>状态 / 风险</th>
+            <th>金额</th>
+            <th className="text-right">操作</th>
           </tr>
-        </TableHeader>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+      </thead>
+      <tbody>
           {renewals.map((item) => (
             <tr key={item.renewalId}>
-              <td className="px-4 py-3 text-sm">{item.renewalName}</td>
-              <td className="px-4 py-3 text-sm">
-                <div>{renderStatus(item.status)}</div>
-                <div className="text-xs text-slate-500">{renderHealthLabel(item.riskLevel)} / {item.riskReason || '-'}</div>
+              <td><strong>{item.renewalName}</strong></td>
+              <td>
+                <strong>{renderStatus(item.status)}</strong>
+                <small>{renderHealthLabel(item.riskLevel)} / {item.riskReason || '-'}</small>
               </td>
-              <td className="px-4 py-3 text-sm">{item.renewalAmount || 0}</td>
-              <td className="px-4 py-3 text-right">
-                <TableRowActions
-                  align="end"
-                  overflowLabel="更多"
-                  actions={[
-                    { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                    { label: '编辑续约', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'renewal', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:renewal:edit' },
-                    {
-                      label: '提交提审',
-                      icon: <Send size={14} />,
-                      onClick: async () => {
+              <td>{item.renewalAmount || 0}</td>
+              <td>
+                <div className="admin-users-row-actions">
+                  <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
+                  <button type="button" title="编辑续约" onClick={() => openDialog({ type: 'renewal', item })}><Handshake size={15} /></button>
+                  {item.status === 'PLANNED' || item.status === 'NEGOTIATING' ? (
+                    <button
+                      type="button"
+                      title="提交提审"
+                      onClick={async () => {
                         try {
                           await crmApi.submitRenewal(item.renewalId!);
                           toast.success('续约已提审');
@@ -51,18 +43,16 @@ export const RenewalTab: React.FC = () => {
                         } catch (error) {
                           toast.error(getErrorMessage(error, '续约提审失败'));
                         }
-                      },
-                      hidden: item.status !== 'PLANNED' && item.status !== 'NEGOTIATING',
-                      semantic: 'submit',
-                      permissionKey: 'crm:renewal:submit',
-                    },
-                  ]}
-                />
+                      }}
+                    >
+                      <Send size={15} />
+                    </button>
+                  ) : null}
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </section>
   );
 };

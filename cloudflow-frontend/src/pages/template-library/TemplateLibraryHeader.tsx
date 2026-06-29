@@ -36,36 +36,36 @@ export const TemplateLibraryHeader: React.FC<TemplateLibraryHeaderProps> = ({
         <button
           type="button"
           onClick={onBackToCreateFlow}
-          className="mb-2 inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-900"
+          className="mb-2 inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
         >
           <ArrowLeft className="h-4 w-4" />
           {TEXT.backToCreate}
         </button>
       ) : null}
 
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
+      <h1 className="text-xl font-semibold text-slate-950 dark:text-slate-100">
         {title}
       </h1>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
         {description}
       </p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
         <span>
           {TEXT.currentResults}{" "}
-          <span className="font-medium text-slate-700">{total}</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">{total}</span>
         </span>
         <span>
           {TEXT.categoryCount}{" "}
-          <span className="font-medium text-slate-700">{categoryCount}</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">{categoryCount}</span>
         </span>
         <span>
           {TEXT.activeFilters}{" "}
-          <span className="font-medium text-slate-700">{activeFilterCount}</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">{activeFilterCount}</span>
         </span>
         <span>
           {TEXT.currentView}{" "}
-          <span className="font-medium text-slate-700">{viewModeLabel}</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">{viewModeLabel}</span>
         </span>
       </div>
     </div>

@@ -30,8 +30,8 @@ export const TemplateLibraryCreateDialog: React.FC<TemplateLibraryCreateDialogPr
       onClose={onClose}
       maxWidthClassName="max-w-2xl"
     >
-      <div className="space-y-4">
-        <div className="space-y-2">
+      <div className="admin-dialog-stack">
+        <div className="admin-dialog-field">
           <Label htmlFor="workflow-name">{`${TEXT.workflowName} *`}</Label>
           <Input
             id="workflow-name"
@@ -40,7 +40,7 @@ export const TemplateLibraryCreateDialog: React.FC<TemplateLibraryCreateDialogPr
             placeholder={TEXT.workflowNamePlaceholder}
           />
         </div>
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <Label htmlFor="workflow-description">{TEXT.workflowDescriptionLabel}</Label>
           <Textarea
             id="workflow-description"

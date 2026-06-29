@@ -1,33 +1,25 @@
 import React from 'react';
-import { DatePicker, Input, Textarea } from '@/components/common';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
 import { useCrmManagement } from '../store';
-import { nativeSelectClassName } from '../constants';
 
 export const FollowUpDialogContent: React.FC = () => {
   const { followUpForm, setFollowUpForm, customerOptions, opportunityOptions } = useCrmManagement();
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="md:col-span-2">
-        <select
-          aria-label="选择客户"
-          className={nativeSelectClassName}
-          value={followUpForm.customerId ? String(followUpForm.customerId) : ''}
-          onChange={(e) => setFollowUpForm((prev) => ({ ...prev, customerId: Number(e.target.value) }))}
-        >
-          <option value="" disabled>选择客户</option>
-          {customerOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-        </select>
+        <Select value={followUpForm.customerId ? String(followUpForm.customerId) : ''} onValueChange={(value) => setFollowUpForm((prev) => ({ ...prev, customerId: Number(value) }))}>
+          <SelectTrigger><SelectValue placeholder="选择客户" /></SelectTrigger>
+          <SelectContent>{customerOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+        </Select>
       </div>
       <div className="md:col-span-2">
-        <select
-          aria-label="关联商机"
-          className={nativeSelectClassName}
-          value={followUpForm.opportunityId ? String(followUpForm.opportunityId) : 'NONE'}
-          onChange={(e) => setFollowUpForm((prev) => ({ ...prev, opportunityId: e.target.value === 'NONE' ? undefined : Number(e.target.value) }))}
-        >
-          <option value="NONE">不关联商机</option>
-          {opportunityOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-        </select>
+        <Select value={followUpForm.opportunityId ? String(followUpForm.opportunityId) : 'NONE'} onValueChange={(value) => setFollowUpForm((prev) => ({ ...prev, opportunityId: value === 'NONE' ? undefined : Number(value) }))}>
+          <SelectTrigger><SelectValue placeholder="关联商机" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="NONE">不关联商机</SelectItem>
+            {opportunityOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
       <Textarea className="md:col-span-2" value={followUpForm.content || ''} onChange={(e) => setFollowUpForm((prev) => ({ ...prev, content: e.target.value }))} placeholder="跟进内容，例如：客户已确认报价范围，待内部审批。" />
       <Input value={followUpForm.ownerName || ''} onChange={(e) => setFollowUpForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="跟进人" />

@@ -1,7 +1,7 @@
 import React from "react";
-import { Eye, Layers3, Plus, Search, Workflow } from "lucide-react";
-import { Button, EmptyState, SkeletonCard } from "@/components/common";
-import { Pagination } from "@/components/common";
+import { Eye, GitBranch, Layers3, Plus, Search, ShieldCheck, Workflow } from "lucide-react";
+import { Button, EmptyState, Pagination } from "@/components/common";
+import { InnerTableSurface } from "@/components/layout/TablePageLayout";
 import { TEXT } from "./config";
 import { EMPTY_GRAPH, normalizeTags } from "./utils";
 import type { ParsedTemplateGraph, TemplateItem } from "./types";
@@ -13,7 +13,6 @@ interface TemplateLibraryResultsProps {
   total: number;
   pageSize: number;
   currentPage: number;
-  viewMode: "grid" | "list";
   hasActiveFilters: boolean;
   userLoggedIn: boolean;
   templateInsights: Map<string, ParsedTemplateGraph>;
@@ -24,19 +23,29 @@ interface TemplateLibraryResultsProps {
   onPageChange: (page: number) => void;
 }
 
-const renderLoadingState = (viewMode: "grid" | "list") => (
-  <div
-    className={
-      viewMode === "grid"
-        ? "grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3"
-        : "space-y-0"
-    }
-  >
-    {Array.from({ length: viewMode === "grid" ? 6 : 4 }).map((_, index) => (
-      <SkeletonCard key={index} className={viewMode === "list" ? "rounded-none border-0 shadow-none" : ""} />
+const TemplateSkeletonCards = () => (
+  <div className="template-market-grid">
+    {Array.from({ length: 6 }).map((_, index) => (
+      <article key={index} className="template-market-card template-market-card-skeleton">
+        <div className="template-market-card-head">
+          <span className="template-market-skeleton-icon" />
+          <span className="template-market-skeleton-line is-title" />
+        </div>
+        <span className="template-market-skeleton-line is-meta" />
+        <span className="template-market-skeleton-line is-wide" />
+        <span className="template-market-skeleton-line is-wide" />
+        <div className="template-market-skeleton-metrics">
+          <span />
+          <span />
+          <span />
+        </div>
+      </article>
     ))}
   </div>
 );
+
+const compactLabel = (value: string, maxLength = 18) =>
+  value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 
 const TemplateCard: React.FC<{
   template: TemplateItem;
@@ -46,137 +55,81 @@ const TemplateCard: React.FC<{
   onUseTemplate: (templateId: string) => void;
 }> = ({ template, graph, userLoggedIn, onPreview, onUseTemplate }) => {
   const tags = normalizeTags(template.tags);
+  const previewNodes = graph.nodes.slice(0, 3);
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white transition-colors hover:border-slate-300">
-      <div className="flex-1 p-4">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-medium text-slate-500">
-            <Layers3 className="mr-1.5 h-3.5 w-3.5 text-slate-400" />
-            {template.categoryName || TEXT.uncategorized}
-          </span>
-          {template.isSystem ? (
-            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-600 ring-1 ring-emerald-100">
-              {TEXT.systemTemplate}
-            </span>
-          ) : null}
-        </div>
+    <article className="template-market-card">
+      <div className="template-market-card-head">
+        <span className={`template-market-card-icon ${template.isSystem ? "is-system" : "is-custom"}`}>
+          {template.isSystem ? <ShieldCheck size={18} /> : <Workflow size={18} />}
+        </span>
+        <button type="button" title={template.name} onClick={() => onPreview(template)}>
+          {template.name}
+        </button>
+      </div>
 
-        <div className="mt-3">
-          <h3 className="line-clamp-1 text-base font-semibold tracking-tight text-slate-900">
-            {template.name}
-          </h3>
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-500">
-            {template.description || TEXT.noDescription}
-          </p>
-        </div>
+      <div className="template-market-card-meta">
+        <span>{template.categoryName || TEXT.uncategorized}</span>
+        <span>{template.isSystem ? TEXT.systemTemplate : "自定义"}</span>
+        <span>{template.usageCount || 0} 次使用</span>
+      </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-600">
-            {TEXT.nodeCount} {graph.nodes.length}
-          </span>
-          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-600">
-            {TEXT.edgeCount} {graph.edges.length}
-          </span>
-          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-600">
-            {TEXT.templateUsage} {template.usageCount || 0}
-          </span>
-          {tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
-            >
-              {tag}
-            </span>
-          ))}
+      <p className="template-market-card-desc">{template.description || TEXT.noDescription}</p>
+
+      <div className="template-market-structure" aria-label="模板结构">
+        <div>
+          <strong>{graph.nodes.length}</strong>
+          <span>{TEXT.nodeCount}</span>
+        </div>
+        <div>
+          <strong>{graph.edges.length}</strong>
+          <span>{TEXT.edgeCount}</span>
+        </div>
+        <div>
+          <strong>{tags.length}</strong>
+          <span>{TEXT.tags}</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3">
+      <div className="template-market-node-strip">
+        {previewNodes.length > 0 ? (
+          previewNodes.map((node) => (
+            <span key={node.id} title={node.name}>
+              <GitBranch size={12} />
+              <em>{compactLabel(node.name)}</em>
+            </span>
+          ))
+        ) : (
+          <span title={TEXT.invalidDefinition}>
+            <Layers3 size={12} />
+            <em>未解析到流程定义</em>
+          </span>
+        )}
+      </div>
+
+      <div className="template-market-card-tags">
+        {(tags.length > 0 ? tags.slice(0, 4) : [template.categoryName || TEXT.uncategorized]).map((tag) => (
+          <span key={tag}>{tag}</span>
+        ))}
+        {tags.length > 4 ? <span>+{tags.length - 4}</span> : null}
+      </div>
+
+      <div className="template-market-card-actions">
         <Button variant="outline" size="sm" onClick={() => onPreview(template)}>
-          <Eye className="mr-1.5 h-3.5 w-3.5" />
+          <Eye className="h-3.5 w-3.5" />
           {TEXT.preview}
         </Button>
         <Button
           size="sm"
           disabled={!userLoggedIn}
-          onClick={() => onUseTemplate(template.id)}
           title={!userLoggedIn ? TEXT.loginRequired : TEXT.useTemplateTitle}
+          onClick={() => onUseTemplate(template.id)}
         >
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          <Plus className="h-3.5 w-3.5" />
           {TEXT.useTemplate}
         </Button>
       </div>
-    </div>
-  );
-};
-
-const TemplateRow: React.FC<{
-  template: TemplateItem;
-  graph: ParsedTemplateGraph;
-  userLoggedIn: boolean;
-  onPreview: (template: TemplateItem) => void;
-  onUseTemplate: (templateId: string) => void;
-}> = ({ template, graph, userLoggedIn, onPreview, onUseTemplate }) => {
-  const tags = normalizeTags(template.tags);
-
-  return (
-    <div className="flex flex-col gap-4 px-4 py-4 transition-colors hover:bg-slate-50/80 lg:flex-row lg:items-center">
-      <div className="min-w-0 flex-1">
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <h3 className="truncate text-base font-semibold text-slate-900">{template.name}</h3>
-          {template.isSystem ? (
-            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 ring-1 ring-emerald-100">
-              {TEXT.systemTemplate}
-            </span>
-          ) : null}
-        </div>
-
-        <p className="mb-3 line-clamp-2 text-sm text-slate-500">
-          {template.description || TEXT.noDescription}
-        </p>
-
-        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
-          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
-            <Layers3 className="mr-1.5 h-4 w-4 text-slate-400" />
-            {template.categoryName || TEXT.uncategorized}
-          </span>
-          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
-            {TEXT.nodeCount} {graph.nodes.length}
-          </span>
-          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
-            {TEXT.edgeCount} {graph.edges.length}
-          </span>
-          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
-            {TEXT.templateUsage} {template.usageCount || 0}
-          </span>
-          {tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2 lg:self-start">
-        <Button variant="outline" size="sm" onClick={() => onPreview(template)}>
-          <Eye className="mr-2 h-4 w-4" />
-          {TEXT.preview}
-        </Button>
-        <Button
-          size="sm"
-          disabled={!userLoggedIn}
-          onClick={() => onUseTemplate(template.id)}
-          title={!userLoggedIn ? TEXT.loginRequired : TEXT.useTemplateTitle}
-        >
-          <Plus className="mr-1.5 h-4 w-4" />
-          {TEXT.useTemplate}
-        </Button>
-      </div>
-    </div>
+    </article>
   );
 };
 
@@ -187,7 +140,6 @@ export const TemplateLibraryResults: React.FC<TemplateLibraryResultsProps> = ({
   total,
   pageSize,
   currentPage,
-  viewMode,
   hasActiveFilters,
   userLoggedIn,
   templateInsights,
@@ -197,42 +149,48 @@ export const TemplateLibraryResults: React.FC<TemplateLibraryResultsProps> = ({
   onUseTemplate,
   onPageChange,
 }) => (
-  <div className="space-y-4">
-    <div className="min-h-[280px]">
-      {loading ? (
-        renderLoadingState(viewMode)
-      ) : loadError ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-          <EmptyState
-            icon={<Workflow className="h-12 w-12 text-slate-300" />}
-            title={TEXT.loadTemplatesFailed}
-            description={TEXT.emptyDescription}
-            action={
-              <Button variant="outline" onClick={onRetry}>
-                {TEXT.retry}
-              </Button>
-            }
-          />
-        </div>
+  <InnerTableSurface
+    className="template-market-results flex min-h-0 flex-1 flex-col"
+    wrapperClassName="template-market-results-wrapper"
+  >
+    <div className="template-market-results-head admin-source-panel-head">
+      <div>
+        <h3>{TEXT.currentResults}</h3>
+      </div>
+      <span>
+        {templates.length} / {total} 个模板
+      </span>
+    </div>
+
+    <div className="template-market-results-body">
+      {loadError ? (
+        <EmptyState
+          icon={<Workflow className="h-12 w-12 text-slate-300" />}
+          title={TEXT.loadTemplatesFailed}
+          description={TEXT.emptyDescription}
+          action={
+            <Button variant="outline" onClick={onRetry}>
+              {TEXT.retry}
+            </Button>
+          }
+        />
+      ) : loading ? (
+        <TemplateSkeletonCards />
       ) : templates.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-          <EmptyState
-            icon={<Search className="h-12 w-12 text-slate-300" />}
-            title={TEXT.emptyTitle}
-            description={TEXT.emptyDescription}
-            action={
-              hasActiveFilters
-                ? (
-                  <Button variant="outline" onClick={onClearFilters}>
-                    {TEXT.clearFilters}
-                  </Button>
-                )
-                : undefined
-            }
-          />
-        </div>
-      ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+        <EmptyState
+          icon={<Search className="h-12 w-12 text-slate-300" />}
+          title={TEXT.emptyTitle}
+          description={TEXT.emptyDescription}
+          action={
+            hasActiveFilters ? (
+              <Button variant="outline" onClick={onClearFilters}>
+                {TEXT.clearFilters}
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="template-market-grid">
           {templates.map((template) => (
             <TemplateCard
               key={template.id}
@@ -244,35 +202,20 @@ export const TemplateLibraryResults: React.FC<TemplateLibraryResultsProps> = ({
             />
           ))}
         </div>
-      ) : (
-        <div className="space-y-3">
-          {templates.map((template) => (
-            <div
-              key={template.id}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
-            >
-              <TemplateRow
-                template={template}
-                graph={templateInsights.get(template.id) || EMPTY_GRAPH}
-                userLoggedIn={userLoggedIn}
-                onPreview={onPreview}
-                onUseTemplate={onUseTemplate}
-              />
-            </div>
-          ))}
-        </div>
       )}
     </div>
 
     {total > pageSize ? (
-      <Pagination
-        total={total}
-        page={currentPage}
-        pageSize={pageSize}
-        showPageSizeSelector={false}
-        onPageChange={onPageChange}
-        onPageSizeChange={() => undefined}
-      />
+      <div className="template-market-pagination">
+        <Pagination
+          total={total}
+          page={currentPage}
+          pageSize={pageSize}
+          showPageSizeSelector={false}
+          onPageChange={onPageChange}
+          onPageSizeChange={() => undefined}
+        />
+      </div>
     ) : null}
-  </div>
+  </InnerTableSurface>
 );

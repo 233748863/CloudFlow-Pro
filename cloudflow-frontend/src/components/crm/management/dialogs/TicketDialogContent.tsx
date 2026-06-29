@@ -13,7 +13,7 @@ export const TicketDialogContent: React.FC = () => {
         </Select>
       </div>
       <Input value={ticketForm.ticketTitle || ''} onChange={(e) => setTicketForm((prev) => ({ ...prev, ticketTitle: e.target.value }))} placeholder="工单标题" />
-      <div className="space-y-2">
+      <div className="admin-dialog-field">
         <UserSelector
           value={ticketForm.ownerId ? [String(ticketForm.ownerId)] : []}
           onChange={(userIds) => setTicketForm((prev) => ({

@@ -16,23 +16,21 @@ interface UserDashboardQuickActionsProps {
 export const UserDashboardQuickActions: React.FC<UserDashboardQuickActionsProps> = ({
   actions,
 }) => (
-  <section className="card overflow-hidden">
-    <div className="border-b border-slate-100 px-6 py-4 dark:border-slate-800">
-      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-        快捷入口
-      </h2>
+  <article className="quick-actions-card">
+    <div className="quick-actions-header">
+      <h2>快捷入口</h2>
     </div>
 
-    <div className="space-y-3 p-4 bg-gradient-to-b from-white/40 to-slate-50/10 dark:from-slate-900/20 dark:to-slate-950/10">
+    <div className="quick-actions-list">
       {actions.map((action) => (
         <button
           key={action.label}
           type="button"
           onClick={action.onClick}
-          className="cf-interactive-card group flex w-full items-center gap-4 rounded-xl border border-slate-100/50 bg-white/40 p-4 text-left shadow-[0_2px_8px_-2px_rgba(15,23,42,0.01)] dark:border-slate-800/30 dark:bg-slate-950/20"
+          className="quick-action-row group"
         >
           <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${action.toneClassName}`}
+            className={`quick-action-icon ${action.toneClassName}`}
           >
             {action.icon}
           </div>
@@ -50,5 +48,5 @@ export const UserDashboardQuickActions: React.FC<UserDashboardQuickActionsProps>
         </button>
       ))}
     </div>
-  </section>
+  </article>
 );

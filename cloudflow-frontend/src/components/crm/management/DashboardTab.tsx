@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarClock, Clock3, FileWarning, LifeBuoy, ListTodo, ReceiptText, ShieldAlert, Target, TrendingUp, TriangleAlert, Users2, Wallet } from 'lucide-react';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { useCrmManagement } from './store';
 import type { DashboardTone } from './types';
 import { formatDashboardCurrency, formatDashboardDate, renderHealthLabel, renderSeverity, renderStatus } from './helpers';
@@ -249,19 +250,20 @@ export const DashboardTab: React.FC = () => {
   const focusFeedItems = [...riskFeedItems, ...todoFeedItems].slice(0, 5);
 
   return (
-    <section className="space-y-4 animate-fade-in">
-      <div className="cf-section-card bg-mesh-gradient p-0">
-        <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
+    <section className="admin-crm-dashboard-grid">
+      <InnerTableSurface className="admin-crm-command-center" wrapperClassName="p-0">
+        <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">客户经营工作台</h2>
+            <strong>客户经营工作台</strong>
+            <span>核心指标、风险待办和成交推进集中处理</span>
           </div>
         </div>
-        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="admin-crm-metric-grid">
           <DashboardMetricTile
             label="成交管道"
             value={formatDashboardCurrency(pipelineAmount)}
             hint={`${opportunities.length} 个商机，谈判阶段 ${Number(negotiationColumn?.count || 0)} 个`}
-            valueClassName="text-slate-900 dark:text-white"
+            valueClassName="text-slate-900 dark:text-slate-100"
           />
           <DashboardMetricTile
             label="待审批金额"
@@ -282,9 +284,9 @@ export const DashboardTab: React.FC = () => {
             valueClassName="text-cyan-700 dark:text-cyan-300"
           />
         </div>
-      </div>
+      </InnerTableSurface>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_340px]">
+      <div className="grid gap-4">
         <DashboardSection
           title="优先处理"
           aside={(
@@ -294,7 +296,7 @@ export const DashboardTab: React.FC = () => {
           )}
         >
           {actionCards.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="admin-crm-priority-list">
               {actionCards.slice(0, 4).map((item) => (
                 <DashboardActionCard
                   key={item.key}
@@ -310,7 +312,7 @@ export const DashboardTab: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="cf-section-card text-sm text-slate-600 dark:text-slate-300">
+            <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
               当前没有需要首页优先升级处理的事项。
             </div>
           )}
@@ -325,7 +327,7 @@ export const DashboardTab: React.FC = () => {
           )}
         >
           {focusFeedItems.length ? (
-            <div className="space-y-3">
+            <div className="admin-crm-feed-list">
               {focusFeedItems.map((item) => (
                 <DashboardFeedItem
                   key={item.key}
@@ -340,7 +342,7 @@ export const DashboardTab: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="cf-section-card text-sm text-slate-600 dark:text-slate-300">
+            <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
               当前没有跨模块风险或待办。
             </div>
           )}
@@ -355,7 +357,7 @@ export const DashboardTab: React.FC = () => {
           </div>
         )}
       >
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="admin-crm-stage-strip">
           {activeFunnelColumns.map((column) => (
             <DashboardStageCard
               key={column.stage || column.stageLabel}
@@ -366,18 +368,20 @@ export const DashboardTab: React.FC = () => {
             />
           ))}
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="admin-crm-stalled-list">
           {dashboard.stalledOpportunities.length ? dashboard.stalledOpportunities.slice(0, 2).map((item) => (
-            <div key={item.opportunityId} className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/40 dark:bg-amber-950/18">
-              <div className="text-xs font-medium text-amber-700 dark:text-amber-300">阶段卡点</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{item.opportunityName || '未命名商机'}</div>
-              <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                {item.customerName || '-'} · {renderStatus(item.stage)} · {formatDashboardCurrency(item.expectedAmount)}
+            <div key={item.opportunityId} className="admin-crm-stalled-row">
+              <div className="min-w-0">
+                <div className="admin-crm-row-label text-amber-700 dark:text-amber-300">阶段卡点</div>
+                <div className="admin-crm-row-title">{item.opportunityName || '未命名商机'}</div>
+                <div className="admin-crm-row-detail">
+                  {item.customerName || '-'} · {renderStatus(item.stage)} · {formatDashboardCurrency(item.expectedAmount)}
+                </div>
               </div>
-              <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">预计签约 {formatDashboardDate(item.expectedSignDate)}</div>
+              <div className="admin-crm-stalled-date">预计签约 {formatDashboardDate(item.expectedSignDate)}</div>
             </div>
           )) : (
-            <div className="cf-section-card text-sm text-slate-600 dark:text-slate-300 md:col-span-2">
+            <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
               当前没有阶段停滞商机。
             </div>
           )}

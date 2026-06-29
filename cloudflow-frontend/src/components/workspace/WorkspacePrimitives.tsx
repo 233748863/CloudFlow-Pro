@@ -5,14 +5,14 @@ import { TableCell, TableRow } from '@/components/common/table';
 import { EmptyState, LoadingSpinner } from '@/components/common';
 
 export const WorkspaceBackdrop: React.FC = () => (
-  <div className="pointer-events-none fixed inset-0 z-[-1] bg-slate-50 dark:bg-slate-950" />
+  <div className="pointer-events-none fixed inset-0 z-[-1] bg-[var(--cf-bg)] dark:bg-slate-950" />
 );
 
 export const WorkspacePageContent: React.FC<{
   children: React.ReactNode;
   className?: string;
 }> = ({ children, className }) => (
-  <div className={cn('relative z-10 space-y-3 px-4 py-4 md:px-6', className)}>{children}</div>
+  <div className={cn('admin-source-content-grid relative z-10 px-4 py-4 md:px-6', className)}>{children}</div>
 );
 
 export const WorkspaceSectionHeader = ({
@@ -28,10 +28,10 @@ export const WorkspaceSectionHeader = ({
 }) => (
   <div className="flex items-start justify-between gap-4">
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+      <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
         {eyebrow}
       </div>
-      <div className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">{title}</div>
+      <div className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</div>
     </div>
     {actionLabel && onAction ? (
       <button
@@ -55,17 +55,17 @@ export const WorkspaceEmptyPanel = ({
   icon: React.ReactNode;
   title: string;
   description: string;
-  variant?: 'default' | 'glass';
+  variant?: 'default' | 'panel';
 }) => (
   <div
     className={cn(
-      'rounded-2xl',
-      variant === 'glass'
-        ? 'border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88'
-        : 'border border-dashed border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60',
+      'rounded-md',
+      variant === 'panel'
+        ? 'border border-slate-200 bg-[var(--cf-surface-strong)] shadow-none dark:border-slate-800 dark:bg-slate-950/88'
+        : 'border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-900/60',
     )}
   >
-    <EmptyState icon={icon} title={title} description={description} className="px-6 py-12" />
+    <EmptyState icon={icon} title={title} description={description} className="px-6 py-6" />
   </div>
 );
 
@@ -84,17 +84,17 @@ export const WorkspaceStatusPanel = ({
   className?: string;
   iconWrapClassName?: string;
 }) => (
-  <div className={cn('card px-6 py-8 text-center', className)}>
+  <div className={cn('card px-6 py-6 text-center', className)}>
     <div className="flex flex-col items-center justify-center">
       <div
         className={cn(
-          'mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-900 dark:text-slate-500',
+          'mb-4 flex h-14 w-14 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-slate-400 dark:bg-slate-900 dark:text-slate-500',
           iconWrapClassName,
         )}
       >
         {icon}
       </div>
-      <div className="text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">{title}</div>
+      <div className="text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</div>
       {description ? (
         <div className="mt-3 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
       ) : null}
@@ -154,7 +154,7 @@ export const WorkspaceInlineState = ({
     return (
       <div
         className={cn(
-          'rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
+          'rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-6 text-center text-slate-500 shadow-none dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
           className,
         )}
       >
@@ -169,9 +169,9 @@ export const WorkspaceInlineState = ({
 
   return (
     <WorkspaceEmptyPanel
-      variant={type === 'info' ? 'glass' : 'default'}
+      variant={type === 'info' ? 'panel' : 'default'}
       icon={
-        icon || <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200" />
+        icon || <div className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-200" />
       }
       title={String(title)}
       description={description ? String(description) : ''}
@@ -185,7 +185,7 @@ export const WorkspaceTableStateRow = ({
   description,
   icon,
   type = 'empty',
-  variant = 'glass',
+  variant = 'panel',
   rowClassName,
   cellClassName,
 }: {
@@ -194,14 +194,14 @@ export const WorkspaceTableStateRow = ({
   description?: string;
   icon?: React.ReactNode;
   type?: 'loading' | 'empty';
-  variant?: 'default' | 'glass';
+  variant?: 'default' | 'panel';
   rowClassName?: string;
   cellClassName?: string;
 }) => (
   <TableRow className={cn('border-slate-200 hover:bg-transparent dark:border-slate-800', rowClassName)}>
     <TableCell
       colSpan={colSpan}
-      className={cn(type === 'loading' ? 'px-4 py-16' : 'px-4 py-6', cellClassName)}
+      className={cn(type === 'loading' ? 'px-4 py-10' : 'px-4 py-6', cellClassName)}
     >
       {type === 'loading' ? (
         <div className="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400">

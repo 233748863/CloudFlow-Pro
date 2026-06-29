@@ -44,12 +44,12 @@ export const ReceivableDialogContent: React.FC = () => {
       <Input value={receivableForm.contractNo || ''} onChange={(e) => setReceivableForm((prev) => ({ ...prev, contractNo: e.target.value }))} placeholder="合同编号" />
       <DatePicker className="h-11" type="date" value={receivableForm.dueDate || ''} onChange={(e) => setReceivableForm((prev) => ({ ...prev, dueDate: e.target.value }))} placeholder="到期日期" />
       {receivableForm.receivableId ? (
-        <div className="md:col-span-2 space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+        <div className="p-4 admin-dialog-field md:col-span-2 border border-slate-200 p-3 dark:border-slate-800">
           <div className="text-sm font-medium">销项发票联动</div>
           <div className="text-xs text-slate-500">当前发票状态：{renderInvoiceStatus(receivableForm.invoiceStatus)}</div>
-          <div className="space-y-2">
+          <div className="admin-dialog-field">
             {invoiceCandidates.length ? invoiceCandidates.map((item) => (
-              <div key={item.invoiceId} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+              <div key={item.invoiceId} className="p-4 flex items-center justify-between bg-[var(--cf-surface-muted)] px-3 py-2 text-sm dark:bg-slate-900">
                 <div>
                   <div>{item.invoiceCode} / {item.invoiceNo}</div>
                   <div className="text-xs text-slate-500">{item.status || '-'} / {item.grossAmount || 0}</div>

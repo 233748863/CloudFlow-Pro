@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { DASHBOARD_TONE_STYLES, type DashboardTone } from './types';
 import { formatDashboardCurrency } from './helpers';
 
@@ -7,16 +8,16 @@ export const DashboardMetricTile = ({
   label,
   value,
   hint,
-  valueClassName = 'text-slate-900 dark:text-white',
+  valueClassName = 'text-slate-900 dark:text-slate-100',
 }: {
   label: string;
   value: React.ReactNode;
   hint?: string;
   valueClassName?: string;
 }) => (
-  <div className="cf-section-card px-4 py-4">
+  <div className="p-4">
     <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
-    <div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${valueClassName}`}>{value}</div>
+    <div className={`mt-2 text-xl font-semibold tabular-nums ${valueClassName}`}>{value}</div>
     {hint ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
   </div>
 );
@@ -30,9 +31,9 @@ export const DashboardFocusItem = ({
   title: string;
   meta?: string;
 }) => (
-  <div className="cf-section-card px-4 py-4">
+  <div className="p-4">
     <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
-    <div className="mt-2 text-sm font-medium text-slate-900 dark:text-white">{title}</div>
+    <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
     {meta ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{meta}</div> : null}
   </div>
 );
@@ -48,16 +49,16 @@ export const DashboardSection = ({
   aside?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <section className="cf-section-card p-0">
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="px-5 pt-5">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
-        {description ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{description}</div> : null}
+  <InnerTableSurface className="admin-crm-dashboard-section" wrapperClassName="p-0">
+    <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div>
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
       </div>
-      {aside ? <div className="px-5 pt-5">{aside}</div> : null}
+      {aside ? <div>{aside}</div> : null}
     </div>
-    <div className="border-t border-slate-100 p-5 dark:border-slate-800">{children}</div>
-  </section>
+    <div className="admin-crm-section-body">{children}</div>
+  </InnerTableSurface>
 );
 
 export const DashboardActionCard = ({
@@ -84,24 +85,22 @@ export const DashboardActionCard = ({
     <button
       type="button"
       onClick={onAction}
-      className="cf-interactive-card group w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left dark:border-slate-800 dark:bg-slate-900/60"
+      className="admin-crm-action-row group w-full text-left"
     >
       <div className="flex items-start gap-3">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneStyle.icon}`}>
+        <div className={`admin-source-stat-icon h-9 w-9 flex-none ${toneStyle.icon}`}>
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
-          <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{title}</div>
-          <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{detail}</div>
-          <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{meta}</div>
+          <div className="admin-crm-row-label">{label}</div>
+          <div className="admin-crm-row-title">{title}</div>
+          <div className="admin-crm-row-detail">{detail}</div>
+          <div className="admin-crm-row-meta">{meta}</div>
         </div>
-        <div className={`mt-1 text-slate-400 transition-colors ${toneStyle.hover}`}>
+        <div className={`admin-crm-row-action ${toneStyle.hover}`}>
+          <span className={toneStyle.accent}>{actionLabel}</span>
           <ArrowRight size={16} />
         </div>
-      </div>
-      <div className={`mt-3 text-xs font-medium ${toneStyle.accent}`}>
-        {actionLabel}
       </div>
     </button>
   );
@@ -129,23 +128,21 @@ export const DashboardFeedItem = ({
     <button
       type="button"
       onClick={onAction}
-      className="cf-interactive-card group w-full rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 text-left dark:border-slate-800 dark:bg-slate-900/60"
+      className="admin-crm-feed-row group w-full text-left"
     >
       <div className="flex items-start gap-3">
-        <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${toneStyle.icon}`}>
+        <div className={`admin-source-stat-icon mt-0.5 h-9 w-9 flex-none ${toneStyle.icon}`}>
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
-          <div className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{title}</div>
-          <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{detail}</div>
+          <div className="admin-crm-row-label">{label}</div>
+          <div className="admin-crm-row-title">{title}</div>
+          <div className="admin-crm-row-detail">{detail}</div>
         </div>
-        <div className={`mt-1 text-slate-400 transition-colors ${toneStyle.hover}`}>
+        <div className={`admin-crm-row-action ${toneStyle.hover}`}>
+          <span className={toneStyle.accent}>{actionLabel}</span>
           <ArrowRight size={15} />
         </div>
-      </div>
-      <div className={`mt-3 text-xs font-medium ${toneStyle.accent}`}>
-        {actionLabel}
       </div>
     </button>
   );
@@ -162,10 +159,10 @@ export const DashboardStageCard = ({
   amount: number;
   emphasis?: boolean;
 }) => (
-  <div className={`rounded-2xl border px-4 py-4 ${emphasis ? 'border-cyan-200 bg-cyan-50/60 dark:border-cyan-900/40 dark:bg-cyan-950/18' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60'}`}>
-    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+  <div className={`admin-crm-stage-cell${emphasis ? ' is-emphasis' : ''}`}>
+    <div className="admin-crm-row-label">{label}</div>
     <div className="mt-2 flex items-end justify-between gap-3">
-      <div className={`text-2xl font-semibold tabular-nums ${emphasis ? 'text-cyan-700 dark:text-cyan-200' : 'text-slate-900 dark:text-white'}`}>
+      <div className={`text-xl font-semibold tabular-nums ${emphasis ? 'text-cyan-700 dark:text-cyan-200' : 'text-slate-900 dark:text-slate-100'}`}>
         {count}
       </div>
       <div className="text-xs text-slate-500 dark:text-slate-400">{formatDashboardCurrency(amount)}</div>

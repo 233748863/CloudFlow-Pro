@@ -2,6 +2,7 @@ import React from "react";
 import { ArrowRight, Plus, Sparkles, Workflow } from "lucide-react";
 import { Button } from "@/components/common";
 import { BaseDialog } from "@/components/common/BaseDialog";
+import { InnerTableSurface } from "@/components/layout/TablePageLayout";
 import { TEXT } from "./config";
 import { formatNodeType } from "./utils";
 import type { ParsedTemplateGraph, TemplateItem } from "./types";
@@ -17,6 +18,27 @@ interface TemplateLibraryPreviewDialogProps {
   onOpenChange: (open: boolean) => void;
   onUseTemplate: (templateId: string) => void;
 }
+
+const PreviewSection: React.FC<{
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+  bodyClassName?: string;
+}> = ({ title, description, children, bodyClassName }) => (
+  <InnerTableSurface wrapperClassName="p-0">
+    <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div>
+        {typeof title === "string" ? (
+          <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">{title}</div>
+        ) : title}
+        {description ? (
+          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</p>
+        ) : null}
+      </div>
+    </div>
+    <div className={bodyClassName}>{children}</div>
+  </InnerTableSurface>
+);
 
 export const TemplateLibraryPreviewDialog: React.FC<TemplateLibraryPreviewDialogProps> = ({
   open,
@@ -44,14 +66,14 @@ export const TemplateLibraryPreviewDialog: React.FC<TemplateLibraryPreviewDialog
       description={template.description || TEXT.noDescription}
       width="full"
       onClose={() => onOpenChange(false)}
-      bodyClassName="space-y-4"
+      bodyClassName="admin-dialog-stack"
       headerAside={
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             {template.categoryName || TEXT.uncategorized}
           </span>
           {template.isSystem ? (
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-600">
+            <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
               {TEXT.systemTemplate}
             </span>
           ) : null}
@@ -76,31 +98,28 @@ export const TemplateLibraryPreviewDialog: React.FC<TemplateLibraryPreviewDialog
         </>
       }
     >
-      <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <div className="space-y-4">
+      <div className="grid gap-4">
+        <div className="flex flex-col gap-4">
           {template.previewImage ? (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <InnerTableSurface wrapperClassName="p-0">
               <img
                 src={template.previewImage}
                 alt={`${template.name} preview`}
                 className="max-h-[220px] w-full object-cover"
               />
-            </div>
+            </InnerTableSurface>
           ) : null}
 
-          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-950">
-              {TEXT.previewOverview}
-            </div>
-            <dl className="divide-y divide-slate-100">
+          <PreviewSection title={TEXT.previewOverview}>
+            <dl className="divide-y divide-slate-200 dark:divide-slate-800">
               {previewOverviewStats.map((item) => (
                 <div
                   key={item.label}
                   className="flex items-start justify-between gap-3 px-4 py-3"
                 >
-                  <dt className="text-sm text-slate-500">{item.label}</dt>
+                  <dt className="text-sm text-slate-500 dark:text-slate-400">{item.label}</dt>
                   <dd
-                    className="max-w-[160px] truncate text-sm font-medium text-slate-800"
+                    className="max-w-[160px] truncate text-sm font-medium text-slate-800 dark:text-slate-100"
                     title={item.value}
                   >
                     {item.value}
@@ -108,72 +127,60 @@ export const TemplateLibraryPreviewDialog: React.FC<TemplateLibraryPreviewDialog
                 </div>
               ))}
             </dl>
-          </section>
+          </PreviewSection>
 
-          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-950">
-              {TEXT.tags}
-            </div>
-            <div className="flex flex-wrap gap-2 px-4 py-4">
-              {previewTags.length > 0 ? (
-                previewTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
-                  >
-                    {tag}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-slate-400">-</span>
-              )}
-            </div>
-          </section>
+          <PreviewSection title={TEXT.tags} bodyClassName="flex flex-wrap gap-2 px-4 py-4">
+            {previewTags.length > 0 ? (
+              previewTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  {tag}
+                </span>
+              ))
+            ) : (
+              <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+            )}
+          </PreviewSection>
 
-          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-950">
-              {TEXT.nodeTypes}
-            </div>
-            <div className="flex flex-wrap gap-2 px-4 py-4">
-              {previewNodeTypes.length > 0 ? (
-                previewNodeTypes.map((type) => (
-                  <span
-                    key={type}
-                    className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
-                  >
-                    {type}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-slate-400">-</span>
-              )}
-            </div>
-          </section>
+          <PreviewSection title={TEXT.nodeTypes} bodyClassName="flex flex-wrap gap-2 px-4 py-4">
+            {previewNodeTypes.length > 0 ? (
+              previewNodeTypes.map((type) => (
+                <span
+                  key={type}
+                  className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  {type}
+                </span>
+              ))
+            ) : (
+              <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+            )}
+          </PreviewSection>
         </div>
 
-        <div className="space-y-4">
-          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-200 px-4 py-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-                <Sparkles className="h-4 w-4 text-teal-600" />
+        <div className="flex flex-col gap-4">
+          <PreviewSection
+            title={(
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                <Sparkles className="h-4 w-4 text-cyan-600" />
                 {TEXT.previewStructure}
               </div>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                {TEXT.previewStructureDesc}
-              </p>
-            </div>
-
+            )}
+            description={TEXT.previewStructureDesc}
+          >
             {previewGraph.nodes.length > 0 ? (
-              <div className="overflow-x-auto px-4 py-4">
+              <div className="admin-horizontal-scroll px-4 py-4">
                 <div className="flex min-w-max items-center gap-3">
                   {previewGraph.nodes.slice(0, 8).map((node, index) => (
                     <React.Fragment key={node.id}>
-                      <div className="min-w-[180px] rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                        <div className="text-[11px] text-slate-400">
+                      <div className="min-w-[180px] rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500">
                           {formatNodeType(node.type)}
                         </div>
                         <div
-                          className="mt-1 truncate text-sm font-medium text-slate-800"
+                          className="mt-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100"
                           title={node.name}
                         >
                           {node.name}
@@ -185,64 +192,55 @@ export const TemplateLibraryPreviewDialog: React.FC<TemplateLibraryPreviewDialog
                     </React.Fragment>
                   ))}
                   {previewGraph.nodes.length > 8 ? (
-                    <div className="rounded-lg border border-dashed border-slate-200 px-4 py-3 text-sm font-medium text-slate-400">
+                    <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
                       +{previewGraph.nodes.length - 8}
                     </div>
                   ) : null}
                 </div>
               </div>
             ) : (
-              <div className="px-6 py-14 text-center">
-                <Workflow className="mx-auto mb-4 h-10 w-10 text-slate-200" />
-                <p className="text-sm leading-6 text-slate-500">{TEXT.invalidDefinition}</p>
+              <div className="px-6 py-10 text-center">
+                <Workflow className="mx-auto mb-4 h-10 w-10 text-slate-200 dark:text-slate-700" />
+                <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">{TEXT.invalidDefinition}</p>
               </div>
             )}
-          </section>
+          </PreviewSection>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-950">
-                {TEXT.nodeList}
-              </div>
-              <div className="max-h-[320px] overflow-y-auto">
+            <PreviewSection title={TEXT.nodeList} bodyClassName="max-h-[320px] overflow-y-auto">
                 {previewGraph.nodes.length === 0 ? (
-                  <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400">
+                  <div className="flex items-center justify-center px-4 py-10 text-sm text-slate-400 dark:text-slate-500">
                     {TEXT.invalidDefinition}
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {previewGraph.nodes.map((node) => (
                       <div
                         key={node.id}
                         className="flex items-center justify-between gap-3 px-4 py-3"
                       >
-                        <span className="truncate text-sm font-medium text-slate-800">
+                        <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
                           {node.name}
                         </span>
-                        <span className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+                        <span className="shrink-0 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                           {formatNodeType(node.type)}
                         </span>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
-            </section>
+            </PreviewSection>
 
-            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-950">
-                {TEXT.edgeList}
-              </div>
-              <div className="max-h-[320px] overflow-y-auto">
+            <PreviewSection title={TEXT.edgeList} bodyClassName="max-h-[320px] overflow-y-auto">
                 {previewGraph.edges.length === 0 ? (
-                  <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400">
+                  <div className="flex items-center justify-center px-4 py-10 text-sm text-slate-400 dark:text-slate-500">
                     {TEXT.edgeNotFound}
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {previewGraph.edges.map((edge, index) => (
                       <div key={`${edge.source}-${edge.target}-${index}`} className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm text-slate-700">
+                        <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                           <span className="min-w-0 flex-1 truncate font-medium">
                             {nodeNameMap.get(edge.source) || edge.source}
                           </span>
@@ -252,7 +250,7 @@ export const TemplateLibraryPreviewDialog: React.FC<TemplateLibraryPreviewDialog
                           </span>
                         </div>
                         {edge.condition ? (
-                          <div className="mt-2 text-xs leading-5 text-slate-500">
+                          <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
                             {edge.condition}
                           </div>
                         ) : null}
@@ -260,8 +258,7 @@ export const TemplateLibraryPreviewDialog: React.FC<TemplateLibraryPreviewDialog
                     ))}
                   </div>
                 )}
-              </div>
-            </section>
+            </PreviewSection>
           </div>
         </div>
       </div>

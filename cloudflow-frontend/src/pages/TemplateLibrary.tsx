@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Filter, FolderTree, Library, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -6,10 +7,9 @@ import { useWorkflowPermission } from "@/hooks/useWorkflowPermission";
 import request from "@/services/api/request";
 import { DEFAULT_COMMON_TAGS, TEXT } from "./template-library/config";
 import { TemplateLibraryCreateDialog } from "./template-library/TemplateLibraryCreateDialog";
-import { TemplateLibraryFilterBar } from "./template-library/TemplateLibraryFilterBar";
 import { TemplateLibraryPreviewDialog } from "./template-library/TemplateLibraryPreviewDialog";
 import { TemplateLibraryResults } from "./template-library/TemplateLibraryResults";
-import { TemplateLibrarySidebar } from "./template-library/TemplateLibrarySidebar";
+import { TemplateLibraryToolbar } from "./template-library/TemplateLibraryToolbar";
 import type {
   CategoryNode,
   CreateWorkflowResponse,
@@ -23,6 +23,7 @@ import {
   normalizeTags,
   parseTemplateDefinition,
 } from "./template-library/utils";
+import { TablePageLayout } from "@/components/layout/TablePageLayout";
 
 export const TemplateLibrary: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +42,6 @@ export const TemplateLibrary: React.FC = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [recommendedTags, setRecommendedTags] =
     useState<string[]>(DEFAULT_COMMON_TAGS);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [currentPage, setCurrentPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
@@ -111,6 +111,11 @@ export const TemplateLibrary: React.FC = () => {
     Boolean(searchTerm.trim()) ||
     Boolean(selectedCategory) ||
     selectedTags.length > 0;
+  const activeFilterCount =
+    Number(Boolean(searchTerm.trim())) +
+    Number(Boolean(selectedCategory)) +
+    selectedTags.length;
+  const systemTemplateCount = templates.filter((template) => template.isSystem).length;
 
   const loadCategories = useCallback(async () => {
     try {
@@ -276,20 +281,81 @@ export const TemplateLibrary: React.FC = () => {
     }
   };
 
-  return (
-    <div className="space-y-4 px-4 py-4 md:px-6">
-        <TemplateLibraryFilterBar
+  const pageActions = (
+    <div className="template-market-overview">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">WORKFLOW TEMPLATES</p>
+          <h2>{fromCreateFlow ? TEXT.createFromTemplateTitle : TEXT.pageTitle}</h2>
+          <span>{fromCreateFlow ? TEXT.createFromTemplateDescription : TEXT.pageDescription}</span>
+          <div className="admin-source-context-row">
+            <span className="admin-source-context-chip">
+              <strong>{hasActiveFilters ? TEXT.activeFilters : "当前目录"}</strong>
+              <em>{selectedCategoryName}</em>
+            </span>
+            <span className="admin-source-context-chip">
+              <strong>{TEXT.currentResults}</strong>
+              <em>{total}</em>
+            </span>
+            <span className="admin-source-context-chip">
+              <strong>{TEXT.activeFilters}</strong>
+              <em>{activeFilterCount}</em>
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <div className="admin-source-stat-icon"><Library size={18} /></div>
+          <div className="min-w-0">
+            <p>{TEXT.currentResults}</p>
+            <strong>{total}</strong>
+            <span>{hasActiveFilters ? TEXT.activeFilters : TEXT.defaultViewHint}</span>
+          </div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <div className="admin-source-stat-icon"><FolderTree size={18} /></div>
+          <div className="min-w-0">
+            <p>{TEXT.categoryCount}</p>
+            <strong>{categories.length}</strong>
+            <span>{TEXT.categoryNavigation}</span>
+          </div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <div className="admin-source-stat-icon"><Filter size={18} /></div>
+          <div className="min-w-0">
+            <p>{TEXT.activeFilters}</p>
+            <strong>{activeFilterCount}</strong>
+            <span>{selectedCategoryName}</span>
+          </div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <div className="admin-source-stat-icon"><ShieldCheck size={18} /></div>
+          <div className="min-w-0">
+            <p>{TEXT.systemTemplate}</p>
+            <strong>{systemTemplateCount}</strong>
+            <span>{TEXT.systemTemplateHint}</span>
+          </div>
+        </article>
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+        <TemplateLibraryToolbar
           searchTerm={searchTerm}
-          viewMode={viewMode}
           hasActiveFilters={hasActiveFilters}
           fromCreateFlow={fromCreateFlow}
           canManageTemplates={canManageTemplates}
+          categories={categories}
+          recommendedTags={recommendedTags}
           selectedCategory={selectedCategory}
           selectedCategoryName={selectedCategoryName}
           selectedTags={selectedTags}
           total={total}
           onSearchChange={handleSearchChange}
-          onViewModeChange={setViewMode}
+          onCategoryChange={handleCategoryChange}
           onClearFilters={clearFilters}
           onClearCategory={() => handleCategoryChange("")}
           onClearSearch={() => handleSearchChange("")}
@@ -300,36 +366,35 @@ export const TemplateLibrary: React.FC = () => {
           }
           onManageTemplates={() => navigate("/templates/manage")}
         />
+  );
 
-        <div className="grid gap-4 xl:grid-cols-[248px_minmax(0,1fr)]">
-          <TemplateLibrarySidebar
-            categories={categories}
-            total={total}
-            selectedCategory={selectedCategory}
-            recommendedTags={recommendedTags}
-            selectedTags={selectedTags}
-            onCategoryChange={handleCategoryChange}
-            onToggleTag={toggleTag}
-          />
+  const pageContent = (
+        <TemplateLibraryResults
+          templates={templates}
+          loading={loading}
+          loadError={loadError}
+          total={total}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          hasActiveFilters={hasActiveFilters}
+          userLoggedIn={Boolean(user)}
+          templateInsights={templateInsights}
+          onRetry={() => void loadTemplates()}
+          onClearFilters={clearFilters}
+          onPreview={handlePreview}
+          onUseTemplate={handleCreateFromTemplate}
+          onPageChange={setCurrentPage}
+        />
+  );
 
-          <TemplateLibraryResults
-            templates={templates}
-            loading={loading}
-            loadError={loadError}
-            total={total}
-            pageSize={pageSize}
-            currentPage={currentPage}
-            viewMode={viewMode}
-            hasActiveFilters={hasActiveFilters}
-            userLoggedIn={Boolean(user)}
-            templateInsights={templateInsights}
-            onRetry={() => void loadTemplates()}
-            onClearFilters={clearFilters}
-            onPreview={handlePreview}
-            onUseTemplate={handleCreateFromTemplate}
-            onPageChange={setCurrentPage}
-          />
-        </div>
+  return (
+    <section className="admin-source-page template-market-page">
+        <TablePageLayout
+          className="template-market-layout"
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageContent}
+        />
 
         <TemplateLibraryPreviewDialog
           open={showPreview}
@@ -352,7 +417,7 @@ export const TemplateLibrary: React.FC = () => {
           onClose={() => handleCreateModalOpenChange(false)}
           onSubmit={() => void submitCreateWorkflow()}
         />
-    </div>
+    </section>
   );
 };
 

@@ -14,12 +14,14 @@ export const TEXT = {
   clearFilters: "清空筛选",
   gridView: "卡片视图",
   listView: "列表视图",
+  tableView: "表格视图",
   currentResults: "当前结果",
   categoryCount: "分类数",
   activeFilters: "已生效筛选",
   currentView: "当前视图",
   noDescription: "暂无描述",
   systemTemplate: "系统",
+  systemTemplateHint: "当前页可直接复用的系统模板",
   preview: "预览",
   useTemplate: "使用模板",
   templateUsage: "使用次数",
@@ -80,13 +82,13 @@ export const DEFAULT_COMMON_TAGS = [
 ];
 
 export const FILTER_CHIP_CLASS_NAME =
-  "inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-sm transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700";
+  "inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-sm text-slate-700 shadow-none transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-cyan-900/70 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200";
 
 export const PREVIEW_META_LABEL_CLASS_NAME =
-  "text-[10px] font-bold uppercase tracking-wider text-slate-400";
+  "text-[10px] font-bold text-slate-400";
 
 export const PREVIEW_SECTION_HEADER_CLASS_NAME =
-  "border-b border-slate-100 px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500";
+  "border-b border-slate-100 px-5 py-3 text-[11px] font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400";
 
 export const NODE_TYPE_LABELS: Record<string, string> = {
   START: "开始",

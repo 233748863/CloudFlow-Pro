@@ -9,7 +9,7 @@ export const OpportunityBoard: React.FC = () => {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleBoardDragEnd}>
-      <div className="grid gap-4 xl:grid-cols-6">
+      <div className="admin-crm-board-grid">
         {board.map((column) => (
           <DroppableStageColumn
             key={column.stage}

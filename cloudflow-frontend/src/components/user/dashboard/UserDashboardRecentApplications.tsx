@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, FileText } from 'lucide-react';
 import { Button, EmptyState, LoadingSpinner } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 interface UserDashboardRecentApplicationsProps {
   applications: any[];
@@ -13,16 +14,16 @@ export const UserDashboardRecentApplications: React.FC<UserDashboardRecentApplic
   loading,
   onViewAll,
 }) => (
-  <section className="card overflow-hidden">
-    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+  <InnerTableSurface className="dashboard-detail-card" wrapperClassName="flex h-full flex-col p-0">
+    <div className="p-4 admin-source-section-head border-b border-slate-200 dark:border-slate-800">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">最近申请</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">我最近发起的业务流程</p>
+        <strong>最近申请</strong>
+        <span>我最近发起的业务流程</span>
       </div>
       <span className="badge badge-gray">Top 5</span>
     </div>
 
-    <div className="p-6">
+    <div className="p-4">
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <LoadingSpinner size="lg" />
@@ -34,16 +35,16 @@ export const UserDashboardRecentApplications: React.FC<UserDashboardRecentApplic
           description="从快捷入口进入即可发起新的业务流程。"
         />
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3">
           {applications.map((item) => (
             <button
               key={String(item.id || item.processInstanceId || item.businessKey)}
               type="button"
               onClick={onViewAll}
-              className="cf-interactive-card group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left dark:border-slate-800 dark:bg-slate-900/70"
+              className="admin-dashboard-action-row group flex w-full items-center justify-between text-left"
             >
               <div className="flex min-w-0 items-center gap-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-200">
+                <div className="admin-source-stat-icon bg-[#effbfe] text-[#0d95b5] dark:bg-cyan-950/30 dark:text-cyan-200">
                   <FileText size={18} />
                 </div>
                 <div className="min-w-0">
@@ -59,7 +60,7 @@ export const UserDashboardRecentApplications: React.FC<UserDashboardRecentApplic
                 <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
                   {item.createdTime || ''}
                 </p>
-                <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-sky-700 dark:text-sky-200">
+                <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[#0d95b5] dark:text-cyan-200">
                   查看详情
                   <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
                 </p>
@@ -74,5 +75,5 @@ export const UserDashboardRecentApplications: React.FC<UserDashboardRecentApplic
         </div>
       )}
     </div>
-  </section>
+  </InnerTableSurface>
 );

@@ -1,8 +1,8 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
-import { WorkspaceHeroCard } from './WorkspacePanels';
+import { WorkspaceSummaryCard } from './WorkspacePanels';
 
-export interface WorkspaceHeroMetric {
+export interface WorkspaceOverviewMetric {
   label: string;
   value: React.ReactNode;
   hint?: React.ReactNode;
@@ -11,23 +11,21 @@ export interface WorkspaceHeroMetric {
   iconWrapClassName?: string;
   valueClassName?: string;
   hintClassName?: string;
-  glowClassName?: string;
 }
 
-interface WorkspaceHeroMetricsSectionProps {
+interface WorkspaceOverviewMetricsSectionProps {
   badge?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
   children?: React.ReactNode;
-  metrics?: WorkspaceHeroMetric[];
+  metrics?: WorkspaceOverviewMetric[];
   className?: string;
   contentClassName?: string;
-  glowClassName?: string;
   metricsGridClassName?: string;
 }
 
-export const WorkspaceHeroMetricsSection: React.FC<WorkspaceHeroMetricsSectionProps> = ({
+export const WorkspaceOverviewMetricsSection: React.FC<WorkspaceOverviewMetricsSectionProps> = ({
   badge,
   title,
   description,
@@ -36,17 +34,15 @@ export const WorkspaceHeroMetricsSection: React.FC<WorkspaceHeroMetricsSectionPr
   metrics = [],
   className,
   contentClassName,
-  glowClassName,
   metricsGridClassName,
 }) => (
-  <WorkspaceHeroCard
+  <WorkspaceSummaryCard
     badge={badge}
     title={title}
     description={description}
     actions={actions}
     className={className}
     contentClassName={contentClassName}
-    glowClassName={glowClassName}
   >
     <>
       {children}
@@ -55,7 +51,10 @@ export const WorkspaceHeroMetricsSection: React.FC<WorkspaceHeroMetricsSectionPr
           {metrics.map((item) => (
             <div
               key={String(item.label)}
-              className="stat-card rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88"
+              className={cn(
+                'stat-card rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950',
+                item.panelClassName,
+              )}
             >
               {item.icon ? (
                 <div className={cn('stat-icon stat-icon-gray shrink-0', item.iconWrapClassName)}>
@@ -78,5 +77,5 @@ export const WorkspaceHeroMetricsSection: React.FC<WorkspaceHeroMetricsSectionPr
         </div>
       ) : null}
     </>
-  </WorkspaceHeroCard>
+  </WorkspaceSummaryCard>
 );

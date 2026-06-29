@@ -1,29 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { Gauge, Goal, RefreshCcw, Trash2 } from 'lucide-react';
+import { Gauge, Goal, RefreshCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
   DeptSelector,
   Input,
   Label,
+  LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
   UserSelector,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { CrmSalesTarget, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -67,6 +64,15 @@ export default function CrmSalesTargetPage() {
   const [editing, setEditing] = useState<CrmSalesTarget | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CrmSalesTarget | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / 10));
+  const stats = useMemo(
+    () => [
+      { label: '目标总数', value: String(total), meta: `当前第 ${pageNum} 页`, icon: <Goal size={18} />, tone: 'blue' },
+      { label: '目标金额', value: formatCurrency(rows.reduce((sum, row) => sum + Number(row.targetAmount || 0), 0)), meta: '当前页合计', icon: <Gauge size={18} />, tone: 'green' },
+      { label: '实际回款', value: formatCurrency(rows.reduce((sum, row) => sum + Number(row.achievedAmount || 0), 0)), meta: '当前页合计', icon: <Goal size={18} />, tone: 'amber' },
+      { label: '分页', value: `${pageNum}/${totalPages}`, meta: `每页 ${getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10)} 条`, icon: <RefreshCcw size={18} />, tone: 'violet' },
+    ],
+    [pageNum, rows, total, totalPages],
+  );
 
   const load = async () => {
     setLoading(true);
@@ -128,97 +134,124 @@ export default function CrmSalesTargetPage() {
     return '填写 1-12';
   };
 
-  return (
-    <div className="space-y-4 animate-fade-in">
-      <TablePageLayout
-        filters={(
-          <div className="cf-filter-bar">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <Input value={targetName} onChange={(e) => { setPageNum(1); setTargetName(e.target.value); }} placeholder="目标名称" className="w-full sm:w-[220px]" />
-              <div className="w-full sm:w-[160px]">
-                <Select value={dimensionType} onValueChange={(value) => { setPageNum(1); setDimensionType(value); }}>
-                  <SelectTrigger><SelectValue placeholder="维度" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部维度</SelectItem>
-                    {dimensionOptions.map((item) => <SelectItem key={item} value={item}>{dimensionDict.getLabel(item)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full sm:w-[160px]">
-                <Select value={periodType} onValueChange={(value) => { setPageNum(1); setPeriodType(value); }}>
-                  <SelectTrigger><SelectValue placeholder="周期" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部周期</SelectItem>
-                    {periodTypeOptions.map((item) => <SelectItem key={item} value={item}>{periodTypeDict.getLabel(item)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Input value={targetYear} onChange={(e) => { setPageNum(1); setTargetYear(e.target.value); }} placeholder="年份" className="w-full sm:w-[140px]" />
-              <div className="text-xs text-slate-500">第 {pageNum} / {totalPages} 页，共 {total} 条</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCcw size={14} className="mr-1.5" />刷新</Button>
-              <Button size="sm" onClick={() => { setEditing(null); setForm(emptySalesTarget); setDialogOpen(true); }}><Goal size={14} className="mr-1.5" />新增销售目标</Button>
-            </div>
+  const pageActions = (
+    <>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">SALES TARGETS</p>
+            <h2>销售目标</h2>
+            <span>管理个人或部门配额、周期目标、回款完成率和差额</span>
           </div>
-        )}
-        table={(
-          <TableSurfaceCard fill>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1280px]">
-                <TableHeader>
-                  <tr>
-                    <TableHead>目标编号</TableHead>
-                    <TableHead>目标</TableHead>
-                    <TableHead>维度对象</TableHead>
-                    <TableHead>周期</TableHead>
-                    <TableHead>目标金额</TableHead>
-                    <TableHead>实际回款</TableHead>
-                    <TableHead>完成率</TableHead>
-                    <TableHead>差额</TableHead>
-                    <TableHead>更新时间</TableHead>
-                    <TableActionHead>操作</TableActionHead>
+          <div className="admin-source-controls">
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCcw size={16} className={loading ? 'animate-spin' : undefined} />
+              刷新
+            </Button>
+            <Button size="sm" onClick={() => { setEditing(null); setForm(emptySalesTarget); setDialogOpen(true); }}>
+              <Goal size={16} />
+              新增销售目标
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid admin-crm-stat-grid">
+          {stats.map((stat) => (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon">{stat.icon}</div>
+              <div><p>{stat.label}</p><strong>{stat.value}</strong><span>{stat.meta}</span></div>
+            </article>
+          ))}
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar admin-crm-toolbar">
+          <div className="admin-users-filter-grid">
+            <label className="admin-source-search">
+              <span className="input-label">搜索目标</span>
+              <div className="admin-source-search-field">
+                <Search size={16} />
+                <Input className="h-[42px]" value={targetName} onChange={(e) => { setPageNum(1); setTargetName(e.target.value); }} placeholder="目标名称" type="search" />
+              </div>
+            </label>
+            <label>
+              <span className="input-label">维度</span>
+              <Select value={dimensionType} onValueChange={(value) => { setPageNum(1); setDimensionType(value); }}>
+                <SelectTrigger className="h-[42px]"><SelectValue placeholder="维度" /></SelectTrigger>
+                <SelectContent><SelectItem value="ALL">全部维度</SelectItem>{dimensionOptions.map((item) => <SelectItem key={item} value={item}>{dimensionDict.getLabel(item)}</SelectItem>)}</SelectContent>
+              </Select>
+            </label>
+            <label>
+              <span className="input-label">周期</span>
+              <Select value={periodType} onValueChange={(value) => { setPageNum(1); setPeriodType(value); }}>
+                <SelectTrigger className="h-[42px]"><SelectValue placeholder="周期" /></SelectTrigger>
+                <SelectContent><SelectItem value="ALL">全部周期</SelectItem>{periodTypeOptions.map((item) => <SelectItem key={item} value={item}>{periodTypeDict.getLabel(item)}</SelectItem>)}</SelectContent>
+              </Select>
+            </label>
+            <label>
+              <span className="input-label">年份</span>
+              <Input value={targetYear} onChange={(e) => { setPageNum(1); setTargetYear(e.target.value); }} placeholder="年份" />
+            </label>
+          </div>
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface className="admin-crm-table-panel">
+            <table className="unity-data-table admin-source-table admin-crm-table min-w-[1280px]">
+              <thead>
+                <tr>
+                  <th>目标编号</th>
+                  <th>目标</th>
+                  <th>维度对象</th>
+                  <th>周期</th>
+                  <th className="text-right">目标金额</th>
+                  <th className="text-right">实际回款</th>
+                  <th className="text-right">完成率</th>
+                  <th className="text-right">差额</th>
+                  <th>更新时间</th>
+                  <th className="text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={10} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-slate-500">正在加载销售目标...</span></td></tr>
+                ) : rows.length === 0 ? (
+                  <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-slate-500"><Goal className="mx-auto mb-3 h-4 w-4" />暂无销售目标</td></tr>
+                ) : rows.map((row) => (
+                  <tr key={row.salesTargetId}>
+                    <td className="font-mono text-xs">{row.targetNo || '-'}</td>
+                    <td><strong>{row.targetName}</strong><small>{getCrmGenericStatusLabel(row.status)}</small></td>
+                    <td><strong>{dimensionDict.getLabel(row.dimensionType || '') || row.dimensionType || '-'}</strong><small>{row.ownerName || row.deptName || '-'}</small></td>
+                    <td><strong>{periodTypeDict.getLabel(row.periodType || '') || row.periodType || '-'}</strong><small>{row.periodLabel || '-'}</small></td>
+                    <td className="text-right tabular-nums">{formatCurrency(row.targetAmount)}</td>
+                    <td className="text-right tabular-nums">{formatCurrency(row.achievedAmount)}</td>
+                    <td className="text-right tabular-nums">{Number(row.completionRate || 0).toFixed(2)}%</td>
+                    <td className="text-right tabular-nums">{formatCurrency(row.gapAmount)}</td>
+                    <td>{formatDateTimeDisplay(row.updateTime) || '-'}</td>
+                    <td><div className="admin-users-row-actions"><button type="button" title="编辑目标" onClick={() => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }}><Gauge size={15} /></button><button type="button" className="danger" title="删除目标" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
                   </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {rows.map((row) => (
-                    <tr key={row.salesTargetId}>
-                      <td className="px-4 py-3 text-sm">{row.targetNo || '-'}</td>
-                      <td className="px-4 py-3 text-sm"><div>{row.targetName}</div><div className="text-xs text-slate-500">{getCrmGenericStatusLabel(row.status)}</div></td>
-                      <td className="px-4 py-3 text-sm"><div>{dimensionDict.getLabel(row.dimensionType || '') || row.dimensionType || '-'}</div><div className="text-xs text-slate-500">{row.ownerName || row.deptName || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm"><div>{periodTypeDict.getLabel(row.periodType || '') || row.periodType || '-'}</div><div className="text-xs text-slate-500">{row.periodLabel || '-'}</div></td>
-                      <td className="px-4 py-3 text-right text-sm tabular-nums">{formatCurrency(row.targetAmount)}</td>
-                      <td className="px-4 py-3 text-right text-sm tabular-nums">{formatCurrency(row.achievedAmount)}</td>
-                      <td className="px-4 py-3 text-right text-sm tabular-nums">{Number(row.completionRate || 0).toFixed(2)}%</td>
-                      <td className="px-4 py-3 text-right text-sm tabular-nums">{formatCurrency(row.gapAmount)}</td>
-                      <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(row.updateTime) || '-'}</td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          overflowLabel="更多"
-                          actions={[
-                            { label: '编辑目标', icon: <Gauge size={14} />, onClick: () => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'crm:sales-target:edit' },
-                            { label: '删除目标', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true, permissionKey: 'crm:sales-target:remove' },
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                  {!loading && rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={10} className="px-4 py-16 text-center text-sm text-slate-500">
-                        <Goal className="mx-auto mb-3 h-4 w-4" />
-                        暂无销售目标。下一步操作：先维护部门或个人配额，再与 HR 绩效看板中的销售业绩对照完成率。
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </TableSurfaceCard>
-        )}
-        pagination={total > 0 ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} /> : null}
-      />
+                ))}
+              </tbody>
+            </table>
+        </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0
+    ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} />
+    : null;
+
+  return (
+    <>
+      <section className="admin-source-page admin-crm-page admin-crm-sales-targets-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={dialogOpen}
@@ -309,6 +342,6 @@ export default function CrmSalesTargetPage() {
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete ? void removeSalesTarget(confirmDelete) : undefined}
       />
-    </div>
+    </>
   );
 }

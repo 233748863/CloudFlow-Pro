@@ -54,7 +54,7 @@ export const QuoteDialogContent: React.FC = () => {
       <Input value={quoteForm.ownerName || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="负责人" />
       <Input value={quoteForm.currency || 'CNY'} onChange={(e) => setQuoteForm((prev) => ({ ...prev, currency: e.target.value }))} placeholder="币种" />
       <DatePicker className="h-11" type="date" value={quoteForm.validUntil || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, validUntil: e.target.value }))} placeholder="有效期至" />
-      <div className="md:col-span-2 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+      <div className="p-4 md:col-span-2 border border-slate-200 dark:border-slate-800">
         <div className="mb-3 flex items-center justify-between">
           <div>
             <div className="text-sm font-medium">报价行项目</div>
@@ -62,9 +62,9 @@ export const QuoteDialogContent: React.FC = () => {
           </div>
           <Button type="button" size="sm" variant="outline" onClick={addQuoteLine}><Plus size={14} className="mr-1.5" />新增行</Button>
         </div>
-        <div className="space-y-3">
+        <div className="grid gap-3">
           {(quoteForm.quoteLines && quoteForm.quoteLines.length ? quoteForm.quoteLines : [{ ...emptyQuoteLine, sortNo: 1 }]).map((line, index) => (
-            <div key={line.quoteLineId || `line-${index}`} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+            <div key={line.quoteLineId || `line-${index}`} className="p-4 border border-slate-200 p-3 dark:border-slate-800">
               <div className="mb-3 flex items-center justify-between">
                 <div className="text-sm font-medium">第 {index + 1} 行</div>
                 <Button type="button" size="sm" variant="ghost" onClick={() => removeQuoteLine(index)} disabled={(quoteForm.quoteLines?.length || 1) <= 1}><Trash2 size={14} /></Button>

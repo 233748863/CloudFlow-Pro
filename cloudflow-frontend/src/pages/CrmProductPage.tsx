@@ -1,27 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { Boxes, PackagePlus, RefreshCcw, Trash2 } from 'lucide-react';
+import { Boxes, PackagePlus, RefreshCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
   Input,
   Label,
+  LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { CrmProduct, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -49,6 +46,15 @@ export default function CrmProductPage() {
   const [editing, setEditing] = useState<CrmProduct | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CrmProduct | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / 10));
+  const stats = useMemo(
+    () => [
+      { label: '产品总数', value: String(total), meta: `当前第 ${pageNum} 页`, icon: <Boxes size={18} />, tone: 'blue' },
+      { label: '启用产品', value: String(rows.filter((row) => row.status === 'ACTIVE').length), meta: '当前页统计', icon: <PackagePlus size={18} />, tone: 'green' },
+      { label: '分类数', value: String(new Set(rows.map((row) => row.category).filter(Boolean)).size), meta: '当前页统计', icon: <Boxes size={18} />, tone: 'amber' },
+      { label: '分页', value: `${pageNum}/${totalPages}`, meta: `每页 ${getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10)} 条`, icon: <RefreshCcw size={18} />, tone: 'violet' },
+    ],
+    [pageNum, rows, total, totalPages],
+  );
 
   const load = async () => {
     setLoading(true);
@@ -103,84 +109,117 @@ export default function CrmProductPage() {
     }
   };
 
-  return (
-    <div className="space-y-4 animate-fade-in">
-      <TablePageLayout
-        filters={(
-          <div className="cf-filter-bar">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <Input value={productName} onChange={(e) => { setPageNum(1); setProductName(e.target.value); }} placeholder="产品名称" className="w-full sm:w-[220px]" />
-              <Input value={category} onChange={(e) => { setPageNum(1); setCategory(e.target.value); }} placeholder="产品分类" className="w-full sm:w-[220px]" />
-              <div className="w-full sm:w-[180px]">
-                <Select value={status} onValueChange={(value) => { setPageNum(1); setStatus(value); }}>
-                  <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="text-xs text-slate-500">第 {pageNum} / {totalPages} 页，共 {total} 条</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCcw size={14} className="mr-1.5" />刷新</Button>
-              <Button size="sm" onClick={() => { setEditing(null); setForm(emptyProduct); setDialogOpen(true); }}><PackagePlus size={14} className="mr-1.5" />新增产品</Button>
-            </div>
+  const pageActions = (
+    <>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">PRODUCT CATALOG</p>
+            <h2>产品管理</h2>
+            <span>维护产品主数据、分类规格、标准价和可用状态</span>
           </div>
-        )}
-        table={(
-          <TableSurfaceCard fill>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1080px]">
-                <TableHeader>
-                  <tr>
-                    <TableHead>产品编号</TableHead>
-                    <TableHead>产品</TableHead>
-                    <TableHead>分类 / 规格</TableHead>
-                    <TableHead>标准价</TableHead>
-                    <TableHead>负责人</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>更新时间</TableHead>
-                    <TableActionHead>操作</TableActionHead>
+          <div className="admin-source-controls">
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCcw size={16} className={loading ? 'animate-spin' : undefined} />
+              刷新
+            </Button>
+            <Button size="sm" onClick={() => { setEditing(null); setForm(emptyProduct); setDialogOpen(true); }}>
+              <PackagePlus size={16} />
+              新增产品
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid admin-crm-stat-grid">
+          {stats.map((stat) => (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon">{stat.icon}</div>
+              <div><p>{stat.label}</p><strong>{stat.value}</strong><span>{stat.meta}</span></div>
+            </article>
+          ))}
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar admin-crm-toolbar">
+          <div className="admin-users-filter-grid">
+            <label className="admin-source-search">
+              <span className="input-label">搜索产品</span>
+              <div className="admin-source-search-field">
+                <Search size={16} />
+                <Input className="h-[42px]" value={productName} onChange={(e) => { setPageNum(1); setProductName(e.target.value); }} placeholder="产品名称" type="search" />
+              </div>
+            </label>
+            <label>
+              <span className="input-label">产品分类</span>
+              <Input value={category} onChange={(e) => { setPageNum(1); setCategory(e.target.value); }} placeholder="产品分类" />
+            </label>
+            <label>
+              <span className="input-label">状态</span>
+              <Select value={status} onValueChange={(value) => { setPageNum(1); setStatus(value); }}>
+                <SelectTrigger className="h-[42px]"><SelectValue placeholder="状态" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部状态</SelectItem>
+                  {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="admin-users-toolbar-actions"><span className="admin-users-filter-count">当前 {total} 项</span></div>
+          </div>
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface className="admin-crm-table-panel">
+            <table className="unity-data-table admin-source-table admin-crm-table min-w-[1080px]">
+              <thead>
+                <tr>
+                  <th>产品编号</th>
+                  <th>产品</th>
+                  <th>分类 / 规格</th>
+                  <th>标准价</th>
+                  <th>负责人</th>
+                  <th>状态</th>
+                  <th>更新时间</th>
+                  <th className="text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={8} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-slate-500">正在加载产品...</span></td></tr>
+                ) : rows.length === 0 ? (
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500"><Boxes className="mx-auto mb-3 h-4 w-4" />暂无产品</td></tr>
+                ) : rows.map((row) => (
+                  <tr key={row.productId}>
+                    <td className="font-mono text-xs">{row.productNo || '-'}</td>
+                    <td><strong>{row.productName}</strong><small>{row.unit || '-'} / {row.currency || 'CNY'}</small></td>
+                    <td><strong>{row.category || '-'}</strong><small>{row.spec || '-'}</small></td>
+                    <td>{Number(row.standardPrice || 0).toLocaleString('zh-CN')}</td>
+                    <td>{row.ownerName || '-'}</td>
+                    <td><span className={row.status === 'ACTIVE' ? 'badge badge-success' : 'badge badge-gray'}>{getCrmGenericStatusLabel(row.status)}</span></td>
+                    <td>{formatDateTimeDisplay((row as CrmProduct & { updateTime?: string }).updateTime) || '-'}</td>
+                    <td><div className="admin-users-row-actions"><button type="button" title="编辑产品" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><Boxes size={15} /></button><button type="button" className="danger" title="删除产品" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
                   </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {rows.map((row) => (
-                    <tr key={row.productId}>
-                      <td className="px-4 py-3 text-sm">{row.productNo || '-'}</td>
-                      <td className="px-4 py-3 text-sm"><div>{row.productName}</div><div className="text-xs text-slate-500">{row.unit || '-'} / {row.currency || 'CNY'}</div></td>
-                      <td className="px-4 py-3 text-sm"><div>{row.category || '-'}</div><div className="text-xs text-slate-500">{row.spec || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm">{Number(row.standardPrice || 0).toLocaleString('zh-CN')}</td>
-                      <td className="px-4 py-3 text-sm">{row.ownerName || '-'}</td>
-                      <td className="px-4 py-3 text-sm">{getCrmGenericStatusLabel(row.status)}</td>
-                      <td className="px-4 py-3 text-sm">{formatDateTimeDisplay((row as CrmProduct & { updateTime?: string }).updateTime) || '-'}</td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          overflowLabel="更多"
-                          actions={[
-                            { label: '编辑产品', icon: <Boxes size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'crm:product:edit' },
-                            { label: '删除产品', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true, permissionKey: 'crm:product:remove' },
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                  {!loading && rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-16 text-center text-sm text-slate-500">
-                        <Boxes className="mx-auto mb-3 h-4 w-4" />
-                        暂无产品。下一步操作：先维护产品主数据，再在报价中逐步接入行项目选择。
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </TableSurfaceCard>
-        )}
-        pagination={total > 0 ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} /> : null}
-      />
+                ))}
+              </tbody>
+            </table>
+        </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0
+    ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} />
+    : null;
+
+  return (
+    <>
+      <section className="admin-source-page admin-crm-page admin-crm-products-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={dialogOpen}
@@ -243,6 +282,6 @@ export default function CrmProductPage() {
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete ? void removeProduct(confirmDelete) : undefined}
       />
-    </div>
+    </>
   );
 }

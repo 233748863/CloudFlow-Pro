@@ -127,6 +127,27 @@ const OPPORTUNITY_STAGE_ORDER: Record<string, number> = {
   LOST: 6,
 };
 
+type RawOpportunityBoardColumn = CrmOpportunityBoardColumn & {
+  opportunities?: CrmOpportunityBoardColumn['items'];
+};
+
+const normalizeOpportunityBoard = (
+  columns: RawOpportunityBoardColumn[] | null | undefined,
+): CrmOpportunityBoardColumn[] => {
+  if (!Array.isArray(columns)) {
+    return [];
+  }
+
+  return columns.map((column) => ({
+    ...column,
+    items: Array.isArray(column.items)
+      ? column.items
+      : Array.isArray(column.opportunities)
+        ? column.opportunities
+        : [],
+  }));
+};
+
 export const useCrmManagement = () => {
   const ctx = useContext(CrmManagementContext);
   if (!ctx) throw new Error('useCrmManagement must be used within CrmManagementProvider');
@@ -245,7 +266,7 @@ export const CrmManagementProvider: React.FC<{ children: React.ReactNode }> = ({
       setTickets(t.rows || []);
       setContracts(contractResult.rows || []);
       setDashboard(dashboardResult);
-      setBoard(boardResult);
+      setBoard(normalizeOpportunityBoard(boardResult as RawOpportunityBoardColumn[]));
     } catch (error) {
       toast.error(getErrorMessage(error, '加载 CRM 失败'));
     } finally {

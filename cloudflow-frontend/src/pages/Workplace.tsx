@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Search } from 'lucide-react';
+import { AlertTriangle, ArrowRight, FileText, LayoutGrid, Search, Tags } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { FormDefinition, WorkflowDefinition } from '@/types';
@@ -10,7 +10,6 @@ import {
   mapWorkflowBackendForm,
   normalizeWorkflowTags,
 } from '@/components/workflow/catalog';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   getFormDefinition,
   getFormDefinitions,
@@ -23,8 +22,26 @@ import {
   getWorkflowCategoryLabel,
   normalizeWorkflowCategory,
 } from '@/utils/workflowCategory';
-import { Button, EmptyState, FilterChip, Input, PageLoading, SideNavItem } from '@/components/common';
-import { cn } from '@/utils/cn';
+import {
+  Button,
+  EmptyState,
+  FilterChip,
+  Input,
+  PageLoading,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Table,
+  TableActionHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/common';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const parseWorkflowGraph = (
   rawModelJson: unknown,
@@ -55,6 +72,7 @@ export const Workplace = () => {
   const [loadingBoundForm, setLoadingBoundForm] = useState(false);
   const [boundFormError, setBoundFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [invalidModelCount, setInvalidModelCount] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -80,7 +98,7 @@ export const Workplace = () => {
             }
           }
 
-          let invalidModelCount = 0;
+          let skippedModelCount = 0;
           const mapped: WorkflowDefinition[] = Array.from(latestPublishedMap.values())
             .filter(
               (item: any) =>
@@ -105,7 +123,7 @@ export const Workplace = () => {
                   graph: parseWorkflowGraph(item.modelJson, workflowName),
                 };
               } catch (error) {
-                invalidModelCount += 1;
+                skippedModelCount += 1;
                 console.warn(`[Workplace] 跳过模型异常流程: ${workflowName}`, error);
                 return null;
               }
@@ -113,16 +131,16 @@ export const Workplace = () => {
             .filter((item): item is WorkflowDefinition => item !== null);
 
           setWorkflows(mapped);
-          if (invalidModelCount > 0) {
-            toast.warning(`有 ${invalidModelCount} 条流程模型异常，已自动跳过`);
-          }
+          setInvalidModelCount(skippedModelCount);
         } else {
           setWorkflows([]);
+          setInvalidModelCount(0);
         }
       } catch (error) {
         console.error('加载流程列表失败:', error);
         toast.error('加载流程列表失败，请稍后重试');
         setWorkflows([]);
+        setInvalidModelCount(0);
       } finally {
         setLoading(false);
       }
@@ -226,11 +244,31 @@ export const Workplace = () => {
         .filter(Boolean)
         .join(' · ')
     : `已发布 ${workflows.length} 条流程`;
+  const statCards = [
+    { label: '已发布流程', value: String(workflows.length), detail: '启动大厅', icon: LayoutGrid, tone: 'blue' },
+    { label: '当前符合', value: String(filteredWorkflows.length), detail: selectedCategoryLabel, icon: Search, tone: 'green' },
+    { label: '流程分类', value: String(Math.max(categoryFilters.length - 1, 0)), detail: '业务域', icon: FileText, tone: 'amber' },
+    { label: '标签', value: String(allTags.length), detail: selectedTags.length ? `已选 ${selectedTags.length}` : '全部标签', icon: Tags, tone: 'violet' },
+  ];
 
   const handleStartClick = (workflow: WorkflowDefinition) => {
     setBoundFormError(null);
     setTargetWorkflow(workflow);
     setIsFormOpen(true);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedCategory('');
+    setSelectedTags([]);
+  };
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag)
+        ? prev.filter((item) => item !== tag)
+        : [...prev, tag],
+    );
   };
 
   const handleStartProcess = async (formData: Record<string, any>) => {
@@ -273,69 +311,224 @@ export const Workplace = () => {
     }
 
     return (
-      <div className="stagger-container grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 p-6">
-        {filteredWorkflows.map((workflow, index) => {
-          const workflowTags = normalizeWorkflowTags(workflow.tags);
-          const categoryLabel =
-            getWorkflowCategoryLabel(workflow.category) || workflow.category || '未分类';
-          const staggerClass = `stagger-item-${Math.min(index + 1, 10)}`;
+      <Table disableScrollWrapper className="min-w-[1020px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead>流程名称</TableHead>
+            <TableHead>分类与标签</TableHead>
+            <TableHead>流程标识</TableHead>
+            <TableHead>绑定表单</TableHead>
+            <TableActionHead>操作</TableActionHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredWorkflows.map((workflow) => {
+            const workflowTags = normalizeWorkflowTags(workflow.tags);
+            const categoryLabel =
+              getWorkflowCategoryLabel(workflow.category) || workflow.category || '未分类';
 
-          return (
-            <div
-              key={workflow.id}
-              className={cn(
-                "relative flex flex-col justify-between rounded-2xl border border-slate-100/60 bg-white/40 p-5 shadow-[0_2px_12px_-3px_rgba(15,23,42,0.01)] dark:border-slate-800/30 dark:bg-slate-950/20",
-                staggerClass
-              )}
-            >
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/20 dark:text-teal-400 font-bold shadow-[0_2px_8px_rgba(20,184,166,0.08)]">
-                    {workflow.name[0]?.toUpperCase() || 'W'}
+            return (
+              <TableRow key={workflow.id}>
+                <TableCell className="min-w-[320px]">
+                  <div className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">
+                    {workflow.name}
                   </div>
-                  <div className="flex flex-wrap justify-end gap-1 scale-90 origin-right">
+                  <p className="mt-1 line-clamp-2 max-w-xl text-xs leading-5 text-slate-500 dark:text-slate-400">
+                    {workflow.description || '暂无流程描述，点击发起进入表单填写。'}
+                  </p>
+                </TableCell>
+
+                <TableCell className="min-w-[220px]">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="badge badge-primary">{categoryLabel}</span>
-                    <span className="badge badge-gray">v{workflow.version || 1}</span>
-                  </div>
-                </div>
-
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mt-4">
-                  {workflow.name}
-                </h3>
-
-                <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[2rem]">
-                  {workflow.description || '暂无流程描述，点击下方按钮发起流转。'}
-                </p>
-              </div>
-
-              <div className="mt-4 border-t border-slate-100/60 dark:border-slate-800/40 pt-3 flex items-center justify-between gap-2">
-                <div className="flex flex-wrap gap-1 max-w-[60%]">
-                  {workflowTags.length > 0 ? (
-                    workflowTags.slice(0, 2).map((tag) => (
-                      <span key={tag} className="text-[10px] font-medium bg-slate-100/80 text-slate-500 px-1.5 py-0.5 rounded dark:bg-slate-800/60 dark:text-slate-400">
-                        #{tag}
+                    {workflowTags.slice(0, 2).map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                      >
+                        {tag}
                       </span>
-                    ))
+                    ))}
+                    {workflowTags.length > 2 ? (
+                      <span className="text-xs text-slate-400">+{workflowTags.length - 2}</span>
+                    ) : null}
+                  </div>
+                </TableCell>
+
+                <TableCell className="whitespace-nowrap">
+                  <div className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                    {workflow.key}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    v{workflow.version || 1}
+                  </div>
+                </TableCell>
+
+                <TableCell className="whitespace-nowrap">
+                  {workflow.formId ? (
+                    <span className="inline-flex items-center rounded-md border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
+                      已绑定
+                    </span>
                   ) : (
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                      #通用
+                    <span className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                      无表单
                     </span>
                   )}
-                </div>
-                <Button size="sm" className="btn-primary py-1 px-3.5 text-xs rounded-xl shadow-sm" onClick={() => handleStartClick(workflow)}>
-                  发起
-                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                </TableCell>
+
+                <TableCell>
+                  <div className="flex justify-end">
+                    <Button size="sm" className="gap-1.5" onClick={() => handleStartClick(workflow)}>
+                      发起
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     );
   };
 
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">WORKPLACE</p>
+          <h2>工作台</h2>
+          <span>集成组织内已发布流程，按分类和标签快速发起业务流转</span>
+          {invalidModelCount > 0 ? (
+            <div className="admin-source-context-row" role="status">
+              <div className="admin-source-context-chip">
+                <span className="admin-source-context-icon is-warning">
+                  <AlertTriangle size={16} />
+                </span>
+                <strong>模型校验</strong>
+                <em>{invalidModelCount} 条异常</em>
+                <small>已跳过</small>
+              </div>
+            </div>
+          ) : null}
+        </div>
+        <div className="admin-source-controls">
+          {hasActiveFilters ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearFilters}
+            >
+              重置过滤
+            </Button>
+          ) : null}
+          <Button variant="outline" size="sm" onClick={() => navigate('/workflow/design')}>
+            工作流设计中心
+          </Button>
+          <Button size="sm" onClick={() => navigate('/templates')}>
+            浏览预设模板
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon"><Icon size={18} /></div>
+              <div>
+                <p>{stat.label}</p>
+                <strong>{stat.value}</strong>
+                <span>{stat.detail}</span>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+      <section className="card admin-users-toolbar">
+        <div className="grid items-end gap-3 xl:grid-cols-[minmax(18rem,1fr)_220px_auto]">
+          <label className="min-w-0">
+            <span className="input-label">流程搜索</span>
+            <div className="admin-source-search-field">
+              <Search size={16} />
+              <Input
+                className="h-[42px]"
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="流程模型名称、Key、描述信息"
+              />
+            </div>
+          </label>
+
+          <label className="min-w-0">
+            <span className="input-label">分类</span>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="全部流程" />
+              </SelectTrigger>
+              <SelectContent>
+                {categoryFilters.map((option) => (
+                  <SelectItem key={option.value || 'ALL'} value={option.value} label={option.label}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{toolbarSummary}</span>
+            {hasActiveFilters ? (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                重置过滤
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-xs font-medium text-slate-500 dark:text-slate-400">常用标签</span>
+          {allTags.length > 0 ? (
+            allTags.map((tag) => (
+              <FilterChip
+                key={tag}
+                active={selectedTags.includes(tag)}
+                onClick={() => toggleTag(tag)}
+              >
+                {tag}
+              </FilterChip>
+            ))
+          ) : (
+            <span className="text-xs text-slate-400 dark:text-slate-500">暂无标签</span>
+          )}
+        </div>
+      </section>
+  );
+
+  const pageContent = (
+      <InnerTableSurface className="flex min-h-0 flex-1 flex-col" wrapperClassName="flex min-h-0 flex-1 flex-col p-0">
+        <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+          <div>
+            <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">可发起流程</div>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {filteredWorkflows.length} 条 · 表格视图
+            </p>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto">
+          {renderResultContent()}
+        </div>
+      </InnerTableSurface>
+  );
+
   return (
-    <div className="space-y-4">
+    <section className="admin-source-page">
       <WorkflowLaunchDialog
         open={isFormOpen}
         workflow={targetWorkflow}
@@ -347,120 +540,11 @@ export const Workplace = () => {
       />
 
       <TablePageLayout
-        className="gap-5"
-        filters={(
-          <div className="flex flex-col gap-5 rounded-2xl border border-slate-200/40 bg-white/40 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.01)] dark:border-slate-800/30 dark:bg-slate-950/20 backdrop-blur-md">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">流程启动大厅</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">集成了组织内所有已发布的标准化业务流程，随时一键发起流转。</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {hasActiveFilters ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl border-slate-200/60 shadow-sm"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setSelectedCategory('');
-                      setSelectedTags([]);
-                    }}
-                  >
-                    重置过滤
-                  </Button>
-                ) : null}
-                <Button variant="outline" size="sm" className="rounded-xl border-slate-200/60 shadow-sm" onClick={() => navigate('/workflow/design')}>
-                  工作流设计中心
-                </Button>
-                <Button size="sm" className="btn-primary rounded-xl" onClick={() => navigate('/templates')}>
-                  浏览预设模板
-                </Button>
-              </div>
-            </div>
-
-            <div className="h-px bg-slate-200/30 dark:bg-slate-800/30" />
-
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="relative min-w-[260px] flex-1 max-w-md">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="搜索流程模型名称、Key、描述信息..."
-                  className="pl-10 h-10 rounded-xl bg-white/60 dark:bg-slate-950/30 border-slate-200/60 dark:border-slate-800/60"
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span className="font-semibold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-lg">{toolbarSummary}</span>
-                <span className="text-slate-400 dark:text-slate-500">当前符合：{filteredWorkflows.length} 个项目</span>
-              </div>
-            </div>
-          </div>
-        )}
-        table={(<TableSurfaceCard className="border-slate-200/40 dark:border-slate-800/30 bg-white/40 backdrop-blur-md">
-          <div className="grid min-h-[40rem] xl:grid-cols-[220px_minmax(0,1fr)]">
-            <aside className="border-b border-slate-200/40 bg-slate-50/30 dark:border-slate-800/20 dark:bg-slate-950/10 xl:border-b-0 xl:border-r border-slate-200/40 dark:border-slate-800/30">
-              <div className="space-y-5 p-4">
-                <section className="space-y-2">
-                  <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    分类
-                  </div>
-                  <div className="space-y-1">
-                    {categoryFilters.map((option) => {
-                      const active = selectedCategory === option.value;
-                      return (
-                        <SideNavItem
-                          key={option.value || 'ALL'}
-                          size="sm"
-                          active={active}
-                          onClick={() => setSelectedCategory(option.value)}
-                        >
-                          <span className="truncate">{option.label}</span>
-                        </SideNavItem>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                <section className="space-y-2">
-                  <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    标签
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {allTags.map((tag) => {
-                      const active = selectedTags.includes(tag);
-                      return (
-                        <FilterChip
-                          key={tag}
-                          active={active}
-                          onClick={() =>
-                            setSelectedTags((prev) =>
-                              prev.includes(tag)
-                                ? prev.filter((item) => item !== tag)
-                                : [...prev, tag],
-                            )
-                          }
-                        >
-                          {tag}
-                        </FilterChip>
-                      );
-                    })}
-                  </div>
-                </section>
-              </div>
-            </aside>
-
-            <section className="flex min-h-0 flex-col">
-              <div className="flex-1 overflow-y-auto">
-                {renderResultContent()}
-              </div>
-            </section>
-          </div>
-        </TableSurfaceCard>)}
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageContent}
       />
-    </div>
+    </section>
   );
 };
 

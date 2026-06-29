@@ -10,7 +10,7 @@ export const formatDashboardDate = (value?: string) => {
 };
 
 export const renderHealthBadge = (level?: string) => (
-  <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${HEALTH_TONE[level || 'GREEN'] || HEALTH_TONE.GREEN}`}>
+  <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-medium ${HEALTH_TONE[level || 'GREEN'] || HEALTH_TONE.GREEN}`}>
     {healthLabelMap[level || 'GREEN'] || level || '健康'}
   </span>
 );

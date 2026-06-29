@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { ListOrdered, RefreshCcw, Settings2, Trash2 } from 'lucide-react';
+import { ListOrdered, RefreshCcw, Search, Settings2, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -9,21 +9,18 @@ import {
   DeptSelector,
   Input,
   Label,
+  LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { CrmAssignmentRule, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -56,6 +53,15 @@ export default function CrmAssignmentRulePage() {
   const [editing, setEditing] = useState<CrmAssignmentRule | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CrmAssignmentRule | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / 10));
+  const stats = useMemo(
+    () => [
+      { label: '规则总数', value: String(total), meta: `当前第 ${pageNum} 页`, icon: <ListOrdered size={18} />, tone: 'blue' },
+      { label: '启用规则', value: String(rows.filter((row) => row.status === 'ACTIVE').length), meta: '当前页统计', icon: <ShieldCheck size={18} />, tone: 'green' },
+      { label: '自动回收', value: String(rows.filter((row) => row.ruleType === 'AUTO_RELEASE').length), meta: '当前页统计', icon: <RefreshCcw size={18} />, tone: 'amber' },
+      { label: '分页', value: `${pageNum}/${totalPages}`, meta: `每页 ${getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10)} 条`, icon: <Settings2 size={18} />, tone: 'violet' },
+    ],
+    [pageNum, rows, total, totalPages],
+  );
 
   const load = async () => {
     setLoading(true);
@@ -110,99 +116,140 @@ export default function CrmAssignmentRulePage() {
     }
   };
 
-  return (
-    <div className="space-y-4 animate-fade-in">
-      <TablePageLayout
-        filters={(
-          <div className="cf-filter-bar">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <Input value={ruleName} onChange={(e) => { setPageNum(1); setRuleName(e.target.value); }} placeholder="规则名称" className="w-full sm:w-[220px]" />
-              <div className="w-full sm:w-[160px]">
-                <Select value={ruleType} onValueChange={(value) => { setPageNum(1); setRuleType(value); }}>
-                  <SelectTrigger><SelectValue placeholder="规则类型" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部类型</SelectItem>
-                    {ruleTypeOptions.map((item) => <SelectItem key={item} value={item}>{ruleTypeDict.getLabel(item)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+  const pageActions = (
+    <>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">ASSIGNMENT RULES</p>
+            <h2>分配规则</h2>
+            <span>配置客户回收、领取上限、派单范围和规则优先级</span>
+          </div>
+          <div className="admin-source-controls">
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCcw size={16} className={loading ? 'animate-spin' : undefined} />
+              刷新
+            </Button>
+            <Button size="sm" onClick={() => { setEditing(null); setForm(emptyRule); setDialogOpen(true); }}>
+              <ListOrdered size={16} />
+              新增规则
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid admin-crm-stat-grid">
+          {stats.map((stat) => (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon">{stat.icon}</div>
+              <div>
+                <p>{stat.label}</p>
+                <strong>{stat.value}</strong>
+                <span>{stat.meta}</span>
               </div>
-              <div className="w-full sm:w-[160px]">
-                <Select value={status} onValueChange={(value) => { setPageNum(1); setStatus(value); }}>
-                  <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+            </article>
+          ))}
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar admin-crm-toolbar">
+          <div className="admin-users-filter-grid">
+            <label className="admin-source-search">
+              <span className="input-label">搜索规则</span>
+              <div className="admin-source-search-field">
+                <Search size={16} />
+                <Input className="h-[42px]" value={ruleName} onChange={(e) => { setPageNum(1); setRuleName(e.target.value); }} placeholder="规则名称" type="search" />
               </div>
-              <div className="text-xs text-slate-500">第 {pageNum} / {totalPages} 页，共 {total} 条</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCcw size={14} className="mr-1.5" />刷新</Button>
-              <Button size="sm" onClick={() => { setEditing(null); setForm(emptyRule); setDialogOpen(true); }}><ListOrdered size={14} className="mr-1.5" />新增规则</Button>
+            </label>
+            <label>
+              <span className="input-label">规则类型</span>
+              <Select value={ruleType} onValueChange={(value) => { setPageNum(1); setRuleType(value); }}>
+                <SelectTrigger className="h-[42px]"><SelectValue placeholder="规则类型" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部类型</SelectItem>
+                  {ruleTypeOptions.map((item) => <SelectItem key={item} value={item}>{ruleTypeDict.getLabel(item)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </label>
+            <label>
+              <span className="input-label">状态</span>
+              <Select value={status} onValueChange={(value) => { setPageNum(1); setStatus(value); }}>
+                <SelectTrigger className="h-[42px]"><SelectValue placeholder="状态" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部状态</SelectItem>
+                  {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">当前 {total} 项</span>
             </div>
           </div>
-        )}
-        table={(
-          <TableSurfaceCard fill>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1200px]">
-                <TableHeader>
-                  <tr>
-                    <TableHead>优先级</TableHead>
-                    <TableHead>规则名称</TableHead>
-                    <TableHead>类型</TableHead>
-                    <TableHead>适用范围</TableHead>
-                    <TableHead>阈值</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>更新时间</TableHead>
-                    <TableActionHead>操作</TableActionHead>
-                  </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {rows.map((row) => (
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface className="admin-crm-table-panel">
+            <table className="unity-data-table admin-source-table admin-crm-table min-w-[1180px]">
+              <thead>
+                <tr>
+                  <th>优先级</th>
+                  <th>规则名称</th>
+                  <th>类型</th>
+                  <th>适用范围</th>
+                  <th>阈值</th>
+                  <th>状态</th>
+                  <th>更新时间</th>
+                  <th className="text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={8} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-slate-500">正在加载分配规则...</span></td></tr>
+                ) : rows.length === 0 ? (
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500"><ListOrdered className="mx-auto mb-3 h-4 w-4" />暂无分配规则</td></tr>
+                ) : (
+                  rows.map((row) => (
                     <tr key={row.ruleId}>
-                      <td className="px-4 py-3 text-sm">{row.priority ?? 100}</td>
-                      <td className="px-4 py-3 text-sm"><div>{row.ruleName}</div><div className="text-xs text-slate-500">{row.remark || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm">{ruleTypeDict.getLabel(row.ruleType || '') || row.ruleType}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <div>部门：{row.deptName || '全部'}</div>
-                        <div className="text-xs text-slate-500">等级：{row.customerLevel || '全部'}；标签：{row.customerTags || '全部'}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="font-mono text-xs">{row.priority ?? 100}</td>
+                      <td><strong>{row.ruleName}</strong><small>{row.remark || '-'}</small></td>
+                      <td>{ruleTypeDict.getLabel(row.ruleType || '') || row.ruleType}</td>
+                      <td><strong>部门：{row.deptName || '全部'}</strong><small>等级：{row.customerLevel || '全部'}；标签：{row.customerTags || '全部'}</small></td>
+                      <td>
                         {row.ruleType === 'AUTO_RELEASE' ? `${row.inactiveDays || '-'} 天未跟进` : null}
                         {row.ruleType === 'CLAIM_LIMIT' ? `单人持有上限 ${row.maxPerOwner || '-'}` : null}
                         {row.ruleType === 'ASSIGN' ? '按规则派单' : null}
                       </td>
-                      <td className="px-4 py-3 text-sm">{getCrmGenericStatusLabel(row.status)}</td>
-                      <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(row.updateTime) || '-'}</td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          overflowLabel="更多"
-                          actions={[
-                            { label: '编辑规则', icon: <Settings2 size={14} />, onClick: () => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'crm:assignment-rule:edit' },
-                            { label: '删除规则', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true, permissionKey: 'crm:assignment-rule:remove' },
-                          ]}
-                        />
+                      <td><span className={row.status === 'ACTIVE' ? 'badge badge-success' : 'badge badge-gray'}>{getCrmGenericStatusLabel(row.status)}</span></td>
+                      <td>{formatDateTimeDisplay(row.updateTime) || '-'}</td>
+                      <td>
+                        <div className="admin-users-row-actions">
+                          <button type="button" title="编辑规则" onClick={() => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }}><Settings2 size={15} /></button>
+                          <button type="button" className="danger" title="删除规则" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
-                  {!loading && rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-16 text-center text-sm text-slate-500">
-                        <ListOrdered className="mx-auto mb-3 h-4 w-4" />
-                        暂无分配规则。建议先配置 “AUTO_RELEASE” 回收阈值，然后再按部门配置抢单上限。
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </TableSurfaceCard>
-        )}
-        pagination={total > 0 ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} /> : null}
-      />
+                  ))
+                )}
+              </tbody>
+            </table>
+        </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0
+    ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} />
+    : null;
+
+  return (
+    <>
+      <section className="admin-source-page admin-crm-page admin-crm-rules-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={dialogOpen}
@@ -292,6 +339,6 @@ export default function CrmAssignmentRulePage() {
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete ? void removeRule(confirmDelete) : undefined}
       />
-    </div>
+    </>
   );
 }
