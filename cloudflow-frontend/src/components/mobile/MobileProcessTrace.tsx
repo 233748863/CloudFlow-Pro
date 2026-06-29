@@ -23,27 +23,27 @@ interface MobileProcessTraceProps {
 const statusConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
   finished: {
     icon: <CheckCircle size={18} className="text-green-500" />,
-    color: 'border-green-500 bg-green-50',
+    color: 'border-green-500 bg-green-50 dark:bg-green-950/40',
     label: '已完成',
   },
   active: {
     icon: <Clock size={18} className="text-cyan-500 animate-pulse" />,
-    color: 'border-cyan-400 bg-cyan-50',
+    color: 'border-cyan-400 bg-cyan-50 dark:bg-cyan-950/40',
     label: '处理中',
   },
   pending: {
     icon: <Clock size={18} className="text-slate-400" />,
-    color: 'border-slate-300 bg-slate-50',
+    color: 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900',
     label: '待处理',
   },
   rejected: {
     icon: <XCircle size={18} className="text-red-500" />,
-    color: 'border-red-500 bg-red-50',
+    color: 'border-red-500 bg-red-50 dark:bg-red-950/40',
     label: '已拒绝',
   },
   skipped: {
     icon: <AlertCircle size={18} className="text-slate-400" />,
-    color: 'border-slate-300 bg-slate-50',
+    color: 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900',
     label: '已跳过',
   },
 };
@@ -144,10 +144,10 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
 
   if (loading) {
     return (
-      <div className="flex flex-col h-full bg-white">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
-          <button onClick={onBack} className="p-1"><ArrowLeft size={20} className="text-slate-600" /></button>
-          <h2 className="text-base font-semibold text-slate-800">流程轨迹</h2>
+      <div className="flex h-full flex-col bg-[var(--cf-bg)] text-[var(--cf-text)]">
+        <div className="flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
+          <button onClick={onBack} className="p-1"><ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" /></button>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">流程轨迹</h2>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
@@ -158,15 +158,15 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
 
   if (error) {
     return (
-      <div className="flex flex-col h-full bg-white">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
-          <button onClick={onBack} className="p-1"><ArrowLeft size={20} className="text-slate-600" /></button>
-          <h2 className="text-base font-semibold text-slate-800">流程轨迹</h2>
+      <div className="flex h-full flex-col bg-[var(--cf-bg)] text-[var(--cf-text)]">
+        <div className="flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
+          <button onClick={onBack} className="p-1"><ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" /></button>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">流程轨迹</h2>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4">
           <AlertCircle className="text-red-500" size={32} />
           <p className="text-sm text-red-500">{error}</p>
-          <button onClick={loadTrace} className="rounded-xl bg-cyan-600 px-4 py-2 text-sm text-white">
+          <button onClick={loadTrace} className="rounded-md bg-cyan-600 px-4 py-2 text-sm text-white">
             重新加载
           </button>
         </div>
@@ -175,55 +175,55 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white sticky top-0 z-30">
+    <div className="flex h-full flex-col bg-[var(--cf-bg)] text-[var(--cf-text)]">
+      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
         <button onClick={onBack} className="p-1">
-          <ArrowLeft size={20} className="text-slate-600" />
+          <ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" />
         </button>
-        <h2 className="text-base font-semibold text-slate-800">流程轨迹</h2>
-        <span className="text-xs text-slate-500 ml-auto">{nodes.length} 个节点</span>
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">流程轨迹</h2>
+        <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">{nodes.length} 个节点</span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {nodes.length === 0 ? (
-          <div className="text-center text-sm text-slate-500 py-8">暂无流程轨迹</div>
+          <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">暂无流程轨迹</div>
         ) : (
           <div className="relative">
-            <div className="absolute left-[21px] top-4 bottom-4 w-0.5 bg-slate-200" />
+            <div className="absolute bottom-4 left-[21px] top-4 w-0.5 bg-slate-200 dark:bg-slate-800" />
 
             {nodes.map((node, index) => {
               const config = statusConfig[node.status] || statusConfig.pending;
               return (
                 <div key={`${node.id}_${index}`} className="relative flex gap-3 mb-4 last:mb-0">
-                  <div className={`relative z-10 w-[44px] h-[44px] shrink-0 rounded-full border-2 flex items-center justify-center bg-white ${config.color}`}>
+                  <div className={`relative z-10 flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full border-2 bg-[var(--cf-surface-strong)] ${config.color}`}>
                     {config.icon}
                   </div>
 
                   <div className="flex-1 min-w-0 pt-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-800 truncate">{node.name}</span>
+                      <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{node.name}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        node.status === 'finished' ? 'bg-green-100 text-green-700' :
-                        node.status === 'active' ? 'bg-cyan-50 text-cyan-700' :
-                        node.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                        'bg-slate-100 text-slate-600'
+                        node.status === 'finished' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-200' :
+                        node.status === 'active' ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200' :
+                        node.status === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-200' :
+                        'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                       }`}>
                         {config.label}
                       </span>
                     </div>
 
                     {node.operatorName && (
-                      <p className="text-xs text-slate-500 mt-1">处理人: {node.operatorName}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">处理人: {node.operatorName}</p>
                     )}
 
                     {node.comment && (
-                      <p className="text-xs text-slate-600 mt-1 bg-slate-50 rounded px-2 py-1 break-words">
+                      <p className="mt-1 break-words rounded bg-slate-50 px-2 py-1 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-300">
                         "{node.comment}"
                       </p>
                     )}
 
                     {node.time && (
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                         {new Date(node.time).toLocaleString('zh-CN')}
                       </p>
                     )}

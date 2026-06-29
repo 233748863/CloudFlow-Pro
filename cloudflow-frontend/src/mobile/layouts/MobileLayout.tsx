@@ -14,7 +14,7 @@ export const MobileLayout: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 font-[Inter]">
+    <div className="mobile-app-shell flex h-screen flex-col bg-[var(--cf-bg)] font-[Inter] text-[var(--cf-text)]">
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto pb-16">
         <Outlet />
@@ -22,7 +22,7 @@ export const MobileLayout: React.FC = () => {
 
       {/* Bottom Tab Bar */}
       <nav 
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 flex items-center justify-around z-50 pb-safe"
+        className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-slate-200 bg-[var(--cf-surface-strong)] pb-safe dark:border-slate-800"
         role="navigation"
         aria-label="主导航"
       >
@@ -41,13 +41,13 @@ export const MobileLayout: React.FC = () => {
               <tab.icon
                 size={24}
                 className={`mb-1 transition-colors ${
-                  isActive ? 'text-pink-500' : 'text-slate-400'
+                  isActive ? 'text-[#0d95b5]' : 'text-slate-400'
                 }`}
                 aria-hidden="true"
               />
               <span
                 className={`text-[10px] font-medium ${
-                  isActive ? 'text-pink-500' : 'text-slate-500'
+                  isActive ? 'text-[#0d95b5]' : 'text-slate-500'
                 }`}
               >
                 {tab.label}

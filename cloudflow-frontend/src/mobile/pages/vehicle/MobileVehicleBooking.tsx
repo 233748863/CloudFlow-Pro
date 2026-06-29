@@ -145,9 +145,9 @@ export const MobileVehicleBooking: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[var(--cf-surface-strong)]">
       {/* Navbar */}
-      <div className="h-12 border-b flex items-center px-4 sticky top-0 bg-white z-10">
+      <div className="h-12 border-b flex items-center px-4 sticky top-0 bg-[var(--cf-surface-strong)] z-10">
         <button onClick={() => navigate(-1)} className="mr-4">
           <ChevronLeft />
         </button>
@@ -157,9 +157,9 @@ export const MobileVehicleBooking: React.FC = () => {
       <div className="p-4 pb-20">
         {/* Progress */}
         <div className="flex mb-8">
-          <div className={`flex-1 h-1 ${step >= 1 ? 'bg-pink-500' : 'bg-slate-200'}`}></div>
-          <div className={`flex-1 h-1 ${step >= 2 ? 'bg-pink-500' : 'bg-slate-200'}`}></div>
-          <div className={`flex-1 h-1 ${step >= 3 ? 'bg-pink-500' : 'bg-slate-200'}`}></div>
+          <div className={`flex-1 h-1 ${step >= 1 ? 'bg-[#0d95b5]' : 'bg-slate-200'}`}></div>
+          <div className={`flex-1 h-1 ${step >= 2 ? 'bg-[#0d95b5]' : 'bg-slate-200'}`}></div>
+          <div className={`flex-1 h-1 ${step >= 3 ? 'bg-[#0d95b5]' : 'bg-slate-200'}`}></div>
         </div>
 
         {step === 1 && (
@@ -167,7 +167,7 @@ export const MobileVehicleBooking: React.FC = () => {
             <h2 className="text-xl font-bold">选择车辆与时间</h2>
             {loading ? (
               <div className="flex justify-center items-center py-8">
-                <Loader2 className="animate-spin text-pink-500" size={32} />
+                <Loader2 className="animate-spin text-[#0d95b5]" size={32} />
               </div>
             ) : (
               <div className="space-y-4">
@@ -293,7 +293,7 @@ export const MobileVehicleBooking: React.FC = () => {
                 上一步
               </Button>
               <Button 
-                className="flex-1 h-12 bg-pink-500" 
+                className="flex-1 h-12 bg-[#0d95b5]" 
                 onClick={handleSubmit}
                 disabled={submitting}
               >

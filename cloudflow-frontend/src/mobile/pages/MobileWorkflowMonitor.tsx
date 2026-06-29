@@ -53,7 +53,7 @@ function MobileStatCard({
   color: string;
 }) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+    <div className="bg-[var(--cf-surface-strong)] rounded-lg shadow-none border border-gray-100 p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-gray-500">{title}</span>
         <Icon className={`w-4 h-4 ${color}`} />
@@ -129,9 +129,9 @@ export const MobileWorkflowMonitor: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-[var(--cf-bg)]">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 text-pink-400 animate-spin mx-auto mb-3" />
+          <RefreshCw className="w-8 h-8 text-[#3fb8d0] animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">加载中...</p>
         </div>
       </div>
@@ -140,13 +140,13 @@ export const MobileWorkflowMonitor: React.FC = () => {
 
   if (error && !metrics) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
+      <div className="flex items-center justify-center min-h-screen bg-[var(--cf-bg)] p-4">
         <div className="text-center">
           <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-3" />
           <p className="text-sm text-gray-600 mb-4">{error}</p>
           <button
             onClick={fetchData}
-            className="px-4 py-2 bg-pink-400 text-white text-sm rounded-lg active:bg-pink-500"
+            className="px-4 py-2 bg-[#3fb8d0] text-white text-sm rounded-lg active:bg-[#0d95b5]"
           >
             重试
           </button>
@@ -178,13 +178,13 @@ export const MobileWorkflowMonitor: React.FC = () => {
   const completionRate = a.approvalRate || 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-[var(--cf-bg)] pb-20">
       {/* 顶部标题栏 */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-gray-200 sticky top-0 z-30">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-pink-500" />
+              <BarChart3 className="w-5 h-5 text-[#0d95b5]" />
               <h1 className="text-lg font-bold text-gray-800">工作流监控</h1>
             </div>
             <button
@@ -198,7 +198,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
               className={`px-2 py-1 rounded text-xs ${
-                autoRefresh ? 'bg-pink-50 text-pink-600' : 'bg-gray-100 text-gray-500'
+                autoRefresh ? 'bg-[#effbfe] text-[#0b7894]' : 'bg-gray-100 text-gray-500'
               }`}
             >
               自动刷新 {autoRefresh ? '开' : '关'}
@@ -217,7 +217,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
             title="流程总数"
             value={m.totalInstances}
             icon={FileText}
-            color="text-pink-500"
+            color="text-[#0d95b5]"
           />
           <MobileStatCard
             title="运行中"
@@ -240,7 +240,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
         </div>
 
         {/* 今日统计 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        <div className="bg-[var(--cf-surface-strong)] rounded-lg shadow-none border border-gray-100 p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
             今日统计
@@ -248,7 +248,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
               <div className="text-xs text-gray-500 mb-1">新增实例</div>
-              <div className="text-xl font-bold text-pink-500">{m.todayInstances}</div>
+              <div className="text-xl font-bold text-[#0d95b5]">{m.todayInstances}</div>
             </div>
             <div>
               <div className="text-xs text-gray-500 mb-1">完成任务</div>
@@ -262,7 +262,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
         </div>
 
         {/* 流程状态分布 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        <div className="bg-[var(--cf-surface-strong)] rounded-lg shadow-none border border-gray-100 p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">流程状态分布</h2>
           <MobileProgressBar
             label="运行中"
@@ -292,7 +292,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
 
         {/* 流程类型统计 */}
         {Object.keys(a.byProcessKey || {}).length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg shadow-none border border-gray-100 p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">流程类型统计</h2>
             {Object.entries(a.byProcessKey || {}).map(([type, count]) => (
               <MobileProgressBar
@@ -300,12 +300,12 @@ export const MobileWorkflowMonitor: React.FC = () => {
                 label={type}
                 value={count}
                 max={Math.max(...Object.values(a.byProcessKey || {}), 1)}
-                color="text-pink-500"
+                color="text-[#0d95b5]"
               />
             ))}
             <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
               <span className="text-xs text-gray-500">平均处理时长</span>
-              <span className="text-lg font-bold text-pink-500">
+              <span className="text-lg font-bold text-[#0d95b5]">
                 {a.avgDurationHours.toFixed(1)} <span className="text-xs font-normal text-gray-400">小时</span>
               </span>
             </div>
@@ -313,7 +313,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
         )}
 
         {/* 系统健康状态 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        <div className="bg-[var(--cf-surface-strong)] rounded-lg shadow-none border border-gray-100 p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
             <Heart className="w-4 h-4 text-red-500" />
             系统健康状态
@@ -356,7 +356,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
 
         {/* 操作统计 */}
         {Object.keys(m.actionCounters).length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg shadow-none border border-gray-100 p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
               <Zap className="w-4 h-4 text-purple-500" />
               操作统计
@@ -367,7 +367,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
                   <span className="text-gray-600">{actionDict.getLabel(action) || action}</span>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-800">{count}</span>
-                    <span className="px-1.5 py-0.5 bg-pink-50 text-pink-600 rounded text-xs">
+                    <span className="px-1.5 py-0.5 bg-[#effbfe] text-[#0b7894] rounded text-xs">
                       今日 {m.todayCounters[action] || 0}
                     </span>
                   </div>

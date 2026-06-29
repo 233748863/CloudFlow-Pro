@@ -26,11 +26,11 @@ interface ReimbursementForm {
 }
 
 const expenseTypes: { value: ExpenseType; label: string; color: string }[] = [
-  { value: 'travel', label: '差旅费', color: 'bg-pink-50 text-pink-500' },
-  { value: 'meal', label: '餐饮费', color: 'bg-green-100 text-green-600' },
-  { value: 'accommodation', label: '住宿费', color: 'bg-purple-100 text-purple-600' },
-  { value: 'transportation', label: '交通费', color: 'bg-orange-100 text-orange-600' },
-  { value: 'office', label: '办公费', color: 'bg-pink-50 text-pink-500' },
+  { value: 'travel', label: '差旅费', color: 'bg-[#effbfe] text-[#0d95b5]' },
+  { value: 'meal', label: '餐饮费', color: 'bg-[#effbfe] text-[#0d95b5]' },
+  { value: 'accommodation', label: '住宿费', color: 'bg-[#effbfe] text-[#0d95b5]' },
+  { value: 'transportation', label: '交通费', color: 'bg-[#effbfe] text-[#0d95b5]' },
+  { value: 'office', label: '办公费', color: 'bg-[#effbfe] text-[#0d95b5]' },
   { value: 'other', label: '其他', color: 'bg-slate-100 text-slate-600' },
 ];
 
@@ -189,9 +189,9 @@ export const MobileReimbursement: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--cf-bg)]">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
         <button
           onClick={() => (step > 1 ? setStep(step - 1) : navigate(-1))}
           className="p-1 -ml-1"
@@ -204,21 +204,21 @@ export const MobileReimbursement: React.FC = () => {
       </div>
 
       {/* Progress Bar */}
-      <div className="bg-white px-4 py-2 border-b border-slate-200">
+      <div className="bg-[var(--cf-surface-strong)] px-4 py-2 border-b border-slate-200">
         <div className="flex gap-2">
           {[1, 2, 3].map(s => (
             <div
               key={s}
               className={`flex-1 h-1.5 rounded-full transition-colors ${
-                s <= step ? 'bg-pink-500' : 'bg-slate-200'
+                s <= step ? 'bg-[#0d95b5]' : 'bg-slate-200'
               }`}
             />
           ))}
         </div>
         <div className="flex justify-between mt-2 text-xs text-slate-500">
-          <span className={step >= 1 ? 'text-pink-500 font-medium' : ''}>添加费用</span>
-          <span className={step >= 2 ? 'text-pink-500 font-medium' : ''}>填写信息</span>
-          <span className={step >= 3 ? 'text-pink-500 font-medium' : ''}>确认提交</span>
+          <span className={step >= 1 ? 'text-[#0d95b5] font-medium' : ''}>添加费用</span>
+          <span className={step >= 2 ? 'text-[#0d95b5] font-medium' : ''}>填写信息</span>
+          <span className={step >= 3 ? 'text-[#0d95b5] font-medium' : ''}>确认提交</span>
         </div>
       </div>
 
@@ -226,7 +226,7 @@ export const MobileReimbursement: React.FC = () => {
       {step === 1 && (
         <div className="p-4 space-y-4">
           {/* 费用类型 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-slate-700 mb-3">费用类型</label>
             <div className="grid grid-cols-3 gap-2">
               {expenseTypes.map(type => (
@@ -235,7 +235,7 @@ export const MobileReimbursement: React.FC = () => {
                   onClick={() => setCurrentItem({ ...currentItem, type: type.value })}
                   className={`py-2 px-2 rounded-lg text-xs font-medium border-2 transition-all ${
                     currentItem.type === type.value
-                      ? 'border-pink-500 bg-pink-50 text-pink-500'
+                      ? 'border-[#0d95b5] bg-[#effbfe] text-[#0d95b5]'
                       : 'border-slate-200 text-slate-600'
                   }`}
                 >
@@ -246,7 +246,7 @@ export const MobileReimbursement: React.FC = () => {
           </div>
 
           {/* 金额和日期 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -260,7 +260,7 @@ export const MobileReimbursement: React.FC = () => {
                   placeholder="0.00"
                   step="0.01"
                   min="0"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5]"
                 />
               </div>
               <div>
@@ -277,7 +277,7 @@ export const MobileReimbursement: React.FC = () => {
           </div>
 
           {/* 费用说明 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-slate-700 mb-2">
               <FileText size={16} className="inline mr-1" />
               费用说明
@@ -287,23 +287,23 @@ export const MobileReimbursement: React.FC = () => {
               onChange={e => setCurrentItem({ ...currentItem, description: e.target.value })}
               placeholder="请输入费用说明"
               rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5] resize-none"
             />
           </div>
 
           <button
             onClick={handleAddItem}
-            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium"
+            className="w-full bg-[#0d95b5] text-white py-3 rounded-lg font-medium"
           >
             添加费用项
           </button>
 
           {/* 已添加的费用项 */}
           {form.items.length > 0 && (
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+            <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold text-slate-900">费用清单</h3>
-                <span className="text-lg font-bold text-pink-500">
+                <span className="text-lg font-bold text-[#0d95b5]">
                   ¥{form.totalAmount.toFixed(2)}
                 </span>
               </div>
@@ -311,7 +311,7 @@ export const MobileReimbursement: React.FC = () => {
                 {form.items.map(item => (
                   <div
                     key={item.id}
-                    className="flex items-start justify-between p-3 bg-slate-50 rounded-lg"
+                    className="flex items-start justify-between p-3 bg-[var(--cf-bg)] rounded-lg"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
@@ -340,7 +340,7 @@ export const MobileReimbursement: React.FC = () => {
           {form.items.length > 0 && (
             <button
               onClick={handleNext}
-              className="w-full bg-green-600 text-white py-3 rounded-lg font-medium"
+              className="w-full bg-[#0d95b5] text-white py-3 rounded-lg font-medium hover:bg-[#0b7894]"
             >
               下一步
             </button>
@@ -352,7 +352,7 @@ export const MobileReimbursement: React.FC = () => {
       {step === 2 && (
         <div className="p-4 space-y-4">
           {/* 银行账号 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-slate-700 mb-2">
               银行账号 <span className="text-red-500">*</span>
             </label>
@@ -361,25 +361,25 @@ export const MobileReimbursement: React.FC = () => {
               value={form.bankAccount}
               onChange={e => setForm({ ...form, bankAccount: e.target.value })}
               placeholder="请输入银行账号"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5]"
             />
           </div>
 
           {/* 备注 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-slate-700 mb-2">备注说明</label>
             <textarea
               value={form.remarks}
               onChange={e => setForm({ ...form, remarks: e.target.value })}
               placeholder="请输入备注说明（选填）"
               rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5] resize-none"
             />
           </div>
 
           <button
             onClick={handleNext}
-            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium"
+            className="w-full bg-[#0d95b5] text-white py-3 rounded-lg font-medium"
           >
             下一步
           </button>
@@ -389,7 +389,7 @@ export const MobileReimbursement: React.FC = () => {
       {/* Step 3: 确认提交 */}
       {step === 3 && (
         <div className="p-4 space-y-4">
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <h3 className="font-semibold text-slate-900 mb-4">确认报销信息</h3>
             
             {/* 费用清单 */}
@@ -415,7 +415,7 @@ export const MobileReimbursement: React.FC = () => {
             {/* 总金额 */}
             <div className="flex justify-between items-center py-3 border-t-2 border-slate-200 mb-4">
               <span className="text-base font-semibold text-slate-900">总金额</span>
-              <span className="text-xl font-bold text-pink-500">
+              <span className="text-xl font-bold text-[#0d95b5]">
                 ¥{form.totalAmount.toFixed(2)}
               </span>
             </div>
@@ -438,7 +438,7 @@ export const MobileReimbursement: React.FC = () => {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-[#0d95b5] text-white py-3 rounded-lg font-medium hover:bg-[#0b7894] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>

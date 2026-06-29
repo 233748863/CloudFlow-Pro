@@ -73,7 +73,7 @@ export const MobileSchedule: React.FC = () => {
   const getEventTypeStyle = (type: string) => {
     switch (type) {
       case 'MEETING':
-        return 'bg-pink-50 text-pink-500 border-pink-100';
+        return 'bg-[#effbfe] text-[#0d95b5] border-[#d8f3fa]';
       case 'WORK':
         return 'bg-green-100 text-green-600 border-green-200';
       case 'PERSONAL':
@@ -125,7 +125,7 @@ export const MobileSchedule: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="animate-spin text-pink-500 mx-auto mb-3" size={32} />
+          <Loader2 className="animate-spin text-[#0d95b5] mx-auto mb-3" size={32} />
           <p className="text-sm text-slate-500">加载日程...</p>
         </div>
       </div>
@@ -136,7 +136,7 @@ export const MobileSchedule: React.FC = () => {
   const weekDays = getWeekDays();
 
   return (
-    <div className="min-h-screen bg-slate-50 relative">
+    <div className="min-h-screen bg-[var(--cf-bg)] relative">
       {/* Pull to Refresh */}
       {isPulling && (
         <div
@@ -146,12 +146,12 @@ export const MobileSchedule: React.FC = () => {
             opacity: Math.min(pullDistance / 80, 1),
           }}
         >
-          <div className="bg-white rounded-full p-2 shadow-lg">
+          <div className="bg-[var(--cf-surface-strong)] rounded-full p-2 shadow-none">
             {isRefreshing ? (
-              <Loader2 className="animate-spin text-pink-500" size={24} />
+              <Loader2 className="animate-spin text-[#0d95b5]" size={24} />
             ) : (
               <RefreshCw
-                className="text-pink-500 transition-transform"
+                className="text-[#0d95b5] transition-transform"
                 size={24}
                 style={{ transform: `rotate(${Math.min((pullDistance / 80) * 360, 360)}deg)` }}
               />
@@ -161,7 +161,7 @@ export const MobileSchedule: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
         <button
           onClick={() => navigate(-1)}
           className="p-1 -ml-1"
@@ -172,7 +172,7 @@ export const MobileSchedule: React.FC = () => {
         <h1 className="text-lg font-semibold text-slate-900 flex-1">我的日程</h1>
         <button
           onClick={() => navigate('/schedule/create')}
-          className="p-2 text-pink-500"
+          className="p-2 text-[#0d95b5]"
           aria-label="新建日程"
         >
           <Plus size={20} />
@@ -180,12 +180,12 @@ export const MobileSchedule: React.FC = () => {
       </div>
 
       {/* View Toggle */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex gap-2">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex gap-2">
         <button
           onClick={() => setViewType('day')}
           className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
             viewType === 'day'
-              ? 'bg-pink-500 text-white'
+              ? 'bg-[#0d95b5] text-white'
               : 'bg-slate-100 text-slate-600'
           }`}
         >
@@ -195,7 +195,7 @@ export const MobileSchedule: React.FC = () => {
           onClick={() => setViewType('week')}
           className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
             viewType === 'week'
-              ? 'bg-pink-500 text-white'
+              ? 'bg-[#0d95b5] text-white'
               : 'bg-slate-100 text-slate-600'
           }`}
         >
@@ -205,7 +205,7 @@ export const MobileSchedule: React.FC = () => {
 
       {/* Week View - Date Selector */}
       {viewType === 'week' && (
-        <div className="bg-white border-b border-slate-200 px-4 py-3">
+        <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3">
           <div className="grid grid-cols-7 gap-2">
             {weekDays.map(day => {
               const isToday = isSameDay(day, new Date());
@@ -218,9 +218,9 @@ export const MobileSchedule: React.FC = () => {
                   onClick={() => setSelectedDate(day)}
                   className={`flex flex-col items-center py-2 rounded-lg transition-colors ${
                     isSelected
-                      ? 'bg-pink-500 text-white'
+                      ? 'bg-[#0d95b5] text-white'
                       : isToday
-                      ? 'bg-pink-50 text-pink-500'
+                      ? 'bg-[#effbfe] text-[#0d95b5]'
                       : 'text-slate-600'
                   }`}
                 >
@@ -232,7 +232,7 @@ export const MobileSchedule: React.FC = () => {
                         <div
                           key={i}
                           className={`w-1 h-1 rounded-full ${
-                            isSelected ? 'bg-white' : 'bg-pink-500'
+                            isSelected ? 'bg-[var(--cf-surface-strong)]' : 'bg-[#0d95b5]'
                           }`}
                         />
                       ))}
@@ -253,11 +253,11 @@ export const MobileSchedule: React.FC = () => {
             events.map(event => (
               <div
                 key={event.eventId}
-                className="bg-white rounded-lg p-4 shadow-sm border border-slate-100"
+                className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 text-center min-w-[60px]">
-                    <div className="text-sm font-semibold text-pink-500">
+                    <div className="text-sm font-semibold text-[#0d95b5]">
                       {formatTime(event.startTime)}
                     </div>
                     <div className="text-xs text-slate-400">
@@ -301,12 +301,12 @@ export const MobileSchedule: React.FC = () => {
               </div>
             ))
           ) : (
-            <div className="bg-white rounded-lg p-12 text-center">
+            <div className="bg-[var(--cf-surface-strong)] rounded-lg p-12 text-center">
               <Calendar size={48} className="text-slate-300 mx-auto mb-3" />
               <p className="text-sm text-slate-500">今日暂无日程安排</p>
               <button
                 onClick={() => navigate('/schedule/create')}
-                className="mt-4 text-sm text-pink-500 underline"
+                className="mt-4 text-sm text-[#0d95b5] underline"
               >
                 创建新日程
               </button>
@@ -326,11 +326,11 @@ export const MobileSchedule: React.FC = () => {
                 {selectedEvents.map(event => (
                   <div
                     key={event.eventId}
-                    className="bg-white rounded-lg p-4 shadow-sm border border-slate-100"
+                    className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100"
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 text-center min-w-[60px]">
-                        <div className="text-sm font-semibold text-pink-500">
+                        <div className="text-sm font-semibold text-[#0d95b5]">
                           {formatTime(event.startTime)}
                         </div>
                         <div className="text-xs text-slate-400">
@@ -375,7 +375,7 @@ export const MobileSchedule: React.FC = () => {
                 ))}
               </>
             ) : (
-              <div className="bg-white rounded-lg p-12 text-center">
+              <div className="bg-[var(--cf-surface-strong)] rounded-lg p-12 text-center">
                 <Calendar size={48} className="text-slate-300 mx-auto mb-3" />
                 <p className="text-sm text-slate-500">
                   {format(selectedDate, 'M月d日', { locale: zhCN })} 暂无日程安排

@@ -66,15 +66,12 @@ const calculateDuration = (type: HrLeaveTypeOption | undefined, form: LeaveAppli
 const getLeaveTypeTone = (leaveCode?: string) => {
   switch (leaveCode) {
     case 'ANNUAL':
-      return 'bg-pink-50 text-pink-500';
+      return 'bg-[#effbfe] text-[#0d95b5]';
     case 'SICK':
-      return 'bg-red-100 text-red-600';
     case 'PERSONAL':
-      return 'bg-orange-100 text-orange-600';
     case 'MARRIAGE':
-      return 'bg-emerald-100 text-emerald-600';
     case 'MATERNITY':
-      return 'bg-pink-100 text-pink-600';
+      return 'bg-[#d8f3fa] text-[#0b7894]';
     default:
       return 'bg-slate-100 text-slate-600';
   }
@@ -204,9 +201,9 @@ export const MobileLeaveApplication: React.FC = () => {
 
   if (loadingTypes) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--cf-bg)]">
         <div className="text-center">
-          <Loader2 className="mx-auto mb-3 animate-spin text-pink-500" size={32} />
+          <Loader2 className="mx-auto mb-3 animate-spin text-[#0d95b5]" size={32} />
           <p className="text-sm text-slate-500">正在加载请假类型...</p>
         </div>
       </div>
@@ -214,8 +211,8 @@ export const MobileLeaveApplication: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
+    <div className="min-h-screen bg-[var(--cf-bg)]">
+      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3">
         <button
           onClick={() => navigate(-1)}
           className="p-1 -ml-1"
@@ -230,10 +227,10 @@ export const MobileLeaveApplication: React.FC = () => {
         {restrictionMessage && (
           <div
             data-testid="hr-self-service-restriction"
-            className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
+            className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
           >
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 rounded-full bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
+              <div className="mt-0.5 rounded-full bg-[rgba(255,255,255,0.8)] p-2 text-amber-600 ring-1 ring-amber-200">
                 <AlertCircle size={16} />
               </div>
               <div>
@@ -244,7 +241,7 @@ export const MobileLeaveApplication: React.FC = () => {
           </div>
         )}
 
-        <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-100 bg-[var(--cf-surface-strong)] p-4 shadow-none">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
             Leave Type
           </div>
@@ -254,9 +251,9 @@ export const MobileLeaveApplication: React.FC = () => {
                 key={type.id}
                 onClick={() => setForm((prev) => ({ ...prev, leaveTypeId: type.id }))}
                 disabled={selfServiceLocked}
-                className={`rounded-2xl border px-3 py-3 text-sm font-medium transition-all ${
+                className={`rounded-lg border px-3 py-3 text-sm font-medium transition-all ${
                   form.leaveTypeId === type.id
-                    ? 'border-pink-500 bg-pink-50 text-pink-500'
+                    ? 'border-[#0d95b5] bg-[#effbfe] text-[#0d95b5]'
                     : 'border-slate-200 text-slate-600'
                 }`}
               >
@@ -266,7 +263,7 @@ export const MobileLeaveApplication: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-100 bg-[var(--cf-surface-strong)] p-4 shadow-none">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
             Time Range
           </div>
@@ -298,7 +295,7 @@ export const MobileLeaveApplication: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-100 bg-[var(--cf-surface-strong)] p-4 shadow-none">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
             Reason
           </div>
@@ -308,14 +305,14 @@ export const MobileLeaveApplication: React.FC = () => {
               onChange={(event) => setForm((prev) => ({ ...prev, reason: event.target.value }))}
               placeholder="请详细说明请假原因"
               rows={5}
-              className="w-full rounded-2xl border border-slate-300 px-3 py-3 text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-100"
+              className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-[#3fb8d0] focus:outline-none focus:ring-2 focus:ring-[#d8f3fa]"
             />
           </div>
         </div>
 
-        <div className="rounded-3xl border border-pink-100 bg-gradient-to-br from-pink-50 via-white to-white p-4 shadow-sm">
+        <div className="rounded-lg border border-[#d8f3fa] bg-[var(--cf-surface-strong)] p-4 shadow-none">
           <div className="flex items-start gap-3">
-            <div className="rounded-2xl bg-white p-3 text-pink-500 shadow-sm">
+            <div className="rounded-lg bg-[var(--cf-surface-strong)] p-3 text-[#0d95b5] shadow-none">
               <ClipboardList size={18} />
             </div>
             <div className="min-w-0 flex-1">
@@ -339,7 +336,7 @@ export const MobileLeaveApplication: React.FC = () => {
         <button
           onClick={handleSubmit}
           disabled={submitting || selfServiceLocked}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-pink-500 py-3 font-medium text-white shadow-[0_14px_28px_rgba(236,72,153,0.22)] transition hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0d95b5] py-3 font-medium text-white shadow-none transition hover:bg-[#0b7894] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? (
             <>

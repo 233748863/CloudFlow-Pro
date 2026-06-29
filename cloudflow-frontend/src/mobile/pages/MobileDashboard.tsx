@@ -105,10 +105,10 @@ export const MobileDashboard: React.FC = () => {
   });
 
   const quickActions = [
-    { label: '用车申请', path: '/vehicle/booking', color: 'bg-pink-50 text-pink-500' },
-    { label: '请假', path: '/hr/attendance', color: 'bg-green-100 text-green-600' },
-    { label: '报销', path: '/reimbursement/request', color: 'bg-orange-100 text-orange-600' },
-    { label: '会议室', path: '/meeting-room', color: 'bg-purple-100 text-purple-600' },
+    { label: '用车申请', path: '/vehicle/booking', color: 'bg-[#effbfe] text-[#0d95b5]' },
+    { label: '请假', path: '/leave/apply', color: 'bg-[#effbfe] text-[#0d95b5]' },
+    { label: '报销', path: '/reimbursement/request', color: 'bg-[#effbfe] text-[#0d95b5]' },
+    { label: '会议室', path: '/meeting-room', color: 'bg-[#effbfe] text-[#0d95b5]' },
   ];
 
   // 格式化时间显示
@@ -158,7 +158,7 @@ export const MobileDashboard: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="animate-spin text-pink-500 mx-auto mb-3" size={32} />
+          <Loader2 className="animate-spin text-[#0d95b5] mx-auto mb-3" size={32} />
           <p className="text-sm text-slate-500">加载中...</p>
         </div>
       </div>
@@ -176,12 +176,12 @@ export const MobileDashboard: React.FC = () => {
             opacity: Math.min(pullDistance / 80, 1),
           }}
         >
-          <div className="bg-white rounded-full p-2 shadow-lg">
+          <div className="bg-[var(--cf-surface-strong)] rounded-full p-2 shadow-none">
             {isRefreshing ? (
-              <Loader2 className="animate-spin text-pink-500" size={24} />
+              <Loader2 className="animate-spin text-[#0d95b5]" size={24} />
             ) : (
               <RefreshCw
-                className="text-pink-500 transition-transform"
+                className="text-[#0d95b5] transition-transform"
                 size={24}
                 style={{
                   transform: `rotate(${Math.min((pullDistance / 80) * 360, 360)}deg)`,
@@ -243,7 +243,7 @@ export const MobileDashboard: React.FC = () => {
               className="flex flex-col items-center space-y-2 min-h-[64px]"
               aria-label={action.label}
             >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${action.color}`}>
+              <div className={`w-12 h-12 rounded-md flex items-center justify-center ${action.color}`}>
                 <span className="font-bold text-lg">{action.label[0]}</span>
               </div>
               <span className="text-xs text-slate-600">{action.label}</span>
@@ -252,20 +252,20 @@ export const MobileDashboard: React.FC = () => {
         </div>
 
         {/* Stats Card */}
-        <Card className="bg-pink-500 text-white border-none shadow-pink-100 shadow-lg">
+        <Card className="bg-[#0d95b5] text-white border-none shadow-none shadow-none">
           <CardContent className="p-4 flex justify-between items-center">
             <button onClick={() => navigate('/tasks')} className="text-center flex-1">
-              <div className="text-pink-50 text-sm">待办任务</div>
+              <div className="text-[#effbfe] text-sm">待办任务</div>
               <div className="text-3xl font-bold mt-1">{stats.pendingTasks}</div>
             </button>
-            <div className="h-10 w-[1px] bg-pink-300"></div>
+            <div className="h-10 w-[1px] bg-[#7ed5e6]"></div>
             <button onClick={() => navigate('/schedule')} className="text-center flex-1">
-              <div className="text-pink-50 text-sm">今日日程</div>
+              <div className="text-[#effbfe] text-sm">今日日程</div>
               <div className="text-3xl font-bold mt-1">{stats.todaySchedules}</div>
             </button>
-            <div className="h-10 w-[1px] bg-pink-300"></div>
+            <div className="h-10 w-[1px] bg-[#7ed5e6]"></div>
             <button onClick={() => navigate('/messages')} className="text-center flex-1">
-              <div className="text-pink-50 text-sm">消息</div>
+              <div className="text-[#effbfe] text-sm">消息</div>
               <div className="text-3xl font-bold mt-1">{stats.unreadMessages}</div>
             </button>
           </CardContent>
@@ -277,7 +277,7 @@ export const MobileDashboard: React.FC = () => {
             <h2 className="font-bold text-slate-800">待办事项</h2>
             <button
               onClick={() => navigate('/tasks')}
-              className="text-xs text-pink-500 flex items-center"
+              className="text-xs text-[#0d95b5] flex items-center"
               aria-label="查看全部待办事项"
             >
               查看全部 <ChevronRight size={12} />
@@ -288,7 +288,7 @@ export const MobileDashboard: React.FC = () => {
               recentTasks.map((task) => (
                 <div
                   key={task.taskId}
-                  className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm flex items-start gap-3 active:bg-slate-50 transition-colors"
+                  className="bg-[var(--cf-surface-strong)] p-3 rounded-lg border border-slate-100 shadow-none flex items-start gap-3 active:bg-[var(--cf-bg)] transition-colors"
                   onClick={() => navigate(`/tasks/${task.taskId}`)}
                   role="button"
                   tabIndex={0}
@@ -306,7 +306,7 @@ export const MobileDashboard: React.FC = () => {
                       {task.deadline && <span>· 截止：{task.deadline}</span>}
                     </div>
                     {task.processName && (
-                      <span className="inline-block mt-1 text-[10px] bg-pink-50 text-pink-500 px-1.5 py-0.5 rounded">
+                      <span className="inline-block mt-1 text-[10px] bg-[#effbfe] text-[#0d95b5] px-1.5 py-0.5 rounded">
                         {task.processName}
                       </span>
                     )}
@@ -317,7 +317,7 @@ export const MobileDashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <div className="bg-white p-6 rounded-lg border border-slate-100 text-center">
+              <div className="bg-[var(--cf-surface-strong)] p-6 rounded-lg border border-slate-100 text-center">
                 <CheckCircle2 size={32} className="text-green-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-500">暂无待办事项</p>
                 <p className="text-xs text-slate-400 mt-1">所有任务已处理完毕</p>
@@ -332,7 +332,7 @@ export const MobileDashboard: React.FC = () => {
             <h2 className="font-bold text-slate-800">今日日程</h2>
             <button
               onClick={() => navigate('/schedule')}
-              className="text-xs text-pink-500 flex items-center"
+              className="text-xs text-[#0d95b5] flex items-center"
               aria-label="查看全部日程"
             >
               查看全部 <ChevronRight size={12} />
@@ -345,11 +345,11 @@ export const MobileDashboard: React.FC = () => {
                 return (
                   <div
                     key={event.eventId}
-                    className="bg-pink-50 p-3 rounded-lg border-l-4 border-pink-400 flex items-start gap-3"
+                    className="bg-[#effbfe] p-3 rounded-lg border-l-4 border-[#3fb8d0] flex items-start gap-3"
                   >
                     <div className="text-center min-w-[3rem]">
-                      <div className="text-xs text-pink-500 font-bold">{time}</div>
-                      <div className="text-xs text-pink-300">{period}</div>
+                      <div className="text-xs text-[#0d95b5] font-bold">{time}</div>
+                      <div className="text-xs text-[#7ed5e6]">{period}</div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-slate-800 text-sm truncate">
@@ -366,7 +366,7 @@ export const MobileDashboard: React.FC = () => {
                 );
               })
             ) : (
-              <div className="bg-slate-50 p-6 rounded-lg text-center">
+              <div className="bg-[var(--cf-bg)] p-6 rounded-lg text-center">
                 <Calendar size={32} className="text-slate-300 mx-auto mb-2" />
                 <p className="text-sm text-slate-500">今日暂无日程安排</p>
               </div>

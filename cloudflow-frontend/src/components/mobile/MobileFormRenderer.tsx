@@ -103,13 +103,13 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
 
     const inputClassName = `w-full px-3 py-2.5 text-base border rounded-lg focus:outline-none transition-colors ${
       hasError
-        ? 'border-red-300 bg-red-50 focus:border-red-500'
-        : 'border-slate-200 bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15'
-    } ${readOnly ? 'bg-slate-50 text-slate-600' : ''}`;
+        ? 'border-red-300 bg-red-50 focus:border-red-500 dark:border-red-900 dark:bg-red-950/30'
+        : 'border-slate-200 bg-[var(--cf-surface-strong)] focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15 dark:border-slate-700'
+    } ${readOnly ? 'bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-300' : 'text-[var(--cf-text)]'}`;
 
     return (
       <div key={field.id} id={`mobile-field-${field.id}`} className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
           {field.label}
           {field.required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -182,14 +182,14 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex h-full flex-col bg-[var(--cf-bg)] text-[var(--cf-text)]">
       {/* 顶部导航 */}
       {onBack && (
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white sticky top-0 z-30">
+        <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
           <button onClick={onBack} className="p-1">
-            <ArrowLeft size={20} className="text-slate-600" />
+            <ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" />
           </button>
-          <h2 className="text-base font-semibold text-slate-800 truncate flex-1">
+          <h2 className="flex-1 truncate text-base font-semibold text-slate-800 dark:text-slate-100">
             {title || formDef.name || '表单'}
           </h2>
         </div>
@@ -199,7 +199,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
         <div className="px-4 py-4">
           {formDef.fields.length === 0 ? (
-            <div className="text-center text-sm text-slate-500 py-8">表单无字段</div>
+            <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">表单无字段</div>
           ) : (
             formDef.fields.map(renderField)
           )}
@@ -207,10 +207,10 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
 
         {/* 底部提交按钮 */}
         {!readOnly && (
-          <div className="sticky bottom-0 px-4 py-3 bg-white border-t border-slate-200 safe-area-bottom">
+          <div className="safe-area-bottom sticky bottom-0 border-t border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
             <button
               type="submit"
-              className="w-full rounded-xl bg-cyan-600 py-3 text-base font-medium text-white transition-colors hover:bg-cyan-700 active:bg-cyan-800"
+              className="w-full rounded-md bg-cyan-600 py-3 text-base font-medium text-white transition-colors hover:bg-cyan-700 active:bg-cyan-800"
             >
               提交
             </button>

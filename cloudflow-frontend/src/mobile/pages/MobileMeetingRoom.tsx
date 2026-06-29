@@ -202,7 +202,7 @@ export const MobileMeetingRoom: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="animate-spin text-pink-500 mx-auto mb-3" size={32} />
+          <Loader2 className="animate-spin text-[#0d95b5] mx-auto mb-3" size={32} />
           <p className="text-sm text-slate-500">加载会议室...</p>
         </div>
       </div>
@@ -212,9 +212,9 @@ export const MobileMeetingRoom: React.FC = () => {
   // 预订表单视图
   if (selectedRoom) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-[var(--cf-bg)]">
         {/* Header */}
-        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
+        <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
           <button
             onClick={() => setSelectedRoom(null)}
             className="p-1 -ml-1"
@@ -228,7 +228,7 @@ export const MobileMeetingRoom: React.FC = () => {
         {/* Form */}
         <div className="p-4 space-y-4">
           {/* 会议室信息 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <h3 className="font-semibold text-slate-900 mb-2">{selectedRoom.name}</h3>
             <div className="space-y-2 text-sm text-slate-600">
               <div className="flex items-center gap-2">
@@ -243,7 +243,7 @@ export const MobileMeetingRoom: React.FC = () => {
                 {selectedRoom.facilities.map(facility => (
                   <span
                     key={facility}
-                    className="text-xs bg-pink-50 text-pink-500 px-2 py-1 rounded"
+                    className="text-xs bg-[#effbfe] text-[#0d95b5] px-2 py-1 rounded"
                   >
                     {facility}
                   </span>
@@ -253,7 +253,7 @@ export const MobileMeetingRoom: React.FC = () => {
           </div>
 
           {/* 日期选择 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-slate-700 mb-2">
               <Calendar size={16} className="inline mr-1" />
               预订日期
@@ -268,7 +268,7 @@ export const MobileMeetingRoom: React.FC = () => {
           </div>
 
           {/* 时间选择 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-slate-700 mb-2">
               <Clock size={16} className="inline mr-1" />
               使用时间
@@ -296,7 +296,7 @@ export const MobileMeetingRoom: React.FC = () => {
           </div>
 
           {/* 会议主题 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-slate-700 mb-2">
               会议主题 <span className="text-red-500">*</span>
             </label>
@@ -305,12 +305,12 @@ export const MobileMeetingRoom: React.FC = () => {
               value={bookingForm.purpose}
               onChange={e => setBookingForm({ ...bookingForm, purpose: e.target.value })}
               placeholder="请输入会议主题"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5]"
             />
           </div>
 
           {/* 参会人数 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <label className="block text-sm font-medium text-slate-700 mb-2">
               <Users size={16} className="inline mr-1" />
               参会人数
@@ -321,7 +321,7 @@ export const MobileMeetingRoom: React.FC = () => {
               onChange={e => setBookingForm({ ...bookingForm, attendees: parseInt(e.target.value) || 1 })}
               min="1"
               max={selectedRoom.capacity}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5]"
             />
             <p className="text-xs text-slate-500 mt-1">
               该会议室最多容纳 {selectedRoom.capacity} 人
@@ -332,7 +332,7 @@ export const MobileMeetingRoom: React.FC = () => {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-[#0d95b5] text-white py-3 rounded-lg font-medium hover:bg-[#0b7894] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>
@@ -350,7 +350,7 @@ export const MobileMeetingRoom: React.FC = () => {
 
   // 会议室列表视图
   return (
-    <div className="min-h-screen bg-slate-50 relative">
+    <div className="min-h-screen bg-[var(--cf-bg)] relative">
       {/* Pull to Refresh */}
       {isPulling && (
         <div
@@ -360,12 +360,12 @@ export const MobileMeetingRoom: React.FC = () => {
             opacity: Math.min(pullDistance / 80, 1),
           }}
         >
-          <div className="bg-white rounded-full p-2 shadow-lg">
+          <div className="bg-[var(--cf-surface-strong)] rounded-full p-2 shadow-none">
             {isRefreshing ? (
-              <Loader2 className="animate-spin text-pink-500" size={24} />
+              <Loader2 className="animate-spin text-[#0d95b5]" size={24} />
             ) : (
               <RefreshCw
-                className="text-pink-500 transition-transform"
+                className="text-[#0d95b5] transition-transform"
                 size={24}
                 style={{ transform: `rotate(${Math.min((pullDistance / 80) * 360, 360)}deg)` }}
               />
@@ -375,7 +375,7 @@ export const MobileMeetingRoom: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
         <button
           onClick={() => navigate(-1)}
           className="p-1 -ml-1"
@@ -387,7 +387,7 @@ export const MobileMeetingRoom: React.FC = () => {
       </div>
 
       {/* Search */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3">
         <div className="relative">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -395,7 +395,7 @@ export const MobileMeetingRoom: React.FC = () => {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="搜索会议室名称或位置"
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5]"
           />
         </div>
       </div>
@@ -407,9 +407,9 @@ export const MobileMeetingRoom: React.FC = () => {
             <div
               key={room.id}
               onClick={() => handleSelectRoom(room)}
-              className={`bg-white rounded-lg p-4 shadow-sm border transition-colors ${
+              className={`bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border transition-colors ${
                 room.status === 'available'
-                  ? 'border-slate-100 active:bg-slate-50 cursor-pointer'
+                  ? 'border-slate-100 active:bg-[var(--cf-bg)] cursor-pointer'
                   : 'border-slate-200 opacity-60'
               }`}
               role="button"
@@ -450,7 +450,7 @@ export const MobileMeetingRoom: React.FC = () => {
             </div>
           ))
         ) : (
-          <div className="bg-white rounded-lg p-12 text-center">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-12 text-center">
             <MapPin size={48} className="text-slate-300 mx-auto mb-3" />
             <p className="text-sm text-slate-500">未找到符合条件的会议室</p>
           </div>

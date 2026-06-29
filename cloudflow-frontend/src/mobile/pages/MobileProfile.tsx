@@ -14,9 +14,9 @@ export const MobileProfile: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--cf-bg)]">
       {/* Header */}
-      <div className="bg-pink-500 text-white p-6 pb-20">
+      <div className="bg-[#0d95b5] text-white p-6 pb-20">
         <div className="flex items-center justify-between mb-6">
           <button onClick={() => navigate(-1)} className="p-2">
             <ChevronLeft size={24} />
@@ -27,20 +27,20 @@ export const MobileProfile: React.FC = () => {
         
         {/* User Avatar and Name */}
         <div className="flex flex-col items-center">
-          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-3">
+          <div className="w-20 h-20 bg-[rgba(255,255,255,0.2)] rounded-full flex items-center justify-center mb-3">
             <User size={40} />
           </div>
           <h2 className="text-xl font-bold">{user?.name || '用户'}</h2>
-          <p className="text-pink-50 text-sm mt-1">{user?.username}</p>
+          <p className="text-[#effbfe] text-sm mt-1">{user?.username}</p>
         </div>
       </div>
 
       {/* Profile Info Card */}
       <div className="px-4 -mt-12">
-        <div className="bg-white rounded-2xl shadow-lg p-4 space-y-4">
-          <div className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
-            <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center">
-              <Mail size={20} className="text-pink-500" />
+        <div className="bg-[var(--cf-surface-strong)] rounded-lg shadow-none p-4 space-y-4">
+          <div className="flex items-center gap-3 p-3 hover:bg-[var(--cf-bg)] rounded-lg transition-colors">
+            <div className="w-10 h-10 bg-[#effbfe] rounded-full flex items-center justify-center">
+              <Mail size={20} className="text-[#0d95b5]" />
             </div>
             <div className="flex-1">
               <div className="text-xs text-slate-500">邮箱</div>
@@ -48,9 +48,9 @@ export const MobileProfile: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-              <Phone size={20} className="text-green-600" />
+          <div className="flex items-center gap-3 p-3 hover:bg-[var(--cf-bg)] rounded-lg transition-colors">
+            <div className="w-10 h-10 bg-[#effbfe] rounded-full flex items-center justify-center">
+              <Phone size={20} className="text-[#0d95b5]" />
             </div>
             <div className="flex-1">
               <div className="text-xs text-slate-500">手机号</div>
@@ -58,9 +58,9 @@ export const MobileProfile: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
-            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-              <Building size={20} className="text-orange-600" />
+          <div className="flex items-center gap-3 p-3 hover:bg-[var(--cf-bg)] rounded-lg transition-colors">
+            <div className="w-10 h-10 bg-[#effbfe] rounded-full flex items-center justify-center">
+              <Building size={20} className="text-[#0d95b5]" />
             </div>
             <div className="flex-1">
               <div className="text-xs text-slate-500">部门</div>
@@ -72,12 +72,12 @@ export const MobileProfile: React.FC = () => {
 
       {/* Action Buttons */}
       <div className="px-4 mt-6 space-y-3">
-        <button className="w-full bg-white p-4 rounded-xl shadow-sm flex items-center justify-between hover:bg-slate-50 transition-colors">
+        <button className="w-full bg-[var(--cf-surface-strong)] p-4 rounded-md shadow-none flex items-center justify-between hover:bg-[var(--cf-bg)] transition-colors">
           <span className="font-medium">修改密码</span>
           <ChevronLeft size={20} className="rotate-180 text-slate-400" />
         </button>
         
-        <button className="w-full bg-white p-4 rounded-xl shadow-sm flex items-center justify-between hover:bg-slate-50 transition-colors">
+        <button className="w-full bg-[var(--cf-surface-strong)] p-4 rounded-md shadow-none flex items-center justify-between hover:bg-[var(--cf-bg)] transition-colors">
           <span className="font-medium">设置</span>
           <ChevronLeft size={20} className="rotate-180 text-slate-400" />
         </button>

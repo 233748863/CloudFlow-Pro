@@ -117,7 +117,7 @@ export const MobileMessages: React.FC = () => {
       case 'task':
         return <CheckCircle size={16} className="text-green-500" />;
       default:
-        return <Mail size={16} className="text-pink-400" />;
+        return <Mail size={16} className="text-[#3fb8d0]" />;
     }
   };
 
@@ -144,9 +144,9 @@ export const MobileMessages: React.FC = () => {
   // 消息详情视图
   if (selectedMessage) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-[var(--cf-bg)]">
         {/* Header */}
-        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
+        <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
           <button
             onClick={() => setSelectedMessage(null)}
             className="p-1 -ml-1"
@@ -166,7 +166,7 @@ export const MobileMessages: React.FC = () => {
 
         {/* Content */}
         <div className="p-4">
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="bg-[var(--cf-surface-strong)] rounded-md p-4 shadow-none">
             <div className="flex items-center gap-2 mb-3">
               {getTypeIcon(selectedMessage.type)}
               <span className="text-xs text-slate-400">{selectedMessage.type || '通知'}</span>
@@ -192,7 +192,7 @@ export const MobileMessages: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="animate-spin text-pink-500 mx-auto mb-3" size={32} />
+          <Loader2 className="animate-spin text-[#0d95b5] mx-auto mb-3" size={32} />
           <p className="text-sm text-slate-500">加载消息...</p>
         </div>
       </div>
@@ -200,7 +200,7 @@ export const MobileMessages: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 relative">
+    <div className="min-h-screen bg-[var(--cf-bg)] relative">
       {/* Pull to Refresh */}
       {isPulling && (
         <div
@@ -210,12 +210,12 @@ export const MobileMessages: React.FC = () => {
             opacity: Math.min(pullDistance / 80, 1),
           }}
         >
-          <div className="bg-white rounded-full p-2 shadow-lg">
+          <div className="bg-[var(--cf-surface-strong)] rounded-full p-2 shadow-none">
             {isRefreshing ? (
-              <Loader2 className="animate-spin text-pink-500" size={24} />
+              <Loader2 className="animate-spin text-[#0d95b5]" size={24} />
             ) : (
               <RefreshCw
-                className="text-pink-500 transition-transform"
+                className="text-[#0d95b5] transition-transform"
                 size={24}
                 style={{ transform: `rotate(${Math.min((pullDistance / 80) * 360, 360)}deg)` }}
               />
@@ -225,7 +225,7 @@ export const MobileMessages: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
         <button
           onClick={() => navigate(-1)}
           className="p-1 -ml-1"
@@ -247,14 +247,14 @@ export const MobileMessages: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b border-slate-200 px-4 flex gap-6">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 flex gap-6">
         {(['all', 'unread', 'read'] as TabType[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab
-                ? 'border-pink-500 text-pink-500'
+                ? 'border-[#0d95b5] text-[#0d95b5]'
                 : 'border-transparent text-slate-500'
             }`}
           >
@@ -273,8 +273,8 @@ export const MobileMessages: React.FC = () => {
             <div
               key={message.id}
               onClick={() => handleOpenMessage(message)}
-              className={`bg-white rounded-lg p-4 shadow-sm border transition-colors active:bg-slate-50 ${
-                message.isRead ? 'border-slate-100' : 'border-pink-100 bg-pink-50/30'
+              className={`bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border transition-colors active:bg-[var(--cf-bg)] ${
+                message.isRead ? 'border-slate-100' : 'border-[#d8f3fa] bg-[#effbfe]/30'
               }`}
               role="button"
               tabIndex={0}
@@ -291,7 +291,7 @@ export const MobileMessages: React.FC = () => {
                       {message.title}
                     </h3>
                     {!message.isRead && (
-                      <span className="flex-shrink-0 w-2 h-2 bg-pink-500 rounded-full mt-1.5"></span>
+                      <span className="flex-shrink-0 w-2 h-2 bg-[#0d95b5] rounded-full mt-1.5"></span>
                     )}
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-2 mb-2">{message.content}</p>
@@ -315,7 +315,7 @@ export const MobileMessages: React.FC = () => {
             </div>
           ))
         ) : (
-          <div className="bg-white rounded-lg p-12 text-center">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-12 text-center">
             <Mail size={48} className="text-slate-300 mx-auto mb-3" />
             <p className="text-sm text-slate-500">
               {activeTab === 'unread' ? '暂无未读消息' : activeTab === 'read' ? '暂无已读消息' : '暂无消息'}

@@ -144,7 +144,7 @@ export const MobileTasks: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="animate-spin text-pink-500 mx-auto mb-3" size={32} />
+          <Loader2 className="animate-spin text-[#0d95b5] mx-auto mb-3" size={32} />
           <p className="text-sm text-slate-500">加载任务...</p>
         </div>
       </div>
@@ -152,7 +152,7 @@ export const MobileTasks: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 relative">
+    <div className="min-h-screen bg-[var(--cf-bg)] relative">
       {/* Pull to Refresh */}
       {isPulling && (
         <div
@@ -162,12 +162,12 @@ export const MobileTasks: React.FC = () => {
             opacity: Math.min(pullDistance / 80, 1),
           }}
         >
-          <div className="bg-white rounded-full p-2 shadow-lg">
+          <div className="bg-[var(--cf-surface-strong)] rounded-full p-2 shadow-none">
             {isRefreshing ? (
-              <Loader2 className="animate-spin text-pink-500" size={24} />
+              <Loader2 className="animate-spin text-[#0d95b5]" size={24} />
             ) : (
               <RefreshCw
-                className="text-pink-500 transition-transform"
+                className="text-[#0d95b5] transition-transform"
                 size={24}
                 style={{ transform: `rotate(${Math.min((pullDistance / 80) * 360, 360)}deg)` }}
               />
@@ -177,7 +177,7 @@ export const MobileTasks: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
         <button
           onClick={() => navigate(-1)}
           className="p-1 -ml-1"
@@ -192,9 +192,9 @@ export const MobileTasks: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 grid grid-cols-3 gap-4">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 grid grid-cols-3 gap-4">
         <div className="text-center">
-          <div className="text-2xl font-bold text-pink-500">{taskCounts.pending}</div>
+          <div className="text-2xl font-bold text-[#0d95b5]">{taskCounts.pending}</div>
           <div className="text-xs text-slate-500 mt-1">待办</div>
         </div>
         <div className="text-center border-l border-r border-slate-200">
@@ -208,14 +208,14 @@ export const MobileTasks: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b border-slate-200 px-4 flex gap-6">
+      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 flex gap-6">
         {(['all', 'pending', 'urgent'] as TabType[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab
-                ? 'border-pink-500 text-pink-500'
+                ? 'border-[#0d95b5] text-[#0d95b5]'
                 : 'border-transparent text-slate-500'
             }`}
           >
@@ -231,7 +231,7 @@ export const MobileTasks: React.FC = () => {
             <div
               key={task.id}
               onClick={() => navigate(`/tasks/${task.id}`)}
-              className="bg-white rounded-lg p-4 shadow-sm border border-slate-100 active:bg-slate-50 transition-colors"
+              className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100 active:bg-[var(--cf-bg)] transition-colors"
               role="button"
               tabIndex={0}
             >
@@ -257,7 +257,7 @@ export const MobileTasks: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs bg-pink-50 text-pink-500 px-2 py-0.5 rounded">
+                    <span className="text-xs bg-[#effbfe] text-[#0d95b5] px-2 py-0.5 rounded">
                       {task.processName}
                     </span>
                     <span className="text-xs text-slate-500">申请人：{task.applicantName}</span>
@@ -294,7 +294,7 @@ export const MobileTasks: React.FC = () => {
             </div>
           ))
         ) : (
-          <div className="bg-white rounded-lg p-12 text-center">
+          <div className="bg-[var(--cf-surface-strong)] rounded-lg p-12 text-center">
             <CheckCircle2 size={48} className="text-slate-300 mx-auto mb-3" />
             <p className="text-sm text-slate-500">
               {activeTab === 'pending'
