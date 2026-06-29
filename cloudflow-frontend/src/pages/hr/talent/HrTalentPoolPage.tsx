@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { LoaderCircle, Plus, RefreshCcw, RotateCcw } from 'lucide-react';
+import { LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -15,15 +15,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   HrTalentPool,
   HrTalentPoolMember,
@@ -46,6 +41,7 @@ export const HrTalentPoolPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission?.('hr:talent:pool:edit') ?? true;
   const canAdd = hasPermission?.('hr:talent:pool:add') ?? true;
+  const canRemove = hasPermission?.('hr:talent:pool:remove') ?? true;
   const poolTypeOptions = useDict('hr_talent_pool_type').getOptions();
 
   const [rows, setRows] = useState<HrTalentPool[]>([]);
@@ -158,101 +154,8 @@ export const HrTalentPoolPage: React.FC = () => {
   };
 
   const hasFilters = Boolean(query.keyword || query.poolType);
-
-  const filters = (
-    <FilterBar
-      search={{
-        value: query.keyword,
-        onChange: (value) => setQuery((q) => ({ ...q, keyword: value })),
-        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
-        placeholder: '搜索池编号/名称',
-        widthClassName: 'w-full sm:w-[220px]',
-      }}
-      filters={[
-        <div key="poolType" className="w-full sm:w-40">
-          <Select value={query.poolType || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, poolType: v === '__all' ? '' : v }))}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部类型" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">全部类型</SelectItem>
-              {poolTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>,
-      ]}
-      stats={[{ label: '', value: `共 ${total} 条` }]}
-      actions={[
-        ...(hasFilters
-          ? [
-              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, keyword: '', poolType: '' }))}>
-                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
-              </Button>,
-            ]
-          : []),
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-        ...(canAdd
-          ? [
-              <Button key="add" size="sm" onClick={() => { setEditingId(null); setForm(defaultForm); setOpen(true); }}>
-                <Plus className="mr-1.5 h-4 w-4" />新建人才池
-              </Button>,
-            ]
-          : []),
-      ]}
-    />
-  );
-
-  const table = (
-    <TableSurfaceCard fill>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[920px]">
-          <TableHeader className="sticky top-0 z-10">
-            <tr>
-              <TableHead>编号</TableHead>
-              <TableHead>名称</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>说明</TableHead>
-              <TableActionHead className="text-right">操作</TableActionHead>
-            </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr>
-                <td colSpan={6} className="py-16 text-center text-sm text-slate-400">
-                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="py-16 text-center text-sm text-slate-400">暂无人才池</td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 font-mono text-xs">{row.poolNo}</td>
-                  <td className="px-4 py-3 text-sm font-medium">{row.poolName}</td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_pool_type" value={row.poolType} fallback="-" /></td>
-                  <td className="px-4 py-3 text-sm">{row.status === 'ACTIVE' ? '启用' : '已归档'}</td>
-                  <td className="px-4 py-3 max-w-[24rem] truncate text-sm">{row.description || '-'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        { key: 'edit', label: '编辑', semantic: 'edit', permissionKey: 'hr:talent:pool:edit', onClick: () => { setEditingId(row.id); setForm({ poolNo: row.poolNo, poolName: row.poolName, poolType: row.poolType, description: row.description ?? '' }); setOpen(true); } },
-                        { key: 'members', label: '成员', semantic: 'process', onClick: () => void openMembers(row) },
-                        { key: 'delete', label: '删除', semantic: 'delete', permissionKey: 'hr:talent:pool:remove', onClick: () => setDeleteId(row.id) },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
-  );
+  const activeCount = rows.filter((row) => row.status === 'ACTIVE').length;
+  const archivedCount = rows.filter((row) => row.status !== 'ACTIVE').length;
 
   const pagination = total > 0 ? (
     <Pagination
@@ -265,13 +168,151 @@ export const HrTalentPoolPage: React.FC = () => {
   ) : null;
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} pagination={pagination} />
+    <>
+      <section className="admin-source-page">
+        <TablePageLayout
+          actions={
+            <>
+              <header className="admin-source-header">
+                <div>
+                  <p className="admin-source-kicker">TALENT POOLS</p>
+                  <h2>人才池</h2>
+                  <span>维护高潜、关键岗位和继任人才池成员</span>
+                </div>
+                <div className="admin-source-controls">
+                  <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+                    <RefreshCcw className={loading ? 'mr-1.5 h-4 w-4 animate-spin' : 'mr-1.5 h-4 w-4'} />刷新
+                  </Button>
+                  {canAdd ? (
+                    <Button size="sm" onClick={() => { setEditingId(null); setForm(defaultForm); setOpen(true); }}>
+                      <Plus className="mr-1.5 h-4 w-4" />新建人才池
+                    </Button>
+                  ) : null}
+                </div>
+              </header>
+              <section className="admin-source-stat-grid">
+                <article className="card admin-source-stat admin-source-tone-blue">
+                  <div className="admin-source-stat-icon"><Users size={18} /></div>
+                  <div><p>人才池总数</p><strong>{total}</strong><span>当前筛选结果</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-green">
+                  <div className="admin-source-stat-icon"><UserPlus size={18} /></div>
+                  <div><p>启用中</p><strong>{activeCount}</strong><span>可维护成员</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-amber">
+                  <div className="admin-source-stat-icon"><UserMinus size={18} /></div>
+                  <div><p>已归档</p><strong>{archivedCount}</strong><span>非启用状态</span></div>
+                </article>
+              </section>
+            </>
+          }
+          filters={
+            <section className="card admin-users-toolbar">
+              <div className="admin-users-filter-grid">
+                <label>
+                  <span className="input-label">人才池</span>
+                  <div className="admin-source-search-field">
+                    <Search size={16} />
+                    <Input
+                      className="h-[42px]"
+                      type="search"
+                      value={query.keyword}
+                      onChange={(event) => setQuery((q) => ({ ...q, keyword: event.target.value }))}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') setQuery((q) => ({ ...q, pageNum: 1 }));
+                      }}
+                      placeholder="搜索池编号/名称"
+                    />
+                  </div>
+                </label>
+                <label>
+                  <span className="input-label">类型</span>
+                  <Select value={query.poolType || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, poolType: v === '__all' ? '' : v }))}>
+                    <SelectTrigger><SelectValue placeholder="全部类型" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all">全部类型</SelectItem>
+                      {poolTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
+              <div className="admin-users-toolbar-actions">
+                {hasFilters ? (
+                  <Button variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, keyword: '', poolType: '' }))}>
+                    <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
+                  </Button>
+                ) : null}
+                <span className="admin-users-filter-count">共 {total} 条</span>
+              </div>
+            </section>
+          }
+          table={
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+              <div className="admin-horizontal-scroll">
+                <table className="unity-data-table admin-source-table min-w-[920px]">
+                  <thead>
+                    <tr>
+                      <th>编号</th>
+                      <th>名称</th>
+                      <th>类型</th>
+                      <th>状态</th>
+                      <th>说明</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="admin-settings-empty">
+                          <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                        </td>
+                      </tr>
+                    ) : rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="admin-settings-empty">暂无人才池</td>
+                      </tr>
+                    ) : (
+                      rows.map((row) => (
+                        <tr key={row.id}>
+                          <td className="font-mono text-xs">{row.poolNo}</td>
+                          <td><strong>{row.poolName}</strong></td>
+                          <td><DictLabel dictType="hr_talent_pool_type" value={row.poolType} fallback="-" /></td>
+                          <td>{row.status === 'ACTIVE' ? '启用' : '已归档'}</td>
+                          <td className="max-w-[24rem] truncate">{row.description || '-'}</td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              {canEdit ? (
+                                <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm({ poolNo: row.poolNo, poolName: row.poolName, poolType: row.poolType, description: row.description ?? '' }); setOpen(true); }}>
+                                  <Pencil size={15} />
+                                </button>
+                              ) : null}
+                              <button type="button" title="成员" onClick={() => void openMembers(row)}>
+                                <Users size={15} />
+                              </button>
+                              {canRemove ? (
+                                <button type="button" className="danger" title="删除" onClick={() => setDeleteId(row.id)}>
+                                  <Trash2 size={15} />
+                                </button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </InnerTableSurface>
+          }
+          pagination={pagination}
+        />
+      </section>
 
       <BaseDialog
         open={open}
         title={editingId ? '编辑人才池' : '新建人才池'}
         onClose={() => setOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
@@ -279,10 +320,10 @@ export const HrTalentPoolPage: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-3">
-          <div><Label>编号</Label><Input value={form.poolNo} onChange={(e) => setForm((p) => ({ ...p, poolNo: e.target.value }))} placeholder="留空自动生成" /></div>
-          <div><Label>名称</Label><Input value={form.poolName} onChange={(e) => setForm((p) => ({ ...p, poolName: e.target.value }))} /></div>
-          <div>
+        <>
+          <div className="admin-dialog-field"><Label>编号</Label><Input value={form.poolNo} onChange={(e) => setForm((p) => ({ ...p, poolNo: e.target.value }))} placeholder="留空自动生成" /></div>
+          <div className="admin-dialog-field"><Label>名称</Label><Input value={form.poolName} onChange={(e) => setForm((p) => ({ ...p, poolName: e.target.value }))} /></div>
+          <div className="admin-dialog-field">
             <Label>类型</Label>
             <Select value={form.poolType} onValueChange={(v) => setForm((p) => ({ ...p, poolType: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -291,62 +332,71 @@ export const HrTalentPoolPage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div><Label>说明</Label><Textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={3} /></div>
-        </div>
+          <div className="admin-dialog-field"><Label>说明</Label><Textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={3} /></div>
+        </>
       </BaseDialog>
 
       <BaseDialog
         open={!!memberPool}
         title={`成员维护 · ${memberPool?.poolName ?? ''}`}
         onClose={() => setMemberPool(null)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setMemberPool(null)}>关闭</Button>
           </div>
         }
       >
-        <div className="space-y-4">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px]">
-              <TableHeader>
-                <tr>
-                  <TableHead>员工 ID</TableHead>
-                  <TableHead>进入时间</TableHead>
-                  <TableHead>来源盘点</TableHead>
-                  <TableActionHead className="text-right">操作</TableActionHead>
-                </tr>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {members.length ? members.map((m) => (
-                  <tr key={m.id}>
-                    <td className="px-4 py-2 text-sm">{m.employeeId}</td>
-                    <td className="px-4 py-2 text-sm">{m.joinedAt ?? '-'}</td>
-                    <td className="px-4 py-2 text-sm">{m.joinedReviewId ?? '-'}</td>
-                    <td className="px-4 py-2 text-right">
-                      <TableRowActions
-                        align="end"
-                        actions={[
-                          { key: 'exit', label: '退出', semantic: 'void', onClick: () => void handleExit(m) },
-                        ]}
-                      />
-                    </td>
+        <div className="admin-source-content-grid">
+          <InnerTableSurface>
+            <div className="admin-horizontal-scroll">
+              <table className="unity-data-table admin-source-table min-w-[520px]">
+                <thead>
+                  <tr>
+                    <th>员工 ID</th>
+                    <th>进入时间</th>
+                    <th>来源盘点</th>
+                    <th className="text-right">操作</th>
                   </tr>
-                )) : (
-                  <tr><td colSpan={4} className="py-4 text-center text-sm text-slate-400">暂无成员</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="rounded border border-slate-200 p-3 space-y-3 dark:border-slate-800">
-            <div className="font-semibold text-slate-800 dark:text-slate-100">手动加入</div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>员工 ID</Label><Input value={memberForm.employeeId} onChange={(e) => setMemberForm((p) => ({ ...p, employeeId: e.target.value }))} /></div>
-              <div><Label>来源盘点 ID（可选）</Label><Input value={memberForm.sourceReviewId} onChange={(e) => setMemberForm((p) => ({ ...p, sourceReviewId: e.target.value }))} /></div>
+                </thead>
+                <tbody>
+                  {members.length ? members.map((m) => (
+                    <tr key={m.id}>
+                      <td>{m.employeeId}</td>
+                      <td>{m.joinedAt ?? '-'}</td>
+                      <td>{m.joinedReviewId ?? '-'}</td>
+                      <td>
+                        <div className="admin-users-row-actions">
+                          <button type="button" title="退出" onClick={() => void handleExit(m)}>
+                            <UserMinus size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={4} className="admin-settings-empty">暂无成员</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => void handleJoin()}>加入</Button>
+          </InnerTableSurface>
+          <section className="card admin-source-panel">
+            <div className="admin-source-panel-head">
+              <div>
+                <h3>手动加入</h3>
+                <span>录入员工和来源盘点后加入当前人才池</span>
+              </div>
             </div>
-          </div>
+            <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="admin-dialog-field"><Label>员工 ID</Label><Input value={memberForm.employeeId} onChange={(e) => setMemberForm((p) => ({ ...p, employeeId: e.target.value }))} /></div>
+                <div className="admin-dialog-field"><Label>来源盘点 ID（可选）</Label><Input value={memberForm.sourceReviewId} onChange={(e) => setMemberForm((p) => ({ ...p, sourceReviewId: e.target.value }))} /></div>
+              </div>
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => void handleJoin()}>加入</Button>
+              </div>
+            </div>
+          </section>
         </div>
       </BaseDialog>
 
@@ -358,7 +408,7 @@ export const HrTalentPoolPage: React.FC = () => {
         onCancel={() => setDeleteId(null)}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </>
   );
 };
 

@@ -9,15 +9,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { buildEmployeeLabel, toDateInputValue } from '../hrShared';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 type SectionComponents = {
   WorkspaceSectionCard: React.ComponentType<any>;
@@ -395,9 +390,9 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-6">
       <WorkspaceSectionCard title="在岗薪资档案">
-        <div className="space-y-4">
+        <div className="admin-source-content-grid">
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
@@ -450,7 +445,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
             </Select>
           </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
             <div>
               在岗现薪 {workingEmployeeSalaries.length} 条
               {salaryKeyword.trim() ? ` / 筛后 ${filteredEmployeeSalaries.length} 条` : ''}
@@ -469,7 +464,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 pb-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
             {futureEffectiveEmployeeSalaries.length > 0 && (
               <span>
                 未来生效 {futureEffectiveEmployeeSalaries.length} 条
@@ -485,23 +480,23 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
             )}
           </div>
 
-          <div className="space-y-3">
+          <div className="grid gap-3">
             {filteredEmployeeSalaries.map((item: any) => {
               const isActive = String(item.employeeId) === selectedEmployeeId;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                  className={`w-full rounded-md border px-4 py-4 text-left transition ${
                     isActive
-                      ? 'border-slate-300 bg-slate-50 shadow-sm'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                      ? 'border-[#0d95b5]/40 bg-[#effbfe] dark:border-cyan-800 dark:bg-cyan-950/30'
+                      : 'border-slate-200 bg-[var(--cf-surface-strong)] hover:border-slate-300 hover:bg-[var(--cf-surface-muted)]'
                   }`}
                   onClick={() => setSelectedEmployeeId(String(item.employeeId))}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-slate-900">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {item.employeeName || `员工 #${item.employeeId}`}
                       </div>
                       <div className="mt-1 text-xs text-slate-400">
@@ -510,11 +505,11 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                     </div>
                       <div className="flex flex-wrap justify-end gap-2">
                         {isFutureDate(item.effectiveDate) && (
-                          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                          <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
                             未来生效
                           </span>
                         )}
-                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                        <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
                           {item.statusDesc || item.status}
                         </span>
                       </div>
@@ -538,7 +533,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
         </div>
       </WorkspaceSectionCard>
 
-      <div className="space-y-6">
+      <div className="admin-source-content-grid salary-primary-detail-stack">
         <WorkspaceSectionCard
           title="员工薪资详情"
           headerAside={currentEmployeeRecord ? (
@@ -562,13 +557,13 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
           ) : undefined}
         >
           {!currentEmployeeRecord && !employeeSalaryDetailLoading && (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
+            <div className="salary-primary-empty">
               选择现薪记录
             </div>
           )}
 
           {currentEmployeeRecord && (
-            <div className="space-y-4">
+            <div className="admin-source-content-grid">
               <WorkspaceMetricStrip items={employeeOverviewStripItems} />
 
               <WorkspaceMetricStrip items={employeeArchiveStripItems} />
@@ -579,12 +574,12 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                 || (latestEmployeeAdjustment && !latestEmployeeAdjustmentMatchedCurrentSalary && !latestEmployeeAdjustmentMatchedArchive)) && (
                 <div className="flex flex-wrap gap-2">
                   {currentEmployeeFutureEffective && (
-                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                       ACTIVE 未来生效
                     </span>
                   )}
                   {!currentEmployeeFutureEffective && latestEmployeeAdjustment && latestEmployeeAdjustmentMatchedCurrentSalary && (
-                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                       调薪已对齐
                     </span>
                   )}
@@ -592,7 +587,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                     && latestEmployeeAdjustment
                     && !latestEmployeeAdjustmentMatchedCurrentSalary
                     && latestEmployeeAdjustmentMatchedArchive && (
-                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                       已落档 #{latestEmployeeAdjustmentMatchedArchive.id}
                     </span>
                   )}
@@ -600,38 +595,38 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                     && latestEmployeeAdjustment
                     && !latestEmployeeAdjustmentMatchedCurrentSalary
                     && !latestEmployeeAdjustmentMatchedArchive && (
-                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                       调薪待落档
                     </span>
                   )}
                 </div>
               )}
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>薪资项目</TableHead>
-                      <TableHead>项目编码</TableHead>
-                      <TableHead>分类</TableHead>
-                      <TableHead>金额</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table min-w-[560px]">
+                  <thead>
+                    <tr>
+                      <th>薪资项目</th>
+                      <th>项目编码</th>
+                      <th>分类</th>
+                      <th>金额</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {(employeeSalaryDetail?.items || []).map((item: any) => (
-                      <TableRow key={item.itemId}>
-                        <TableCell className="font-medium text-slate-900">{item.itemName || `项目 ${item.itemId}`}</TableCell>
-                        <TableCell>{item.itemCode || '-'}</TableCell>
-                        <TableCell>{itemCategoryLabel(item.category)}</TableCell>
-                        <TableCell>{formatCurrency(item.amount)}</TableCell>
-                      </TableRow>
+                      <tr key={item.itemId}>
+                        <td className="font-medium text-slate-900 dark:text-slate-100">{item.itemName || `项目 ${item.itemId}`}</td>
+                        <td>{item.itemCode || '-'}</td>
+                        <td>{itemCategoryLabel(item.category)}</td>
+                        <td>{formatCurrency(item.amount)}</td>
+                      </tr>
                     ))}
                     {!employeeSalaryDetail?.items?.length && !employeeSalaryDetailLoading && (
                       <WorkspaceTableStateRow colSpan={4} title="无薪资项目" />
                     )}
-                  </TableBody>
-                </Table>
-              </div>
+                  </tbody>
+                </table>
+              </InnerTableSurface>
             </div>
           )}
 
@@ -670,65 +665,65 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
           )}
         >
           {!currentEmployeeRecord && !employeeSalaryHistoryLoading && (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
+            <div className="salary-primary-empty">
               选择员工后查看档案
             </div>
           )}
 
           {currentEmployeeRecord && (
-            <div className="space-y-4">
+            <div className="admin-source-content-grid">
               <WorkspaceMetricStrip items={salaryHistoryStripItems} />
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>结构信息</TableHead>
-                      <TableHead>总薪资</TableHead>
-                      <TableHead>生效日期</TableHead>
-                      <TableHead>状态</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table min-w-[680px]">
+                  <thead>
+                    <tr>
+                      <th>结构信息</th>
+                      <th>总薪资</th>
+                      <th>生效日期</th>
+                      <th>状态</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {sortedEmployeeSalaryHistory.map((item: any) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="font-medium text-slate-900">{item.structureName || '-'}</div>
+                      <tr key={item.id}>
+                        <td>
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.structureName || '-'}</div>
                           <div className="mt-1 text-xs text-slate-400">
                             {[item.structureCode, item.employeeNo].filter(Boolean).join(' / ') || '-'}
                           </div>
-                        </TableCell>
-                        <TableCell>{formatCurrency(item.totalSalary)}</TableCell>
-                        <TableCell>
+                        </td>
+                        <td>{formatCurrency(item.totalSalary)}</td>
+                        <td>
                           <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
                           <div className="mt-1 flex flex-wrap gap-2">
                             {isFutureDate(item.effectiveDate) && (
-                              <span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                              <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                                 未来生效
                               </span>
                             )}
                             {latestEmployeeAdjustment
                               && (toDateInputValue(item.effectiveDate) || '') === (toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '')
                               && normalizeAmount(item.totalSalary) === normalizeAmount(latestEmployeeAdjustment.afterTotal) && (
-                              <span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                              <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                                 对应最近调薪
                               </span>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
+                        </td>
+                        <td>
+                          <span className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
                             {salaryArchiveStatusLabel(item.status, item.statusDesc)}
                           </span>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ))}
                     {!sortedEmployeeSalaryHistory.length && !employeeSalaryHistoryLoading && (
                       <WorkspaceTableStateRow colSpan={4} title="无薪资档案" />
                     )}
-                  </TableBody>
-                </Table>
-              </div>
+                  </tbody>
+                </table>
+              </InnerTableSurface>
             </div>
           )}
 
@@ -766,16 +761,16 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
           ) : undefined}
         >
           {!currentEmployeeRecord && !employeeCompensationLoading && (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
+            <div className="salary-primary-empty">
               选择员工后查看测算
             </div>
           )}
 
           {currentEmployeeRecord && (
-            <div className="space-y-4">
+            <div className="admin-source-content-grid">
               {!hasInsuranceProfile && !employeeCompensationLoading && (
                 <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                     未分配社保方案
                   </span>
                 </div>
@@ -793,12 +788,12 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
 
               <WorkspaceMetricStrip items={compensationResultStripItems} />
 
-              <div className="grid grid-cols-1 gap-4 xl:items-start xl:grid-cols-[minmax(0,1fr)_360px]">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="salary-primary-panel">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-semibold text-slate-900">五险一金拆分</div>
-                      <div className="mt-1 text-sm text-slate-500">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">五险一金拆分</div>
+                      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                         {employeeInsuranceDetail?.schemeName || '未分配方案'}
                         {employeeInsuranceDetail?.city ? ` / ${employeeInsuranceDetail.city}` : ''}
                       </div>
@@ -822,49 +817,49 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
 
                   {insuranceBaseMismatch && (
                     <div className="mb-4 flex flex-wrap gap-2">
-                      <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                      <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                         台账 / 测算基数不同
                       </span>
                     </div>
                   )}
 
-                  <div className="overflow-hidden rounded-2xl border border-slate-200">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>项目</TableHead>
-                          <TableHead>个人</TableHead>
-                          <TableHead>公司</TableHead>
-                          <TableHead>合计</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                  <InnerTableSurface>
+                    <table className="unity-data-table admin-source-table min-w-[560px]">
+                      <thead>
+                        <tr>
+                          <th>项目</th>
+                          <th>个人</th>
+                          <th>公司</th>
+                          <th>合计</th>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {insuranceBreakdownRows.map((row: any) => {
                           const personal = Number(row.personal ?? 0);
                           const company = Number(row.company ?? 0);
                           const total = Number((personal + company).toFixed(2));
 
                           return (
-                            <TableRow key={row.key}>
-                              <TableCell className="font-medium text-slate-900">{row.label}</TableCell>
-                              <TableCell>{row.personal != null ? formatCurrency(personal) : '-'}</TableCell>
-                              <TableCell>{row.company != null ? formatCurrency(company) : '-'}</TableCell>
-                              <TableCell>{(row.personal != null || row.company != null) ? formatCurrency(total) : '-'}</TableCell>
-                            </TableRow>
+                            <tr key={row.key}>
+                              <td className="font-medium text-slate-900 dark:text-slate-100">{row.label}</td>
+                              <td>{row.personal != null ? formatCurrency(personal) : '-'}</td>
+                              <td>{row.company != null ? formatCurrency(company) : '-'}</td>
+                              <td>{(row.personal != null || row.company != null) ? formatCurrency(total) : '-'}</td>
+                            </tr>
                           );
                         })}
                         {!hasInsuranceProfile && !employeeCompensationLoading && (
                           <WorkspaceTableStateRow colSpan={4} title="无拆分数据" />
                         )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                      </tbody>
+                    </table>
+                  </InnerTableSurface>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white xl:sticky xl:top-0">
+                <div className="overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-4">
                     <div>
-                      <div className="font-semibold text-slate-900">个税与专项扣除</div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">个税与专项扣除</div>
                       <div className="mt-1 text-xs text-slate-400">
                         {currentTaxConfig ? `${toDateInputValue(currentTaxConfig.effectiveDate) || '-'} / ${taxReferencePeriod}` : taxReferencePeriod}
                       </div>
@@ -875,7 +870,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                     </Button>
                   </div>
 
-                  <div className="overflow-hidden border-b border-slate-200 bg-slate-50/45 dark:border-slate-800 dark:bg-slate-950/40">
+                  <div className="overflow-hidden border-b border-slate-200 bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950/40">
                     <DetailRow
                       label="起征点"
                       value={employeeTaxCalculation ? formatCurrency(employeeTaxCalculation.threshold) : '-'}
@@ -893,43 +888,43 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                   </div>
 
                   <div className="flex items-center justify-between px-4 py-3">
-                    <div className="text-sm font-medium text-slate-900">专项扣除明细</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">专项扣除明细</div>
                     <div className="text-xs text-slate-400">{taxReferencePeriod}</div>
                   </div>
 
-                  <div className="overflow-hidden border-t border-slate-200">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>扣除项</TableHead>
-                          <TableHead>金额</TableHead>
-                          <TableHead>生效区间</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                  <InnerTableSurface className="admin-inner-table-flush">
+                    <table className="unity-data-table admin-source-table min-w-[560px]">
+                      <thead>
+                        <tr>
+                          <th>扣除项</th>
+                          <th>金额</th>
+                          <th>生效区间</th>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {sortedEmployeeTaxDeductions.map((item: any) => (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div className="font-medium text-slate-900">
+                          <tr key={item.id}>
+                            <td>
+                              <div className="font-medium text-slate-900 dark:text-slate-100">
                                 {item.deductionTypeName || item.deductionType}
                               </div>
                               <div className="mt-1 text-xs text-slate-400">{compactTaxDeductionRemark(item.remark)}</div>
-                            </TableCell>
-                            <TableCell>{formatCurrency(item.amount)}</TableCell>
-                            <TableCell>
+                            </td>
+                            <td>{formatCurrency(item.amount)}</td>
+                            <td>
                               <div>{toDateInputValue(item.startDate) || '-'}</div>
                               <div className="mt-1 text-xs text-slate-400">
                                 截止 {toDateInputValue(item.endDate) || '长期有效'}
                               </div>
-                            </TableCell>
-                          </TableRow>
+                            </td>
+                          </tr>
                         ))}
                         {!sortedEmployeeTaxDeductions.length && !employeeCompensationLoading && (
                           <WorkspaceTableStateRow colSpan={3} title="无专项扣除" />
                         )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                      </tbody>
+                    </table>
+                  </InnerTableSurface>
                 </div>
               </div>
             </div>
@@ -977,13 +972,13 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
           ) : undefined}
         >
           {!currentEmployeeRecord && !employeeInsuranceListLoading && (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
+            <div className="salary-primary-empty">
               选择员工后查看台账
             </div>
           )}
 
           {currentEmployeeRecord && (
-            <div className="space-y-4">
+            <div className="admin-source-content-grid">
               <WorkspaceMetricStrip items={insuranceLedgerStripItems} />
 
               <WorkspaceDiagnosticSummary
@@ -992,45 +987,45 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                 emptyText="已对齐"
               />
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>方案</TableHead>
-                      <TableHead>缴费基数</TableHead>
-                      <TableHead>生效日期</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>校验</TableHead>
-                      <TableHead>更新时间</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table min-w-[760px]">
+                  <thead>
+                    <tr>
+                      <th>方案</th>
+                      <th>缴费基数</th>
+                      <th>生效日期</th>
+                      <th>状态</th>
+                      <th>校验</th>
+                      <th>更新时间</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {employeeInsuranceLedgerRecords.map((item: any) => {
                       const rowIssues = employeeInsuranceLedgerDiagnostics.rowIssueMap.get(item.id) || [];
                       const rowClassName = rowIssues.length
-                        ? 'bg-slate-50/70 dark:bg-slate-900/40'
+                        ? 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/40'
                         : '';
 
                       return (
-                        <TableRow key={item.id} className={rowClassName}>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{item.schemeName || '-'}</div>
+                        <tr key={item.id} className={rowClassName}>
+                          <td>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{item.schemeName || '-'}</div>
                             <div className="mt-1 text-xs text-slate-400">{item.city || '未填写城市'}</div>
-                          </TableCell>
-                          <TableCell>{formatCurrency(item.base)}</TableCell>
-                          <TableCell>{toDateInputValue(item.effectiveDate) || '-'}</TableCell>
-                          <TableCell>
-                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
+                          </td>
+                          <td>{formatCurrency(item.base)}</td>
+                          <td>{toDateInputValue(item.effectiveDate) || '-'}</td>
+                          <td>
+                            <span className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
                               {salaryArchiveStatusLabel(item.status)}
                             </span>
-                          </TableCell>
-                          <TableCell>
+                          </td>
+                          <td>
                             {rowIssues.length > 0 ? (
                               <div className="flex flex-wrap gap-2">
                                 {rowIssues.map((issue: any) => (
                                   <span
                                     key={issue.key}
-                                    className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                                    className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
                                   >
                                     {issue.label}
                                   </span>
@@ -1039,17 +1034,17 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                             ) : (
                               <span className="text-sm text-slate-400">-</span>
                             )}
-                          </TableCell>
-                          <TableCell>{toDateInputValue(item.updateTime || item.createTime) || '-'}</TableCell>
-                        </TableRow>
+                          </td>
+                          <td>{toDateInputValue(item.updateTime || item.createTime) || '-'}</td>
+                        </tr>
                       );
                     })}
                     {!employeeInsuranceLedgerRecords.length && !employeeInsuranceListLoading && (
                       <WorkspaceTableStateRow colSpan={6} title="无社保台账" />
                     )}
-                  </TableBody>
-                </Table>
-              </div>
+                  </tbody>
+                </table>
+              </InnerTableSurface>
 
               <div className="flex flex-col gap-3 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -1093,13 +1088,13 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
           ) : undefined}
         >
           {!currentEmployeeRecord && !employeeAdjustmentHistoryLoading && (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
+            <div className="salary-primary-empty">
               选择员工后查看履历
             </div>
           )}
 
           {currentEmployeeRecord && (
-            <div className="space-y-4">
+            <div className="admin-source-content-grid">
               <WorkspaceMetricStrip items={adjustmentHistoryStripItems} />
 
               <WorkspaceDiagnosticSummary
@@ -1108,42 +1103,42 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                 className="mt-0"
               />
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>申请编号</TableHead>
-                      <TableHead>类型</TableHead>
-                      <TableHead>调薪变化</TableHead>
-                      <TableHead>生效日期</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>校验</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table min-w-[860px]">
+                  <thead>
+                    <tr>
+                      <th>申请编号</th>
+                      <th>类型</th>
+                      <th>调薪变化</th>
+                      <th>生效日期</th>
+                      <th>状态</th>
+                      <th>校验</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {sortedEmployeeAdjustmentHistory.map((item: any) => {
                       const amount = Number(item.adjustmentAmount || 0);
                       const rowIssues = employeeAdjustmentHistoryDiagnostics.rowIssueMap.get(item.id) || [];
                       const matchedArchive = employeeAdjustmentHistoryDiagnostics.matchedArchiveMap.get(item.id) || null;
                       const rowClassName = rowIssues.length
-                        ? 'cursor-pointer bg-slate-50/70 hover:bg-slate-50 dark:bg-slate-900/40 dark:hover:bg-slate-900/55'
-                        : 'cursor-pointer hover:bg-slate-50';
+                        ? 'cursor-pointer bg-[var(--cf-surface-muted)] hover:bg-[var(--cf-surface-muted)] dark:bg-slate-900/40 dark:hover:bg-slate-900/55'
+                        : 'cursor-pointer hover:bg-[var(--cf-surface-muted)]';
 
                       return (
-                        <TableRow
+                        <tr
                           key={item.id}
                           className={rowClassName}
                           onClick={() => openAdjustmentFromHistory(item.id)}
                         >
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{item.applicationNo}</div>
+                          <td>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{item.applicationNo}</div>
                             <div className="mt-1 text-xs text-slate-400">
                               {item.adjustmentReason || '-'}
                             </div>
-                          </TableCell>
-                          <TableCell>{adjustmentTypeLabel(item.adjustmentType)}</TableCell>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">
+                          </td>
+                          <td>{adjustmentTypeLabel(item.adjustmentType)}</td>
+                          <td>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">
                               {formatCurrency(item.beforeTotal)} → {formatCurrency(item.afterTotal)}
                             </div>
                             <div className="mt-1 text-xs text-slate-500">
@@ -1153,26 +1148,26 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                                 ? ` / ${Number(item.adjustmentRate).toFixed(2)}%`
                                 : ''}
                             </div>
-                          </TableCell>
-                          <TableCell>{toDateInputValue(item.effectiveDate) || '-'}</TableCell>
-                          <TableCell>
-                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(item.status)}`}>
+                          </td>
+                          <td>{toDateInputValue(item.effectiveDate) || '-'}</td>
+                          <td>
+                            <span className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(item.status)}`}>
                               {adjustmentStatusLabel(item.status)}
                             </span>
-                          </TableCell>
-                          <TableCell>
+                          </td>
+                          <td>
                             {rowIssues.length > 0 ? (
                               <div className="flex flex-wrap gap-2">
                                 {rowIssues.map((issue: any) => (
                                   <span
                                     key={issue.key}
-                                    className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                                    className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
                                   >
                                     {issue.label}
                                   </span>
                                 ))}
                                 {matchedArchive && (
-                                  <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                                     档案 #{matchedArchive.id}
                                   </span>
                                 )}
@@ -1180,16 +1175,16 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                             ) : (
                               <span className="text-sm text-slate-400">-</span>
                             )}
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       );
                     })}
                     {!sortedEmployeeAdjustmentHistory.length && !employeeAdjustmentHistoryLoading && (
                       <WorkspaceTableStateRow colSpan={6} title="无调薪履历" />
                     )}
-                  </TableBody>
-                </Table>
-              </div>
+                  </tbody>
+                </table>
+              </InnerTableSurface>
             </div>
           )}
 
@@ -1265,9 +1260,9 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
   } = viewModel;
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-6">
       <WorkspaceSectionCard title="调薪申请列表">
-        <div className="space-y-4">
+        <div className="admin-source-content-grid">
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
@@ -1331,8 +1326,8 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            <div className="text-xs text-slate-500">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
               {currentEmployeeRecord ? currentSelectedEmployeeLabel : '未锁定员工'}
             </div>
             <Button
@@ -1348,7 +1343,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
             </Button>
           </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
             <div>
               调薪单 {salaryAdjustments.length} 条
               {currentAdjustmentFilterEmployee ? ` / ${buildEmployeeLabel(currentAdjustmentFilterEmployee)}` : ''}
@@ -1370,7 +1365,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 pb-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
             <span>已落现薪 {adjustmentListDiagnostics.matchedCurrentCount}</span>
             <span>过期 {adjustmentListDiagnostics.pendingPastDueCount}</span>
             <span>现薪未追平 {adjustmentListDiagnostics.currentMismatchCount}</span>
@@ -1382,36 +1377,36 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
             items={adjustmentListDiagnostics.riskItems}
           />
 
-          <div className="space-y-3">
+          <div className="grid gap-3">
             {filteredAdjustments.map((item: any) => {
               const isActive = String(item.id) === selectedAdjustmentId;
               const rowIssues = adjustmentListDiagnostics.rowIssueMap.get(item.id) || [];
               const itemClassName = rowIssues.some((issue: any) => issue.severity === 'danger')
-                ? 'border-slate-300 bg-slate-50 shadow-sm hover:border-slate-400 hover:bg-slate-50'
+                ? 'border-slate-300 bg-[var(--cf-surface-muted)] hover:border-slate-400 hover:bg-[var(--cf-surface-muted)]'
                 : rowIssues.length
-                  ? 'border-slate-300 bg-slate-50 shadow-sm hover:border-slate-400 hover:bg-slate-50'
+                  ? 'border-slate-300 bg-[var(--cf-surface-muted)] hover:border-slate-400 hover:bg-[var(--cf-surface-muted)]'
                   : isActive
-                    ? 'border-slate-300 bg-slate-50 shadow-sm'
-                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50';
+                    ? 'border-[#0d95b5]/40 bg-[#effbfe] dark:border-cyan-800 dark:bg-cyan-950/30'
+                    : 'border-slate-200 bg-[var(--cf-surface-strong)] hover:border-slate-300 hover:bg-[var(--cf-surface-muted)]';
 
               return (
                 <button
                   key={item.id}
                   type="button"
-                  className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                    isActive && !rowIssues.length ? 'border-slate-300 bg-slate-50 shadow-sm' : itemClassName
+                  className={`w-full rounded-md border px-4 py-4 text-left transition ${
+                    isActive && !rowIssues.length ? 'border-[#0d95b5]/40 bg-[#effbfe] dark:border-cyan-800 dark:bg-cyan-950/30' : itemClassName
                   }`}
                   onClick={() => setSelectedAdjustmentId(String(item.id))}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-slate-900">{item.applicationNo}</div>
-                      <div className="mt-1 text-sm text-slate-600">{item.employeeName || `员工 #${item.employeeId}`}</div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.applicationNo}</div>
+                      <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{item.employeeName || `员工 #${item.employeeId}`}</div>
                       <div className="mt-1 text-xs text-slate-400">
                         {[item.employeeNo, adjustmentTypeLabel(item.adjustmentType)].filter(Boolean).join(' / ')}
                       </div>
                     </div>
-                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(item.status)}`}>
+                    <span className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(item.status)}`}>
                       {adjustmentStatusLabel(item.status)}
                     </span>
                   </div>
@@ -1424,7 +1419,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                       {rowIssues.map((issue: any) => (
                         <span
                           key={issue.key}
-                          className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                          className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
                         >
                           {issue.label}
                         </span>
@@ -1446,7 +1441,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
         </div>
       </WorkspaceSectionCard>
 
-      <div className="space-y-6">
+      <div className="admin-source-content-grid salary-primary-detail-stack">
         <WorkspaceSectionCard
           title="调薪详情"
           headerAside={adjustmentDetail ? (
@@ -1475,14 +1470,14 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
           ) : undefined}
         >
           {!adjustmentDetail && !adjustmentDetailLoading && (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
+            <div className="salary-primary-empty">
               选择调薪单
             </div>
           )}
 
           {adjustmentDetail && (
-            <div className="space-y-4">
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="admin-source-content-grid">
+              <div className="overflow-hidden border border-slate-200 dark:border-slate-800">
                 <DetailRow label="申请编号" value={adjustmentDetail.applicationNo} />
                 <DetailRow
                   label="员工"
@@ -1493,7 +1488,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                   value={(
                     <div className="flex flex-col items-end gap-2">
                       <span>{adjustmentTypeLabel(adjustmentDetail.adjustmentType)}</span>
-                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(adjustmentDetail.status)}`}>
+                      <span className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(adjustmentDetail.status)}`}>
                         {adjustmentStatusLabel(adjustmentDetail.status)}
                       </span>
                     </div>
@@ -1521,12 +1516,12 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
               </div>
 
               {adjustmentActionDiagnostics && (
-                <div className="rounded-lg border border-slate-200/80 bg-slate-50/55 p-3.5 dark:border-slate-800 dark:bg-slate-950/72">
+                <div className="salary-primary-panel salary-primary-panel-compact">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="font-semibold text-slate-900 dark:text-slate-100">
                       {adjustmentActionDiagnostics.canRun ? `${adjustmentActionDiagnostics.actionLabel}校验` : '流程动作'}
                     </div>
-                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                       {adjustmentActionDiagnostics.riskSummary.label}
                     </span>
                   </div>
@@ -1537,9 +1532,9 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                 </div>
               )}
 
-              <div className="rounded-lg border border-slate-200/80 bg-slate-50/55 p-3.5 dark:border-slate-800 dark:bg-slate-950/72">
+              <div className="salary-primary-panel salary-primary-panel-compact">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="font-semibold text-slate-900">闭环</div>
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">闭环</div>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
@@ -1561,7 +1556,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                 </div>
 
                 {adjustmentEmployeeSalaryLoading ? (
-                  <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
+                  <div className="mt-4 border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-12 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/40">
                     正在读取调薪对应员工的现薪与档案历史...
                   </div>
                 ) : (
@@ -1608,7 +1603,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                       ]}
                     />
 
-                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+                    <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
                       <DetailRow
                         label="档案匹配"
                         value={adjustmentMatchedArchive
@@ -1630,9 +1625,9 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                 )}
               </div>
 
-              <div className="rounded-lg border border-slate-200/80 bg-slate-50/55 p-3.5 dark:border-slate-800 dark:bg-slate-950/72">
+              <div className="salary-primary-panel salary-primary-panel-compact">
                 <div className="text-xs text-slate-400">调薪原因</div>
-                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-300">
                   {adjustmentDetail.adjustmentReason || '-'}
                 </div>
               </div>

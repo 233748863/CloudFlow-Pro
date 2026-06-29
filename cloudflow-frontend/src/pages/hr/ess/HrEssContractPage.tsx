@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { LoaderCircle, RefreshCcw } from 'lucide-react';
+import { FileText, History, LoaderCircle, PenLine, RefreshCcw, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, TableActionHead, TableHead, TableHeader } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
+import { Button } from '@/components/common';
 import { DictLabel } from '@/components/common/DictLabel';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   HrContractSignature,
   HrRecord,
@@ -18,13 +17,6 @@ import { normalizeRows, formatDateValue, formatDateTimeValue, hasWorkflowStatus 
 
 const REQUESTABLE_SIGN_STATUS = new Set(['', 'UNSIGNED', 'REJECTED', 'EXPIRED', 'CANCELLED']);
 const BLOCKED_CONTRACT_STATUS = new Set(['EXPIRED', 'TERMINATED']);
-
-const SectionHeader: React.FC<{ title: string; aside?: React.ReactNode }> = ({ title, aside }) => (
-  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-    {aside}
-  </div>
-);
 
 export const HrEssContractPage: React.FC = () => {
   const [contracts, setContracts] = useState<HrRecord[]>([]);
@@ -83,115 +75,152 @@ export const HrEssContractPage: React.FC = () => {
     return REQUESTABLE_SIGN_STATUS.has(signStatus);
   };
 
+  const signableCount = contracts.filter((row) => canRequestSign(row)).length;
+  const pendingSignatureCount = signatures.filter((row) => hasWorkflowStatus(row.signStatus, 'PENDING')).length;
+
   return (
-    <div className="space-y-4">
-      <TableSurfaceCard>
-        <SectionHeader
-          title="我的合同"
-          aside={
-            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-              <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-            </Button>
+    <>
+      <section className="admin-source-page">
+        <TablePageLayout
+          actions={
+            <>
+              <header className="admin-source-header">
+                <div>
+                  <p className="admin-source-kicker">employee contract</p>
+                  <h2>我的合同</h2>
+                  <span>查看个人合同、签署状态和签署流转记录。</span>
+                </div>
+                <div className="admin-source-controls">
+                  <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+                    <RefreshCcw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />刷新
+                  </Button>
+                </div>
+              </header>
+        
+              <section className="admin-source-stat-grid">
+                <article className="card admin-source-stat admin-source-tone-blue">
+                  <span className="admin-source-stat-icon"><FileText size={18} /></span>
+                  <div><p>合同总数</p><strong>{contracts.length}</strong><span>当前员工合同</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-green">
+                  <span className="admin-source-stat-icon"><PenLine size={18} /></span>
+                  <div><p>可发起签署</p><strong>{signableCount}</strong><span>未签或需重签</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-amber">
+                  <span className="admin-source-stat-icon"><History size={18} /></span>
+                  <div><p>签署记录</p><strong>{signatures.length}</strong><span>流转记录总数</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-violet">
+                  <span className="admin-source-stat-icon"><Send size={18} /></span>
+                  <div><p>待签署</p><strong>{pendingSignatureCount}</strong><span>待完成签署</span></div>
+                </article>
+              </section>
+            </>
+          }
+          table={
+            <div className="admin-source-content-grid">
+              <InnerTableSurface>
+                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-100">我的合同</div>
+                <div className="admin-horizontal-scroll">
+                  <table className="unity-data-table admin-source-table min-w-[820px]">
+                    <thead>
+                    <tr>
+                      <th>合同编号</th>
+                      <th>类型</th>
+                      <th>生效期</th>
+                      <th>截止期</th>
+                      <th>签署状态</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-sm text-slate-400">
+                          <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                        </td>
+                      </tr>
+                    ) : contracts.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-sm text-slate-400">暂无合同</td>
+                      </tr>
+                    ) : (
+                      contracts.map((row: any) => (
+                        <tr key={row.id}>
+                          <td className="text-sm">{row.contractNo || `#${row.id}`}</td>
+                          <td className="text-sm"><DictLabel dictType="hr_contract_type" value={row.contractType} fallback="-" /></td>
+                          <td className="text-sm">{formatDateValue(row.startDate)}</td>
+                          <td className="text-sm">{formatDateValue(row.endDate)}</td>
+                          <td className="text-sm">{row.signStatus ? <DictLabel dictType="hr_contract_sign_status" value={row.signStatus} fallback="-" /> : <DictLabel dictType="hr_employment_contract_status" value={row.status} fallback="-" />}</td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              {canRequestSign(row) ? (
+                                <button type="button" title="发起签署" aria-label="发起签署" onClick={() => void handleRequestSign(row.id)}><Send size={15} /></button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                    </tbody>
+                  </table>
+                </div>
+              </InnerTableSurface>
+        
+              <InnerTableSurface>
+                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-100">签署流转记录</div>
+                <div className="admin-horizontal-scroll">
+                  <table className="unity-data-table admin-source-table min-w-[900px]">
+                    <thead>
+                    <tr>
+                      <th>合同 ID</th>
+                      <th>签署方</th>
+                      <th>方式</th>
+                      <th>状态</th>
+                      <th>签署时间</th>
+                      <th>过期时间</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 text-center text-sm text-slate-400">
+                          <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                        </td>
+                      </tr>
+                    ) : signatures.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无签署记录</td>
+                      </tr>
+                    ) : (
+                      signatures.map((row) => (
+                        <tr key={row.id}>
+                          <td className="text-sm">{row.contractId}</td>
+                          <td className="text-sm"><DictLabel dictType="hr_contract_signer_type" value={row.signerType} fallback="-" /></td>
+                          <td className="text-sm"><DictLabel dictType="hr_contract_sign_method" value={row.signMethod} fallback="-" /></td>
+                          <td className="text-sm"><DictLabel dictType="hr_contract_sign_status" value={row.signStatus} fallback="-" /></td>
+                          <td className="text-sm">{formatDateTimeValue(row.signTime)}</td>
+                          <td className="text-sm">{formatDateTimeValue(row.expireTime)}</td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              {hasWorkflowStatus(row.signStatus, 'PENDING') ? (
+                                <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => void handleCancel(row.id)}><XCircle size={15} /></button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                    </tbody>
+                  </table>
+                </div>
+              </InnerTableSurface>
+            </div>
           }
         />
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px]">
-            <TableHeader className="sticky top-0 z-10">
-              <tr>
-                <TableHead>合同编号</TableHead>
-                <TableHead>类型</TableHead>
-                <TableHead>生效期</TableHead>
-                <TableHead>截止期</TableHead>
-                <TableHead>签署状态</TableHead>
-                <TableActionHead className="text-right">操作</TableActionHead>
-              </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-16 text-center text-sm text-slate-400">
-                    <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
-                  </td>
-                </tr>
-              ) : contracts.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-16 text-center text-sm text-slate-400">暂无合同</td>
-                </tr>
-              ) : (
-                contracts.map((row: any) => (
-                  <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                    <td className="px-4 py-3 text-sm">{row.contractNo || `#${row.id}`}</td>
-                    <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_contract_type" value={row.contractType} fallback="-" /></td>
-                    <td className="px-4 py-3 text-sm">{formatDateValue(row.startDate)}</td>
-                    <td className="px-4 py-3 text-sm">{formatDateValue(row.endDate)}</td>
-                    <td className="px-4 py-3 text-sm">{row.signStatus ? <DictLabel dictType="hr_contract_sign_status" value={row.signStatus} fallback="-" /> : <DictLabel dictType="hr_employment_contract_status" value={row.status} fallback="-" />}</td>
-                    <td className="px-4 py-3 text-right">
-                      <TableRowActions
-                        align="end"
-                        actions={[
-                          { key: 'sign', label: '发起签署', semantic: 'submit', onClick: () => void handleRequestSign(row.id), hidden: !canRequestSign(row) },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </TableSurfaceCard>
-
-      <TableSurfaceCard>
-        <SectionHeader title="签署流转记录" />
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <TableHeader className="sticky top-0 z-10">
-              <tr>
-                <TableHead>合同 ID</TableHead>
-                <TableHead>签署方</TableHead>
-                <TableHead>方式</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>签署时间</TableHead>
-                <TableHead>过期时间</TableHead>
-                <TableActionHead className="text-right">操作</TableActionHead>
-              </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="py-16 text-center text-sm text-slate-400">
-                    <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
-                  </td>
-                </tr>
-              ) : signatures.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-16 text-center text-sm text-slate-400">暂无签署记录</td>
-                </tr>
-              ) : (
-                signatures.map((row) => (
-                  <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                    <td className="px-4 py-3 text-sm">{row.contractId}</td>
-                    <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_contract_signer_type" value={row.signerType} fallback="-" /></td>
-                    <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_contract_sign_method" value={row.signMethod} fallback="-" /></td>
-                    <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_contract_sign_status" value={row.signStatus} fallback="-" /></td>
-                    <td className="px-4 py-3 text-sm">{formatDateTimeValue(row.signTime)}</td>
-                    <td className="px-4 py-3 text-sm">{formatDateTimeValue(row.expireTime)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <TableRowActions
-                        align="end"
-                        actions={[
-                          { key: 'cancel', label: '取消', semantic: 'void', onClick: () => void handleCancel(row.id), hidden: !hasWorkflowStatus(row.signStatus, 'PENDING') },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </TableSurfaceCard>
-    </div>
+      </section>
+    </>
   );
 };
 

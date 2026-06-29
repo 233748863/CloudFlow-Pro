@@ -10,11 +10,8 @@ import {
   Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/common';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
+import { Button, Input } from '@/components/common';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { cn } from '@/utils/cn';
 import {
   HrEssPortalSummary,
   getEssPortalSummary,
@@ -23,56 +20,33 @@ import {
 } from '@/services/api/hr';
 import { formatDateValue, formatDateTimeValue, formatMoneyValue } from './hrShared';
 import { DictLabel } from '@/components/common/DictLabel';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const SummaryCard: React.FC<{
   title: string;
   value: React.ReactNode;
   hint?: React.ReactNode;
   icon: React.ReactNode;
-  tone?: 'sky' | 'emerald' | 'violet' | 'amber' | 'rose';
+  tone?: 'blue' | 'green' | 'violet' | 'amber';
   onClick?: () => void;
-}> = ({ title, value, hint, icon, tone = 'sky', onClick }) => {
-  const toneClass: Record<string, string> = {
-    sky: 'from-sky-500/15 to-sky-500/5 text-sky-700 dark:text-sky-200',
-    emerald: 'from-emerald-500/15 to-emerald-500/5 text-emerald-700 dark:text-emerald-200',
-    violet: 'from-violet-500/15 to-violet-500/5 text-violet-700 dark:text-violet-200',
-    amber: 'from-amber-500/15 to-amber-500/5 text-amber-700 dark:text-amber-200',
-    rose: 'from-rose-500/15 to-rose-500/5 text-rose-700 dark:text-rose-200',
-  };
+}> = ({ title, value, hint, icon, tone = 'blue', onClick }) => {
+  const content = (
+    <>
+      <div className="admin-source-stat-icon">{icon}</div>
+      <div><p>{title}</p><strong>{value}</strong>{hint ? <span>{hint}</span> : null}</div>
+    </>
+  );
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={`card admin-source-stat admin-source-tone-${tone} text-left`}>
+        {content}
+      </button>
+    );
+  }
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
-      className={cn(
-        'relative flex flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-gradient-to-br p-5 text-left shadow-sm disabled:cursor-default dark:border-slate-800 dark:from-slate-900',
-        onClick && 'cf-interactive-card',
-        toneClass[tone],
-      )}
-    >
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 backdrop-blur dark:bg-slate-900/50">
-        {icon}
-      </div>
-      <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">{title}</div>
-      <div className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{value}</div>
-      {hint ? <div className="text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
-    </button>
+    <article className={`card admin-source-stat admin-source-tone-${tone}`}>{content}</article>
   );
 };
-
-const Section: React.FC<{ title: string; action?: React.ReactNode; children: React.ReactNode }> = ({
-  title,
-  action,
-  children,
-}) => (
-  <TableSurfaceCard className="p-5">
-    <div className="mb-3 flex items-center justify-between">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-      {action}
-    </div>
-    {children}
-  </TableSurfaceCard>
-);
 
 export const HrEssPortalPage: React.FC = () => {
   const navigate = useNavigate();
@@ -101,16 +75,64 @@ export const HrEssPortalPage: React.FC = () => {
     return total.toFixed(1);
   }, [summary]);
 
-  const handleMarkOneRead = async (id: number) => {
+  const selfServiceRows = useMemo(() => {
+    const leaveRows = (summary?.leaveBalances ?? []).map((item) => ({
+      id: `leave-${item.leaveTypeId}-${item.year ?? ''}`,
+      category: '假期余额',
+      subject: item.leaveTypeName || item.leaveCode || `类型 #${item.leaveTypeId}`,
+      detail: `剩余 ${Number(item.remainQuota || 0).toFixed(1)} / 共 ${Number(item.totalQuota || 0).toFixed(1)} ${item.unit || '天'}`,
+      status: item.year ? String(item.year) : '当前',
+      time: '-',
+      action: null as React.ReactNode,
+    }));
+
+    const messageRows = (summary?.unreadMessages ?? []).map((msg) => ({
+      id: `message-${msg.id}`,
+      category: '未读消息',
+      subject: msg.title,
+      detail: msg.summary || '-',
+      status: '未读',
+      time: formatDateTimeValue(msg.createTime),
+      action: (
+        <Button size="sm" variant="ghost" onClick={() => void handleMarkOneRead(msg.id)}>
+          标记已读
+        </Button>
+      ),
+    }));
+
+    const certificateRows = (summary?.recentCertificates ?? []).map((cert) => ({
+      id: `certificate-${cert.id}`,
+      category: '证明开具',
+      subject: `${cert.requestNo} · ${cert.certificateType}`,
+      detail: cert.purpose || '-',
+      status: <DictLabel dictType="hr_certificate_status" value={String(cert.status ?? '')} fallback="-" />,
+      time: formatDateTimeValue(cert.createTime),
+      action: null as React.ReactNode,
+    }));
+
+    const contractRows = (summary?.pendingContracts ?? []).map((contract: any) => ({
+      id: `contract-${contract.id}`,
+      category: '待签合同',
+      subject: contract.contractNo || `合同 #${contract.id}`,
+      detail: `${contract.contractType ? `${contract.contractType} · ` : ''}${formatDateValue(contract.startDate)} - ${formatDateValue(contract.endDate)}`,
+      status: contract.statusDesc || contract.status || '待签署',
+      time: formatDateTimeValue(contract.createTime),
+      action: null as React.ReactNode,
+    }));
+
+    return [...messageRows, ...contractRows, ...certificateRows, ...leaveRows];
+  }, [summary]);
+
+  async function handleMarkOneRead(id: number) {
     try {
       await markMessageRead(id);
       await load();
     } catch (error) {
       toast.error(getErrorMessage(error, '消息标记失败'));
     }
-  };
+  }
 
-  const handleMarkAllRead = async () => {
+  async function handleMarkAllRead() {
     try {
       await markAllMessagesRead();
       toast.success('全部消息已标记为已读');
@@ -118,41 +140,45 @@ export const HrEssPortalPage: React.FC = () => {
     } catch (error) {
       toast.error(getErrorMessage(error, '批量标记失败'));
     }
-  };
+  }
 
-  return (
-    <div className="flex flex-col gap-6">
-      <FilterBar
-        stats={[{ label: '未读消息', value: `${summary?.unreadCount ?? 0}` }]}
-        actions={[
-          <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">EMPLOYEE SELF SERVICE</p>
+          <h2>员工自助门户</h2>
+          <span>集中查看假期、工资、合同、证明和站内消息</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-          </Button>,
-        ]}
-      />
+          </Button>
+        </div>
+      </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="admin-source-stat-grid">
         <SummaryCard
           title="假期余额"
           value={remainingLeave}
           hint="单位：天"
-          icon={<CalendarClock className="h-5 w-5" />}
-          tone="sky"
+          icon={<CalendarClock size={18} />}
+          tone="blue"
           onClick={() => navigate('/hr/ess/leave-balance')}
         />
         <SummaryCard
           title="最新工资条"
           value={summary?.latestSlip && Object.keys(summary.latestSlip).length ? formatMoneyValue((summary.latestSlip as any).netTotal) : '-'}
           hint={summary?.latestSlip && Object.keys(summary.latestSlip).length ? `期间 ${(summary.latestSlip as any).periodMonth ?? ''}` : '暂无'}
-          icon={<Wallet className="h-5 w-5" />}
-          tone="emerald"
+          icon={<Wallet size={18} />}
+          tone="green"
           onClick={() => navigate('/hr/ess/slips')}
         />
         <SummaryCard
           title="待签合同"
           value={(summary?.pendingContracts?.length ?? 0).toString()}
           hint="点击进入电子合同"
-          icon={<FileSignature className="h-5 w-5" />}
+          icon={<FileSignature size={18} />}
           tone="violet"
           onClick={() => navigate('/hr/ess/contract')}
         />
@@ -160,116 +186,91 @@ export const HrEssPortalPage: React.FC = () => {
           title="证明开具"
           value={(summary?.recentCertificates?.length ?? 0).toString()}
           hint="最近 5 条"
-          icon={<FileBadge className="h-5 w-5" />}
+          icon={<FileBadge size={18} />}
           tone="amber"
           onClick={() => navigate('/hr/ess/certificates')}
         />
-        <SummaryCard
-          title="未读消息"
-          value={(summary?.unreadCount ?? 0).toString()}
-          hint="点击下方列表处理"
-          icon={<Bell className="h-5 w-5" />}
-          tone="rose"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Section title="假期余额明细">
-          {summary?.leaveBalances?.length ? (
-            <ul className="space-y-2 text-sm">
-              {summary.leaveBalances.map((item) => (
-                <li
-                  key={`${item.leaveTypeId}-${item.year ?? ''}`}
-                  className="flex items-center justify-between rounded-lg border border-slate-200/70 px-3 py-2 dark:border-slate-800"
-                >
-                  <span className="text-slate-700 dark:text-slate-200">{item.leaveTypeName || item.leaveCode || `类型#${item.leaveTypeId}`}</span>
-                  <span className="text-slate-500 dark:text-slate-400">
-                    剩余 <strong className="text-emerald-600 dark:text-emerald-300">{Number(item.remainQuota || 0).toFixed(1)}</strong>
-                    {' '}/ 共 {Number(item.totalQuota || 0).toFixed(1)} {item.unit || '天'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="py-6 text-center text-sm text-slate-400">暂无假期余额</div>
-          )}
-        </Section>
-
-        <Section
-          title="未读消息"
-          action={
-            summary?.unreadMessages?.length ? (
-              <Button size="sm" variant="ghost" onClick={() => void handleMarkAllRead()}>
-                全部已读
-              </Button>
-            ) : null
-          }
-        >
-          {summary?.unreadMessages?.length ? (
-            <ul className="space-y-2 text-sm">
-              {summary.unreadMessages.map((msg) => (
-                <li key={msg.id} className="rounded-lg border border-slate-200/70 p-3 dark:border-slate-800">
-                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-                    <div className="font-medium text-slate-800 dark:text-slate-100">{msg.title}</div>
-                    <Button size="sm" variant="ghost" onClick={() => void handleMarkOneRead(msg.id)}>
-                      标记已读
-                    </Button>
-                  </div>
-                  {msg.summary ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{msg.summary}</div> : null}
-                  {msg.createTime ? (
-                    <div className="mt-1 text-xs text-slate-400">{formatDateTimeValue(msg.createTime)}</div>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="py-6 text-center text-sm text-slate-400">
-              <UserCheck className="mx-auto mb-1 h-5 w-5" />暂无未读消息
-            </div>
-          )}
-        </Section>
-
-        <Section title="最近证明开具">
-          {summary?.recentCertificates?.length ? (
-            <ul className="space-y-2 text-sm">
-              {summary.recentCertificates.map((cert) => (
-                <li key={cert.id} className="flex items-center justify-between rounded-lg border border-slate-200/70 px-3 py-2 dark:border-slate-800">
-                  <div>
-                    <div className="font-medium text-slate-800 dark:text-slate-100">
-                      {cert.requestNo} · {cert.certificateType}
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">{cert.purpose || '-'}</div>
-                  </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400"><DictLabel dictType="hr_certificate_status" value={String(cert.status ?? '')} fallback="-" /></span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="py-6 text-center text-sm text-slate-400">暂无证明记录</div>
-          )}
-        </Section>
-
-        <Section title="待签合同">
-          {summary?.pendingContracts?.length ? (
-            <ul className="space-y-2 text-sm">
-              {summary.pendingContracts.map((contract: any) => (
-                <li key={contract.id} className="rounded-lg border border-slate-200/70 p-3 dark:border-slate-800">
-                  <div className="font-medium text-slate-800 dark:text-slate-100">
-                    {contract.contractNo || `合同#${contract.id}`}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {contract.contractType ? `${contract.contractType} · ` : ''}
-                    生效 {formatDateValue(contract.startDate)} - {formatDateValue(contract.endDate)}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="py-6 text-center text-sm text-slate-400">暂无待签合同</div>
-          )}
-        </Section>
-      </div>
+      </section>
     </div>
+  );
+
+  const pageFilters = (
+      <section className="card admin-users-toolbar">
+        <div className="admin-users-filter-grid">
+          <div>
+            <span className="input-label">未读消息</span>
+            <div className="admin-source-search-field">
+              <Bell size={16} />
+              <Input className="h-[42px]" value={`${summary?.unreadCount ?? 0} 条`} readOnly aria-label="未读消息数量" />
+            </div>
+          </div>
+        </div>
+      </section>
+  );
+
+  const pageContent = (
+    <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+      <div className="admin-recruitment-table-head">
+        <div>
+          <strong>自助事项</strong>
+          <span>假期、消息、证明和合同统一进入一张个人事项表。</span>
+        </div>
+        <div className="admin-users-toolbar-actions">
+          {summary?.unreadMessages?.length ? (
+            <Button size="sm" variant="outline" onClick={() => void handleMarkAllRead()}>
+              全部已读
+            </Button>
+          ) : null}
+          <span className="admin-users-filter-count">{loading ? '同步中' : `${selfServiceRows.length} 条`}</span>
+        </div>
+      </div>
+      <table className="unity-data-table admin-source-table min-w-[980px]">
+        <thead>
+          <tr>
+            <th>事项类型</th>
+            <th>标题</th>
+            <th>内容</th>
+            <th>状态</th>
+            <th>时间</th>
+            <th className="text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <tr>
+              <td colSpan={6} className="py-10 text-center text-sm text-slate-400">加载中...</td>
+            </tr>
+          ) : selfServiceRows.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="py-10 text-center text-sm text-slate-400">
+                <UserCheck className="mx-auto mb-1 h-5 w-5" />暂无自助事项
+              </td>
+            </tr>
+          ) : (
+            selfServiceRows.map((row) => (
+              <tr key={row.id}>
+                <td className="text-sm">{row.category}</td>
+                <td className="max-w-[16rem] truncate text-sm font-medium">{row.subject}</td>
+                <td className="max-w-[28rem] truncate text-xs">{row.detail}</td>
+                <td className="text-sm">{row.status}</td>
+                <td className="text-xs">{row.time}</td>
+                <td className="text-right">{row.action}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  return (
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageContent}
+      />
+    </section>
   );
 };
 

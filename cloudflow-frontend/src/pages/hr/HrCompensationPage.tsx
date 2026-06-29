@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger, type TableRowActionItem } from '@/components/common';
+import { CircleDollarSign, Layers3, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import {
   EmployeeInsurance,
   EmployeeSalary,
@@ -48,6 +49,7 @@ import {
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 import HrCompensationSimulatePanel from './components/HrCompensationSimulatePanel';
 import { useDict } from '@/hooks/useDict';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const componentDefault = (): HrRecord => ({
   itemCode: `COMP${Date.now()}`,
@@ -277,282 +279,327 @@ const HrCompensationPage: React.FC = () => {
     { key: 'description', label: '说明', type: 'textarea', className: 'md:col-span-2' },
   ];
 
+  const metrics = [
+    { label: '薪资项目', value: String(components.length), meta: '计薪组件', icon: <CircleDollarSign size={18} />, tone: 'blue' },
+    { label: '薪资结构', value: String(structures.length), meta: '结构模板', icon: <Layers3 size={18} />, tone: 'green' },
+    { label: '员工薪资', value: String(employeeComps.length), meta: '员工档案', icon: <Users size={18} />, tone: 'amber' },
+    { label: '福利个税', value: `${benefits.length} / ${taxProfiles.length}`, meta: '方案 / 档案', icon: <ShieldCheck size={18} />, tone: 'violet' },
+  ];
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={() => setSimulateOpen(true)}>
-          薪酬模拟器
-        </Button>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
-          {[
-            ['components', '薪资项目'],
-            ['structures', '薪资结构'],
-            ['grades', '薪级'],
-            ['employeeComps', '员工薪资'],
-            ['changes', '调薪'],
-            ['benefits', '福利方案'],
-            ['employeeBenefits', '员工福利'],
-            ['taxProfiles', '个税档案'],
-            ['taxDeductions', '专项扣除'],
-          ].map(([value, label]) => (
-            <TabsTrigger key={value} value={value} className="flex-1 lg:flex-none">{label}</TabsTrigger>
-          ))}
-        </TabsList>
-
-        <TabsContent value="components">
-          <HrCrudPanel
-            title="薪资项目"
-            rows={components}
-            loading={loading}
-            onRefresh={() => void loadData()}
-            createLabel="新增项目"
-            form={componentForm}
-            setForm={setComponentForm}
-            resetForm={componentDefault}
-            formFields={componentFields}
-            onCreate={(form) => submitAndReload(() => createSalaryItem(form), '薪资项目已保存')}
-            columns={[
-              { key: 'itemCode', label: '编码', render: (row) => row.itemCode || row.componentCode },
-              { key: 'itemName', label: '名称', render: (row) => row.itemName || row.componentName },
-              { key: 'itemType', label: '类型', render: (row) => componentTypeDict.getLabel(String(row.itemType || row.componentType || '')) },
-              { key: 'category', label: '分类', render: (row) => componentCategoryDict.getLabel(String(row.category ?? '')) },
-              { key: 'taxable', label: '计税', render: (row) => yesNoLabel(row.taxable ?? row.isTaxable) },
-              { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
-            ]}
+    <>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="contents">
+        <section className="admin-source-page admin-hr-compensation-page">
+          <TablePageLayout
+            actions={
+              <>
+                <header className="admin-source-header">
+                  <div>
+                    <p className="admin-source-kicker">HR COMPENSATION</p>
+                    <h2>薪酬福利</h2>
+                    <span>维护薪资项目、结构、薪级、员工薪资、福利和个税档案</span>
+                  </div>
+                  <div className="admin-source-controls">
+                    <Button variant="outline" size="sm" onClick={() => void loadData()} disabled={loading}>
+                      <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                      刷新
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setSimulateOpen(true)}>
+                      薪酬模拟器
+                    </Button>
+                  </div>
+                </header>
+          
+                <section className="admin-source-stat-grid">
+                  {metrics.map((metric) => (
+                    <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+                      <div className="admin-source-stat-icon">{metric.icon}</div>
+                      <div>
+                        <p>{metric.label}</p>
+                        <strong>{metric.value}</strong>
+                        <span>{metric.meta}</span>
+                      </div>
+                    </article>
+                  ))}
+                </section>
+              </>
+            }
+            filters={
+              <section className="card admin-users-toolbar">
+                <TabsList className="admin-source-tabs w-full justify-start lg:w-auto">
+                  {[
+                    ['components', '薪资项目'],
+                    ['structures', '薪资结构'],
+                    ['grades', '薪级'],
+                    ['employeeComps', '员工薪资'],
+                    ['changes', '调薪'],
+                    ['benefits', '福利方案'],
+                    ['employeeBenefits', '员工福利'],
+                    ['taxProfiles', '个税档案'],
+                    ['taxDeductions', '专项扣除'],
+                  ].map(([value, label]) => (
+                    <TabsTrigger key={value} value={value} className="flex-1 lg:flex-none">{label}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </section>
+            }
+            table={
+              <>
+                <TabsContent value="components" className="mt-0">
+            <HrCrudPanel
+              title="薪资项目"
+              rows={components}
+              loading={loading}
+              onRefresh={() => void loadData()}
+              createLabel="新增项目"
+              form={componentForm}
+              setForm={setComponentForm}
+              resetForm={componentDefault}
+              formFields={componentFields}
+              onCreate={(form) => submitAndReload(() => createSalaryItem(form), '薪资项目已保存')}
+              columns={[
+                { key: 'itemCode', label: '编码', render: (row) => row.itemCode || row.componentCode },
+                { key: 'itemName', label: '名称', render: (row) => row.itemName || row.componentName },
+                { key: 'itemType', label: '类型', render: (row) => componentTypeDict.getLabel(String(row.itemType || row.componentType || '')) },
+                { key: 'category', label: '分类', render: (row) => componentCategoryDict.getLabel(String(row.category ?? '')) },
+                { key: 'taxable', label: '计税', render: (row) => yesNoLabel(row.taxable ?? row.isTaxable) },
+                { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
+              ]}
+            />
+                </TabsContent>
+          
+                <TabsContent value="structures" className="mt-0">
+            <HrCrudPanel
+              title="薪资结构"
+              rows={structures}
+              loading={loading}
+              onRefresh={() => void loadData()}
+              createLabel="新增结构"
+              form={structureForm}
+              setForm={setStructureForm}
+              resetForm={structureDefault}
+              formFields={structureFields}
+              onCreate={(form) => submitAndReload(
+                () => createSalaryStructure({ ...form, itemIds: parseItemIds(form.itemIds) } as Parameters<typeof createSalaryStructure>[0]),
+                '薪资结构已保存',
+              )}
+              columns={[
+                { key: 'structureCode', label: '编码' },
+                { key: 'structureName', label: '名称' },
+                { key: 'description', label: '说明', render: (row) => row.description || '-' },
+                { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
+              ]}
+            />
+                </TabsContent>
+          
+                <TabsContent value="grades" className="mt-0">
+            <HrCrudPanel
+              title="薪级"
+              rows={grades}
+              loading={loading}
+              onRefresh={() => void loadData()}
+              createLabel="新增薪级"
+              form={gradeForm}
+              setForm={setGradeForm}
+              resetForm={gradeDefault}
+              formFields={[
+                { key: 'gradeName', label: '薪级名称' },
+                { key: 'levelId', label: '职级', type: 'select', valueType: 'number', options: levelOptions },
+                { key: 'minSalary', label: '下限', type: 'number' },
+                { key: 'midSalary', label: '中位', type: 'number' },
+                { key: 'maxSalary', label: '上限', type: 'number' },
+                { key: 'currency', label: '币种', type: 'select', options: [{ label: '人民币', value: 'CNY' }, { label: '美元', value: 'USD' }] },
+                { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
+              ]}
+              onCreate={(form) => submitAndReload(() => setSalaryGrade(form), '薪级已保存')}
+              columns={[
+                { key: 'gradeCode', label: '编码' },
+                { key: 'gradeName', label: '名称' },
+                { key: 'levelId', label: '职级', render: (row) => row.levelName || optionOrIdLabel('职级', levelOptions, row.levelId) },
+                { key: 'minSalary', label: '下限', render: (row) => moneyCell(row.minSalary, row.currency) },
+                { key: 'midSalary', label: '中位', render: (row) => moneyCell(row.midSalary, row.currency) },
+                { key: 'maxSalary', label: '上限', render: (row) => moneyCell(row.maxSalary, row.currency) },
+              ]}
+            />
+                </TabsContent>
+          
+                <TabsContent value="employeeComps" className="mt-0">
+            <HrCrudPanel
+              title="员工薪资"
+              rows={employeeComps}
+              loading={loading}
+              onRefresh={() => void loadData()}
+              createLabel="分配薪资"
+              form={employeeCompForm}
+              setForm={setEmployeeCompForm}
+              resetForm={employeeCompDefault}
+              formFields={[
+                { key: 'employeeId', label: '员工', type: 'employee' },
+                { key: 'structureId', label: '薪资结构', type: 'select', valueType: 'number', options: structureOptions },
+                { key: 'gradeId', label: '薪级', type: 'select', valueType: 'number', options: gradeOptions },
+                { key: 'totalSalary', label: '总薪资', type: 'number' },
+                { key: 'effectiveDate', label: '生效日期', type: 'date' },
+                { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }] },
+              ]}
+              onCreate={(form) => submitAndReload(() => assignSalaryStructure(form), '员工薪资已保存')}
+              columns={[
+                { key: 'employeeName', label: '员工', render: employeeLabel },
+                { key: 'structureId', label: '结构', render: (row) => row.structureName || optionOrIdLabel('结构', structureOptions, row.structureId) },
+                { key: 'gradeId', label: '薪级', render: (row) => row.gradeName || optionOrIdLabel('薪级', gradeOptions, row.gradeId) },
+                { key: 'totalSalary', label: '总薪资', render: (row) => moneyCell(row.totalSalary, row.currency) },
+                { key: 'effectiveDate', label: '生效日期', render: (row) => formatDateValue(row.effectiveDate) },
+                { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
+              ]}
+            />
+                </TabsContent>
+          
+                <TabsContent value="changes" className="mt-0">
+            <HrCrudPanel
+              title="调薪"
+              rows={changes}
+              loading={loading}
+              onRefresh={() => void loadData()}
+              createLabel="新增调薪"
+              form={changeForm}
+              setForm={setChangeForm}
+              resetForm={changeDefault}
+              formFields={[
+                { key: 'employeeId', label: '员工', type: 'employee' },
+                { key: 'changeType', label: '类型', type: 'select', options: changeTypeDict.getOptions() },
+                { key: 'beforeTotal', label: '调整前', type: 'number' },
+                { key: 'afterTotal', label: '调整后', type: 'number' },
+                { key: 'effectiveDate', label: '生效日期', type: 'date' },
+                { key: 'reason', label: '原因', type: 'textarea', className: 'md:col-span-2' },
+              ]}
+              onCreate={(form) => submitAndReload(() => createSalaryAdjustment(form), '调薪已保存')}
+              columns={[
+                { key: 'changeNo', label: '编号', render: (row) => row.changeNo || row.applicationNo },
+                { key: 'employeeName', label: '员工', render: employeeLabel },
+                { key: 'changeType', label: '类型', render: (row) => changeTypeDict.getLabel(String(row.changeType ?? '')) },
+                { key: 'beforeTotal', label: '调整前', render: (row) => moneyCell(row.beforeTotal) },
+                { key: 'afterTotal', label: '调整后', render: (row) => moneyCell(row.afterTotal) },
+                { key: 'effectiveDate', label: '生效日期', render: (row) => formatDateValue(row.effectiveDate) },
+                { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
+              ]}
+              actions={changeActions}
+              minWidthClassName="min-w-[1040px]"
+            />
+                </TabsContent>
+          
+                <TabsContent value="benefits" className="mt-0">
+            <HrCrudPanel
+              title="福利方案"
+              rows={benefits}
+              loading={loading}
+              onRefresh={() => void loadData()}
+              createLabel="新增方案"
+              form={benefitForm}
+              setForm={setBenefitForm}
+              resetForm={benefitDefault}
+              formFields={[
+                { key: 'schemeName', label: '方案名称' },
+                { key: 'city', label: '城市', type: 'city' },
+                { key: 'effectiveDate', label: '生效日期', type: 'date' },
+                { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
+              ]}
+              onCreate={(form) => submitAndReload(() => createInsuranceScheme(form), '福利方案已保存')}
+              columns={[
+                { key: 'schemeCode', label: '编码' },
+                { key: 'schemeName', label: '名称' },
+                { key: 'city', label: '城市', render: (row) => row.city || '-' },
+                { key: 'effectiveDate', label: '生效日期', render: (row) => formatDateValue(row.effectiveDate) },
+                { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
+              ]}
+            />
+                </TabsContent>
+          
+                <TabsContent value="employeeBenefits" className="mt-0">
+            <HrCrudPanel
+              title="员工福利"
+              rows={employeeBenefits}
+              loading={loading}
+              onRefresh={() => void loadData()}
+              createLabel="分配福利"
+              form={employeeBenefitForm}
+              setForm={setEmployeeBenefitForm}
+              resetForm={employeeBenefitDefault}
+              formFields={[
+                { key: 'employeeId', label: '员工', type: 'employee' },
+                { key: 'schemeId', label: '方案', type: 'select', valueType: 'number', options: benefitOptions },
+                { key: 'baseAmount', label: '缴费基数', type: 'number' },
+                { key: 'effectiveDate', label: '生效日期', type: 'date' },
+                { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }] },
+              ]}
+              onCreate={(form) => submitAndReload(() => assignInsuranceScheme(form), '员工福利已保存')}
+              columns={[
+                { key: 'employeeName', label: '员工', render: employeeLabel },
+                { key: 'schemeName', label: '方案', render: (row) => row.schemeName || optionOrIdLabel('方案', benefitOptions, row.schemeId) },
+                { key: 'baseAmount', label: '基数', render: (row) => moneyCell(row.baseAmount ?? row.base) },
+                { key: 'effectiveDate', label: '生效日期', render: (row) => formatDateValue(row.effectiveDate) },
+                { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
+              ]}
+            />
+                </TabsContent>
+          
+                <TabsContent value="taxProfiles" className="mt-0">
+            <HrCrudPanel
+              title="个税档案"
+              rows={taxProfiles}
+              loading={loading}
+              onRefresh={() => void loadData()}
+              createLabel="新增档案"
+              form={taxProfileForm}
+              setForm={setTaxProfileForm}
+              resetForm={taxProfileDefault}
+              formFields={[
+                { key: 'employeeId', label: '员工', type: 'employee' },
+                { key: 'taxResidenceCity', label: '纳税城市', type: 'city' },
+                { key: 'threshold', label: '起征点', type: 'number' },
+                { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }] },
+              ]}
+              onCreate={(form) => submitAndReload(() => createTaxConfig(form), '个税档案已保存')}
+              columns={[
+                { key: 'employeeName', label: '员工', render: employeeLabel },
+                { key: 'taxResidenceCity', label: '城市', render: (row) => row.taxResidenceCity || '-' },
+                { key: 'threshold', label: '起征点', render: (row) => moneyCell(row.threshold) },
+                { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
+              ]}
+            />
+                </TabsContent>
+          
+                <TabsContent value="taxDeductions" className="mt-0">
+            <HrCrudPanel
+              title="专项扣除"
+              rows={taxDeductions}
+              loading={loading}
+              onRefresh={() => void loadData()}
+              createLabel="新增扣除"
+              form={taxDeductionForm}
+              setForm={setTaxDeductionForm}
+              resetForm={taxDeductionDefault}
+              formFields={[
+                { key: 'employeeId', label: '员工', type: 'employee' },
+                { key: 'deductionType', label: '扣除类型', type: 'select', options: [{ label: '子女教育', value: 'CHILD_EDUCATION' }, { label: '继续教育', value: 'CONTINUING_EDU' }, { label: '住房贷款利息', value: 'HOUSING_LOAN' }, { label: '住房租金', value: 'HOUSING_RENT' }, { label: '赡养老人', value: 'ELDERLY_CARE' }, { label: '婴幼儿照护', value: 'INFANT_CARE' }] },
+                { key: 'amount', label: '金额', type: 'number' },
+                { key: 'startDate', label: '开始日期', type: 'date' },
+                { key: 'endDate', label: '结束日期', type: 'date' },
+                { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }] },
+              ]}
+              onCreate={(form) => submitAndReload(() => addTaxDeduction(form), '专项扣除已保存')}
+              columns={[
+                { key: 'employeeName', label: '员工', render: employeeLabel },
+                { key: 'deductionType', label: '类型', render: (row) => deductionTypeDict.getLabel(String(row.deductionType ?? '')) },
+                { key: 'amount', label: '金额', render: (row) => moneyCell(row.amount) },
+                { key: 'startDate', label: '开始', render: (row) => formatDateValue(row.startDate) },
+                { key: 'endDate', label: '结束', render: (row) => formatDateValue(row.endDate) },
+                { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
+              ]}
+            />
+                </TabsContent>
+              </>
+            }
           />
-        </TabsContent>
-
-        <TabsContent value="structures">
-          <HrCrudPanel
-            title="薪资结构"
-            rows={structures}
-            loading={loading}
-            onRefresh={() => void loadData()}
-            createLabel="新增结构"
-            form={structureForm}
-            setForm={setStructureForm}
-            resetForm={structureDefault}
-            formFields={structureFields}
-            onCreate={(form) => submitAndReload(
-              () => createSalaryStructure({ ...form, itemIds: parseItemIds(form.itemIds) } as Parameters<typeof createSalaryStructure>[0]),
-              '薪资结构已保存',
-            )}
-            columns={[
-              { key: 'structureCode', label: '编码' },
-              { key: 'structureName', label: '名称' },
-              { key: 'description', label: '说明', render: (row) => row.description || '-' },
-              { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
-            ]}
-          />
-        </TabsContent>
-
-        <TabsContent value="grades">
-          <HrCrudPanel
-            title="薪级"
-            rows={grades}
-            loading={loading}
-            onRefresh={() => void loadData()}
-            createLabel="新增薪级"
-            form={gradeForm}
-            setForm={setGradeForm}
-            resetForm={gradeDefault}
-            formFields={[
-              { key: 'gradeName', label: '薪级名称' },
-              { key: 'levelId', label: '职级', type: 'select', valueType: 'number', options: levelOptions },
-              { key: 'minSalary', label: '下限', type: 'number' },
-              { key: 'midSalary', label: '中位', type: 'number' },
-              { key: 'maxSalary', label: '上限', type: 'number' },
-              { key: 'currency', label: '币种', type: 'select', options: [{ label: '人民币', value: 'CNY' }, { label: '美元', value: 'USD' }] },
-              { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
-            ]}
-            onCreate={(form) => submitAndReload(() => setSalaryGrade(form), '薪级已保存')}
-            columns={[
-              { key: 'gradeCode', label: '编码' },
-              { key: 'gradeName', label: '名称' },
-              { key: 'levelId', label: '职级', render: (row) => row.levelName || optionOrIdLabel('职级', levelOptions, row.levelId) },
-              { key: 'minSalary', label: '下限', render: (row) => moneyCell(row.minSalary, row.currency) },
-              { key: 'midSalary', label: '中位', render: (row) => moneyCell(row.midSalary, row.currency) },
-              { key: 'maxSalary', label: '上限', render: (row) => moneyCell(row.maxSalary, row.currency) },
-            ]}
-          />
-        </TabsContent>
-
-        <TabsContent value="employeeComps">
-          <HrCrudPanel
-            title="员工薪资"
-            rows={employeeComps}
-            loading={loading}
-            onRefresh={() => void loadData()}
-            createLabel="分配薪资"
-            form={employeeCompForm}
-            setForm={setEmployeeCompForm}
-            resetForm={employeeCompDefault}
-            formFields={[
-              { key: 'employeeId', label: '员工', type: 'employee' },
-              { key: 'structureId', label: '薪资结构', type: 'select', valueType: 'number', options: structureOptions },
-              { key: 'gradeId', label: '薪级', type: 'select', valueType: 'number', options: gradeOptions },
-              { key: 'totalSalary', label: '总薪资', type: 'number' },
-              { key: 'effectiveDate', label: '生效日期', type: 'date' },
-              { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }] },
-            ]}
-            onCreate={(form) => submitAndReload(() => assignSalaryStructure(form), '员工薪资已保存')}
-            columns={[
-              { key: 'employeeName', label: '员工', render: employeeLabel },
-              { key: 'structureId', label: '结构', render: (row) => row.structureName || optionOrIdLabel('结构', structureOptions, row.structureId) },
-              { key: 'gradeId', label: '薪级', render: (row) => row.gradeName || optionOrIdLabel('薪级', gradeOptions, row.gradeId) },
-              { key: 'totalSalary', label: '总薪资', render: (row) => moneyCell(row.totalSalary, row.currency) },
-              { key: 'effectiveDate', label: '生效日期', render: (row) => formatDateValue(row.effectiveDate) },
-              { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
-            ]}
-          />
-        </TabsContent>
-
-        <TabsContent value="changes">
-          <HrCrudPanel
-            title="调薪"
-            rows={changes}
-            loading={loading}
-            onRefresh={() => void loadData()}
-            createLabel="新增调薪"
-            form={changeForm}
-            setForm={setChangeForm}
-            resetForm={changeDefault}
-            formFields={[
-              { key: 'employeeId', label: '员工', type: 'employee' },
-              { key: 'changeType', label: '类型', type: 'select', options: changeTypeDict.getOptions() },
-              { key: 'beforeTotal', label: '调整前', type: 'number' },
-              { key: 'afterTotal', label: '调整后', type: 'number' },
-              { key: 'effectiveDate', label: '生效日期', type: 'date' },
-              { key: 'reason', label: '原因', type: 'textarea', className: 'md:col-span-2' },
-            ]}
-            onCreate={(form) => submitAndReload(() => createSalaryAdjustment(form), '调薪已保存')}
-            columns={[
-              { key: 'changeNo', label: '编号', render: (row) => row.changeNo || row.applicationNo },
-              { key: 'employeeName', label: '员工', render: employeeLabel },
-              { key: 'changeType', label: '类型', render: (row) => changeTypeDict.getLabel(String(row.changeType ?? '')) },
-              { key: 'beforeTotal', label: '调整前', render: (row) => moneyCell(row.beforeTotal) },
-              { key: 'afterTotal', label: '调整后', render: (row) => moneyCell(row.afterTotal) },
-              { key: 'effectiveDate', label: '生效日期', render: (row) => formatDateValue(row.effectiveDate) },
-              { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
-            ]}
-            actions={changeActions}
-            minWidthClassName="min-w-[1040px]"
-          />
-        </TabsContent>
-
-        <TabsContent value="benefits">
-          <HrCrudPanel
-            title="福利方案"
-            rows={benefits}
-            loading={loading}
-            onRefresh={() => void loadData()}
-            createLabel="新增方案"
-            form={benefitForm}
-            setForm={setBenefitForm}
-            resetForm={benefitDefault}
-            formFields={[
-              { key: 'schemeName', label: '方案名称' },
-              { key: 'city', label: '城市', type: 'city' },
-              { key: 'effectiveDate', label: '生效日期', type: 'date' },
-              { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
-            ]}
-            onCreate={(form) => submitAndReload(() => createInsuranceScheme(form), '福利方案已保存')}
-            columns={[
-              { key: 'schemeCode', label: '编码' },
-              { key: 'schemeName', label: '名称' },
-              { key: 'city', label: '城市', render: (row) => row.city || '-' },
-              { key: 'effectiveDate', label: '生效日期', render: (row) => formatDateValue(row.effectiveDate) },
-              { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
-            ]}
-          />
-        </TabsContent>
-
-        <TabsContent value="employeeBenefits">
-          <HrCrudPanel
-            title="员工福利"
-            rows={employeeBenefits}
-            loading={loading}
-            onRefresh={() => void loadData()}
-            createLabel="分配福利"
-            form={employeeBenefitForm}
-            setForm={setEmployeeBenefitForm}
-            resetForm={employeeBenefitDefault}
-            formFields={[
-              { key: 'employeeId', label: '员工', type: 'employee' },
-              { key: 'schemeId', label: '方案', type: 'select', valueType: 'number', options: benefitOptions },
-              { key: 'baseAmount', label: '缴费基数', type: 'number' },
-              { key: 'effectiveDate', label: '生效日期', type: 'date' },
-              { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }] },
-            ]}
-            onCreate={(form) => submitAndReload(() => assignInsuranceScheme(form), '员工福利已保存')}
-            columns={[
-              { key: 'employeeName', label: '员工', render: employeeLabel },
-              { key: 'schemeName', label: '方案', render: (row) => row.schemeName || optionOrIdLabel('方案', benefitOptions, row.schemeId) },
-              { key: 'baseAmount', label: '基数', render: (row) => moneyCell(row.baseAmount ?? row.base) },
-              { key: 'effectiveDate', label: '生效日期', render: (row) => formatDateValue(row.effectiveDate) },
-              { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
-            ]}
-          />
-        </TabsContent>
-
-        <TabsContent value="taxProfiles">
-          <HrCrudPanel
-            title="个税档案"
-            rows={taxProfiles}
-            loading={loading}
-            onRefresh={() => void loadData()}
-            createLabel="新增档案"
-            form={taxProfileForm}
-            setForm={setTaxProfileForm}
-            resetForm={taxProfileDefault}
-            formFields={[
-              { key: 'employeeId', label: '员工', type: 'employee' },
-              { key: 'taxResidenceCity', label: '纳税城市', type: 'city' },
-              { key: 'threshold', label: '起征点', type: 'number' },
-              { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }] },
-            ]}
-            onCreate={(form) => submitAndReload(() => createTaxConfig(form), '个税档案已保存')}
-            columns={[
-              { key: 'employeeName', label: '员工', render: employeeLabel },
-              { key: 'taxResidenceCity', label: '城市', render: (row) => row.taxResidenceCity || '-' },
-              { key: 'threshold', label: '起征点', render: (row) => moneyCell(row.threshold) },
-              { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
-            ]}
-          />
-        </TabsContent>
-
-        <TabsContent value="taxDeductions">
-          <HrCrudPanel
-            title="专项扣除"
-            rows={taxDeductions}
-            loading={loading}
-            onRefresh={() => void loadData()}
-            createLabel="新增扣除"
-            form={taxDeductionForm}
-            setForm={setTaxDeductionForm}
-            resetForm={taxDeductionDefault}
-            formFields={[
-              { key: 'employeeId', label: '员工', type: 'employee' },
-              { key: 'deductionType', label: '扣除类型', type: 'select', options: [{ label: '子女教育', value: 'CHILD_EDUCATION' }, { label: '继续教育', value: 'CONTINUING_EDU' }, { label: '住房贷款利息', value: 'HOUSING_LOAN' }, { label: '住房租金', value: 'HOUSING_RENT' }, { label: '赡养老人', value: 'ELDERLY_CARE' }, { label: '婴幼儿照护', value: 'INFANT_CARE' }] },
-              { key: 'amount', label: '金额', type: 'number' },
-              { key: 'startDate', label: '开始日期', type: 'date' },
-              { key: 'endDate', label: '结束日期', type: 'date' },
-              { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }] },
-            ]}
-            onCreate={(form) => submitAndReload(() => addTaxDeduction(form), '专项扣除已保存')}
-            columns={[
-              { key: 'employeeName', label: '员工', render: employeeLabel },
-              { key: 'deductionType', label: '类型', render: (row) => deductionTypeDict.getLabel(String(row.deductionType ?? '')) },
-              { key: 'amount', label: '金额', render: (row) => moneyCell(row.amount) },
-              { key: 'startDate', label: '开始', render: (row) => formatDateValue(row.startDate) },
-              { key: 'endDate', label: '结束', render: (row) => formatDateValue(row.endDate) },
-              { key: 'status', label: '状态', render: (row) => renderStatus(row.status) },
-            ]}
-          />
-        </TabsContent>
+        </section>
       </Tabs>
 
       <HrCompensationSimulatePanel
@@ -561,7 +608,7 @@ const HrCompensationPage: React.FC = () => {
         employees={employees.map((emp) => ({ id: emp.id, name: emp.name, employeeNo: emp.employeeNo }))}
         positionLevels={grades.map((g) => ({ id: g.id, gradeName: g.gradeName, gradeCode: g.gradeCode }))}
       />
-    </div>
+    </>
   );
 };
 

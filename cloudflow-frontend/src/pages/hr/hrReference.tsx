@@ -44,7 +44,7 @@ export const HrInlineState: React.FC<HrInlineStateProps> = ({
   className,
 }) => (
   <div className={cn('flex flex-col items-center justify-center px-6 py-10 text-center', className)}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon || <Inbox className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -63,7 +63,7 @@ export const HrTableStateRow: React.FC<HrTableStateRowProps> = ({
   loading = false,
 }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-14">
+    <td colSpan={colSpan} className="px-4 py-10">
       <HrInlineState
         title={title}
         description={description}
@@ -85,15 +85,15 @@ export const HrDialogSection: React.FC<HrDialogSectionProps> = ({
 }) => (
   <section
     className={cn(
-      'overflow-visible rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
+      'card overflow-visible',
       className,
     )}
   >
-    <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
+    <div className="admin-source-section-head flex-col items-start border-b border-slate-200 p-4 dark:border-slate-800 sm:flex-row">
       <div className="min-w-0">
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        <strong>{title}</strong>
         {description ? (
-          <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+          <span>{description}</span>
         ) : null}
       </div>
       {titleAction ? <div className="flex flex-wrap items-center gap-2">{titleAction}</div> : null}
@@ -104,7 +104,7 @@ export const HrDialogSection: React.FC<HrDialogSectionProps> = ({
 
 export const HrDetailField: React.FC<HrDetailFieldProps> = ({ label, value, className }) => (
   <div className={cn('min-w-0', className)}>
-    <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
       {label}
     </div>
     <div className="mt-1.5 break-words text-sm text-slate-900 dark:text-slate-100">{value}</div>
@@ -112,7 +112,7 @@ export const HrDetailField: React.FC<HrDetailFieldProps> = ({ label, value, clas
 );
 
 export const HrStatusPill: React.FC<HrStatusPillProps> = ({ label, className }) => (
-  <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-xs font-medium', className)}>
+  <span className={cn('inline-flex rounded-md border px-2 py-0.5 text-xs font-medium', className)}>
     {label}
   </span>
 );

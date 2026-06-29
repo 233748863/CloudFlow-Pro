@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Award, BookOpen, Clock, GraduationCap, RefreshCcw, RotateCcw } from 'lucide-react';
+import { Award, BookOpen, Clock, GraduationCap, RefreshCcw, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, StatCard, TableHead, TableHeader } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
+import { Button, Input } from '@/components/common';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrTrainingArchive,
@@ -38,115 +37,152 @@ export const HrTrainingArchivePage: React.FC = () => {
     void load(id);
   };
 
-  const filters = (
-    <FilterBar
-      search={{
-        value: employeeId,
-        onChange: setEmployeeId,
-        onSubmit: handleQuery,
-        placeholder: '员工 ID(留空查我的)',
-        widthClassName: 'w-full sm:w-[200px]',
-      }}
-      actions={[
-        ...(employeeId
-          ? [
-              <Button key="reset" variant="outline" size="sm" onClick={() => { setEmployeeId(''); void load(); }}>
-                <RotateCcw className="mr-1.5 h-4 w-4" />查我的
-              </Button>,
-            ]
-          : []),
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-      ]}
-    />
-  );
-
-  const table = (
-    loading ? (
-      <TableSurfaceCard>
-        <div className="py-12 text-center text-sm text-slate-400">加载中...</div>
-      </TableSurfaceCard>
-    ) : !archive ? (
-      <TableSurfaceCard>
-        <div className="py-12 text-center text-sm text-slate-400">无档案数据</div>
-      </TableSurfaceCard>
-    ) : (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard title="累计学时" value={Number(archive.totalCreditHours ?? 0).toFixed(1)} icon={<Clock className="h-5 w-5" />} iconVariant="primary" />
-          <StatCard title="已完成课程" value={archive.completedCount} icon={<BookOpen className="h-5 w-5" />} iconVariant="success" />
-          <StatCard title="进行中" value={archive.ongoingCount} icon={<GraduationCap className="h-5 w-5" />} iconVariant="warning" />
-          <StatCard title="获得证书" value={archive.certificateCount} icon={<Award className="h-5 w-5" />} iconVariant="primary" />
-        </div>
-
-        <TableSurfaceCard>
-          <div className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">参训记录</div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px]">
-              <TableHeader>
-                <tr>
-                  <TableHead>班次</TableHead>
-                  <TableHead>课程</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>完成状态</TableHead>
-                  <TableHead>分数</TableHead>
-                  <TableHead>签到时间</TableHead>
-                </tr>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {archive.enrollments?.length ? archive.enrollments.map((row: Record<string, unknown>) => (
-                  <tr key={String(row.id)}>
-                    <td className="px-4 py-2 text-sm">{String(row.sessionNo || `#${row.sessionId}`)}</td>
-                    <td className="px-4 py-2 text-sm">{String(row.courseName || `#${row.courseId}`)}</td>
-                    <td className="px-4 py-2 text-sm">{getTrainingEnrollmentStatusLabel(row.status as string)}</td>
-                    <td className="px-4 py-2 text-sm">{getTrainingEnrollmentStatusLabel(row.completionStatus as string) || '-'}</td>
-                    <td className="px-4 py-2 text-sm">{(row.score as React.ReactNode) ?? '-'}</td>
-                    <td className="px-4 py-2 text-xs">{formatDateValue(row.checkInTime)}</td>
-                  </tr>
-                )) : (
-                  <tr><td colSpan={6} className="py-6 text-center text-sm text-slate-400">无参训记录</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </TableSurfaceCard>
-
-        <TableSurfaceCard>
-          <div className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">获得证书</div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px]">
-              <TableHeader>
-                <tr>
-                  <TableHead>证书号</TableHead>
-                  <TableHead>课程</TableHead>
-                  <TableHead>颁发日期</TableHead>
-                  <TableHead>状态</TableHead>
-                </tr>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {archive.certificates?.length ? archive.certificates.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-4 py-2 font-mono text-xs">{row.certNo}</td>
-                    <td className="px-4 py-2 text-sm">{`#${row.courseId}`}</td>
-                    <td className="px-4 py-2 text-xs">{formatDateValue(row.issueDate)}</td>
-                    <td className="px-4 py-2 text-sm">{row.status === 'VALID' ? '有效' : '已撤销'}</td>
-                  </tr>
-                )) : (
-                  <tr><td colSpan={4} className="py-6 text-center text-sm text-slate-400">暂无证书</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </TableSurfaceCard>
-      </div>
-    )
-  );
-
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} />
-    </div>
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={
+          <>
+            <header className="admin-source-header">
+              <div>
+                <p className="admin-source-kicker">TRAINING ARCHIVE</p>
+                <h2>培训档案</h2>
+                <span>查看员工累计学时、课程完成情况、参训记录和证书状态</span>
+              </div>
+              <div className="admin-source-controls">
+                <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+                  <RefreshCcw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />刷新
+                </Button>
+              </div>
+            </header>
+      
+            <section className="admin-source-stat-grid">
+              <article className="card admin-source-stat admin-source-tone-blue">
+                <span className="admin-source-stat-icon"><Clock size={18} /></span>
+                <div><p>累计学时</p><strong>{Number(archive?.totalCreditHours ?? 0).toFixed(1)}</strong><span>已记录培训时长</span></div>
+              </article>
+              <article className="card admin-source-stat admin-source-tone-green">
+                <span className="admin-source-stat-icon"><BookOpen size={18} /></span>
+                <div><p>已完成课程</p><strong>{archive?.completedCount ?? 0}</strong><span>完成培训数量</span></div>
+              </article>
+              <article className="card admin-source-stat admin-source-tone-amber">
+                <span className="admin-source-stat-icon"><GraduationCap size={18} /></span>
+                <div><p>进行中</p><strong>{archive?.ongoingCount ?? 0}</strong><span>正在参训记录</span></div>
+              </article>
+              <article className="card admin-source-stat admin-source-tone-violet">
+                <span className="admin-source-stat-icon"><Award size={18} /></span>
+                <div><p>获得证书</p><strong>{archive?.certificateCount ?? 0}</strong><span>证书档案数量</span></div>
+              </article>
+            </section>
+          </>
+        }
+        filters={
+          <section className="card admin-users-toolbar">
+            <form
+              className="admin-users-filter-grid admin-training-archive-filter-grid"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleQuery();
+              }}
+            >
+              <label>
+                <span className="input-label">员工 ID</span>
+                <div className="admin-source-search-field">
+                  <Search size={16} />
+                  <Input
+                    className="h-[42px]"
+                    value={employeeId}
+                    onChange={(event) => setEmployeeId(event.target.value)}
+                    placeholder="留空查我的"
+                  />
+                </div>
+              </label>
+              <div className="admin-users-toolbar-actions">
+                <Button type="submit" size="sm">查询</Button>
+                {employeeId ? (
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setEmployeeId(''); void load(); }}>
+                    <RotateCcw className="h-4 w-4" />查我的
+                  </Button>
+                ) : null}
+                <span className="admin-users-filter-count">{employeeId ? `员工 ${employeeId}` : '本人档案'}</span>
+              </div>
+            </form>
+          </section>
+        }
+        table={
+          loading ? (
+            <InnerTableSurface>
+              <div className="py-12 text-center text-sm text-slate-400">加载中...</div>
+            </InnerTableSurface>
+          ) : !archive ? (
+            <InnerTableSurface>
+              <div className="py-12 text-center text-sm text-slate-400">无档案数据</div>
+            </InnerTableSurface>
+          ) : (
+            <div className="admin-source-content-grid admin-training-archive-grid">
+              <InnerTableSurface>
+                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-100">参训记录</div>
+                <div className="admin-horizontal-scroll">
+                  <table className="unity-data-table admin-source-table min-w-[720px]">
+                    <thead>
+                      <tr>
+                        <th>班次</th>
+                        <th>课程</th>
+                        <th>状态</th>
+                        <th>完成状态</th>
+                        <th>分数</th>
+                        <th>签到时间</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {archive.enrollments?.length ? archive.enrollments.map((row: Record<string, unknown>) => (
+                        <tr key={String(row.id)}>
+                          <td className="text-sm">{String(row.sessionNo || `#${row.sessionId}`)}</td>
+                          <td className="text-sm">{String(row.courseName || `#${row.courseId}`)}</td>
+                          <td className="text-sm">{getTrainingEnrollmentStatusLabel(row.status as string)}</td>
+                          <td className="text-sm">{getTrainingEnrollmentStatusLabel(row.completionStatus as string) || '-'}</td>
+                          <td className="text-sm">{(row.score as React.ReactNode) ?? '-'}</td>
+                          <td className="text-xs">{formatDateValue(row.checkInTime)}</td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={6} className="admin-settings-empty">无参训记录</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </InnerTableSurface>
+      
+              <InnerTableSurface>
+                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-100">获得证书</div>
+                <div className="admin-horizontal-scroll">
+                  <table className="unity-data-table admin-source-table min-w-[560px]">
+                    <thead>
+                      <tr>
+                        <th>证书号</th>
+                        <th>课程</th>
+                        <th>颁发日期</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {archive.certificates?.length ? archive.certificates.map((row) => (
+                        <tr key={row.id}>
+                          <td className="font-mono text-xs">{row.certNo}</td>
+                          <td className="text-sm">{`#${row.courseId}`}</td>
+                          <td className="text-xs">{formatDateValue(row.issueDate)}</td>
+                          <td className="text-sm">{row.status === 'VALID' ? '有效' : '已撤销'}</td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={4} className="admin-settings-empty">暂无证书</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </InnerTableSurface>
+            </div>
+          )
+        }
+      />
+    </section>
   );
 };
 

@@ -8,12 +8,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import { toast } from 'sonner';
 import { CheckCircle2, ListChecks, Plus, RefreshCcw, ShieldAlert, Trash2 } from 'lucide-react';
@@ -26,6 +20,7 @@ import {
 } from '@/services/api/hr/performance';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 const DEFAULT_DISTRIBUTION = [
   { grade: 'S', percent: 10 },
@@ -35,15 +30,15 @@ const DEFAULT_DISTRIBUTION = [
 ];
 
 const GRADE_TONE: Record<string, string> = {
-  S: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:ring-rose-900/40',
-  A: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/40',
-  B: 'bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-950/30 dark:text-teal-300 dark:ring-teal-900/40',
-  C: 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700',
+  S: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-900/40',
+  A: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/40',
+  B: 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-300 dark:border-cyan-900/40',
+  C: 'bg-[var(--cf-surface-muted)] text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
 };
 
 const MODE_TONE: Record<string, string> = {
-  BLOCK: 'bg-rose-100 text-rose-700 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-800/50',
-  WARN: 'bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-800/50',
+  BLOCK: 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800/50',
+  WARN: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50',
 };
 
 interface Props {
@@ -139,6 +134,7 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
       width="extra-wide"
       title="强制分布规则"
       description="按 S / A / B / C 各等级配额拉通绩效评定，各等级合计需为 100%"
+      bodyClassName="admin-dialog-stack"
       footer={
         <>
           <Button variant="outline" size="sm" onClick={() => void loadData()} disabled={loading}>
@@ -155,13 +151,18 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
         </>
       }
     >
-      <div className="space-y-4">
-        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
-            <Plus className="h-4 w-4 text-teal-600 dark:text-teal-300" />
-            新增分布规则
+      <div className="admin-source-content-grid">
+        <article className="card">
+          <div className="admin-source-section-head border-b border-slate-200 p-4 dark:border-slate-800">
+            <div>
+              <strong>新增分布规则</strong>
+              <span>配置等级配额和拦截模式，各等级合计需为 100%</span>
+            </div>
+            <div className="admin-users-toolbar-actions">
+              <Plus className="h-4 w-4 text-slate-400" />
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 p-4 md:grid-cols-3">
             <Input
               placeholder="规则名称(如：销售年终强制分布)"
               value={ruleName}
@@ -182,16 +183,16 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
             </Button>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4 dark:border-slate-800">
             <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-4">
               {distribution.map((row, idx) => (
                 <div
                   key={row.grade}
-                  className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-950/60"
+                  className="flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2 dark:border-slate-800 dark:bg-slate-950"
                 >
                   <span
                     className={cn(
-                      'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ring-1',
+                      'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold border',
                       GRADE_TONE[row.grade] || GRADE_TONE.C,
                     )}
                   >
@@ -212,42 +213,42 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
             </div>
             <div
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium ring-1 tabular-nums',
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border tabular-nums',
                 totalPercent === 100
-                  ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/40'
-                  : 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/40',
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/40'
+                  : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/40',
               )}
             >
               {totalPercent === 100 ? <CheckCircle2 className="h-3.5 w-3.5" /> : <ShieldAlert className="h-3.5 w-3.5" />}
               合计 {totalPercent}%
             </div>
           </div>
-        </div>
+        </article>
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>规则名</TableHead>
-                <TableHead>分布</TableHead>
-                <TableHead>模式</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <InnerTableSurface>
+            <table className="unity-data-table admin-source-table min-w-[760px]">
+              <thead>
+                <tr>
+                  <th>规则名</th>
+                  <th>分布</th>
+                  <th>模式</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
               {rules.map((row) => {
                 const mode = String(row.enforceMode || '').toUpperCase();
                 return (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium text-slate-700 dark:text-slate-200">{row.ruleName}</TableCell>
-                    <TableCell>
+                  <tr key={row.id}>
+                    <td className="font-medium text-slate-700 dark:text-slate-200">{row.ruleName}</td>
+                    <td>
                       <div className="flex flex-wrap items-center gap-1.5">
                         {(row.distribution || []).map((d: any) => (
                           <span
                             key={d.grade}
                             className={cn(
-                              'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 tabular-nums',
+                              'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border tabular-nums',
                               GRADE_TONE[d.grade] || GRADE_TONE.C,
                             )}
                           >
@@ -255,44 +256,45 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
                           </span>
                         ))}
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td>
                       <span
                         className={cn(
-                          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1',
+                          'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border',
                           MODE_TONE[mode] || MODE_TONE.WARN,
                         )}
                       >
                         {mode || row.enforceMode}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    </td>
+                    <td>
+                      <span className="inline-flex items-center rounded-md bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         {row.status}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => void handleRemove(row.id || 0)}>
-                        <Trash2 className="h-4 w-4" />
-                        删除
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                    <td>
+                      <div className="admin-users-row-actions">
+                        <button type="button" className="danger" title="删除" onClick={() => void handleRemove(row.id || 0)}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 );
               })}
               {rules.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5}>
+                <tr>
+                  <td colSpan={5} className="admin-settings-empty">
                     <div className="flex flex-col items-center gap-2 py-10 text-slate-400 dark:text-slate-500">
                       <ListChecks className="h-8 w-8 opacity-50" />
                       <span className="text-sm">暂无分布规则，使用上方表单新增</span>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ) : null}
-            </TableBody>
-          </Table>
-        </div>
+              </tbody>
+            </table>
+        </InnerTableSurface>
       </div>
     </BaseDialog>
   );

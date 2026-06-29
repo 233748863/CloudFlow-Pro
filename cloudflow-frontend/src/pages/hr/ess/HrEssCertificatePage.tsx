@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { FileBadge, LoaderCircle, Plus, RefreshCcw, RotateCcw } from 'lucide-react';
+import { Download, FileBadge, LoaderCircle, Plus, RefreshCcw, RotateCcw, Search, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -15,14 +15,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   HrCertificateRequest,
   HrCertificateRequestPayload,
@@ -126,100 +121,9 @@ export const HrEssCertificatePage: React.FC = () => {
   };
 
   const hasFilters = Boolean(query.keyword || query.status);
-
-  const filters = (
-    <FilterBar
-      search={{
-        value: query.keyword,
-        onChange: (value) => setQuery((q) => ({ ...q, keyword: value })),
-        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
-        placeholder: '搜索申请号/用途',
-        widthClassName: 'w-full sm:w-[220px]',
-      }}
-      filters={[
-        <div key="status" className="w-full sm:w-40">
-          <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">全部状态</SelectItem>
-              {certStatusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>,
-      ]}
-      stats={[{ label: '', value: `共 ${total} 条` }]}
-      actions={[
-        ...(hasFilters
-          ? [
-              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, keyword: '', status: '' }))}>
-                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
-              </Button>,
-            ]
-          : []),
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-        <Button key="add" size="sm" onClick={() => { setForm(defaultForm); setDialogOpen(true); }}>
-          <Plus className="mr-1.5 h-4 w-4" />申请证明
-        </Button>,
-      ]}
-    />
-  );
-
-  const table = (
-    <TableSurfaceCard fill>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1000px]">
-          <TableHeader className="sticky top-0 z-10">
-            <tr>
-              <TableHead>申请号</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>用途</TableHead>
-              <TableHead>接收单位</TableHead>
-              <TableHead>份数</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>开具时间</TableHead>
-              <TableActionHead className="text-right">操作</TableActionHead>
-            </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">
-                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">暂无申请</td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 font-mono text-xs">{row.requestNo}</td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_certificate_type" value={String(row.certificateType ?? '')} fallback="-" /></td>
-                  <td className="px-4 py-3 text-sm">{row.purpose || '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.recipientOrg || '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.copies ?? 1}</td>
-                  <td className="px-4 py-3 text-sm">{getCertificateStatusLabel(row.status)}</td>
-                  <td className="px-4 py-3 text-sm">{formatDateTimeValue(row.issuedAt)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        { key: 'download', label: '下载', semantic: 'view', onClick: () => void handleDownload(row), hidden: !(row.status === 'ISSUED' && row.pdfFileId) },
-                        { key: 'cancel', label: '取消', semantic: 'void', onClick: () => setPendingCancel(row), hidden: !hasWorkflowStatus(row.status, 'DRAFT', 'PENDING', 'APPROVING') },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
-  );
+  const draftCount = rows.filter((row) => hasWorkflowStatus(row.status, 'DRAFT')).length;
+  const pendingCount = rows.filter((row) => hasWorkflowStatus(row.status, 'PENDING', 'APPROVING')).length;
+  const issuedCount = rows.filter((row) => row.status === 'ISSUED').length;
 
   const pagination = total > 0 ? (
     <Pagination
@@ -232,14 +136,155 @@ export const HrEssCertificatePage: React.FC = () => {
   ) : null;
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} pagination={pagination} />
+    <>
+      <section className="admin-source-page">
+        <TablePageLayout
+          actions={
+            <>
+              <header className="admin-source-header">
+                <div>
+                  <p className="admin-source-kicker">certificate request</p>
+                  <h2>证明申请</h2>
+                  <span>申请在职证明等人事证明，跟踪审批状态并下载已开具文件。</span>
+                </div>
+                <div className="admin-source-controls">
+                  <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+                    <RefreshCcw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />刷新
+                  </Button>
+                  <Button size="sm" onClick={() => { setForm(defaultForm); setDialogOpen(true); }}>
+                    <Plus className="h-4 w-4" />申请证明
+                  </Button>
+                </div>
+              </header>
+        
+              <section className="admin-source-stat-grid">
+                <article className="card admin-source-stat admin-source-tone-blue">
+                  <span className="admin-source-stat-icon"><FileBadge size={18} /></span>
+                  <div><p>申请总数</p><strong>{total}</strong><span>当前查询范围</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-amber">
+                  <span className="admin-source-stat-icon"><RotateCcw size={18} /></span>
+                  <div><p>草稿</p><strong>{draftCount}</strong><span>待补充提交</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-violet">
+                  <span className="admin-source-stat-icon"><Search size={18} /></span>
+                  <div><p>审批中</p><strong>{pendingCount}</strong><span>待处理申请</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-green">
+                  <span className="admin-source-stat-icon"><Download size={18} /></span>
+                  <div><p>已开具</p><strong>{issuedCount}</strong><span>可下载文件</span></div>
+                </article>
+              </section>
+            </>
+          }
+          filters={
+            <section className="card admin-users-toolbar">
+              <form
+                className="admin-users-filter-grid"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setQuery((q) => ({ ...q, pageNum: 1 }));
+                }}
+              >
+                <label>
+                  <span>申请号 / 用途</span>
+                  <div className="admin-source-search-field">
+                    <Search size={16} />
+                    <Input
+                      value={query.keyword}
+                      onChange={(event) => setQuery((q) => ({ ...q, keyword: event.target.value }))}
+                      className="cf-control"
+                      placeholder="搜索申请号/用途"
+                    />
+                  </div>
+                </label>
+                <label>
+                  <span>状态</span>
+                  <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
+                    <SelectTrigger className="cf-control"><SelectValue placeholder="全部状态" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all">全部状态</SelectItem>
+                      {certStatusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </label>
+                <div className="admin-users-toolbar-actions">
+                  <Button type="submit" size="sm">查询</Button>
+                  {hasFilters ? (
+                    <Button type="button" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, keyword: '', status: '' }))}>
+                      <RotateCcw className="h-4 w-4" />清空条件
+                    </Button>
+                  ) : null}
+                  <span className="admin-users-filter-count">共 {total} 条</span>
+                </div>
+              </form>
+            </section>
+          }
+          table={
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+              <div className="admin-horizontal-scroll">
+                <table className="unity-data-table admin-source-table min-w-[1000px]">
+                  <thead>
+                    <tr>
+                      <th>申请号</th>
+                      <th>类型</th>
+                      <th>用途</th>
+                      <th>接收单位</th>
+                      <th>份数</th>
+                      <th>状态</th>
+                      <th>开具时间</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={8} className="py-10 text-center text-sm text-slate-400">
+                          <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                        </td>
+                      </tr>
+                    ) : rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无申请</td>
+                      </tr>
+                    ) : (
+                      rows.map((row) => (
+                        <tr key={row.id}>
+                          <td className="font-mono text-xs">{row.requestNo}</td>
+                          <td className="text-sm"><DictLabel dictType="hr_certificate_type" value={String(row.certificateType ?? '')} fallback="-" /></td>
+                          <td className="text-sm">{row.purpose || '-'}</td>
+                          <td className="text-sm">{row.recipientOrg || '-'}</td>
+                          <td className="text-sm">{row.copies ?? 1}</td>
+                          <td className="text-sm">{getCertificateStatusLabel(row.status)}</td>
+                          <td className="text-sm">{formatDateTimeValue(row.issuedAt)}</td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              {row.status === 'ISSUED' && row.pdfFileId ? (
+                                <button type="button" title="下载" aria-label="下载" onClick={() => void handleDownload(row)}><Download size={15} /></button>
+                              ) : null}
+                              {hasWorkflowStatus(row.status, 'DRAFT', 'PENDING', 'APPROVING') ? (
+                                <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => setPendingCancel(row)}><XCircle size={15} /></button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </InnerTableSurface>
+          }
+          pagination={pagination}
+        />
+      </section>
 
       <BaseDialog
         open={dialogOpen}
         title={<span className="flex items-center gap-2"><FileBadge className="h-4 w-4" />申请证明</span>}
         onClose={() => setDialogOpen(false)}
         width="normal"
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>取消</Button>
@@ -247,8 +292,8 @@ export const HrEssCertificatePage: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-3">
-          <div>
+        <>
+          <div className="admin-dialog-field">
             <Label>证明类型</Label>
             <Select value={form.certificateType} onValueChange={(value) => setForm((prev) => ({ ...prev, certificateType: value }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -259,16 +304,16 @@ export const HrEssCertificatePage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="admin-dialog-field">
             <Label>用途 <span className="text-rose-500">*</span></Label>
             <Input value={form.purpose} onChange={(event) => setForm((prev) => ({ ...prev, purpose: event.target.value }))} />
           </div>
-          <div>
+          <div className="admin-dialog-field">
             <Label>接收单位</Label>
             <Input value={form.recipientOrg} onChange={(event) => setForm((prev) => ({ ...prev, recipientOrg: event.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="admin-dialog-field">
               <Label>份数</Label>
               <Input
                 type="number"
@@ -277,7 +322,7 @@ export const HrEssCertificatePage: React.FC = () => {
                 onChange={(event) => setForm((prev) => ({ ...prev, copies: Number(event.target.value) || 1 }))}
               />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>语言</Label>
               <Select value={form.language} onValueChange={(value) => setForm((prev) => ({ ...prev, language: value }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -288,11 +333,11 @@ export const HrEssCertificatePage: React.FC = () => {
               </Select>
             </div>
           </div>
-          <div>
+          <div className="admin-dialog-field">
             <Label>备注</Label>
             <Input value={form.remark} onChange={(event) => setForm((prev) => ({ ...prev, remark: event.target.value }))} />
           </div>
-        </div>
+        </>
       </BaseDialog>
 
       <ConfirmDialog
@@ -303,7 +348,7 @@ export const HrEssCertificatePage: React.FC = () => {
         onCancel={() => setPendingCancel(null)}
         onConfirm={handleCancel}
       />
-    </div>
+    </>
   );
 };
 

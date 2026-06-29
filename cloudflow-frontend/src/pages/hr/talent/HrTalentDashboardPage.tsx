@@ -11,9 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/common';
-import { StatCard } from '@/components/common/StatCard';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrTalentDevelopmentAction,
@@ -36,6 +34,16 @@ interface TalentDashboardData {
   recentReviews: HrTalentReview[];
   recentSuccession: HrTalentSuccessionPlan[];
 }
+
+const shortcuts = [
+  { label: '盘点活动', path: '/hr/talent/reviews', icon: <ClipboardList className="h-4 w-4" /> },
+  { label: '九宫格校准', path: '/hr/talent/nine-box', icon: <Grid3x3 className="h-4 w-4" /> },
+  { label: '校准会议', path: '/hr/talent/calibration', icon: <Users className="h-4 w-4" /> },
+  { label: '继任计划', path: '/hr/talent/succession', icon: <TrendingUp className="h-4 w-4" /> },
+  { label: '人才池', path: '/hr/talent/pools', icon: <Sparkles className="h-4 w-4" /> },
+  { label: '培养行动', path: '/hr/talent/development', icon: <Users className="h-4 w-4" /> },
+  { label: '人才档案', path: '/hr/talent/archive', icon: <ArrowRight className="h-4 w-4" /> },
+];
 
 export const HrTalentDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -64,13 +72,13 @@ export const HrTalentDashboardPage: React.FC = () => {
       const actions = normalizeRows<HrTalentDevelopmentAction>(actionsRes);
 
       setData({
-        ongoingReviews: reviews.filter((r) =>
-          ['DRAFT', 'IN_PROGRESS', 'CALIBRATING'].includes(String(r.status)),
+        ongoingReviews: reviews.filter((review) =>
+          ['DRAFT', 'IN_PROGRESS', 'CALIBRATING'].includes(String(review.status)),
         ).length,
-        hipoCount: pools.filter((p) => String(p.poolType) === 'HIPO' && String(p.status) === 'ACTIVE').length,
-        pendingSuccession: plans.filter((p) => String(p.status) === 'DRAFT').length,
-        pendingActions: actions.filter((a) =>
-          ['PLANNED', 'ONGOING'].includes(String(a.status)),
+        hipoCount: pools.filter((pool) => String(pool.poolType) === 'HIPO' && String(pool.status) === 'ACTIVE').length,
+        pendingSuccession: plans.filter((plan) => String(plan.status) === 'DRAFT').length,
+        pendingActions: actions.filter((action) =>
+          ['PLANNED', 'ONGOING'].includes(String(action.status)),
         ).length,
         recentReviews: reviews.slice(0, 5),
         recentSuccession: plans.slice(0, 5),
@@ -86,131 +94,162 @@ export const HrTalentDashboardPage: React.FC = () => {
     void load();
   }, [load]);
 
+  const statusTiles = [
+    {
+      label: '进行中盘点',
+      value: data.ongoingReviews,
+      meta: 'DRAFT / IN_PROGRESS / CALIBRATING',
+      icon: <ClipboardList size={17} />,
+      tone: 'blue',
+    },
+    {
+      label: '高潜人才池',
+      value: data.hipoCount,
+      meta: 'ACTIVE · HIPO',
+      icon: <Sparkles size={17} />,
+      tone: 'green',
+    },
+    {
+      label: '待发布继任计划',
+      value: data.pendingSuccession,
+      meta: '草稿状态',
+      icon: <TrendingUp size={17} />,
+      tone: 'amber',
+    },
+    {
+      label: '进行中培养行动',
+      value: data.pendingActions,
+      meta: 'PLANNED / ONGOING',
+      icon: <Users size={17} />,
+      tone: 'violet',
+    },
+  ];
+
   return (
-    <div className="space-y-4">
-      <FilterBar
-        actions={[
-          <Button key="refresh" variant="outline" size="sm" disabled={loading} onClick={() => void load()}>
-            <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-          </Button>,
-        ]}
-      />
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="进行中盘点"
-          value={data.ongoingReviews}
-          icon={<ClipboardList className="h-5 w-5" />}
-          iconVariant="primary"
-          meta="DRAFT / IN_PROGRESS / CALIBRATING"
-        />
-        <StatCard
-          title="高潜人才池"
-          value={data.hipoCount}
-          icon={<Sparkles className="h-5 w-5" />}
-          iconVariant="success"
-          meta="ACTIVE · poolType=HIPO"
-        />
-        <StatCard
-          title="待发布继任计划"
-          value={data.pendingSuccession}
-          icon={<TrendingUp className="h-5 w-5" />}
-          iconVariant="warning"
-          meta="状态 = DRAFT"
-        />
-        <StatCard
-          title="进行中培养行动"
-          value={data.pendingActions}
-          icon={<Users className="h-5 w-5" />}
-          iconVariant="gray"
-          meta="PLANNED / ONGOING"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TableSurfaceCard>
-          <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800">
-            <span>最近盘点活动</span>
-            <Button size="sm" variant="ghost" onClick={() => navigate('/hr/talent/reviews')}>
-              全部 <ArrowRight className="ml-1 h-3 w-3" />
-            </Button>
-          </div>
-          <div className="space-y-2 px-4 pb-4">
-            {data.recentReviews.length ? data.recentReviews.map((r) => (
-              <div
-                key={r.id}
-                className="flex items-center justify-between rounded border border-slate-200 px-3 py-2 text-sm"
-              >
-                <div>
-                  <div className="font-medium">{r.reviewName}</div>
-                  <div className="text-xs text-slate-500">
-                    {r.reviewYear} · <DictLabel dictType="hr_talent_cycle" value={String(r.cycleType ?? '')} fallback="-" /> · <DictLabel dictType="hr_talent_review_status" value={String(r.status ?? '')} fallback="-" />
+    <section className="admin-source-page admin-talent-dashboard-page">
+      <TablePageLayout
+        actions={
+          <header className="admin-source-header">
+            <div>
+              <p className="admin-source-kicker">TALENT COMMAND CENTER</p>
+              <h2>人才工作台</h2>
+              <span>汇总人才盘点、人才池、继任计划和培养行动状态</span>
+            </div>
+            <div className="admin-source-controls">
+              <Button variant="outline" size="sm" disabled={loading} onClick={() => void load()}>
+                <RefreshCcw className={loading ? 'mr-1.5 h-4 w-4 animate-spin' : 'mr-1.5 h-4 w-4'} />刷新
+              </Button>
+            </div>
+          </header>
+        }
+        filters={
+          <section className="card admin-talent-command-strip">
+            <div className="admin-talent-status-grid">
+              {statusTiles.map((item) => (
+                <article key={item.label} className={`admin-talent-status-cell tone-${item.tone}`}>
+                  <span>{item.icon}</span>
+                  <div>
+                    <p>{item.label}</p>
+                    <strong>{item.value}</strong>
+                    <em>{item.meta}</em>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => navigate('/hr/talent/nine-box')}>
-                    <Grid3x3 className="mr-1 h-3 w-3" />校准
+                </article>
+              ))}
+            </div>
+            <div className="admin-talent-shortcut-rail">
+              <span>最近盘点 {data.recentReviews.length} 条 · 最近继任 {data.recentSuccession.length} 条</span>
+              <div>
+                {shortcuts.map((item) => (
+                  <button key={item.path} type="button" onClick={() => navigate(item.path)}>
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        }
+        table={
+          <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <InnerTableSurface>
+                <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  <span>最近盘点活动</span>
+                  <Button size="sm" variant="ghost" onClick={() => navigate('/hr/talent/reviews')}>
+                    全部 <ArrowRight className="ml-1 h-3 w-3" />
                   </Button>
                 </div>
-              </div>
-            )) : (
-              <div className="py-6 text-center text-sm text-slate-400">暂无盘点活动</div>
-            )}
-          </div>
-        </TableSurfaceCard>
-
-        <TableSurfaceCard>
-          <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800">
-            <span>最近继任计划</span>
-            <Button size="sm" variant="ghost" onClick={() => navigate('/hr/talent/succession')}>
-              全部 <ArrowRight className="ml-1 h-3 w-3" />
-            </Button>
-          </div>
-          <div className="space-y-2 px-4 pb-4">
-            {data.recentSuccession.length ? data.recentSuccession.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between rounded border border-slate-200 px-3 py-2 text-sm"
-              >
-                <div>
-                  <div className="font-medium">{p.planName}</div>
-                  <div className="text-xs text-slate-500">
-                    岗位 #{p.positionId ?? '-'} · 风险 {p.riskLevel ?? '-'} · 状态 {p.status}
-                  </div>
+                <div className="admin-horizontal-scroll">
+                  <table className="unity-data-table admin-source-table min-w-full">
+                    <thead>
+                      <tr>
+                        <th>盘点活动</th>
+                        <th>年度</th>
+                        <th>周期</th>
+                        <th>状态</th>
+                        <th className="text-right">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.recentReviews.length ? data.recentReviews.map((review) => (
+                        <tr key={review.id}>
+                          <td><strong>{review.reviewName}</strong></td>
+                          <td>{review.reviewYear}</td>
+                          <td><DictLabel dictType="hr_talent_cycle" value={String(review.cycleType ?? '')} fallback="-" /></td>
+                          <td><DictLabel dictType="hr_talent_review_status" value={String(review.status ?? '')} fallback="-" /></td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="九宫格校准" onClick={() => navigate('/hr/talent/nine-box')}>
+                                <Grid3x3 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={5} className="admin-settings-empty">暂无盘点活动</td></tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            )) : (
-              <div className="py-6 text-center text-sm text-slate-400">暂无继任计划</div>
-            )}
+              </InnerTableSurface>
+      
+              <InnerTableSurface>
+                <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  <span>最近继任计划</span>
+                  <Button size="sm" variant="ghost" onClick={() => navigate('/hr/talent/succession')}>
+                    全部 <ArrowRight className="ml-1 h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="admin-horizontal-scroll">
+                  <table className="unity-data-table admin-source-table min-w-full">
+                    <thead>
+                      <tr>
+                        <th>计划</th>
+                        <th>岗位</th>
+                        <th>风险</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.recentSuccession.length ? data.recentSuccession.map((plan) => (
+                        <tr key={plan.id}>
+                          <td><strong>{plan.planName}</strong></td>
+                          <td>#{plan.positionId ?? '-'}</td>
+                          <td><DictLabel dictType="hr_talent_succession_risk" value={String(plan.riskLevel ?? '')} fallback="-" /></td>
+                          <td><DictLabel dictType="hr_publish_status" value={String(plan.status ?? '')} fallback="-" /></td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={4} className="admin-settings-empty">暂无继任计划</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </InnerTableSurface>
+            </div>
           </div>
-        </TableSurfaceCard>
-      </div>
-
-      <TableSurfaceCard>
-        <div className="px-4 py-3 text-sm font-semibold text-slate-800">快速入口</div>
-        <div className="grid grid-cols-2 gap-3 px-4 pb-4 md:grid-cols-4">
-          {[
-            { label: '盘点活动', path: '/hr/talent/reviews', icon: <ClipboardList className="h-4 w-4" /> },
-            { label: '九宫格校准', path: '/hr/talent/nine-box', icon: <Grid3x3 className="h-4 w-4" /> },
-            { label: '校准会议', path: '/hr/talent/calibration', icon: <Users className="h-4 w-4" /> },
-            { label: '继任计划', path: '/hr/talent/succession', icon: <TrendingUp className="h-4 w-4" /> },
-            { label: '人才池', path: '/hr/talent/pools', icon: <Sparkles className="h-4 w-4" /> },
-            { label: '培养行动', path: '/hr/talent/development', icon: <Users className="h-4 w-4" /> },
-            { label: '人才档案', path: '/hr/talent/archive', icon: <ArrowRight className="h-4 w-4" /> },
-          ].map((item) => (
-            <Button
-              key={item.path}
-              variant="outline"
-              className="justify-start"
-              onClick={() => navigate(item.path)}
-            >
-              {item.icon}
-              <span className="ml-2">{item.label}</span>
-            </Button>
-          ))}
-        </div>
-      </TableSurfaceCard>
-    </div>
+        }
+      />
+    </section>
   );
 };
 

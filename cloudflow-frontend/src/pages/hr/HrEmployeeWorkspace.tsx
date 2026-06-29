@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCcw,
   ShieldCheck,
+  Trash2,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,7 +27,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableRowActions,
   Tabs,
   TabsContent,
   TabsList,
@@ -34,6 +34,7 @@ import {
 } from '@/components/common';
 import { useDict } from '@/hooks/useDict';
 import { FileUpload } from '@/components/FileUpload';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   EmployeeContract,
   EmployeeDocument,
@@ -189,7 +190,7 @@ const canDeleteContract = (contract?: EmployeeContract | null) =>
 
 // 合同状态样式委托后端字典 contract_status；未命中保留页面历史 slate fallback
 
-const CONTRACT_STATUS_FALLBACK_TONE = 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+const CONTRACT_STATUS_FALLBACK_TONE = 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
 
 const InlineState = ({
   title,
@@ -201,11 +202,38 @@ const InlineState = ({
   className?: string;
 }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <Users className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
   </div>
+);
+
+const HrArchiveSurface = ({
+  title,
+  description,
+  action,
+  className = '',
+  bodyClassName = '',
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+  children: React.ReactNode;
+}) => (
+  <InnerTableSurface className={`admin-hr-archive-surface ${className}`} wrapperClassName="admin-hr-archive-wrapper">
+    <div className="admin-hr-archive-surface-head">
+      <div>
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
+      {action ? <div className="admin-hr-archive-surface-action">{action}</div> : null}
+    </div>
+    <div className={`admin-hr-archive-surface-body ${bodyClassName}`}>{children}</div>
+  </InnerTableSurface>
 );
 
 const DialogSection = ({
@@ -215,12 +243,9 @@ const DialogSection = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
-    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-    </div>
-    <div className="p-4">{children}</div>
-  </section>
+  <HrArchiveSurface title={title} bodyClassName="admin-dialog-stack">
+    {children}
+  </HrArchiveSurface>
 );
 
 const DetailField = ({
@@ -245,7 +270,7 @@ const ArchiveCardField = ({
   value: React.ReactNode;
   icon?: React.ReactNode;
 }) => (
-  <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white/80 px-3.5 py-3 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950/30">
+  <div className="admin-hr-archive-field">
     <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
       {icon}
       <span>{label}</span>
@@ -275,7 +300,7 @@ const contractRemainingTone = (contract: EmployeeContract) => {
     return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
   }
 
-  return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+  return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
 };
 
 const contractRemainingLabel = (contract: EmployeeContract) => {
@@ -310,7 +335,7 @@ const getDateRemainingDays = (value?: string | null) => {
 const documentExpiryTone = (document: EmployeeDocument) => {
   const remainingDays = getDateRemainingDays(document.expiryDate);
   if (remainingDays == null) {
-    return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+    return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
   }
   if (remainingDays < 0) {
     return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
@@ -346,7 +371,7 @@ const contactPriorityTone = (priority?: number | null) => {
   if (priority === 2) {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
   }
-  return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+  return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
 };
 
 const contactPriorityLabel = (priority?: number | null) =>
@@ -789,10 +814,10 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
   if (!selectedEmployeeId) {
     return (
-      <div className="flex h-full min-h-[560px] items-center justify-center px-6">
+      <div className="admin-hr-employee-workspace flex h-full min-h-0 flex-col">
         <InlineState
           title={loading ? '正在准备员工档案...' : '先选择一位员工'}
-          className="py-16"
+          className="py-10"
         />
       </div>
     );
@@ -828,41 +853,58 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
     { label: '合同', value: `${contracts.length} 条` },
     { label: '证件 / 联系人', value: `${documents.length} / ${contacts.length}` },
   ];
+  const workspaceLoading = detailLoading || contractsLoading || documentsLoading || contactsLoading;
+  const workspaceMetrics = [
+    { label: '合同档案', value: `${contracts.length}`, meta: contractsLoading ? '同步中' : '员工合同', icon: <FileText size={18} />, tone: 'blue' },
+    { label: '证件档案', value: `${documents.length}`, meta: documentsLoading ? '同步中' : '员工证件', icon: <ShieldCheck size={18} />, tone: 'green' },
+    { label: '紧急联系人', value: `${contacts.length}`, meta: contactsLoading ? '同步中' : '员工联系人', icon: <Phone size={18} />, tone: 'amber' },
+    { label: '员工状态', value: employeeStatusDict.getLabel(displayEmployee?.employeeStatus || '') || textValue(displayEmployee?.employeeStatus), meta: employeeTypeDict.getLabel(displayEmployee?.employeeType || '') || textValue(displayEmployee?.employeeType), icon: <Users size={18} />, tone: 'violet' },
+  ];
 
   return (
     <>
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {employeeName}
-            </div>
-            <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-              {employeeMetaLine}
-            </div>
+      <div className="admin-hr-employee-workspace flex h-full min-h-0 flex-col gap-4 p-4">
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">EMPLOYEE ARCHIVE</p>
+            <h2>{employeeName}</h2>
+            <span>{employeeMetaLine}</span>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="admin-source-controls">
             <Button
               variant="outline"
               size="sm"
-              className="h-8"
               onClick={() => void refreshWorkspace(selectedEmployeeId)}
             >
               <RefreshCcw
-                size={14}
-                className={`mr-1.5 ${detailLoading || contractsLoading || documentsLoading || contactsLoading ? 'animate-spin' : ''}`}
+                size={16}
+                className={workspaceLoading ? 'animate-spin' : ''}
               />
               刷新
             </Button>
-            <Button size="sm" className="h-8" onClick={() => onEditEmployee(selectedEmployeeId)}>
-              <Edit3 size={14} className="mr-1.5" />
+            <Button size="sm" onClick={() => onEditEmployee(selectedEmployeeId)}>
+              <Edit3 size={16} />
               编辑主档
             </Button>
           </div>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800 2xl:grid-cols-3">
+        <section className="admin-source-stat-grid admin-hr-workspace-stat-grid">
+          {workspaceMetrics.map((metric) => (
+            <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+              <div className="admin-source-stat-icon">{metric.icon}</div>
+              <div>
+                <p>{metric.label}</p>
+                <strong>{metric.value}</strong>
+                <span>{metric.meta}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        <InnerTableSurface className="admin-hr-archive-shell" wrapperClassName="admin-hr-archive-shell-wrapper">
+        <div className="admin-hr-archive-summary grid grid-cols-2 gap-x-4 gap-y-3 2xl:grid-cols-3">
           {employeeSummaryFields.map((item) => (
             <DetailField key={item.label} label={item.label} value={item.value} />
           ))}
@@ -874,7 +916,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             onValueChange={(value) => setTab(value as WorkspaceTab)}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="admin-hr-archive-tabs">
               <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
                 <TabsTrigger value="contracts" className="flex-1 lg:flex-none">
                   合同档案
@@ -889,7 +931,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             </div>
 
             <TabsContent value="contracts" className="mt-0 flex min-h-0 flex-1 flex-col">
-              <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+              <div className="admin-hr-archive-toolbar">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                   <FileText className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                   合同档案
@@ -914,7 +956,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/50 px-4 py-4 dark:bg-slate-950/10">
+              <div className="admin-hr-archive-list-body">
                 {contractsLoading ? (
                   <InlineState
                     title={'\u6b63\u5728\u52a0\u8f7d\u5458\u5de5\u5408\u540c...'}
@@ -928,17 +970,17 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     className="min-h-[260px]"
                   />
                 ) : (
-                  <div className="flex flex-col gap-3 pb-4">
+                  <div className="flex flex-col gap-3">
                     {contracts.map((item) => (
                       <article
                         key={item.id}
-                        className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] dark:border-slate-800 dark:bg-slate-950/50"
+                        className="admin-hr-archive-item"
                       >
-                        <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
+                        <div className="admin-hr-archive-item-head">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-white dark:bg-slate-100 dark:text-slate-900">
+                                <span className="inline-flex rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-slate-800 dark:text-slate-100">
                                   {item.contractTypeName || contractTypeDict.getLabel(String(item.contractType ?? '')) || item.contractType}
                                 </span>
                                 <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -948,7 +990,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                               <div className="mt-2 flex flex-wrap gap-2">
                                 <span
                                   className={[
-                                    'inline-flex rounded-full border px-2.5 py-1 text-xs font-medium',
+                                    'inline-flex rounded-md border px-2.5 py-1 text-xs font-medium',
                                     contractStatusTone(item.status),
                                   ].join(' ')}
                                 >
@@ -956,34 +998,39 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                 </span>
                                 <span
                                   className={[
-                                    'inline-flex rounded-full border px-2.5 py-1 text-xs font-medium',
+                                    'inline-flex rounded-md border px-2.5 py-1 text-xs font-medium',
                                     contractRemainingTone(item),
                                   ].join(' ')}
                                 >
                                   {contractRemainingLabel(item)}
                                 </span>
                                 {item.duration != null ? (
-                                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                                     {`${item.duration} \u4e2a\u6708`}
                                   </span>
                                 ) : null}
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2 sm:justify-end">
-                              <TableRowActions
-                                mode="inline"
-                                actions={[
-                                  { key: 'edit', semantic: 'edit', label: '\u7f16\u8f91', onClick: () => void handleEditContract(item.id) },
-                                  { key: 'delete', semantic: 'delete', label: '\u5220\u9664', disabled: !canDeleteContract(item), onClick: () => requestDeleteContract(item) },
-                                ]}
-                              />
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="编辑" onClick={() => void handleEditContract(item.id)}>
+                                <Edit3 size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="danger"
+                                title="删除"
+                                disabled={!canDeleteContract(item)}
+                                onClick={() => requestDeleteContract(item)}
+                              >
+                                <Trash2 size={15} />
+                              </button>
                             </div>
                           </div>
 
                         </div>
 
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="admin-hr-archive-item-grid grid gap-3 sm:grid-cols-2">
                           <ArchiveCardField
                             label={'\u7b7e\u8ba2\u65e5\u671f'}
                             value={toDateInputValue(item.signDate) || '-'}
@@ -1013,7 +1060,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             </TabsContent>
 
             <TabsContent value="documents" className="mt-0 flex min-h-0 flex-1 flex-col">
-              <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+              <div className="admin-hr-archive-toolbar">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                   <ShieldCheck className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                   证件档案
@@ -1038,7 +1085,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/50 px-4 py-4 dark:bg-slate-950/10">
+              <div className="admin-hr-archive-list-body">
                 {documentsLoading ? (
                   <InlineState
                     title="正在加载员工证件..."
@@ -1052,20 +1099,20 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     className="min-h-[260px]"
                   />
                 ) : (
-                  <div className="flex flex-col gap-3 pb-4">
+                  <div className="flex flex-col gap-3">
                     {documents.map((item) => {
                       const attachmentCount = getAttachmentCount(item.attachmentUrls);
 
                       return (
                         <article
                           key={item.id}
-                          className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] dark:border-slate-800 dark:bg-slate-950/50"
+                          className="admin-hr-archive-item"
                         >
-                          <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
+                          <div className="admin-hr-archive-item-head">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-white dark:bg-slate-100 dark:text-slate-900">
+                                  <span className="inline-flex rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-slate-800 dark:text-slate-100">
                                     {item.documentTypeName || documentTypeDict.getLabel(String(item.documentType ?? '')) || item.documentType}
                                   </span>
                                   <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -1075,31 +1122,30 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                 <div className="mt-2 flex flex-wrap gap-2">
                                   <span
                                     className={[
-                                      'inline-flex rounded-full border px-2.5 py-1 text-xs font-medium',
+                                      'inline-flex rounded-md border px-2.5 py-1 text-xs font-medium',
                                       documentExpiryTone(item),
                                     ].join(' ')}
                                   >
                                     {documentExpiryLabel(item)}
                                   </span>
-                                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                                     {attachmentCount ? `${attachmentCount} 个附件` : '无附件'}
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="flex flex-wrap gap-2 sm:justify-end">
-                                <TableRowActions
-                                  mode="inline"
-                                  actions={[
-                                    { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => void handleEditDocument(item.id) },
-                                    { key: 'delete', semantic: 'delete', label: '删除', onClick: () => requestDeleteDocument(item) },
-                                  ]}
-                                />
+                              <div className="admin-users-row-actions">
+                                <button type="button" title="编辑" onClick={() => void handleEditDocument(item.id)}>
+                                  <Edit3 size={15} />
+                                </button>
+                                <button type="button" className="danger" title="删除" onClick={() => requestDeleteDocument(item)}>
+                                  <Trash2 size={15} />
+                                </button>
                               </div>
                             </div>
                           </div>
 
-                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <div className="admin-hr-archive-item-grid grid gap-3 sm:grid-cols-2">
                             <ArchiveCardField
                               label="证件号码"
                               value={item.documentNo}
@@ -1130,7 +1176,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             </TabsContent>
 
             <TabsContent value="contacts" className="mt-0 flex min-h-0 flex-1 flex-col">
-              <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+              <div className="admin-hr-archive-toolbar">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                   <Phone className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                   紧急联系人
@@ -1155,7 +1201,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/50 px-4 py-4 dark:bg-slate-950/10">
+              <div className="admin-hr-archive-list-body">
                 {contactsLoading ? (
                   <InlineState
                     title="正在加载紧急联系人..."
@@ -1169,17 +1215,17 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     className="min-h-[260px]"
                   />
                 ) : (
-                  <div className="flex flex-col gap-3 pb-4">
+                  <div className="flex flex-col gap-3">
                     {contacts.map((item) => (
                       <article
                         key={item.id}
-                        className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] dark:border-slate-800 dark:bg-slate-950/50"
+                        className="admin-hr-archive-item"
                       >
-                        <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
+                        <div className="admin-hr-archive-item-head">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-white dark:bg-slate-100 dark:text-slate-900">
+                                <span className="inline-flex rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-slate-800 dark:text-slate-100">
                                   {item.relationshipName || relationshipDict.getLabel(String(item.relationship ?? '')) || item.relationship}
                                 </span>
                                 <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -1189,31 +1235,30 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                               <div className="mt-2 flex flex-wrap gap-2">
                                 <span
                                   className={[
-                                    'inline-flex rounded-full border px-2.5 py-1 text-xs font-medium',
+                                    'inline-flex rounded-md border px-2.5 py-1 text-xs font-medium',
                                     contactPriorityTone(item.priority),
                                   ].join(' ')}
                                 >
                                   {contactPriorityLabel(item.priority)}
                                 </span>
-                                <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                                   {item.phone}
                                 </span>
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2 sm:justify-end">
-                              <TableRowActions
-                                mode="inline"
-                                actions={[
-                                  { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => void handleEditContact(item.id) },
-                                  { key: 'delete', semantic: 'delete', label: '删除', onClick: () => requestDeleteContact(item) },
-                                ]}
-                              />
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="编辑" onClick={() => void handleEditContact(item.id)}>
+                                <Edit3 size={15} />
+                              </button>
+                              <button type="button" className="danger" title="删除" onClick={() => requestDeleteContact(item)}>
+                                <Trash2 size={15} />
+                              </button>
                             </div>
                           </div>
                         </div>
 
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="admin-hr-archive-item-grid grid gap-3 sm:grid-cols-2">
                           <ArchiveCardField
                             label="联系电话"
                             value={item.phone}
@@ -1243,6 +1288,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             </TabsContent>
           </Tabs>
         </div>
+        </InnerTableSurface>
       </div>
 
       <BaseDialog
@@ -1250,6 +1296,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         title={contractEditingId ? '编辑员工合同' : '新增员工合同'}
         onClose={closeContractDialog}
         maxWidthClassName="max-w-4xl"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={closeContractDialog}>
@@ -1261,10 +1308,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
           </div>
         )}
       >
-        <div className="space-y-4">
-          <DialogSection title="基础信息">
+        <DialogSection title="基础信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同类型</Label>
                 <Select
                   value={contractForm.contractType}
@@ -1282,7 +1328,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="admin-dialog-field md:col-span-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同编号</Label>
                 <Input
                   value={contractForm.contractNo}
@@ -1292,7 +1338,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同状态</Label>
                 <Select
                   value={contractForm.status}
@@ -1315,7 +1361,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
           <DialogSection title="时间与附件">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">签订日期</Label>
                 <DatePicker
                   type="date"
@@ -1326,7 +1372,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">开始日期</Label>
                 <DatePicker
                   type="date"
@@ -1337,7 +1383,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">结束日期</Label>
                 <DatePicker
                   type="date"
@@ -1348,7 +1394,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同期限（月）</Label>
                 <Input
                   type="number"
@@ -1360,7 +1406,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2 xl:col-span-4">
+              <div className="admin-dialog-field xl:col-span-4">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同附件</Label>
                 <FileUpload
                   value={contractForm.attachmentValue}
@@ -1372,7 +1418,6 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               </div>
             </div>
           </DialogSection>
-        </div>
       </BaseDialog>
 
       <BaseDialog
@@ -1380,6 +1425,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         title={documentEditingId ? '编辑员工证件' : '新增员工证件'}
         onClose={closeDocumentDialog}
         maxWidthClassName="max-w-4xl"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={closeDocumentDialog}>
@@ -1391,10 +1437,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
           </div>
         )}
       >
-        <div className="space-y-4">
-          <DialogSection title="证件信息">
+        <DialogSection title="证件信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">证件类型</Label>
                 <Select
                   value={documentForm.documentType}
@@ -1412,7 +1457,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 md:col-span-3">
+              <div className="admin-dialog-field md:col-span-3">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">证件号码</Label>
                 <Input
                   value={documentForm.documentNo}
@@ -1422,7 +1467,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">签发日期</Label>
                 <DatePicker
                   type="date"
@@ -1433,7 +1478,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">有效期至</Label>
                 <DatePicker
                   type="date"
@@ -1444,7 +1489,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2 xl:col-span-2">
+              <div className="admin-dialog-field xl:col-span-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">扫描件</Label>
                 <FileUpload
                   value={documentForm.attachmentValue}
@@ -1456,7 +1501,6 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               </div>
             </div>
           </DialogSection>
-        </div>
       </BaseDialog>
 
       <BaseDialog
@@ -1464,6 +1508,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         title={contactEditingId ? '编辑紧急联系人' : '新增紧急联系人'}
         onClose={closeContactDialog}
         maxWidthClassName="max-w-4xl"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={closeContactDialog}>
@@ -1475,10 +1520,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
           </div>
         )}
       >
-        <div className="space-y-4">
-          <DialogSection title="联系人信息">
+        <DialogSection title="联系人信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">联系人姓名</Label>
                 <Input
                   value={contactForm.contactName}
@@ -1488,7 +1532,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">关系</Label>
                 <Select
                   value={contactForm.relationship}
@@ -1506,7 +1550,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">联系电话</Label>
                 <Input
                   value={contactForm.phone}
@@ -1516,7 +1560,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">优先级</Label>
                 <Select
                   value={contactForm.priority}
@@ -1533,7 +1577,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 xl:col-span-4">
+              <div className="admin-dialog-field xl:col-span-4">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">联系地址</Label>
                 <Input
                   value={contactForm.address}
@@ -1545,7 +1589,6 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               </div>
             </div>
           </DialogSection>
-        </div>
       </BaseDialog>
 
       <ConfirmDialog

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCcw } from 'lucide-react';
+import { ClipboardList, Eye, FileQuestion, FileText, Play, Plus, RefreshCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -11,18 +11,15 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableHead,
-  TableHeader,
-  TableRowActions,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  Textarea,
 } from '@/components/common';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { DictLabel } from '@/components/common/DictLabel';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { useDict } from '@/hooks/useDict';
 import { getExamPaperStatusLabel } from '@/utils/enumLabels';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -79,41 +76,55 @@ const QuestionBankTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <FilterBar
-        stats={[{ label: '', value: `共 ${rows.length} 题` }]}
-        actions={[
-          <Button key="refresh" size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>,
-          <Button key="create" size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新增题目</Button>,
-        ]}
-      />
-      <TableSurfaceCard>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px]">
-            <TableHeader className="sticky top-0 z-10">
-              <tr><TableHead>题型</TableHead><TableHead>题干</TableHead><TableHead>分值</TableHead><TableHead>难度</TableHead><TableHead className="text-right">操作</TableHead></tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="admin-source-content-grid">
+      <section className="card admin-users-toolbar">
+        <div className="admin-users-filter-grid">
+          <div>
+            <span className="input-label">题目数量</span>
+            <div className="admin-source-search-field">
+              <FileQuestion size={16} />
+              <Input className="h-[42px]" value={`共 ${rows.length} 题`} readOnly aria-label="题目数量" />
+            </div>
+          </div>
+        </div>
+        <div className="admin-users-toolbar-actions">
+          <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>
+          <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新增题目</Button>
+        </div>
+      </section>
+      <InnerTableSurface>
+        <div className="admin-horizontal-scroll">
+          <table className="unity-data-table admin-source-table min-w-[720px]">
+            <thead>
+              <tr><th>题型</th><th>题干</th><th>分值</th><th>难度</th><th className="text-right">操作</th></tr>
+            </thead>
+            <tbody>
               {rows.length ? rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_exam_question_type" value={row.questionType} fallback="-" /></td>
-                  <td className="px-4 py-3 text-sm max-w-md truncate">{row.content}</td>
-                  <td className="px-4 py-3 text-sm">{row.score ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.difficulty ?? '-'}</td>
-                  <td className="px-4 py-3"><TableRowActions actions={[{ key: 'delete', semantic: 'delete', label: '删除', onClick: () => setDeleteTarget(row) }]} /></td>
+                <tr key={row.id}>
+                  <td><DictLabel dictType="hr_exam_question_type" value={row.questionType} fallback="-" /></td>
+                  <td className="max-w-md truncate">{row.content}</td>
+                  <td>{row.score ?? '-'}</td>
+                  <td>{row.difficulty ?? '-'}</td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               )) : (
-                <tr><td colSpan={5} className="py-10 text-center text-sm text-slate-400">暂无题目</td></tr>
+                <tr><td colSpan={5} className="admin-settings-empty">暂无题目</td></tr>
               )}
             </tbody>
           </table>
         </div>
-      </TableSurfaceCard>
-      <BaseDialog open={open} title="新增题目" onClose={() => setOpen(false)} width="wide"
+      </InnerTableSurface>
+      <BaseDialog open={open} title="新增题目" onClose={() => setOpen(false)} width="wide" bodyClassName="admin-dialog-stack"
         footer={<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>取消</Button><Button onClick={() => void handleSave()}>保存</Button></div>}>
-        <div className="space-y-3">
+        <>
           <div className="grid grid-cols-3 gap-3">
-            <div>
+            <div className="admin-dialog-field">
               <Label>题型</Label>
               <Select value={form.questionType} onValueChange={(v) => setForm((p) => ({ ...p, questionType: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -122,16 +133,16 @@ const QuestionBankTab: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>分值</Label><Input type="number" value={form.score?.toString() || ''} onChange={(e) => setForm((p) => ({ ...p, score: e.target.value }))} /></div>
-            <div><Label>难度 1-5</Label><Input type="number" min={1} max={5} value={form.difficulty || ''} onChange={(e) => setForm((p) => ({ ...p, difficulty: Number(e.target.value) }))} /></div>
+            <div className="admin-dialog-field"><Label>分值</Label><Input type="number" value={form.score?.toString() || ''} onChange={(e) => setForm((p) => ({ ...p, score: e.target.value }))} /></div>
+            <div className="admin-dialog-field"><Label>难度 1-5</Label><Input type="number" min={1} max={5} value={form.difficulty || ''} onChange={(e) => setForm((p) => ({ ...p, difficulty: Number(e.target.value) }))} /></div>
           </div>
-          <div><Label>题干</Label><Input value={form.content} onChange={(e) => setForm((p) => ({ ...p, content: e.target.value }))} /></div>
-          <div><Label>答案（JSON 数组，例 ["A"] 或 ["A","B"]）</Label><Input value={form.answer ? JSON.stringify(form.answer) : ''} onChange={(e) => {
+          <div className="admin-dialog-field"><Label>题干</Label><Input value={form.content} onChange={(e) => setForm((p) => ({ ...p, content: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>答案（JSON 数组，例 ["A"] 或 ["A","B"]）</Label><Input value={form.answer ? JSON.stringify(form.answer) : ''} onChange={(e) => {
             try { setForm((p) => ({ ...p, answer: e.target.value ? JSON.parse(e.target.value) : undefined })); }
             catch { /* ignore */ }
           }} /></div>
-          <div><Label>解析</Label><Input value={form.analysis ?? ''} onChange={(e) => setForm((p) => ({ ...p, analysis: e.target.value }))} /></div>
-        </div>
+          <div className="admin-dialog-field"><Label>解析</Label><Input value={form.analysis ?? ''} onChange={(e) => setForm((p) => ({ ...p, analysis: e.target.value }))} /></div>
+        </>
       </BaseDialog>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
@@ -178,56 +189,66 @@ const PaperTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <FilterBar
-        stats={[{ label: '', value: `共 ${rows.length} 套` }]}
-        actions={[
-          <Button key="refresh" size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>,
-          <Button key="create" size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新建试卷</Button>,
-        ]}
-      />
-      <TableSurfaceCard>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px]">
-            <TableHeader className="sticky top-0 z-10">
-              <tr><TableHead>名称</TableHead><TableHead>总分</TableHead><TableHead>及格</TableHead><TableHead>时长(分)</TableHead><TableHead>题数</TableHead><TableHead>组卷</TableHead><TableHead>状态</TableHead><TableHead className="text-right">操作</TableHead></tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="admin-source-content-grid">
+      <section className="card admin-users-toolbar">
+        <div className="admin-users-filter-grid">
+          <div>
+            <span className="input-label">试卷数量</span>
+            <div className="admin-source-search-field">
+              <FileText size={16} />
+              <Input className="h-[42px]" value={`共 ${rows.length} 套`} readOnly aria-label="试卷数量" />
+            </div>
+          </div>
+        </div>
+        <div className="admin-users-toolbar-actions">
+          <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>
+          <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新建试卷</Button>
+        </div>
+      </section>
+      <InnerTableSurface>
+        <div className="admin-horizontal-scroll">
+          <table className="unity-data-table admin-source-table min-w-[960px]">
+            <thead>
+              <tr><th>名称</th><th>总分</th><th>及格</th><th>时长(分)</th><th>题数</th><th>组卷</th><th>状态</th><th className="text-right">操作</th></tr>
+            </thead>
+            <tbody>
               {rows.length ? rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 text-sm font-medium">{row.paperName}</td>
-                  <td className="px-4 py-3 text-sm">{row.totalScore ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.passScore ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.durationMinutes ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.questionCount ?? (row.questionIds?.length ?? 0)}</td>
-                  <td className="px-4 py-3 text-sm">{row.generateMode === 'RANDOM' ? '随机' : '手动'}</td>
-                  <td className="px-4 py-3 text-sm">{getExamPaperStatusLabel(row.status)}</td>
-                  <td className="px-4 py-3">
-                    <TableRowActions
-                      actions={[
-                        { key: 'start', semantic: 'process', label: '开始作答', onClick: () => void handleStartAttempt(row.id) },
-                        { key: 'delete', semantic: 'delete', label: '删除', onClick: () => setDeleteTarget(row) },
-                      ]}
-                    />
+                <tr key={row.id}>
+                  <td><strong>{row.paperName}</strong></td>
+                  <td>{row.totalScore ?? '-'}</td>
+                  <td>{row.passScore ?? '-'}</td>
+                  <td>{row.durationMinutes ?? '-'}</td>
+                  <td>{row.questionCount ?? (row.questionIds?.length ?? 0)}</td>
+                  <td>{row.generateMode === 'RANDOM' ? '随机' : '手动'}</td>
+                  <td>{getExamPaperStatusLabel(row.status)}</td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="开始作答" onClick={() => void handleStartAttempt(row.id)}>
+                        <Play size={15} />
+                      </button>
+                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无试卷</td></tr>
+                <tr><td colSpan={8} className="admin-settings-empty">暂无试卷</td></tr>
               )}
             </tbody>
           </table>
         </div>
-      </TableSurfaceCard>
-      <BaseDialog open={open} title="新建试卷" onClose={() => setOpen(false)} width="wide"
+      </InnerTableSurface>
+      <BaseDialog open={open} title="新建试卷" onClose={() => setOpen(false)} width="wide" bodyClassName="admin-dialog-stack"
         footer={<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>取消</Button><Button onClick={() => void handleSave()}>保存</Button></div>}>
-        <div className="space-y-3">
-          <div><Label>试卷名称</Label><Input value={form.paperName} onChange={(e) => setForm((p) => ({ ...p, paperName: e.target.value }))} /></div>
+        <>
+          <div className="admin-dialog-field"><Label>试卷名称</Label><Input value={form.paperName} onChange={(e) => setForm((p) => ({ ...p, paperName: e.target.value }))} /></div>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>总分</Label><Input type="number" value={form.totalScore?.toString() || ''} onChange={(e) => setForm((p) => ({ ...p, totalScore: e.target.value }))} /></div>
-            <div><Label>及格分</Label><Input type="number" value={form.passScore?.toString() || ''} onChange={(e) => setForm((p) => ({ ...p, passScore: e.target.value }))} /></div>
-            <div><Label>时长(分)</Label><Input type="number" value={form.durationMinutes || ''} onChange={(e) => setForm((p) => ({ ...p, durationMinutes: Number(e.target.value) }))} /></div>
+            <div className="admin-dialog-field"><Label>总分</Label><Input type="number" value={form.totalScore?.toString() || ''} onChange={(e) => setForm((p) => ({ ...p, totalScore: e.target.value }))} /></div>
+            <div className="admin-dialog-field"><Label>及格分</Label><Input type="number" value={form.passScore?.toString() || ''} onChange={(e) => setForm((p) => ({ ...p, passScore: e.target.value }))} /></div>
+            <div className="admin-dialog-field"><Label>时长(分)</Label><Input type="number" value={form.durationMinutes || ''} onChange={(e) => setForm((p) => ({ ...p, durationMinutes: Number(e.target.value) }))} /></div>
           </div>
-          <div>
+          <div className="admin-dialog-field">
             <Label>组卷方式</Label>
             <Select value={form.generateMode} onValueChange={(v) => setForm((p) => ({ ...p, generateMode: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -237,8 +258,8 @@ const PaperTab: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div><Label>题目 ID 列表（逗号分隔）</Label><Input value={(form.questionIds ?? []).join(',')} onChange={(e) => setForm((p) => ({ ...p, questionIds: e.target.value.split(',').map((s) => Number(s.trim())).filter(Boolean) }))} /></div>
-        </div>
+          <div className="admin-dialog-field"><Label>题目 ID 列表（逗号分隔）</Label><Input value={(form.questionIds ?? []).join(',')} onChange={(e) => setForm((p) => ({ ...p, questionIds: e.target.value.split(',').map((s) => Number(s.trim())).filter(Boolean) }))} /></div>
+        </>
       </BaseDialog>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
@@ -293,38 +314,52 @@ const AttemptTab: React.FC<{ mine: boolean }> = ({ mine }) => {
   };
 
   return (
-    <div className="space-y-4">
-      <FilterBar
-        stats={[{ label: '', value: `共 ${rows.length} 份` }]}
-        actions={[
-          <Button key="refresh" size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>,
-        ]}
-      />
-      <TableSurfaceCard>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[840px]">
-            <TableHeader className="sticky top-0 z-10">
-              <tr><TableHead>试卷</TableHead><TableHead>开始</TableHead><TableHead>提交</TableHead><TableHead>分数</TableHead><TableHead>通过</TableHead><TableHead>状态</TableHead><TableHead className="text-right">操作</TableHead></tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="admin-source-content-grid">
+      <section className="card admin-users-toolbar">
+        <div className="admin-users-filter-grid">
+          <div>
+            <span className="input-label">答卷数量</span>
+            <div className="admin-source-search-field">
+              <ClipboardList size={16} />
+              <Input className="h-[42px]" value={`共 ${rows.length} 份`} readOnly aria-label="答卷数量" />
+            </div>
+          </div>
+        </div>
+        <div className="admin-users-toolbar-actions">
+          <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>
+        </div>
+      </section>
+      <InnerTableSurface>
+        <div className="admin-horizontal-scroll">
+          <table className="unity-data-table admin-source-table min-w-[840px]">
+            <thead>
+              <tr><th>试卷</th><th>开始</th><th>提交</th><th>分数</th><th>通过</th><th>状态</th><th className="text-right">操作</th></tr>
+            </thead>
+            <tbody>
               {rows.length ? rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 text-sm">{`#${row.paperId}`}</td>
-                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.startTime)}</td>
-                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.submitTime)}</td>
-                  <td className="px-4 py-3 text-sm">{row.score ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.passFlag == null ? '-' : row.passFlag ? '是' : '否'}</td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_exam_attempt_status" value={row.status} fallback="-" /></td>
-                  <td className="px-4 py-3"><TableRowActions actions={[{ key: 'view', semantic: 'view', label: '查看', onClick: () => void handleView(row.id) }]} /></td>
+                <tr key={row.id}>
+                  <td>{`#${row.paperId}`}</td>
+                  <td>{formatDateTimeValue(row.startTime)}</td>
+                  <td>{formatDateTimeValue(row.submitTime)}</td>
+                  <td>{row.score ?? '-'}</td>
+                  <td>{row.passFlag == null ? '-' : row.passFlag ? '是' : '否'}</td>
+                  <td><DictLabel dictType="hr_exam_attempt_status" value={row.status} fallback="-" /></td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="查看" onClick={() => void handleView(row.id)}>
+                        <Eye size={15} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               )) : (
-                <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无答卷</td></tr>
+                <tr><td colSpan={7} className="admin-settings-empty">暂无答卷</td></tr>
               )}
             </tbody>
           </table>
         </div>
-      </TableSurfaceCard>
-      <BaseDialog open={!!detail} title={`答卷详情 #${detail?.id}`} onClose={() => setDetail(null)} width="wide"
+      </InnerTableSurface>
+      <BaseDialog open={!!detail} title={`答卷详情 #${detail?.id}`} onClose={() => setDetail(null)} width="wide" bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDetail(null)}>关闭</Button>
@@ -338,16 +373,16 @@ const AttemptTab: React.FC<{ mine: boolean }> = ({ mine }) => {
           </div>
         }>
         {detail ? (
-          <div className="space-y-3 text-sm">
+          <div className="admin-dialog-stack text-sm">
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">试卷</Label><div>{detail.paperId}</div></div>
-              <div><Label className="text-xs">状态</Label><div><DictLabel dictType="hr_exam_attempt_status" value={detail.status} fallback="-" /></div></div>
-              <div><Label className="text-xs">分数</Label><div>{detail.score ?? '-'}</div></div>
-              <div><Label className="text-xs">通过</Label><div>{detail.passFlag == null ? '-' : detail.passFlag ? '是' : '否'}</div></div>
+              <div className="admin-dialog-field"><Label className="text-xs">试卷</Label><div>{detail.paperId}</div></div>
+              <div className="admin-dialog-field"><Label className="text-xs">状态</Label><div><DictLabel dictType="hr_exam_attempt_status" value={detail.status} fallback="-" /></div></div>
+              <div className="admin-dialog-field"><Label className="text-xs">分数</Label><div>{detail.score ?? '-'}</div></div>
+              <div className="admin-dialog-field"><Label className="text-xs">通过</Label><div>{detail.passFlag == null ? '-' : detail.passFlag ? '是' : '否'}</div></div>
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label className="text-xs">答案 JSON</Label>
-              <textarea className="cf-input w-full font-mono text-xs" rows={6} readOnly value={JSON.stringify(detail.answers ?? [], null, 2)} />
+              <Textarea className="font-mono text-xs" rows={6} readOnly value={JSON.stringify(detail.answers ?? [], null, 2)} />
             </div>
           </div>
         ) : null}
@@ -357,20 +392,49 @@ const AttemptTab: React.FC<{ mine: boolean }> = ({ mine }) => {
 };
 
 export const HrTrainingExamPage: React.FC = () => (
-  <div className="space-y-4">
-    <Tabs defaultValue="papers" className="space-y-4">
-      <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
-        <TabsTrigger value="papers" className="flex-1 lg:flex-none">试卷管理</TabsTrigger>
-        <TabsTrigger value="questions" className="flex-1 lg:flex-none">题库</TabsTrigger>
-        <TabsTrigger value="mine" className="flex-1 lg:flex-none">我的作答</TabsTrigger>
-        <TabsTrigger value="all" className="flex-1 lg:flex-none">全员作答</TabsTrigger>
-      </TabsList>
-      <TabsContent value="papers"><PaperTab /></TabsContent>
-      <TabsContent value="questions"><QuestionBankTab /></TabsContent>
-      <TabsContent value="mine"><AttemptTab mine /></TabsContent>
-      <TabsContent value="all"><AttemptTab mine={false} /></TabsContent>
-    </Tabs>
-  </div>
+  <section className="admin-source-page">
+    <TablePageLayout
+      actions={
+        <>
+          <header className="admin-source-header">
+            <div>
+              <p className="admin-source-kicker">TRAINING EXAMS</p>
+              <h2>培训考试</h2>
+              <span>维护题库、试卷和全员作答批改记录</span>
+            </div>
+          </header>
+          <section className="admin-source-stat-grid">
+            <article className="card admin-source-stat admin-source-tone-blue">
+              <div className="admin-source-stat-icon"><FileText size={18} /></div>
+              <div><p>试卷管理</p><strong>试卷</strong><span>组卷和开始作答</span></div>
+            </article>
+            <article className="card admin-source-stat admin-source-tone-green">
+              <div className="admin-source-stat-icon"><FileQuestion size={18} /></div>
+              <div><p>题库</p><strong>题目</strong><span>题型、分值和解析</span></div>
+            </article>
+            <article className="card admin-source-stat admin-source-tone-violet">
+              <div className="admin-source-stat-icon"><ClipboardList size={18} /></div>
+              <div><p>答卷</p><strong>批改</strong><span>个人和全员记录</span></div>
+            </article>
+          </section>
+        </>
+      }
+      table={
+        <Tabs defaultValue="papers" className="admin-source-content-grid">
+          <TabsList className="admin-source-tabs w-full justify-start overflow-x-auto lg:w-auto">
+            <TabsTrigger value="papers" className="flex-1 lg:flex-none">试卷管理</TabsTrigger>
+            <TabsTrigger value="questions" className="flex-1 lg:flex-none">题库</TabsTrigger>
+            <TabsTrigger value="mine" className="flex-1 lg:flex-none">我的作答</TabsTrigger>
+            <TabsTrigger value="all" className="flex-1 lg:flex-none">全员作答</TabsTrigger>
+          </TabsList>
+          <TabsContent value="papers"><PaperTab /></TabsContent>
+          <TabsContent value="questions"><QuestionBankTab /></TabsContent>
+          <TabsContent value="mine"><AttemptTab mine /></TabsContent>
+          <TabsContent value="all"><AttemptTab mine={false} /></TabsContent>
+        </Tabs>
+      }
+    />
+  </section>
 );
 
 export default HrTrainingExamPage;

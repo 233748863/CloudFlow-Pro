@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCcw } from 'lucide-react';
+import { Ban, Download, Plus, RefreshCcw, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -8,17 +8,13 @@ import {
   EmployeeSelector,
   Input,
   Label,
-  TableHead,
-  TableHeader,
-  TableRowActions,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   Textarea,
 } from '@/components/common';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrTrainingCertificate,
@@ -104,80 +100,90 @@ const CertificateList: React.FC<{ mine: boolean }> = ({ mine }) => {
     }
   };
 
-  const filters = (
-    <FilterBar
-      stats={[{ label: '', value: `共 ${rows.length} 张` }]}
-      actions={[
-        <Button key="refresh" size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-        ...(!mine ? [
-          <Button key="issue" size="sm" onClick={() => setOpen(true)}>
-            <Plus className="mr-1.5 h-4 w-4" />颁发证书
-          </Button>,
-        ] : []),
-      ]}
-    />
-  );
-
-  const table = (
-    <TableSurfaceCard>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[840px]">
-          <TableHeader className="sticky top-0 z-10">
-            <tr>
-              <TableHead>证书号</TableHead>
-              <TableHead>课程</TableHead>
-              <TableHead>班次</TableHead>
-              <TableHead>颁发日期</TableHead>
-              <TableHead>到期日期</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无证书</td></tr>
-            ) : rows.map((row) => (
-              <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                <td className="px-4 py-3 font-mono text-xs">{row.certNo}</td>
-                <td className="px-4 py-3 text-sm">{`#${row.courseId}`}</td>
-                <td className="px-4 py-3 text-sm">{row.sessionId ? `#${row.sessionId}` : '-'}</td>
-                <td className="px-4 py-3 text-xs">{formatDateValue(row.issueDate)}</td>
-                <td className="px-4 py-3 text-xs">{formatDateValue(row.expireDate)}</td>
-                <td className="px-4 py-3 text-sm">{row.status === 'VALID' ? '有效' : '已撤销'}</td>
-                <td className="px-4 py-3">
-                  <TableRowActions
-                    actions={[
-                      { key: 'download', semantic: 'export', label: '下载', onClick: () => void handleDownload(row), hidden: !row.pdfFileId },
-                      { key: 'regen', semantic: 'reset', label: '重生 PDF', onClick: () => void handleRegenerate(row), hidden: mine || row.status !== 'VALID' },
-                      { key: 'revoke', semantic: 'void', label: '撤销', onClick: () => { setRevokeTarget(row); setRevokeReason(''); }, hidden: mine || row.status !== 'VALID' },
-                    ]}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
-  );
-
   return (
-    <div className="space-y-4">
-      {filters}
-      {table}
-
-      <BaseDialog open={open} title="颁发证书" onClose={() => setOpen(false)}
-        footer={<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>取消</Button><Button onClick={() => void handleIssue()}>颁发</Button></div>}>
-        <div className="space-y-3">
-          <div><Label>员工</Label><EmployeeSelector single value={form.employeeId || null} onChange={(id) => setForm((p) => ({ ...p, employeeId: id ?? 0 }))} placeholder="选择员工" /></div>
-          <div><Label>课程 ID</Label><Input type="number" value={form.courseId || ''} onChange={(e) => setForm((p) => ({ ...p, courseId: Number(e.target.value) }))} /></div>
-          <div><Label>班次 ID（可选）</Label><Input type="number" value={form.sessionId || ''} onChange={(e) => setForm((p) => ({ ...p, sessionId: Number(e.target.value) || undefined }))} /></div>
-          <div><Label>模板 ID（可选）</Label><Input type="number" value={form.templateId || ''} onChange={(e) => setForm((p) => ({ ...p, templateId: Number(e.target.value) || undefined }))} /></div>
+    <div className="admin-source-content-grid">
+      <section className="card admin-users-toolbar">
+        <div className="admin-users-filter-grid">
+          <div>
+            <span className="input-label">当前证书</span>
+            <div className="admin-source-search-field">
+              <Input className="h-[42px]" value={`共 ${rows.length} 张`} readOnly aria-label="当前证书数量" />
+            </div>
+          </div>
         </div>
+        <div className="admin-users-toolbar-actions">
+          <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
+            <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+          </Button>
+          {!mine ? (
+            <Button size="sm" onClick={() => setOpen(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />颁发证书
+            </Button>
+          ) : null}
+        </div>
+      </section>
+
+      <InnerTableSurface>
+        <div className="admin-horizontal-scroll">
+          <table className="unity-data-table admin-source-table min-w-[840px]">
+            <thead>
+              <tr>
+                <th>证书号</th>
+                <th>课程</th>
+                <th>班次</th>
+                <th>颁发日期</th>
+                <th>到期日期</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} className="admin-settings-empty">加载中...</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={7} className="admin-settings-empty">暂无证书</td></tr>
+              ) : rows.map((row) => (
+                <tr key={row.id}>
+                  <td className="font-mono">{row.certNo}</td>
+                  <td>{`#${row.courseId}`}</td>
+                  <td>{row.sessionId ? `#${row.sessionId}` : '-'}</td>
+                  <td>{formatDateValue(row.issueDate)}</td>
+                  <td>{formatDateValue(row.expireDate)}</td>
+                  <td><span className={row.status === 'VALID' ? 'badge badge-success' : 'badge badge-gray'}>{row.status === 'VALID' ? '有效' : '已撤销'}</span></td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      {row.pdfFileId ? (
+                        <button type="button" title="下载" onClick={() => void handleDownload(row)}>
+                          <Download size={15} />
+                        </button>
+                      ) : null}
+                      {!mine && row.status === 'VALID' ? (
+                        <button type="button" title="重生 PDF" onClick={() => void handleRegenerate(row)}>
+                          <RotateCcw size={15} />
+                        </button>
+                      ) : null}
+                      {!mine && row.status === 'VALID' ? (
+                        <button type="button" className="danger" title="撤销" onClick={() => { setRevokeTarget(row); setRevokeReason(''); }}>
+                          <Ban size={15} />
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </InnerTableSurface>
+
+      <BaseDialog open={open} title="颁发证书" onClose={() => setOpen(false)} bodyClassName="admin-dialog-stack"
+        footer={<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>取消</Button><Button onClick={() => void handleIssue()}>颁发</Button></div>}>
+        <>
+          <div className="admin-dialog-field"><Label>员工</Label><EmployeeSelector single value={form.employeeId || null} onChange={(id) => setForm((p) => ({ ...p, employeeId: id ?? 0 }))} placeholder="选择员工" /></div>
+          <div className="admin-dialog-field"><Label>课程 ID</Label><Input type="number" value={form.courseId || ''} onChange={(e) => setForm((p) => ({ ...p, courseId: Number(e.target.value) }))} /></div>
+          <div className="admin-dialog-field"><Label>班次 ID（可选）</Label><Input type="number" value={form.sessionId || ''} onChange={(e) => setForm((p) => ({ ...p, sessionId: Number(e.target.value) || undefined }))} /></div>
+          <div className="admin-dialog-field"><Label>模板 ID（可选）</Label><Input type="number" value={form.templateId || ''} onChange={(e) => setForm((p) => ({ ...p, templateId: Number(e.target.value) || undefined }))} /></div>
+        </>
       </BaseDialog>
 
       <ConfirmDialog
@@ -199,16 +205,41 @@ const CertificateList: React.FC<{ mine: boolean }> = ({ mine }) => {
 };
 
 export const HrTrainingCertificatePage: React.FC = () => (
-  <div className="space-y-4">
-    <Tabs defaultValue="mine" className="space-y-4">
-      <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
-        <TabsTrigger value="mine" className="flex-1 lg:flex-none">我的证书</TabsTrigger>
-        <TabsTrigger value="all" className="flex-1 lg:flex-none">全员证书</TabsTrigger>
-      </TabsList>
-      <TabsContent value="mine"><CertificateList mine /></TabsContent>
-      <TabsContent value="all"><CertificateList mine={false} /></TabsContent>
-    </Tabs>
-  </div>
+  <section className="admin-source-page">
+    <TablePageLayout
+      actions={
+        <>
+          <header className="admin-source-header">
+            <div>
+              <p className="admin-source-kicker">TRAINING CERTIFICATES</p>
+              <h2>培训证书</h2>
+              <span>查看个人证书，维护全员证书颁发、PDF 生成和撤销状态</span>
+            </div>
+          </header>
+          <section className="admin-source-stat-grid">
+            <article className="card admin-source-stat admin-source-tone-blue">
+              <div className="admin-source-stat-icon"><Download size={18} /></div>
+              <div><p>我的证书</p><strong>个人</strong><span>可下载已生成 PDF</span></div>
+            </article>
+            <article className="card admin-source-stat admin-source-tone-green">
+              <div className="admin-source-stat-icon"><Plus size={18} /></div>
+              <div><p>全员证书</p><strong>管理</strong><span>颁发、重生和撤销</span></div>
+            </article>
+          </section>
+        </>
+      }
+      table={
+        <Tabs defaultValue="mine" className="admin-source-content-grid">
+          <TabsList className="admin-source-tabs w-full justify-start overflow-x-auto lg:w-auto">
+            <TabsTrigger value="mine" className="flex-1 lg:flex-none">我的证书</TabsTrigger>
+            <TabsTrigger value="all" className="flex-1 lg:flex-none">全员证书</TabsTrigger>
+          </TabsList>
+          <TabsContent value="mine"><CertificateList mine /></TabsContent>
+          <TabsContent value="all"><CertificateList mine={false} /></TabsContent>
+        </Tabs>
+      }
+    />
+  </section>
 );
 
 export default HrTrainingCertificatePage;

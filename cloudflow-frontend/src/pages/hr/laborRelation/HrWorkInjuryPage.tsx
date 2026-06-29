@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCcw } from 'lucide-react';
+import { Eye, Pencil, Plus, RefreshCcw, Send, ShieldAlert, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -14,13 +14,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableHead,
-  TableHeader,
-  TableRowActions,
   Textarea,
 } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   closeInjury,
@@ -37,6 +32,7 @@ import { StageTimeline } from '../components/StageTimeline';
 import { DictLabel } from '@/components/common/DictLabel';
 import { useDict } from '@/hooks/useDict';
 import { toLocalDatetimeString } from '@/utils/dateFormat';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const statusFlow = ['REPORTED', 'INVESTIGATING', 'DETERMINING', 'DETERMINED', 'COMPENSATING', 'REHABILITATING', 'CLOSED'];
 
@@ -153,92 +149,122 @@ export const HrWorkInjuryPage: React.FC = () => {
     }
   };
 
-  const filters = (
-    <FilterBar
-      filters={[
-        <div key="status" className="w-full sm:w-40">
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">WORK INJURY</p>
+          <h2>工伤管理</h2>
+          <span>维护工伤上报、认定审批和关闭处理</span>
+        </div>
+      </header>
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <div className="admin-source-stat-icon"><ShieldAlert size={18} /></div>
+          <div><p>记录总数</p><strong>{rows.length}</strong><span>当前筛选结果</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <div className="admin-source-stat-icon"><Send size={18} /></div>
+          <div><p>待认定</p><strong>{rows.filter((row) => hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING')).length}</strong><span>可发起认定</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <div className="admin-source-stat-icon"><XCircle size={18} /></div>
+          <div><p>未关闭</p><strong>{rows.filter((row) => !hasWorkflowStatus(row.status, 'CLOSED')).length}</strong><span>处理中记录</span></div>
+        </article>
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="grid items-end gap-3 lg:grid-cols-[minmax(16rem,28rem)_auto]">
+        <label className="min-w-0">
+          <span className="input-label">状态</span>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部状态</SelectItem>
               {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>,
-      ]}
-      stats={[{ label: '', value: `共 ${rows.length} 条` }]}
-      actions={[
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-        <Button key="add" size="sm" onClick={openCreate}>
-          <Plus className="mr-1.5 h-4 w-4" />上报工伤
-        </Button>,
-      ]}
-    />
+        </label>
+        <div className="admin-users-toolbar-actions justify-end">
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="mr-1.5 h-4 w-4" />上报工伤
+          </Button>
+        </div>
+      </div>
+    </section>
   );
 
-  const table = (
-    <TableSurfaceCard fill>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[960px]">
-          <TableHeader className="sticky top-0 z-10">
-            <tr>
-              <TableHead>编号</TableHead>
-              <TableHead>员工 ID</TableHead>
-              <TableHead>发生时间</TableHead>
-              <TableHead>地点</TableHead>
-              <TableHead>等级</TableHead>
-              <TableHead>当前阶段</TableHead>
-              <TableHead>伤残等级</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无记录</td></tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 font-mono text-xs">
-                    <button type="button" onClick={() => void openDetail(row)} className="text-sky-600 hover:underline">
-                      {row.injuryNo}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-sm">{row.employeeId}</td>
-                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.occurredAt)}</td>
-                  <td className="px-4 py-3 max-w-[10rem] truncate text-xs">{row.location ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_work_injury_level" value={row.injuryLevel} fallback="-" /></td>
-                  <td className="px-4 py-3"><StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={row.status} tone="emerald" /></td>
-                  <td className="px-4 py-3 text-sm">{row.determinedGrade ? `${row.determinedGrade} 级` : '-'}</td>
-                  <td className="px-4 py-3">
-                    <TableRowActions
-                      actions={[
-                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => openEdit(row), hidden: !hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') },
-                        { key: 'submit', semantic: 'submit', label: '发起认定', onClick: () => void handleSubmit(row), hidden: !hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') },
-                        { key: 'close', semantic: 'void', label: '关闭', onClick: () => { setCloseTarget(row); setCloseReason(''); }, hidden: hasWorkflowStatus(row.status, 'CLOSED') },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
+  const pageTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[960px]">
+        <thead>
+          <tr>
+            <th>编号</th>
+            <th>员工 ID</th>
+            <th>发生时间</th>
+            <th>地点</th>
+            <th>等级</th>
+            <th>当前阶段</th>
+            <th>伤残等级</th>
+            <th className="text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <tr><td colSpan={8} className="admin-settings-empty">加载中...</td></tr>
+          ) : rows.length === 0 ? (
+            <tr><td colSpan={8} className="admin-settings-empty">暂无记录</td></tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={row.id}>
+                <td className="font-mono text-xs">
+                  <button type="button" onClick={() => void openDetail(row)} className="text-sky-600 hover:underline">
+                    {row.injuryNo}
+                  </button>
+                </td>
+                <td>{row.employeeId}</td>
+                <td>{formatDateTimeValue(row.occurredAt)}</td>
+                <td className="max-w-[10rem] truncate">{row.location ?? '-'}</td>
+                <td><DictLabel dictType="hr_work_injury_level" value={row.injuryLevel} fallback="-" /></td>
+                <td><StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={row.status} tone="emerald" /></td>
+                <td>{row.determinedGrade ? `${row.determinedGrade} 级` : '-'}</td>
+                <td>
+                  <div className="admin-users-row-actions">
+                    <button type="button" title="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
+                    {hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') ? (
+                      <button type="button" title="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
+                    ) : null}
+                    {hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') ? (
+                      <button type="button" title="发起认定" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
+                    ) : null}
+                    {!hasWorkflowStatus(row.status, 'CLOSED') ? (
+                      <button type="button" className="danger" title="关闭" onClick={() => { setCloseTarget(row); setCloseReason(''); }}><XCircle size={15} /></button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </InnerTableSurface>
   );
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} />
+    <section className="admin-source-page">
+      <TablePageLayout actions={pageActions} filters={pageFilters} table={pageTable} />
 
       <BaseDialog
         open={open}
         title={editing ? '编辑工伤记录' : '上报工伤'}
         onClose={() => setOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
@@ -246,25 +272,25 @@ export const HrWorkInjuryPage: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-3">
+        <>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="admin-dialog-field">
               <Label>员工</Label>
               <EmployeeSelector single value={form.employeeId ?? null} onChange={(id) => setForm({ ...form, employeeId: id ?? 0 })} placeholder="选择员工" />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>发生时间</Label>
               <DatePicker type="datetime-local" value={String(form.occurredAt ?? '')} onChange={(e) => setForm({ ...form, occurredAt: e.target.value })} />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>地点</Label>
               <Input value={form.location ?? ''} onChange={(e) => setForm({ ...form, location: e.target.value })} />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>受伤部位</Label>
               <Input value={form.injuryPart ?? ''} onChange={(e) => setForm({ ...form, injuryPart: e.target.value })} />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>等级</Label>
               <Select value={String(form.injuryLevel ?? 'MINOR')} onValueChange={(v) => setForm({ ...form, injuryLevel: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -274,11 +300,11 @@ export const HrWorkInjuryPage: React.FC = () => {
               </Select>
             </div>
           </div>
-          <div>
+          <div className="admin-dialog-field">
             <Label>事件描述</Label>
             <Textarea rows={3} value={form.eventDescription ?? ''} onChange={(e) => setForm({ ...form, eventDescription: e.target.value })} />
           </div>
-        </div>
+        </>
       </BaseDialog>
 
       <ConfirmDialog
@@ -302,30 +328,31 @@ export const HrWorkInjuryPage: React.FC = () => {
           title={`工伤详情 · ${detail.injuryNo}`}
           width="wide"
           onClose={() => setDetail(null)}
+          bodyClassName="admin-dialog-stack"
           footer={<div className="flex justify-end"><Button variant="outline" onClick={() => setDetail(null)}>关闭</Button></div>}
         >
-          <div className="space-y-3 text-sm">
+          <div className="admin-dialog-stack text-sm">
             <StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={detail.status} tone="emerald" />
             <div className="grid grid-cols-2 gap-3">
-              <div><span className="text-slate-500">员工 ID:</span> {detail.employeeId}</div>
-              <div><span className="text-slate-500">发生时间:</span> {formatDateTimeValue(detail.occurredAt)}</div>
-              <div><span className="text-slate-500">地点:</span> {detail.location ?? '-'}</div>
-              <div><span className="text-slate-500">部位:</span> {detail.injuryPart ?? '-'}</div>
-              <div><span className="text-slate-500">等级:</span> <DictLabel dictType="hr_work_injury_level" value={detail.injuryLevel} fallback="-" /></div>
-              <div><span className="text-slate-500">伤残等级:</span> {detail.determinedGrade ? `${detail.determinedGrade} 级` : '-'}</div>
-              <div><span className="text-slate-500">认定时间:</span> {formatDateTimeValue(detail.determinedAt)}</div>
-              <div><span className="text-slate-500">工作流:</span> {detail.processInstanceId ?? '-'}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">员工 ID:</span> {detail.employeeId}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">发生时间:</span> {formatDateTimeValue(detail.occurredAt)}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">地点:</span> {detail.location ?? '-'}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">部位:</span> {detail.injuryPart ?? '-'}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">等级:</span> <DictLabel dictType="hr_work_injury_level" value={detail.injuryLevel} fallback="-" /></div>
+              <div className="admin-dialog-field"><span className="text-slate-500">伤残等级:</span> {detail.determinedGrade ? `${detail.determinedGrade} 级` : '-'}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">认定时间:</span> {formatDateTimeValue(detail.determinedAt)}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">工作流:</span> {detail.processInstanceId ?? '-'}</div>
             </div>
             {detail.eventDescription && (
-              <div>
+              <div className="admin-dialog-field">
                 <div className="text-slate-500">事件描述:</div>
-                <div className="whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs">{detail.eventDescription}</div>
+                <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2 text-xs whitespace-pre-wrap dark:border-slate-800 dark:bg-slate-950">{detail.eventDescription}</div>
               </div>
             )}
           </div>
         </BaseDialog>
       )}
-    </div>
+    </section>
   );
 };
 

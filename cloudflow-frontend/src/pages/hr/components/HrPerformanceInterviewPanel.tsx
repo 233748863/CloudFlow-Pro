@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Edit, LoaderCircle, Plus, Trash2 } from 'lucide-react';
+import { Check, Edit, LoaderCircle, Plus, Trash2 } from 'lucide-react';
 import {
   BaseDialog,
   Button,
@@ -16,6 +16,7 @@ import {
   hrPerformanceInterviewApi,
   type HrPerformanceInterview,
 } from '@/services/api/hr/batch2';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 interface Props {
   open: boolean;
@@ -140,52 +141,70 @@ export const HrPerformanceInterviewPanel = ({ open, resultId, employeeId, employ
         ) : list.length === 0 ? (
           <div className="py-10 text-center text-sm text-slate-400">暂无面谈记录</div>
         ) : (
-          <div className="space-y-3">
-            {list.map((item) => {
-              return (
-                <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm">
-                      <DictBadge dictType="hr_perf_interview_status" value={String(item.status || 'DRAFT')} />
-                      <span className="text-slate-700 dark:text-slate-200">{item.interviewTime}</span>
-                      {item.location ? <span className="text-xs text-slate-500">@ {item.location}</span> : null}
-                    </div>
-                    <div className="flex gap-2">
-                      {item.status === 'DRAFT' ? (
-                        <>
-                          <Button size="sm" variant="outline" onClick={() => startEdit(item)}>
-                            <Edit className="mr-1 h-3 w-3" />编辑
-                          </Button>
-                          <Button size="sm" onClick={() => item.id && void handleConfirm(item.id)} disabled={submitting}>
-                            确认
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setPendingDelete(item)} disabled={submitting}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="grid gap-2 text-xs">
-                    <div><span className="text-slate-500">面谈人: </span>{item.interviewerName || '-'}</div>
-                    {item.hrWitnessName ? <div><span className="text-slate-500">HR 旁听: </span>{item.hrWitnessName}</div> : null}
-                    {item.consensus ? (
-                      <div>
-                        <div className="text-slate-500">双方共识:</div>
-                        <div className="whitespace-pre-wrap rounded bg-slate-50 px-2 py-1 dark:bg-slate-800">{item.consensus}</div>
-                      </div>
-                    ) : null}
-                    {item.improvements ? (
-                      <div>
-                        <div className="text-slate-500">改进项:</div>
-                        <div className="whitespace-pre-wrap rounded bg-slate-50 px-2 py-1 dark:bg-slate-800">{item.improvements}</div>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <InnerTableSurface>
+            <div className="admin-source-section-head border-b border-slate-200 p-4 dark:border-slate-800">
+              <div>
+                <strong>面谈记录</strong>
+                <span>{list.length} 条记录，草稿状态可编辑、确认或删除</span>
+              </div>
+            </div>
+              <table className="unity-data-table admin-source-table min-w-[980px]">
+                <thead>
+                  <tr>
+                    <th>面谈时间</th>
+                    <th>状态</th>
+                    <th>参与人</th>
+                    <th>双方共识</th>
+                    <th>改进项</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="font-medium text-slate-700 dark:text-slate-200">{item.interviewTime || '-'}</div>
+                        <div className="text-xs text-slate-500">{item.location || '-'}</div>
+                      </td>
+                      <td>
+                        <DictBadge dictType="hr_perf_interview_status" value={String(item.status || 'DRAFT')} />
+                      </td>
+                      <td>
+                        <div className="text-sm text-slate-700 dark:text-slate-200">{item.interviewerName || '-'}</div>
+                        <div className="text-xs text-slate-500">HR：{item.hrWitnessName || '-'}</div>
+                      </td>
+                      <td className="max-w-[260px]">
+                        <div className="line-clamp-2 whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-300">
+                          {item.consensus || '-'}
+                        </div>
+                      </td>
+                      <td className="max-w-[260px]">
+                        <div className="line-clamp-2 whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-300">
+                          {item.improvements || '-'}
+                        </div>
+                      </td>
+                      <td>
+                        {item.status === 'DRAFT' ? (
+                          <div className="admin-users-row-actions">
+                            <button type="button" title="编辑" onClick={() => startEdit(item)} disabled={submitting}>
+                              <Edit size={15} />
+                            </button>
+                            <button type="button" title="确认" onClick={() => item.id && void handleConfirm(item.id)} disabled={submitting}>
+                              <Check size={15} />
+                            </button>
+                            <button type="button" className="danger" title="删除" onClick={() => setPendingDelete(item)} disabled={submitting}>
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+          </InnerTableSurface>
         )}
       </BaseDialog>
 
@@ -201,26 +220,24 @@ export const HrPerformanceInterviewPanel = ({ open, resultId, employeeId, employ
         )}
       >
         {editing ? (
-          <div className="grid gap-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label>面谈时间 *</Label>
-                <DatePicker
-                  type="datetime-local"
-                  value={editing.interviewTime || ''}
-                  onChange={(e) => setEditing((cur) => cur ? { ...cur, interviewTime: e.target.value } : cur)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>面谈地点</Label>
-                <Input
-                  value={editing.location || ''}
-                  onChange={(e) => setEditing((cur) => cur ? { ...cur, location: e.target.value } : cur)}
-                  placeholder="如 会议室 / 视频会议"
-                />
-              </div>
+          <div className="admin-source-form-grid">
+            <div className="space-y-1">
+              <Label>面谈时间 *</Label>
+              <DatePicker
+                type="datetime-local"
+                value={editing.interviewTime || ''}
+                onChange={(e) => setEditing((cur) => cur ? { ...cur, interviewTime: e.target.value } : cur)}
+              />
             </div>
             <div className="space-y-1">
+              <Label>面谈地点</Label>
+              <Input
+                value={editing.location || ''}
+                onChange={(e) => setEditing((cur) => cur ? { ...cur, location: e.target.value } : cur)}
+                placeholder="如 会议室 / 视频会议"
+              />
+            </div>
+            <div className="admin-source-form-wide space-y-1">
               <Label>双方共识</Label>
               <Textarea
                 rows={3}
@@ -229,7 +246,7 @@ export const HrPerformanceInterviewPanel = ({ open, resultId, employeeId, employ
                 placeholder="记录此次面谈达成的共识"
               />
             </div>
-            <div className="space-y-1">
+            <div className="admin-source-form-wide space-y-1">
               <Label>改进项</Label>
               <Textarea
                 rows={3}

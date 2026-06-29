@@ -1,7 +1,7 @@
 import request from '@/services/api/request';
 import { getAttachmentRawValue, normalizeAttachmentUrls } from '@/utils/attachment';
 import { listEmployees } from './employee';
-import { normalizeJsonArray, normalizeStringArray } from './internals';
+import { normalizeJsonArray, normalizeStringArray, withList } from './internals';
 import type {
   EmployeeContract,
   EmployeeContractPayload,
@@ -24,7 +24,8 @@ const normalizeEmployeeDocument = (item: EmployeeDocument): EmployeeDocument => 
 });
 
 export const listEmployeeContracts = async (employeeId: number) =>
-  (await request.get<EmployeeContract[]>(`/hr/employees/${employeeId}/contracts`)).map(normalizeEmployeeContract);
+  withList(await request.get<EmployeeContract[]>(`/hr/employees/${employeeId}/contracts`))
+    .map(normalizeEmployeeContract);
 export const getEmployeeContract = async (id: number) => {
   const employees = await listEmployees();
   const lists = await Promise.all(employees.map((employee) => listEmployeeContracts(employee.id).catch(() => [])));
@@ -44,7 +45,8 @@ export const deleteEmployeeContract = (id: number) =>
   request.delete<void>(`/hr/employees/contracts/${id}`);
 
 export const listEmployeeDocuments = async (employeeId: number) =>
-  (await request.get<EmployeeDocument[]>(`/hr/employees/${employeeId}/documents`)).map(normalizeEmployeeDocument);
+  withList(await request.get<EmployeeDocument[]>(`/hr/employees/${employeeId}/documents`))
+    .map(normalizeEmployeeDocument);
 export const getEmployeeDocument = async (id: number) => {
   const employees = await listEmployees();
   const lists = await Promise.all(employees.map((employee) => listEmployeeDocuments(employee.id).catch(() => [])));

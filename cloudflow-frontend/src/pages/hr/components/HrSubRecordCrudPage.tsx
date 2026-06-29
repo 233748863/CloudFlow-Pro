@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCcw, Search } from 'lucide-react';
+import { Ban, Check, Download, Edit, ExternalLink, Eye, MoreHorizontal, Plus, Power, RefreshCcw, Search, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -11,17 +11,15 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableHead,
-  TableHeader,
-  TableRowActions,
   Textarea,
   UserSelector,
   type TableRowActionItem,
 } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { type BaseDialogWidth } from '@/components/common/BaseDialog';
+import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { useDict } from '@/hooks/useDict';
 import { normalizeRows } from '../hrShared';
 
@@ -64,6 +62,30 @@ const SubRecordSelectField: React.FC<{
   );
 };
 
+const actionIconMap: Record<string, React.ReactNode> = {
+  view: <Eye size={15} />,
+  edit: <Edit size={15} />,
+  confirm: <Check size={15} />,
+  submit: <Send size={15} />,
+  process: <Check size={15} />,
+  bind: <ExternalLink size={15} />,
+  writeoff: <Check size={15} />,
+  send: <Send size={15} />,
+  enable: <Power size={15} />,
+  disable: <Power size={15} />,
+  reset: <RefreshCcw size={15} />,
+  copy: <MoreHorizontal size={15} />,
+  open: <ExternalLink size={15} />,
+  export: <Download size={15} />,
+  archive: <Ban size={15} />,
+  void: <Ban size={15} />,
+  delete: <Trash2 size={15} />,
+  custom: <MoreHorizontal size={15} />,
+};
+
+const isDangerAction = (action: TableRowActionItem) =>
+  action.danger || action.semantic === 'delete' || action.semantic === 'void' || action.semantic === 'archive';
+
 export interface HrSubRecordCrudPageProps<T extends { id: number }, F> {
   parentLabel: string;
   parentPayloadKey: keyof F;
@@ -95,6 +117,7 @@ export function HrSubRecordCrudPage<T extends { id: number }, F>({
   permissionKeyEdit,
   extraActions,
 }: HrSubRecordCrudPageProps<T, F>) {
+  const { user } = useAuth();
   const [parentId, setParentId] = useState('');
   const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
@@ -156,74 +179,134 @@ export function HrSubRecordCrudPage<T extends { id: number }, F>({
 
   const getVal = (key: keyof F): unknown => (form as Record<string, unknown>)[key as string];
   const setVal = (key: keyof F, value: unknown) => setForm({ ...form, [key]: value } as Partial<F>);
+  const userPermissions = user?.permissions || [];
+  const hasPermission = (permission?: string) => {
+    if (!permission) return true;
+    return userPermissions.includes(permission) || userPermissions.includes('*:*:*') || userPermissions.includes('*');
+  };
 
-  const filters = (
-    <FilterBar
-      search={{
-        value: parentId,
-        onChange: setParentId,
-        onSubmit: () => void load(),
-        placeholder: `输入${parentLabel}查询`,
-        widthClassName: 'w-full sm:w-[220px]',
-      }}
-      stats={[{ label: '', value: `共 ${rows.length} 条` }]}
-      actions={[
-        <Button key="query" variant="outline" size="sm" onClick={() => void load()} disabled={loading || !parentId}>
-          <Search className="mr-1.5 h-4 w-4" />查询
-        </Button>,
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading || !parentId}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-        <Button key="add" size="sm" onClick={openCreate} disabled={!parentId}>
-          <Plus className="mr-1.5 h-4 w-4" />{createLabel}
-        </Button>,
-      ]}
-    />
-  );
+  const renderRowActions = (row: T) => {
+    const actions = [
+      { key: 'edit', semantic: 'edit' as const, label: '编辑', onClick: () => openEdit(row), permissionKey: permissionKeyEdit },
+      ...(extraActions?.(row, Number(parentId), () => void load()) ?? []),
+    ].filter((action) => !action.hidden && hasPermission(action.permissionKey));
+
+    if (!actions.length) {
+      return <span className="admin-users-muted">-</span>;
+    }
+
+    return (
+      <div className="admin-users-row-actions">
+        {actions.map((action, index) => (
+          <button
+            key={action.key ?? `${action.label}-${index}`}
+            type={action.type ?? 'button'}
+            className={isDangerAction(action) ? 'danger' : undefined}
+            title={action.tooltip ?? action.title ?? action.label}
+            aria-label={action.tooltip ?? action.title ?? action.label}
+            disabled={action.disabled}
+            onClick={action.onClick}
+          >
+            {action.icon ?? actionIconMap[action.semantic ?? 'custom'] ?? actionIconMap.custom}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   const colCount = columns.length + 1;
 
-  const table = (
-    <TableSurfaceCard fill>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px]">
-          <TableHeader className="sticky top-0 z-10">
-            <tr>
-              {columns.map((c) => <TableHead key={c.header}>{c.header}</TableHead>)}
-              <TableHead className="text-right">操作</TableHead>
-            </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr><td colSpan={colCount} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={colCount} className="py-10 text-center text-sm text-slate-400">{parentId ? '暂无记录' : `请输入${parentLabel}`}</td></tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  {columns.map((c) => (
-                    <td key={c.header} className={c.className ?? 'px-4 py-3 text-sm'}>{c.render(row)}</td>
-                  ))}
-                  <td className="px-4 py-3">
-                    <TableRowActions
-                      actions={[
-                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => openEdit(row), permissionKey: permissionKeyEdit },
-                        ...(extraActions?.(row, Number(parentId), () => void load()) ?? []),
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
-  );
-
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} />
+    <section className="admin-source-page hr-sub-record-page">
+      <TablePageLayout
+        className="hr-sub-record-layout"
+        actions={
+          <>
+            <header className="admin-source-header">
+              <div>
+                <p className="admin-source-kicker">HR SUB RECORDS</p>
+                <h2>{createTitle.replace(/^新增/, '') || '子记录维护'}</h2>
+                <span>按{parentLabel}查询并维护明细记录</span>
+              </div>
+              <div className="admin-source-controls">
+                <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading || !parentId}>
+                  <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+                </Button>
+                <Button size="sm" onClick={openCreate} disabled={!parentId}>
+                  <Plus className="mr-1.5 h-4 w-4" />{createLabel}
+                </Button>
+              </div>
+            </header>
+
+            <section className="admin-source-stat-grid">
+              <article className="card admin-source-stat admin-source-tone-blue">
+                <div className="admin-source-stat-icon"><Search size={18} /></div>
+                <div><p>查询对象</p><strong>{parentId || '-'}</strong><span>{parentLabel}</span></div>
+              </article>
+              <article className="card admin-source-stat admin-source-tone-green">
+                <div className="admin-source-stat-icon"><Plus size={18} /></div>
+                <div><p>当前记录</p><strong>{rows.length}</strong><span>查询结果总数</span></div>
+              </article>
+            </section>
+          </>
+        }
+        filters={
+          <section className="card admin-users-toolbar hr-sub-record-toolbar">
+            <div className="admin-users-filter-grid">
+              <label className="admin-source-search">
+                <span className="input-label">{parentLabel}</span>
+                <div className="admin-source-search-field">
+                  <Search size={16} />
+                  <Input
+                    className="h-auto"
+                    type="search"
+                    value={parentId}
+                    onChange={(event) => setParentId(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void load();
+                    }}
+                    placeholder={`输入${parentLabel}查询`}
+                  />
+                </div>
+              </label>
+            </div>
+            <div className="admin-users-toolbar-actions">
+              <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading || !parentId}>
+                <Search className="mr-1.5 h-4 w-4" />查询
+              </Button>
+              <span className="admin-users-filter-count">共 {rows.length} 条</span>
+            </div>
+          </section>
+        }
+        table={
+          <InnerTableSurface className="card admin-source-panel no-padding hr-sub-record-table-panel flex min-h-0 flex-1 flex-col">
+            <table className="unity-data-table admin-source-table min-w-[720px]">
+              <thead>
+                <tr>
+                  {columns.map((c) => <th key={c.header}>{c.header}</th>)}
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={colCount} className="admin-settings-empty">加载中...</td></tr>
+                ) : rows.length === 0 ? (
+                  <tr><td colSpan={colCount} className="admin-settings-empty">{parentId ? '暂无记录' : `请输入${parentLabel}`}</td></tr>
+                ) : (
+                  rows.map((row) => (
+                    <tr key={row.id}>
+                      {columns.map((c) => (
+                        <td key={c.header} className={c.className}>{c.render(row)}</td>
+                      ))}
+                      <td>{renderRowActions(row)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </InnerTableSurface>
+        }
+      />
 
       <BaseDialog
         open={open}
@@ -237,13 +320,13 @@ export function HrSubRecordCrudPage<T extends { id: number }, F>({
           </div>
         }
       >
-        <div className="space-y-3">
+        <div className="admin-dialog-stack">
           <div className="grid grid-cols-2 gap-3">
             {fields.map((field) => {
               const span = field.colSpan === 2 ? 'col-span-2' : '';
               if (field.type === 'textarea') {
                 return (
-                  <div key={String(field.key)} className="col-span-2">
+                  <div key={String(field.key)} className="admin-dialog-field col-span-2">
                     <Label>{field.label}</Label>
                     <Textarea rows={field.rows ?? 3} value={String(getVal(field.key) ?? '')} onChange={(e) => setVal(field.key, e.target.value)} />
                   </div>
@@ -251,7 +334,7 @@ export function HrSubRecordCrudPage<T extends { id: number }, F>({
               }
               if (field.type === 'select') {
                 return (
-                  <div key={String(field.key)} className={span}>
+                  <div key={String(field.key)} className={cn('admin-dialog-field', span)}>
                     <Label>{field.label}</Label>
                     <SubRecordSelectField
                       value={String(getVal(field.key) ?? '')}
@@ -300,7 +383,7 @@ export function HrSubRecordCrudPage<T extends { id: number }, F>({
           </div>
         </div>
       </BaseDialog>
-    </div>
+    </section>
   );
 }
 

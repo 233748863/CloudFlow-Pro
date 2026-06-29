@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { LoaderCircle, Plus, RefreshCcw, RotateCcw } from 'lucide-react';
+import { CheckCircle2, ClipboardList, LoaderCircle, Pencil, Plus, RefreshCcw, RotateCcw, Search, Trash2, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -16,14 +16,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrTalentDevelopmentAction,
@@ -33,6 +27,7 @@ import {
   listDevelopmentActions,
   updateDevelopmentAction,
 } from '@/services/api/hr';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { useAuth } from '@/context/AuthContext';
 import { formatDateValue, normalizeRows, toDateInputValue } from '../hrShared';
 import { DictLabel } from '@/components/common/DictLabel';
@@ -44,6 +39,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission?.('hr:talent:development:edit') ?? true;
   const canAdd = hasPermission?.('hr:talent:development:add') ?? true;
+  const canRemove = hasPermission?.('hr:talent:development:remove') ?? true;
 
   const [rows, setRows] = useState<HrTalentDevelopmentAction[]>([]);
   const [total, setTotal] = useState(0);
@@ -143,129 +139,9 @@ export const HrTalentDevelopmentPage: React.FC = () => {
   };
 
   const hasFilters = Boolean(query.employeeId || query.actionType || query.status);
-
-  const filters = (
-    <FilterBar
-      search={{
-        value: query.employeeId,
-        onChange: (value) => setQuery((q) => ({ ...q, employeeId: value })),
-        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
-        placeholder: '按员工 ID 搜索',
-        widthClassName: 'w-full sm:w-[180px]',
-      }}
-      filters={[
-        <div key="actionType" className="w-full sm:w-40">
-          <Select value={query.actionType || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, actionType: v === '__all' ? '' : v }))}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部类型" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">全部类型</SelectItem>
-              {actionTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>,
-        <div key="status" className="w-full sm:w-36">
-          <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">全部状态</SelectItem>
-              {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>,
-      ]}
-      stats={[{ label: '', value: `共 ${total} 条` }]}
-      actions={[
-        ...(hasFilters
-          ? [
-              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, employeeId: '', actionType: '', status: '' }))}>
-                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
-              </Button>,
-            ]
-          : []),
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-        ...(canAdd
-          ? [
-              <Button key="add" size="sm" onClick={() => { setEditingId(null); setForm(defaultForm); setOpen(true); }}>
-                <Plus className="mr-1.5 h-4 w-4" />新建培养行动
-              </Button>,
-            ]
-          : []),
-      ]}
-    />
-  );
-
-  const table = (
-    <TableSurfaceCard fill>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1120px]">
-          <TableHeader className="sticky top-0 z-10">
-            <tr>
-              <TableHead>员工</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>名称</TableHead>
-              <TableHead>导师</TableHead>
-              <TableHead>培训班次</TableHead>
-              <TableHead>起止</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>评分</TableHead>
-              <TableActionHead className="text-right">操作</TableActionHead>
-            </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr>
-                <td colSpan={9} className="py-16 text-center text-sm text-slate-400">
-                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="py-16 text-center text-sm text-slate-400">暂无培养行动</td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 text-sm">{row.employeeId}</td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_action_type" value={row.actionType} fallback="-" /></td>
-                  <td className="px-4 py-3 text-sm font-medium">{row.actionName}</td>
-                  <td className="px-4 py-3 text-sm">{row.mentorId ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.trainingSessionId ?? '-'}</td>
-                  <td className="px-4 py-3 text-sm">{formatDateValue(row.startDate)} / {formatDateValue(row.endDate)}</td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_talent_action_status" value={row.status} fallback="-" /></td>
-                  <td className="px-4 py-3 text-sm">{row.evaluationScore ?? '-'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        { key: 'edit', label: '编辑', semantic: 'edit', permissionKey: 'hr:talent:development:edit', onClick: () => {
-                          setEditingId(row.id);
-                          setForm({
-                            employeeId: String(row.employeeId),
-                            actionType: row.actionType,
-                            actionName: row.actionName,
-                            mentorId: row.mentorId ? String(row.mentorId) : '',
-                            trainingSessionId: row.trainingSessionId ? String(row.trainingSessionId) : '',
-                            startDate: toDateInputValue(row.startDate),
-                            endDate: toDateInputValue(row.endDate),
-                            description: row.description ?? '',
-                          });
-                          setOpen(true);
-                        } },
-                        { key: 'complete', label: '完成回填', semantic: 'confirm', permissionKey: 'hr:talent:development:edit', onClick: () => { setCompleteAction(row); setCompleteForm({ evaluationScore: '', evaluationNotes: '' }); }, hidden: !(row.status === 'PLANNED' || row.status === 'ONGOING') },
-                        { key: 'delete', label: '删除', semantic: 'delete', permissionKey: 'hr:talent:development:remove', onClick: () => setDeleteId(row.id) },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
-  );
+  const plannedCount = rows.filter((row) => row.status === 'PLANNED').length;
+  const ongoingCount = rows.filter((row) => row.status === 'ONGOING').length;
+  const completedCount = rows.filter((row) => row.status === 'COMPLETED').length;
 
   const pagination = total > 0 ? (
     <Pagination
@@ -278,13 +154,182 @@ export const HrTalentDevelopmentPage: React.FC = () => {
   ) : null;
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} pagination={pagination} />
+    <>
+      <section className="admin-source-page">
+        <TablePageLayout
+          actions={
+            <>
+              <header className="admin-source-header">
+                <div>
+                  <p className="admin-source-kicker">TALENT DEVELOPMENT</p>
+                  <h2>人才培养行动</h2>
+                  <span>维护培养行动、导师安排、培训关联和完成回填</span>
+                </div>
+                <div className="admin-source-controls">
+                  <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+                    <RefreshCcw className={loading ? 'mr-1.5 h-4 w-4 animate-spin' : 'mr-1.5 h-4 w-4'} />刷新
+                  </Button>
+                  {canAdd ? (
+                    <Button size="sm" onClick={() => { setEditingId(null); setForm(defaultForm); setOpen(true); }}>
+                      <Plus className="mr-1.5 h-4 w-4" />新建培养行动
+                    </Button>
+                  ) : null}
+                </div>
+              </header>
+              <section className="admin-source-stat-grid">
+                <article className="card admin-source-stat admin-source-tone-blue">
+                  <div className="admin-source-stat-icon"><ClipboardList size={18} /></div>
+                  <div><p>行动总数</p><strong>{total}</strong><span>当前筛选结果</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-green">
+                  <div className="admin-source-stat-icon"><UserCheck size={18} /></div>
+                  <div><p>进行中</p><strong>{plannedCount + ongoingCount}</strong><span>计划或执行状态</span></div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-amber">
+                  <div className="admin-source-stat-icon"><CheckCircle2 size={18} /></div>
+                  <div><p>已完成</p><strong>{completedCount}</strong><span>已回填结果</span></div>
+                </article>
+              </section>
+            </>
+          }
+          filters={
+            <section className="card admin-users-toolbar">
+              <div className="admin-users-filter-grid">
+                <label>
+                  <span className="input-label">员工 ID</span>
+                  <div className="admin-source-search-field">
+                    <Search size={16} />
+                    <Input
+                      className="h-[42px]"
+                      type="search"
+                      value={query.employeeId}
+                      onChange={(event) => setQuery((q) => ({ ...q, employeeId: event.target.value }))}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') setQuery((q) => ({ ...q, pageNum: 1 }));
+                      }}
+                      placeholder="按员工 ID 搜索"
+                    />
+                  </div>
+                </label>
+                <label>
+                  <span className="input-label">类型</span>
+                  <Select value={query.actionType || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, actionType: v === '__all' ? '' : v }))}>
+                    <SelectTrigger><SelectValue placeholder="全部类型" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all">全部类型</SelectItem>
+                      {actionTypeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label>
+                  <span className="input-label">状态</span>
+                  <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
+                    <SelectTrigger><SelectValue placeholder="全部状态" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all">全部状态</SelectItem>
+                      {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
+              <div className="admin-users-toolbar-actions">
+                {hasFilters ? (
+                  <Button variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, employeeId: '', actionType: '', status: '' }))}>
+                    <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
+                  </Button>
+                ) : null}
+                <span className="admin-users-filter-count">共 {total} 条</span>
+              </div>
+            </section>
+          }
+          table={
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+              <div className="admin-horizontal-scroll">
+                <table className="unity-data-table admin-source-table min-w-[1120px]">
+                  <thead>
+                    <tr>
+                      <th>员工</th>
+                      <th>类型</th>
+                      <th>名称</th>
+                      <th>导师</th>
+                      <th>培训班次</th>
+                      <th>起止</th>
+                      <th>状态</th>
+                      <th>评分</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={9} className="admin-settings-empty">
+                          <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                        </td>
+                      </tr>
+                    ) : rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="admin-settings-empty">暂无培养行动</td>
+                      </tr>
+                    ) : (
+                      rows.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.employeeId}</td>
+                          <td><DictLabel dictType="hr_talent_action_type" value={row.actionType} fallback="-" /></td>
+                          <td><strong>{row.actionName}</strong></td>
+                          <td>{row.mentorId ?? '-'}</td>
+                          <td>{row.trainingSessionId ?? '-'}</td>
+                          <td>{formatDateValue(row.startDate)} / {formatDateValue(row.endDate)}</td>
+                          <td><DictLabel dictType="hr_talent_action_status" value={row.status} fallback="-" /></td>
+                          <td>{row.evaluationScore ?? '-'}</td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              {canEdit ? (
+                                <button type="button" title="编辑" onClick={() => {
+                                  setEditingId(row.id);
+                                  setForm({
+                                    employeeId: String(row.employeeId),
+                                    actionType: row.actionType,
+                                    actionName: row.actionName,
+                                    mentorId: row.mentorId ? String(row.mentorId) : '',
+                                    trainingSessionId: row.trainingSessionId ? String(row.trainingSessionId) : '',
+                                    startDate: toDateInputValue(row.startDate),
+                                    endDate: toDateInputValue(row.endDate),
+                                    description: row.description ?? '',
+                                  });
+                                  setOpen(true);
+                                }}>
+                                  <Pencil size={15} />
+                                </button>
+                              ) : null}
+                              {canEdit && (row.status === 'PLANNED' || row.status === 'ONGOING') ? (
+                                <button type="button" title="完成回填" onClick={() => { setCompleteAction(row); setCompleteForm({ evaluationScore: '', evaluationNotes: '' }); }}>
+                                  <CheckCircle2 size={15} />
+                                </button>
+                              ) : null}
+                              {canRemove ? (
+                                <button type="button" className="danger" title="删除" onClick={() => setDeleteId(row.id)}>
+                                  <Trash2 size={15} />
+                                </button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </InnerTableSurface>
+          }
+          pagination={pagination}
+        />
+      </section>
 
       <BaseDialog
         open={open}
         title={editingId ? '编辑培养行动' : '新建培养行动'}
         onClose={() => setOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
@@ -292,10 +337,10 @@ export const HrTalentDevelopmentPage: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-3">
+        <>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>员工 ID</Label><Input value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} /></div>
-            <div>
+            <div className="admin-dialog-field"><Label>员工 ID</Label><Input value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} /></div>
+            <div className="admin-dialog-field">
               <Label>类型</Label>
               <Select value={form.actionType} onValueChange={(v) => setForm((p) => ({ ...p, actionType: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -305,13 +350,13 @@ export const HrTalentDevelopmentPage: React.FC = () => {
               </Select>
             </div>
           </div>
-          <div><Label>名称</Label><Input value={form.actionName} onChange={(e) => setForm((p) => ({ ...p, actionName: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>名称</Label><Input value={form.actionName} onChange={(e) => setForm((p) => ({ ...p, actionName: e.target.value }))} /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>导师 ID</Label><Input value={form.mentorId} onChange={(e) => setForm((p) => ({ ...p, mentorId: e.target.value }))} /></div>
-            <div><Label>培训班次 ID</Label><Input value={form.trainingSessionId} onChange={(e) => setForm((p) => ({ ...p, trainingSessionId: e.target.value }))} /></div>
+            <div className="admin-dialog-field"><Label>导师 ID</Label><Input value={form.mentorId} onChange={(e) => setForm((p) => ({ ...p, mentorId: e.target.value }))} /></div>
+            <div className="admin-dialog-field"><Label>培训班次 ID</Label><Input value={form.trainingSessionId} onChange={(e) => setForm((p) => ({ ...p, trainingSessionId: e.target.value }))} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="admin-dialog-field">
               <Label>开始日期</Label>
               <DatePicker
                 className="h-10"
@@ -320,7 +365,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
                 onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
               />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>结束日期</Label>
               <DatePicker
                 className="h-10"
@@ -331,14 +376,15 @@ export const HrTalentDevelopmentPage: React.FC = () => {
               />
             </div>
           </div>
-          <div><Label>说明</Label><Textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={3} /></div>
-        </div>
+          <div className="admin-dialog-field"><Label>说明</Label><Textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={3} /></div>
+        </>
       </BaseDialog>
 
       <BaseDialog
         open={!!completeAction}
         title={`完成回填 · ${completeAction?.actionName ?? ''}`}
         onClose={() => setCompleteAction(null)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setCompleteAction(null)}>取消</Button>
@@ -346,10 +392,10 @@ export const HrTalentDevelopmentPage: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-3">
-          <div><Label>评估分</Label><Input type="number" step="0.1" value={completeForm.evaluationScore} onChange={(e) => setCompleteForm((p) => ({ ...p, evaluationScore: e.target.value }))} /></div>
-          <div><Label>评估说明</Label><Textarea value={completeForm.evaluationNotes} onChange={(e) => setCompleteForm((p) => ({ ...p, evaluationNotes: e.target.value }))} rows={4} /></div>
-        </div>
+        <>
+          <div className="admin-dialog-field"><Label>评估分</Label><Input type="number" step="0.1" value={completeForm.evaluationScore} onChange={(e) => setCompleteForm((p) => ({ ...p, evaluationScore: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>评估说明</Label><Textarea value={completeForm.evaluationNotes} onChange={(e) => setCompleteForm((p) => ({ ...p, evaluationNotes: e.target.value }))} rows={4} /></div>
+        </>
       </BaseDialog>
 
       <ConfirmDialog
@@ -360,7 +406,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
         onCancel={() => setDeleteId(null)}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </>
   );
 };
 

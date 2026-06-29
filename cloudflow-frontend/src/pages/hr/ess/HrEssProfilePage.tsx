@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CreditCard, Plus, Users } from 'lucide-react';
+import { CreditCard, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -13,18 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
-  TableHead,
-  TableHeader,
-  TableRowActions,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/common';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   HrBankCard,
   HrBankCardPayload,
@@ -49,6 +45,20 @@ import {
 import { normalizeRows, toDateInputValue } from '../hrShared';
 
 const relationshipOptions = ['配偶', '父亲', '母亲', '子女', '兄弟姐妹', '其他'];
+
+const renderCountToolbar = (count: number, unit: string, action: React.ReactNode) => (
+  <section className="card admin-users-toolbar">
+    <div className="admin-users-filter-grid">
+      <div>
+        <span className="input-label">当前记录</span>
+        <div className="admin-source-search-field">
+          <Input className="h-[42px]" value={`共 ${count} ${unit}`} readOnly aria-label="当前记录数" />
+        </div>
+      </div>
+    </div>
+    <div className="admin-users-toolbar-actions">{action}</div>
+  </section>
+);
 
 const useTabState = <T,>(loader: () => Promise<T[]>) => {
   const [rows, setRows] = useState<T[]>([]);
@@ -117,57 +127,55 @@ const BankCardTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
   };
 
   return (
-    <div className="space-y-4">
-      <FilterBar
-        stats={[{ label: '', value: `共 ${rows.length} 张` }]}
-        actions={[
-          <Button key="create" size="sm" onClick={() => { setEditingId(null); setForm({ employeeId, bankName: '', bankBranch: '', accountNo: '', accountHolder: '', isPrimary: false }); setOpen(true); }}>
-            <Plus className="mr-1.5 h-4 w-4" />新增银行卡
-          </Button>,
-        ]}
-      />
-      <TableSurfaceCard>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px]">
-            <TableHeader className="sticky top-0 z-10">
+    <div className="admin-source-content-grid">
+      {renderCountToolbar(rows.length, '张', (
+        <Button size="sm" onClick={() => { setEditingId(null); setForm({ employeeId, bankName: '', bankBranch: '', accountNo: '', accountHolder: '', isPrimary: false }); setOpen(true); }}>
+          <Plus className="mr-1.5 h-4 w-4" />新增银行卡
+        </Button>
+      ))}
+      <InnerTableSurface>
+          <table className="unity-data-table admin-source-table min-w-[720px]">
+            <thead>
               <tr>
-                <TableHead>银行</TableHead>
-                <TableHead>支行</TableHead>
-                <TableHead>卡号（脱敏）</TableHead>
-                <TableHead>持卡人</TableHead>
-                <TableHead>主卡</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <th>银行</th>
+                <th>支行</th>
+                <th>卡号（脱敏）</th>
+                <th>持卡人</th>
+                <th>主卡</th>
+                <th>操作</th>
               </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            </thead>
+            <tbody>
               {rows.length ? rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 text-sm">{row.bankName}</td>
-                  <td className="px-4 py-3 text-sm">{row.bankBranch || '-'}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{row.accountNo}</td>
-                  <td className="px-4 py-3 text-sm">{row.accountHolder}</td>
-                  <td className="px-4 py-3 text-sm">{row.isPrimary ? '是' : '否'}</td>
-                  <td className="px-4 py-3">
-                    <TableRowActions
-                      actions={[
-                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => { setEditingId(row.id); setForm({ ...row, accountNo: '' }); setOpen(true); } },
-                        { key: 'delete', semantic: 'delete', label: '删除', onClick: () => setDeleteTarget(row) },
-                      ]}
-                    />
+                <tr key={row.id}>
+                  <td>{row.bankName}</td>
+                  <td>{row.bankBranch || '-'}</td>
+                  <td className="font-mono">{row.accountNo}</td>
+                  <td>{row.accountHolder}</td>
+                  <td><span className={row.isPrimary ? 'badge badge-success' : 'badge badge-gray'}>{row.isPrimary ? '是' : '否'}</span></td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, accountNo: '' }); setOpen(true); }}>
+                        <Pencil size={15} />
+                      </button>
+                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan={6} className="py-10 text-center text-sm text-slate-400">暂无银行卡</td></tr>
+                <tr><td colSpan={6} className="admin-settings-empty">暂无银行卡</td></tr>
               )}
             </tbody>
           </table>
-        </div>
-      </TableSurfaceCard>
+      </InnerTableSurface>
 
       <BaseDialog
         open={open}
         title={editingId ? '编辑银行卡' : '新增银行卡'}
         onClose={() => setOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
@@ -175,16 +183,16 @@ const BankCardTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
           </div>
         }
       >
-        <div className="space-y-3">
-          <div><Label>开户行</Label><Input value={form.bankName} onChange={(e) => setForm((p) => ({ ...p, bankName: e.target.value }))} /></div>
-          <div><Label>支行</Label><Input value={form.bankBranch} onChange={(e) => setForm((p) => ({ ...p, bankBranch: e.target.value }))} /></div>
-          <div><Label>卡号{editingId ? '（留空则保留原值）' : ''}</Label><Input value={form.accountNo} onChange={(e) => setForm((p) => ({ ...p, accountNo: e.target.value }))} /></div>
-          <div><Label>持卡人</Label><Input value={form.accountHolder} onChange={(e) => setForm((p) => ({ ...p, accountHolder: e.target.value }))} /></div>
+        <>
+          <div className="admin-dialog-field"><Label>开户行</Label><Input value={form.bankName} onChange={(e) => setForm((p) => ({ ...p, bankName: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>支行</Label><Input value={form.bankBranch} onChange={(e) => setForm((p) => ({ ...p, bankBranch: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>卡号{editingId ? '（留空则保留原值）' : ''}</Label><Input value={form.accountNo} onChange={(e) => setForm((p) => ({ ...p, accountNo: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>持卡人</Label><Input value={form.accountHolder} onChange={(e) => setForm((p) => ({ ...p, accountHolder: e.target.value }))} /></div>
           <div className="flex items-center gap-2">
             <Switch checked={!!form.isPrimary} onCheckedChange={(checked) => setForm((p) => ({ ...p, isPrimary: checked }))} />
             <Label>设为主卡</Label>
           </div>
-        </div>
+        </>
       </BaseDialog>
 
       <ConfirmDialog
@@ -246,59 +254,57 @@ const FamilyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
   };
 
   return (
-    <div className="space-y-4">
-      <FilterBar
-        stats={[{ label: '', value: `共 ${rows.length} 人` }]}
-        actions={[
-          <Button key="create" size="sm" onClick={() => { setEditingId(null); setForm({ employeeId, memberName: '', relationship: '配偶' }); setOpen(true); }}>
-            <Plus className="mr-1.5 h-4 w-4" />新增家庭成员
-          </Button>,
-        ]}
-      />
-      <TableSurfaceCard>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[840px]">
-            <TableHeader className="sticky top-0 z-10">
+    <div className="admin-source-content-grid">
+      {renderCountToolbar(rows.length, '人', (
+        <Button size="sm" onClick={() => { setEditingId(null); setForm({ employeeId, memberName: '', relationship: '配偶' }); setOpen(true); }}>
+          <Plus className="mr-1.5 h-4 w-4" />新增家庭成员
+        </Button>
+      ))}
+      <InnerTableSurface>
+          <table className="unity-data-table admin-source-table min-w-[840px]">
+            <thead>
               <tr>
-                <TableHead>姓名</TableHead>
-                <TableHead>关系</TableHead>
-                <TableHead>身份证（脱敏）</TableHead>
-                <TableHead>生日</TableHead>
-                <TableHead>联系方式</TableHead>
-                <TableHead>赡养</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <th>姓名</th>
+                <th>关系</th>
+                <th>身份证（脱敏）</th>
+                <th>生日</th>
+                <th>联系方式</th>
+                <th>赡养</th>
+                <th>操作</th>
               </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            </thead>
+            <tbody>
               {rows.length ? rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 text-sm">{row.memberName}</td>
-                  <td className="px-4 py-3 text-sm">{row.relationship}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{row.idCardNo || '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.birthDate || '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.phone || '-'}</td>
-                  <td className="px-4 py-3 text-sm">{row.isDependent ? '是' : '否'}</td>
-                  <td className="px-4 py-3">
-                    <TableRowActions
-                      actions={[
-                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => { setEditingId(row.id); setForm({ ...row, birthDate: toDateInputValue(row.birthDate), idCardNo: '' }); setOpen(true); } },
-                        { key: 'delete', semantic: 'delete', label: '删除', onClick: () => setDeleteTarget(row) },
-                      ]}
-                    />
+                <tr key={row.id}>
+                  <td>{row.memberName}</td>
+                  <td><span className="badge badge-gray">{row.relationship}</span></td>
+                  <td className="font-mono">{row.idCardNo || '-'}</td>
+                  <td>{row.birthDate || '-'}</td>
+                  <td>{row.phone || '-'}</td>
+                  <td><span className={row.isDependent ? 'badge badge-success' : 'badge badge-gray'}>{row.isDependent ? '是' : '否'}</span></td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, birthDate: toDateInputValue(row.birthDate), idCardNo: '' }); setOpen(true); }}>
+                        <Pencil size={15} />
+                      </button>
+                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无家庭成员</td></tr>
+                <tr><td colSpan={7} className="admin-settings-empty">暂无家庭成员</td></tr>
               )}
             </tbody>
           </table>
-        </div>
-      </TableSurfaceCard>
+      </InnerTableSurface>
 
       <BaseDialog
         open={open}
         title={editingId ? '编辑家庭成员' : '新增家庭成员'}
         onClose={() => setOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
@@ -306,9 +312,9 @@ const FamilyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
           </div>
         }
       >
-        <div className="space-y-3">
-          <div><Label>姓名</Label><Input value={form.memberName} onChange={(e) => setForm((p) => ({ ...p, memberName: e.target.value }))} /></div>
-          <div>
+        <>
+          <div className="admin-dialog-field"><Label>姓名</Label><Input value={form.memberName} onChange={(e) => setForm((p) => ({ ...p, memberName: e.target.value }))} /></div>
+          <div className="admin-dialog-field">
             <Label>关系</Label>
             <Select value={form.relationship} onValueChange={(v) => setForm((p) => ({ ...p, relationship: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -317,15 +323,15 @@ const FamilyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
               </SelectContent>
             </Select>
           </div>
-          <div><Label>身份证号{editingId ? '（留空则保留原值）' : ''}</Label><Input value={form.idCardNo || ''} onChange={(e) => setForm((p) => ({ ...p, idCardNo: e.target.value }))} /></div>
-          <div><Label>生日</Label><DatePicker type="date" value={form.birthDate || ''} onChange={(e) => setForm((p) => ({ ...p, birthDate: e.target.value }))} /></div>
-          <div><Label>职业</Label><Input value={form.occupation || ''} onChange={(e) => setForm((p) => ({ ...p, occupation: e.target.value }))} /></div>
-          <div><Label>联系方式</Label><Input value={form.phone || ''} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>身份证号{editingId ? '（留空则保留原值）' : ''}</Label><Input value={form.idCardNo || ''} onChange={(e) => setForm((p) => ({ ...p, idCardNo: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>生日</Label><DatePicker type="date" value={form.birthDate || ''} onChange={(e) => setForm((p) => ({ ...p, birthDate: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>职业</Label><Input value={form.occupation || ''} onChange={(e) => setForm((p) => ({ ...p, occupation: e.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>联系方式</Label><Input value={form.phone || ''} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></div>
           <div className="flex items-center gap-2">
             <Switch checked={!!form.isDependent} onCheckedChange={(checked) => setForm((p) => ({ ...p, isDependent: checked }))} />
             <Label>赡养人</Label>
           </div>
-        </div>
+        </>
       </BaseDialog>
 
       <ConfirmDialog
@@ -397,53 +403,51 @@ const EmergencyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
   };
 
   return (
-    <div className="space-y-4">
-      <FilterBar
-        stats={[{ label: '', value: `共 ${rows.length} 人` }]}
-        actions={[
-          <Button key="create" size="sm" onClick={() => { setEditingId(null); setForm({ employeeId, contactName: '', relationship: '配偶', phone: '' }); setOpen(true); }}>
-            <Plus className="mr-1.5 h-4 w-4" />新增紧急联系人
-          </Button>,
-        ]}
-      />
-      <TableSurfaceCard>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[480px]">
-            <TableHeader className="sticky top-0 z-10">
+    <div className="admin-source-content-grid">
+      {renderCountToolbar(rows.length, '人', (
+        <Button size="sm" onClick={() => { setEditingId(null); setForm({ employeeId, contactName: '', relationship: '配偶', phone: '' }); setOpen(true); }}>
+          <Plus className="mr-1.5 h-4 w-4" />新增紧急联系人
+        </Button>
+      ))}
+      <InnerTableSurface>
+          <table className="unity-data-table admin-source-table min-w-[480px]">
+            <thead>
               <tr>
-                <TableHead>姓名</TableHead>
-                <TableHead>关系</TableHead>
-                <TableHead>电话</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <th>姓名</th>
+                <th>关系</th>
+                <th>电话</th>
+                <th>操作</th>
               </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            </thead>
+            <tbody>
               {rows.length ? rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 text-sm">{row.contactName}</td>
-                  <td className="px-4 py-3 text-sm">{row.relationship}</td>
-                  <td className="px-4 py-3 text-sm">{row.phone}</td>
-                  <td className="px-4 py-3">
-                    <TableRowActions
-                      actions={[
-                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => { setEditingId(row.id); setForm(row); setOpen(true); } },
-                        { key: 'delete', semantic: 'delete', label: '删除', onClick: () => setDeleteTarget(row) },
-                      ]}
-                    />
+                <tr key={row.id}>
+                  <td>{row.contactName}</td>
+                  <td><span className="badge badge-gray">{row.relationship}</span></td>
+                  <td>{row.phone}</td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
+                        <Pencil size={15} />
+                      </button>
+                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan={4} className="py-10 text-center text-sm text-slate-400">暂无紧急联系人</td></tr>
+                <tr><td colSpan={4} className="admin-settings-empty">暂无紧急联系人</td></tr>
               )}
             </tbody>
           </table>
-        </div>
-      </TableSurfaceCard>
+      </InnerTableSurface>
 
       <BaseDialog
         open={open}
         title={editingId ? '编辑紧急联系人' : '新增紧急联系人'}
         onClose={() => setOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
@@ -451,9 +455,9 @@ const EmergencyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
           </div>
         }
       >
-        <div className="space-y-3">
-          <div><Label>姓名</Label><Input value={form.contactName} onChange={(e) => setForm((p) => ({ ...p, contactName: e.target.value }))} /></div>
-          <div>
+        <>
+          <div className="admin-dialog-field"><Label>姓名</Label><Input value={form.contactName} onChange={(e) => setForm((p) => ({ ...p, contactName: e.target.value }))} /></div>
+          <div className="admin-dialog-field">
             <Label>关系</Label>
             <Select value={form.relationship} onValueChange={(v) => setForm((p) => ({ ...p, relationship: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -462,8 +466,8 @@ const EmergencyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
               </SelectContent>
             </Select>
           </div>
-          <div><Label>电话</Label><Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></div>
-        </div>
+          <div className="admin-dialog-field"><Label>电话</Label><Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></div>
+        </>
       </BaseDialog>
 
       <ConfirmDialog
@@ -496,22 +500,53 @@ export const HrEssProfilePage: React.FC = () => {
     })();
   }, []);
 
-  if (loading) return <div className="py-10 text-center text-sm text-slate-400">加载中…</div>;
-  if (!employeeId) return <div className="py-10 text-center text-sm text-rose-500">未找到当前员工档案，请联系 HR</div>;
+  if (loading) return <section className="admin-source-page"><div className="card admin-source-panel admin-settings-empty">加载中...</div></section>;
+  if (!employeeId) return <section className="admin-source-page"><div className="card admin-source-panel admin-settings-empty">未找到当前员工档案，请联系 HR</div></section>;
 
   return (
-    <div className="space-y-4">
-      <Tabs defaultValue="bank" className="space-y-4">
-        <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
-          <TabsTrigger value="bank" className="flex-1 lg:flex-none"><CreditCard className="mr-1 inline-block h-4 w-4" />银行卡</TabsTrigger>
-          <TabsTrigger value="family" className="flex-1 lg:flex-none"><Users className="mr-1 inline-block h-4 w-4" />家庭成员</TabsTrigger>
-          <TabsTrigger value="emergency" className="flex-1 lg:flex-none"><Users className="mr-1 inline-block h-4 w-4" />紧急联系人</TabsTrigger>
-        </TabsList>
-        <TabsContent value="bank"><BankCardTab employeeId={employeeId} /></TabsContent>
-        <TabsContent value="family"><FamilyTab employeeId={employeeId} /></TabsContent>
-        <TabsContent value="emergency"><EmergencyTab employeeId={employeeId} /></TabsContent>
-      </Tabs>
-    </div>
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={
+          <>
+            <header className="admin-source-header">
+              <div>
+                <p className="admin-source-kicker">EMPLOYEE SELF SERVICE</p>
+                <h2>个人档案</h2>
+                <span>维护银行卡、家庭成员和紧急联系人信息</span>
+              </div>
+            </header>
+            <section className="admin-source-stat-grid">
+              <article className="card admin-source-stat admin-source-tone-blue">
+                <div className="admin-source-stat-icon"><CreditCard size={18} /></div>
+                <div><p>银行卡</p><strong>账户资料</strong><span>工资发放与报销收款</span></div>
+              </article>
+              <article className="card admin-source-stat admin-source-tone-violet">
+                <div className="admin-source-stat-icon"><Users size={18} /></div>
+                <div><p>家庭成员</p><strong>家庭资料</strong><span>个税、福利和人事备案</span></div>
+              </article>
+              <article className="card admin-source-stat admin-source-tone-green">
+                <div className="admin-source-stat-icon"><Users size={18} /></div>
+                <div><p>紧急联系人</p><strong>联络资料</strong><span>突发场景快速联系</span></div>
+              </article>
+            </section>
+          </>
+        }
+        table={
+          <Tabs defaultValue="bank" className="admin-source-content-grid admin-ess-profile-tabs-shell">
+            <div className="admin-ess-profile-tabs-scroll">
+              <TabsList className="admin-source-tabs admin-ess-profile-tabs">
+                <TabsTrigger value="bank" className="shrink-0"><CreditCard className="mr-1 inline-block h-4 w-4" />银行卡</TabsTrigger>
+                <TabsTrigger value="family" className="shrink-0"><Users className="mr-1 inline-block h-4 w-4" />家庭成员</TabsTrigger>
+                <TabsTrigger value="emergency" className="shrink-0"><Users className="mr-1 inline-block h-4 w-4" />紧急联系人</TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="bank" className="admin-ess-profile-tabs-panel"><BankCardTab employeeId={employeeId} /></TabsContent>
+            <TabsContent value="family" className="admin-ess-profile-tabs-panel"><FamilyTab employeeId={employeeId} /></TabsContent>
+            <TabsContent value="emergency" className="admin-ess-profile-tabs-panel"><EmergencyTab employeeId={employeeId} /></TabsContent>
+          </Tabs>
+        }
+      />
+    </section>
   );
 };
 

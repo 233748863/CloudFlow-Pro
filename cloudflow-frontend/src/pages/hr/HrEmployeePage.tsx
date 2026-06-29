@@ -1,14 +1,15 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
+  Eye,
+  Pencil,
   Plus,
   RefreshCcw,
+  Search,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import {
   Button,
   DatePicker,
@@ -22,16 +23,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableRowActions,
 } from '@/components/common';
 import { DictBadge } from '@/components/common/DictBadge';
 import { DictSelect } from '@/components/common/DictSelect';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { useDict } from '@/hooks/useDict';
 import { cn } from '@/utils/cn';
 import {
@@ -72,7 +67,7 @@ const InlineState = ({
   className?: string;
 }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       <Users className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -88,8 +83,8 @@ const TableStateRow = ({
   title: string;
   loading?: boolean;
 }) => (
-  <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-14">
+  <tr>
+    <td colSpan={colSpan} className="admin-settings-empty">
       <InlineState title={title} className={loading ? 'py-6' : 'py-4'} />
     </td>
   </tr>
@@ -102,9 +97,11 @@ const DialogSection = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <section className="overflow-visible rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
-    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+  <section className="card overflow-visible">
+    <div className="admin-source-section-head border-b border-slate-200 p-4 dark:border-slate-800">
+      <div>
+        <strong>{title}</strong>
+      </div>
     </div>
     <div className="overflow-visible p-4">{children}</div>
   </section>
@@ -317,18 +314,67 @@ export const HrEmployeePage: React.FC = () => {
 
   return (
     <>
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <FilterBar
-            search={{
-              value: keyword,
-              onChange: setKeyword,
-              placeholder: '按姓名、工号、部门、岗位搜索',
-              widthClassName: 'w-full xl:w-80',
-            }}
-            filters={[
-              <div key="status" className="w-full sm:w-40">
+      <section className="admin-source-page">
+        <TablePageLayout
+          actions={
+            <>
+              <header className="admin-source-header">
+            <div>
+              <p className="admin-source-kicker">HR EMPLOYEES</p>
+              <h2>员工档案</h2>
+              <span>维护员工基础资料、组织岗位和在职状态</span>
+            </div>
+            <div className="admin-source-controls">
+              <Button variant="outline" size="sm" onClick={() => void loadData(selectedEmployeeId ?? undefined)}>
+                <RefreshCcw size={14} className={cn('mr-1.5', loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={handleCreate}>
+                <Plus size={14} className="mr-1.5" />
+                新建员工
+              </Button>
+            </div>
+              </header>
+        
+              <section className="admin-source-stat-grid">
+            <article className="card admin-source-stat admin-source-tone-blue">
+              <div className="admin-source-stat-icon"><Users size={18} /></div>
+              <div><p>员工总数</p><strong>{summary.total}</strong><span>当前筛选 {summary.filtered}</span></div>
+            </article>
+            <article className="card admin-source-stat admin-source-tone-green">
+              <div className="admin-source-stat-icon"><Users size={18} /></div>
+              <div><p>正式员工</p><strong>{summary.regularCount}</strong><span>状态为正式</span></div>
+            </article>
+            <article className="card admin-source-stat admin-source-tone-amber">
+              <div className="admin-source-stat-icon"><Users size={18} /></div>
+              <div><p>试用员工</p><strong>{summary.probationCount}</strong><span>状态为试用</span></div>
+            </article>
+            <article className="card admin-source-stat admin-source-tone-violet">
+              <div className="admin-source-stat-icon"><Users size={18} /></div>
+              <div><p>离职员工</p><strong>{summary.resignedCount}</strong><span>状态为离职</span></div>
+            </article>
+              </section>
+            </>
+          }
+        
+          filters={
+            <section className="card admin-users-toolbar">
+            <div className="admin-users-filter-grid">
+              <label className="admin-source-search">
+                <span className="input-label">搜索员工</span>
+                <div className="admin-source-search-field">
+                  <Search size={16} />
+                  <Input
+                    className="h-[42px]"
+                    type="search"
+                    value={keyword}
+                    onChange={(event) => setKeyword(event.target.value)}
+                    placeholder="姓名、工号、部门、岗位"
+                  />
+                </div>
+              </label>
+              <label>
+                <span className="input-label">员工状态</span>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger>
                     <SelectValue placeholder="员工状态" />
@@ -342,12 +388,11 @@ export const HrEmployeePage: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>,
-            ]}
-            actions={[
-              ...(hasActiveFilters ? [
+              </label>
+            </div>
+            <div className="admin-users-toolbar-actions">
+              {hasActiveFilters ? (
                 <Button
-                  key="reset"
                   variant="outline"
                   size="sm"
                   onClick={() => {
@@ -356,137 +401,132 @@ export const HrEmployeePage: React.FC = () => {
                   }}
                 >
                   重置
-                </Button>,
-              ] : []),
-              <Button key="refresh" variant="outline" size="sm" onClick={() => void loadData(selectedEmployeeId ?? undefined)}>
-                <RefreshCcw size={14} className={cn('mr-1.5', loading && 'animate-spin')} />
-                刷新
-              </Button>,
-              <Button key="create" size="sm" onClick={handleCreate}>
-                <Plus size={14} className="mr-1.5" />
-                新建员工
-              </Button>,
-            ]}
-          />
-        )}
-        table={(<TableSurfaceCard>
-          <div className="grid h-full min-h-[720px] xl:grid-cols-[minmax(0,1.3fr)_minmax(400px,0.94fr)]">
-            <div className="min-w-0 xl:border-r xl:border-slate-200 dark:xl:border-slate-800">
-              <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    共 {summary.total} 人，当前筛选 {summary.filtered} 人
+                </Button>
+              ) : null}
+              <span className="admin-users-filter-count">共 {summary.filtered} 人</span>
+            </div>
+            </section>
+          }
+        
+          table={
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col" wrapperClassName="flex min-h-0 flex-col">
+              <div className="flex min-h-0 min-w-0 flex-col">
+                <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      共 {summary.total} 人，当前筛选 {summary.filtered} 人
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                    <span>试用 {summary.probationCount}</span>
+                    <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-800" />
+                    <span>正式 {summary.regularCount}</span>
+                    <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-800" />
+                    <span>离职 {summary.resignedCount}</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                  <span>试用 {summary.probationCount}</span>
-                  <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-800" />
-                  <span>正式 {summary.regularCount}</span>
-                  <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-800" />
-                  <span>离职 {summary.resignedCount}</span>
+        
+                <div className="admin-horizontal-scroll">
+                    <table className="unity-data-table admin-source-table min-w-[840px]">
+                      <thead>
+                        <tr>
+                          <th>工号</th>
+                          <th>员工信息</th>
+                          <th>组织岗位</th>
+                          <th>状态</th>
+                          <th>入职日期</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loading ? (
+                          <TableStateRow colSpan={6} title="正在加载员工档案..." loading />
+                        ) : filteredEmployees.length === 0 ? (
+                          <TableStateRow colSpan={6} title="暂无符合条件的员工数据" />
+                        ) : (
+                          filteredEmployees.map((item) => {
+                            const active = selectedEmployeeId === item.id;
+                            const employeeMeta = [item.phone, item.email].filter(Boolean).join(' / ') || '暂无联系方式';
+                            const organizationMeta = item.deptName || '未分配部门';
+                            const positionMeta = [item.postName, item.positionName].filter(Boolean).join(' / ') || '未配置岗位';
+        
+                            return (
+                              <tr
+                                key={item.id}
+                                className={cn(
+                                  'cursor-pointer',
+                                  active && 'bg-cyan-50/70 dark:bg-cyan-950/20',
+                                )}
+                                onClick={() => setSelectedEmployeeId(item.id)}
+                              >
+                                <td className="font-medium text-slate-900 dark:text-slate-100">
+                                  {item.employeeNo}
+                                </td>
+                                <td>
+                                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                    {item.name}
+                                  </div>
+                                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                    {employeeMeta}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="text-sm text-slate-900 dark:text-slate-100">
+                                    {organizationMeta}
+                                  </div>
+                                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                    {positionMeta}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    <DictBadge
+                                      dictType="employee_type"
+                                      value={item.employeeType}
+                                      className="rounded-md"
+                                    />
+                                    <DictBadge
+                                      dictType="employee_status"
+                                      value={item.employeeStatus}
+                                      className="rounded-md"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="whitespace-nowrap">{toDateInputValue(item.hireDate) || '-'}</td>
+                                <td>
+                                  <div onClick={(event) => event.stopPropagation()}>
+                                    <div className="admin-users-row-actions">
+                                      <button type="button" title="详情" onClick={() => setSelectedEmployeeId(item.id)}>
+                                        <Eye size={15} />
+                                      </button>
+                                      <button type="button" title="编辑" onClick={() => void handleEdit(item.id)}>
+                                        <Pencil size={15} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
                 </div>
               </div>
-
-              <div className="min-h-0 overflow-auto">
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[840px]">
-                    <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-                      <TableRow>
-                        <TableHead>工号</TableHead>
-                        <TableHead>员工信息</TableHead>
-                        <TableHead>组织岗位</TableHead>
-                        <TableHead>状态</TableHead>
-                        <TableHead className="whitespace-nowrap">入职日期</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loading ? (
-                        <TableStateRow colSpan={6} title="正在加载员工档案..." loading />
-                      ) : filteredEmployees.length === 0 ? (
-                        <TableStateRow colSpan={6} title="暂无符合条件的员工数据" />
-                      ) : (
-                        filteredEmployees.map((item) => {
-                          const active = selectedEmployeeId === item.id;
-                          const employeeMeta = [item.phone, item.email].filter(Boolean).join(' / ') || '暂无联系方式';
-                          const organizationMeta = item.deptName || '未分配部门';
-                          const positionMeta = [item.postName, item.positionName].filter(Boolean).join(' / ') || '未配置岗位';
-
-                          return (
-                            <TableRow
-                              key={item.id}
-                              className={cn(
-                                'cursor-pointer',
-                                active && 'bg-cyan-50/70 dark:bg-cyan-950/20',
-                              )}
-                              onClick={() => setSelectedEmployeeId(item.id)}
-                            >
-                              <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                                {item.employeeNo}
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                  {item.name}
-                                </div>
-                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                  {employeeMeta}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm text-slate-900 dark:text-slate-100">
-                                  {organizationMeta}
-                                </div>
-                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                  {positionMeta}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-wrap gap-1.5">
-                                  <DictBadge
-                                    dictType="employee_type"
-                                    value={item.employeeType}
-                                    className="rounded-full"
-                                  />
-                                  <DictBadge
-                                    dictType="employee_status"
-                                    value={item.employeeStatus}
-                                    className="rounded-full"
-                                  />
-                                </div>
-                              </TableCell>
-                              <TableCell className="whitespace-nowrap">{toDateInputValue(item.hireDate) || '-'}</TableCell>
-                              <TableCell className="text-right">
-                                <div onClick={(event) => event.stopPropagation()}>
-                                  <TableRowActions
-                                    actions={[
-                                      { key: 'detail', semantic: 'view', label: '详情', onClick: () => setSelectedEmployeeId(item.id) },
-                                      { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => void handleEdit(item.id) },
-                                    ]}
-                                  />
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+        
+              <div className="min-h-0 min-w-0 border-t border-slate-200 dark:border-slate-800">
+                <HrEmployeeWorkspace
+                  employees={employees}
+                  selectedEmployeeId={selectedEmployeeId}
+                  loading={loading}
+                  onEditEmployee={handleEdit}
+                />
               </div>
-            </div>
-
-            <div className="min-h-0 min-w-0">
-              <HrEmployeeWorkspace
-                employees={employees}
-                selectedEmployeeId={selectedEmployeeId}
-                loading={loading}
-                onEditEmployee={handleEdit}
-              />
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-      />
+            </InnerTableSurface>
+          }
+        />
+      </section>
 
       <BaseDialog
         open={dialogOpen}
@@ -506,10 +546,10 @@ export const HrEmployeePage: React.FC = () => {
           </div>
         )}
       >
-        <div className="space-y-4">
+        <div className="admin-dialog-stack">
           <DialogSection title="基础信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">工号</Label>
                 <Input
                   value={form.employeeNo}
@@ -520,7 +560,7 @@ export const HrEmployeePage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">姓名</Label>
                 <Input
                   value={form.name}
@@ -528,7 +568,7 @@ export const HrEmployeePage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">性别</Label>
                 <Select
                   value={form.gender}
@@ -543,7 +583,7 @@ export const HrEmployeePage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工状态</Label>
                 <DictSelect
                   dictType="employee_status"
@@ -554,7 +594,7 @@ export const HrEmployeePage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工类型</Label>
                 <DictSelect
                   dictType="employee_type"
@@ -565,7 +605,7 @@ export const HrEmployeePage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">出生日期</Label>
                 <DatePicker
                   type="date"
@@ -580,7 +620,7 @@ export const HrEmployeePage: React.FC = () => {
 
           <DialogSection title="联系方式与时间">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">手机号</Label>
                 <Input
                   value={form.phone || ''}
@@ -588,7 +628,7 @@ export const HrEmployeePage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">邮箱</Label>
                 <Input
                   value={form.email || ''}
@@ -596,7 +636,7 @@ export const HrEmployeePage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">入职日期</Label>
                 <DatePicker
                   type="date"
@@ -606,7 +646,7 @@ export const HrEmployeePage: React.FC = () => {
                   }
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">转正日期</Label>
                 <DatePicker
                   type="date"
@@ -616,7 +656,7 @@ export const HrEmployeePage: React.FC = () => {
                   }
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">离职日期</Label>
                 <DatePicker
                   type="date"
@@ -631,7 +671,7 @@ export const HrEmployeePage: React.FC = () => {
 
           <DialogSection title="组织与岗位">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">部门</Label>
                 <DeptSelector
                   single
@@ -641,7 +681,7 @@ export const HrEmployeePage: React.FC = () => {
                   placeholder="请选择部门"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">岗位</Label>
                 <PostSelector
                   single
@@ -651,7 +691,7 @@ export const HrEmployeePage: React.FC = () => {
                   placeholder="请选择岗位"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
                 <PositionSelector
                   single

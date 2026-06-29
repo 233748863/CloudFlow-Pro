@@ -9,14 +9,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 import { toDateInputValue } from '../hrShared';
 
@@ -37,19 +32,19 @@ type DialogProps = {
 
 const subtleBadgeToneMap = {
   neutral: {
-    wrap: 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
-    dot: 'bg-slate-400 dark:bg-slate-500',
+    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+    dot: 'bg-[var(--cf-text-muted)] dark:bg-[var(--cf-text-muted)]',
   },
   primary: {
-    wrap: 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
-    dot: 'bg-teal-500 dark:bg-teal-400',
+    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+    dot: 'bg-cyan-600 dark:bg-cyan-400',
   },
   warning: {
-    wrap: 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
     dot: 'bg-amber-500 dark:bg-amber-400',
   },
   danger: {
-    wrap: 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
     dot: 'bg-rose-500 dark:bg-rose-400',
   },
 } as const;
@@ -66,12 +61,12 @@ const SubtleStatusBadge: React.FC<{
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+        'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium',
         resolvedTone.wrap,
         className,
       )}
     >
-      <span className={cn('h-1.5 w-1.5 rounded-full', resolvedTone.dot)} />
+      <span className={cn('h-1.5 w-1.5 rounded-sm', resolvedTone.dot)} />
       {children}
     </span>
   );
@@ -89,15 +84,15 @@ const SubtleRiskList: React.FC<{
   if (!items.length) return null;
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn('grid gap-2', className)}>
       {items.map(item => (
         <div
           key={item.key}
-          className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/55 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950/40"
+          className="flex items-start gap-3 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950/72"
         >
           <span
             className={cn(
-              'mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full',
+              'mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-sm',
               item.severity === 'danger' ? 'bg-rose-500 dark:bg-rose-400' : 'bg-amber-500 dark:bg-amber-400',
             )}
           />
@@ -154,12 +149,12 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
         <WorkspaceInlineState
           type="loading"
           title="正在加载个税配置..."
-          className="px-6 py-16"
+          className="px-6 py-10"
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="mb-4 font-semibold text-slate-900">基础参数</div>
+        <div className="grid grid-cols-1 gap-4">
+          <div className="card admin-source-panel">
+            <div className="mb-4 font-semibold text-slate-900 dark:text-slate-100">基础参数</div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -184,7 +179,7 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
             </div>
 
             <div className="mt-6">
-              <div className="font-semibold text-slate-900">专项附加扣除</div>
+              <div className="font-semibold text-slate-900 dark:text-slate-100">专项附加扣除</div>
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 {deductionTypeOptions.map((item: any) => (
                   <div key={item.value}>
@@ -208,9 +203,9 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="card admin-source-panel">
             <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="font-semibold text-slate-900">税率档配置</div>
+              <div className="font-semibold text-slate-900 dark:text-slate-100">税率档配置</div>
               <Button
                 variant="outline"
                 onClick={() => setTaxConfigForm((prev: any) => ({ ...prev, taxBracketsJson: defaultTaxBracketJson }))}
@@ -254,9 +249,9 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
             />
 
             <div className="mt-4 grid grid-cols-1 gap-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="card admin-source-panel">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="font-semibold text-slate-900">样本</div>
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">样本</div>
                 </div>
 
                 {currentEmployeeRecord ? (
@@ -290,22 +285,22 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
                     ]}
                   />
                 ) : (
-                  <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+                  <div className="mt-4 border border-dashed border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950">
                     无样本
                   </div>
                 )}
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/45 p-4">
-                <div className="font-semibold text-slate-900">参考</div>
+              <div className="border border-slate-200 bg-[var(--cf-surface-muted)] p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">参考</div>
 
                 {taxConfigReferenceEntries.length > 0 ? (
-                  <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+                  <div className="mt-4 overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
                     {taxConfigReferenceEntries.map((item: any) => (
-                      <div key={item.type} className="border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+                      <div key={item.type} className="border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800">
                         <div className="flex items-center justify-between gap-3">
-                          <div className="font-medium text-slate-900">{item.label}</div>
-                          <div className="text-sm font-semibold text-slate-900">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.label}</div>
+                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                             {formatCurrency(item.amount)}
                             <span className="ml-2 text-xs font-normal text-slate-400">
                               当前 {formatCurrency(currentTaxConfigReferenceMap.get(item.type) || 0)}
@@ -316,14 +311,14 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-400">
+                  <div className="mt-4 border border-dashed border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
                     无参考值
                   </div>
                 )}
               </div>
             </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 xl:col-span-2">
-            <div className="text-sm font-medium text-slate-900">税率档 JSON 与预览</div>
+          <div className="card admin-source-panel xl:col-span-2">
+            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">税率档 JSON 与预览</div>
 
             <Textarea
               className="mt-4 min-h-[260px] font-mono text-sm"
@@ -333,23 +328,23 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
             />
 
             {taxConfigBracketPreview.error ? (
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+              <div className="mt-4 border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300">
                 {taxConfigBracketPreview.error}
               </div>
             ) : (
-              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-                <Table className="min-w-[760px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>档位</TableHead>
-                      <TableHead>起点</TableHead>
-                      <TableHead>终点</TableHead>
-                      <TableHead>税率</TableHead>
-                      <TableHead>速算扣除数</TableHead>
-                      <TableHead>样本</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <InnerTableSurface className="mt-4">
+                <table className="unity-data-table admin-source-table min-w-[760px]">
+                  <thead>
+                    <tr>
+                      <th>档位</th>
+                      <th>起点</th>
+                      <th>终点</th>
+                      <th>税率</th>
+                      <th>速算扣除数</th>
+                      <th>样本</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {taxConfigBracketPreview.rows.map((item: any, index: number) => {
                       const matched = taxConfigDiagnostics.matchedBracketIndex === index;
                       const next = taxConfigDiagnostics.nextBracket
@@ -357,16 +352,16 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
                         && taxConfigDiagnostics.nextBracket.max === item.max
                         && taxConfigDiagnostics.nextBracket.rate === item.rate
                         && taxConfigDiagnostics.nextBracket.deduction === item.deduction;
-                      const rowClassName = matched ? 'bg-slate-50/70 dark:bg-slate-900/45' : '';
+                      const rowClassName = matched ? 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/45' : '';
 
                       return (
-                        <TableRow key={`${item.min}-${item.max ?? 'none'}-${item.rate}-${index}`} className={rowClassName}>
-                          <TableCell>第 {index + 1} 档</TableCell>
-                          <TableCell>{formatCurrency(item.min)}</TableCell>
-                          <TableCell>{item.max == null ? '无上限' : formatCurrency(item.max)}</TableCell>
-                          <TableCell>{formatPercent(Number(item.rate || 0) * 100)}</TableCell>
-                          <TableCell>{formatCurrency(item.deduction)}</TableCell>
-                          <TableCell>
+                        <tr key={`${item.min}-${item.max ?? 'none'}-${item.rate}-${index}`} className={rowClassName}>
+                          <td>第 {index + 1} 档</td>
+                          <td>{formatCurrency(item.min)}</td>
+                          <td>{item.max == null ? '无上限' : formatCurrency(item.max)}</td>
+                          <td>{formatPercent(Number(item.rate || 0) * 100)}</td>
+                          <td>{formatCurrency(item.deduction)}</td>
+                          <td>
                             {matched ? (
                               <SubtleStatusBadge tone="primary">命中</SubtleStatusBadge>
                             ) : next ? (
@@ -374,13 +369,13 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
                             ) : (
                               <span className="text-xs text-slate-400">未命中</span>
                             )}
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       );
                     })}
-                  </TableBody>
-                </Table>
-              </div>
+                  </tbody>
+                </table>
+              </InnerTableSurface>
             )}
           </div>
         </div>
@@ -472,10 +467,10 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
         </>
       )}
     >
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="grid grid-cols-1 gap-4">
+        <div className="card admin-source-panel">
           <div className="mb-4">
-            <div className="font-semibold text-slate-900">{editingTaxDeductionId ? '编辑专项扣除' : '新增专项扣除'}</div>
+            <div className="font-semibold text-slate-900 dark:text-slate-100">{editingTaxDeductionId ? '编辑专项扣除' : '新增专项扣除'}</div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -558,7 +553,7 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
             </div>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+          <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
             <DetailRow
               label="本月命中"
               value={`${taxDeductionFormDiagnostics.proposedInScope ? '命中' : '未命中'} / 当前 ${taxDeductionFormDiagnostics.sameTypeCurrentScopeCount} / 保存后 ${taxDeductionFormDiagnostics.predictedInScopeCount} / ${formatCurrency(taxDeductionFormDiagnostics.predictedInScopeAmount)}`}
@@ -585,10 +580,10 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="card admin-source-panel">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <div className="font-semibold text-slate-900">个税参考</div>
+              <div className="font-semibold text-slate-900 dark:text-slate-100">个税参考</div>
             </div>
             <div className="text-xs text-slate-400">{employeeTaxDeductionStats.matched} / {employeeTaxDeductionStats.total} 条</div>
           </div>
@@ -623,23 +618,24 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
           <SubtleRiskList items={taxDeductionRiskItems} className="mt-4" />
 
           {employeeTaxDeductionDiagnostics.referenceEntries.length > 0 && (
-            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+            <div className="mt-4 overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
               <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="font-semibold text-slate-900 dark:text-slate-100">参考值对照</div>
               </div>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>类型</TableHead>
-                    <TableHead>参考值</TableHead>
-                    <TableHead>本月</TableHead>
-                    <TableHead>历史</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <div className="admin-horizontal-scroll">
+              <table className="unity-data-table admin-source-table min-w-[720px]">
+                <thead>
+                  <tr>
+                    <th>类型</th>
+                    <th>参考值</th>
+                    <th>本月</th>
+                    <th>历史</th>
+                    <th>状态</th>
+                    <th className="text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {employeeTaxDeductionDiagnostics.referenceEntries.map((item: any) => {
                     const statusLabel = item.hasDuplicateInScope
                       ? '重复命中'
@@ -661,22 +657,22 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                           : 'neutral';
 
                     return (
-                      <TableRow key={item.type}>
-                        <TableCell>
+                      <tr key={item.type}>
+                        <td>
                           <div className="font-medium text-slate-900 dark:text-slate-100">{item.label}</div>
-                        </TableCell>
-                        <TableCell>{item.referenceAmount > 0 ? formatCurrency(item.referenceAmount) : '未配置'}</TableCell>
-                        <TableCell>
+                        </td>
+                        <td>{item.referenceAmount > 0 ? formatCurrency(item.referenceAmount) : '未配置'}</td>
+                        <td>
                           {item.inScopeCount ? `${item.inScopeCount} / ${formatCurrency(item.inScopeAmount)}` : '0'}
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td>
                           {item.totalCount}
                           {item.activeOutOfScopeCount ? ` / 未入月 ${item.activeOutOfScopeCount}` : ''}
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td>
                           <SubtleStatusBadge tone={statusTone}>{statusLabel}</SubtleStatusBadge>
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="text-right">
                           {item.latestInScopeRecord ? (
                             <Button variant="outline" size="sm" onClick={() => openTaxDeductionEditDialog(item.latestInScopeRecord!)}>
                               编辑
@@ -694,25 +690,26 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                               -
                             </Button>
                           )}
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 xl:col-span-2">
+        <div className="card admin-source-panel xl:col-span-2">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <div className="font-semibold text-slate-900">专项扣除记录</div>
+              <div className="font-semibold text-slate-900 dark:text-slate-100">专项扣除记录</div>
             </div>
             <div className="text-xs text-slate-400">{filteredEmployeeAllTaxDeductions.length} 条结果</div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 xl:grid-cols-[minmax(0,180px)_minmax(0,180px)_minmax(0,180px)_auto] xl:items-center">
+          <div className="mt-4 grid grid-cols-1 gap-3 border-b border-slate-200 pb-4 dark:border-slate-800 xl:grid-cols-[minmax(0,180px)_minmax(0,180px)_minmax(0,180px)_auto] xl:items-center">
             <div>
               <Select value={taxDeductionTypeFilter} onValueChange={setTaxDeductionTypeFilter}>
                 <SelectTrigger>
@@ -769,35 +766,35 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
             </Button>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>扣除项</TableHead>
-                  <TableHead>月金额</TableHead>
-                  <TableHead>生效区间</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>状态 / 异常</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <InnerTableSurface className="mt-4">
+            <table className="unity-data-table admin-source-table min-w-[760px]">
+              <thead>
+                <tr>
+                  <th>扣除项</th>
+                  <th>月金额</th>
+                  <th>生效区间</th>
+                  <th>状态</th>
+                  <th>状态 / 异常</th>
+                  <th className="text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody>
                 {filteredEmployeeAllTaxDeductions.map((item: any) => {
                   const rowIssues = employeeTaxDeductionDiagnostics.rowIssueMap.get(item.id) || [];
                   const referenceAmount = Number(currentTaxConfigReferenceMap.get(item.deductionType) || 0);
 
                   return (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div className="font-medium text-slate-900">{item.deductionTypeName || deductionTypeLabel(item.deductionType)}</div>
+                    <tr key={item.id}>
+                      <td>
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.deductionTypeName || deductionTypeLabel(item.deductionType)}</div>
                         <div className="mt-1 text-xs text-slate-400">{compactTaxDeductionRemark(item.remark)}</div>
-                      </TableCell>
-                      <TableCell>{formatCurrency(item.amount)}</TableCell>
-                      <TableCell>
+                      </td>
+                      <td>{formatCurrency(item.amount)}</td>
+                      <td>
                         <div>{toDateInputValue(item.startDate) || '-'}</div>
                         <div className="mt-1 text-xs text-slate-400">截止 {toDateInputValue(item.endDate) || '长期有效'}</div>
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td>
                         <div className="flex flex-col gap-2">
                           <SubtleStatusBadge tone={item.status === 'ACTIVE' ? 'primary' : 'neutral'} className="w-fit">
                             {taxDeductionStatusLabel(item.status)}
@@ -806,8 +803,8 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                             <SubtleStatusBadge tone="primary" className="w-fit">当月</SubtleStatusBadge>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td>
                         <div className="flex flex-wrap gap-2">
                           {referenceAmount > 0 && (
                             <SubtleStatusBadge>参考 {formatCurrency(referenceAmount)}</SubtleStatusBadge>
@@ -821,8 +818,8 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                             </SubtleStatusBadge>
                           ))}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">
+                      </td>
+                      <td className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" onClick={() => openTaxDeductionEditDialog(item)}>
                             编辑
@@ -834,8 +831,8 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                             删除
                           </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   );
                 })}
                 {!filteredEmployeeAllTaxDeductions.length && !taxDeductionListLoading && (
@@ -850,9 +847,9 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                     cellClassName="px-4 py-10"
                   />
                 )}
-              </TableBody>
-            </Table>
-          </div>
+              </tbody>
+            </table>
+          </InnerTableSurface>
         </div>
       </div>
     </WorkspaceDialogShell>

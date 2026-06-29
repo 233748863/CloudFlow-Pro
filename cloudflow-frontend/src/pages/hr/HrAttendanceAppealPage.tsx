@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { LoaderCircle, Plus, RotateCcw } from 'lucide-react';
+import { Check, Eye, LoaderCircle, Plus, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -16,14 +16,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import AttachmentLinks from '@/components/AttachmentLinks';
 import FileUpload from '@/components/FileUpload';
 import {
@@ -37,6 +31,7 @@ import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 const emptyForm = (): HrAttendanceAppeal => ({
   attendanceDate: new Date().toISOString().slice(0, 10),
@@ -52,7 +47,7 @@ const StatusBadge: React.FC<{ status?: AttendanceAppealStatus }> = ({ status }) 
 );
 
 const DetailField: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="border-b border-slate-100 pb-3 dark:border-slate-800">
+  <div className="border-b border-slate-200 pb-3 dark:border-slate-800">
     <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
     <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
   </div>
@@ -195,111 +190,10 @@ const HrAttendanceAppealPage: React.FC = () => {
 
   const hasFilters = Boolean(query.employeeName || query.status);
 
-  const filters = (
-    <FilterBar
-      search={{
-        value: query.employeeName,
-        onChange: (value) => setQuery((q) => ({ ...q, employeeName: value })),
-        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
-        placeholder: '搜索员工姓名',
-        widthClassName: 'w-full sm:w-[220px]',
-      }}
-      filters={[
-        <div key="status" className="w-full sm:w-40">
-          <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">全部状态</SelectItem>
-              {appealStatusDict.getOptions().map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>,
-      ]}
-      stats={[{ label: '', value: `共 ${total} 条` }]}
-      actions={[
-        ...(hasFilters
-          ? [
-              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, employeeName: '', status: '' }))}>
-                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
-              </Button>,
-            ]
-          : []),
-        ...(canEdit
-          ? [
-              <Button key="add" size="sm" onClick={openCreate}>
-                <Plus className="mr-1.5 h-4 w-4" />提交申诉
-              </Button>,
-            ]
-          : []),
-      ]}
-    />
-  );
-
   const reviewableStatuses = useMemo(() => new Set<AttendanceAppealStatus>(['MANAGER_REVIEWING', 'HR_REVIEWING']), []);
-
-  const table = (
-    <TableSurfaceCard fill>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[840px]">
-          <TableHeader className="sticky top-0 z-10">
-            <tr>
-              <TableHead>员工</TableHead>
-              <TableHead>考勤日期</TableHead>
-              <TableHead>申诉原因</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>提交时间</TableHead>
-              <TableActionHead className="text-right">操作</TableActionHead>
-            </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr>
-                <td colSpan={6} className="py-16 text-center text-sm text-slate-400">
-                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="py-16 text-center text-sm text-slate-400">暂无数据</td>
-              </tr>
-            ) : (
-              rows.map((row) => {
-                const isReviewable = canEdit && row.status && reviewableStatuses.has(row.status);
-                return (
-                  <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                    <td className="px-4 py-3 text-sm">{row.employeeName || '-'}</td>
-                    <td className="px-4 py-3 text-sm">{row.attendanceDate || '-'}</td>
-                    <td className="px-4 py-3 text-sm">{appealReasonDict.getLabel(String(row.appealReason || 'OTHER'))}</td>
-                    <td className="px-4 py-3 text-sm"><StatusBadge status={row.status} /></td>
-                    <td className="px-4 py-3 text-xs text-slate-400">{formatDateTimeDisplay(row.createTime)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <TableRowActions
-                        align="end"
-                        actions={[
-                          { key: 'detail', label: '查看', semantic: 'view', onClick: () => void openDetail(row) },
-                          ...(isReviewable && row.status === 'MANAGER_REVIEWING'
-                            ? ([{ key: 'mreview', label: '主管审核', semantic: 'confirm' as const, permissionKey: 'hr:attendance:edit', onClick: () => openManagerReview(row) }])
-                            : []),
-                          ...(isReviewable && row.status === 'HR_REVIEWING'
-                            ? ([{ key: 'hreview', label: 'HR 复核', semantic: 'confirm' as const, permissionKey: 'hr:attendance:edit', onClick: () => openHrReview(row) }])
-                            : []),
-                          ...(row.status === 'SUBMITTED' || row.status === 'MANAGER_REVIEWING'
-                            ? ([{ key: 'cancel', label: '撤回', semantic: 'reset' as const, onClick: () => setPendingCancel(row) }])
-                            : []),
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
-  );
+  const reviewingCount = rows.filter((row) => row.status && reviewableStatuses.has(row.status)).length;
+  const completedCount = rows.filter((row) => row.status === 'APPROVED' || row.status === 'REJECTED').length;
+  const draftCount = rows.filter((row) => row.status === 'DRAFT' || row.status === 'SUBMITTED').length;
 
   const pagination = total > 0 ? (
     <Pagination
@@ -312,13 +206,183 @@ const HrAttendanceAppealPage: React.FC = () => {
   ) : null;
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} pagination={pagination} />
+    <>
+      <section className="admin-source-page admin-hr-attendance-appeal-page">
+        <TablePageLayout
+          actions={
+            <>
+              <header className="admin-source-header">
+                <div>
+                  <p className="admin-source-kicker">attendance appeal</p>
+                  <h2>考勤申诉</h2>
+                  <span>处理员工考勤异常申诉、主管审核与 HR 复核。</span>
+                </div>
+                <div className="admin-source-controls">
+                  {canEdit ? (
+                    <Button size="sm" onClick={openCreate}>
+                      <Plus className="h-4 w-4" />提交申诉
+                    </Button>
+                  ) : null}
+                </div>
+              </header>
+        
+              <section className="admin-source-stat-grid">
+                <article className="card admin-source-stat admin-source-tone-blue">
+                  <span className="admin-source-stat-icon"><LoaderCircle size={18} /></span>
+                  <div>
+                    <p>申诉总数</p>
+                    <strong>{total}</strong>
+                    <span>当前查询范围</span>
+                  </div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-amber">
+                  <span className="admin-source-stat-icon"><RotateCcw size={18} /></span>
+                  <div>
+                    <p>待推进</p>
+                    <strong>{draftCount}</strong>
+                    <span>草稿或已提交</span>
+                  </div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-violet">
+                  <span className="admin-source-stat-icon"><Check size={18} /></span>
+                  <div>
+                    <p>审核中</p>
+                    <strong>{reviewingCount}</strong>
+                    <span>主管或 HR 待处理</span>
+                  </div>
+                </article>
+                <article className="card admin-source-stat admin-source-tone-green">
+                  <span className="admin-source-stat-icon"><Check size={18} /></span>
+                  <div>
+                    <p>已完结</p>
+                    <strong>{completedCount}</strong>
+                    <span>通过或驳回</span>
+                  </div>
+                </article>
+              </section>
+            </>
+          }
+          filters={
+            <section className="card admin-users-toolbar">
+              <form
+                className="admin-users-filter-grid"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setQuery((q) => ({ ...q, pageNum: 1 }));
+                }}
+              >
+                <label>
+                  <span>员工</span>
+                  <div className="relative">
+                    <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                    <Input
+                      value={query.employeeName}
+                      onChange={(event) => setQuery((q) => ({ ...q, employeeName: event.target.value }))}
+                      className="cf-control pl-10"
+                      placeholder="搜索员工姓名"
+                    />
+                  </div>
+                </label>
+                <label>
+                  <span>状态</span>
+                  <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
+                    <SelectTrigger className="cf-control"><SelectValue placeholder="全部状态" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all">全部状态</SelectItem>
+                      {appealStatusDict.getOptions().map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+                <div className="admin-users-toolbar-actions">
+                  <Button type="submit" size="sm">查询</Button>
+                  {hasFilters ? (
+                    <Button type="button" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, employeeName: '', status: '' }))}>
+                      <RotateCcw className="h-4 w-4" />清空条件
+                    </Button>
+                  ) : null}
+                  <span className="admin-users-filter-count">共 {total} 条</span>
+                </div>
+              </form>
+            </section>
+          }
+          table={
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+              <div className="admin-horizontal-scroll">
+                <table className="unity-data-table admin-source-table min-w-[840px]">
+                <thead>
+                  <tr>
+                    <th>员工</th>
+                    <th>考勤日期</th>
+                    <th>申诉原因</th>
+                    <th>状态</th>
+                    <th>提交时间</th>
+                    <th className="text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="py-10 text-center text-sm text-slate-400">
+                        <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+                      </td>
+                    </tr>
+                  ) : rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-10 text-center text-sm text-slate-400">暂无数据</td>
+                    </tr>
+                  ) : (
+                    rows.map((row) => {
+                      const isReviewable = canEdit && row.status && reviewableStatuses.has(row.status);
+        
+                      return (
+                        <tr key={row.id}>
+                          <td className="text-sm">{row.employeeName || '-'}</td>
+                          <td className="text-sm">{row.attendanceDate || '-'}</td>
+                          <td className="text-sm">{appealReasonDict.getLabel(String(row.appealReason || 'OTHER'))}</td>
+                          <td><StatusBadge status={row.status} /></td>
+                          <td className="text-xs text-slate-400">{formatDateTimeDisplay(row.createTime)}</td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="查看" aria-label="查看" onClick={() => void openDetail(row)}>
+                                <Eye size={15} />
+                              </button>
+                              {isReviewable && row.status === 'MANAGER_REVIEWING' ? (
+                                <button type="button" title="主管审核" aria-label="主管审核" onClick={() => openManagerReview(row)}>
+                                  <Check size={15} />
+                                </button>
+                              ) : null}
+                              {isReviewable && row.status === 'HR_REVIEWING' ? (
+                                <button type="button" title="HR 复核" aria-label="HR 复核" onClick={() => openHrReview(row)}>
+                                  <Check size={15} />
+                                </button>
+                              ) : null}
+                              {row.status === 'SUBMITTED' || row.status === 'MANAGER_REVIEWING' ? (
+                                <button type="button" title="撤回" aria-label="撤回" onClick={() => setPendingCancel(row)}>
+                                  <RotateCcw size={15} />
+                                </button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+                </table>
+              </div>
+            </InnerTableSurface>
+          }
+          pagination={pagination}
+        />
+      </section>
 
       <BaseDialog
         open={formOpen}
         title="提交考勤异常申诉"
         onClose={() => setFormOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
@@ -326,16 +390,16 @@ const HrAttendanceAppealPage: React.FC = () => {
           </div>
         )}
       >
-        <div className="grid gap-3">
+        <>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
+            <div className="admin-dialog-field">
               <Label>考勤日期 *</Label>
               <DatePicker
                 value={formData.attendanceDate || ''}
                 onChange={(e) => setFormData((f) => ({ ...f, attendanceDate: e.target.value }))}
               />
             </div>
-            <div className="space-y-1">
+            <div className="admin-dialog-field">
               <Label>申诉原因</Label>
               <Select
                 value={formData.appealReason || 'FORGOT_CLOCK'}
@@ -349,7 +413,7 @@ const HrAttendanceAppealPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
+            <div className="admin-dialog-field">
               <Label>期望上班时间</Label>
               <DatePicker
                 type="datetime-local"
@@ -357,7 +421,7 @@ const HrAttendanceAppealPage: React.FC = () => {
                 onChange={(e) => setFormData((f) => ({ ...f, expectedClockIn: e.target.value }))}
               />
             </div>
-            <div className="space-y-1">
+            <div className="admin-dialog-field">
               <Label>期望下班时间</Label>
               <DatePicker
                 type="datetime-local"
@@ -366,7 +430,7 @@ const HrAttendanceAppealPage: React.FC = () => {
               />
             </div>
           </div>
-          <div className="space-y-1">
+          <div className="admin-dialog-field">
             <Label>申诉详情 *</Label>
             <Textarea
               rows={4}
@@ -375,7 +439,7 @@ const HrAttendanceAppealPage: React.FC = () => {
               placeholder="请详细说明事由"
             />
           </div>
-          <div className="space-y-1">
+          <div className="admin-dialog-field">
             <Label>证明附件</Label>
             <FileUpload
               value={formData.evidenceUrl || ''}
@@ -383,7 +447,7 @@ const HrAttendanceAppealPage: React.FC = () => {
               maxCount={3}
             />
           </div>
-        </div>
+        </>
       </BaseDialog>
 
       <BaseDialog
@@ -392,10 +456,11 @@ const HrAttendanceAppealPage: React.FC = () => {
         onClose={() => setDetailOpen(false)}
         width="wide"
         headerAside={detail ? <StatusBadge status={detail.status} /> : null}
+        bodyClassName="admin-dialog-stack"
         footer={<Button variant="outline" onClick={() => setDetailOpen(false)}>关闭</Button>}
       >
         {detail ? (
-          <div className="space-y-4">
+          <div className="admin-source-content-grid">
             <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
               <DetailField label="员工" value={detail.employeeName} />
               <DetailField label="考勤日期" value={detail.attendanceDate} />
@@ -409,14 +474,28 @@ const HrAttendanceAppealPage: React.FC = () => {
               <DetailField label="HR 复核时间" value={detail.hrReviewTime ? formatDateTimeDisplay(detail.hrReviewTime) : '-'} />
               <DetailField label="最终判定" value={detail.finalDecision === 'ADJUST' ? '改写考勤记录' : detail.finalDecision === 'KEEP' ? '保留原记录' : '-'} />
             </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-2 text-[11px] font-medium text-slate-400 dark:text-slate-500">申诉详情</div>
-              <div className="text-sm leading-6 text-slate-700 dark:text-slate-200">{detail.appealDetail || '-'}</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">证明附件</div>
-              <AttachmentLinks value={detail.evidenceUrl} />
-            </div>
+            <section className="card admin-source-panel">
+              <div className="admin-source-panel-head">
+                <div>
+                  <h3>申诉详情</h3>
+                  <span>员工提交的异常说明</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-sm leading-6 text-slate-700 dark:text-slate-200">{detail.appealDetail || '-'}</div>
+              </div>
+            </section>
+            <section className="card admin-source-panel">
+              <div className="admin-source-panel-head">
+                <div>
+                  <h3>证明附件</h3>
+                  <span>申诉相关材料</span>
+                </div>
+              </div>
+              <div>
+                <AttachmentLinks value={detail.evidenceUrl} />
+              </div>
+            </section>
           </div>
         ) : null}
       </BaseDialog>
@@ -425,6 +504,7 @@ const HrAttendanceAppealPage: React.FC = () => {
         open={managerOpen}
         title="主管审核"
         onClose={() => setManagerOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setManagerOpen(false)}>取消</Button>
@@ -432,8 +512,8 @@ const HrAttendanceAppealPage: React.FC = () => {
           </div>
         )}
       >
-        <div className="grid gap-3">
-          <div className="space-y-1">
+        <>
+          <div className="admin-dialog-field">
             <Label>审核结论</Label>
             <Select
               value={managerForm.pass ? 'PASS' : 'REJECT'}
@@ -446,7 +526,7 @@ const HrAttendanceAppealPage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="admin-dialog-field">
             <Label>审核意见</Label>
             <Textarea
               rows={3}
@@ -454,13 +534,14 @@ const HrAttendanceAppealPage: React.FC = () => {
               onChange={(e) => setManagerForm((f) => ({ ...f, remark: e.target.value }))}
             />
           </div>
-        </div>
+        </>
       </BaseDialog>
 
       <BaseDialog
         open={hrOpen}
         title="HR 复核"
         onClose={() => setHrOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setHrOpen(false)}>取消</Button>
@@ -468,8 +549,8 @@ const HrAttendanceAppealPage: React.FC = () => {
           </div>
         )}
       >
-        <div className="grid gap-3">
-          <div className="space-y-1">
+        <>
+          <div className="admin-dialog-field">
             <Label>最终判定</Label>
             <Select
               value={hrForm.finalDecision}
@@ -482,7 +563,7 @@ const HrAttendanceAppealPage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="admin-dialog-field">
             <Label>HR 复核意见</Label>
             <Textarea
               rows={3}
@@ -490,7 +571,7 @@ const HrAttendanceAppealPage: React.FC = () => {
               onChange={(e) => setHrForm((f) => ({ ...f, remark: e.target.value }))}
             />
           </div>
-        </div>
+        </>
       </BaseDialog>
 
       <ConfirmDialog
@@ -501,7 +582,7 @@ const HrAttendanceAppealPage: React.FC = () => {
         onCancel={() => setPendingCancel(null)}
         onConfirm={handleCancel}
       />
-    </div>
+    </>
   );
 };
 

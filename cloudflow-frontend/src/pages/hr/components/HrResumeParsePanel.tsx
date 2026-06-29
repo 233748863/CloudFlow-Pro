@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Check, LoaderCircle, RefreshCw, Save, X } from 'lucide-react';
+import { Check, Edit, LoaderCircle, RefreshCw, Save, X } from 'lucide-react';
 import {
   BaseDialog,
   Button,
@@ -15,6 +15,7 @@ import {
   type HrResumeParsedRecord,
   type HrResumeParsedFieldsPayload,
 } from '@/services/api/hr/batch2';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 interface Props {
   open: boolean;
@@ -174,120 +175,145 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
         ) : records.length === 0 ? (
           <div className="py-10 text-center text-sm text-slate-400">暂无解析记录，点击"重新解析"触发</div>
         ) : (
-          <div className="space-y-3">
-            {records.map((record) => {
-              const isEditing = editingId === record.id;
-              return (
-                <div key={record.id} className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <DictBadge dictType="hr_resume_parse_status" value={String(record.status || 'PENDING')} />
-                      <span>置信度: {formatConfidence(record.confidence)}</span>
-                      {record.createTime ? <span>解析时间: {record.createTime}</span> : null}
-                    </div>
-                    <div className="flex gap-2">
-                      {record.status === 'PENDING' && !isEditing ? (
-                        <>
-                          <Button size="sm" variant="outline" onClick={() => startEdit(record)}>编辑</Button>
-                          <Button size="sm" onClick={() => void confirmRecord(record.id)} disabled={submitting}>
-                            <Check className="mr-1 h-3.5 w-3.5" />确认回填
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setRejectingId(record.id);
-                              setRejectReason('');
-                            }}
-                            disabled={submitting}
-                          >
-                            <X className="mr-1 h-3.5 w-3.5" />驳回
-                          </Button>
-                        </>
-                      ) : null}
-                      {isEditing ? (
-                        <>
-                          <Button size="sm" variant="outline" onClick={cancelEdit}>取消</Button>
-                          <Button size="sm" onClick={() => void saveEdit(record.id)} disabled={submitting}>
-                            <Save className="mr-1 h-3.5 w-3.5" />保存
-                          </Button>
-                        </>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {isEditing ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label className="text-xs">姓名</Label>
-                        <Input
-                          value={editForm.parsedName || ''}
-                          onChange={(e) => setEditForm((f) => ({ ...f, parsedName: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">手机号</Label>
-                        <Input
-                          value={editForm.parsedPhone || ''}
-                          onChange={(e) => setEditForm((f) => ({ ...f, parsedPhone: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">邮箱</Label>
-                        <Input
-                          value={editForm.parsedEmail || ''}
-                          onChange={(e) => setEditForm((f) => ({ ...f, parsedEmail: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">学历</Label>
-                        <Input
-                          value={editForm.parsedEducation || ''}
-                          onChange={(e) => setEditForm((f) => ({ ...f, parsedEducation: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-1 sm:col-span-2">
-                        <Label className="text-xs">工作经历</Label>
-                        <Textarea
-                          rows={3}
-                          value={editForm.parsedWorkExperience || ''}
-                          onChange={(e) => setEditForm((f) => ({ ...f, parsedWorkExperience: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-1 sm:col-span-2">
-                        <Label className="text-xs">技能</Label>
-                        <Textarea
-                          rows={2}
-                          value={editForm.parsedSkills || ''}
-                          onChange={(e) => setEditForm((f) => ({ ...f, parsedSkills: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid gap-2 text-sm sm:grid-cols-2">
-                      <div><span className="text-slate-500">姓名: </span>{record.parsedName || '-'}</div>
-                      <div><span className="text-slate-500">手机号: </span>{record.parsedPhone || '-'}</div>
-                      <div><span className="text-slate-500">邮箱: </span>{record.parsedEmail || '-'}</div>
-                      <div><span className="text-slate-500">学历: </span>{record.parsedEducation || '-'}</div>
-                      <div className="sm:col-span-2">
-                        <div className="text-slate-500">工作经历:</div>
-                        <div className="whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300">{record.parsedWorkExperience || '-'}</div>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <div className="text-slate-500">技能:</div>
-                        <div className="whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300">{record.parsedSkills || '-'}</div>
-                      </div>
-                      {record.reviewRemark ? (
-                        <div className="sm:col-span-2 rounded bg-slate-50 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          复核意见: {record.reviewRemark}
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <InnerTableSurface>
+            <div className="admin-source-section-head border-b border-slate-200 p-4 dark:border-slate-800">
+              <div>
+                <strong>解析记录</strong>
+                <span>{records.length} 条记录，待处理状态可编辑、确认回填或驳回</span>
+              </div>
+            </div>
+              <table className="unity-data-table admin-source-table min-w-[1100px]">
+                <thead>
+                  <tr>
+                    <th>状态</th>
+                    <th>候选信息</th>
+                    <th>学历 / 技能</th>
+                    <th>工作经历</th>
+                    <th>置信度</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((record) => {
+                    const isEditing = editingId === record.id;
+                    return (
+                      <>
+                        <tr key={record.id}>
+                          <td>
+                            <DictBadge dictType="hr_resume_parse_status" value={String(record.status || 'PENDING')} />
+                            {record.createTime ? <div className="mt-1 text-xs text-slate-500">{record.createTime}</div> : null}
+                          </td>
+                          <td>
+                            <div className="font-medium text-slate-700 dark:text-slate-200">{record.parsedName || '-'}</div>
+                            <div className="text-xs text-slate-500">{record.parsedPhone || '-'}</div>
+                            <div className="text-xs text-slate-500">{record.parsedEmail || '-'}</div>
+                          </td>
+                          <td className="max-w-[240px]">
+                            <div className="text-sm text-slate-700 dark:text-slate-200">{record.parsedEducation || '-'}</div>
+                            <div className="line-clamp-2 whitespace-pre-wrap text-xs text-slate-500">{record.parsedSkills || '-'}</div>
+                          </td>
+                          <td className="max-w-[320px]">
+                            <div className="line-clamp-3 whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-300">
+                              {record.parsedWorkExperience || '-'}
+                            </div>
+                            {record.reviewRemark ? (
+                              <div className="mt-1 text-xs text-slate-500">复核意见：{record.reviewRemark}</div>
+                            ) : null}
+                          </td>
+                          <td className="tabular-nums">{formatConfidence(record.confidence)}</td>
+                          <td>
+                            {record.status === 'PENDING' && !isEditing ? (
+                              <div className="admin-users-row-actions">
+                                <button type="button" title="编辑" onClick={() => startEdit(record)} disabled={submitting}>
+                                  <Edit size={15} />
+                                </button>
+                                <button type="button" title="确认回填" onClick={() => void confirmRecord(record.id)} disabled={submitting}>
+                                  <Check size={15} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="danger"
+                                  title="驳回"
+                                  onClick={() => {
+                                    setRejectingId(record.id);
+                                    setRejectReason('');
+                                  }}
+                                  disabled={submitting}
+                                >
+                                  <X size={15} />
+                                </button>
+                              </div>
+                            ) : null}
+                            {isEditing ? (
+                              <div className="admin-users-row-actions">
+                                <button type="button" title="取消" onClick={cancelEdit} disabled={submitting}>
+                                  <X size={15} />
+                                </button>
+                                <button type="button" title="保存" onClick={() => void saveEdit(record.id)} disabled={submitting}>
+                                  <Save size={15} />
+                                </button>
+                              </div>
+                            ) : null}
+                          </td>
+                        </tr>
+                        {isEditing ? (
+                          <tr key={`${record.id}-edit`}>
+                            <td colSpan={6}>
+                              <div className="admin-source-form-grid py-2">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">姓名</Label>
+                                  <Input
+                                    value={editForm.parsedName || ''}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, parsedName: e.target.value }))}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">手机号</Label>
+                                  <Input
+                                    value={editForm.parsedPhone || ''}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, parsedPhone: e.target.value }))}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">邮箱</Label>
+                                  <Input
+                                    value={editForm.parsedEmail || ''}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, parsedEmail: e.target.value }))}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">学历</Label>
+                                  <Input
+                                    value={editForm.parsedEducation || ''}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, parsedEducation: e.target.value }))}
+                                  />
+                                </div>
+                                <div className="admin-source-form-wide space-y-1">
+                                  <Label className="text-xs">工作经历</Label>
+                                  <Textarea
+                                    rows={3}
+                                    value={editForm.parsedWorkExperience || ''}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, parsedWorkExperience: e.target.value }))}
+                                  />
+                                </div>
+                                <div className="admin-source-form-wide space-y-1">
+                                  <Label className="text-xs">技能</Label>
+                                  <Textarea
+                                    rows={2}
+                                    value={editForm.parsedSkills || ''}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, parsedSkills: e.target.value }))}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
+          </InnerTableSurface>
         )}
       </BaseDialog>
 
@@ -302,9 +328,9 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
           </div>
         )}
       >
-        <div className="space-y-2">
+        <div className="admin-source-form-grid">
           <Label>驳回理由（可选）</Label>
-          <Textarea rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="例如：识别错误、字段缺失等" />
+          <Textarea className="admin-source-form-wide" rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="例如：识别错误、字段缺失等" />
         </div>
       </BaseDialog>
     </>

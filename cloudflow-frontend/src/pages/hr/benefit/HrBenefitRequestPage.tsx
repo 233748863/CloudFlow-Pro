@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { LoaderCircle, Plus, RefreshCcw, RotateCcw } from 'lucide-react';
+import { Ban, Edit, LoaderCircle, Plus, RefreshCcw, RotateCcw, Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -14,15 +14,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   cancelBenefitRequest,
   createBenefitRequest,
@@ -145,114 +140,164 @@ export const HrBenefitRequestPage: React.FC = () => {
 
   const hasFilters = Boolean(query.requestNo || query.requestType || query.status);
 
-  const filters = (
-    <FilterBar
-      search={{
-        value: query.requestNo,
-        onChange: (value) => setQuery((q) => ({ ...q, requestNo: value })),
-        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
-        placeholder: '搜索申请编号',
-        widthClassName: 'w-full sm:w-[200px]',
-      }}
-      filters={[
-        <div key="type" className="w-full sm:w-40">
+  const draftCount = rows.filter((row) => hasWorkflowStatus(row.status, 'DRAFT')).length;
+  const approvingCount = rows.filter((row) => hasWorkflowStatus(row.status, 'SUBMITTED', 'APPROVING')).length;
+  const paidCount = rows.filter((row) => hasWorkflowStatus(row.status, 'PAID', 'COMPLETED')).length;
+
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">benefit request</p>
+          <h2>福利申领</h2>
+          <span>管理员工福利申请、审批提交、取消和发放状态。</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCcw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />刷新
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />新建申领
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <span className="admin-source-stat-icon"><Plus size={18} /></span>
+          <div><p>申领总数</p><strong>{total}</strong><span>当前查询范围</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <span className="admin-source-stat-icon"><Edit size={18} /></span>
+          <div><p>草稿</p><strong>{draftCount}</strong><span>待编辑提交</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <span className="admin-source-stat-icon"><Send size={18} /></span>
+          <div><p>审批中</p><strong>{approvingCount}</strong><span>已提交待处理</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <span className="admin-source-stat-icon"><RefreshCcw size={18} /></span>
+          <div><p>已发放</p><strong>{paidCount}</strong><span>完成发放记录</span></div>
+        </article>
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form
+        className="admin-users-filter-grid"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setQuery((q) => ({ ...q, pageNum: 1 }));
+        }}
+      >
+        <label>
+          <span>申请编号</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={query.requestNo}
+              onChange={(event) => setQuery((q) => ({ ...q, requestNo: event.target.value }))}
+              className="cf-control"
+              placeholder="搜索申请编号"
+            />
+          </div>
+        </label>
+        <label>
+          <span>类型</span>
           <Select value={query.requestType || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, requestType: v === '__all' ? '' : v }))}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部类型" /></SelectTrigger>
+            <SelectTrigger className="cf-control"><SelectValue placeholder="全部类型" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部类型</SelectItem>
               {typeOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>,
-        <div key="status" className="w-full sm:w-36">
+        </label>
+        <label>
+          <span>状态</span>
           <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectTrigger className="cf-control"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
               {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>,
-      ]}
-      stats={[{ label: '', value: `共 ${total} 条` }]}
-      actions={[
-        ...(hasFilters
-          ? [
-              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, requestNo: '', requestType: '', status: '' }))}>
-                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
-              </Button>,
-            ]
-          : []),
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-        <Button key="add" size="sm" onClick={openCreate}>
-          <Plus className="mr-1.5 h-4 w-4" />新建申领
-        </Button>,
-      ]}
-    />
+        </label>
+        <div className="admin-users-toolbar-actions">
+          <Button type="submit" size="sm">查询</Button>
+          {hasFilters ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, requestNo: '', requestType: '', status: '' }))}>
+              <RotateCcw className="h-4 w-4" />清空条件
+            </Button>
+          ) : null}
+          <span className="admin-users-filter-count">共 {total} 条</span>
+        </div>
+      </form>
+    </section>
   );
 
-  const table = (
-    <TableSurfaceCard fill>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1080px]">
-          <TableHeader className="sticky top-0 z-10">
+  const pageTable = (
+    <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+      <table className="unity-data-table admin-source-table min-w-[1080px]">
+        <thead>
+          <tr>
+            <th>申请编号</th>
+            <th>员工 ID</th>
+            <th>类型</th>
+            <th>金额 / 积分</th>
+            <th>状态</th>
+            <th>申请时间</th>
+            <th>发放时间</th>
+            <th className="text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
             <tr>
-              <TableHead>申请编号</TableHead>
-              <TableHead>员工 ID</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>金额 / 积分</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>申请时间</TableHead>
-              <TableHead>发放时间</TableHead>
-              <TableActionHead className="text-right">操作</TableActionHead>
+              <td colSpan={8} className="py-10 text-center text-sm text-slate-400">
+                <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+              </td>
             </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">
-                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+          ) : rows.length === 0 ? (
+            <tr>
+              <td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无数据</td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={row.id}>
+                <td className="font-mono text-xs">{row.requestNo}</td>
+                <td className="text-sm">{row.employeeId}</td>
+                <td className="text-sm"><DictLabel dictType="hr_benefit_request_type" value={row.requestType} fallback="-" /></td>
+                <td className="text-xs">
+                  {row.amount ? formatMoneyValue(row.amount) : '-'}
+                  {row.pointAmount ? ` / ${row.pointAmount} 分` : ''}
+                </td>
+                <td className="text-sm"><DictLabel dictType="hr_benefit_request_status" value={row.status} fallback="-" /></td>
+                <td className="text-xs">{formatDateTimeValue(row.createTime)}</td>
+                <td className="text-xs">{formatDateTimeValue(row.paidAt)}</td>
+                <td>
+                  <div className="admin-users-row-actions">
+                    {hasWorkflowStatus(row.status, 'DRAFT') ? (
+                      <button type="button" title="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Edit size={15} /></button>
+                    ) : null}
+                    {hasWorkflowStatus(row.status, 'DRAFT') ? (
+                      <button type="button" title="提交" aria-label="提交" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
+                    ) : null}
+                    {hasWorkflowStatus(row.status, 'DRAFT', 'SUBMITTED', 'APPROVING') ? (
+                      <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => { setCancelTarget(row); setCancelReason('撤回'); }}><Ban size={15} /></button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">暂无数据</td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 font-mono text-xs">{row.requestNo}</td>
-                  <td className="px-4 py-3 text-sm">{row.employeeId}</td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_benefit_request_type" value={row.requestType} fallback="-" /></td>
-                  <td className="px-4 py-3 text-xs">
-                    {row.amount ? formatMoneyValue(row.amount) : '-'}
-                    {row.pointAmount ? ` / ${row.pointAmount} 分` : ''}
-                  </td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_benefit_request_status" value={row.status} fallback="-" /></td>
-                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.createTime)}</td>
-                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.paidAt)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        { key: 'edit', label: '编辑', semantic: 'edit', onClick: () => openEdit(row), hidden: !hasWorkflowStatus(row.status, 'DRAFT') },
-                        { key: 'submit', label: '提交', semantic: 'submit', onClick: () => void handleSubmit(row), hidden: !hasWorkflowStatus(row.status, 'DRAFT') },
-                        { key: 'cancel', label: '取消', semantic: 'void', onClick: () => { setCancelTarget(row); setCancelReason('撤回'); }, hidden: !hasWorkflowStatus(row.status, 'DRAFT', 'SUBMITTED', 'APPROVING') },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
+            ))
+          )}
+        </tbody>
+      </table>
+    </InnerTableSurface>
   );
 
-  const pagination = total > 0 ? (
+  const pagePagination = total > 0 ? (
     <Pagination
       page={query.pageNum}
       pageSize={query.pageSize}
@@ -263,13 +308,20 @@ export const HrBenefitRequestPage: React.FC = () => {
   ) : null;
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} pagination={pagination} />
+    <section className="admin-source-page hr-benefit-request-page">
+      <TablePageLayout
+        className="hr-benefit-request-layout"
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageTable}
+        pagination={pagePagination}
+      />
 
       <BaseDialog
         open={showForm}
         title={editing ? '编辑福利申领' : '新建福利申领'}
         onClose={() => setShowForm(false)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowForm(false)}>取消</Button>
@@ -277,8 +329,7 @@ export const HrBenefitRequestPage: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-3">
-          <div>
+        <div className="admin-dialog-field">
             <Label>类型</Label>
             <Select value={String(form.requestType ?? 'BENEFIT_CLAIM')} onValueChange={(v) => setForm({ ...form, requestType: v })}>
               <SelectTrigger>
@@ -292,7 +343,7 @@ export const HrBenefitRequestPage: React.FC = () => {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="admin-dialog-field">
               <Label>方案 ID(可选)</Label>
               <Input
                 type="number"
@@ -300,7 +351,7 @@ export const HrBenefitRequestPage: React.FC = () => {
                 onChange={(e) => setForm({ ...form, schemeId: e.target.value ? Number(e.target.value) : undefined })}
               />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>金额</Label>
               <Input
                 type="number"
@@ -308,7 +359,7 @@ export const HrBenefitRequestPage: React.FC = () => {
                 onChange={(e) => setForm({ ...form, amount: e.target.value ? Number(e.target.value) : undefined })}
               />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>积分</Label>
               <Input
                 type="number"
@@ -317,7 +368,7 @@ export const HrBenefitRequestPage: React.FC = () => {
               />
             </div>
           </div>
-          <div>
+          <div className="admin-dialog-field">
             <Label>申请理由</Label>
             <Textarea
               rows={3}
@@ -325,13 +376,13 @@ export const HrBenefitRequestPage: React.FC = () => {
               onChange={(e) => setForm({ ...form, reason: e.target.value })}
             />
           </div>
-        </div>
       </BaseDialog>
 
       <BaseDialog
         open={cancelTarget !== null}
         title={`取消申领 · ${cancelTarget?.requestNo ?? ''}`}
         onClose={() => setCancelTarget(null)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setCancelTarget(null)}>关闭</Button>
@@ -339,12 +390,12 @@ export const HrBenefitRequestPage: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <Label>取消理由</Label>
           <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="请输入取消理由" />
         </div>
       </BaseDialog>
-    </div>
+    </section>
   );
 };
 

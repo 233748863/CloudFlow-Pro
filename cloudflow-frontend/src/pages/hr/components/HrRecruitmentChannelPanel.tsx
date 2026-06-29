@@ -7,14 +7,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { toast } from 'sonner';
+import { Pencil, RefreshCcw, Trash2, X } from 'lucide-react';
 import {
   listRecruitmentChannels,
   saveRecruitmentChannel,
@@ -81,20 +77,27 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
   };
 
   return (
-    <div className="card p-4">
-      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <div className="text-base font-semibold">招聘渠道维护</div>
-        <div className="flex gap-2">
+    <section className="admin-source-page">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">RECRUITMENT CHANNELS</p>
+          <h2>招聘渠道维护</h2>
+          <span>维护招聘渠道成本、联系人和转化数据</span>
+        </div>
+        <div className="admin-source-controls">
           <Button variant="outline" size="sm" onClick={() => void loadData()} disabled={loading}>
+            <RefreshCcw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
             刷新
           </Button>
           <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
             关闭
           </Button>
         </div>
-      </div>
+      </header>
 
-      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+      <section className="card admin-users-toolbar">
+        <div className="admin-users-filter-grid">
         <Input
           placeholder="渠道编码"
           value={editing.channelCode || ''}
@@ -141,65 +144,71 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
           value={editing.contactEmail || ''}
           onChange={(e) => setEditing((prev) => ({ ...prev, contactEmail: e.target.value }))}
         />
+        </div>
+        <div className="admin-users-toolbar-actions">
         <Button onClick={() => void handleSave()}>{editing.id ? '更新' : '新增'}</Button>
-      </div>
+          <span className="admin-users-filter-count">共 {channels.length} 个渠道</span>
+        </div>
+      </section>
 
-      <div className="mt-4">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>编码</TableHead>
-              <TableHead>名称</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>费用</TableHead>
-              <TableHead>候选人数</TableHead>
-              <TableHead>录用</TableHead>
-              <TableHead>录用率</TableHead>
-              <TableHead>人均成本</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <InnerTableSurface>
+        <div className="admin-horizontal-scroll">
+          <table className="unity-data-table admin-source-table min-w-[980px]">
+            <thead>
+              <tr>
+                <th>编码</th>
+                <th>名称</th>
+                <th>类型</th>
+                <th>费用</th>
+                <th>候选人数</th>
+                <th>录用</th>
+                <th>录用率</th>
+                <th>人均成本</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
             {channels.map((channel) => {
               const stat = stats.find((s) => s.id === channel.id);
               return (
-                <TableRow key={channel.id}>
-                  <TableCell>{channel.channelCode}</TableCell>
-                  <TableCell>{channel.channelName}</TableCell>
-                  <TableCell>
+                <tr key={channel.id}>
+                  <td>{channel.channelCode}</td>
+                  <td>{channel.channelName}</td>
+                  <td>
                     {channelTypeDict.getLabel(String(channel.channelType ?? '')) || channel.channelType}
-                  </TableCell>
-                  <TableCell>{channel.costAmount?.toLocaleString?.() ?? '-'}</TableCell>
-                  <TableCell>{stat?.totalCandidates ?? 0}</TableCell>
-                  <TableCell>{stat?.hiredCount ?? 0}</TableCell>
-                  <TableCell>{stat?.hireRate != null ? `${(stat.hireRate * 100).toFixed(1)}%` : '-'}</TableCell>
-                  <TableCell>{stat?.costPerHire != null ? stat.costPerHire.toLocaleString() : '-'}</TableCell>
-                  <TableCell>{getRecruitChannelStatusLabel(channel.status)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="soft" size="sm" onClick={() => setEditing(channel)}>
-                        编辑
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => void handleRemove(channel.id || 0)}>
-                        删除
-                      </Button>
+                  </td>
+                  <td>{channel.costAmount?.toLocaleString?.() ?? '-'}</td>
+                  <td>{stat?.totalCandidates ?? 0}</td>
+                  <td>{stat?.hiredCount ?? 0}</td>
+                  <td>{stat?.hireRate != null ? `${(stat.hireRate * 100).toFixed(1)}%` : '-'}</td>
+                  <td>{stat?.costPerHire != null ? stat.costPerHire.toLocaleString() : '-'}</td>
+                  <td><span className="badge badge-gray">{getRecruitChannelStatusLabel(channel.status)}</span></td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="编辑" onClick={() => setEditing(channel)}>
+                        <Pencil size={15} />
+                      </button>
+                      <button type="button" className="danger" title="删除" onClick={() => void handleRemove(channel.id || 0)}>
+                        <Trash2 size={15} />
+                      </button>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               );
             })}
             {channels.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center text-slate-400">
+              <tr>
+                <td colSpan={10} className="admin-settings-empty">
                   暂无渠道
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : null}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+            </tbody>
+          </table>
+        </div>
+      </InnerTableSurface>
+    </section>
   );
 };
 

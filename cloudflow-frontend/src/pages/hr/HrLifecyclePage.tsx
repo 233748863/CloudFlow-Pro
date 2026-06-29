@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger, type TableRowActionItem } from '@/components/common';
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger, type TableRowActionItem } from '@/components/common';
+import { CheckCircle2, LogOut, RefreshCw, Repeat, UserPlus } from 'lucide-react';
 import {
   Candidate,
   DeptTreeNode,
@@ -22,6 +23,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { buildEmployeeLabel, flattenDeptTree, formatDateValue, normalizeRows, optionOrIdLabel } from './hrShared';
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 import { useDict } from '@/hooks/useDict';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type LifecycleType = 'ONBOARDING' | 'PROBATION' | 'TRANSFER' | 'RESIGNATION';
 
@@ -244,48 +246,94 @@ const HrLifecyclePage: React.FC = () => {
       }));
   };
 
-  return (
-    <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as LifecycleType)} className="space-y-4">
-        <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
-          {lifecycleTabs.map((item) => (
-            <TabsTrigger key={item.value} value={item.value} className="flex-1 lg:flex-none">
-              {item.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+  const metrics = [
+    { label: '入职', value: String(rowsByType.ONBOARDING?.length || 0), meta: '候选人转员工', icon: <UserPlus size={18} />, tone: 'blue' },
+    { label: '转正', value: String(rowsByType.PROBATION?.length || 0), meta: '试用期流程', icon: <CheckCircle2 size={18} />, tone: 'green' },
+    { label: '调岗', value: String(rowsByType.TRANSFER?.length || 0), meta: '组织变更', icon: <Repeat size={18} />, tone: 'amber' },
+    { label: '离职', value: String(rowsByType.RESIGNATION?.length || 0), meta: '离职交接', icon: <LogOut size={18} />, tone: 'violet' },
+  ];
 
-        {lifecycleTabs.map((item) => (
-          <TabsContent key={item.value} value={item.value}>
-            <HrCrudPanel
-              title={item.label}
-              rows={rowsByType[item.value] || []}
-              loading={loading}
-              onRefresh={() => void loadData()}
-              createLabel={`新增${item.label}`}
-              dialogTitle={`新增${item.label}申请`}
-              form={forms[item.value]}
-              setForm={updateForm(item.value)}
-              resetForm={formDefaults[item.value]}
-              formFields={fieldsByType(item.value)}
-              onCreate={(form) => submitAndReload(
-                () => createLifecycleApplication(item.value, form),
-                `${item.label}申请已保存`,
-              )}
-              columns={[
-                { key: 'applicationNo', label: '编号' },
-                { key: 'name', label: '员工/候选人', render: displayPerson },
-                { key: 'type', label: '类型', render: () => lifecycleTypeDict.getLabel(item.value) },
-                { key: 'expectedDate', label: '预计日期', render: (row) => formatDateValue(row.expectedDate || row.effectiveDate || row.onboardDate || row.actualDate) },
-                { key: 'status', label: '状态', render: (row) => renderStatus(row.status, row.statusDesc) },
-              ]}
-              actions={actionButtons}
-              minWidthClassName="min-w-[960px]"
-            />
-          </TabsContent>
-        ))}
-      </Tabs>
-    </div>
+  return (
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as LifecycleType)} className="contents">
+      <section className="admin-source-page admin-hr-lifecycle-page">
+        <TablePageLayout
+          actions={
+            <>
+              <header className="admin-source-header">
+                <div>
+                  <p className="admin-source-kicker">HR LIFECYCLE</p>
+                  <h2>员工生命周期</h2>
+                  <span>处理入职、转正、调岗和离职申请</span>
+                </div>
+                <div className="admin-source-controls">
+                  <Button variant="outline" size="sm" onClick={() => void loadData()} disabled={loading}>
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    刷新
+                  </Button>
+                </div>
+              </header>
+        
+              <section className="admin-source-stat-grid">
+                {metrics.map((metric) => (
+                  <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+                    <div className="admin-source-stat-icon">{metric.icon}</div>
+                    <div>
+                      <p>{metric.label}</p>
+                      <strong>{metric.value}</strong>
+                      <span>{metric.meta}</span>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            </>
+          }
+          filters={
+            <section className="card admin-users-toolbar">
+              <TabsList className="admin-source-tabs w-full justify-start lg:w-auto">
+                {lifecycleTabs.map((item) => (
+                  <TabsTrigger key={item.value} value={item.value} className="flex-1 lg:flex-none">
+                    {item.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </section>
+          }
+          table={
+            <>
+              {lifecycleTabs.map((item) => (
+                <TabsContent key={item.value} value={item.value} className="mt-0">
+              <HrCrudPanel
+                title={item.label}
+                rows={rowsByType[item.value] || []}
+                loading={loading}
+                onRefresh={() => void loadData()}
+                createLabel={`新增${item.label}`}
+                dialogTitle={`新增${item.label}申请`}
+                form={forms[item.value]}
+                setForm={updateForm(item.value)}
+                resetForm={formDefaults[item.value]}
+                formFields={fieldsByType(item.value)}
+                onCreate={(form) => submitAndReload(
+                  () => createLifecycleApplication(item.value, form),
+                  `${item.label}申请已保存`,
+                )}
+                columns={[
+                  { key: 'applicationNo', label: '编号' },
+                  { key: 'name', label: '员工/候选人', render: displayPerson },
+                  { key: 'type', label: '类型', render: () => lifecycleTypeDict.getLabel(item.value) },
+                  { key: 'expectedDate', label: '预计日期', render: (row) => formatDateValue(row.expectedDate || row.effectiveDate || row.onboardDate || row.actualDate) },
+                  { key: 'status', label: '状态', render: (row) => renderStatus(row.status, row.statusDesc) },
+                ]}
+                actions={actionButtons}
+                minWidthClassName="min-w-[960px]"
+              />
+                </TabsContent>
+              ))}
+            </>
+          }
+        />
+      </section>
+    </Tabs>
   );
 };
 

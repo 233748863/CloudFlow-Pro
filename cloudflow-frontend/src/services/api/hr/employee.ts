@@ -1,4 +1,5 @@
 import request from '@/services/api/request';
+import { withList } from './internals';
 import type {
   EmergencyContact,
   EmergencyContactPayload,
@@ -9,8 +10,8 @@ import type {
   HrPageQuery,
 } from './types';
 
-export const listEmployees = (params?: HrPageQuery) =>
-  request.get<HrEmployee[]>('/hr/employees', { params });
+export const listEmployees = async (params?: HrPageQuery) =>
+  withList(await request.get<HrEmployee[]>('/hr/employees', { params }));
 
 /**
  * 选择器专用：拉取员工精简列表（默认拉一页 size=999 客户端搜索）
@@ -23,7 +24,7 @@ export const listEmployeesForSelect = async (
   const list = await request.get<HrEmployee[]>('/hr/employees', {
     params: { pageNum: 1, pageSize: 999, ...rest },
   });
-  const arr = Array.isArray(list) ? list : (list as unknown as { records?: HrEmployee[] }).records || [];
+  const arr = withList(list);
   return arr
     .filter((e) => !onlyActive || (e.employeeStatus ?? '') !== 'RESIGNED')
     .map((e) => ({
@@ -50,8 +51,8 @@ export const createEmployee = (data: HrEmployeePayload) =>
 export const updateEmployee = (id: number, data: Partial<HrEmployeePayload>) =>
   request.put<void>(`/hr/employees/${id}`, data);
 
-export const listEmergencyContacts = (employeeId: number) =>
-  request.get<EmergencyContact[]>(`/hr/employees/${employeeId}/emergency-contacts`);
+export const listEmergencyContacts = async (employeeId: number) =>
+  withList(await request.get<EmergencyContact[]>(`/hr/employees/${employeeId}/emergency-contacts`));
 
 export const getEmergencyContact = async (id: number) => {
   const employees = await listEmployees();

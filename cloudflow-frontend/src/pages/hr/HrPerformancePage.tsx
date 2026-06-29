@@ -14,8 +14,6 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, DatePicker, DeptSelector, EmployeeSelector } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import {
   Button,
   Input,
@@ -25,19 +23,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Tabs,
   TabsList,
   TabsTrigger,
   Textarea,
 } from '@/components/common';
-import { StatCard } from '@/components/common/StatCard';
 import { DictBadge } from '@/components/common/DictBadge';
 import { useDict } from '@/hooks/useDict';
 import {
@@ -67,6 +57,7 @@ import { cn } from '@/utils/cn';
 import Hr360EvaluationPanel from './components/Hr360EvaluationPanel';
 import HrPerformanceDistributionPanel from './components/HrPerformanceDistributionPanel';
 import HrPerformanceInterviewPanel from './components/HrPerformanceInterviewPanel';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 const ALL_STATUS = '__all__';
 
@@ -183,11 +174,11 @@ const EmployeePicker: React.FC<{
         </span>
       </SelectTrigger>
       <SelectContent className="w-[min(460px,calc(100vw-24px))]">
-        <div className="border-b border-slate-100 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
+        <div className="border-b border-slate-200 bg-[var(--cf-surface-muted)] p-2 dark:border-slate-800 dark:bg-slate-900">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
-              className="h-9 rounded-lg pl-9 text-sm"
+              className="h-9 rounded-md pl-9 text-sm"
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               onClick={(event) => event.stopPropagation()}
@@ -343,9 +334,9 @@ const completionTone = (rate?: number) => {
 
 const completionBadgeClass = (rate?: number) => {
   const value = Number(rate || 0);
-  if (value >= 100) return 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900';
-  if (value >= 80) return 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900';
-  return 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900';
+  if (value >= 100) return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900';
+  if (value >= 80) return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900';
+  return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900';
 };
 
 const flattenTree = (nodes: PerformanceAssignment[] = [], depth = 0): TreeRow[] =>
@@ -510,16 +501,13 @@ const PerformanceTableShell: React.FC<PerformanceTableShellProps> = ({
   className,
   children,
 }) => (
-  <div className={cn('performance-table-shell overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950', className)}>
-    <div className="performance-table-scroll overflow-auto">
-      {React.isValidElement(children)
-        ? React.cloneElement(children as React.ReactElement<{ className?: string; disableScrollWrapper?: boolean }>, {
-          className: cn('performance-table', minWidthClassName, 'table-fixed', (children as React.ReactElement<{ className?: string }>).props.className),
-          disableScrollWrapper: true,
-        })
-        : children}
-    </div>
-  </div>
+  <InnerTableSurface className={cn('performance-table-shell', className)} wrapperClassName="performance-table-scroll">
+    {React.isValidElement(children)
+      ? React.cloneElement(children as React.ReactElement<{ className?: string }>, {
+        className: cn('unity-data-table admin-source-table', minWidthClassName, 'table-fixed', (children as React.ReactElement<{ className?: string }>).props.className),
+      })
+      : children}
+  </InnerTableSurface>
 );
 
 const PerformanceSummaryCard = ({
@@ -533,10 +521,28 @@ const PerformanceSummaryCard = ({
   valueClassName?: string;
   hint?: string;
 }) => (
-  <div className="card p-4">
-    <div className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{label}</div>
-    <div className={cn('mt-1 min-w-0 truncate text-sm font-semibold tabular-nums text-slate-900 dark:text-white', valueClassName)}>{value}</div>
-    {hint ? <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
+  <div className="admin-performance-summary-cell">
+    <div className="min-w-0">
+      <p>{label}</p>
+      <div className={cn('admin-performance-summary-value tabular-nums', valueClassName)}>{value}</div>
+      {hint ? <span className="admin-performance-summary-hint">{hint}</span> : null}
+    </div>
+  </div>
+);
+
+const PerformanceMetricSummaryValue = ({
+  items,
+}: {
+  items: Array<{ key: string; label: string; value: string }>;
+}) => (
+  <div className="admin-performance-metric-summary">
+    {items.slice(0, 2).map((item) => (
+      <div key={item.key} className="admin-performance-metric-row" title={`${item.label} ${item.value}`}>
+        <span className="admin-performance-metric-label">{item.label}</span>
+        <span className="admin-performance-metric-value">{item.value}</span>
+      </div>
+    ))}
+    {items.length > 2 ? <span className="admin-performance-metric-more">+{items.length - 2} 项</span> : null}
   </div>
 );
 
@@ -559,18 +565,18 @@ const PerformanceCompletionSummaryCard = ({
 
   return (
     <div className="card p-4">
-      <div className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{label}</div>
+      <div className="truncate text-[11px] font-semibold text-slate-400 dark:text-slate-500">{label}</div>
       <div className="mt-2 flex items-end justify-between gap-3">
-        <div className={cn('text-3xl font-bold tabular-nums text-slate-900 dark:text-white', completionTone(value))}>
+        <div className={cn('text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100', completionTone(value))}>
           {value.toFixed(1)}%
         </div>
-        <span className={cn('inline-flex rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ring-1', completionBadgeClass(value))}>
+        <span className={cn('inline-flex rounded-md px-2.5 py-1 text-xs font-semibold tabular-nums border', completionBadgeClass(value))}>
           综合达成
         </span>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200/90 dark:bg-slate-800">
+      <div className="mt-3 h-2 overflow-hidden rounded-md bg-slate-200/90 dark:bg-slate-800">
         <div
-          className={cn('h-full rounded-full transition-all', progressTone)}
+          className={cn('h-full rounded-md transition-all', progressTone)}
           style={{ width: `${progressWidth}%` }}
         />
       </div>
@@ -595,7 +601,7 @@ const MetricLabelCell = ({
   const resolvedWeight = weight == null ? '' : `权重${Number(weight).toFixed(0)}`;
   return (
     <div className="min-w-0 text-left">
-      <div className="truncate text-sm font-medium text-slate-900 dark:text-white">{resolvedName}</div>
+      <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{resolvedName}</div>
       {(resolvedUnit || resolvedWeight) ? (
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           {resolvedUnit ? <span className="badge badge-gray">{resolvedUnit}</span> : null}
@@ -620,7 +626,7 @@ const PerformanceNodeCell = ({
   <div className="flex items-center gap-2" style={{ paddingLeft: `${depth * 18}px` }}>
     {icon}
     <div className="min-w-0">
-      <div className="truncate font-medium text-slate-900 dark:text-white">{title}</div>
+      <div className="truncate font-medium text-slate-900 dark:text-slate-100">{title}</div>
       {subtitle ? <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{subtitle}</div> : null}
     </div>
   </div>
@@ -815,10 +821,13 @@ export const HrPerformancePage: React.FC = () => {
   const resultNode = resultNodeId ? findNode(currentAssignments, resultNodeId) : null;
   const treeRows = useMemo(() => flattenTree(currentAssignments), [currentAssignments]);
   const leafTasks = useMemo(() => collectLeaves(currentAssignments), [currentAssignments]);
-  const metricTotalSummary = useMemo(
+  const metricTotalItems = useMemo(
     () => categoryNodes
-      .map((node) => `${node.categoryName || node.categoryCode || '-'}-${node.metricName || node.metricCode || '-'} ${formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}`)
-      .join(' / '),
+      .map((node) => ({
+        key: `${node.id}-${node.categoryCode || '-'}-${node.metricCode || '-'}`,
+        label: `${node.categoryName || node.categoryCode || '-'}-${node.metricName || node.metricCode || '-'}`,
+        value: formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node)),
+      })),
     [categoryNodes],
   );
   const departmentMatrixRows = useMemo<DepartmentMatrixRow[]>(
@@ -1369,7 +1378,7 @@ export const HrPerformancePage: React.FC = () => {
 
   const renderProgress = (rate?: number) => (
     <div className="flex w-full justify-center">
-      <span className={cn('inline-flex min-w-[76px] justify-center rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ring-1', completionBadgeClass(rate))}>
+      <span className={cn('inline-flex min-w-[76px] justify-center rounded-md px-2.5 py-1 text-xs font-semibold tabular-nums border', completionBadgeClass(rate))}>
         {Number(rate || 0).toFixed(1)}%
       </span>
     </div>
@@ -1395,190 +1404,230 @@ export const HrPerformancePage: React.FC = () => {
 
   return (
     <>
-      <TablePageLayout
-        className="animate-fade-in"
-        filters={
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {metricItems.map((item) => (
-                <StatCard
-                  key={item.title}
-                  title={item.title}
-                  value={item.value}
-                  icon={item.icon}
-                  iconVariant={item.iconVariant}
-                  meta={item.meta}
+      <section className="admin-source-page admin-hr-performance-page">
+        <TablePageLayout
+          actions={
+            <>
+              <header className="admin-source-header">
+                <div>
+                  <p className="admin-source-kicker">HR PERFORMANCE</p>
+                  <h2>绩效管理</h2>
+                  <span>按目标、部门、指标和员工任务管理绩效周期。</span>
+                </div>
+                <div className="admin-source-controls">
+                  <Button variant="outline" onClick={() => void loadList()} disabled={loading}>
+                    <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
+                    刷新
+                  </Button>
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <FilePlus2 className="h-4 w-4" />
+                    新建绩效目标
+                  </Button>
+                  <Button variant="soft" onClick={() => setShow360Panel(true)} disabled={!currentObjective}>
+                    360 度评估
+                  </Button>
+                  <Button variant="soft" onClick={() => setShowDistributionPanel(true)} disabled={!currentObjective}>
+                    强制分布
+                  </Button>
+                </div>
+              </header>
+        
+              <section className="card admin-performance-command-strip">
+                {metricItems.map((item) => (
+                  <article
+                    key={item.title}
+                    className={cn(
+                      'admin-performance-status-cell',
+                      item.iconVariant === 'success' && 'tone-green',
+                      item.iconVariant === 'warning' && 'tone-amber',
+                      item.iconVariant === 'gray' && 'tone-violet',
+                      item.iconVariant === 'primary' && 'tone-blue',
+                    )}
+                  >
+                    <span className="admin-performance-status-icon">{item.icon}</span>
+                    <div className="min-w-0">
+                      <p>{item.title}</p>
+                      <strong>{item.value}</strong>
+                      <em>{item.meta}</em>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            </>
+          }
+          filters={
+            <section className="card admin-users-toolbar min-w-0">
+          <form
+            className="grid w-full min-w-0 grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(20rem,1fr)_minmax(10rem,12rem)_auto]"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void loadList();
+            }}
+          >
+            <label className="min-w-0">
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">关键词</span>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={keyword}
+                  onChange={(event) => setKeyword(event.target.value)}
+                  placeholder="搜索目标编号、周期或名称"
+                  className="pl-9"
                 />
-              ))}
-            </div>
-            <FilterBar
-              search={{
-                value: keyword,
-                onChange: setKeyword,
-                onSubmit: () => void loadList(),
-                placeholder: '搜索目标编号、周期或名称',
-                widthClassName: 'w-full sm:w-80',
-              }}
-              filters={[
-                <Select key="status" value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_STATUS}>全部状态</SelectItem>
-                    {perfStatusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>,
-              ]}
-              actions={[
-                <Button key="refresh" variant="outline" onClick={() => void loadList()} disabled={loading}>
-                  <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
-                  刷新
-                </Button>,
-                <Button key="create" onClick={() => setCreateOpen(true)}>
-                  <FilePlus2 className="h-4 w-4" />
-                  新建绩效目标
-                </Button>,
-                <Button key="360" variant="soft" onClick={() => setShow360Panel(true)} disabled={!currentObjective}>
-                  360 度评估
-                </Button>,
-                <Button key="dist" variant="soft" onClick={() => setShowDistributionPanel(true)} disabled={!currentObjective}>
-                  强制分布
-                </Button>,
-              ]}
-            />
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PerformanceTab)}>
-                <TabsList className="overflow-x-auto">
-                  {tabs.map((tab) => (
-                    <TabsTrigger key={tab.value} value={tab.value} className="cf-tab-sm">
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-              <div className="flex flex-wrap items-center gap-2">
-                {currentObjective ? (
-                  <>
-                    <DictBadge dictType="hr_performance_status" value={currentObjective.status} />
-                    {['DRAFT', 'REJECTED'].includes(currentObjective.status) ? (
-                      <Button size="sm" variant="soft" onClick={() => void handleSubmitPlan()} disabled={pendingAction === 'submit-plan'}>
-                        提交计划审批
-                      </Button>
-                    ) : null}
-                    {currentObjective.status === 'PLAN_APPROVED' ? (
-                      <Button size="sm" variant="soft" onClick={() => void handleSubmitResult()} disabled={pendingAction === 'submit-result'}>
-                        提交结果审批
-                      </Button>
-                    ) : null}
-                    {['PLAN_APPROVED', 'RESULT_APPROVED'].includes(currentObjective.status) ? (
-                      <Button size="sm" variant="soft" onClick={() => setInterviewPanelOpen(true)}>
-                        录入面谈
-                      </Button>
-                    ) : null}
-                  </>
-                ) : null}
               </div>
+            </label>
+            <label className="min-w-0">
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">状态</span>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_STATUS}>全部状态</SelectItem>
+                  {perfStatusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </label>
+            <Button type="submit">
+              <Search className="h-4 w-4" />
+              查询
+            </Button>
+          </form>
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <Tabs className="w-full min-w-0 lg:w-auto" value={activeTab} onValueChange={(value) => setActiveTab(value as PerformanceTab)}>
+              <TabsList className="admin-source-tabs w-full min-w-0 justify-start overflow-x-auto lg:w-auto">
+                {tabs.map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value} className="shrink-0 lg:flex-none">
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto">
+              {currentObjective ? (
+                <>
+                  <DictBadge dictType="hr_performance_status" value={currentObjective.status} />
+                  {['DRAFT', 'REJECTED'].includes(currentObjective.status) ? (
+                    <Button size="sm" variant="soft" onClick={() => void handleSubmitPlan()} disabled={pendingAction === 'submit-plan'}>
+                      提交计划审批
+                    </Button>
+                  ) : null}
+                  {currentObjective.status === 'PLAN_APPROVED' ? (
+                    <Button size="sm" variant="soft" onClick={() => void handleSubmitResult()} disabled={pendingAction === 'submit-result'}>
+                      提交结果审批
+                    </Button>
+                  ) : null}
+                  {['PLAN_APPROVED', 'RESULT_APPROVED'].includes(currentObjective.status) ? (
+                    <Button size="sm" variant="soft" onClick={() => setInterviewPanelOpen(true)}>
+                      录入面谈
+                    </Button>
+                  ) : null}
+                </>
+              ) : null}
             </div>
           </div>
-        }
-        table={
-          <div className="flex min-h-0 flex-col gap-4">
-            <div className="grid gap-4 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
-              <div className="card p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-                  Performance Objective
+            </section>
+          }
+          table={
+            <section className="admin-performance-workspace flex min-h-0 flex-col gap-4">
+              <div className="table-scroll-container admin-inner-table-surface admin-performance-objective-strip">
+                <div className="admin-performance-objective-main">
+                  <div className="admin-performance-objective-kicker">
+                    Performance Objective
+                  </div>
+                  <div className="admin-performance-objective-title">
+                    {currentObjective?.objectiveName || '暂无绩效目标'}
+                  </div>
+                  <div className="admin-performance-objective-meta">
+                    {currentObjective ? `${currentObjective.cycleName} / ${currentObjective.objectiveNo}` : '创建目标后开始分解部门、考核类型与指标'}
+                  </div>
                 </div>
-                <div className="mt-2 truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  {currentObjective?.objectiveName || '暂无绩效目标'}
-                </div>
-                <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
-                  {currentObjective ? `${currentObjective.cycleName} / ${currentObjective.objectiveNo}` : '创建目标后开始分解部门、考核类型与指标'}
+                <div className="admin-performance-summary-grid">
+                  <PerformanceSummaryCard
+                    label="总目标值"
+                    value={currentObjective && objectiveMetrics.length > 1
+                      ? (metricTotalItems.length ? <PerformanceMetricSummaryValue items={metricTotalItems} /> : `${objectiveMetrics.length}项指标`)
+                      : formatValue(currentObjective?.totalTargetAmount, objectiveMetrics[0]?.metricUnit, metricPrecisionOf(objectiveMetrics[0]))}
+                    hint={currentObjective && objectiveMetrics.length > 1 ? (metricTotalItems.length > 2 ? `${metricTotalItems.length}项指标` : undefined) : objectiveMetrics[0]?.metricUnit || undefined}
+                  />
+                  <PerformanceSummaryCard
+                    label="指标配置"
+                    value={objectiveMetrics.length}
+                    hint={objectiveMetrics.map((metric) => `${metric.metricName} · ${metric.metricUnit || '-'} · ${getMetricTypeLabel(String(metric.valueType ?? '')) || '小数'}`).join(' / ')}
+                  />
+                  <PerformanceSummaryCard
+                    label="完成率"
+                    value={`${Number(currentObjective?.completionRate || 0).toFixed(1)}%`}
+                    valueClassName={completionTone(currentObjective?.completionRate)}
+                    hint="权重折算后"
+                  />
+                  <PerformanceSummaryCard
+                    label="评分等级"
+                    value={`${currentObjective?.score?.toFixed?.(1) || '0.0'} / ${currentObjective?.grade || 'D'}`}
+                    hint={getPerfStatusLabel(String(currentObjective?.status ?? '')) || '-'}
+                  />
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <PerformanceSummaryCard
-                  label="总目标值"
-                  value={currentObjective && objectiveMetrics.length > 1 ? (metricTotalSummary || `${objectiveMetrics.length}项指标`) : formatValue(currentObjective?.totalTargetAmount, objectiveMetrics[0]?.metricUnit, metricPrecisionOf(objectiveMetrics[0]))}
-                  hint={currentObjective && objectiveMetrics.length > 1 ? `${objectiveMetrics.length}项指标` : objectiveMetrics[0]?.metricUnit || undefined}
-                />
-                <PerformanceSummaryCard
-                  label="指标配置"
-                  value={objectiveMetrics.length}
-                  hint={objectiveMetrics.map((metric) => `${metric.metricName} · ${metric.metricUnit || '-'} · ${getMetricTypeLabel(String(metric.valueType ?? '')) || '小数'}`).join(' / ')}
-                />
-                <PerformanceSummaryCard
-                  label="完成率"
-                  value={`${Number(currentObjective?.completionRate || 0).toFixed(1)}%`}
-                  valueClassName={completionTone(currentObjective?.completionRate)}
-                  hint="权重折算后"
-                />
-                <PerformanceSummaryCard
-                  label="评分等级"
-                  value={`${currentObjective?.score?.toFixed?.(1) || '0.0'} / ${currentObjective?.grade || 'D'}`}
-                  hint={getPerfStatusLabel(String(currentObjective?.status ?? '')) || '-'}
-                />
-              </div>
-            </div>
-
-            {loading || treeLoading ? (
-              <div className="card flex items-center justify-center py-14 text-sm text-slate-500 dark:text-slate-400">
-                <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
-                加载绩效数据...
-              </div>
-            ) : !currentObjective ? (
-              <div className="card empty-state">
-                <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-900">
-                  <Target className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+        
+              {loading || treeLoading ? (
+                <div className="card flex items-center justify-center py-10 text-sm text-slate-500 dark:text-slate-400">
+                  <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                  加载绩效数据...
                 </div>
-                <h3 className="empty-state-title">暂无绩效目标</h3>
-                <p className="empty-state-description">创建周期目标后，可按部门、考核类型、指标和员工叶子任务逐层分解。</p>
-              </div>
-            ) : activeTab === 'tree' ? (
-              <TreeTable
-                rows={treeRows}
-                renderProgress={renderProgress}
-                onSelect={loadTree}
-                objectives={objectives}
-                currentId={currentObjective.id}
-                status={currentObjective.status}
-                primaryMetric={objectiveMetrics[0]}
-                isMultiMetric={isMultiMetricObjective}
-                resolveAssigneeLabel={resolveAssigneeLabel}
-                onSplit={openSplitDialog}
-                onResult={(node) => {
-                  setResultNodeId(node.id);
+              ) : !currentObjective ? (
+                <div className="card empty-state">
+                  <div className="admin-source-stat-icon mb-5 flex h-20 w-20 items-center justify-center">
+                    <Target className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                  </div>
+                  <h3 className="empty-state-title">暂无绩效目标</h3>
+                  <p className="empty-state-description">创建周期目标后，可按部门、考核类型、指标和员工叶子任务逐层分解。</p>
+                </div>
+              ) : activeTab === 'tree' ? (
+                <TreeTable
+                  rows={treeRows}
+                  renderProgress={renderProgress}
+                  onSelect={loadTree}
+                  objectives={objectives}
+                  currentId={currentObjective.id}
+                  status={currentObjective.status}
+                  primaryMetric={objectiveMetrics[0]}
+                  isMultiMetric={isMultiMetricObjective}
+                  resolveAssigneeLabel={resolveAssigneeLabel}
+                  onSplit={openSplitDialog}
+                  onResult={(node) => {
+                    setResultNodeId(node.id);
+                    setResultActualAmount(String(node.actualAmount || ''));
+                  }}
+                />
+                ) : activeTab === 'matrix' ? (
+                  <MatrixView departmentRows={departmentMatrixRows} categoryNodes={categoryNodes} isMultiMetric={isMultiMetricObjective} primaryMetric={objectiveMetrics[0]} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} />
+                ) : activeTab === 'employees' ? (
+                  <EmployeeView rows={employeeSummaryRows} renderProgress={renderProgress} />
+                ) : activeTab === 'progress' ? (
+                  <ProgressView categoryNodes={categoryNodes} leafTasks={leafTasks} status={currentObjective.status} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} onResult={(node) => {
+                    setResultNodeId(node.id);
                   setResultActualAmount(String(node.actualAmount || ''));
-                }}
-              />
-              ) : activeTab === 'matrix' ? (
-                <MatrixView departmentRows={departmentMatrixRows} categoryNodes={categoryNodes} isMultiMetric={isMultiMetricObjective} primaryMetric={objectiveMetrics[0]} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} />
-              ) : activeTab === 'employees' ? (
-                <EmployeeView rows={employeeSummaryRows} renderProgress={renderProgress} />
-              ) : activeTab === 'progress' ? (
-                <ProgressView categoryNodes={categoryNodes} leafTasks={leafTasks} status={currentObjective.status} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} onResult={(node) => {
-                  setResultNodeId(node.id);
-                setResultActualAmount(String(node.actualAmount || ''));
-              }} />
-            ) : activeTab === 'archive' ? (
-              <ArchiveView objective={currentObjective} categoryNodes={categoryNodes} employeeRows={employeeSummaryRows} renderProgress={renderProgress} />
-            ) : activeTab === 'sales' ? (
-              <CrmSalesView />
-            ) : (
-              <SalaryLinkView
-                objective={currentObjective}
-                employeeRows={employeeSummaryRows}
-                salaryEmployeeId={salaryEmployeeId}
-                setSalaryEmployeeId={setSalaryEmployeeId}
-                salaryForm={salaryForm}
-                setSalaryForm={setSalaryForm}
-                onCreate={handleCreateSalaryAdjustment}
-                pending={pendingAction === 'salary'}
-              />
-            )}
-          </div>
-        }
-      />
+                }} />
+              ) : activeTab === 'archive' ? (
+                <ArchiveView objective={currentObjective} categoryNodes={categoryNodes} employeeRows={employeeSummaryRows} renderProgress={renderProgress} />
+              ) : activeTab === 'sales' ? (
+                <CrmSalesView />
+              ) : (
+                <SalaryLinkView
+                  objective={currentObjective}
+                  employeeRows={employeeSummaryRows}
+                  salaryEmployeeId={salaryEmployeeId}
+                  setSalaryEmployeeId={setSalaryEmployeeId}
+                  salaryForm={salaryForm}
+                  setSalaryForm={setSalaryForm}
+                  onCreate={handleCreateSalaryAdjustment}
+                  pending={pendingAction === 'salary'}
+                />
+              )}
+            </section>
+          }
+        />
+      </section>
 
       {show360Panel && currentObjective ? (
         <Hr360EvaluationPanel
@@ -1602,6 +1651,7 @@ export const HrPerformancePage: React.FC = () => {
         description="经理定义考核类型、指标单位和权重；部门负责人继续把指标目标值拆到员工。"
         width="extra-wide"
         onClose={() => setCreateOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>取消</Button>
@@ -1611,12 +1661,11 @@ export const HrPerformancePage: React.FC = () => {
           </>
         }
       >
-        <div className="space-y-4">
-          <div className="rounded-xl border border-teal-100 bg-teal-50/70 p-4 dark:border-teal-900/50 dark:bg-teal-950/20">
+        <div className="admin-performance-create-overview">
             <div className="grid gap-2 md:grid-cols-5">
               {['基础信息', '考核类型', '指标口径', '权重', '部门目标'].map((item, index) => (
-                <div key={item} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-600 text-xs font-semibold text-white">{index + 1}</span>
+                <div key={item} className="admin-performance-step-chip">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-cyan-600 text-xs font-semibold text-white">{index + 1}</span>
                   <span className="truncate">{item}</span>
                 </div>
               ))}
@@ -1649,7 +1698,7 @@ export const HrPerformancePage: React.FC = () => {
             summary="例如核心商品、新品、重点项目"
             action={<Button size="sm" variant="outline" onClick={() => setCreateCategoryRows((rows) => [...rows, { key: rowKey(), categoryCode: `TYPE_${rows.length + 1}`, categoryName: `考核类型${rows.length + 1}` }])}>添加类型</Button>}
           >
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_64px] gap-2 px-1 text-xs font-medium text-slate-500 md:grid">
                 <span>类型名称</span><span>类型编码</span><span />
               </div>
@@ -1669,7 +1718,7 @@ export const HrPerformancePage: React.FC = () => {
             summary="例如销售额-元-小数，销售量-件-整数"
             action={<Button size="sm" variant="outline" onClick={() => setCreateMetricRows((rows) => [...rows, { key: rowKey(), metricCode: `METRIC_${rows.length + 1}`, metricName: `指标${rows.length + 1}`, metricUnit: '个', valueType: 'INTEGER', precision: '0', metricWeight: '10' }])}>添加指标</Button>}
           >
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <div className="hidden grid-cols-[minmax(0,1.3fr)_80px_120px_92px_92px_minmax(0,1fr)_64px] gap-2 px-1 text-xs font-medium text-slate-500 xl:grid">
                 <span>指标名称</span><span>单位</span><span>数值类型</span><span>小数位</span><span>默认权重</span><span>指标编码</span><span />
               </div>
@@ -1716,7 +1765,7 @@ export const HrPerformancePage: React.FC = () => {
             summary="选择部门后填写已明确的类型指标目标"
             action={<Button size="sm" variant="outline" onClick={() => setCreateDeptRows((rows) => [...rows, createDeptRow()])}>添加部门</Button>}
           >
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="divide-y divide-slate-200 dark:divide-slate-800">
               {createDeptRows.map((row) => (
                 <div key={row.key} className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(180px,1fr)_150px_minmax(180px,1fr)_minmax(320px,1.8fr)_64px]">
                   <DeptSelector
@@ -1756,7 +1805,6 @@ export const HrPerformancePage: React.FC = () => {
               ))}
             </div>
           </CreateSection>
-        </div>
       </BaseDialog>
 
       <BaseDialog
@@ -1765,6 +1813,7 @@ export const HrPerformancePage: React.FC = () => {
         description={splitNode?.categoryCode ? '把该类型指标目标值拆到具体员工。' : '补齐或调整部门下的考核类型指标，经理锁定值不可变更。'}
         width="wide"
         onClose={() => setSplitNodeId(null)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <>
             <div className={cn('mr-auto text-sm', isSplitBalanced ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400')}>
@@ -1775,13 +1824,12 @@ export const HrPerformancePage: React.FC = () => {
           </>
         }
       >
-        <div className="space-y-4">
-          {!splitNode?.categoryCode ? (
+        {!splitNode?.categoryCode ? (
             <div className="grid gap-3 md:grid-cols-2">
               {splitRows.map((row) => (
-                <div key={row.key} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                <div key={row.key} className="admin-performance-split-card">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white">
+                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                       {row.categoryName || row.categoryCode} / {row.metricName || row.metricCode}
                     </span>
                     {row.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-gray">部门补齐</span>}
@@ -1794,7 +1842,7 @@ export const HrPerformancePage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid gap-3">
               {splitRows.map((row) => (
                 <div key={row.key} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_160px_auto]">
                   <EmployeePicker
@@ -1815,14 +1863,13 @@ export const HrPerformancePage: React.FC = () => {
                 </div>
               ))}
               {employeeLoaded && !employeeLoading && employees.length === 0 ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+                <div className="admin-performance-warning">
                   当前租户没有 HR 员工档案，员工任务无法从列表选择。
                 </div>
               ) : null}
               <Button variant="outline" size="sm" onClick={addSplitRow}>添加员工任务</Button>
             </div>
           )}
-        </div>
       </BaseDialog>
 
       <BaseDialog
@@ -1830,6 +1877,7 @@ export const HrPerformancePage: React.FC = () => {
         title={resultNode ? `填报实绩：${nodeTitle(resultNode, null, resolveAssigneeLabel(resultNode))}` : '填报实绩'}
         width="narrow"
         onClose={() => setResultNodeId(null)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <>
             <Button variant="outline" onClick={() => setResultNodeId(null)}>取消</Button>
@@ -1881,23 +1929,23 @@ const CreateSection = ({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-    <div className="mb-4 flex items-start justify-between gap-4">
+  <section className="card admin-source-panel">
+    <div className="admin-source-panel-head">
       <div className="flex min-w-0 items-start gap-3">
-        <span className="mt-0.5 rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">{index}</span>
+        <span className="mt-0.5 rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">{index}</span>
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">{title}</div>
+          <h3>{title}</h3>
           <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{summary}</div>
         </div>
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div className="admin-source-panel-actions">{action}</div> : null}
     </div>
-    {children}
+    <div>{children}</div>
   </section>
 );
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="space-y-1.5">
+  <div className="admin-dialog-field">
     <Label>{label}</Label>
     {children}
   </div>
@@ -1932,92 +1980,94 @@ const TreeTable = ({
   const canFillResult = status === 'PLAN_APPROVED';
 
   return (
-    <div className="card overflow-hidden">
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <div className="border-b border-slate-100 p-4 dark:border-slate-800 lg:border-b-0 lg:border-r">
-          <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">目标列表</div>
-          <div className="space-y-2">
-            {objectives.map((objective) => (
-              <button
-                key={objective.id}
-                type="button"
-                className={cn('cf-side-link cf-side-link-sm', objective.id === currentId && 'cf-side-link-active')}
-                onClick={() => onSelect(objective.id)}
-              >
-                <Target className="h-4 w-4" />
-                <span className="min-w-0 flex-1 truncate text-left">{objective.objectiveName}</span>
-                <span className="text-xs opacity-70">{objective.grade || '-'}</span>
-              </button>
-            ))}
-          </div>
+    <section className="table-scroll-container admin-inner-table-surface admin-performance-tree-shell">
+      <div className="admin-performance-tree-nav border-b border-slate-200 p-4 dark:border-slate-800">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs font-semibold text-slate-400 dark:text-slate-500">目标列表</div>
+          <span className="badge badge-gray">{objectives.length} 个目标</span>
         </div>
-        <div className="min-w-0">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {objectives.map((objective) => (
+            <button
+              key={objective.id}
+              type="button"
+              className={cn('cf-side-link cf-side-link-sm min-w-[220px]', objective.id === currentId && 'cf-side-link-active')}
+              onClick={() => onSelect(objective.id)}
+            >
+              <Target className="h-4 w-4" />
+              <span className="min-w-0 flex-1 truncate text-left">{objective.objectiveName}</span>
+              <span className="text-xs opacity-70">{objective.grade || '-'}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="min-w-0">
           <div className="hidden md:block">
-            <PerformanceTableShell minWidthClassName="min-w-[1216px]">
-              <Table>
+            <PerformanceTableShell className="admin-inner-table-flush admin-performance-tree-table" minWidthClassName="min-w-[1216px]">
+              <table className="unity-data-table admin-source-table min-w-[1216px]">
                 <TreeTableColGroup />
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>节点</TableHead>
-                    <TableHead>指标</TableHead>
-                    <TableHead className="text-right">目标值</TableHead>
-                    <TableHead className="text-right">实际值</TableHead>
-                    <TableHead className="px-3 text-center">完成率</TableHead>
-                    <TableHead className="px-3 text-center">来源</TableHead>
-                    <TableActionHead className="w-48 px-4 py-3 text-right">操作</TableActionHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                <thead>
+                  <tr>
+                    <th>节点</th>
+                    <th>指标</th>
+                    <th className="text-right">目标值</th>
+                    <th className="text-right">实际值</th>
+                    <th className="px-3 text-center">完成率</th>
+                    <th className="px-3 text-center">来源</th>
+                    <th className="w-48 px-4 py-3 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {rows.map((row) => {
                     const displayMetric = treeMetricDisplay(row, primaryMetric, isMultiMetric);
                     const displayUnit = displayMetric?.metricUnit || row.metricUnit;
                     const displayPrecision = metricPrecisionOf(displayMetric || row);
                     const showActual = Boolean(row.metricCode || !isMultiMetric);
                     return (
-                      <TableRow key={row.id}>
-                        <TableCell>
+                      <tr key={row.id}>
+                        <td>
                           <PerformanceNodeCell
                             depth={row.depth}
-                            icon={row.depth === 0 ? <Layers3 className="h-4 w-4 shrink-0 text-teal-600" /> : row.assigneeType === 'EMPLOYEE' ? <Users className="h-4 w-4 shrink-0 text-slate-400" /> : <GitBranch className="h-4 w-4 shrink-0 text-cyan-600" />}
+                            icon={row.depth === 0 ? <Layers3 className="h-4 w-4 shrink-0 text-cyan-600" /> : row.assigneeType === 'EMPLOYEE' ? <Users className="h-4 w-4 shrink-0 text-slate-400" /> : <GitBranch className="h-4 w-4 shrink-0 text-cyan-600" />}
                             title={row.assigneeType === 'EMPLOYEE' ? resolveAssigneeLabel(row) : nodeTitle(row, null, resolveAssigneeLabel(row))}
                             subtitle={row.assigneeType === 'EMPLOYEE' ? nodeSubtitle(row, displayMetric) : `#${row.id}${row.categoryCode ? ` · ${nodeSubtitle(row, displayMetric)}` : ''}`}
                           />
-                        </TableCell>
-                        <TableCell className="px-3">
+                        </td>
+                        <td className="px-3">
                           <MetricLabelCell
                             name={displayMetric?.metricName}
                             unit={displayMetric?.metricUnit}
                             weight={displayMetric?.metricWeight}
                           />
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{formatValue(row.targetAmount, displayUnit, displayPrecision)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{showActual ? formatValue(row.actualAmount, displayUnit, displayPrecision) : '-'}</TableCell>
-                        <TableCell className="px-3 text-center">{renderProgress(row.completionRate)}</TableCell>
-                        <TableCell className="px-3 text-center">{row.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-gray">{row.quotaSource === 'DEPT_OWNER' ? '部门负责人' : '经理'}</span>}</TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="text-right tabular-nums">{formatValue(row.targetAmount, displayUnit, displayPrecision)}</td>
+                        <td className="text-right tabular-nums">{showActual ? formatValue(row.actualAmount, displayUnit, displayPrecision) : '-'}</td>
+                        <td className="px-3 text-center">{renderProgress(row.completionRate)}</td>
+                        <td className="px-3 text-center">{row.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-gray">{row.quotaSource === 'DEPT_OWNER' ? '部门负责人' : '经理'}</span>}</td>
+                        <td className="text-right">
                           <div className="flex justify-end gap-2">
                             {row.assigneeType === 'DEPT' && canEditPlan ? <Button size="sm" variant="outline" className="min-w-[72px] justify-center" onClick={() => onSplit(row)}>分解</Button> : null}
                             {row.assigneeType === 'EMPLOYEE' && canFillResult ? <Button size="sm" variant="soft" className="min-w-[72px] justify-center" onClick={() => onResult(row)}>填报</Button> : null}
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </PerformanceTableShell>
           </div>
-          <div className="space-y-3 p-4 md:hidden">
+          <div className="grid gap-3 p-4 md:hidden">
             {rows.map((row) => {
               const displayMetric = treeMetricDisplay(row, primaryMetric, isMultiMetric);
               const displayUnit = displayMetric?.metricUnit || row.metricUnit;
               const displayPrecision = metricPrecisionOf(displayMetric || row);
               const actualText = row.metricCode || !isMultiMetric ? formatValue(row.actualAmount, displayUnit, displayPrecision) : '-';
               return (
-                <div key={row.id} className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div key={row.id} className="admin-performance-mobile-card">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-white">{nodeTitle(row, displayMetric, resolveAssigneeLabel(row))}</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{nodeTitle(row, displayMetric, resolveAssigneeLabel(row))}</div>
                       <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">目标 {formatValue(row.targetAmount, displayUnit, displayPrecision)} / 实际 {actualText}</div>
                     </div>
                     {row.locked ? <span className="badge badge-warning">锁定</span> : null}
@@ -2031,9 +2081,8 @@ const TreeTable = ({
               );
             })}
           </div>
-        </div>
       </div>
-    </div>
+    </section>
   );
 };
 
@@ -2052,73 +2101,73 @@ const MatrixView = ({
   renderProgress: (rate?: number) => React.ReactNode;
   resolveAssigneeLabel: AssigneeLabelResolver;
 }) => (
-  <div className="space-y-4">
+  <div className="admin-source-content-grid">
     <div className="card">
       <div className="card-header">
-        <div className="text-sm font-semibold text-slate-900 dark:text-white">部门目标值校验</div>
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">部门目标值校验</div>
         <div className="text-xs text-slate-500 dark:text-slate-400">单指标按部门总目标值校验，多指标按每个类型指标的员工叶子合计校验。</div>
       </div>
       <PerformanceTableShell minWidthClassName="min-w-[940px]">
-        <Table>
+        <table className="unity-data-table admin-source-table min-w-[940px]">
           <MatrixCheckColGroup />
-          <TableHeader>
-            <TableRow>
-              <TableHead>部门</TableHead>
-              <TableHead className="text-right">部门总目标值</TableHead>
-              <TableHead className="text-right">类型指标合计</TableHead>
-              <TableHead className="text-right">剩余目标值</TableHead>
-              <TableHead className="px-3 text-center">校验</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+          <thead>
+            <tr>
+              <th>部门</th>
+              <th className="text-right">部门总目标值</th>
+              <th className="text-right">类型指标合计</th>
+              <th className="text-right">剩余目标值</th>
+              <th className="px-3 text-center">校验</th>
+            </tr>
+          </thead>
+          <tbody>
             {departmentRows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-medium">{row.assigneeName}</TableCell>
-                <TableCell className="text-right tabular-nums">{isMultiMetric ? '-' : formatValue(row.targetAmount, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</TableCell>
-                <TableCell className="text-right tabular-nums">{isMultiMetric ? `${row.itemCount}项指标` : formatValue(row.categoryTotal, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</TableCell>
-                <TableCell className="text-right tabular-nums">{isMultiMetric ? '-' : formatValue(row.remainAmount, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</TableCell>
-                <TableCell className="px-3 text-center">{isMultiMetric ? <span className="badge badge-gray">按指标校验</span> : toPrecisionUnits(row.remainAmount, metricPrecisionOf(primaryMetric)) === 0 ? <span className="badge badge-success">已平衡</span> : <span className="badge badge-warning">待补齐</span>}</TableCell>
-              </TableRow>
+              <tr key={row.id}>
+                <td className="font-medium">{row.assigneeName}</td>
+                <td className="text-right tabular-nums">{isMultiMetric ? '-' : formatValue(row.targetAmount, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</td>
+                <td className="text-right tabular-nums">{isMultiMetric ? `${row.itemCount}项指标` : formatValue(row.categoryTotal, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</td>
+                <td className="text-right tabular-nums">{isMultiMetric ? '-' : formatValue(row.remainAmount, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</td>
+                <td className="px-3 text-center">{isMultiMetric ? <span className="badge badge-gray">按指标校验</span> : toPrecisionUnits(row.remainAmount, metricPrecisionOf(primaryMetric)) === 0 ? <span className="badge badge-success">已平衡</span> : <span className="badge badge-warning">待补齐</span>}</td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </PerformanceTableShell>
     </div>
     <div className="card">
       <div className="card-header">
-        <div className="text-sm font-semibold text-slate-900 dark:text-white">类型指标矩阵</div>
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">类型指标矩阵</div>
         <div className="text-xs text-slate-500 dark:text-slate-400">经理锁定与部门补齐分开展示，每个指标按自己的单位计算完成率。</div>
       </div>
       <PerformanceTableShell minWidthClassName="min-w-[1160px]">
-        <Table>
+        <table className="unity-data-table admin-source-table min-w-[1160px]">
           <MetricMatrixColGroup />
-          <TableHeader>
-            <TableRow>
-              <TableHead>部门</TableHead>
-              <TableHead>考核类型</TableHead>
-              <TableHead>指标</TableHead>
-              <TableHead className="text-right">目标值</TableHead>
-              <TableHead className="text-right">实际值</TableHead>
-              <TableHead className="px-3 text-center">完成率</TableHead>
-              <TableHead className="px-3 text-center">状态</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+          <thead>
+            <tr>
+              <th>部门</th>
+              <th>考核类型</th>
+              <th>指标</th>
+              <th className="text-right">目标值</th>
+              <th className="text-right">实际值</th>
+              <th className="px-3 text-center">完成率</th>
+              <th className="px-3 text-center">状态</th>
+            </tr>
+          </thead>
+          <tbody>
             {categoryNodes.map((node) => (
-              <TableRow key={node.id}>
-                <TableCell className="font-medium">{resolveAssigneeLabel(node)}</TableCell>
-                <TableCell>{node.categoryName || node.categoryCode || '-'}</TableCell>
-                <TableCell className="px-3">
+              <tr key={node.id}>
+                <td className="font-medium">{resolveAssigneeLabel(node)}</td>
+                <td>{node.categoryName || node.categoryCode || '-'}</td>
+                <td className="px-3">
                   <MetricLabelCell name={node.metricName || node.metricCode} unit={node.metricUnit} weight={node.metricWeight} />
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                <TableCell className="px-3 text-center">{renderProgress(node.completionRate)}</TableCell>
-                <TableCell className="px-3 text-center">{node.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-primary">部门补齐</span>}</TableCell>
-              </TableRow>
+                </td>
+                <td className="text-right tabular-nums">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</td>
+                <td className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</td>
+                <td className="px-3 text-center">{renderProgress(node.completionRate)}</td>
+                <td className="px-3 text-center">{node.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-primary">部门补齐</span>}</td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </PerformanceTableShell>
     </div>
   </div>
@@ -2126,29 +2175,29 @@ const MatrixView = ({
 
 const EmployeeView = ({ rows, renderProgress }: { rows: EmployeeSummaryRow[]; renderProgress: (rate?: number) => React.ReactNode }) => (
   <PerformanceTableShell minWidthClassName="min-w-[1080px]">
-    <Table>
+    <table className="unity-data-table admin-source-table min-w-[1080px]">
       <EmployeeSummaryColGroup />
-      <TableHeader>
-        <TableRow>
-          <TableHead>员工</TableHead>
-          <TableHead>覆盖类型</TableHead>
-          <TableHead>指标目标</TableHead>
-          <TableHead className="px-3 text-center">权重后完成率</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+      <thead>
+        <tr>
+          <th>员工</th>
+          <th>覆盖类型</th>
+          <th>指标目标</th>
+          <th className="px-3 text-center">权重后完成率</th>
+        </tr>
+      </thead>
+      <tbody>
         {rows.map((row) => (
-          <TableRow key={row.employeeId}>
-            <TableCell className="font-medium">{row.employeeName}</TableCell>
-            <TableCell>{row.categories || '-'}</TableCell>
-            <TableCell>
+          <tr key={row.employeeId}>
+            <td className="font-medium">{row.employeeName}</td>
+            <td>{row.categories || '-'}</td>
+            <td>
               <div className="line-clamp-2 text-sm text-slate-700 dark:text-slate-200">{row.metricSummary || '-'}</div>
-            </TableCell>
-            <TableCell className="px-3 text-center">{renderProgress(row.completionRate)}</TableCell>
-          </TableRow>
+            </td>
+            <td className="px-3 text-center">{renderProgress(row.completionRate)}</td>
+          </tr>
         ))}
-      </TableBody>
-    </Table>
+      </tbody>
+    </table>
   </PerformanceTableShell>
 );
 
@@ -2170,79 +2219,79 @@ const ProgressView = ({
   const canFillResult = status === 'PLAN_APPROVED';
 
   return (
-  <div className="space-y-4">
+  <div className="admin-source-content-grid">
       <div className="card">
         <div className="card-header">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">部门类型指标完成率</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">部门类型指标完成率</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">每个类型指标按自己的单位统计，部门总分由指标权重折算。</div>
         </div>
         <PerformanceTableShell minWidthClassName="min-w-[1120px]">
-          <Table>
+          <table className="unity-data-table admin-source-table min-w-[1120px]">
             <ProgressDeptColGroup />
-            <TableHeader>
-              <TableRow>
-                <TableHead>部门</TableHead>
-                <TableHead>考核类型</TableHead>
-                <TableHead>指标</TableHead>
-                <TableHead className="text-right">目标值</TableHead>
-                <TableHead className="text-right">实际值</TableHead>
-                <TableHead className="px-3 text-center">完成率</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+            <thead>
+              <tr>
+                <th>部门</th>
+                <th>考核类型</th>
+                <th>指标</th>
+                <th className="text-right">目标值</th>
+                <th className="text-right">实际值</th>
+                <th className="px-3 text-center">完成率</th>
+              </tr>
+            </thead>
+            <tbody>
               {categoryNodes.map((node) => (
-                <TableRow key={node.id}>
-                  <TableCell className="font-medium">{resolveAssigneeLabel(node)}</TableCell>
-                  <TableCell>{node.categoryName || node.categoryCode || '-'}</TableCell>
-                  <TableCell className="px-3">
+                <tr key={node.id}>
+                  <td className="font-medium">{resolveAssigneeLabel(node)}</td>
+                  <td>{node.categoryName || node.categoryCode || '-'}</td>
+                  <td className="px-3">
                     <MetricLabelCell name={node.metricName || node.metricCode} unit={node.metricUnit} weight={node.metricWeight} />
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                  <TableCell className="px-3 text-center">{renderProgress(node.completionRate)}</TableCell>
-                </TableRow>
+                  </td>
+                  <td className="text-right tabular-nums">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</td>
+                  <td className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</td>
+                  <td className="px-3 text-center">{renderProgress(node.completionRate)}</td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </PerformanceTableShell>
       </div>
       <div className="card">
         <div className="card-header">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">员工个人完成率</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工个人完成率</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">叶子任务实绩汇总到个人、类型指标和部门。</div>
         </div>
         <PerformanceTableShell minWidthClassName="min-w-[1180px]">
-          <Table>
+          <table className="unity-data-table admin-source-table min-w-[1180px]">
             <ProgressEmployeeColGroup />
-            <TableHeader>
-              <TableRow>
-                <TableHead>员工叶子任务</TableHead>
-                <TableHead>类型</TableHead>
-                <TableHead>指标</TableHead>
-                <TableHead className="text-right">目标值</TableHead>
-                <TableHead className="text-right">实际值</TableHead>
-                <TableHead className="px-3 text-center">完成率</TableHead>
-                <TableActionHead className="w-48 px-4 py-3 text-right">操作</TableActionHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+            <thead>
+              <tr>
+                <th>员工叶子任务</th>
+                <th>类型</th>
+                <th>指标</th>
+                <th className="text-right">目标值</th>
+                <th className="text-right">实际值</th>
+                <th className="px-3 text-center">完成率</th>
+                <th className="w-48 px-4 py-3 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
               {leafTasks.map((node) => (
-                <TableRow key={node.id}>
-                  <TableCell className="font-medium">{resolveAssigneeLabel(node)}</TableCell>
-                  <TableCell>{node.categoryName || node.categoryCode || '-'}</TableCell>
-                  <TableCell className="px-3">
+                <tr key={node.id}>
+                  <td className="font-medium">{resolveAssigneeLabel(node)}</td>
+                  <td>{node.categoryName || node.categoryCode || '-'}</td>
+                  <td className="px-3">
                     <MetricLabelCell name={node.metricName || node.metricCode} unit={node.metricUnit} weight={node.metricWeight} />
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                  <TableCell className="px-3 text-center">{renderProgress(node.completionRate)}</TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td className="text-right tabular-nums">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</td>
+                  <td className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</td>
+                  <td className="px-3 text-center">{renderProgress(node.completionRate)}</td>
+                  <td className="text-right">
                     {canFillResult ? <Button size="sm" variant="soft" className="min-w-[96px] justify-center" onClick={() => onResult(node)}>填报实绩</Button> : <span className="text-xs text-slate-400">待执行</span>}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </PerformanceTableShell>
       </div>
     </div>
@@ -2250,21 +2299,21 @@ const ProgressView = ({
 };
 
 const ArchiveView = ({ objective, categoryNodes, employeeRows, renderProgress }: { objective: PerformanceObjective; categoryNodes: PerformanceAssignment[]; employeeRows: EmployeeSummaryRow[]; renderProgress: (rate?: number) => React.ReactNode }) => (
-  <div className="space-y-6">
+  <div className="admin-source-content-grid hr-performance-archive-grid">
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <div className="card p-4">
         <div className="text-sm text-slate-500 dark:text-slate-400">周期总分</div>
-        <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{Number(objective.score || 0).toFixed(1)}</div>
+        <div className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">{Number(objective.score || 0).toFixed(1)}</div>
         <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">等级 {objective.grade || '-'}</div>
       </div>
       <div className="card p-4">
         <div className="text-sm text-slate-500 dark:text-slate-400">类型指标数</div>
-        <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{categoryNodes.length}</div>
+        <div className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">{categoryNodes.length}</div>
         <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">部门类型指标节点</div>
       </div>
       <div className="card p-4">
         <div className="text-sm text-slate-500 dark:text-slate-400">员工叶子数</div>
-        <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{objective.leafTaskCount || 0}</div>
+        <div className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">{objective.leafTaskCount || 0}</div>
         <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">个人绩效口径</div>
       </div>
       <PerformanceCompletionSummaryCard
@@ -2274,29 +2323,29 @@ const ArchiveView = ({ objective, categoryNodes, employeeRows, renderProgress }:
       />
     </div>
     <PerformanceTableShell minWidthClassName="min-w-[1080px]">
-      <Table>
+      <table className="unity-data-table admin-source-table min-w-[1080px]">
         <EmployeeSummaryColGroup />
-        <TableHeader>
-          <TableRow>
-            <TableHead>员工</TableHead>
-            <TableHead>覆盖类型</TableHead>
-            <TableHead>指标目标</TableHead>
-            <TableHead className="px-3 text-center">权重后完成率</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+        <thead>
+          <tr>
+            <th>员工</th>
+            <th>覆盖类型</th>
+            <th>指标目标</th>
+            <th className="px-3 text-center">权重后完成率</th>
+          </tr>
+        </thead>
+        <tbody>
           {employeeRows.map((row) => (
-            <TableRow key={row.employeeId}>
-              <TableCell className="font-medium">{row.employeeName}</TableCell>
-              <TableCell>{row.categories || '-'}</TableCell>
-              <TableCell>
+            <tr key={row.employeeId}>
+              <td className="font-medium">{row.employeeName}</td>
+              <td>{row.categories || '-'}</td>
+              <td>
                 <div className="line-clamp-2 text-sm text-slate-700 dark:text-slate-200">{row.metricSummary || '-'}</div>
-              </TableCell>
-              <TableCell className="px-3 text-center">{renderProgress(row.completionRate)}</TableCell>
-            </TableRow>
+              </td>
+              <td className="px-3 text-center">{renderProgress(row.completionRate)}</td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
     </PerformanceTableShell>
   </div>
 );
@@ -2325,12 +2374,12 @@ const SalaryLinkView = ({
       <div className="mb-4 flex items-center gap-3">
         <div className="stat-icon stat-icon-primary"><BarChart3 className="h-6 w-6" /></div>
         <div>
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">绩效调薪联动</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">绩效调薪联动</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">归档后生成调薪申请，后续继续走现有调薪审批。</div>
         </div>
       </div>
       {objective.status !== 'COMPLETED' ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="admin-performance-warning">
           当前目标尚未归档，不能生成绩效调薪。
         </div>
       ) : (
@@ -2460,16 +2509,23 @@ const CrmSalesView: React.FC = () => {
         {error ? <span className="text-sm text-red-600 dark:text-red-400">{error}</span> : null}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="admin-source-stat-grid">
         {cards.map((card) => (
-          <StatCard
+          <div
             key={card.title}
-            title={card.title}
-            value={card.value}
-            icon={card.icon}
-            iconVariant={card.iconVariant}
-            meta={card.meta}
-          />
+            className={cn(
+              'card admin-source-stat',
+              card.iconVariant === 'success' && 'admin-source-tone-green',
+              card.iconVariant === 'primary' && 'admin-source-tone-blue',
+            )}
+          >
+            <span className="admin-source-stat-icon">{card.icon}</span>
+            <div className="min-w-0">
+              <p>{card.title}</p>
+              <strong>{card.value}</strong>
+              <span>{card.meta}</span>
+            </div>
+          </div>
         ))}
       </div>
 
@@ -2489,49 +2545,49 @@ type CrmSalesRankTableProps = {
 };
 
 const CrmSalesRankTable: React.FC<CrmSalesRankTableProps> = ({ title, subtitle, rows, dimensionLabel }) => (
-  <div className="card overflow-hidden">
-    <div className="flex items-center justify-between px-4 py-3">
+  <InnerTableSurface>
+    <div className="admin-source-section-head flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
       <div>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-        <div className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>
+        <strong>{title}</strong>
+        <span>{subtitle}</span>
       </div>
       <Users className="h-5 w-5 text-slate-400" />
     </div>
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12">#</TableHead>
-          <TableHead>{dimensionLabel}</TableHead>
-          <TableHead className="text-right">赢单</TableHead>
-          <TableHead className="text-right">合同金额</TableHead>
-          <TableHead className="text-right">已到账</TableHead>
-          <TableHead className="text-right">未到账</TableHead>
-          <TableHead className="text-right">跟进</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <table className="unity-data-table admin-source-table min-w-[860px]">
+      <thead>
+        <tr>
+          <th className="w-12">#</th>
+          <th>{dimensionLabel}</th>
+          <th className="text-right">赢单</th>
+          <th className="text-right">合同金额</th>
+          <th className="text-right">已到账</th>
+          <th className="text-right">未到账</th>
+          <th className="text-right">跟进</th>
+        </tr>
+      </thead>
+      <tbody>
         {rows.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={7} className="py-8 text-center text-sm text-slate-500">
+          <tr>
+            <td colSpan={7} className="py-6 text-center text-sm text-slate-500">
               暂无数据
-            </TableCell>
-          </TableRow>
+            </td>
+          </tr>
         ) : (
           rows.map((row, index) => (
-            <TableRow key={`${row.dimension}-${row.targetId}`}>
-              <TableCell className="tabular-nums text-slate-500">{index + 1}</TableCell>
-              <TableCell className="font-medium text-slate-800 dark:text-slate-200">
+            <tr key={`${row.dimension}-${row.targetId}`}>
+              <td className="tabular-nums text-slate-500">{index + 1}</td>
+              <td className="font-medium text-slate-800 dark:text-slate-200">
                 {row.targetName || `#${row.targetId}`}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">{row.wonOpportunityCount}</TableCell>
-              <TableCell className="text-right tabular-nums">{currencyFormatter.format(Number(row.contractAmount || 0))}</TableCell>
-              <TableCell className="text-right tabular-nums">{currencyFormatter.format(Number(row.receivedAmount || 0))}</TableCell>
-              <TableCell className="text-right tabular-nums text-amber-600 dark:text-amber-400">{currencyFormatter.format(Number(row.outstandingAmount || 0))}</TableCell>
-              <TableCell className="text-right tabular-nums">{row.followUpCount}</TableCell>
-            </TableRow>
+              </td>
+              <td className="text-right tabular-nums">{row.wonOpportunityCount}</td>
+              <td className="text-right tabular-nums">{currencyFormatter.format(Number(row.contractAmount || 0))}</td>
+              <td className="text-right tabular-nums">{currencyFormatter.format(Number(row.receivedAmount || 0))}</td>
+              <td className="text-right tabular-nums text-amber-600 dark:text-amber-400">{currencyFormatter.format(Number(row.outstandingAmount || 0))}</td>
+              <td className="text-right tabular-nums">{row.followUpCount}</td>
+            </tr>
           ))
         )}
-      </TableBody>
-    </Table>
-  </div>
+      </tbody>
+    </table>
+  </InnerTableSurface>
 );

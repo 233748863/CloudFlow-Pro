@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCcw } from 'lucide-react';
+import { Eye, FileUp, Pencil, Plus, RefreshCcw, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -13,13 +13,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableHead,
-  TableHeader,
-  TableRowActions,
   Textarea,
 } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   closeDispute,
@@ -39,6 +34,7 @@ import { formatDateTimeValue, formatMoneyValue, hasWorkflowStatus, normalizeRows
 import { StageTimeline } from '../components/StageTimeline';
 import { DictLabel } from '@/components/common/DictLabel';
 import { useDict } from '@/hooks/useDict';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const statusFlow = ['REGISTERED', 'MEDIATING', 'MEDIATED', 'ARBITRATING', 'AWARDED', 'EXECUTED', 'CLOSED'];
 
@@ -167,93 +163,121 @@ export const HrLaborDisputePage: React.FC = () => {
     }
   };
 
-  const filters = (
-    <FilterBar
-      filters={[
-        <div key="status" className="w-full sm:w-40">
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">LABOR DISPUTES</p>
+          <h2>劳动争议</h2>
+          <span>登记劳动争议、发起处理流程、维护证据材料和关闭记录</span>
+        </div>
+      </header>
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <div className="admin-source-stat-icon"><FileUp size={18} /></div>
+          <div><p>争议总数</p><strong>{rows.length}</strong><span>当前筛选结果</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <div className="admin-source-stat-icon"><Send size={18} /></div>
+          <div><p>可发起处理</p><strong>{rows.filter((row) => hasWorkflowStatus(row.status, 'REGISTERED', 'MEDIATED')).length}</strong><span>登记或调解完成</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <div className="admin-source-stat-icon"><XCircle size={18} /></div>
+          <div><p>未关闭</p><strong>{rows.filter((row) => !hasWorkflowStatus(row.status, 'CLOSED')).length}</strong><span>处理中争议</span></div>
+        </article>
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="grid items-end gap-3 lg:grid-cols-[minmax(16rem,28rem)_auto]">
+        <label className="min-w-0">
+          <span className="input-label">状态</span>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部状态</SelectItem>
               {statusFlow.map((s) => <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>,
-      ]}
-      stats={[{ label: '', value: `共 ${rows.length} 条` }]}
-      actions={[
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-        <Button key="add" size="sm" onClick={openCreate}>
-          <Plus className="mr-1.5 h-4 w-4" />登记争议
-        </Button>,
-      ]}
-    />
+        </label>
+        <div className="admin-users-toolbar-actions justify-end">
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="mr-1.5 h-4 w-4" />登记争议
+          </Button>
+        </div>
+      </div>
+    </section>
   );
 
-  const table = (
-    <TableSurfaceCard fill>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[920px]">
-          <TableHeader className="sticky top-0 z-10">
-            <tr>
-              <TableHead>编号</TableHead>
-              <TableHead>申请人</TableHead>
-              <TableHead>争议类型</TableHead>
-              <TableHead>诉求金额</TableHead>
-              <TableHead>当前阶段</TableHead>
-              <TableHead>登记时间</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无争议</td></tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 font-mono text-xs">
-                    <button type="button" onClick={() => void openDetail(row)} className="text-sky-600 hover:underline">
-                      {row.disputeNo}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-xs">
-                    {row.applicantEmployeeId ? `员工 #${row.applicantEmployeeId}` : `${row.applicantExternalName ?? '-'} ${row.applicantExternalPhone ?? ''}`}
-                  </td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_labor_dispute_type" value={row.disputeType} fallback="-" /></td>
-                  <td className="px-4 py-3 text-sm">{formatMoneyValue(row.claimAmount)}</td>
-                  <td className="px-4 py-3"><StageTimeline steps={statusFlow} dictType="hr_labor_dispute_status" current={row.status} tone="sky" /></td>
-                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.openedAt ?? row.createTime)}</td>
-                  <td className="px-4 py-3">
-                    <TableRowActions
-                      actions={[
-                        { key: 'submit', semantic: 'process', label: '发起处理', onClick: () => void handleSubmit(row), hidden: !hasWorkflowStatus(row.status, 'REGISTERED', 'MEDIATED') },
-                        { key: 'edit', semantic: 'edit', label: '编辑', onClick: () => openEdit(row) },
-                        { key: 'evidence', semantic: 'bind', label: '上传证据', onClick: () => setEvidenceOpen(row) },
-                        { key: 'close', semantic: 'void', label: '关闭', onClick: () => { setCloseTarget(row); setCloseReason(''); }, hidden: hasWorkflowStatus(row.status, 'CLOSED') },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
+  const pageTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[920px]">
+        <thead>
+          <tr>
+            <th>编号</th>
+            <th>申请人</th>
+            <th>争议类型</th>
+            <th>诉求金额</th>
+            <th>当前阶段</th>
+            <th>登记时间</th>
+            <th className="text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <tr><td colSpan={7} className="admin-settings-empty">加载中...</td></tr>
+          ) : rows.length === 0 ? (
+            <tr><td colSpan={7} className="admin-settings-empty">暂无争议</td></tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={row.id}>
+                <td className="font-mono text-xs">
+                  <button type="button" onClick={() => void openDetail(row)} className="text-sky-600 hover:underline">
+                    {row.disputeNo}
+                  </button>
+                </td>
+                <td>
+                  {row.applicantEmployeeId ? `员工 #${row.applicantEmployeeId}` : `${row.applicantExternalName ?? '-'} ${row.applicantExternalPhone ?? ''}`}
+                </td>
+                <td><DictLabel dictType="hr_labor_dispute_type" value={row.disputeType} fallback="-" /></td>
+                <td>{formatMoneyValue(row.claimAmount)}</td>
+                <td><StageTimeline steps={statusFlow} dictType="hr_labor_dispute_status" current={row.status} tone="sky" /></td>
+                <td>{formatDateTimeValue(row.openedAt ?? row.createTime)}</td>
+                <td>
+                  <div className="admin-users-row-actions">
+                    <button type="button" title="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
+                    {hasWorkflowStatus(row.status, 'REGISTERED', 'MEDIATED') ? (
+                      <button type="button" title="发起处理" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
+                    ) : null}
+                    <button type="button" title="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
+                    <button type="button" title="上传证据" onClick={() => setEvidenceOpen(row)}><FileUp size={15} /></button>
+                    {!hasWorkflowStatus(row.status, 'CLOSED') ? (
+                      <button type="button" className="danger" title="关闭" onClick={() => { setCloseTarget(row); setCloseReason(''); }}><XCircle size={15} /></button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </InnerTableSurface>
   );
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} />
+    <section className="admin-source-page">
+      <TablePageLayout actions={pageActions} filters={pageFilters} table={pageTable} />
 
       <BaseDialog
         open={open}
         title={editing ? '编辑争议' : '登记争议'}
         onClose={() => setOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
@@ -261,21 +285,21 @@ export const HrLaborDisputePage: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-3">
+        <>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="admin-dialog-field">
               <Label>申请人员工 (可选)</Label>
               <EmployeeSelector single allowClear value={form.applicantEmployeeId ?? null} onChange={(id) => setForm({ ...form, applicantEmployeeId: id ?? undefined })} placeholder="选择内部员工，外部申请人留空" />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>外部申请人姓名</Label>
               <Input value={form.applicantExternalName ?? ''} onChange={(e) => setForm({ ...form, applicantExternalName: e.target.value })} />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>外部联系电话</Label>
               <Input value={form.applicantExternalPhone ?? ''} onChange={(e) => setForm({ ...form, applicantExternalPhone: e.target.value })} />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>争议类型</Label>
               <Select value={String(form.disputeType ?? 'SALARY')} onValueChange={(v) => setForm({ ...form, disputeType: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -284,16 +308,16 @@ export const HrLaborDisputePage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2">
+            <div className="admin-dialog-field col-span-2">
               <Label>诉求金额</Label>
               <Input type="number" value={String(form.claimAmount ?? '')} onChange={(e) => setForm({ ...form, claimAmount: e.target.value ? Number(e.target.value) : undefined })} />
             </div>
           </div>
-          <div>
+          <div className="admin-dialog-field">
             <Label>诉求描述</Label>
             <Textarea rows={4} value={form.claimDescription ?? ''} onChange={(e) => setForm({ ...form, claimDescription: e.target.value })} />
           </div>
-        </div>
+        </>
       </BaseDialog>
 
       <ConfirmDialog
@@ -317,46 +341,47 @@ export const HrLaborDisputePage: React.FC = () => {
           title={`争议详情 · ${detail.disputeNo}`}
           width="wide"
           onClose={() => { setDetail(null); setEvidence([]); }}
+          bodyClassName="admin-dialog-stack"
           footer={<div className="flex justify-end"><Button variant="outline" onClick={() => { setDetail(null); setEvidence([]); }}>关闭</Button></div>}
         >
-          <div className="space-y-4 text-sm">
+          <div className="admin-source-content-grid text-sm">
             <StageTimeline steps={statusFlow} dictType="hr_labor_dispute_status" current={detail.status} tone="sky" />
             <div className="grid grid-cols-2 gap-3">
-              <div><span className="text-slate-500">申请人:</span> {detail.applicantEmployeeId ? `员工 #${detail.applicantEmployeeId}` : `${detail.applicantExternalName ?? '-'} ${detail.applicantExternalPhone ?? ''}`}</div>
-              <div><span className="text-slate-500">类型:</span> <DictLabel dictType="hr_labor_dispute_type" value={detail.disputeType} fallback="-" /></div>
-              <div><span className="text-slate-500">诉求金额:</span> {formatMoneyValue(detail.claimAmount)}</div>
-              <div><span className="text-slate-500">登记时间:</span> {formatDateTimeValue(detail.openedAt ?? detail.createTime)}</div>
-              <div><span className="text-slate-500">关闭时间:</span> {formatDateTimeValue(detail.closedAt)}</div>
-              <div><span className="text-slate-500">工作流:</span> {detail.processInstanceId ?? '-'}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">申请人:</span> {detail.applicantEmployeeId ? `员工 #${detail.applicantEmployeeId}` : `${detail.applicantExternalName ?? '-'} ${detail.applicantExternalPhone ?? ''}`}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">类型:</span> <DictLabel dictType="hr_labor_dispute_type" value={detail.disputeType} fallback="-" /></div>
+              <div className="admin-dialog-field"><span className="text-slate-500">诉求金额:</span> {formatMoneyValue(detail.claimAmount)}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">登记时间:</span> {formatDateTimeValue(detail.openedAt ?? detail.createTime)}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">关闭时间:</span> {formatDateTimeValue(detail.closedAt)}</div>
+              <div className="admin-dialog-field"><span className="text-slate-500">工作流:</span> {detail.processInstanceId ?? '-'}</div>
             </div>
             {detail.claimDescription && (
-              <div>
+              <div className="admin-dialog-field">
                 <div className="text-slate-500">诉求描述:</div>
-                <div className="whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs">{detail.claimDescription}</div>
+                <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2 text-xs whitespace-pre-wrap dark:border-slate-800 dark:bg-slate-950">{detail.claimDescription}</div>
               </div>
             )}
             <div>
               <div className="mb-2 font-semibold">证据材料 · 共 {evidence.length} 份</div>
-              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                <table className="w-full min-w-[480px]">
-                  <TableHeader>
+              <div className="admin-horizontal-scroll">
+                <table className="unity-data-table admin-source-table min-w-[480px]">
+                  <thead>
                     <tr>
-                      <TableHead>类型</TableHead>
-                      <TableHead>附件 ID</TableHead>
-                      <TableHead>上传时间</TableHead>
-                      <TableHead>备注</TableHead>
+                      <th>类型</th>
+                      <th>附件 ID</th>
+                      <th>上传时间</th>
+                      <th>备注</th>
                     </tr>
-                  </TableHeader>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  </thead>
+                  <tbody>
                     {evidence.length === 0 ? (
-                      <tr><td colSpan={4} className="py-3 text-center text-xs text-slate-400">暂无证据</td></tr>
+                      <tr><td colSpan={4} className="admin-settings-empty">暂无证据</td></tr>
                     ) : (
                       evidence.map((ev) => (
                         <tr key={ev.id}>
-                          <td className="px-4 py-2 text-sm"><DictLabel dictType="hr_evidence_type" value={ev.evidenceType} fallback="-" /></td>
-                          <td className="px-4 py-2 font-mono text-xs">{ev.fileId ?? '-'}</td>
-                          <td className="px-4 py-2 text-xs">{formatDateTimeValue(ev.uploadedAt)}</td>
-                          <td className="px-4 py-2 max-w-[16rem] truncate text-xs">{ev.remark ?? '-'}</td>
+                          <td><DictLabel dictType="hr_evidence_type" value={ev.evidenceType} fallback="-" /></td>
+                          <td className="font-mono text-xs">{ev.fileId ?? '-'}</td>
+                          <td>{formatDateTimeValue(ev.uploadedAt)}</td>
+                          <td className="max-w-[16rem] truncate text-xs">{ev.remark ?? '-'}</td>
                         </tr>
                       ))
                     )}
@@ -373,6 +398,7 @@ export const HrLaborDisputePage: React.FC = () => {
           open={Boolean(evidenceOpen)}
           title={`上传证据 · ${evidenceOpen.disputeNo}`}
           onClose={() => setEvidenceOpen(null)}
+          bodyClassName="admin-dialog-stack"
           footer={
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEvidenceOpen(null)}>取消</Button>
@@ -380,8 +406,8 @@ export const HrLaborDisputePage: React.FC = () => {
             </div>
           }
         >
-          <div className="space-y-3">
-            <div>
+          <>
+            <div className="admin-dialog-field">
               <Label>证据类型</Label>
               <Select value={String(evidenceForm.evidenceType ?? 'CONTRACT')} onValueChange={(v) => setEvidenceForm({ ...evidenceForm, evidenceType: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -390,18 +416,18 @@ export const HrLaborDisputePage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>附件 ID(cloudflow_common_file)</Label>
               <Input type="number" value={String(evidenceForm.fileId ?? '')} onChange={(e) => setEvidenceForm({ ...evidenceForm, fileId: e.target.value ? Number(e.target.value) : undefined })} />
             </div>
-            <div>
+            <div className="admin-dialog-field">
               <Label>备注</Label>
               <Textarea rows={2} value={evidenceForm.remark ?? ''} onChange={(e) => setEvidenceForm({ ...evidenceForm, remark: e.target.value })} />
             </div>
-          </div>
+          </>
         </BaseDialog>
       )}
-    </div>
+    </section>
   );
 };
 

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { LoaderCircle, RefreshCcw, RotateCcw } from 'lucide-react';
+import { Ban, Check, Eye, LoaderCircle, RefreshCcw, RotateCcw, Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -14,13 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   cancelOrder,
@@ -34,6 +28,7 @@ import {
 import { formatDateTimeValue, hasWorkflowStatus, normalizeRows } from '../hrShared';
 import { DictLabel } from '@/components/common/DictLabel';
 import { useDict } from '@/hooks/useDict';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 export const HrMallOrderPage: React.FC = () => {
   const [rows, setRows] = useState<HrMallOrder[]>([]);
@@ -120,113 +115,158 @@ export const HrMallOrderPage: React.FC = () => {
 
   const hasFilters = Boolean(query.orderNo || query.status || query.scope !== 'all');
 
-  const filters = (
-    <FilterBar
-      search={{
-        value: query.orderNo,
-        onChange: (value) => setQuery((q) => ({ ...q, orderNo: value })),
-        onSubmit: () => setQuery((q) => ({ ...q, pageNum: 1 })),
-        placeholder: '搜索订单号',
-        widthClassName: 'w-full sm:w-[200px]',
-      }}
-      filters={[
-        <div key="scope" className="w-full sm:w-32">
+  const pendingCount = rows.filter((row) => hasWorkflowStatus(row.status, 'PENDING', 'APPROVED')).length;
+  const shippedCount = rows.filter((row) => hasWorkflowStatus(row.status, 'SHIPPED')).length;
+  const completedCount = rows.filter((row) => hasWorkflowStatus(row.status, 'COMPLETED')).length;
+
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">mall orders</p>
+          <h2>积分商城订单</h2>
+          <span>跟踪积分兑换订单、发货、确认收货和取消。</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCcw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />刷新
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <span className="admin-source-stat-icon"><Eye size={18} /></span>
+          <div><p>订单总数</p><strong>{total}</strong><span>当前查询范围</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <span className="admin-source-stat-icon"><Send size={18} /></span>
+          <div><p>待处理</p><strong>{pendingCount}</strong><span>待审批或待发货</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <span className="admin-source-stat-icon"><RefreshCcw size={18} /></span>
+          <div><p>已发货</p><strong>{shippedCount}</strong><span>等待确认收货</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <span className="admin-source-stat-icon"><Check size={18} /></span>
+          <div><p>已完成</p><strong>{completedCount}</strong><span>当前页完成记录</span></div>
+        </article>
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form
+        className="admin-users-filter-grid"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setQuery((q) => ({ ...q, pageNum: 1 }));
+        }}
+      >
+        <label>
+          <span>订单号</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input value={query.orderNo} onChange={(event) => setQuery((q) => ({ ...q, orderNo: event.target.value }))} className="cf-control" placeholder="搜索订单号" />
+          </div>
+        </label>
+        <label>
+          <span>范围</span>
           <Select value={query.scope} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, scope: v as 'all' | 'mine' }))}>
-            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="cf-control"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部</SelectItem>
               <SelectItem value="mine">我的</SelectItem>
             </SelectContent>
           </Select>
-        </div>,
-        <div key="status" className="w-full sm:w-36">
+        </label>
+        <label>
+          <span>状态</span>
           <Select value={query.status || '__all'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === '__all' ? '' : v }))}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectTrigger className="cf-control"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">全部状态</SelectItem>
               {statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>,
-      ]}
-      stats={[{ label: '', value: `共 ${total} 条` }]}
-      actions={[
-        ...(hasFilters
-          ? [
-              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, orderNo: '', status: '', scope: 'all' }))}>
-                <RotateCcw className="mr-1.5 h-4 w-4" />清空条件
-              </Button>,
-            ]
-          : []),
-        <Button key="refresh" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
-        </Button>,
-      ]}
-    />
+        </label>
+        <div className="admin-users-toolbar-actions">
+          <Button type="submit" size="sm">查询</Button>
+          {hasFilters ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setQuery((q) => ({ ...q, pageNum: 1, orderNo: '', status: '', scope: 'all' }))}>
+              <RotateCcw className="h-4 w-4" />清空条件
+            </Button>
+          ) : null}
+          <span className="admin-users-filter-count">共 {total} 条</span>
+        </div>
+      </form>
+    </section>
   );
 
-  const table = (
-    <TableSurfaceCard fill>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1080px]">
-          <TableHeader className="sticky top-0 z-10">
+  const pageTable = (
+    <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+      <table className="unity-data-table admin-source-table min-w-[1080px]">
+        <thead>
+          <tr>
+            <th>订单号</th>
+            <th>员工 ID</th>
+            <th>积分</th>
+            <th>状态</th>
+            <th>收件人</th>
+            <th>物流号</th>
+            <th>下单时间</th>
+            <th className="text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
             <tr>
-              <TableHead>订单号</TableHead>
-              <TableHead>员工 ID</TableHead>
-              <TableHead>积分</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>收件人</TableHead>
-              <TableHead>物流号</TableHead>
-              <TableHead>下单时间</TableHead>
-              <TableActionHead className="text-right">操作</TableActionHead>
+              <td colSpan={8} className="py-10 text-center text-sm text-slate-400">
+                <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+              </td>
             </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">
-                  <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
+          ) : rows.length === 0 ? (
+            <tr>
+              <td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无订单</td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={row.id}>
+                <td className="font-mono text-xs">
+                  <button type="button" onClick={() => void openDetail(row)} className="text-sky-600 hover:underline">
+                    {row.orderNo}
+                  </button>
+                </td>
+                <td className="text-sm">{row.employeeId}</td>
+                <td className="text-sm">{Number(row.totalPoints ?? 0).toLocaleString()}</td>
+                <td className="text-sm"><DictLabel dictType="hr_mall_order_status" value={row.status} fallback="-" /></td>
+                <td className="text-xs">{row.receiverName ?? '-'}</td>
+                <td className="font-mono text-xs">{row.expressNo ?? '-'}</td>
+                <td className="text-xs">{formatDateTimeValue(row.createTime)}</td>
+                <td>
+                  <div className="admin-users-row-actions">
+                    <button type="button" title="详情" aria-label="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
+                    {hasWorkflowStatus(row.status, 'APPROVED') ? (
+                      <button type="button" title="发货" aria-label="发货" onClick={() => setShipOpen(row)}><Send size={15} /></button>
+                    ) : null}
+                    {hasWorkflowStatus(row.status, 'SHIPPED') && query.scope === 'mine' ? (
+                      <button type="button" title="确认收货" aria-label="确认收货" onClick={() => void handleComplete(row)}><Check size={15} /></button>
+                    ) : null}
+                    {hasWorkflowStatus(row.status, 'PENDING', 'APPROVED') ? (
+                      <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => { setCancelTarget(row); setCancelReason('不需要了'); }}><Ban size={15} /></button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="py-16 text-center text-sm text-slate-400">暂无订单</td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 font-mono text-xs">
-                    <button type="button" onClick={() => void openDetail(row)} className="text-sky-600 hover:underline">
-                      {row.orderNo}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-sm">{row.employeeId}</td>
-                  <td className="px-4 py-3 text-sm">{Number(row.totalPoints ?? 0).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm"><DictLabel dictType="hr_mall_order_status" value={row.status} fallback="-" /></td>
-                  <td className="px-4 py-3 text-xs">{row.receiverName ?? '-'}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{row.expressNo ?? '-'}</td>
-                  <td className="px-4 py-3 text-xs">{formatDateTimeValue(row.createTime)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        { key: 'detail', label: '详情', semantic: 'view', onClick: () => void openDetail(row) },
-                        { key: 'ship', label: '发货', semantic: 'submit', onClick: () => setShipOpen(row), hidden: !hasWorkflowStatus(row.status, 'APPROVED') },
-                        { key: 'complete', label: '确认收货', semantic: 'confirm', onClick: () => void handleComplete(row), hidden: !(hasWorkflowStatus(row.status, 'SHIPPED') && query.scope === 'mine') },
-                        { key: 'cancel', label: '取消', semantic: 'void', onClick: () => { setCancelTarget(row); setCancelReason('不需要了'); }, hidden: !hasWorkflowStatus(row.status, 'PENDING', 'APPROVED') },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </TableSurfaceCard>
+            ))
+          )}
+        </tbody>
+      </table>
+    </InnerTableSurface>
   );
 
-  const pagination = total > 0 ? (
+  const pagePagination = total > 0 ? (
     <Pagination
       page={query.pageNum}
       pageSize={query.pageSize}
@@ -237,8 +277,15 @@ export const HrMallOrderPage: React.FC = () => {
   ) : null;
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout filters={filters} table={table} pagination={pagination} />
+    <>
+      <section className="admin-source-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       {detail && (
         <BaseDialog
@@ -246,13 +293,14 @@ export const HrMallOrderPage: React.FC = () => {
           title={`订单详情 · ${detail.orderNo}`}
           width="wide"
           onClose={() => setDetail(null)}
+          bodyClassName="admin-dialog-stack"
           footer={
             <div className="flex justify-end">
               <Button variant="outline" onClick={() => setDetail(null)}>关闭</Button>
             </div>
           }
         >
-          <div className="space-y-3 text-sm">
+          <div className="grid gap-3 text-sm">
             <div className="grid grid-cols-2 gap-3">
               <div><span className="text-slate-500">状态:</span> <DictLabel dictType="hr_mall_order_status" value={detail.status} fallback="-" /></div>
               <div><span className="text-slate-500">积分合计:</span> {detail.totalPoints}</div>
@@ -267,28 +315,28 @@ export const HrMallOrderPage: React.FC = () => {
             </div>
             <div>
               <div className="mb-2 font-semibold">商品明细</div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px]">
-                  <TableHeader>
+              <InnerTableSurface className="admin-inner-table-flush">
+                <table className="unity-data-table admin-source-table min-w-[480px]">
+                  <thead>
                     <tr>
-                      <TableHead>商品</TableHead>
-                      <TableHead>单价</TableHead>
-                      <TableHead>数量</TableHead>
-                      <TableHead>小计</TableHead>
+                      <th>商品</th>
+                      <th>单价</th>
+                      <th>数量</th>
+                      <th>小计</th>
                     </tr>
-                  </TableHeader>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  </thead>
+                  <tbody>
                     {(detail.items ?? []).map((it, idx) => (
                       <tr key={String(it.id ?? idx)}>
-                        <td className="px-4 py-2 text-sm">{it.itemName}</td>
-                        <td className="px-4 py-2 text-sm">{it.pointPrice}</td>
-                        <td className="px-4 py-2 text-sm">{it.quantity}</td>
-                        <td className="px-4 py-2 text-sm">{it.subtotal ?? (Number(it.pointPrice ?? 0) * Number(it.quantity ?? 0))}</td>
+                        <td className="text-sm">{it.itemName}</td>
+                        <td className="text-sm">{it.pointPrice}</td>
+                        <td className="text-sm">{it.quantity}</td>
+                        <td className="text-sm">{it.subtotal ?? (Number(it.pointPrice ?? 0) * Number(it.quantity ?? 0))}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </InnerTableSurface>
             </div>
           </div>
         </BaseDialog>
@@ -299,6 +347,7 @@ export const HrMallOrderPage: React.FC = () => {
           open={Boolean(shipOpen)}
           title={`录入物流 · ${shipOpen.orderNo}`}
           onClose={() => { setShipOpen(null); setExpressNo(''); }}
+          bodyClassName="admin-dialog-stack"
           footer={
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => { setShipOpen(null); setExpressNo(''); }}>取消</Button>
@@ -306,15 +355,13 @@ export const HrMallOrderPage: React.FC = () => {
             </div>
           }
         >
-          <div className="space-y-3">
-            <div>
-              <Label>物流单号</Label>
-              <Input value={expressNo} onChange={(e) => setExpressNo(e.target.value)} placeholder="例如 SF1234567890" />
-            </div>
-            <div className="text-xs text-slate-500">
-              收件人:{shipOpen.receiverName ?? '-'} {shipOpen.receiverPhone ?? ''}<br />
-              地址:{shipOpen.receiverAddress ?? '-'}
-            </div>
+          <div className="admin-dialog-field">
+            <Label>物流单号</Label>
+            <Input value={expressNo} onChange={(e) => setExpressNo(e.target.value)} placeholder="例如 SF1234567890" />
+          </div>
+          <div className="text-xs text-slate-500">
+            收件人:{shipOpen.receiverName ?? '-'} {shipOpen.receiverPhone ?? ''}<br />
+            地址:{shipOpen.receiverAddress ?? '-'}
           </div>
         </BaseDialog>
       )}
@@ -323,6 +370,7 @@ export const HrMallOrderPage: React.FC = () => {
         open={cancelTarget !== null}
         title={`取消订单 · ${cancelTarget?.orderNo ?? ''}`}
         onClose={() => setCancelTarget(null)}
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setCancelTarget(null)}>关闭</Button>
@@ -330,13 +378,13 @@ export const HrMallOrderPage: React.FC = () => {
           </div>
         }
       >
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <div className="text-xs text-slate-500">取消后积分与库存将自动退回。</div>
           <Label>取消理由</Label>
           <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="请输入取消理由" />
         </div>
       </BaseDialog>
-    </div>
+    </>
   );
 };
 

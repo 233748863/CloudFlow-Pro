@@ -1,5 +1,5 @@
 import React from 'react';
-import { FilePlus2, Landmark, ShieldCheck } from 'lucide-react';
+import { Edit, Eye, FilePlus2, Landmark, Link2, ShieldCheck, Trash2 } from 'lucide-react';
 import {
   Button,
   Select,
@@ -7,15 +7,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { toDateInputValue } from '../hrShared';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 type SectionComponents = {
   WorkspaceSectionCard: React.ComponentType<any>;
@@ -71,8 +66,8 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
         </Button>
       )}
     >
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-400">
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-300">
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 pb-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
           <span className="font-medium">已启用项目</span>
           <span className="font-semibold text-slate-900 dark:text-slate-100">{enabledSalaryItems.length}</span>
           <span className="text-slate-400 dark:text-slate-500">/ 总数 {salaryItems.length}</span>
@@ -82,40 +77,40 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
         <span>带公式项目 {formulaSalaryItems.length}</span>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <Table className="min-w-[920px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[160px]">项目名称</TableHead>
-              <TableHead className="min-w-[180px]">编码</TableHead>
-              <TableHead className="min-w-[140px]">类型 / 分类</TableHead>
-              <TableHead className="min-w-[180px]">联动体检</TableHead>
-              <TableHead className="min-w-[120px]">计税 / 联动</TableHead>
-              <TableHead className="w-[132px] text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <InnerTableSurface>
+        <table className="unity-data-table admin-source-table min-w-[920px]">
+          <thead>
+            <tr>
+              <th className="min-w-[160px]">项目名称</th>
+              <th className="min-w-[180px]">编码</th>
+              <th className="min-w-[140px]">类型 / 分类</th>
+              <th className="min-w-[180px]">联动体检</th>
+              <th className="min-w-[120px]">计税 / 联动</th>
+              <th className="w-[132px] text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
             {salaryItems.map((item) => {
               const usage = salaryItemUsageMap.get(item.id);
               return (
-                <TableRow key={item.id}>
-                  <TableCell className="min-w-[160px]">
-                    <div className="font-medium text-slate-900">{item.itemName}</div>
+                <tr key={item.id}>
+                  <td className="min-w-[160px]">
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.itemName}</div>
                     {item.formula && String(item.formula).trim() && (
                       <div className="mt-2">
-                        <span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                        <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                           带公式
                         </span>
                       </div>
                     )}
-                  </TableCell>
-                  <TableCell className="min-w-[180px]">{item.itemCode}</TableCell>
-                  <TableCell className="min-w-[140px]">
-                    <div className="font-medium text-slate-900">{item.itemTypeDesc || itemTypeLabel(item.itemType)}</div>
+                  </td>
+                  <td className="min-w-[180px]">{item.itemCode}</td>
+                  <td className="min-w-[140px]">
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.itemTypeDesc || itemTypeLabel(item.itemType)}</div>
                     <div className="mt-1 text-xs text-slate-400">{item.categoryDesc || itemCategoryLabel(item.category)}</div>
-                  </TableCell>
-                  <TableCell className="min-w-[180px]">
-                    <div className="font-medium text-slate-900">
+                  </td>
+                  <td className="min-w-[180px]">
+                    <div className="font-medium text-slate-900 dark:text-slate-100">
                       {usage?.structureIds.size || 0} 套结构 / {usage?.activeEmployeeIds.size || 0} 名员工
                     </div>
                     <div className="mt-1 text-xs text-slate-400">
@@ -126,9 +121,9 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
                         ].filter(Boolean).join(' / ') || '-'
                         : '-'}
                     </div>
-                  </TableCell>
-                  <TableCell className="min-w-[120px]">
-                    <div className="font-medium text-slate-900">{item.isTaxable ? '参与计税' : '不参与计税'}</div>
+                  </td>
+                  <td className="min-w-[120px]">
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.isTaxable ? '参与计税' : '不参与计税'}</div>
                     <div className="mt-1 text-xs text-slate-400">
                       {Number(item.status ?? 1) === 0 && usage?.structureIds.size
                         ? '禁用引用'
@@ -136,35 +131,30 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
                           ? '已联动'
                           : '-'}
                     </div>
-                  </TableCell>
-                  <TableCell className="w-[132px]">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="min-w-[56px] whitespace-nowrap"
-                        onClick={() => openItemEditDialog(item)}
-                      >
-                        编辑
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="min-w-[56px] whitespace-nowrap"
+                  </td>
+                  <td className="w-[132px]">
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="编辑" onClick={() => openItemEditDialog(item)}>
+                        <Edit size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        title="删除"
                         disabled={actionLoading}
                         onClick={() => void handleDeleteItem(item)}
                       >
-                        删除
-                      </Button>
+                        <Trash2 size={15} />
+                      </button>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               );
             })}
             {!salaryItems.length && !foundationLoading && <WorkspaceTableStateRow colSpan={6} title="无薪资项目" />}
-          </TableBody>
-        </Table>
-      </div>
+          </tbody>
+        </table>
+      </InnerTableSurface>
     </WorkspaceSectionCard>
   );
 };
@@ -240,57 +230,69 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
         </Button>
       )}
     >
-      <div className="grid grid-cols-1 gap-4 xl:items-start xl:grid-cols-[240px_minmax(0,1fr)]">
-        <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1">
-          {salaryStructures.map((item) => {
-            const isActive = String(item.id) === selectedStructureId;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                  isActive
-                    ? 'border-slate-300 bg-slate-50 shadow-sm'
-                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                }`}
-                onClick={() => setSelectedStructureId(String(item.id))}
-              >
-                <div className="font-semibold text-slate-900">{item.structureName}</div>
-                <div className="mt-1 text-xs text-slate-400">{item.structureCode}</div>
-                <div className={`mt-3 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureStatusClass(item.status)}`}>
-                  {item.statusDesc || (item.status === 1 ? '启用' : '禁用')}
-                </div>
-              </button>
-            );
-          })}
+      <div className="admin-source-content-grid">
+        <div className="admin-dialog-subsection">
+          <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">结构选择</div>
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">先选择薪资结构，再查看关联员工与项目。</div>
+            </div>
+            <span className="badge badge-gray">共 {salaryStructures.length} 个结构</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {salaryStructures.map((item) => {
+              const isActive = String(item.id) === selectedStructureId;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={cn(
+                    'min-w-[220px] rounded-md border px-4 py-3 text-left transition',
+                    isActive
+                      ? 'border-[#0d95b5]/40 bg-[#effbfe] dark:border-cyan-800 dark:bg-cyan-950/30'
+                      : 'border-slate-200 bg-[var(--cf-surface-strong)] hover:border-slate-300 hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950/60 dark:hover:border-slate-700 dark:hover:bg-slate-900',
+                  )}
+                  onClick={() => setSelectedStructureId(String(item.id))}
+                >
+                  <div className="truncate font-semibold text-slate-900 dark:text-slate-100">{item.structureName}</div>
+                  <div className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{item.structureCode}</div>
+                  <div className={`mt-3 inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${structureStatusClass(item.status)}`}>
+                    {item.statusDesc || (item.status === 1 ? '启用' : '禁用')}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="min-w-0">
           {!structureDetail && !structureDetailLoading && (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
-              从左侧选择一个薪资结构查看详情。
+            <div className="border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-12 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/40">
+              选择一个薪资结构查看详情。
             </div>
           )}
 
           {structureDetail && (
-            <div className="space-y-4">
+            <div className="admin-source-content-grid">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs text-slate-400">结构名称</div>
-                  <div className="mt-2 text-xl font-semibold text-slate-900">{structureDetail.structureName}</div>
-                  <div className="mt-1 text-sm text-slate-500">{structureDetail.structureCode}</div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500">结构名称</div>
+                  <div className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">{structureDetail.structureName}</div>
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{structureDetail.structureCode}</div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => void openStructureEditDialog(structureDetail.id)}>
-                    编辑结构
-                  </Button>
-                  <Button
-                    variant="outline"
+                <div className="admin-users-row-actions">
+                  <button type="button" title="编辑结构" onClick={() => void openStructureEditDialog(structureDetail.id)}>
+                    <Edit size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    title="删除结构"
                     disabled={actionLoading}
                     onClick={() => void handleDeleteStructure(structureDetail)}
                   >
-                    删除结构
-                  </Button>
+                    <Trash2 size={15} />
+                  </button>
                 </div>
               </div>
 
@@ -322,7 +324,7 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                 ]}
               />
 
-              <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+              <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
                 <DetailRow
                   label="结构说明"
                   value={structureDetail.description || '-'}
@@ -357,123 +359,120 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                 </div>
               )}
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="font-semibold text-slate-900">关联现薪样本</div>
-                  <div className="text-xs text-slate-400">
+              <div className="table-scroll-container admin-inner-table-surface max-h-[360px]">
+                <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-4 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">关联现薪样本</div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500">
                     共 {structureLinkedEmployeeRows.length} 条 / {structureLinkedEmployeeIds.length} 名员工
                     {structureLinkedSalaryStats.count ? ` / 最高 ${formatCurrency(structureLinkedSalaryStats.max)}` : ''}
                   </div>
                 </div>
-                <div className="max-h-[360px] overflow-y-auto">
-                  <Table className="min-w-[760px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="min-w-[160px]">员工</TableHead>
-                        <TableHead className="min-w-[120px]">部门</TableHead>
-                        <TableHead className="w-[120px] whitespace-nowrap">总薪资</TableHead>
-                        <TableHead className="min-w-[140px]">生效日期</TableHead>
-                        <TableHead className="w-[112px] text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                <div className="admin-horizontal-scroll">
+                  <table className="unity-data-table admin-source-table min-w-[760px]">
+                    <thead>
+                      <tr>
+                        <th className="min-w-[160px]">员工</th>
+                        <th className="min-w-[120px]">部门</th>
+                        <th className="w-[120px] whitespace-nowrap">总薪资</th>
+                        <th className="min-w-[140px]">生效日期</th>
+                        <th className="w-[112px] text-right">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {structureLinkedEmployeeRows.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="min-w-[160px]">
-                            <div className="font-medium text-slate-900">{item.employeeName || `员工 #${item.employeeId}`}</div>
-                            <div className="mt-1 text-xs text-slate-400">{item.employeeNo || '-'}</div>
-                          </TableCell>
-                          <TableCell className="min-w-[120px]">{employeeMap.get(item.employeeId)?.deptName || '-'}</TableCell>
-                          <TableCell className="whitespace-nowrap">{formatCurrency(item.totalSalary)}</TableCell>
-                          <TableCell className="min-w-[140px]">
+                        <tr key={item.id}>
+                          <td className="min-w-[160px]">
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{item.employeeName || `员工 #${item.employeeId}`}</div>
+                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.employeeNo || '-'}</div>
+                          </td>
+                          <td className="min-w-[120px]">{employeeMap.get(item.employeeId)?.deptName || '-'}</td>
+                          <td className="whitespace-nowrap">{formatCurrency(item.totalSalary)}</td>
+                          <td className="min-w-[140px]">
                             <div className="whitespace-nowrap">{toDateInputValue(item.effectiveDate) || '-'}</div>
                             <div className="mt-1 flex flex-wrap gap-2">
                               {isFutureDate(item.effectiveDate) ? (
-                                <span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                                <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                                   未来生效
                                 </span>
                               ) : (
-                                <span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                                <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                                   已生效
                                 </span>
                               )}
                             </div>
-                          </TableCell>
-                          <TableCell className="w-[112px]">
+                          </td>
+                          <td className="w-[112px]">
                             <div className="flex justify-end">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="min-w-[88px] whitespace-nowrap"
-                                onClick={() => focusEmployeeWorkspace(item.employeeId)}
-                              >
-                                查看现薪
-                              </Button>
+                              <div className="admin-users-row-actions">
+                                <button type="button" title="查看现薪" onClick={() => focusEmployeeWorkspace(item.employeeId)}>
+                                  <Eye size={15} />
+                                </button>
+                              </div>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       ))}
                       {!structureLinkedEmployeeRows.length && <WorkspaceTableStateRow colSpan={5} title="无现薪样本" />}
-                    </TableBody>
-                  </Table>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-                  <div className="font-semibold text-slate-900">关联项目</div>
-                  <div className="text-xs text-slate-400">{structureDetail.items?.length || 0} 个</div>
+              <div className="table-scroll-container admin-inner-table-surface max-h-[320px]">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100">关联项目</div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500">{structureDetail.items?.length || 0} 个</div>
                 </div>
-                <div className="max-h-[320px] overflow-y-auto">
-                  <Table className="min-w-[680px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="min-w-[180px]">项目</TableHead>
-                        <TableHead className="min-w-[120px]">分类</TableHead>
-                        <TableHead className="min-w-[140px]">类型</TableHead>
-                        <TableHead className="w-[96px]">计税</TableHead>
-                        <TableHead className="w-[96px]">状态</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                <div className="admin-horizontal-scroll">
+                  <table className="unity-data-table admin-source-table min-w-[680px]">
+                    <thead>
+                      <tr>
+                        <th className="min-w-[180px]">项目</th>
+                        <th className="min-w-[120px]">分类</th>
+                        <th className="min-w-[140px]">类型</th>
+                        <th className="w-[96px]">计税</th>
+                        <th className="w-[96px]">状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {structureDetail.items?.map((item: any) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="min-w-[180px]">
-                            <div className="font-medium text-slate-900">{item.itemName}</div>
-                            <div className="mt-1 text-xs text-slate-400">{item.itemCode}</div>
-                          </TableCell>
-                          <TableCell className="min-w-[120px]">{item.categoryDesc || itemCategoryLabel(item.category)}</TableCell>
-                          <TableCell className="min-w-[140px]">
+                        <tr key={item.id}>
+                          <td className="min-w-[180px]">
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{item.itemName}</div>
+                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.itemCode}</div>
+                          </td>
+                          <td className="min-w-[120px]">{item.categoryDesc || itemCategoryLabel(item.category)}</td>
+                          <td className="min-w-[140px]">
                             <div>{item.itemTypeDesc || itemTypeLabel(item.itemType)}</div>
-                            <div className="mt-1 text-xs text-slate-400">
+                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                               {item.formula && String(item.formula).trim() ? '已配公式' : '手工录入'}
                             </div>
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap">
+                          </td>
+                          <td className="whitespace-nowrap">
                             <span className={cn(
-                              'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
+                              'inline-flex rounded-md border px-2 py-0.5 text-xs font-medium',
                               item.isTaxable
-                                ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
-                                : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+                                ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
+                                : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
                             )}>
                               {item.isTaxable ? '计税' : '不计税'}
                             </span>
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap">
+                          </td>
+                          <td className="whitespace-nowrap">
                             <span className={cn(
-                              'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
+                              'inline-flex rounded-md border px-2 py-0.5 text-xs font-medium',
                               Number(item.status ?? 1) === 1
-                                ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
-                                : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+                                ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
+                                : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
                             )}>
                               {Number(item.status ?? 1) === 1 ? '启用' : '禁用'}
                             </span>
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       ))}
                       {!structureDetail.items?.length && <WorkspaceTableStateRow colSpan={5} title="无关联项目" />}
-                    </TableBody>
-                  </Table>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -577,7 +576,7 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
         className="mt-4"
       />
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+      <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
         <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-sm font-medium text-slate-900 dark:text-slate-100">序列覆盖</div>
@@ -589,7 +588,7 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
           ) : null}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid grid-cols-1">
           <div className="divide-y divide-slate-200 dark:divide-slate-800">
             {gradeSeriesCoverage.length > 0 ? gradeSeriesCoverage.map((item) => (
               <div key={item.series} className="px-4 py-3">
@@ -619,7 +618,7 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
             )}
           </div>
 
-          <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800 lg:border-l lg:border-t-0">
+          <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
             <div className="text-sm font-medium text-slate-900 dark:text-slate-100">待配置职级</div>
             {pendingGradeLevels.length > 0 ? (
               <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
@@ -632,14 +631,14 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
                   <button
                     key={level.id}
                     type="button"
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+                    className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-xs text-slate-700 transition hover:border-slate-300 hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-900"
                     onClick={() => openGradeDialog(level.id)}
                   >
                     {[level.levelCode, level.levelName].filter(Boolean).join(' / ')}
                   </button>
                 ))}
                 {pendingGradeLevels.length > 10 ? (
-                  <div className="rounded-full border border-transparent px-1 py-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="rounded-md border border-transparent px-1 py-1.5 text-xs text-slate-500 dark:text-slate-400">
                     +{pendingGradeLevels.length - 10}
                   </div>
                 ) : null}
@@ -649,45 +648,45 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>职级</TableHead>
-              <TableHead>最低薪资</TableHead>
-              <TableHead>中位薪资</TableHead>
-              <TableHead>最高薪资</TableHead>
-              <TableHead>币种</TableHead>
-              <TableHead>异常</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <InnerTableSurface className="mt-4">
+        <table className="unity-data-table admin-source-table min-w-[920px]">
+          <thead>
+            <tr>
+              <th>职级</th>
+              <th>最低薪资</th>
+              <th>中位薪资</th>
+              <th>最高薪资</th>
+              <th>币种</th>
+              <th>异常</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
             {sortedSalaryGrades.map((item) => {
               const rowIssues = salaryGradeDiagnostics.rowIssueMap.get(item.id) || [];
               const rowClassName = rowIssues.length
-                ? 'bg-slate-50/70 dark:bg-slate-900/40'
+                ? 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/40'
                 : '';
 
               return (
-                <TableRow key={item.id} className={rowClassName}>
-                  <TableCell>
-                    <div className="font-medium text-slate-900">{item.levelName || '-'}</div>
+                <tr key={item.id} className={rowClassName}>
+                  <td>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.levelName || '-'}</div>
                     <div className="text-xs text-slate-400">
                       {[item.levelCode, jobLevelMap.get(item.levelId)?.levelSeries ? `${jobLevelMap.get(item.levelId)?.levelSeries} 序列` : ''].filter(Boolean).join(' / ') || '-'}
                     </div>
-                  </TableCell>
-                  <TableCell>{formatCurrency(item.minSalary)}</TableCell>
-                  <TableCell>{formatCurrency(item.midSalary)}</TableCell>
-                  <TableCell>{formatCurrency(item.maxSalary)}</TableCell>
-                  <TableCell>{item.currencyDesc || item.currency || '-'}</TableCell>
-                  <TableCell>
+                  </td>
+                  <td>{formatCurrency(item.minSalary)}</td>
+                  <td>{formatCurrency(item.midSalary)}</td>
+                  <td>{formatCurrency(item.maxSalary)}</td>
+                  <td>{item.currencyDesc || item.currency || '-'}</td>
+                  <td>
                     {rowIssues.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {rowIssues.map((issue: any) => (
                           <span
                             key={issue.key}
-                            className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                            className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
                           >
                             {issue.label}
                           </span>
@@ -696,31 +695,32 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
                     ) : (
                       <span className="text-sm text-slate-400">-</span>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => openGradeEditDialog(item)}>
-                        编辑
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="编辑" onClick={() => openGradeEditDialog(item)}>
+                        <Edit size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        title="删除"
                         disabled={actionLoading}
                         onClick={() => void handleDeleteGrade(item)}
                       >
-                        删除
-                      </Button>
+                        <Trash2 size={15} />
+                      </button>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               );
             })}
             {!sortedSalaryGrades.length && !foundationLoading && (
               <WorkspaceTableStateRow colSpan={7} title="无薪级数据" />
             )}
-          </TableBody>
-        </Table>
-      </div>
+          </tbody>
+        </table>
+      </InnerTableSurface>
     </WorkspaceSectionCard>
   );
 };
@@ -833,7 +833,7 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
         className="mt-4"
       />
 
-      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/40 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mt-4 flex flex-col gap-3 border-b border-slate-200 pb-4 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-2">
           <Select value={insuranceSchemeCityFilter} onValueChange={setInsuranceSchemeCityFilter}>
             <SelectTrigger>
@@ -873,7 +873,7 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+      <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
         <DetailRow
           label="联调对象"
           value={currentEmployeeRecord
@@ -888,20 +888,20 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
         />
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>方案</TableHead>
-              <TableHead>基数范围</TableHead>
-              <TableHead>公司比例</TableHead>
-              <TableHead>个人比例</TableHead>
-              <TableHead>联调命中</TableHead>
-              <TableHead>生效 / 状态</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <InnerTableSurface className="mt-4">
+        <table className="unity-data-table admin-source-table min-w-[920px]">
+          <thead>
+            <tr>
+              <th>方案</th>
+              <th>基数范围</th>
+              <th>公司比例</th>
+              <th>个人比例</th>
+              <th>联调命中</th>
+              <th>生效 / 状态</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
             {filteredInsuranceSchemes.map((item) => {
               const companyRate = Number(item.pensionCompanyRate || 0)
                 + Number(item.medicalCompanyRate || 0)
@@ -928,41 +928,41 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
               }
               const quickAssignDisabled = !currentEmployeeRecord || Number(item.status ?? 1) === 0 || actionLoading;
               const rowClassName = rowIssues.length
-                ? 'bg-slate-50/70 dark:bg-slate-900/40'
+                ? 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/40'
                 : '';
 
               return (
-                <TableRow key={item.id} className={rowClassName}>
-                  <TableCell>
-                    <div className="font-medium text-slate-900">{item.schemeName}</div>
+                <tr key={item.id} className={rowClassName}>
+                  <td>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.schemeName}</div>
                     <div className="text-xs text-slate-400">{item.city || '-'}</div>
                     {rowIssues.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {rowIssues.map((issue) => (
                           <span
                             key={`${item.id}-${issue.label}`}
-                            className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                            className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
                           >
                             {issue.label}
                           </span>
                         ))}
                       </div>
                     )}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td>
                     <div>{formatCurrency(item.baseMin)} - {formatCurrency(item.baseMax)}</div>
                     <div className="mt-1 text-xs text-slate-400">{item.baseRule || '-'}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium text-slate-900">{formatPercent(companyRate)}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium text-slate-900">{formatPercent(personalRate)}</div>
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{formatPercent(companyRate)}</div>
+                  </td>
+                  <td>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{formatPercent(personalRate)}</div>
+                  </td>
+                  <td>
                     {usage?.recordCount ? (
                       <div>
-                        <div className="font-medium text-slate-900">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">
                           {usage.activeRecordCount
                             ? `${usage.activeRecordCount} 条 ACTIVE 台账 / ${usage.activeEmployeeIds.size} 名员工`
                             : '-'}
@@ -977,37 +977,37 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
                     ) : (
                       <span className="text-sm text-slate-400">-</span>
                     )}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td>
                     <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
-                    <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureStatusClass(item.status)}`}>
+                    <div className={`mt-2 inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${structureStatusClass(item.status)}`}>
                       {item.status === 1 ? '启用' : '禁用'}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => openInsuranceSchemeEditDialog(item)}>
-                        编辑
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="编辑" onClick={() => openInsuranceSchemeEditDialog(item)}>
+                        <Edit size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        title="分配"
                         disabled={quickAssignDisabled}
                         onClick={() => openInsuranceAssignDialogWithScheme(item)}
                       >
-                        分配
-                      </Button>
+                        <Link2 size={15} />
+                      </button>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               );
             })}
             {!filteredInsuranceSchemes.length && !foundationLoading && (
               <WorkspaceTableStateRow colSpan={7} title="无社保方案" />
             )}
-          </TableBody>
-        </Table>
-      </div>
+          </tbody>
+        </table>
+      </InnerTableSurface>
     </WorkspaceSectionCard>
   );
 };

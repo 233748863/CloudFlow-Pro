@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Calculator, LoaderCircle, Plus, Trash2 } from 'lucide-react';
 import {
@@ -18,6 +18,7 @@ import {
   type HrCompensationSimulateRequest,
   type HrCompensationSimulateResult,
 } from '@/services/api/hr/batch2';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 interface Props {
   open: boolean;
@@ -30,6 +31,49 @@ const formatMoney = (value?: number) => {
   if (value === undefined || value === null) return '-';
   return `¥ ${value.toFixed(2)}`;
 };
+
+const SimulationPanel = ({
+  title,
+  description,
+  actions,
+  bodyClassName = '',
+  children,
+}: {
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+  bodyClassName?: string;
+  children: ReactNode;
+}) => (
+  <section className="card">
+    <div className="admin-source-section-head border-b border-slate-200 p-4 dark:border-slate-800">
+      <div>
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
+      {actions ? <div className="admin-users-toolbar-actions">{actions}</div> : null}
+    </div>
+    <div className={`p-4 ${bodyClassName}`.trim()}>{children}</div>
+  </section>
+);
+
+const SimulationSubhead = ({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+}) => (
+  <div className="admin-dialog-subhead">
+    <div>
+      <strong>{title}</strong>
+      {description ? <span>{description}</span> : null}
+    </div>
+    {actions ? <div className="admin-users-toolbar-actions">{actions}</div> : null}
+  </div>
+);
 
 export const HrCompensationSimulatePanel = ({ open, employees, positionLevels, onClose }: Props) => {
   const [form, setForm] = useState<HrCompensationSimulateRequest>({
@@ -121,29 +165,30 @@ export const HrCompensationSimulatePanel = ({ open, employees, positionLevels, o
         </div>
       )}
     >
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-3">
-          <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">输入条件</div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">基准员工（可选，留空则用纯假设值）</Label>
-            <Select
-              value={form.employeeId ? String(form.employeeId) : '__none__'}
-              onValueChange={(v) => setForm((f) => ({ ...f, employeeId: v === '__none__' ? undefined : Number(v) }))}
-            >
-              <SelectTrigger><SelectValue placeholder="选择员工" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">不指定</SelectItem>
-                {employees.map((emp) => (
-                  <SelectItem key={emp.id} value={String(emp.id)}>
-                    {emp.name} ({emp.employeeNo})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
+      <div className="admin-comp-sim-grid">
+        <SimulationPanel
+          title="输入条件"
+          description="选择基准员工或填写假设薪资参数"
+          bodyClassName="admin-dialog-stack"
+        >
+          <div className="admin-comp-sim-form-grid">
+            <div className="admin-comp-sim-form-wide space-y-1">
+              <Label className="text-xs">基准员工</Label>
+              <Select
+                value={form.employeeId ? String(form.employeeId) : '__none__'}
+                onValueChange={(v) => setForm((f) => ({ ...f, employeeId: v === '__none__' ? undefined : Number(v) }))}
+              >
+                <SelectTrigger><SelectValue placeholder="选择员工" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">不指定</SelectItem>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.id} value={String(emp.id)}>
+                      {emp.name} ({emp.employeeNo})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1">
               <Label className="text-xs">假设基本工资</Label>
               <Input
@@ -196,72 +241,114 @@ export const HrCompensationSimulatePanel = ({ open, employees, positionLevels, o
               />
             </div>
           </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs">单项覆盖（可选）</Label>
+          <div className="admin-dialog-divider">
+            <SimulationSubhead
+              title="单项覆盖"
+              description="按项目编码覆盖模拟金额"
+              actions={(
               <Button size="sm" variant="outline" onClick={addOverride}>
                 <Plus className="mr-1 h-3 w-3" />添加
               </Button>
-            </div>
-            {(form.overrideItems || []).map((item, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <Input
-                  className="flex-1"
-                  value={item.itemCode || ''}
-                  onChange={(e) => updateOverride(idx, 'itemCode', e.target.value)}
-                  placeholder="项目编码"
-                />
-                <Input
-                  type="number"
-                  className="w-32"
-                  value={item.amount ?? 0}
-                  onChange={(e) => updateOverride(idx, 'amount', e.target.value)}
-                  placeholder="金额"
-                />
-                <Button size="sm" variant="outline" onClick={() => removeOverride(idx)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
+              )}
+            />
+            {(form.overrideItems || []).length > 0 ? (
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table min-w-[520px]">
+                  <thead>
+                    <tr>
+                      <th>项目编码</th>
+                      <th>金额</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(form.overrideItems || []).map((item, idx) => (
+                      <tr key={idx}>
+                        <td>
+                          <Input
+                            value={item.itemCode || ''}
+                            onChange={(e) => updateOverride(idx, 'itemCode', e.target.value)}
+                            placeholder="项目编码"
+                          />
+                        </td>
+                        <td>
+                          <Input
+                            type="number"
+                            value={item.amount ?? 0}
+                            onChange={(e) => updateOverride(idx, 'amount', e.target.value)}
+                            placeholder="金额"
+                          />
+                        </td>
+                        <td>
+                          <div className="admin-users-row-actions">
+                            <button type="button" className="danger" title="删除" onClick={() => removeOverride(idx)}>
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </InnerTableSurface>
+            ) : (
+              <div className="admin-dialog-empty-note">暂无覆盖项</div>
+            )}
           </div>
-        </div>
+        </SimulationPanel>
 
-        <div className="space-y-3">
-          <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">模拟结果</div>
+        <SimulationPanel
+          title="模拟结果"
+          description="应发、扣减和实发金额汇总"
+          bodyClassName="admin-dialog-stack"
+        >
           {result ? (
-            <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-700 dark:bg-slate-900">
-              <div className="grid grid-cols-2 gap-y-2">
-                <div className="text-slate-500">基本工资</div><div className="text-right font-medium">{formatMoney(result.baseSalary)}</div>
-                <div className="text-slate-500">绩效奖金</div><div className="text-right font-medium">{formatMoney(result.performanceBonus)}</div>
-                <div className="text-slate-500">津贴合计</div><div className="text-right font-medium">{formatMoney(result.allowanceTotal)}</div>
-                <div className="border-t border-slate-200 pt-2 text-slate-500 dark:border-slate-700">应发合计</div>
-                <div className="border-t border-slate-200 pt-2 text-right font-semibold text-cyan-700 dark:border-slate-700 dark:text-cyan-300">{formatMoney(result.grossSalary)}</div>
-                <div className="text-slate-500">社保合计</div><div className="text-right font-medium">{formatMoney(result.socialInsuranceTotal)}</div>
-                <div className="text-slate-500">公积金</div><div className="text-right font-medium">{formatMoney(result.housingFund)}</div>
-                <div className="text-slate-500">个税</div><div className="text-right font-medium">{formatMoney(result.individualTax)}</div>
-                <div className="border-t border-slate-200 pt-2 text-slate-500 dark:border-slate-700">实发合计</div>
-                <div className="border-t border-slate-200 pt-2 text-right text-base font-bold text-emerald-700 dark:border-slate-700 dark:text-emerald-300">{formatMoney(result.netSalary)}</div>
-              </div>
+            <>
+              <InnerTableSurface>
+                <table className="unity-data-table admin-source-table min-w-[520px]">
+                  <tbody>
+                    <tr><td>基本工资</td><td className="text-right font-medium tabular-nums">{formatMoney(result.baseSalary)}</td></tr>
+                    <tr><td>绩效奖金</td><td className="text-right font-medium tabular-nums">{formatMoney(result.performanceBonus)}</td></tr>
+                    <tr><td>津贴合计</td><td className="text-right font-medium tabular-nums">{formatMoney(result.allowanceTotal)}</td></tr>
+                    <tr><td>应发合计</td><td className="text-right font-semibold text-cyan-700 tabular-nums dark:text-cyan-300">{formatMoney(result.grossSalary)}</td></tr>
+                    <tr><td>社保合计</td><td className="text-right font-medium tabular-nums">{formatMoney(result.socialInsuranceTotal)}</td></tr>
+                    <tr><td>公积金</td><td className="text-right font-medium tabular-nums">{formatMoney(result.housingFund)}</td></tr>
+                    <tr><td>个税</td><td className="text-right font-medium tabular-nums">{formatMoney(result.individualTax)}</td></tr>
+                    <tr><td>实发合计</td><td className="text-right text-base font-bold text-emerald-700 tabular-nums dark:text-emerald-300">{formatMoney(result.netSalary)}</td></tr>
+                  </tbody>
+                </table>
+              </InnerTableSurface>
 
               {result.items && result.items.length > 0 ? (
-                <div className="mt-3 space-y-1 border-t border-slate-200 pt-3 dark:border-slate-700">
-                  <div className="text-xs text-slate-500">明细项</div>
-                  {result.items.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-xs">
-                      <span>{item.itemName || item.itemCode}</span>
-                      <span className="font-medium">{formatMoney(item.amount)}</span>
-                    </div>
-                  ))}
+                <div className="admin-dialog-divider">
+                  <SimulationSubhead title="明细项" description={`${result.items.length} 个薪资项目`} />
+                  <InnerTableSurface>
+                    <table className="unity-data-table admin-source-table min-w-[520px]">
+                      <thead>
+                        <tr>
+                          <th>项目</th>
+                          <th>金额</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {result.items.map((item, idx) => (
+                          <tr key={idx}>
+                            <td>{item.itemName || item.itemCode}</td>
+                            <td className="text-right font-medium tabular-nums">{formatMoney(item.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </InnerTableSurface>
                 </div>
               ) : null}
-            </div>
+            </>
           ) : (
-            <div className="rounded-lg border border-dashed border-slate-300 bg-white py-10 text-center text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-900">
+            <div className="admin-dialog-empty-note">
               点击"模拟计算"查看结果
             </div>
           )}
-        </div>
+        </SimulationPanel>
       </div>
     </BaseDialog>
   );

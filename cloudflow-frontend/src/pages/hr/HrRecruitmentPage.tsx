@@ -2,14 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   BriefcaseBusiness,
   CalendarRange,
+  Check,
+  CircleX,
+  FileSearch,
+  Flag,
   Plus,
   RefreshCcw,
+  Send,
+  UserCheck,
   UserRoundSearch,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
-import { FilterBar } from '@/components/layout';
 import FileUpload from '@/components/FileUpload';
 import {
   Button,
@@ -23,12 +28,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Tabs,
   TabsContent,
   TabsList,
@@ -77,6 +76,7 @@ import HrResumeParsePanel from './components/HrResumeParsePanel';
 import { listRecruitmentChannels, type RecruitmentChannel } from '@/services/api/hr/recruitment';
 import { DictBadge } from '@/components/common/DictBadge';
 import { useDict } from '@/hooks/useDict';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 type RecruitmentTab = 'request' | 'candidate' | 'interview' | 'offer' | 'channel';
 
@@ -190,7 +190,7 @@ const InlineState = ({
   className?: string;
 }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       <BriefcaseBusiness className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -209,7 +209,7 @@ const TableStateRow = ({
   loading?: boolean;
 }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-14">
+    <td colSpan={colSpan} className="px-4 py-10">
       <InlineState
         title={title}
         className={loading ? 'py-6' : 'py-4'}
@@ -226,12 +226,14 @@ const DialogSection = ({
   description?: string;
   children: React.ReactNode;
 }) => (
-  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
-    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+  <InnerTableSurface className="admin-recruitment-surface" wrapperClassName="admin-recruitment-surface-wrapper">
+    <div className="admin-recruitment-surface-head">
+      <div>
+        <strong>{title}</strong>
+      </div>
     </div>
-    <div className="p-4">{children}</div>
-  </section>
+    <div className="admin-recruitment-surface-body">{children}</div>
+  </InnerTableSurface>
 );
 
 export const HrRecruitmentPage: React.FC = () => {
@@ -647,400 +649,423 @@ export const HrRecruitmentPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <FilterBar
-        search={{
-          value: keyword,
-          onChange: setKeyword,
-          placeholder: '搜索需求编号、岗位、候选人、邮箱或状态',
-          widthClassName: 'w-full lg:max-w-md',
-        }}
-        stats={[
-          { label: '需求', value: loading ? '--' : requests.length },
-          { label: '招聘中', value: loading ? '--' : recruitingRequests.length },
-          { label: '候选人', value: loading ? '--' : candidates.length },
-          { label: '面试', value: loading ? '--' : interviews.length },
-          { label: '可安排面试', value: loading ? '--' : interviewableCandidates.length },
-          { label: 'Offer', value: loading ? '--' : offers.length },
-        ]}
-        actions={[
-          <Button key="refresh" variant="outline" size="sm" onClick={() => void loadData()}>
-            <RefreshCcw size={14} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-            刷新
-          </Button>,
-          <Button key="req" size="sm" onClick={() => setRequestDialog(true)}>
-            <Plus size={14} className="mr-1.5" />
-            新建需求
-          </Button>,
-          <Button key="cand" variant="outline" size="sm" onClick={() => setCandidateDialog(true)}>
-            <UserRoundSearch size={14} className="mr-1.5" />
-            新建候选人
-          </Button>,
-          <Button key="interview" variant="outline" size="sm" onClick={() => setInterviewDialog(true)}>
-            <CalendarRange size={14} className="mr-1.5" />
-            安排面试
-          </Button>,
-          <Button key="offer" variant="outline" size="sm" onClick={() => setOfferDialog(true)}>
-            <Plus size={14} className="mr-1.5" />
-            新建Offer
-          </Button>,
-        ]}
-      />
-
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as RecruitmentTab)} className="space-y-4">
-        <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
-          <TabsTrigger value="request" className="flex-1 lg:flex-none">
-            招聘需求
-          </TabsTrigger>
-          <TabsTrigger value="candidate" className="flex-1 lg:flex-none">
-            候选人
-          </TabsTrigger>
-          <TabsTrigger value="interview" className="flex-1 lg:flex-none">
-            面试安排
-          </TabsTrigger>
-          <TabsTrigger value="offer" className="flex-1 lg:flex-none">
-            Offer
-          </TabsTrigger>
-          <TabsTrigger value="channel" className="flex-1 lg:flex-none">
-            招聘渠道
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="request" className="space-y-0">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">招聘需求</div>
-                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  创建、提交、审批和关闭招聘需求都在这一组主表里推进。
+    <>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as RecruitmentTab)} className="contents">
+        <section className="admin-source-page admin-hr-recruitment-page">
+          <TablePageLayout
+            actions={
+              <>
+                <header className="admin-source-header">
+                  <div>
+                    <p className="admin-source-kicker">RECRUITMENT</p>
+                    <h2>招聘管理</h2>
+                    <span>维护招聘需求、候选人、面试安排、Offer 和招聘渠道</span>
+                  </div>
+                  <div className="admin-source-controls">
+                    <Button variant="outline" size="sm" onClick={() => void loadData()}>
+                      <RefreshCcw size={14} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+                      刷新
+                    </Button>
+                  </div>
+                </header>
+                <section className="admin-source-stat-grid">
+                  <article className="card admin-source-stat admin-source-tone-blue">
+                    <div className="admin-source-stat-icon"><BriefcaseBusiness size={18} /></div>
+                    <div><p>需求</p><strong>{loading ? '--' : requests.length}</strong><span>招聘需求总数</span></div>
+                  </article>
+                  <article className="card admin-source-stat admin-source-tone-green">
+                    <div className="admin-source-stat-icon"><UserRoundSearch size={18} /></div>
+                    <div><p>候选人</p><strong>{loading ? '--' : candidates.length}</strong><span>简历和推进记录</span></div>
+                  </article>
+                  <article className="card admin-source-stat admin-source-tone-violet">
+                    <div className="admin-source-stat-icon"><CalendarRange size={18} /></div>
+                    <div><p>面试</p><strong>{loading ? '--' : interviews.length}</strong><span>已安排面试</span></div>
+                  </article>
+                  <article className="card admin-source-stat admin-source-tone-amber">
+                    <div className="admin-source-stat-icon"><Send size={18} /></div>
+                    <div><p>Offer</p><strong>{loading ? '--' : offers.length}</strong><span>录用推进</span></div>
+                  </article>
+                </section>
+              </>
+            }
+            filters={
+              <>
+                <section className="card admin-users-toolbar">
+                  <div className="admin-users-filter-grid">
+                    <label>
+                      <span className="input-label">搜索</span>
+                      <div className="admin-source-search-field">
+                        <FileSearch size={16} />
+                        <Input
+                          className="h-[42px]"
+                          type="search"
+                          value={keyword}
+                          onChange={(event) => setKeyword(event.target.value)}
+                          placeholder="搜索需求编号、岗位、候选人、邮箱或状态"
+                        />
+                      </div>
+                    </label>
+                  </div>
+                  <div className="admin-users-toolbar-actions">
+                    <Button size="sm" onClick={() => setRequestDialog(true)}>
+                      <Plus size={14} className="mr-1.5" />新建需求
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setCandidateDialog(true)}>
+                      <UserRoundSearch size={14} className="mr-1.5" />新建候选人
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setInterviewDialog(true)}>
+                      <CalendarRange size={14} className="mr-1.5" />安排面试
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setOfferDialog(true)}>
+                      <Plus size={14} className="mr-1.5" />新建Offer
+                    </Button>
+                  </div>
+                </section>
+                <section className="card admin-users-toolbar">
+                  <TabsList className="admin-source-tabs w-full justify-start lg:w-auto">
+                    <TabsTrigger value="request" className="flex-1 lg:flex-none">
+                      招聘需求
+                    </TabsTrigger>
+                    <TabsTrigger value="candidate" className="flex-1 lg:flex-none">
+                      候选人
+                    </TabsTrigger>
+                    <TabsTrigger value="interview" className="flex-1 lg:flex-none">
+                      面试安排
+                    </TabsTrigger>
+                    <TabsTrigger value="offer" className="flex-1 lg:flex-none">
+                      Offer
+                    </TabsTrigger>
+                    <TabsTrigger value="channel" className="flex-1 lg:flex-none">
+                      招聘渠道
+                    </TabsTrigger>
+                  </TabsList>
+                </section>
+              </>
+            }
+            table={
+              <>
+                <TabsContent value="request" className="mt-0">
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+              <div className="admin-recruitment-table-head">
+                <div>
+                  <strong>招聘需求</strong>
+                  <span>创建、提交、审批和关闭招聘需求都在这一组主表里推进。</span>
                 </div>
+                <span className="admin-users-filter-count">{loading ? '同步中' : `${filteredRequests.length} 条`}</span>
               </div>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                {loading ? '同步中' : `${filteredRequests.length} 条`}
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <Table className="min-w-[980px]">
-                <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-                  <TableRow>
-                    <TableHead>需求编号</TableHead>
-                    <TableHead>部门</TableHead>
-                    <TableHead>岗位</TableHead>
-                    <TableHead>招聘人数</TableHead>
-                    <TableHead>已录用</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableStateRow
-                      colSpan={7}
-                      title="正在加载招聘需求..."
-                      loading
-                    />
-                  ) : filteredRequests.length === 0 ? (
-                    <TableStateRow
-                      colSpan={7}
-                      title="暂无招聘需求"
-                    />
-                  ) : (
-                    filteredRequests.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                          {item.requestNo}
-                        </TableCell>
-                        <TableCell>{item.deptName || '-'}</TableCell>
-                        <TableCell>{item.positionName || '-'}</TableCell>
-                        <TableCell>{item.headcount}</TableCell>
-                        <TableCell>{item.hiredCount}</TableCell>
-                        <TableCell>
-                          <DictBadge dictType="hr_recruit_request_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex flex-wrap justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={item.status !== 'DRAFT'}
-                              onClick={() => void handleSubmitRequest(item.id)}
-                            >
-                              提交
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={item.status !== 'APPROVING'}
-                              onClick={() => void handleApproveRequest(item.id)}
-                            >
-                              审批通过
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={item.status !== 'RECRUITING'}
-                              onClick={() => void handleCompleteRequest(item.id)}
-                            >
-                              完成
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={item.status === 'COMPLETED' || item.status === 'CANCELLED'}
-                              onClick={() => void handleCancelRequest(item.id)}
-                            >
-                              取消
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="candidate" className="space-y-0">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">候选人</div>
-                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  候选人只在招聘链路内推进，到 Offer 或入职阶段后转由后续模块继续处理。
-                </div>
-              </div>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                {loading ? '同步中' : `${filteredCandidates.length} 条`}
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <Table className="min-w-[960px]">
-                <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-                  <TableRow>
-                    <TableHead>候选人</TableHead>
-                    <TableHead>手机号</TableHead>
-                    <TableHead>来源</TableHead>
-                    <TableHead>岗位</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead className="text-right">推进</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableStateRow
-                      colSpan={6}
-                      title="正在加载候选人记录..."
-                      loading
-                    />
-                  ) : filteredCandidates.length === 0 ? (
-                    <TableStateRow
-                      colSpan={6}
-                      title="暂无候选人记录"
-                    />
-                  ) : (
-                    filteredCandidates.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.name}</div>
-                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            {item.email || '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell>{item.phone}</TableCell>
-                        <TableCell>{item.sourceDesc || sourceDict.getLabel(String(item.source ?? ''))}</TableCell>
-                        <TableCell>{item.positionName || '-'}</TableCell>
-                        <TableCell>
-                          <DictBadge dictType="hr_candidate_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="ml-auto flex items-center justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setResumePanel({ open: true, candidate: item })}
-                            >
-                              简历解析
-                            </Button>
-                            {['OFFER', 'HIRED'].includes(item.status) ? (
-                              <div className="w-[180px] text-right text-xs text-slate-500 dark:text-slate-400">
-                                请在 Offer 或员工异动中继续推进
-                              </div>
-                            ) : (
-                              <Select
-                                value={item.status}
-                                onValueChange={(value) => handleCandidateStatusChange(item.id, value)}
+          
+              <div className="admin-horizontal-scroll">
+                <table className="unity-data-table admin-source-table min-w-[980px]">
+                  <thead>
+                    <tr>
+                      <th>需求编号</th>
+                      <th>部门</th>
+                      <th>岗位</th>
+                      <th>招聘人数</th>
+                      <th>已录用</th>
+                      <th>状态</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <TableStateRow
+                        colSpan={7}
+                        title="正在加载招聘需求..."
+                        loading
+                      />
+                    ) : filteredRequests.length === 0 ? (
+                      <TableStateRow
+                        colSpan={7}
+                        title="暂无招聘需求"
+                      />
+                    ) : (
+                      filteredRequests.map((item) => (
+                        <tr key={item.id}>
+                          <td><strong>{item.requestNo}</strong></td>
+                          <td>{item.deptName || '-'}</td>
+                          <td>{item.positionName || '-'}</td>
+                          <td>{item.headcount}</td>
+                          <td>{item.hiredCount}</td>
+                          <td>
+                            <DictBadge dictType="hr_recruit_request_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
+                          </td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              <button
+                                type="button"
+                                title="提交"
+                                disabled={item.status !== 'DRAFT'}
+                                onClick={() => void handleSubmitRequest(item.id)}
                               >
-                                <SelectTrigger className="w-[148px]">
-                                  <SelectValue placeholder="更新状态" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {editableCandidateStatuses.map((status) => (
-                                    <SelectItem key={status} value={status}>
-                                      {candidateStatusDict.getLabel(status)}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="interview" className="space-y-0">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">面试安排</div>
-                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  所有已排期面试统一在这里复核时间、地点和当前状态。
-                </div>
+                                <Send size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                title="审批通过"
+                                disabled={item.status !== 'APPROVING'}
+                                onClick={() => void handleApproveRequest(item.id)}
+                              >
+                                <Check size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                title="完成"
+                                disabled={item.status !== 'RECRUITING'}
+                                onClick={() => void handleCompleteRequest(item.id)}
+                              >
+                                <Flag size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="danger"
+                                title="取消"
+                                disabled={item.status === 'COMPLETED' || item.status === 'CANCELLED'}
+                                onClick={() => void handleCancelRequest(item.id)}
+                              >
+                                <CircleX size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                {loading ? '同步中' : `${interviews.length} 条`}
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <Table className="min-w-[860px]">
-                <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-                  <TableRow>
-                    <TableHead>候选人</TableHead>
-                    <TableHead>轮次</TableHead>
-                    <TableHead>形式</TableHead>
-                    <TableHead>时间</TableHead>
-                    <TableHead>地点</TableHead>
-                    <TableHead>状态</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableStateRow
-                      colSpan={6}
-                      title="正在加载面试安排..."
-                      loading
-                    />
-                  ) : interviews.length === 0 ? (
-                    <TableStateRow
-                      colSpan={6}
-                      title="暂无面试安排"
-                    />
-                  ) : (
-                    interviews.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                          {item.candidateName || '-'}
-                        </TableCell>
-                        <TableCell>{item.interviewRoundName || interviewRoundDict.getLabel(String(item.interviewRound ?? ''))}</TableCell>
-                        <TableCell>{item.interviewTypeName || interviewTypeDict.getLabel(String(item.interviewType ?? ''))}</TableCell>
-                        <TableCell>
-                          <div>{formatDateTimeValue(item.interviewTime)}</div>
-                          {item.interviewEndTime ? (
-                            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                              至 {formatDateTimeValue(item.interviewEndTime)}
+            </InnerTableSurface>
+          </TabsContent>
+          
+          <TabsContent value="candidate" className="mt-0">
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+              <div className="admin-recruitment-table-head">
+                <div>
+                  <strong>候选人</strong>
+                  <span>候选人只在招聘链路内推进，到 Offer 或入职阶段后转由后续模块继续处理。</span>
+                </div>
+                <span className="admin-users-filter-count">{loading ? '同步中' : `${filteredCandidates.length} 条`}</span>
+              </div>
+          
+              <div className="admin-horizontal-scroll">
+                <table className="unity-data-table admin-source-table min-w-[960px]">
+                  <thead>
+                    <tr>
+                      <th>候选人</th>
+                      <th>手机号</th>
+                      <th>来源</th>
+                      <th>岗位</th>
+                      <th>状态</th>
+                      <th className="text-right">推进</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <TableStateRow
+                        colSpan={6}
+                        title="正在加载候选人记录..."
+                        loading
+                      />
+                    ) : filteredCandidates.length === 0 ? (
+                      <TableStateRow
+                        colSpan={6}
+                        title="暂无候选人记录"
+                      />
+                    ) : (
+                      filteredCandidates.map((item) => (
+                        <tr key={item.id}>
+                          <td>
+                            <div className="admin-users-identity">
+                              <div>
+                                <strong>{item.name}</strong>
+                                <small>{item.email || '-'}</small>
+                              </div>
                             </div>
-                          ) : null}
-                        </TableCell>
-                        <TableCell>{item.meetingRoomName || item.location || '-'}</TableCell>
-                        <TableCell>
-                          <DictBadge dictType="hr_interview_status" value={String(item.status ?? '')} fallback={item.statusName || item.statusDesc || '-'} />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="offer" className="space-y-0">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer</div>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                {loading ? '同步中' : `${filteredOffers.length} 条`}
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <Table className="min-w-[980px]">
-                <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-                  <TableRow>
-                    <TableHead>Offer编号</TableHead>
-                    <TableHead>候选人</TableHead>
-                    <TableHead>岗位</TableHead>
-                    <TableHead>薪资</TableHead>
-                    <TableHead>到岗日期</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableStateRow colSpan={7} title="正在加载Offer..." loading />
-                  ) : filteredOffers.length === 0 ? (
-                    <TableStateRow colSpan={7} title="暂无Offer" />
-                  ) : (
-                    filteredOffers.map((item) => {
-                      const status = String(item.status || '').toUpperCase();
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                            {item.offerNo || '-'}
-                          </TableCell>
-                          <TableCell>{item.candidateName || optionOrIdLabel('候选人', candidateSelectOptions, item.candidateId)}</TableCell>
-                          <TableCell>{item.positionName || optionOrIdLabel('职位', positionSelectOptions, item.positionId)}</TableCell>
-                          <TableCell>{formatMoneyValue(item.salary)}</TableCell>
-                          <TableCell>{formatDateValue(item.expectedArrivalDate || item.expectedDate)}</TableCell>
-                          <TableCell>
-                            <DictBadge dictType="hr_offer_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex flex-wrap justify-end gap-2">
-                              <Button size="sm" variant="outline" disabled={status !== 'DRAFT'} onClick={() => void handleOfferAction(item.id, 'submit')}>
-                                提交
-                              </Button>
-                              <Button size="sm" variant="outline" disabled={status !== 'APPROVING'} onClick={() => void handleOfferAction(item.id, 'approve')}>
-                                通过
-                              </Button>
-                              <Button size="sm" variant="outline" disabled={status !== 'APPROVED'} onClick={() => void handleOfferAction(item.id, 'send')}>
-                                发送
-                              </Button>
-                              <Button size="sm" variant="outline" disabled={status !== 'SENT'} onClick={() => void handleOfferAction(item.id, 'accept')}>
-                                接受
-                              </Button>
-                              <Button size="sm" variant="outline" disabled={!['SENT', 'APPROVING'].includes(status)} onClick={() => void handleOfferAction(item.id, 'reject')}>
-                                拒绝
-                              </Button>
-                              <Button size="sm" variant="outline" disabled={status !== 'ACCEPTED'} onClick={() => void handleOfferAction(item.id, 'convert')}>
-                                转入职
-                              </Button>
+                          </td>
+                          <td>{item.phone}</td>
+                          <td>{item.sourceDesc || sourceDict.getLabel(String(item.source ?? ''))}</td>
+                          <td>{item.positionName || '-'}</td>
+                          <td>
+                            <DictBadge dictType="hr_candidate_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
+                          </td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              <button
+                                type="button"
+                                title="简历解析"
+                                onClick={() => setResumePanel({ open: true, candidate: item })}
+                              >
+                                <FileSearch size={15} />
+                              </button>
+                              {['OFFER', 'HIRED'].includes(item.status) ? (
+                                <div className="w-[180px] text-right text-xs text-slate-500 dark:text-slate-400">
+                                  请在 Offer 或员工异动中继续推进
+                                </div>
+                              ) : (
+                                <Select
+                                  value={item.status}
+                                  onValueChange={(value) => handleCandidateStatusChange(item.id, value)}
+                                >
+                                  <SelectTrigger className="w-[148px]">
+                                    <SelectValue placeholder="更新状态" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {editableCandidateStatuses.map((status) => (
+                                      <SelectItem key={status} value={status}>
+                                        {candidateStatusDict.getLabel(status)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="channel" className="space-y-0">
-          <HrRecruitmentChannelPanel onClose={() => setActiveTab('request')} />
-        </TabsContent>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </InnerTableSurface>
+          </TabsContent>
+          
+          <TabsContent value="interview" className="mt-0">
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+              <div className="admin-recruitment-table-head">
+                <div>
+                  <strong>面试安排</strong>
+                  <span>所有已排期面试统一在这里复核时间、地点和当前状态。</span>
+                </div>
+                <span className="admin-users-filter-count">{loading ? '同步中' : `${interviews.length} 条`}</span>
+              </div>
+          
+              <div className="admin-horizontal-scroll">
+                <table className="unity-data-table admin-source-table min-w-[860px]">
+                  <thead>
+                    <tr>
+                      <th>候选人</th>
+                      <th>轮次</th>
+                      <th>形式</th>
+                      <th>时间</th>
+                      <th>地点</th>
+                      <th>状态</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <TableStateRow
+                        colSpan={6}
+                        title="正在加载面试安排..."
+                        loading
+                      />
+                    ) : interviews.length === 0 ? (
+                      <TableStateRow
+                        colSpan={6}
+                        title="暂无面试安排"
+                      />
+                    ) : (
+                      interviews.map((item) => (
+                        <tr key={item.id}>
+                          <td><strong>{item.candidateName || '-'}</strong></td>
+                          <td>{item.interviewRoundName || interviewRoundDict.getLabel(String(item.interviewRound ?? ''))}</td>
+                          <td>{item.interviewTypeName || interviewTypeDict.getLabel(String(item.interviewType ?? ''))}</td>
+                          <td>
+                            <div>{formatDateTimeValue(item.interviewTime)}</div>
+                            {item.interviewEndTime ? (
+                              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                至 {formatDateTimeValue(item.interviewEndTime)}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td>{item.meetingRoomName || item.location || '-'}</td>
+                          <td>
+                            <DictBadge dictType="hr_interview_status" value={String(item.status ?? '')} fallback={item.statusName || item.statusDesc || '-'} />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </InnerTableSurface>
+          </TabsContent>
+          
+          <TabsContent value="offer" className="mt-0">
+            <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+              <div className="admin-recruitment-table-head">
+                <div><strong>Offer</strong></div>
+                <span className="admin-users-filter-count">{loading ? '同步中' : `${filteredOffers.length} 条`}</span>
+              </div>
+          
+              <div className="admin-horizontal-scroll">
+                <table className="unity-data-table admin-source-table min-w-[980px]">
+                  <thead>
+                    <tr>
+                      <th>Offer编号</th>
+                      <th>候选人</th>
+                      <th>岗位</th>
+                      <th>薪资</th>
+                      <th>到岗日期</th>
+                      <th>状态</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <TableStateRow colSpan={7} title="正在加载Offer..." loading />
+                    ) : filteredOffers.length === 0 ? (
+                      <TableStateRow colSpan={7} title="暂无Offer" />
+                    ) : (
+                      filteredOffers.map((item) => {
+                        const status = String(item.status || '').toUpperCase();
+                        return (
+                          <tr key={item.id}>
+                            <td><strong>{item.offerNo || '-'}</strong></td>
+                            <td>{item.candidateName || optionOrIdLabel('候选人', candidateSelectOptions, item.candidateId)}</td>
+                            <td>{item.positionName || optionOrIdLabel('职位', positionSelectOptions, item.positionId)}</td>
+                            <td>{formatMoneyValue(item.salary)}</td>
+                            <td>{formatDateValue(item.expectedArrivalDate || item.expectedDate)}</td>
+                            <td>
+                              <DictBadge dictType="hr_offer_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
+                            </td>
+                            <td>
+                              <div className="admin-users-row-actions">
+                                <button type="button" title="提交" disabled={status !== 'DRAFT'} onClick={() => void handleOfferAction(item.id, 'submit')}>
+                                  <Send size={15} />
+                                </button>
+                                <button type="button" title="通过" disabled={status !== 'APPROVING'} onClick={() => void handleOfferAction(item.id, 'approve')}>
+                                  <Check size={15} />
+                                </button>
+                                <button type="button" title="发送" disabled={status !== 'APPROVED'} onClick={() => void handleOfferAction(item.id, 'send')}>
+                                  <Send size={15} />
+                                </button>
+                                <button type="button" title="接受" disabled={status !== 'SENT'} onClick={() => void handleOfferAction(item.id, 'accept')}>
+                                  <UserCheck size={15} />
+                                </button>
+                                <button type="button" className="danger" title="拒绝" disabled={!['SENT', 'APPROVING'].includes(status)} onClick={() => void handleOfferAction(item.id, 'reject')}>
+                                  <CircleX size={15} />
+                                </button>
+                                <button type="button" title="转入职" disabled={status !== 'ACCEPTED'} onClick={() => void handleOfferAction(item.id, 'convert')}>
+                                  <Flag size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </InnerTableSurface>
+          </TabsContent>
+          
+          <TabsContent value="channel" className="mt-0">
+            <HrRecruitmentChannelPanel onClose={() => setActiveTab('request')} />
+          </TabsContent>
+              </>
+            }
+          />
+        </section>
       </Tabs>
 
       <BaseDialog
@@ -1048,6 +1073,7 @@ export const HrRecruitmentPage: React.FC = () => {
         title="新建招聘需求"
         onClose={closeRequestDialog}
         maxWidthClassName="max-w-3xl"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={closeRequestDialog}>
@@ -1059,12 +1085,9 @@ export const HrRecruitmentPage: React.FC = () => {
           </div>
         )}
       >
-        <div className="space-y-4">
-          <DialogSection
-            title="需求信息"
-          >
+        <DialogSection title="需求信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">部门</Label>
                 <DeptSelector
                   single
@@ -1073,7 +1096,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   placeholder="请选择部门"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
                 <PositionSelector
                   single
@@ -1083,7 +1106,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   placeholder="请选择职位"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">招聘人数</Label>
                 <Input
                   type="number"
@@ -1098,7 +1121,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">期望到岗日期</Label>
                 <DatePicker
                   type="date"
@@ -1109,7 +1132,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">薪资下限</Label>
                 <Input
                   type="number"
@@ -1123,7 +1146,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">薪资上限</Label>
                 <Input
                   type="number"
@@ -1137,7 +1160,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2 xl:col-span-3">
+              <div className="admin-dialog-field xl:col-span-3">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">任职要求</Label>
                 <Textarea
                   rows={4}
@@ -1149,7 +1172,6 @@ export const HrRecruitmentPage: React.FC = () => {
               </div>
             </div>
           </DialogSection>
-        </div>
       </BaseDialog>
 
       <BaseDialog
@@ -1157,6 +1179,7 @@ export const HrRecruitmentPage: React.FC = () => {
         title="录入候选人"
         onClose={closeCandidateDialog}
         maxWidthClassName="max-w-3xl"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={closeCandidateDialog}>
@@ -1171,17 +1194,14 @@ export const HrRecruitmentPage: React.FC = () => {
           </div>
         )}
       >
-        <div className="space-y-4">
-          {!recruitingRequests.length ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+        {!recruitingRequests.length ? (
+            <div className="admin-recruitment-alert">
               当前没有“招聘中”的需求。请先在需求列表完成提交和审批通过，再录入候选人。
             </div>
           ) : null}
-          <DialogSection
-            title="候选人信息"
-          >
+          <DialogSection title="候选人信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="space-y-2 xl:col-span-3">
+              <div className="admin-dialog-field xl:col-span-3">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">关联招聘需求</Label>
                 <Select
                   value={candidateForm.requestId ? String(candidateForm.requestId) : undefined}
@@ -1201,7 +1221,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">姓名</Label>
                 <Input
                   value={candidateForm.name}
@@ -1211,7 +1231,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">性别</Label>
                 <Select
                   value={candidateForm.gender || 'MALE'}
@@ -1228,7 +1248,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">手机号</Label>
                 <Input
                   value={candidateForm.phone}
@@ -1238,7 +1258,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">邮箱</Label>
                 <Input
                   value={candidateForm.email || ''}
@@ -1248,7 +1268,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">来源</Label>
                 <Select
                   value={candidateForm.source || 'WEBSITE'}
@@ -1266,7 +1286,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">招聘渠道</Label>
                 <Select
                   value={candidateForm.channelId ? String(candidateForm.channelId) : '__NONE__'}
@@ -1290,7 +1310,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 xl:col-span-3">
+              <div className="admin-dialog-field xl:col-span-3">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">简历附件</Label>
                 <FileUpload
                   value={Array.isArray(candidateForm.resumeAttachmentUrls)
@@ -1306,7 +1326,6 @@ export const HrRecruitmentPage: React.FC = () => {
               </div>
             </div>
           </DialogSection>
-        </div>
       </BaseDialog>
 
       <BaseDialog
@@ -1314,6 +1333,7 @@ export const HrRecruitmentPage: React.FC = () => {
         title="安排面试"
         onClose={closeInterviewDialog}
         maxWidthClassName="max-w-3xl"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={closeInterviewDialog}>
@@ -1334,17 +1354,14 @@ export const HrRecruitmentPage: React.FC = () => {
           </div>
         )}
       >
-        <div className="space-y-4">
-          {!interviewableCandidates.length ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+        {!interviewableCandidates.length ? (
+            <div className="admin-recruitment-alert">
               当前没有可安排面试的候选人。只有“招聘中”需求下且状态为新简历、筛选中、面试中的候选人才能继续安排面试。
             </div>
           ) : null}
-          <DialogSection
-            title="面试信息"
-          >
+          <DialogSection title="面试信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="space-y-2 xl:col-span-3">
+              <div className="admin-dialog-field xl:col-span-3">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">候选人</Label>
                 <Select
                   value={interviewForm.candidateId ? String(interviewForm.candidateId) : undefined}
@@ -1364,7 +1381,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">轮次</Label>
                 <Select
                   value={interviewForm.interviewRound}
@@ -1382,7 +1399,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">面试形式</Label>
                 <Select
                   value={interviewForm.interviewType}
@@ -1400,7 +1417,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">开始时间</Label>
                 <DatePicker
                   type="datetime-local"
@@ -1411,7 +1428,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">结束时间</Label>
                 <DatePicker
                   type="datetime-local"
@@ -1422,7 +1439,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2 xl:col-span-3">
+              <div className="admin-dialog-field xl:col-span-3">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">会议室</Label>
                 <Select
                   value={interviewForm.meetingRoomId ? String(interviewForm.meetingRoomId) : 'none'}
@@ -1448,12 +1465,12 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               {selectedMeetingRoom ? (
-                <div className="space-y-2 xl:col-span-3">
+                <div className="admin-dialog-field xl:col-span-3">
                   <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">地点快照</Label>
-                  <Input value={getRoomSnapshot(selectedMeetingRoom)} readOnly className="h-11 bg-slate-50 dark:bg-slate-900" />
+                  <Input value={getRoomSnapshot(selectedMeetingRoom)} readOnly className="h-11 bg-[var(--cf-surface-muted)] dark:bg-slate-900" />
                 </div>
               ) : (
-                <div className="space-y-2 xl:col-span-3">
+                <div className="admin-dialog-field xl:col-span-3">
                   <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">地点 / 链接</Label>
                   <Input
                     value={interviewForm.location || ''}
@@ -1467,7 +1484,6 @@ export const HrRecruitmentPage: React.FC = () => {
               )}
             </div>
           </DialogSection>
-        </div>
       </BaseDialog>
 
       <BaseDialog
@@ -1475,6 +1491,7 @@ export const HrRecruitmentPage: React.FC = () => {
         title="新建Offer"
         onClose={closeOfferDialog}
         maxWidthClassName="max-w-3xl"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={closeOfferDialog}>
@@ -1489,15 +1506,14 @@ export const HrRecruitmentPage: React.FC = () => {
           </div>
         )}
       >
-        <div className="space-y-4">
-          {!offerableCandidates.length ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+        {!offerableCandidates.length ? (
+            <div className="admin-recruitment-alert">
               当前没有可发 Offer 的候选人。
             </div>
           ) : null}
           <DialogSection title="Offer信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="space-y-2 xl:col-span-3">
+              <div className="admin-dialog-field xl:col-span-3">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">候选人</Label>
                 <Select
                   value={offerForm.candidateId ? String(offerForm.candidateId) : undefined}
@@ -1522,7 +1538,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
                 <PositionSelector
                   single
@@ -1531,7 +1547,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   placeholder="请选择职位"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">薪资</Label>
                 <Input
                   type="number"
@@ -1542,7 +1558,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">预计到岗</Label>
                 <DatePicker
                   type="date"
@@ -1553,7 +1569,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">有效期至</Label>
                 <DatePicker
                   type="date"
@@ -1564,7 +1580,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2 xl:col-span-3">
+              <div className="admin-dialog-field xl:col-span-3">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Offer内容</Label>
                 <Textarea
                   rows={4}
@@ -1576,7 +1592,6 @@ export const HrRecruitmentPage: React.FC = () => {
               </div>
             </div>
           </DialogSection>
-        </div>
       </BaseDialog>
 
       <BaseDialog
@@ -1603,8 +1618,9 @@ export const HrRecruitmentPage: React.FC = () => {
             </Button>
           </div>
         )}
+        bodyClassName="admin-dialog-stack"
       >
-        <div className="space-y-2">
+        <div className="admin-dialog-field">
           <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">拒绝原因</Label>
           <Textarea
             rows={4}
@@ -1624,7 +1640,7 @@ export const HrRecruitmentPage: React.FC = () => {
           : (resumePanel.candidate?.resumeAttachmentUrls as string | undefined)}
         onClose={() => setResumePanel({ open: false })}
       />
-    </div>
+    </>
   );
 };
 

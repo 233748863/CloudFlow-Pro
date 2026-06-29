@@ -118,7 +118,7 @@ export const SalaryItemDialog: React.FC<DialogProps> = ({ components, viewModel 
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+      <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
         <DetailRow
           label="结构命中"
           value={itemFormDiagnostics.usage
@@ -205,7 +205,7 @@ export const SalaryStructureDialog: React.FC<DialogProps> = ({ components, viewM
         <div className="md:col-span-2">
           <Label>关联项目</Label>
           {salaryItems.length ? (
-            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800">
+            <div className="mt-3 overflow-hidden border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800">
               <div className="grid grid-cols-1 gap-px bg-slate-200 dark:bg-slate-800 xl:grid-cols-2">
                 {salaryItems.map((item: any) => {
                   const selected = structureForm.itemIds.includes(item.id);
@@ -216,12 +216,12 @@ export const SalaryStructureDialog: React.FC<DialogProps> = ({ components, viewM
                       type="button"
                       disabled={disabled}
                       className={cn(
-                        'flex items-start justify-between gap-3 bg-white px-3 py-3 text-left text-sm transition dark:bg-slate-950/72',
+                        'flex items-start justify-between gap-3 bg-[var(--cf-surface-strong)] px-3 py-3 text-left text-sm transition dark:bg-slate-950/72',
                         selected
                           ? 'text-slate-900 dark:text-slate-100'
                           : disabled
                             ? 'cursor-not-allowed text-slate-400 dark:text-slate-500'
-                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900',
+                            : 'text-slate-700 hover:bg-[var(--cf-surface-muted)] dark:text-slate-200 dark:hover:bg-slate-900',
                       )}
                       onClick={() => setStructureForm((prev: any) => ({
                         ...prev,
@@ -238,20 +238,20 @@ export const SalaryStructureDialog: React.FC<DialogProps> = ({ components, viewM
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
                         <span className={cn(
-                          'inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                          'inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium',
                           item.isTaxable
-                            ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
-                            : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+                            ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
+                            : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
                         )}>
                           {item.isTaxable ? '计税' : '不计税'}
                         </span>
                         <span className={cn(
-                          'inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                          'inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium',
                           selected
-                            ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
+                            ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
                             : disabled
-                              ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500'
-                              : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+                              ? 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500'
+                              : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
                         )}>
                           {selected ? '已选' : item.status === 1 ? '可选' : '禁用'}
                         </span>
@@ -262,14 +262,14 @@ export const SalaryStructureDialog: React.FC<DialogProps> = ({ components, viewM
               </div>
             </div>
           ) : (
-            <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+            <div className="mt-3 border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/40">
               当前还没有可关联的薪资项目。
             </div>
           )}
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+      <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
         <DetailRow
           label="已选项目"
           value={`${structureFormDiagnostics.selectedItems.length} 个 / 计税 ${structureFormDiagnostics.taxableItems.length} 个 / 浮动 ${structureFormDiagnostics.variableItems.length} 个`}
@@ -366,7 +366,7 @@ export const SalaryGradeDialog: React.FC<DialogProps> = ({ components, viewModel
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+      <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
         <DetailRow
           label="目标职级"
           value={gradeFormDiagnostics.selectedLevel
@@ -532,7 +532,7 @@ export const InsuranceSchemeDialog: React.FC<DialogProps> = ({ components, viewM
         ))}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+      <div className="mt-6 overflow-hidden border border-slate-200 dark:border-slate-800">
         <DetailRow
           label="比例合计"
           value={`${formatPercent(insuranceSchemeFormDiagnostics.totalRate)} / 公司 ${formatPercent(insuranceSchemeFormDiagnostics.companyTotalRate)} / 个人 ${formatPercent(insuranceSchemeFormDiagnostics.personalTotalRate)}`}

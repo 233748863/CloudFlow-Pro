@@ -2,28 +2,20 @@ import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
-  ArrowRightLeft,
   BadgePlus,
   BriefcaseBusiness,
   CalendarClock,
-  CalendarDays,
-  FileSearch,
   Landmark,
   Layers3,
-  LogOut,
   RefreshCcw,
   Search,
   Send,
   Target,
-  UserCog,
-  UserRoundCheck,
   UserRoundPlus,
   Users,
-  Wallet,
 } from 'lucide-react';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, Input } from '@/components/common';
-import { cn } from '@/utils/cn';
+import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import {
   Candidate,
   HrEmployee,
@@ -50,38 +42,17 @@ const normalizeRows = <T,>(data: unknown): T[] => {
   return [];
 };
 
-const statusPill = (
-  text: string,
-  tone: 'teal' | 'emerald' | 'slate' | 'amber' = 'slate',
-) => {
-  const toneClass = {
-    teal: 'border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-    emerald:
-      'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    slate:
-      'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-    amber:
-      'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  }[tone];
-
-  return (
-    <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${toneClass}`}>
-      {text}
-    </span>
-  );
+const formatDateLabel = (value?: string | null) => {
+  if (!value) return '-';
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) return value;
+  return new Date(timestamp).toLocaleDateString('zh-CN');
 };
 
-// 状态色委托后端字典 employee_status，未命中保持页面历史 teal fallback
-// 该页面 statusPill 仅支持 teal/emerald/slate/amber 4 色，字典返回的其他色降级到 teal
-import { useDict } from '@/hooks/useDict';
-
-type LocalPillTone = 'teal' | 'emerald' | 'slate' | 'amber';
-
-const narrowPillTone = (color?: string | null): LocalPillTone => {
-  if (color === 'emerald' || color === 'slate' || color === 'amber' || color === 'teal') {
-    return color;
-  }
-  return 'teal';
+const getLatestTimestamp = (value?: string | null) => {
+  if (!value) return 0;
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
 const onboardingStatusPriority = (status?: string | null) => {
@@ -106,10 +77,7 @@ const buildOnboardingMap = (applications: OnboardingApplication[]) => {
 
     const nextPriority = onboardingStatusPriority(application.status);
     const currentPriority = onboardingStatusPriority(current.status);
-    if (
-      nextPriority > currentPriority
-      || (nextPriority === currentPriority && application.id > current.id)
-    ) {
+    if (nextPriority > currentPriority || (nextPriority === currentPriority && application.id > current.id)) {
       result.set(application.candidateId, application);
     }
   });
@@ -117,22 +85,9 @@ const buildOnboardingMap = (applications: OnboardingApplication[]) => {
   return result;
 };
 
-const formatDateLabel = (value?: string | null) => {
-  if (!value) return '-';
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return value;
-  return new Date(timestamp).toLocaleDateString('zh-CN');
-};
+type EntryTone = 'blue' | 'amber' | 'green' | 'violet' | 'slate';
 
-const getLatestTimestamp = (value?: string | null) => {
-  if (!value) return 0;
-  const timestamp = Date.parse(value);
-  return Number.isNaN(timestamp) ? 0 : timestamp;
-};
-
-type EntryTone = 'cyan' | 'amber' | 'emerald' | 'slate' | 'violet' | 'rose';
-
-type ModuleEntry = {
+interface ModuleEntry {
   title: string;
   hint: string;
   path: string;
@@ -140,88 +95,59 @@ type ModuleEntry = {
   keywords: string[];
   tone: EntryTone;
   icon: React.ReactNode;
+}
+
+const toneClassName: Record<EntryTone, string> = {
+  blue: 'border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
+  amber: 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+  green: 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+  violet: 'border-violet-100 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
+  slate: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
 };
 
-const entryToneClass: Record<EntryTone, string> = {
-  cyan: 'border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-  amber: 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  emerald:
-    'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-  slate:
-    'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-  violet:
-    'border-violet-100 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
-  rose: 'border-rose-100 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-};
+const statusPill = (text?: string, tone: EntryTone = 'slate') => (
+  <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-medium ${toneClassName[tone]}`}>
+    {text || '-'}
+  </span>
+);
 
 const InlineState = ({ title }: { title: string }) => (
   <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       <Users className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
   </div>
 );
 
-const DirectoryEntryButton = ({
-  entry,
-  onOpen,
-}: {
-  entry: ModuleEntry;
-  onOpen: (path: string) => void;
-}) => (
+const DirectoryEntryButton = ({ entry, onOpen }: { entry: ModuleEntry; onOpen: (path: string) => void }) => (
   <button
     type="button"
     onClick={() => onOpen(entry.path)}
-    className="group flex w-full items-start gap-3 rounded-xl border border-slate-200 px-4 py-4 text-left transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/40"
+    className="cf-side-link cf-side-link-sm group w-full items-start gap-3 py-3 text-left"
   >
-    <span
-      className={cn(
-        'mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border',
-        entryToneClass[entry.tone],
-      )}
-    >
+    <span className={`admin-source-stat-icon mt-0.5 h-9 w-9 flex-shrink-0 border ${toneClassName[entry.tone]}`}>
       {entry.icon}
     </span>
-
     <span className="min-w-0 flex-1">
       <span className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          {entry.title}
-        </span>
-        {entry.meta ? (
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-            {entry.meta}
-          </span>
-        ) : null}
+        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{entry.title}</span>
+        {entry.meta ? <span className="badge badge-gray">{entry.meta}</span> : null}
       </span>
-      <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
-        {entry.hint}
-      </span>
+      <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">{entry.hint}</span>
     </span>
-
     <ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 dark:text-slate-500" />
   </button>
 );
 
-const MetricRow = ({
-  title,
-  helper,
-  value,
-  onOpen,
-}: {
-  title: string;
-  helper: string;
-  value: string;
-  onOpen: () => void;
-}) => (
+const MetricRow = ({ title, helper, value, onOpen }: { title: string; helper: string; value: string; onOpen: () => void }) => (
   <button
     type="button"
     onClick={onOpen}
-    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40"
+    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/40"
   >
     <span className="min-w-0">
-      <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">{title}</span>
+      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</span>
       <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{helper}</span>
     </span>
     <span className="flex items-center gap-2">
@@ -245,15 +171,11 @@ const ActivityRow = ({
   <button
     type="button"
     onClick={onOpen}
-    className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40"
+    className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/40"
   >
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-        {title}
-      </span>
-      <span className="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">
-        {secondary}
-      </span>
+      <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">{title}</span>
+      <span className="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">{secondary}</span>
     </span>
     <span className="flex items-center gap-2">
       {aside}
@@ -264,9 +186,6 @@ const ActivityRow = ({
 
 export const HrDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const requestStatusDict = useDict('request_status');
-  const requestStatusTone = (status?: string): LocalPillTone =>
-    narrowPillTone(status ? requestStatusDict.getItem(status)?.colorName : undefined);
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [requests, setRequests] = useState<RecruitmentRequest[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -274,23 +193,12 @@ export const HrDashboardPage: React.FC = () => {
   const [onboardingApplications, setOnboardingApplications] = useState<OnboardingApplication[]>([]);
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(true);
-
-  const employeeStatusDict = useDict('employee_status');
-  const employeeStatusTone = (status?: string): LocalPillTone =>
-    narrowPillTone(status ? employeeStatusDict.getItem(status)?.colorName : undefined);
-
   const deferredKeyword = useDeferredValue(keyword.trim().toLowerCase());
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [
-        employeeRes,
-        requestRes,
-        candidateRes,
-        offerRes,
-        onboardingRes,
-      ] = await Promise.allSettled([
+      const [employeeRes, requestRes, candidateRes, offerRes, onboardingRes] = await Promise.allSettled([
         listEmployees(),
         listRecruitmentRequests({ pageNum: 1, pageSize: 50 }),
         listCandidates({ pageNum: 1, pageSize: 50 }),
@@ -303,9 +211,7 @@ export const HrDashboardPage: React.FC = () => {
       setCandidates(candidateRes.status === 'fulfilled' ? normalizeRows<Candidate>(candidateRes.value) : []);
       setOffers(offerRes.status === 'fulfilled' ? normalizeRows<Offer>(offerRes.value) : []);
       setOnboardingApplications(
-        onboardingRes.status === 'fulfilled'
-          ? normalizeRows<OnboardingApplication>(onboardingRes.value)
-          : [],
+        onboardingRes.status === 'fulfilled' ? normalizeRows<OnboardingApplication>(onboardingRes.value) : [],
       );
     } finally {
       setLoading(false);
@@ -354,7 +260,7 @@ export const HrDashboardPage: React.FC = () => {
             path: '/hr/employees',
             meta: loading ? '--' : `${summary.totalEmployees} 人`,
             keywords: ['员工', '档案', '合同', '证件', '联系人'],
-            tone: 'cyan',
+            tone: 'blue',
             icon: <BadgePlus size={16} />,
           },
           {
@@ -381,7 +287,7 @@ export const HrDashboardPage: React.FC = () => {
             path: '/hr/performance',
             meta: '目标绩效',
             keywords: ['绩效', '目标', '销售额', '类目', '评分'],
-            tone: 'cyan',
+            tone: 'blue',
             icon: <Target size={16} />,
           },
         ],
@@ -395,7 +301,7 @@ export const HrDashboardPage: React.FC = () => {
             path: '/hr/recruitment',
             meta: loading ? '--' : `${summary.recruitingCount} 条在招`,
             keywords: ['招聘', '候选人', '面试', '需求'],
-            tone: 'emerald',
+            tone: 'green',
             icon: <BriefcaseBusiness size={16} />,
           },
           {
@@ -413,7 +319,7 @@ export const HrDashboardPage: React.FC = () => {
             path: '/hr/lifecycle',
             meta: loading ? '--' : `${summary.pendingOnboardingCount} 条待处理`,
             keywords: ['入职', '转正', '调岗', '离职'],
-            tone: 'cyan',
+            tone: 'blue',
             icon: <UserRoundPlus size={16} />,
           },
           {
@@ -451,36 +357,11 @@ export const HrDashboardPage: React.FC = () => {
 
   const focusRows = useMemo(
     () => [
-      {
-        title: '员工在册',
-        helper: '进入员工档案',
-        value: loading ? '--' : String(summary.totalEmployees),
-        path: '/hr/employees',
-      },
-      {
-        title: '试用期员工',
-        helper: '进入员工异动',
-        value: loading ? '--' : String(summary.probationCount),
-        path: '/hr/lifecycle',
-      },
-      {
-        title: '在招需求',
-        helper: '进入招聘中心',
-        value: loading ? '--' : String(summary.recruitingCount),
-        path: '/hr/recruitment',
-      },
-      {
-        title: '待推进录用',
-        helper: '进入招聘录用',
-        value: loading ? '--' : String(summary.activeOfferCount),
-        path: '/hr/recruitment',
-      },
-      {
-        title: '待入职',
-        helper: '进入员工异动',
-        value: loading ? '--' : String(summary.pendingOnboardingCount),
-        path: '/hr/lifecycle',
-      },
+      { title: '员工在册', helper: '进入员工档案', value: loading ? '--' : String(summary.totalEmployees), path: '/hr/employees' },
+      { title: '试用期员工', helper: '进入员工异动', value: loading ? '--' : String(summary.probationCount), path: '/hr/lifecycle' },
+      { title: '在招需求', helper: '进入招聘中心', value: loading ? '--' : String(summary.recruitingCount), path: '/hr/recruitment' },
+      { title: '待推进录用', helper: '进入招聘录用', value: loading ? '--' : String(summary.activeOfferCount), path: '/hr/recruitment' },
+      { title: '待入职', helper: '进入员工异动', value: loading ? '--' : String(summary.pendingOnboardingCount), path: '/hr/lifecycle' },
     ],
     [loading, summary],
   );
@@ -513,65 +394,81 @@ export const HrDashboardPage: React.FC = () => {
     [requests],
   );
 
-  return (
-    <TablePageLayout
-      className="gap-4"
-      filters={(
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full xl:w-80">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <Input
-                  className="pl-10"
-                  placeholder="搜索 HR 模块、入口或事项"
-                  value={keyword}
-                  onChange={(event) => setKeyword(event.target.value)}
-                />
-              </div>
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">HR COMMAND CENTER</p>
+          <h2>人力资源工作台</h2>
+          <span>统一进入员工、组织、招聘、异动、考勤和薪酬业务。</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void loadData()}>
+            <RefreshCcw size={14} className={loading ? 'animate-spin' : ''} />
+            刷新
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate('/hr/employees')}>
+            员工档案
+          </Button>
+          <Button size="sm" onClick={() => navigate('/hr/recruitment')}>
+            招聘中心
+          </Button>
+        </div>
+      </header>
 
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                入口 {loading ? '--' : totalModuleCount}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                招聘 {loading ? '--' : summary.recruitingCount}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                候选人 {loading ? '--' : summary.interviewingCount}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                录用 {loading ? '--' : summary.activeOfferCount}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                待入职 {loading ? '--' : summary.pendingOnboardingCount}
-              </span>
-            </div>
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <span className="admin-source-stat-icon"><Users size={18} /></span>
+          <div><p>员工在册</p><strong>{loading ? '--' : summary.totalEmployees}</strong><span>员工档案总数</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <span className="admin-source-stat-icon"><BriefcaseBusiness size={18} /></span>
+          <div><p>在招需求</p><strong>{loading ? '--' : summary.recruitingCount}</strong><span>招聘需求推进中</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <span className="admin-source-stat-icon"><UserRoundPlus size={18} /></span>
+          <div><p>待入职</p><strong>{loading ? '--' : summary.pendingOnboardingCount}</strong><span>入职流程待处理</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <span className="admin-source-stat-icon"><Send size={18} /></span>
+          <div><p>待推进录用</p><strong>{loading ? '--' : summary.activeOfferCount}</strong><span>Offer 与录用链路</span></div>
+        </article>
+      </section>
+    </div>
+  );
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => void loadData()}>
-                <RefreshCcw size={14} className={cn('mr-1.5', loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/hr/employees')}>
-                员工档案
-              </Button>
-              <Button size="sm" onClick={() => navigate('/hr/recruitment')}>
-                招聘中心
-              </Button>
+  const pageFilters = (
+      <section className="card admin-users-toolbar">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <label className="admin-dialog-field w-full xl:w-80">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">模块搜索</span>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+              <Input
+                className="cf-control pl-10"
+                placeholder="搜索 HR 模块、入口或事项"
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+              />
             </div>
+          </label>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="badge badge-gray">入口 {loading ? '--' : totalModuleCount}</span>
+            <span className="badge badge-gray">候选人 {loading ? '--' : summary.interviewingCount}</span>
+            <span className="badge badge-gray">试用期 {loading ? '--' : summary.probationCount}</span>
           </div>
         </div>
-      )}
-      table={(<TableSurfaceCard>
-        <div className="grid min-h-[640px] gap-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.95fr)]">
-          <div className="min-w-0 xl:border-r xl:border-slate-200 dark:xl:border-slate-800">
+      </section>
+  );
+
+  const pageContent = (
+      <InnerTableSurface className="flex min-h-0 flex-1 flex-col" wrapperClassName="flex min-h-0 flex-col">
+        <div className="flex min-h-0 flex-col">
+          <div className="min-w-0">
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
               <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">模块入口</div>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                {loading ? '同步中' : `${totalModuleCount} 个入口`}
-              </span>
+              <span className="badge badge-gray">{loading ? '同步中' : `${totalModuleCount} 个入口`}</span>
             </div>
-
             {moduleGroups.length === 0 ? (
               <InlineState title="没有匹配的模块入口" />
             ) : (
@@ -579,21 +476,12 @@ export const HrDashboardPage: React.FC = () => {
                 {moduleGroups.map((group) => (
                   <section key={group.title} className="p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        {group.title}
-                      </div>
-                      <div className="text-xs text-slate-400 dark:text-slate-500">
-                        {group.entries.length} 个入口
-                      </div>
+                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{group.title}</div>
+                      <div className="text-xs text-slate-400 dark:text-slate-500">{group.entries.length} 个入口</div>
                     </div>
-
                     <div className="grid gap-3 2xl:grid-cols-2">
                       {group.entries.map((entry) => (
-                        <DirectoryEntryButton
-                          key={entry.path}
-                          entry={entry}
-                          onOpen={(path) => navigate(path)}
-                        />
+                        <DirectoryEntryButton key={entry.path} entry={entry} onOpen={(path) => navigate(path)} />
                       ))}
                     </div>
                   </section>
@@ -602,7 +490,7 @@ export const HrDashboardPage: React.FC = () => {
             )}
           </div>
 
-          <div className="min-w-0 divide-y divide-slate-200 dark:divide-slate-800">
+          <div className="grid min-w-0 divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
             <section>
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前关注</div>
@@ -610,13 +498,7 @@ export const HrDashboardPage: React.FC = () => {
               </div>
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {focusRows.map((item) => (
-                  <MetricRow
-                    key={item.title}
-                    title={item.title}
-                    helper={item.helper}
-                    value={item.value}
-                    onOpen={() => navigate(item.path)}
-                  />
+                  <MetricRow key={item.title} title={item.title} helper={item.helper} value={item.value} onOpen={() => navigate(item.path)} />
                 ))}
               </div>
             </section>
@@ -624,11 +506,8 @@ export const HrDashboardPage: React.FC = () => {
             <section>
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">最近员工</div>
-                <Button variant="outline" size="sm" onClick={() => navigate('/hr/employees')}>
-                  查看员工
-                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate('/hr/employees')}>查看员工</Button>
               </div>
-
               {loading ? (
                 <InlineState title="正在同步员工数据" />
               ) : recentEmployees.length === 0 ? (
@@ -640,10 +519,7 @@ export const HrDashboardPage: React.FC = () => {
                       key={item.id}
                       title={`${item.name} · ${item.employeeNo}`}
                       secondary={`${item.deptName || '未分配部门'} · ${formatDateLabel(item.hireDate || item.updateTime || item.createTime)}`}
-                      aside={statusPill(
-                        getHrEmployeeStatusLabel(item.employeeStatus),
-                        employeeStatusTone(item.employeeStatus),
-                      )}
+                      aside={statusPill(getHrEmployeeStatusLabel(item.employeeStatus), 'blue')}
                       onOpen={() => navigate('/hr/employees')}
                     />
                   ))}
@@ -654,11 +530,8 @@ export const HrDashboardPage: React.FC = () => {
             <section>
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">招聘推进</div>
-                <Button variant="outline" size="sm" onClick={() => navigate('/hr/recruitment')}>
-                  查看招聘
-                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate('/hr/recruitment')}>查看招聘</Button>
               </div>
-
               {loading ? (
                 <InlineState title="正在同步招聘数据" />
               ) : recentRequests.length === 0 ? (
@@ -668,9 +541,9 @@ export const HrDashboardPage: React.FC = () => {
                   {recentRequests.map((item) => (
                     <ActivityRow
                       key={item.id}
-                      title={`${item.requestNo} · ${item.positionName || '未配置岗位'}`}
-                      secondary={`需求 ${item.headcount} 人 · ${formatDateLabel(item.expectedDate || item.updateTime || item.createTime)}`}
-                      aside={statusPill(item.statusDesc || item.status, requestStatusTone(item.status))}
+                      title={`${item.requestNo || item.requisitionNo || item.id} · ${item.positionName || item.title || '未配置岗位'}`}
+                      secondary={`需求 ${item.headcount || 0} 人 · ${formatDateLabel(item.expectedDate || item.updateTime || item.createTime)}`}
+                      aside={statusPill(item.statusDesc || item.status, 'green')}
                       onOpen={() => navigate('/hr/recruitment')}
                     />
                   ))}
@@ -679,8 +552,17 @@ export const HrDashboardPage: React.FC = () => {
             </section>
           </div>
         </div>
-      </TableSurfaceCard>)}
-    />
+      </InnerTableSurface>
+  );
+
+  return (
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageContent}
+      />
+    </section>
   );
 };
 

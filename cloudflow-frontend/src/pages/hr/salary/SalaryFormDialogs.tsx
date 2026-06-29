@@ -1,5 +1,6 @@
 import React from 'react';
-import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/common';
+import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { buildEmployeeLabel, toDateInputValue } from '../hrShared';
 
 type DialogComponents = {
@@ -47,7 +48,7 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
       onClose={close}
       width="wide"
     >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="admin-source-form-grid md:grid-cols-3">
         <div>
           <Label>员工</Label>
           <Select
@@ -93,7 +94,7 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+      <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
         <DetailRow
           label="结构样本"
           value={assignFormDiagnostics.benchmarkStats.count
@@ -110,12 +111,12 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
 
       <WorkspaceInlineRiskList items={assignFormDiagnostics.riskItems} className="mt-4" />
 
-      <div className="mt-6 space-y-4">
+      <div className="admin-source-content-grid mt-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">薪资明细</h3>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">薪资明细</h3>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200">
+          <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
             合计 {formatCurrency(assignTotal)}
           </div>
         </div>
@@ -176,7 +177,7 @@ export const CreateAdjustmentDialog: React.FC<DialogProps> = ({ components, view
       onClose={close}
       width="wide"
     >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="admin-source-form-grid xl:grid-cols-4">
         <div className="xl:col-span-2">
           <Label>员工</Label>
           <Select
@@ -245,7 +246,7 @@ export const CreateAdjustmentDialog: React.FC<DialogProps> = ({ components, view
         ]}
       />
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+      <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
         <DetailRow
           label="当前现薪"
           value={adjustmentFormEmployee
@@ -264,7 +265,7 @@ export const CreateAdjustmentDialog: React.FC<DialogProps> = ({ components, view
 
       <div className="mt-6">
         <div className="mb-3">
-          <h3 className="text-base font-semibold text-slate-900">调薪后明细</h3>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">调薪后明细</h3>
         </div>
 
         <SalaryAmountEditor
@@ -321,7 +322,7 @@ export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewM
       onClose={close}
       width="wide"
     >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="admin-source-form-grid">
         <div className="md:col-span-2">
           <Label>员工</Label>
           <Input value={currentEmployeeRecord ? [currentEmployeeRecord.employeeName, currentEmployeeRecord.employeeNo].filter(Boolean).join(' / ') : ''} disabled />
@@ -363,7 +364,7 @@ export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewM
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+      <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
         <DetailRow
           label="选定方案"
           value={selectedInsuranceScheme?.schemeName || '-'}
@@ -401,30 +402,30 @@ export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewM
       <WorkspaceInlineRiskList items={insuranceAssignDiagnostics.riskItems} className="mt-4" />
 
       {insuranceAssignPreview && (
-        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>项目</TableHead>
-                <TableHead>个人承担</TableHead>
-                <TableHead>公司承担</TableHead>
-                <TableHead>合计</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <InnerTableSurface className="mt-4">
+          <table className="unity-data-table admin-source-table min-w-[560px]">
+            <thead>
+              <tr>
+                <th>项目</th>
+                <th>个人承担</th>
+                <th>公司承担</th>
+                <th>合计</th>
+              </tr>
+            </thead>
+            <tbody>
               {insuranceAssignPreview.rows.map((row: any) => (
-                <TableRow key={row.key}>
-                  <TableCell>
-                    <div className="font-medium text-slate-900">{row.label}</div>
-                  </TableCell>
-                  <TableCell>{formatCurrency(row.personalAmount)}</TableCell>
-                  <TableCell>{formatCurrency(row.companyAmount)}</TableCell>
-                  <TableCell>{formatCurrency(row.totalAmount)}</TableCell>
-                </TableRow>
+                <tr key={row.key}>
+                  <td>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{row.label}</div>
+                  </td>
+                  <td>{formatCurrency(row.personalAmount)}</td>
+                  <td>{formatCurrency(row.companyAmount)}</td>
+                  <td>{formatCurrency(row.totalAmount)}</td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
-        </div>
+            </tbody>
+          </table>
+        </InnerTableSurface>
       )}
 
       <div className="mt-6 flex justify-end gap-3">

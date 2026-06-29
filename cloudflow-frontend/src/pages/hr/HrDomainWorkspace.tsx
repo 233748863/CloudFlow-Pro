@@ -1,5 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Plus, RefreshCcw } from 'lucide-react';
+import {
+  Archive,
+  Ban,
+  Check,
+  Copy,
+  Download,
+  Edit,
+  ExternalLink,
+  Eye,
+  Plus,
+  Power,
+  RefreshCcw,
+  RotateCcw,
+  Send,
+  Trash2,
+} from 'lucide-react';
 import {
   BaseDialog,
   Button,
@@ -16,20 +31,18 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableHead,
-  TableHeader,
-  TableRowActions,
   Tabs,
   TabsList,
   TabsTrigger,
   Textarea,
   type TableRowActionItem,
 } from '@/components/common';
-import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
 import { HrRecord } from '@/services/api/hr';
 import { HR_CITY_OPTIONS } from './hrShared';
 import { HrStatusPill } from './hrReference';
+import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
 export interface HrSelectOption {
   label: React.ReactNode;
@@ -85,7 +98,7 @@ interface HrCrudPanelProps<T extends HrRecord = HrRecord> {
   formFields?: HrFormField[];
   onCreate?: (form: HrRecord) => Promise<void> | void;
   resetForm?: () => HrRecord;
-  /** 行操作:返回 TableRowActionItem[],由统一 TableRowActions 渲染 */
+  /** 行操作: 返回 TableRowActionItem[],由目标图标按钮渲染 */
   actions?: (row: T) => TableRowActionItem[];
   minWidthClassName?: string;
   emptyTitle?: string;
@@ -99,7 +112,7 @@ export const statusTone = (status?: string | number | null) => {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
   }
   if (['DRAFT', 'PENDING', 'SCHEDULED', 'SENT'].includes(normalized)) {
-    return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+    return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
   }
   if (['APPROVING', 'SCREENING', 'INTERVIEW', 'OFFER'].includes(normalized)) {
     return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
@@ -107,7 +120,7 @@ export const statusTone = (status?: string | number | null) => {
   if (['REJECTED', 'CANCELLED', 'RESIGNED', 'INACTIVE', 'ABSENT', 'FALSE', '0'].includes(normalized)) {
     return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
   }
-  return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+  return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
 };
 
 export const statusLabel = (status?: string | number | null) => {
@@ -143,12 +156,39 @@ export const statusLabel = (status?: string | number | null) => {
   return labels[normalized] || (status == null || status === '' ? '-' : String(status));
 };
 
+const actionSemanticIconMap: Partial<Record<NonNullable<TableRowActionItem['semantic']>, React.ReactNode>> = {
+  view: <Eye size={15} />,
+  edit: <Edit size={15} />,
+  confirm: <Check size={15} />,
+  submit: <Send size={15} />,
+  process: <Check size={15} />,
+  bind: <ExternalLink size={15} />,
+  writeoff: <Check size={15} />,
+  send: <Send size={15} />,
+  enable: <Power size={15} />,
+  disable: <Power size={15} />,
+  reset: <RotateCcw size={15} />,
+  copy: <Copy size={15} />,
+  open: <ExternalLink size={15} />,
+  export: <Download size={15} />,
+  archive: <Archive size={15} />,
+  void: <Ban size={15} />,
+  delete: <Trash2 size={15} />,
+  custom: <Check size={15} />,
+};
+
+const isDangerAction = (action: TableRowActionItem) =>
+  action.danger || action.tone === 'danger' || ['archive', 'void', 'delete'].includes(String(action.semantic || ''));
+
+const resolveActionIcon = (action: TableRowActionItem) =>
+  action.icon ?? actionSemanticIconMap[action.semantic || 'custom'] ?? <Check size={15} />;
+
 export const HrTabList: React.FC<{
   value: string;
   onValueChange: (value: string) => void;
   items: Array<{ value: string; label: string }>;
 }> = ({ value, onValueChange, items }) => (
-  <Tabs value={value} onValueChange={onValueChange} className="space-y-4">
+  <Tabs value={value} onValueChange={onValueChange} className="flex flex-col gap-4">
     <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
       {items.map((item) => (
         <TabsTrigger key={item.value} value={item.value} className="flex-1 lg:flex-none">
@@ -238,12 +278,19 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
   emptyTitle,
   pageSize,
 }: HrCrudPanelProps<T>) => {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(1);
   const [innerPageSize, setInnerPageSize] = useState(pageSize ?? 10);
   const canCreate = Boolean(createLabel && form && setForm && onCreate);
   const colCount = columns.length + (actions ? 1 : 0);
+  const userPermissions = user?.permissions || [];
+  const hasPermission = (permission?: string) =>
+    !permission
+    || userPermissions.includes(permission)
+    || userPermissions.includes('*:*:*')
+    || userPermissions.includes('*');
 
   const paged = Boolean(pageSize);
   const total = rows.length;
@@ -275,7 +322,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
   };
 
   return (
-    <TableSurfaceCard>
+    <InnerTableSurface>
       <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
@@ -299,36 +346,64 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className={cn('w-full', minWidthClassName)}>
-          <TableHeader className="sticky top-0 z-10">
+      <div className="admin-horizontal-scroll">
+        <table className={cn('unity-data-table admin-source-table', minWidthClassName)}>
+          <thead className="sticky top-0 z-10">
             <tr>
               {columns.map((column) => (
-                <TableHead key={column.key} className={column.className}>{column.label}</TableHead>
+                <th key={column.key} className={column.className}>{column.label}</th>
               ))}
-              {actions ? <TableHead className="text-right">操作</TableHead> : null}
+              {actions ? <th className="text-right">操作</th> : null}
             </tr>
-          </TableHeader>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          </thead>
+          <tbody>
             {loading ? (
               <tr><td colSpan={colCount} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
             ) : visibleRows.length === 0 ? (
               <tr><td colSpan={colCount} className="py-10 text-center text-sm text-slate-400">{emptyTitle || '暂无数据'}</td></tr>
             ) : (
-              visibleRows.map((row) => (
-                <tr key={String(row.id || JSON.stringify(row))} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  {columns.map((column) => (
-                    <td key={column.key} className={column.className ?? 'px-4 py-3 text-sm'}>
-                      {column.render ? column.render(row) : row[column.key] ?? '-'}
-                    </td>
-                  ))}
-                  {actions ? (
-                    <td className="px-4 py-3">
-                      <TableRowActions actions={actions(row)} />
-                    </td>
-                  ) : null}
-                </tr>
-              ))
+              visibleRows.map((row) => {
+                const rowActions = actions
+                  ? actions(row).filter((action) => !action.hidden && hasPermission(action.permissionKey))
+                  : [];
+
+                return (
+                  <tr key={String(row.id || JSON.stringify(row))}>
+                    {columns.map((column) => (
+                      <td key={column.key} className={column.className}>
+                        {column.render ? column.render(row) : row[column.key] ?? '-'}
+                      </td>
+                    ))}
+                    {actions ? (
+                      <td>
+                        {rowActions.length ? (
+                          <div className="admin-users-row-actions">
+                            {rowActions.map((action, index) => {
+                              const label = action.tooltip ?? action.title ?? action.label;
+
+                              return (
+                                <button
+                                  key={action.key ?? `${action.label}-${index}`}
+                                  type={action.type ?? 'button'}
+                                  title={label}
+                                  aria-label={label}
+                                  disabled={action.disabled}
+                                  className={cn(isDangerAction(action) && 'danger', action.className)}
+                                  onClick={action.onClick}
+                                >
+                                  {resolveActionIcon(action)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-300">-</span>
+                        )}
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -363,7 +438,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {formFields.map((field) => (
-              <div key={field.key} className={cn('space-y-2', field.className)}>
+              <div key={field.key} className={cn('admin-dialog-field', field.className)}>
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                   {field.label}
                 </Label>
@@ -515,6 +590,6 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
           </div>
         </BaseDialog>
       ) : null}
-    </TableSurfaceCard>
+    </InnerTableSurface>
   );
 };
