@@ -109,7 +109,7 @@ spring:
             # CORS 白名单：默认仅允许本地开发域名（含 Vite dev、Docker Nginx）；
             # 生产环境通过 CLOUDFLOW_CORS_ALLOWED_ORIGINS 环境变量（逗号分隔）覆盖为真实域名。
             # 注意：因 allow-credentials=true，浏览器禁止 Origin: *，必须显式枚举来源。
-            allowed-origin-patterns: "${CLOUDFLOW_CORS_ALLOWED_ORIGINS:http://tauri.localhost,http://localhost:3000,http://localhost:3001,https://localhost,http://localhost}"
+            allowed-origin-patterns: "${CLOUDFLOW_CORS_ALLOWED_ORIGINS:http://tauri.localhost,http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:5173,http://127.0.0.1:5173,https://localhost,http://localhost,http://127.0.0.1}"
             allowed-methods:
               - GET
               - POST

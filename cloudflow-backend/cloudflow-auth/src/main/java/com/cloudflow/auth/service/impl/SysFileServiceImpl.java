@@ -43,6 +43,15 @@ import java.util.List;
 public class SysFileServiceImpl implements ISysFileService {
 
     private static final String FILE_ACCESS_PATH = "/api/auth/system/file/access?path=";
+    private static final String FILE_CATEGORY_IMAGE = "FILE_CATEGORY_IMAGE";
+    private static final String FILE_CATEGORY_PDF = "FILE_CATEGORY_PDF";
+    private static final String FILE_CATEGORY_WORD = "FILE_CATEGORY_WORD";
+    private static final String FILE_CATEGORY_EXCEL = "FILE_CATEGORY_EXCEL";
+    private static final String FILE_CATEGORY_PPT = "FILE_CATEGORY_PPT";
+    private static final String FILE_CATEGORY_TEXT = "FILE_CATEGORY_TEXT";
+    private static final String FILE_CATEGORY_ARCHIVE = "FILE_CATEGORY_ARCHIVE";
+    private static final String FILE_CATEGORY_VIDEO = "FILE_CATEGORY_VIDEO";
+    private static final String FILE_CATEGORY_AUDIO = "FILE_CATEGORY_AUDIO";
 
     private final SysFileMapper sysFileMapper;
     private final ISysTenantService sysTenantService;
@@ -108,7 +117,7 @@ public class SysFileServiceImpl implements ISysFileService {
             wrapper.like(SysFile::getFileName, sysFile.getFileName());
         }
         if (StrUtil.isNotBlank(sysFile.getFileType())) {
-            wrapper.eq(SysFile::getFileType, sysFile.getFileType());
+            applyFileTypeFilter(wrapper, sysFile.getFileType());
         }
 
         wrapper.eq(SysFile::getDeleted, "0");
@@ -117,6 +126,70 @@ public class SysFileServiceImpl implements ISysFileService {
         Page<SysFile> result = sysFileMapper.selectPage(page, wrapper);
         fillAccessibleUrl(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), result.getCurrent(), result.getSize());
+    }
+
+    private void applyFileTypeFilter(LambdaQueryWrapper<SysFile> wrapper, String fileType) {
+        String normalizedType = StrUtil.blankToDefault(fileType, "").trim();
+        List<String> aliases = resolveFileTypeAliases(normalizedType);
+        List<String> prefixes = resolveFileTypePrefixes(normalizedType);
+
+        if (aliases.isEmpty() && prefixes.isEmpty()) {
+            wrapper.eq(SysFile::getFileType, fileType);
+            return;
+        }
+
+        wrapper.and(group -> {
+            if (!aliases.isEmpty()) {
+                group.in(SysFile::getFileType, aliases);
+            }
+            for (int index = 0; index < prefixes.size(); index++) {
+                if (!aliases.isEmpty() || index > 0) {
+                    group.or();
+                }
+                group.likeRight(SysFile::getFileType, prefixes.get(index));
+            }
+        });
+    }
+
+    private List<String> resolveFileTypeAliases(String category) {
+        return switch (category) {
+            case FILE_CATEGORY_IMAGE -> List.of("jpg", "jpeg", "png", "gif", "bmp", "webp", "svg");
+            case FILE_CATEGORY_PDF -> List.of("pdf", "application/pdf");
+            case FILE_CATEGORY_WORD -> List.of(
+                    "doc", "docx", "application/msword", "application/doc", "application/docx",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            );
+            case FILE_CATEGORY_EXCEL -> List.of(
+                    "xls", "xlsx", "csv", "application/vnd.ms-excel", "application/xls",
+                    "application/xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            );
+            case FILE_CATEGORY_PPT -> List.of(
+                    "ppt", "pptx", "application/vnd.ms-powerpoint", "application/ppt", "application/pptx",
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            );
+            case FILE_CATEGORY_TEXT -> List.of(
+                    "txt", "md", "html", "htm", "json", "xml", "application/json", "application/xml"
+            );
+            case FILE_CATEGORY_ARCHIVE -> List.of(
+                    "zip", "rar", "7z", "tar", "gz", "bz2", "application/zip",
+                    "application/x-zip-compressed", "application/x-rar-compressed",
+                    "application/x-7z-compressed", "application/gzip", "application/x-tar",
+                    "application/x-bzip2"
+            );
+            case FILE_CATEGORY_VIDEO -> List.of("mp4", "avi", "rmvb", "mov", "webm");
+            case FILE_CATEGORY_AUDIO -> List.of("mp3", "wav", "aac", "flac");
+            default -> List.of();
+        };
+    }
+
+    private List<String> resolveFileTypePrefixes(String category) {
+        return switch (category) {
+            case FILE_CATEGORY_IMAGE -> List.of("image/");
+            case FILE_CATEGORY_TEXT -> List.of("text/");
+            case FILE_CATEGORY_VIDEO -> List.of("video/");
+            case FILE_CATEGORY_AUDIO -> List.of("audio/");
+            default -> List.of();
+        };
     }
 
     @Override

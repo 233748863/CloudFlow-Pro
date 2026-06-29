@@ -302,7 +302,7 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
                 msg.setSummary("您的工伤认定已审批通过，伤残等级："
                         + (injury.getDeterminedGrade() == null ? "待定" : injury.getDeterminedGrade()));
                 msg.setRelatedId(injuryId);
-                msg.setLinkUrl("/hr/work-injury/list");
+                msg.setLinkUrl("/hr/work-injury-list");
                 msg.setReadFlag(false);
                 selfServiceMessageMapper.insert(msg);
             }

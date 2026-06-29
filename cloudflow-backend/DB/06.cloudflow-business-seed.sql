@@ -53,6 +53,7 @@ WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
    OR menu_id BETWEEN 400 AND 404
    OR menu_id BETWEEN 500 AND 586
    OR menu_id BETWEEN 600 AND 635
+   OR menu_id BETWEEN 640 AND 663
    OR menu_id BETWEEN 700 AND 799
    OR menu_id BETWEEN 800 AND 884
    OR menu_id BETWEEN 900 AND 1199;
@@ -105,6 +106,7 @@ WHERE dict_type IN (
   'sys_user_sex',
   'sys_normal_disable',
   'sys_yes_no',
+  'sys_file_type',
   'wf_notice_type',
   'oa_approval_status',
   'hr_leave_type',
@@ -132,6 +134,7 @@ WHERE dict_type IN (
   'sys_user_sex',
   'sys_normal_disable',
   'sys_yes_no',
+  'sys_file_type',
   'wf_notice_type',
   'oa_approval_status',
   'hr_leave_type',
@@ -691,10 +694,17 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(101, '我的日程',   1, 2, '/schedule',            'pages/SchedulePage',           NULL, 0, 0, 'C', '0', '0', 'oa:schedule:list',        'Calendar',        'admin', NOW(), '', null, '我的日程');
 
 -- 办公协同 (parent_id=2)
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(200, '会议室',     2, 1, '/meeting-room',        'pages/MeetingRoomPage',        NULL, 0, 0, 'C', '0', '0', 'oa:meeting-room:list',  'Monitor',         'admin', NOW(), '', null, '会议室管理');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(202, '日常办公',   2, 1, 'collaboration',       NULL, NULL, 0, 0, 'M', '0', '0', '', 'BriefcaseBusiness', 'admin', NOW(), '', null, '会议、公告、通讯录与知识库分组');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(201, '公告中心',   2, 2, '/announcement',        'pages/AnnouncementPage',       NULL, 0, 0, 'C', '0', '0', 'oa:announcement:list', 'Megaphone',       'admin', NOW(), '', null, '公告中心');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(203, '行政申请',   2, 2, 'applications',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'ClipboardCheck',   'admin', NOW(), '', null, '出差、采购、用印与证照申请分组');
 
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(204, '财务管理',   2, 3, 'finance',             NULL, NULL, 0, 0, 'M', '0', '0', '', 'WalletCards',      'admin', NOW(), '', null, '报销、付款、预算与发票分组');
+
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(277, '项目合同',   2, 4, 'projects-contracts',  NULL, NULL, 0, 0, 'M', '0', '0', '', 'FolderKanban',    'admin', NOW(), '', null, '项目、合同与阈值分组');
+
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(200, '会议室',     202, 1, '/meeting-room',        'pages/MeetingRoomPage',        NULL, 0, 0, 'C', '0', '0', 'oa:meeting-room:list',  'Monitor',         'admin', NOW(), '', null, '会议室管理');
+
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(201, '公告中心',   202, 2, '/announcement',        'pages/AnnouncementPage',       NULL, 0, 0, 'C', '0', '0', 'oa:announcement:list', 'Megaphone',       'admin', NOW(), '', null, '公告中心');
 
 -- 流程中心 (parent_id=3)
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(300, '发起流程',   3, 1, '/workplace',           'pages/Workplace',              NULL, 0, 0, 'C', '0', '0', 'workflow:process:start',             'PlayCircle',      'admin', NOW(), '', null, '发起流程');
@@ -821,27 +831,27 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 -- 办公协同(parent_id=2)扩展菜单：出差申请、通讯录
 
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(205, '出差申请',   2, 6, '/office/business-trip',     'pages/BusinessTripPage',       NULL, 0, 0, 'C', '0', '0', 'oa:trip:list',          'Plane',           'admin', NOW(), '', null, '出差申请');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(205, '出差申请',   203, 1, '/office/business-trip',     'pages/BusinessTripPage',       NULL, 0, 0, 'C', '0', '0', 'oa:trip:list',          'Plane',           'admin', NOW(), '', null, '出差申请');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(206, '通讯录',     2, 7, '/office/contact',           'pages/ContactPage',            NULL, 0, 0, 'C', '0', '0', 'oa:contact:list',       'BookUser',        'admin', NOW(), '', null, '企业通讯录');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(206, '通讯录',     202, 3, '/office/contact',           'pages/ContactPage',            NULL, 0, 0, 'C', '0', '0', 'oa:contact:list',       'BookUser',        'admin', NOW(), '', null, '企业通讯录');
 
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(208, '报销申请',   2, 8, '/expense/claim',            'pages/ExpenseClaimPage',       NULL, 0, 0, 'C', '0', '0', 'oa:expense:list',       'Receipt',         'admin', NOW(), '', null, '报销申请');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(208, '报销申请',   204, 1, '/expense/claim',            'pages/ExpenseClaimPage',       NULL, 0, 0, 'C', '0', '0', 'oa:expense:list',       'Receipt',         'admin', NOW(), '', null, '报销申请');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(209, '付款申请',   2, 9, '/payment/request',          'pages/PaymentRequestPage',     NULL, 0, 0, 'C', '0', '0', 'oa:payment:list',       'WalletCards',     'admin', NOW(), '', null, '付款申请');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(209, '付款申请',   204, 2, '/payment/request',          'pages/PaymentRequestPage',     NULL, 0, 0, 'C', '0', '0', 'oa:payment:list',       'WalletCards',     'admin', NOW(), '', null, '付款申请');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(210, '知识库',     2, 10, '/office/knowledge',        'pages/KnowledgePage',          NULL, 0, 0, 'C', '0', '0', 'oa:knowledge:list',     'BookOpen',        'admin', NOW(), '', null, '制度文档知识库');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(210, '知识库',     202, 4, '/office/knowledge',        'pages/KnowledgePage',          NULL, 0, 0, 'C', '0', '0', 'oa:knowledge:list',     'BookOpen',        'admin', NOW(), '', null, '制度文档知识库');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(211, '采购申请',   2, 11, '/office/purchase-request', 'pages/PurchaseRequestPage',   NULL, 0, 0, 'C', '0', '0', 'oa:purchase:list',      'ShoppingCart',    'admin', NOW(), '', null, '行政采购申请');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(211, '采购申请',   203, 2, '/office/purchase-request', 'pages/PurchaseRequestPage',   NULL, 0, 0, 'C', '0', '0', 'oa:purchase:list',      'ShoppingCart',    'admin', NOW(), '', null, '行政采购申请');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(212, '用印申请',   2, 12, '/office/seal-application', 'pages/SealApplicationPage',   NULL, 0, 0, 'C', '0', '0', 'oa:seal:list',          'Stamp',           'admin', NOW(), '', null, '用印申请');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(212, '用印申请',   203, 3, '/office/seal-application', 'pages/SealApplicationPage',   NULL, 0, 0, 'C', '0', '0', 'oa:seal:list',          'Stamp',           'admin', NOW(), '', null, '用印申请');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(213, '证照借用',   2, 13, '/office/license-borrow',   'pages/LicenseBorrowPage',     NULL, 0, 0, 'C', '0', '0', 'oa:license:list',       'BadgeCheck',      'admin', NOW(), '', null, '证照借用申请');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(214, '项目管理',   2, 14, '/office/project',          'pages/ProjectManagementPage', NULL, 0, 0, 'C', '0', '0', 'oa:project:list',       'FolderKanban',    'admin', NOW(), '', null, '项目立项、里程碑与甘特图');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(215, '预算管理',   2, 15, '/office/budget',           'pages/BudgetManagementPage',  NULL, 0, 0, 'C', '0', '0', 'oa:budget:list',        'Banknote',        'admin', NOW(), '', null, '部门与项目预算管理');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(216, '发票管理',   2, 16, '/office/invoice',          'pages/InvoiceManagementPage', NULL, 0, 0, 'C', '0', '0', 'oa:invoice:list',       'Receipt',         'admin', NOW(), '', null, '发票录入、外链与核销');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(213, '证照借用',   203, 4, '/office/license-borrow',   'pages/LicenseBorrowPage',     NULL, 0, 0, 'C', '0', '0', 'oa:license:list',       'BadgeCheck',      'admin', NOW(), '', null, '证照借用申请');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(214, '项目管理',   277, 1, '/office/project',          'pages/ProjectManagementPage', NULL, 0, 0, 'C', '0', '0', 'oa:project:list',       'FolderKanban',    'admin', NOW(), '', null, '项目立项、里程碑与甘特图');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(215, '预算管理',   204, 3, '/office/budget',           'pages/BudgetManagementPage',  NULL, 0, 0, 'C', '0', '0', 'oa:budget:list',        'Banknote',        'admin', NOW(), '', null, '部门与项目预算管理');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(216, '发票管理',   204, 4, '/office/invoice',          'pages/InvoiceManagementPage', NULL, 0, 0, 'C', '0', '0', 'oa:invoice:list',       'Receipt',         'admin', NOW(), '', null, '发票录入、外链与核销');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(217, '合同台账',   2, 17, '/office/contracts',        'pages/ContractPage',          NULL, 0, 0, 'C', '0', '0', 'oa:contract:list',      'FileSignature',   'admin', NOW(), '', null, '合同审批、用印与归档台账');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(217, '合同台账',   277, 2, '/office/contracts',        'pages/ContractPage',          NULL, 0, 0, 'C', '0', '0', 'oa:contract:list',      'FileSignature',   'admin', NOW(), '', null, '合同审批、用印与归档台账');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(218, '会议室新增',   200, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:meeting-room:add', '#', 'admin', NOW(), '', NULL, '新增会议室');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(219, '会议室编辑',   200, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:meeting-room:edit', '#', 'admin', NOW(), '', NULL, '编辑会议室');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(220, '会议室删除',   200, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:meeting-room:remove', '#', 'admin', NOW(), '', NULL, '删除会议室');
@@ -1454,28 +1464,28 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(748, '培养行动',       7, 29, '/hr/talent/development',     'pages/hr/talent/HrTalentDevelopmentPage', NULL, 0, 0, 'C', '0', '0', 'hr:talent:dev:list',      'Sprout',          'admin', NOW(), '', NULL, '高潜培养行动与导师');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(749, '人才档案',       7, 30, '/hr/talent/archive',         'pages/hr/talent/HrTalentArchivePage',     NULL, 0, 0, 'C', '0', '0', 'hr:talent:archive:view',  'Contact',         'admin', NOW(), '', NULL, '单员工人才纵览');
 -- HR 福利与商城（P0 福利管理）
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(750, '福利与商城',     7, 31, '/hr/benefit',                NULL,                                      NULL, 0, 0, 'M', '0', '0', 'hr:benefit:view',         'Gift',            'admin', NOW(), '', NULL, '福利申领与积分商城目录');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(751, '我的福利',     750,  1, '/hr/benefit/mine',           'pages/hr/benefit/HrBenefitMinePage',      NULL, 0, 0, 'C', '0', '0', 'hr:benefit:mine',         'HeartHandshake',  'admin', NOW(), '', NULL, '员工自助福利总览');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(752, '福利申领审批', 750,  2, '/hr/benefit/requests',       'pages/hr/benefit/HrBenefitRequestPage',   NULL, 0, 0, 'C', '0', '0', 'hr:benefit:request:list', 'ClipboardCheck',  'admin', NOW(), '', NULL, '福利申领台账');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(753, '积分账户',     750,  3, '/hr/benefit/points',         'pages/hr/benefit/HrPointAccountPage',     NULL, 0, 0, 'C', '0', '0', 'hr:benefit:point:view',   'Coins',           'admin', NOW(), '', NULL, '积分账户与流水');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(754, '积分商城',     750,  4, '/hr/benefit/mall',           'pages/hr/benefit/HrMallPage',             NULL, 0, 0, 'C', '0', '0', 'hr:benefit:mall:browse',  'ShoppingBag',     'admin', NOW(), '', NULL, '商品浏览与下单');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(755, '兑换订单',     750,  5, '/hr/benefit/orders',         'pages/hr/benefit/HrMallOrderPage',        NULL, 0, 0, 'C', '0', '0', 'hr:benefit:order:list',   'PackageCheck',    'admin', NOW(), '', NULL, '订单状态机与发货');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(750, '福利与商城',     7, 31, '/hr/benefit',                NULL,                                      NULL, 0, 0, 'M', '1', '0', 'hr:benefit:view',         'Gift',            'admin', NOW(), '', NULL, '福利申领与积分商城权限分组');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(751, '我的福利',       7, 31, '/hr/benefit-mine',           'pages/hr/benefit/HrBenefitMinePage',      NULL, 0, 0, 'C', '0', '0', 'hr:benefit:mine',         'HeartHandshake',  'admin', NOW(), '', NULL, '员工自助福利总览');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(752, '福利申领审批',   7, 32, '/hr/benefit-requests',       'pages/hr/benefit/HrBenefitRequestPage',   NULL, 0, 0, 'C', '0', '0', 'hr:benefit:request:list', 'ClipboardCheck',  'admin', NOW(), '', NULL, '福利申领台账');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(753, '积分账户',       7, 33, '/hr/benefit-points',         'pages/hr/benefit/HrPointAccountPage',     NULL, 0, 0, 'C', '0', '0', 'hr:benefit:point:view',   'Coins',           'admin', NOW(), '', NULL, '积分账户与流水');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(754, '积分商城',       7, 34, '/hr/benefit-mall',           'pages/hr/benefit/HrMallPage',             NULL, 0, 0, 'C', '0', '0', 'hr:benefit:mall:browse',  'ShoppingBag',     'admin', NOW(), '', NULL, '商品浏览与下单');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(755, '兑换订单',       7, 35, '/hr/benefit-orders',         'pages/hr/benefit/HrMallOrderPage',        NULL, 0, 0, 'C', '0', '0', 'hr:benefit:order:list',   'PackageCheck',    'admin', NOW(), '', NULL, '订单状态机与发货');
 -- HR 工伤管理（P0 劳动关系）
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(756, '工伤管理',       7, 32, '/hr/work-injury',            NULL,                                      NULL, 0, 0, 'M', '0', '0', 'hr:injury:view',          'Stethoscope',     'admin', NOW(), '', NULL, '工伤申报/调查/医疗/赔偿/康复');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(757, '工伤申报',     756,  1, '/hr/work-injury/list',       'pages/hr/laborRelation/HrWorkInjuryPage',                 NULL, 0, 0, 'C', '0', '0', 'hr:injury:list',         'FileWarning',     'admin', NOW(), '', NULL, '工伤事件主表与时间线');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(758, '工伤调查',     756,  2, '/hr/work-injury/investigations','pages/hr/laborRelation/HrWorkInjuryInvestigationPage', NULL, 0, 0, 'C', '0', '0', 'hr:injury:investigate',  'Search',          'admin', NOW(), '', NULL, '现场调查与责任认定');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(759, '医疗记录',     756,  3, '/hr/work-injury/treatments', 'pages/hr/laborRelation/HrWorkInjuryTreatmentPage',        NULL, 0, 0, 'C', '0', '0', 'hr:injury:treatment',    'HeartPulse',      'admin', NOW(), '', NULL, '住院与诊断票据');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(760, '赔偿登记',     756,  4, '/hr/work-injury/compensations','pages/hr/laborRelation/HrWorkInjuryCompensationPage',    NULL, 0, 0, 'C', '0', '0', 'hr:injury:compensation', 'BadgeDollarSign', 'admin', NOW(), '', NULL, '赔偿项目登记与支付');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(761, '康复跟踪',     756,  5, '/hr/work-injury/rehabilitation','pages/hr/laborRelation/HrWorkInjuryRehabilitationPage', NULL, 0, 0, 'C', '0', '0', 'hr:injury:rehab',        'Activity',        'admin', NOW(), '', NULL, '康复返岗跟进');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(756, '工伤管理',       7, 36, '/hr/work-injury',            NULL,                                      NULL, 0, 0, 'M', '1', '0', 'hr:injury:view',          'Stethoscope',     'admin', NOW(), '', NULL, '工伤申报/调查/医疗/赔偿/康复权限分组');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(757, '工伤申报',       7, 36, '/hr/work-injury-list',       'pages/hr/laborRelation/HrWorkInjuryPage',                 NULL, 0, 0, 'C', '0', '0', 'hr:injury:list',         'FileWarning',     'admin', NOW(), '', NULL, '工伤事件主表与时间线');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(758, '工伤调查',       7, 37, '/hr/work-injury-investigations','pages/hr/laborRelation/HrWorkInjuryInvestigationPage', NULL, 0, 0, 'C', '0', '0', 'hr:injury:investigate',  'Search',          'admin', NOW(), '', NULL, '现场调查与责任认定');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(759, '医疗记录',       7, 38, '/hr/work-injury-treatments', 'pages/hr/laborRelation/HrWorkInjuryTreatmentPage',        NULL, 0, 0, 'C', '0', '0', 'hr:injury:treatment',    'HeartPulse',      'admin', NOW(), '', NULL, '住院与诊断票据');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(760, '赔偿登记',       7, 39, '/hr/work-injury-compensations','pages/hr/laborRelation/HrWorkInjuryCompensationPage',    NULL, 0, 0, 'C', '0', '0', 'hr:injury:compensation', 'BadgeDollarSign', 'admin', NOW(), '', NULL, '赔偿项目登记与支付');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(761, '康复跟踪',       7, 40, '/hr/work-injury-rehabilitation','pages/hr/laborRelation/HrWorkInjuryRehabilitationPage', NULL, 0, 0, 'C', '0', '0', 'hr:injury:rehab',        'Activity',        'admin', NOW(), '', NULL, '康复返岗跟进');
 -- HR 劳动争议（P0 劳动关系）
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(762, '劳动争议',       7, 33, '/hr/labor-dispute',          NULL,                                      NULL, 0, 0, 'M', '0', '0', 'hr:dispute:view',         'Scale',           'admin', NOW(), '', NULL, '争议受理/调解/仲裁');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(763, '争议台账',     762,  1, '/hr/labor-dispute/list',     'pages/hr/laborRelation/HrLaborDisputePage',        NULL, 0, 0, 'C', '0', '0', 'hr:dispute:list',        'Gavel',           'admin', NOW(), '', NULL, '争议受理与证据');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(764, '调解记录',     762,  2, '/hr/labor-dispute/mediations','pages/hr/laborRelation/HrDisputeMediationPage',   NULL, 0, 0, 'C', '0', '0', 'hr:dispute:mediation',   'Handshake',       'admin', NOW(), '', NULL, '调解过程与协议');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(765, '仲裁记录',     762,  3, '/hr/labor-dispute/arbitrations','pages/hr/laborRelation/HrDisputeArbitrationPage', NULL, 0, 0, 'C', '0', '0', 'hr:dispute:arbitration', 'Landmark',        'admin', NOW(), '', NULL, '仲裁案件与裁决');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(762, '劳动争议',       7, 41, '/hr/labor-dispute',          NULL,                                      NULL, 0, 0, 'M', '1', '0', 'hr:dispute:view',         'Scale',           'admin', NOW(), '', NULL, '争议受理/调解/仲裁权限分组');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(763, '争议台账',       7, 41, '/hr/labor-dispute-list',     'pages/hr/laborRelation/HrLaborDisputePage',        NULL, 0, 0, 'C', '0', '0', 'hr:dispute:list',        'Gavel',           'admin', NOW(), '', NULL, '争议受理与证据');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(764, '调解记录',       7, 42, '/hr/labor-dispute-mediations','pages/hr/laborRelation/HrDisputeMediationPage',   NULL, 0, 0, 'C', '0', '0', 'hr:dispute:mediation',   'Handshake',       'admin', NOW(), '', NULL, '调解过程与协议');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(765, '仲裁记录',       7, 43, '/hr/labor-dispute-arbitrations','pages/hr/laborRelation/HrDisputeArbitrationPage', NULL, 0, 0, 'C', '0', '0', 'hr:dispute:arbitration', 'Landmark',        'admin', NOW(), '', NULL, '仲裁案件与裁决');
 
 -- HR-P1-4 考勤异常申诉 + OA-P1-2 会议纪要 菜单种子
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(766, '考勤申诉',     725,  1, '/hr/attendance/appeals',     'pages/hr/HrAttendanceAppealPage',         NULL, 0, 0, 'C', '0', '0', 'hr:attendance:list',      'AlertTriangle',   'admin', NOW(), '', NULL, '考勤异常申诉受理与审核');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(280, '会议纪要',     2,   18, '/office/meeting-minutes',    'pages/MeetingMinutesPage',                NULL, 0, 0, 'C', '0', '0', 'oa:meeting:list',         'FileText',        'admin', NOW(), '', NULL, '会议纪要 / 决议项 → 工作任务派发');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(766, '考勤申诉',     7,    6, '/hr/attendance-appeals',     'pages/hr/HrAttendanceAppealPage',         NULL, 0, 0, 'C', '0', '0', 'hr:attendance:list',      'AlertTriangle',   'admin', NOW(), '', NULL, '考勤异常申诉受理与审核');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(280, '会议纪要',     202, 5, '/office/meeting-minutes',    'pages/MeetingMinutesPage',                NULL, 0, 0, 'C', '0', '0', 'oa:meeting:list',         'FileText',        'admin', NOW(), '', NULL, '会议纪要 / 决议项 → 工作任务派发');
 
 -- 权限统一收口功能节点（原 07 迁移并入种子）
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES
@@ -2258,6 +2268,14 @@ FROM cloud_flow_db.sys_role_menu rm
 JOIN cloud_flow_db.sys_menu child ON child.parent_id = 100 AND child.menu_id IN (907, 908, 909, 910, 911, 912, 913, 914, 1005, 1009, 1010)
 WHERE rm.menu_id = 100;
 
+-- 办公协同分组目录授权：拥有分组内任一业务菜单时，自动拥有对应分组目录。
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT DISTINCT rm.role_id, parent.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.menu_id = rm.menu_id
+JOIN cloud_flow_db.sys_menu parent ON parent.menu_id = child.parent_id
+WHERE parent.menu_id IN (202, 203, 204, 277);
+
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
 SELECT rm.role_id, child.menu_id, rm.tenant_id
 FROM cloud_flow_db.sys_role_menu rm
@@ -2442,7 +2460,7 @@ FROM cloud_flow_db.sys_role_menu rm
 JOIN cloud_flow_db.sys_menu child ON child.parent_id = 727 AND child.menu_id IN (944, 945, 946)
 WHERE rm.menu_id = 727;
 
--- HR-P1-4 考勤申诉 766 跟随 725 考勤休假; OA-P1-2 会议纪要 280 跟随 OA 根目录(menu_id=2)
+-- HR-P1-4 考勤申诉 766 一级展示，授权跟随 725 考勤休假; OA-P1-2 会议纪要 280 展示挂在日常办公，授权跟随 OA 根目录(menu_id=2)
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
 SELECT rm.role_id, 766, rm.tenant_id
 FROM cloud_flow_db.sys_role_menu rm
@@ -2453,11 +2471,33 @@ SELECT rm.role_id, 280, rm.tenant_id
 FROM cloud_flow_db.sys_role_menu rm
 WHERE rm.menu_id = 2;
 
+-- OA 分组目录授权：拥有任一子菜单时自动获得对应分组，避免左侧树缺父级。
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT DISTINCT rm.role_id, 202, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id IN (200, 201, 206, 210, 280);
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT DISTINCT rm.role_id, 203, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id IN (205, 211, 212, 213);
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT DISTINCT rm.role_id, 204, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id IN (208, 209, 215, 216);
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT DISTINCT rm.role_id, 277, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id IN (214, 217, 660);
+
 -- 10. 初始化字典类型数据
 INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
 ('用户性别', 'sys_user_sex', '用户性别列表'),
 ('系统状态', 'sys_normal_disable', '系统开关状态'),
 ('是否', 'sys_yes_no', '系统是否列表'),
+('文件类型', 'sys_file_type', '文件管理筛选分类'),
 ('通知类型', 'wf_notice_type', '通知类型列表'),
 ('审批状态', 'oa_approval_status', 'OA审批状态'),
 ('请假类型', 'hr_leave_type', '请假类型列表'),
@@ -2494,6 +2534,18 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '是', 'Y', 'sys_yes_no', 'success'),
 (2, '否', 'N', 'sys_yes_no', 'danger');
+
+-- 文件类型
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '图片', 'FILE_CATEGORY_IMAGE', 'sys_file_type', 'info'),
+(2, 'PDF', 'FILE_CATEGORY_PDF', 'sys_file_type', 'danger'),
+(3, 'Word', 'FILE_CATEGORY_WORD', 'sys_file_type', 'primary'),
+(4, 'Excel', 'FILE_CATEGORY_EXCEL', 'sys_file_type', 'success'),
+(5, 'PPT', 'FILE_CATEGORY_PPT', 'sys_file_type', 'warning'),
+(6, '文本', 'FILE_CATEGORY_TEXT', 'sys_file_type', 'default'),
+(7, '压缩包', 'FILE_CATEGORY_ARCHIVE', 'sys_file_type', 'default'),
+(8, '视频', 'FILE_CATEGORY_VIDEO', 'sys_file_type', 'primary'),
+(9, '音频', 'FILE_CATEGORY_AUDIO', 'sys_file_type', 'info');
 
 -- 通知类型
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
@@ -8263,13 +8315,13 @@ INSERT IGNORE INTO cloud_flow_db.sys_file (
   file_id, tenant_id, file_name, file_path, url, storage_type, file_size, file_type, create_by, create_time, deleted, remark
 ) VALUES
 (91001, 100000, '年度运维合同.pdf', '/demo/workflow/payment/service-contract.pdf',
- 'https://demo.cloudflow.local/files/payment/fk202603110001-contract.pdf', 'LOCAL', 1864022, 'application/pdf', 'wang', DATE_SUB(NOW(), INTERVAL 13 HOUR), '0', '付款合同存档'),
+ 'https://demo.cloudflow.local/files/payment/fk202603110001-contract.pdf', 'LOCAL', 1864022, 'pdf', 'wang', DATE_SUB(NOW(), INTERVAL 13 HOUR), '0', '付款合同存档'),
 (91002, 100000, '访客接待物料清单.xlsx', '/demo/oa/visitor/reception-checklist.xlsx',
- 'https://demo.cloudflow.local/files/visitor/reception-checklist.xlsx', 'LOCAL', 102400, 'application/xlsx', 'test_fe', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '访客接待物料准备清单'),
+ 'https://demo.cloudflow.local/files/visitor/reception-checklist.xlsx', 'LOCAL', 102400, 'xlsx', 'test_fe', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '访客接待物料准备清单'),
 (91003, 100000, '客户演示议程.pdf', '/demo/workflow/trip/training-agenda.pdf',
- 'https://demo.cloudflow.local/files/trip/cc202603110001-plan.pdf', 'LOCAL', 280600, 'application/pdf', 'zhang', DATE_SUB(NOW(), INTERVAL 9 HOUR), '0', '客户培训资料归档'),
+ 'https://demo.cloudflow.local/files/trip/cc202603110001-plan.pdf', 'LOCAL', 280600, 'pdf', 'zhang', DATE_SUB(NOW(), INTERVAL 9 HOUR), '0', '客户培训资料归档'),
 (91004, 100000, '用车派车记录.docx', '/demo/workflow/vehicle/dispatch-note.docx',
- 'https://demo.cloudflow.local/files/vehicle/dispatch-note.docx', 'LOCAL', 86530, 'application/docx', 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY), '0', '派车记录模板');
+ 'https://demo.cloudflow.local/files/vehicle/dispatch-note.docx', 'LOCAL', 86530, 'docx', 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY), '0', '派车记录模板');
 
 INSERT IGNORE INTO cloud_flow_db.sys_log (
   log_id, tenant_id, log_type, title, service_id, remote_addr, user_agent, request_uri, method, params, time, exception, create_by, create_time
@@ -8592,13 +8644,13 @@ INSERT IGNORE INTO cloud_flow_db.wf_task_urge (tenant_id, task_id, sender_id, re
 INSERT IGNORE INTO cloud_flow_db.wf_task_attachment (
   attachment_id, tenant_id, task_id, instance_id, file_name, file_path, file_size, file_type, upload_user_id, upload_time
 ) VALUES
-('demo_att_001', 100000, 'demo_task_002', 'demo_inst_003', '杭州出差高铁票.jpg', '/demo/workflow/expense/train-ticket.jpg', 245781, 'image/jpeg', 5, DATE_SUB(NOW(), INTERVAL 15 HOUR)),
-('demo_att_002', 100000, 'demo_task_002', 'demo_inst_003', '酒店发票.pdf', '/demo/workflow/expense/hotel-invoice.pdf', 538920, 'application/pdf', 5, DATE_SUB(NOW(), INTERVAL 15 HOUR)),
-('demo_att_003', 100000, 'demo_task_004', 'demo_inst_005', '年度运维合同.pdf', '/demo/workflow/payment/service-contract.pdf', 1864022, 'application/pdf', 3, DATE_SUB(NOW(), INTERVAL 13 HOUR)),
-('demo_att_004', 100000, 'demo_task_004', 'demo_inst_005', '付款审批说明.docx', '/demo/workflow/payment/approval-note.docx', 86530, 'application/docx', 3, DATE_SUB(NOW(), INTERVAL 12 HOUR)),
-('demo_att_006', 100000, 'demo_task_007', 'demo_inst_011', '客户培训议程.pdf', '/demo/workflow/trip/training-agenda.pdf', 280600, 'application/pdf', 5, DATE_SUB(NOW(), INTERVAL 10 HOUR)),
-('demo_att_007', 100000, 'demo_task_011', 'demo_inst_004', '采购报销清单.pdf', '/demo/workflow/history/office-expense-list.pdf', 221100, 'application/pdf', 3, DATE_SUB(NOW(), INTERVAL 8 DAY)),
-('demo_att_008', 100000, 'demo_task_014', 'demo_inst_006', '显示设备采购发票.pdf', '/demo/workflow/history/display-invoice.pdf', 401231, 'application/pdf', 3, DATE_SUB(NOW(), INTERVAL 9 DAY));
+('demo_att_001', 100000, 'demo_task_002', 'demo_inst_003', '杭州出差高铁票.jpg', '/demo/workflow/expense/train-ticket.jpg', 245781, 'jpg', 5, DATE_SUB(NOW(), INTERVAL 15 HOUR)),
+('demo_att_002', 100000, 'demo_task_002', 'demo_inst_003', '酒店发票.pdf', '/demo/workflow/expense/hotel-invoice.pdf', 538920, 'pdf', 5, DATE_SUB(NOW(), INTERVAL 15 HOUR)),
+('demo_att_003', 100000, 'demo_task_004', 'demo_inst_005', '年度运维合同.pdf', '/demo/workflow/payment/service-contract.pdf', 1864022, 'pdf', 3, DATE_SUB(NOW(), INTERVAL 13 HOUR)),
+('demo_att_004', 100000, 'demo_task_004', 'demo_inst_005', '付款审批说明.docx', '/demo/workflow/payment/approval-note.docx', 86530, 'docx', 3, DATE_SUB(NOW(), INTERVAL 12 HOUR)),
+('demo_att_006', 100000, 'demo_task_007', 'demo_inst_011', '客户培训议程.pdf', '/demo/workflow/trip/training-agenda.pdf', 280600, 'pdf', 5, DATE_SUB(NOW(), INTERVAL 10 HOUR)),
+('demo_att_007', 100000, 'demo_task_011', 'demo_inst_004', '采购报销清单.pdf', '/demo/workflow/history/office-expense-list.pdf', 221100, 'pdf', 3, DATE_SUB(NOW(), INTERVAL 8 DAY)),
+('demo_att_008', 100000, 'demo_task_014', 'demo_inst_006', '显示设备采购发票.pdf', '/demo/workflow/history/display-invoice.pdf', 401231, 'pdf', 3, DATE_SUB(NOW(), INTERVAL 9 DAY));
 
 INSERT IGNORE INTO cloud_flow_db.wf_task_candidate
 (candidate_id, tenant_id, task_id, instance_id, user_id, user_name, candidate_type, status, create_time, version, claim_time) VALUES
@@ -8859,7 +8911,7 @@ SELECT
   CONCAT('https://demo.cloudflow.local/files/batch/file-', n),
   'LOCAL',
   1024 + n,
-  CASE WHEN n % 3 = 0 THEN 'image/jpeg' WHEN n % 3 = 1 THEN 'application/pdf' ELSE 'application/xlsx' END,
+  CASE WHEN n % 3 = 0 THEN 'jpg' WHEN n % 3 = 1 THEN 'pdf' ELSE 'xlsx' END,
   'admin',
   DATE_SUB(NOW(), INTERVAL n MINUTE),
   '0',
@@ -9461,13 +9513,13 @@ INSERT IGNORE INTO cloud_flow_db.wf_task_attachment (
   attachment_id, tenant_id, task_id, instance_id, file_name, file_path, file_size, file_type, upload_user_id, upload_time
 ) VALUES
 ('seed_att_expense_ops_001', 100000, 'seed_task_expense_ops_001', 'seed_inst_expense_ops_001', '苏州上线差旅报销汇总.pdf',
- '/seed/workflow/expense/suzhou-go-live-expense-summary.pdf', 268420, 'application/pdf', 8, DATE_SUB(NOW(), INTERVAL 26 HOUR)),
+ '/seed/workflow/expense/suzhou-go-live-expense-summary.pdf', 268420, 'pdf', 8, DATE_SUB(NOW(), INTERVAL 26 HOUR)),
 ('seed_att_payment_ops_001', 100000, 'seed_task_payment_ops_001', 'seed_inst_payment_ops_001', '上线保障周服务合同.pdf',
- '/seed/workflow/payment/suzhou-go-live-service-contract.pdf', 1864022, 'application/pdf', 3, DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+ '/seed/workflow/payment/suzhou-go-live-service-contract.pdf', 1864022, 'pdf', 3, DATE_SUB(NOW(), INTERVAL 6 HOUR)),
 ('seed_att_hr_prob_001', 100000, 'seed_task_hr_prob_001', 'seed_hr_inst_prob_001', '林清禾转正评审表.pdf',
- '/seed/workflow/hr/lin-qinghe-probation-review.pdf', 342180, 'application/pdf', 4, DATE_SUB(NOW(), INTERVAL 48 HOUR)),
+ '/seed/workflow/hr/lin-qinghe-probation-review.pdf', 342180, 'pdf', 4, DATE_SUB(NOW(), INTERVAL 48 HOUR)),
 ('seed_att_hr_salary_001', 100000, 'seed_task_hr_salary_001', 'seed_hr_inst_salary_001', '后端测试绩效复盘.xlsx',
- '/seed/workflow/hr/backend-test-performance-review.xlsx', 128530, 'application/xlsx', 2, DATE_SUB(NOW(), INTERVAL 5 HOUR));
+ '/seed/workflow/hr/backend-test-performance-review.xlsx', 128530, 'xlsx', 2, DATE_SUB(NOW(), INTERVAL 5 HOUR));
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_snapshot (
   snapshot_id, tenant_id, instance_id, node_key, node_name, status, variables, active_tasks, create_time
@@ -9975,16 +10027,16 @@ WHERE file_id IN (93001,93002,93003,93004,93005,93006,93007,93008,93009,93010);
 INSERT IGNORE INTO cloud_flow_db.sys_file (
   file_id, tenant_id, file_name, file_path, url, storage_type, file_size, file_type, create_by, create_time, deleted, remark
 ) VALUES
-(93001, 100000, '产品与交付协同周需求清单.pdf', '/demo/org/product-delivery-week-requirements.pdf', 'https://demo.cloudflow.local/files/org/product-delivery-week-requirements.pdf', 'LOCAL', 428560, 'application/pdf', 'sun_pm', DATE_SUB(NOW(), INTERVAL 16 HOUR), '0', '对应任务 9425 的需求输出物'),
-(93002, 100000, '华东项目上线风险清单.xlsx', '/demo/org/east-delivery-risk-list.xlsx', 'https://demo.cloudflow.local/files/org/east-delivery-risk-list.xlsx', 'LOCAL', 186240, 'application/xlsx', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 14 HOUR), '0', '对应任务 9426 的风险盘点附件'),
-(93003, 100000, '重点客户健康分层.xlsx', '/demo/org/customer-health-matrix.xlsx', 'https://demo.cloudflow.local/files/org/customer-health-matrix.xlsx', 'LOCAL', 158300, 'application/xlsx', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 13 HOUR), '0', '对应任务 9427 的客户健康分层'),
-(93004, 100000, '二季度销售拜访路线.pdf', '/demo/org/q2-sales-route.pdf', 'https://demo.cloudflow.local/files/org/q2-sales-route.pdf', 'LOCAL', 262880, 'application/pdf', 'he_sales', DATE_SUB(NOW(), INTERVAL 12 HOUR), '0', '对应任务 9434 的拜访路线规划'),
-(93005, 100000, '运维应急演练手册.docx', '/demo/org/ops-drill-manual.docx', 'https://demo.cloudflow.local/files/org/ops-drill-manual.docx', 'LOCAL', 138420, 'application/docx', 'tang_ops', DATE_SUB(NOW(), INTERVAL 11 HOUR), '0', '对应事件 9517 的应急演练手册'),
-(93006, 100000, '移动端回归用例池.xlsx', '/demo/org/mobile-regression-cases.xlsx', 'https://demo.cloudflow.local/files/org/mobile-regression-cases.xlsx', 'LOCAL', 214300, 'application/xlsx', 'han_qa', DATE_SUB(NOW(), INTERVAL 10 HOUR), '0', '对应任务 9430 的回归用例池'),
-(93007, 100000, '解决方案架构师JD.docx', '/demo/hr/solution-architect-jd.docx', 'https://demo.cloudflow.local/files/hr/solution-architect-jd.docx', 'LOCAL', 96520, 'application/docx', 'zhao', DATE_SUB(NOW(), INTERVAL 9 HOUR), '0', '对应招聘需求 2012 的岗位说明书'),
-(93008, 100000, '交付团队培训计划.pdf', '/demo/org/delivery-team-training-plan.pdf', 'https://demo.cloudflow.local/files/org/delivery-team-training-plan.pdf', 'LOCAL', 305780, 'application/pdf', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 8 HOUR), '0', '对应任务 9432 的培训计划'),
-(93009, 100000, '高牧苏州培训总结.pdf', '/demo/trip/gaomu-suzhou-summary.pdf', 'https://demo.cloudflow.local/files/trip/gaomu-suzhou-summary.pdf', 'LOCAL', 356420, 'application/pdf', 'gao_delivery', DATE_SUB(NOW(), INTERVAL 7 HOUR), '0', '对应出差单 9012 的总结归档'),
-(93010, 100000, '华东客户培训服务合同.pdf', '/demo/payment/fk202604070012-contract.pdf', 'https://demo.cloudflow.local/files/payment/fk202604070012-contract.pdf', 'LOCAL', 1896420, 'application/pdf', 'wang', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '对应付款申请 9012 的合同附件');
+(93001, 100000, '产品与交付协同周需求清单.pdf', '/demo/org/product-delivery-week-requirements.pdf', 'https://demo.cloudflow.local/files/org/product-delivery-week-requirements.pdf', 'LOCAL', 428560, 'pdf', 'sun_pm', DATE_SUB(NOW(), INTERVAL 16 HOUR), '0', '对应任务 9425 的需求输出物'),
+(93002, 100000, '华东项目上线风险清单.xlsx', '/demo/org/east-delivery-risk-list.xlsx', 'https://demo.cloudflow.local/files/org/east-delivery-risk-list.xlsx', 'LOCAL', 186240, 'xlsx', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 14 HOUR), '0', '对应任务 9426 的风险盘点附件'),
+(93003, 100000, '重点客户健康分层.xlsx', '/demo/org/customer-health-matrix.xlsx', 'https://demo.cloudflow.local/files/org/customer-health-matrix.xlsx', 'LOCAL', 158300, 'xlsx', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 13 HOUR), '0', '对应任务 9427 的客户健康分层'),
+(93004, 100000, '二季度销售拜访路线.pdf', '/demo/org/q2-sales-route.pdf', 'https://demo.cloudflow.local/files/org/q2-sales-route.pdf', 'LOCAL', 262880, 'pdf', 'he_sales', DATE_SUB(NOW(), INTERVAL 12 HOUR), '0', '对应任务 9434 的拜访路线规划'),
+(93005, 100000, '运维应急演练手册.docx', '/demo/org/ops-drill-manual.docx', 'https://demo.cloudflow.local/files/org/ops-drill-manual.docx', 'LOCAL', 138420, 'docx', 'tang_ops', DATE_SUB(NOW(), INTERVAL 11 HOUR), '0', '对应事件 9517 的应急演练手册'),
+(93006, 100000, '移动端回归用例池.xlsx', '/demo/org/mobile-regression-cases.xlsx', 'https://demo.cloudflow.local/files/org/mobile-regression-cases.xlsx', 'LOCAL', 214300, 'xlsx', 'han_qa', DATE_SUB(NOW(), INTERVAL 10 HOUR), '0', '对应任务 9430 的回归用例池'),
+(93007, 100000, '解决方案架构师JD.docx', '/demo/hr/solution-architect-jd.docx', 'https://demo.cloudflow.local/files/hr/solution-architect-jd.docx', 'LOCAL', 96520, 'docx', 'zhao', DATE_SUB(NOW(), INTERVAL 9 HOUR), '0', '对应招聘需求 2012 的岗位说明书'),
+(93008, 100000, '交付团队培训计划.pdf', '/demo/org/delivery-team-training-plan.pdf', 'https://demo.cloudflow.local/files/org/delivery-team-training-plan.pdf', 'LOCAL', 305780, 'pdf', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 8 HOUR), '0', '对应任务 9432 的培训计划'),
+(93009, 100000, '高牧苏州培训总结.pdf', '/demo/trip/gaomu-suzhou-summary.pdf', 'https://demo.cloudflow.local/files/trip/gaomu-suzhou-summary.pdf', 'LOCAL', 356420, 'pdf', 'gao_delivery', DATE_SUB(NOW(), INTERVAL 7 HOUR), '0', '对应出差单 9012 的总结归档'),
+(93010, 100000, '华东客户培训服务合同.pdf', '/demo/payment/fk202604070012-contract.pdf', 'https://demo.cloudflow.local/files/payment/fk202604070012-contract.pdf', 'LOCAL', 1896420, 'pdf', 'wang', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '对应付款申请 9012 的合同附件');
 
 INSERT IGNORE INTO cloud_flow_db.sys_audit_log (
     audit_id, tenant_id, biz_module, audit_name, audit_field, before_val, after_val,
@@ -10634,13 +10686,13 @@ INSERT IGNORE INTO cloud_flow_db.sys_file (
   file_id, tenant_id, file_name, file_path, url, storage_type, file_size, file_type, create_by, create_time, deleted, remark
 ) VALUES
 (93021, 100000, '交付上线变更审批V2发布说明.pdf', '/demo/workflow/deploy/delivery-change-v2-release-note.pdf',
- 'https://demo.cloudflow.local/files/workflow/deploy/delivery-change-v2-release-note.pdf', 'LOCAL', 482600, 'application/pdf', 'tang_ops', DATE_SUB(NOW(), INTERVAL 10 DAY), '0', '对应流程模板 seed_tpl_delivery_change_001 的 V2 发布说明'),
+ 'https://demo.cloudflow.local/files/workflow/deploy/delivery-change-v2-release-note.pdf', 'LOCAL', 482600, 'pdf', 'tang_ops', DATE_SUB(NOW(), INTERVAL 10 DAY), '0', '对应流程模板 seed_tpl_delivery_change_001 的 V2 发布说明'),
 (93022, 100000, '交付上线变更审批回滚报告.pdf', '/demo/workflow/deploy/delivery-change-rollback-report.pdf',
- 'https://demo.cloudflow.local/files/workflow/deploy/delivery-change-rollback-report.pdf', 'LOCAL', 368920, 'application/pdf', 'tang_ops', DATE_SUB(NOW(), INTERVAL 7 DAY), '0', '对应流程模板 seed_tpl_delivery_change_001 的回滚分析'),
+ 'https://demo.cloudflow.local/files/workflow/deploy/delivery-change-rollback-report.pdf', 'LOCAL', 368920, 'pdf', 'tang_ops', DATE_SUB(NOW(), INTERVAL 7 DAY), '0', '对应流程模板 seed_tpl_delivery_change_001 的回滚分析'),
 (93023, 100000, '重点客户续约评审模板说明.docx', '/demo/workflow/deploy/customer-renewal-template-spec.docx',
- 'https://demo.cloudflow.local/files/workflow/deploy/customer-renewal-template-spec.docx', 'LOCAL', 156480, 'application/docx', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 6 DAY), '0', '对应流程模板 seed_tpl_customer_renewal_001 的设计说明'),
+ 'https://demo.cloudflow.local/files/workflow/deploy/customer-renewal-template-spec.docx', 'LOCAL', 156480, 'docx', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 6 DAY), '0', '对应流程模板 seed_tpl_customer_renewal_001 的设计说明'),
 (93024, 100000, '流程发布影响分析.xlsx', '/demo/workflow/deploy/process-impact-analysis.xlsx',
- 'https://demo.cloudflow.local/files/workflow/deploy/process-impact-analysis.xlsx', 'LOCAL', 214880, 'application/xlsx', 'sun_pm', DATE_SUB(NOW(), INTERVAL 5 DAY), '0', '交付上线变更与续约评审模板的联合影响评估');
+ 'https://demo.cloudflow.local/files/workflow/deploy/process-impact-analysis.xlsx', 'LOCAL', 214880, 'xlsx', 'sun_pm', DATE_SUB(NOW(), INTERVAL 5 DAY), '0', '交付上线变更与续约评审模板的联合影响评估');
 
 INSERT IGNORE INTO cloud_flow_db.wf_template (
   id, name, description, category_id, tags, definition, preview_image, created_by, created_at, updated_at, usage_count, is_system, status, tenant_id
@@ -13490,8 +13542,8 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(651, '用户拉黑',      650,  1, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'system:userBlacklist:add',  '#',               'admin', NOW(), '', null, '用户拉黑');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(652, '解除拉黑',      650,  2, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'system:userBlacklist:remove','#',              'admin', NOW(), '', null, '解除用户拉黑');
 
--- OA-P0-3 合同金额阈值 (parent_id=2 办公协同 OA 根目录)
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(660, '合同金额阈值',   2, 19, '/oa/contract-threshold',    'pages/oa/ContractThresholdPage',    NULL, 0, 0, 'C', '0', '0', 'oa:contract:threshold:list','SlidersHorizontal','admin', NOW(), '', null, '合同金额审批阈值 (OA-P0-3)');
+-- OA-P0-3 合同金额阈值 (parent_id=277 项目合同分组)
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(660, '合同金额阈值',   277, 3, '/oa/contract-threshold',    'pages/oa/ContractThresholdPage',    NULL, 0, 0, 'C', '0', '0', 'oa:contract:threshold:list','SlidersHorizontal','admin', NOW(), '', null, '合同金额审批阈值 (OA-P0-3)');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(661, '阈值新增',      660,  1, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'oa:contract:threshold:add', '#',               'admin', NOW(), '', null, '合同阈值新增');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(662, '阈值编辑',      660,  2, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'oa:contract:threshold:edit','#',               'admin', NOW(), '', null, '合同阈值编辑');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(663, '阈值删除',      660,  3, '',                         NULL,                                NULL, 0, 0, 'F', '0', '0', 'oa:contract:threshold:remove','#',              'admin', NOW(), '', null, '合同阈值删除');
