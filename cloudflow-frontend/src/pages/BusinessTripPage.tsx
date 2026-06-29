@@ -25,28 +25,25 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { ListResultFooter } from '@/components/common/ListResultFooter';
 import { useAuth } from '@/context/AuthContext';
 import {
   Button,
   DatePicker,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
   UserSelector,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import type { UserBrief } from '@/types/workflow';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'cancel';
@@ -97,14 +94,17 @@ const calculateTripDays = (startDate?: string, endDate?: string) => {
   return Math.round((end - start) / 86400000) + 1;
 };
 
+const joinClass = (...classes: Array<string | false | null | undefined>) =>
+  classes.filter(Boolean).join(' ');
+
 const InlineState: React.FC<{
   title: string;
   description?: string;
   icon?: React.ReactNode;
   className?: string;
 }> = ({ title, description, icon, className }) => (
-  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+  <div className={joinClass('admin-dialog-empty-note', className)}>
+    <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
       {icon || <Plane className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -122,9 +122,9 @@ const TableStateRow: React.FC<{
   loading?: boolean;
 }> = ({ colSpan, title, description, icon, loading = false }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-16">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : icon || <Plane className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -136,13 +136,37 @@ const TableStateRow: React.FC<{
   </tr>
 );
 
+const DialogPanel: React.FC<{
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, actions, children, className, bodyClassName }) => (
+  <section className={joinClass('table-scroll-container admin-inner-table-surface', className)}>
+    {title || description || actions ? (
+      <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div>
+          {title ? <strong>{title}</strong> : null}
+          {description ? <span>{description}</span> : null}
+        </div>
+        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      </div>
+    ) : null}
+    <div className={joinClass('p-4', bodyClassName)}>{children}</div>
+  </section>
+);
+
 const DetailRows: React.FC<{
   children: React.ReactNode;
   className?: string;
-}> = ({ children, className }) => (
-  <div className={['grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3', className].filter(Boolean).join(' ')}>
+  title?: string;
+  description?: string;
+}> = ({ children, className, title = '基础信息', description }) => (
+  <DialogPanel title={title} description={description} bodyClassName={joinClass('admin-business-trip-detail-grid', className)}>
     {children}
-  </div>
+  </DialogPanel>
 );
 
 const DetailRow: React.FC<{
@@ -151,10 +175,10 @@ const DetailRow: React.FC<{
   alignStart?: boolean;
 }> = ({ label, value, alignStart = false }) => (
   <div
-    className={[
-      'border-b border-slate-100 pb-3 dark:border-slate-800',
-      alignStart ? 'md:col-span-2 xl:col-span-3' : '',
-    ].filter(Boolean).join(' ')}
+    className={joinClass(
+      'admin-business-trip-detail-item',
+      alignStart && 'admin-business-trip-detail-item-wide',
+    )}
   >
     <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
     <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
@@ -210,6 +234,7 @@ export const BusinessTripPage: React.FC = () => {
   const hasActiveFilters = Boolean(searchParams.status || searchParams.destination);
   const currentStatusLabel = searchParams.status ? tripStatusDict.getLabel(searchParams.status) : '全部状态';
   const currentDestinationLabel = searchParams.destination || '全部目的地';
+  const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentDestinationLabel}` : '全部出差';
   const formTripDays = calculateTripDays(formData.startDate, formData.endDate);
 
   const handleApplyFilters = () => {
@@ -418,16 +443,55 @@ export const BusinessTripPage: React.FC = () => {
     }
     return value;
   };
+  const metrics = [
+    { label: '出差申请', value: String(total), meta: `当前页 ${list.length}`, icon: <Plane size={18} />, tone: 'blue' },
+    { label: '草稿', value: String(draftCount), meta: '待提交', icon: <Edit size={18} />, tone: 'amber' },
+    { label: '审批中', value: String(pendingCount), meta: '流程流转', icon: <Send size={18} />, tone: 'violet' },
+    { label: '已通过', value: String(approvedCount), meta: '已归档', icon: <Clock3 size={18} />, tone: 'green' },
+  ];
 
-  return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
-                <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+  const pageActions = (
+    <div className="grid gap-5">
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">BUSINESS TRIPS</p>
+            <h2>出差申请</h2>
+            <span>跟踪行程、预算、同行人员、审批状态和流程轨迹</span>
+          </div>
+          <div className="admin-source-controls">
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
+              <Download size={16} />
+              导出
+            </Button>
+            <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:trip:add')}>
+              <Plus size={16} />
+              新建申请
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid">
+          {metrics.map((metric) => (
+            <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+              <div className="admin-source-stat-icon">{metric.icon}</div>
+              <div>
+                <p>{metric.label}</p>
+                <strong>{metric.value}</strong>
+                <span>{metric.meta}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+    </div>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar">
+          <div className="admin-oa-filter-grid">
+            <label>
+              <span className="input-label">目的地</span>
+              <div className="admin-source-search-field">
+                <Search size={16} />
                 <Input
                   type="text"
                   placeholder="按目的地搜索"
@@ -438,82 +502,77 @@ export const BusinessTripPage: React.FC = () => {
                       handleApplyFilters();
                     }
                   }}
-                  className="h-10 pl-10"
+                  className="h-[42px]"
                 />
               </div>
-
-              <div className="w-full sm:w-[180px]">
-                <Select
-                  value={searchParams.status || 'ALL'}
-                  onValueChange={(value) =>
-                    setSearchParams((prev) => ({
-                      ...prev,
-                      status: value === 'ALL' ? '' : value,
-                      pageNum: 1,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    {tripStatusDict.getOptions().map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex min-w-[220px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>{hasActiveFilters ? `${currentStatusLabel} / ${currentDestinationLabel}` : '全部'}</span>
-                <span>共 {total} 条</span>
-                <span>草稿 {draftCount}</span>
-                <span>审批中 {pendingCount}</span>
-                <span>已通过 {approvedCount}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            </label>
+            <label>
+              <span className="input-label">状态</span>
+              <Select
+                value={searchParams.status || 'ALL'}
+                onValueChange={(value) =>
+                  setSearchParams((prev) => ({
+                    ...prev,
+                    status: value === 'ALL' ? '' : value,
+                    pageNum: 1,
+                  }))
+                }
+              >
+                <SelectTrigger className="h-[42px]">
+                  <SelectValue placeholder="状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部状态</SelectItem>
+                  {tripStatusDict.getOptions().map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="admin-users-toolbar-actions">
               <Button variant="outline" size="sm" onClick={handleApplyFilters}>
-                <Search size={14} className="mr-1.5" />
+                <Search size={14} />
                 应用
               </Button>
-              <Button variant="outline" size="sm" onClick={handleResetFilters}>
-                <RotateCcw size={14} className="mr-1.5" />
-                清空条件
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download size={14} className="mr-1.5" />
-                导出结果
-              </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:trip:add')}>
-                <Plus size={14} className="mr-1.5" />
-                新建申请
+              <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={!hasActiveFilters}>
+                <RotateCcw size={14} />
+                重置
               </Button>
             </div>
           </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1180px]">
-                <TableHeader className="sticky top-0 z-10">
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface>
+              <table className="unity-data-table admin-source-table admin-business-trip-table">
+                <colgroup>
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                </colgroup>
+                <thead>
                   <tr>
-                    <TableHead className="px-4 py-3 text-left">出差单号</TableHead>
-                    <TableHead className="px-4 py-3 text-left">出差人 / 部门</TableHead>
-                    <TableHead className="px-4 py-3 text-left">行程 / 项目</TableHead>
-                    <TableHead className="px-4 py-3 text-left">日期</TableHead>
-                    <TableHead className="px-4 py-3 text-left">天数</TableHead>
-                    <TableHead className="px-4 py-3 text-left">交通</TableHead>
-                    <TableHead className="px-4 py-3 text-left">预算</TableHead>
-                    <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                    <TableActionHead className="w-44 px-4 py-3 text-right">操作</TableActionHead>
+                    <th>出差单号</th>
+                    <th>出差人 / 部门</th>
+                    <th>行程 / 项目</th>
+                    <th>日期</th>
+                    <th>天数</th>
+                    <th>交通</th>
+                    <th>预算</th>
+                    <th>状态</th>
+                    <th className="text-right">当前操作</th>
                   </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                </thead>
+                <tbody>
                   {loading ? (
                     <TableStateRow colSpan={9} title="正在加载出差申请..." loading />
                   ) : list.length === 0 ? (
@@ -523,16 +582,16 @@ export const BusinessTripPage: React.FC = () => {
                     />
                   ) : (
                     list.map((item) => (
-                      <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                        <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
+                      <tr key={item.id}>
+                        <td>
                           <div className="font-medium text-slate-900 dark:text-slate-100">{item.tripNo || '-'}</div>
                           <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.createTime)}</div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        <td>
                           <div className="font-medium text-slate-900 dark:text-slate-100">{item.userName || '-'}</div>
                           <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.deptName || '-'}</div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        <td>
                           <div className="font-medium text-slate-900 dark:text-slate-100">
                             {(item.departure || '-') + ' -> ' + (item.destination || '-')}
                           </div>
@@ -540,85 +599,54 @@ export const BusinessTripPage: React.FC = () => {
                             {item.projectName || item.companions || '-'}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        <td>
                           {item.startDate || '-'} ~ {item.endDate || '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        <td>
                           {item.tripDays ? `${item.tripDays} 天` : '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        <td>
                           {transportDict.getLabel(String(item.transportType ?? '')) || '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{formatAmount(item.estimatedCost)}</td>
-                        <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
-                        <td className="px-4 py-3 text-right">
-                          <TableRowActions
-                            align="end"
-                            className="gap-1"
-                            actions={[
-                              {
-                                label: '详情',
-                                icon: <Eye size={14} />,
-                                onClick: () => void handleView(item.id!),
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '编辑',
-                                icon: <Edit size={14} />,
-                                onClick: () => void handleEdit(item.id!),
-                                tone: 'primary',
-                                hidden: item.status !== 'DRAFT',
-                                permissionKey: 'oa:trip:edit',
-                              },
-                              {
-                                label: '提交',
-                                icon: <Send size={14} />,
-                                onClick: () => openSubmitConfirm(item.id!),
-                                tone: 'success',
-                                hidden: item.status !== 'DRAFT',
-                                permissionKey: 'oa:trip:submit',
-                              },
-                              {
-                                label: '删除',
-                                icon: <Trash2 size={14} />,
-                                onClick: () => openDeleteConfirm(item.id!),
-                                tone: 'danger',
-                                hidden: item.status !== 'DRAFT',
-                                permissionKey: 'oa:trip:remove',
-                              },
-                              {
-                                label: '取消申请',
-                                icon: <RotateCcw size={14} />,
-                                onClick: () => openCancelConfirm(item.id!),
-                                tone: 'warning',
-                                hidden: item.status !== 'PENDING',
-                                permissionKey: 'oa:trip:cancel',
-                              },
-                            ]}
-                          />
+                        <td>{formatAmount(item.estimatedCost)}</td>
+                        <td>{getStatusBadge(item.status)}</td>
+                        <td>
+                          <div className="admin-users-row-actions">
+                            <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
+                            {item.status === 'DRAFT' && hasPermission('oa:trip:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                            {item.status === 'DRAFT' && hasPermission('oa:trip:submit') ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                            {item.status === 'DRAFT' && hasPermission('oa:trip:remove') ? <button type="button" title="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
+                            {item.status === 'PENDING' && hasPermission('oa:trip:cancel') ? <button type="button" title="取消申请" aria-label="取消申请" onClick={() => openCancelConfirm(item.id!)}><RotateCcw size={15} /></button> : null}
+                          </div>
                         </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={searchParams.pageNum}
-              pageSize={searchParams.pageSize}
-              showPageSizeSelector={false}
-              showJump={false}
-              onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
-              onPageSizeChange={() => {}}
-            />
-          ) : null
-        )}
-      />
+        </InnerTableSurface>
+  );
+
+  const pagePagination = (
+    <ListResultFooter
+      total={total}
+      page={searchParams.pageNum}
+      pageSize={searchParams.pageSize}
+      summary={resultSummary}
+      onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
+    />
+  );
+
+  return (
+    <>
+      <section className="admin-source-page oa-approval-page business-trip-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showDialog}
@@ -626,7 +654,7 @@ export const BusinessTripPage: React.FC = () => {
         onClose={closeDialog}
         maxWidthClassName="w-full sm:max-w-5xl"
         panelClassName="max-h-[92vh]"
-        bodyClassName="max-h-[74vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
+        bodyClassName="admin-dialog-stack max-h-[74vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
         footer={(
           <>
             <Button variant="outline" onClick={closeDialog}>
@@ -638,197 +666,154 @@ export const BusinessTripPage: React.FC = () => {
           </>
         )}
       >
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-5">
-            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
-              <h4 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">行程信息</h4>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    出发地
-                  </label>
-                  <Input
-                    className="h-11"
-                    type="text"
-                    value={formData.departure || ''}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, departure: event.target.value }))}
-                    placeholder="例如：北京"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    目的地
-                  </label>
-                  <Input
-                    className="h-11"
-                    type="text"
-                    value={formData.destination}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, destination: event.target.value }))}
-                    placeholder="例如：上海"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    开始日期
-                  </label>
-                  <DatePicker
-                    className="h-11"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, startDate: event.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    结束日期
-                  </label>
-                  <DatePicker
-                    className="h-11"
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, endDate: event.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    交通方式
-                  </label>
-                  <Select
-                    value={formData.transportType || 'TRAIN'}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, transportType: value }))}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="请选择交通方式" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {transportDict.getOptions().map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    住宿安排
-                  </label>
-                  <Select
-                    value={formData.accommodation || 'SELF'}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, accommodation: value }))}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="请选择住宿安排" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accommodationDict.getOptions().map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    预计费用
-                  </label>
-                  <Input
-                    className="h-11"
-                    type="number"
-                    value={formData.estimatedCost || ''}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, estimatedCost: parseFloat(event.target.value) || 0 }))}
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    关联项目
-                  </label>
-                  <Input
-                    className="h-11"
-                    type="text"
-                    value={formData.projectName || ''}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, projectName: event.target.value }))}
-                    placeholder="例如：华东客户拜访"
-                  />
-                </div>
+        <div className="grid gap-4">
+          <DialogPanel
+            title="行程信息"
+            description="出发、目的地、时间、交通和预算"
+            bodyClassName="grid gap-4 sm:grid-cols-2"
+          >
+              <div className="admin-dialog-field">
+                <Label>出发地</Label>
+                <Input
+                  className="h-11"
+                  type="text"
+                  value={formData.departure || ''}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, departure: event.target.value }))}
+                  placeholder="例如：北京"
+                />
               </div>
-            </section>
-
-            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
-              <h4 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">联系信息</h4>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    联系电话
-                  </label>
-                  <Input
-                    className="h-11"
-                    type="tel"
-                    value={formData.contactPhone || ''}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, contactPhone: event.target.value }))}
-                    placeholder="出差期间联系电话"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    紧急联系人
-                  </label>
-                  <Input
-                    className="h-11"
-                    type="text"
-                    value={formData.emergencyContact || ''}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, emergencyContact: event.target.value }))}
-                    placeholder="姓名"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    紧急联系人电话
-                  </label>
-                  <Input
-                    className="h-11"
-                    type="tel"
-                    value={formData.emergencyPhone || ''}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, emergencyPhone: event.target.value }))}
-                    placeholder="电话"
-                  />
-                </div>
+              <div className="admin-dialog-field">
+                <Label>目的地</Label>
+                <Input
+                  className="h-11"
+                  type="text"
+                  value={formData.destination}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, destination: event.target.value }))}
+                  placeholder="例如：上海"
+                />
               </div>
-            </section>
+              <div className="admin-dialog-field">
+                <Label>开始日期</Label>
+                <DatePicker
+                  className="h-11"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, startDate: event.target.value }))}
+                />
+              </div>
+              <div className="admin-dialog-field">
+                <Label>结束日期</Label>
+                <DatePicker
+                  className="h-11"
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, endDate: event.target.value }))}
+                />
+              </div>
+              <div className="admin-dialog-field">
+                <Label>交通方式</Label>
+                <Select
+                  value={formData.transportType || 'TRAIN'}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, transportType: value }))}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="请选择交通方式" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {transportDict.getOptions().map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="admin-dialog-field">
+                <Label>住宿安排</Label>
+                <Select
+                  value={formData.accommodation || 'SELF'}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, accommodation: value }))}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="请选择住宿安排" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accommodationDict.getOptions().map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="admin-dialog-field">
+                <Label>预计费用</Label>
+                <Input
+                  className="h-11"
+                  type="number"
+                  value={formData.estimatedCost || ''}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, estimatedCost: parseFloat(event.target.value) || 0 }))}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+              <div className="admin-dialog-field">
+                <Label>关联项目</Label>
+                <Input
+                  className="h-11"
+                  type="text"
+                  value={formData.projectName || ''}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, projectName: event.target.value }))}
+                  placeholder="例如：华东客户拜访"
+                />
+              </div>
+          </DialogPanel>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                出差事由
-              </label>
-              <Textarea
-                className="min-h-[160px] resize-none"
-                value={formData.reason}
-                onChange={(event) => setFormData((prev) => ({ ...prev, reason: event.target.value }))}
-                placeholder="填写出差背景和目的"
-              />
-            </section>
+          <DialogPanel
+            title="联系信息"
+            description="出差期间联系方式和紧急联系人"
+            bodyClassName="grid gap-4 sm:grid-cols-2"
+          >
+              <div className="admin-dialog-field">
+                <Label>联系电话</Label>
+                <Input
+                  className="h-11"
+                  type="tel"
+                  value={formData.contactPhone || ''}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, contactPhone: event.target.value }))}
+                  placeholder="出差期间联系电话"
+                />
+              </div>
+              <div className="admin-dialog-field">
+                <Label>紧急联系人</Label>
+                <Input
+                  className="h-11"
+                  type="text"
+                  value={formData.emergencyContact || ''}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, emergencyContact: event.target.value }))}
+                  placeholder="姓名"
+                />
+              </div>
+              <div className="admin-dialog-field sm:col-span-2">
+                <Label>紧急联系人电话</Label>
+                <Input
+                  className="h-11"
+                  type="tel"
+                  value={formData.emergencyPhone || ''}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, emergencyPhone: event.target.value }))}
+                  placeholder="电话"
+                />
+              </div>
+          </DialogPanel>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                附件材料
-              </label>
-              <FileUpload
-                value={formData.attachmentUrl || ''}
-                onChange={(urls) => setFormData((prev) => ({ ...prev, attachmentUrl: urls }))}
-                maxCount={5}
-              />
-            </section>
-          </div>
-
-          <aside className="space-y-4 lg:sticky lg:top-0 lg:self-start">
-            <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                同行人员
-              </label>
+          <DialogPanel
+            title="同行与摘要"
+            description="同行人员和当前行程上下文"
+            bodyClassName="grid gap-4 lg:grid-cols-2"
+          >
+            <div className="admin-dialog-field">
+              <Label>同行人员</Label>
               <UserSelector
                 value={selectedCompanionIds}
                 onChange={handleCompanionChange}
@@ -838,42 +823,57 @@ export const BusinessTripPage: React.FC = () => {
                 dropdownPlacement="bottom"
               />
               {formData.companions ? (
-                <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+                <div className="admin-dialog-value-note">
                   {formData.companions}
                 </div>
               ) : null}
-            </section>
+            </div>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
-              <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">行程摘要</h4>
-              <dl className="space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">路线</dt>
-                  <dd className="max-w-[12rem] truncate font-medium text-slate-900 dark:text-slate-100">
-                    {(formData.departure || '-') + ' -> ' + (formData.destination || '-')}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">天数</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">
-                    {formTripDays ? `${formTripDays} 天` : '-'}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">交通</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">
-                    {transportDict.getLabel(String(formData.transportType ?? '')) || '-'}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">预算</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">
-                    {formatAmount(formData.estimatedCost)}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-          </aside>
+            <dl className="grid gap-3 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-4 text-sm dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-500 dark:text-slate-400">路线</dt>
+                <dd className="max-w-[18rem] truncate font-medium text-slate-900 dark:text-slate-100">
+                  {(formData.departure || '-') + ' -> ' + (formData.destination || '-')}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-500 dark:text-slate-400">天数</dt>
+                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                  {formTripDays ? `${formTripDays} 天` : '-'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-500 dark:text-slate-400">交通</dt>
+                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                  {transportDict.getLabel(String(formData.transportType ?? '')) || '-'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-500 dark:text-slate-400">预算</dt>
+                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                  {formatAmount(formData.estimatedCost)}
+                </dd>
+              </div>
+            </dl>
+          </DialogPanel>
+
+          <DialogPanel title="出差事由" bodyClassName="admin-dialog-field">
+            <Textarea
+              className="min-h-[160px] resize-none"
+              aria-label="出差事由"
+              value={formData.reason}
+              onChange={(event) => setFormData((prev) => ({ ...prev, reason: event.target.value }))}
+              placeholder="填写出差背景和目的"
+            />
+          </DialogPanel>
+
+          <DialogPanel title="附件材料" bodyClassName="admin-dialog-field">
+            <FileUpload
+              value={formData.attachmentUrl || ''}
+              onChange={(urls) => setFormData((prev) => ({ ...prev, attachmentUrl: urls }))}
+              maxCount={5}
+            />
+          </DialogPanel>
         </div>
       </BaseDialog>
 
@@ -883,7 +883,7 @@ export const BusinessTripPage: React.FC = () => {
         onClose={closeDetailDialog}
         width="wide"
         headerAside={detailTrip ? getStatusBadge(detailTrip.status) : null}
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             {detailTrip?.status === 'PENDING' ? (
@@ -923,17 +923,15 @@ export const BusinessTripPage: React.FC = () => {
               <DetailRow label="创建时间" value={formatDateTimeDisplay(detailTrip.createTime)} />
             </DetailRows>
 
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">出差事由</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+            <DialogPanel title="出差事由">
+              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {detailTrip.reason || '-'}
               </div>
-            </div>
+            </DialogPanel>
 
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">附件</div>
+            <DialogPanel title="附件">
               {getAttachmentList(detailTrip.attachmentUrl).length ? (
-                <div className="space-y-2">
+                <div className="admin-dialog-link-list">
                   {getAttachmentList(detailTrip.attachmentUrl).map((url) => {
                     const label = getAttachmentDisplayName(url);
                     return (
@@ -942,7 +940,7 @@ export const BusinessTripPage: React.FC = () => {
                         href={url}
                         target="_blank"
                         rel="noreferrer"
-                        className="cf-interactive-card flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+                        className="admin-dialog-link-card"
                       >
                         <Paperclip size={14} />
                         <span className="truncate">{label}</span>
@@ -953,21 +951,20 @@ export const BusinessTripPage: React.FC = () => {
               ) : (
                 <InlineState title="暂无附件" className="py-5" icon={<Paperclip className="h-4 w-4" />} />
               )}
-            </div>
+            </DialogPanel>
 
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">流程轨迹</div>
-                {detailTrip.instanceId ? (
-                  <div className="text-xs text-slate-500 dark:text-slate-400">{detailTrip.instanceId}</div>
-                ) : null}
-              </div>
+            <DialogPanel
+              title="流程轨迹"
+              actions={detailTrip.instanceId ? (
+                <div className="text-xs text-slate-500 dark:text-slate-400">{detailTrip.instanceId}</div>
+              ) : null}
+            >
               {detailTrip.instanceId ? (
                 <ProcessTrace instanceId={detailTrip.instanceId} />
               ) : (
-                <InlineState title="暂无流程轨迹" className="py-8" />
+                <InlineState title="暂无流程轨迹" className="py-6" />
               )}
-            </div>
+            </DialogPanel>
           </>
         ) : null}
       </BaseDialog>
@@ -981,7 +978,7 @@ export const BusinessTripPage: React.FC = () => {
         onConfirm={() => void handleConfirmAction()}
         onCancel={() => setConfirmState(null)}
       />
-    </div>
+    </>
   );
 };
 

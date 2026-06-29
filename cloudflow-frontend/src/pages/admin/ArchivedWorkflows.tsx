@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  CheckSquare,
   CheckCircle2,
+  CheckSquare,
   Loader2,
   RefreshCw,
   RotateCcw,
@@ -13,22 +13,9 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BaseDialog, Button, DatePicker, Input, Pagination } from '@/components/common';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import {
-  Button,
-  DatePicker,
-  Input,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/common';
 import { cn } from '@/utils/cn';
 import {
   getArchivedWorkflows,
@@ -54,19 +41,17 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-14">
-      <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+  <tr className="admin-workflow-archive-state-row">
+    <td colSpan={colSpan}>
+      <div className="admin-workflow-archive-state">
+        <div className="admin-source-stat-icon">
+          {loading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? (
-          <div className="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-        ) : null}
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const AccessState: React.FC<{
@@ -74,23 +59,33 @@ const AccessState: React.FC<{
   description: string;
   action: React.ReactNode;
 }> = ({ title, description, action }) => (
-  <div className="rounded-lg border border-slate-200 bg-white px-6 py-10 text-center dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-      <ShieldOff className="h-5 w-5" />
-    </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    <div className="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    <div className="mt-4">{action}</div>
-  </div>
+  <section className="admin-source-page admin-workflow-archive-page">
+    <TablePageLayout
+      table={(
+        <InnerTableSurface className="admin-workflow-archive-table-panel" wrapperClassName="admin-workflow-archive-empty-wrapper">
+          <div className="admin-workflow-archive-state">
+            <div className="admin-source-stat-icon">
+              <ShieldOff size={20} />
+            </div>
+            <strong>{title}</strong>
+            <span>{description}</span>
+            <div className="admin-workflow-archive-state-actions">{action}</div>
+          </div>
+        </InnerTableSurface>
+      )}
+    />
+  </section>
 );
 
 const getRestoreStatusMeta = (canRestore: boolean) =>
   canRestore
     ? {
         label: '可恢复',
+        className: 'is-restorable',
       }
     : {
         label: '不可恢复',
+        className: 'is-locked',
       };
 
 const formatDateTime = (value: string) => {
@@ -136,6 +131,12 @@ export const ArchivedWorkflows: React.FC = () => {
     () => selectedWorkflows.filter((item) => item.canRestore).map((item) => item.workflowId),
     [selectedWorkflows],
   );
+  const metrics = [
+    { label: '归档流程', value: String(total), meta: `当前页 ${workflows.length}`, icon: <CheckCircle2 size={18} />, tone: 'blue' },
+    { label: '可恢复', value: String(restorableCount), meta: '当前页可回滚', icon: <RotateCcw size={18} />, tone: 'green' },
+    { label: '已选', value: String(selectedIds.length), meta: `可恢复 ${selectedRestorableIds.length}`, icon: <CheckSquare size={18} />, tone: 'violet' },
+    { label: '筛选', value: hasActiveFilters ? '启用' : '全部', meta: query.keyword || '归档记录', icon: <Search size={18} />, tone: 'amber' },
+  ];
 
   const loadArchivedRecords = async () => {
     if (!canAccessArchiveManagement) {
@@ -284,7 +285,7 @@ export const ArchivedWorkflows: React.FC = () => {
         description="仅具备流程治理权限的账号可访问。"
         action={(
           <Button onClick={() => navigate('/workflow/management')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft size={15} className="mr-2" />
             返回流程管理
           </Button>
         )}
@@ -292,222 +293,258 @@ export const ArchivedWorkflows: React.FC = () => {
     );
   }
 
-  return (
+  const pageActions = (
     <>
-      <TablePageLayout
-        className="gap-2.5"
-        filters={(
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-64">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <Input
-                  value={filters.keyword}
-                  onChange={(event) => setFilters((current) => ({ ...current, keyword: event.target.value }))}
-                  placeholder="搜索流程或归档原因"
-                  className="h-10 pl-10"
-                />
-              </div>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">ARCHIVED WORKFLOWS</p>
+          <h2>归档流程</h2>
+          <span>治理已归档流程、恢复可用流程和永久删除无效流程</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button type="button" variant="outline" size="sm" onClick={() => void loadArchivedRecords()} disabled={loading}>
+            <RefreshCw size={15} className={loading ? 'mr-2 animate-spin' : 'mr-2'} />
+            刷新
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => navigate('/workflow/management')}>
+            <ArrowLeft size={15} className="mr-2" />
+            返回管理
+          </Button>
+        </div>
+      </header>
 
-              <DatePicker
-                type="date"
-                value={filters.start}
-                max={filters.end || undefined}
-                onChange={(event) => setFilters((current) => ({ ...current, start: event.target.value }))}
-                placeholder="开始日期"
-                className="h-10 w-full sm:w-40"
-              />
+      <section className="admin-source-stat-grid admin-workflow-archive-stat-grid">
+        {metrics.map((metric) => (
+          <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+            <div className="admin-source-stat-icon">{metric.icon}</div>
+            <div>
+              <p>{metric.label}</p>
+              <strong>{metric.value}</strong>
+              <span>{metric.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
 
-              <DatePicker
-                type="date"
-                value={filters.end}
-                min={filters.start || undefined}
-                onChange={(event) => setFilters((current) => ({ ...current, end: event.target.value }))}
-                placeholder="结束日期"
-                className="h-10 w-full sm:w-40"
-              />
+  const pageFilters = (
+    <section className="card admin-users-toolbar admin-workflow-archive-toolbar">
+      <form onSubmit={handleSearch} className="admin-workflow-archive-filter-grid">
+        <label>
+          <span className="input-label">流程检索</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.keyword}
+              onChange={(event) => setFilters((current) => ({ ...current, keyword: event.target.value }))}
+              placeholder="搜索流程或归档原因"
+              className="h-[42px] pl-9"
+            />
+          </div>
+        </label>
 
-              <Button type="submit" size="sm">
-                查询
+        <label>
+          <span className="input-label">开始日期</span>
+          <DatePicker
+            type="date"
+            value={filters.start}
+            max={filters.end || undefined}
+            onChange={(event) => setFilters((current) => ({ ...current, start: event.target.value }))}
+            placeholder="开始日期"
+            className="h-[42px]"
+          />
+        </label>
+
+        <label>
+          <span className="input-label">结束日期</span>
+          <DatePicker
+            type="date"
+            value={filters.end}
+            min={filters.start || undefined}
+            onChange={(event) => setFilters((current) => ({ ...current, end: event.target.value }))}
+            placeholder="结束日期"
+            className="h-[42px]"
+          />
+        </label>
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">{hasActiveFilters ? `${query.keyword || '全部关键词'} / ${query.start || '起始不限'} / ${query.end || '截止不限'}` : '全部归档'}</span>
+          <Button type="submit" variant="outline" size="sm">
+            <Search size={14} />
+            查询
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={handleReset} disabled={!hasActiveFilters}>
+            <RefreshCw size={14} />
+            重置
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface
+      className="admin-workflow-archive-table-panel flex min-h-0 flex-1 flex-col"
+      wrapperClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      <div className="admin-workflow-archive-table-head">
+        <div>
+          <strong>归档记录列表</strong>
+          <span>{total} 条 · 当前页 {workflows.length} 条 · 已选 {selectedIds.length}</span>
+        </div>
+        <span className="admin-workflow-archive-page-count">
+          第 {currentPage} 页
+        </span>
+      </div>
+
+      {selectedIds.length > 0 ? (
+        <div className="admin-workflow-archive-bulkbar">
+          <div>
+            <div className="admin-workflow-archive-bulkmeta">
+              <span>已选 {selectedIds.length} 条</span>
+              <span>可恢复 {selectedRestorableIds.length} 条</span>
+            </div>
+
+            <div className="admin-workflow-archive-bulkactions">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleRestore(selectedIds)}
+                disabled={restoring || !canBatchRestore || selectedRestorableIds.length === 0}
+              >
+                {restoring ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
+                恢复
               </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  清空
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {total} 条{restorableCount > 0 ? ` · 可恢复 ${restorableCount} 条` : ''}
-              </span>
-              <Button type="button" variant="outline" size="sm" onClick={() => void loadArchivedRecords()} disabled={loading}>
-                <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-                刷新
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openDeleteDialog(selectedIds)}
+                disabled={deleting || !canPermanentDelete}
+              >
+                <Trash2 size={15} />
+                删除
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => navigate('/workflow/management')}>
-                <ArrowLeft className="h-4 w-4" />
-                返回管理
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>
+                取消
               </Button>
             </div>
           </div>
-        )}
-        table={(<TableSurfaceCard fill>
-          <>
-            {selectedIds.length > 0 ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2 dark:border-slate-800">
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  已选 {selectedIds.length} 条 · 可恢复 {selectedRestorableIds.length} 条
-                </div>
+        </div>
+      ) : null}
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void handleRestore(selectedIds)}
-                    disabled={restoring || !canBatchRestore || selectedRestorableIds.length === 0}
-                  >
-                    {restoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                    恢复
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openDeleteDialog(selectedIds)}
-                    disabled={deleting || !canPermanentDelete}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    删除
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>
-                    取消
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+      <table className="unity-data-table admin-workflow-archive-table">
+        <thead>
+          <tr>
+            <th>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleSelectAll}
+                disabled={visibleWorkflowIds.length === 0}
+                aria-label={allSelected ? '取消全选当前页' : '全选当前页'}
+                className="admin-workflow-archive-check-button"
+              >
+                {allSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+              </Button>
+            </th>
+            <th>流程</th>
+            <th>归档人</th>
+            <th>归档时间</th>
+            <th>归档原因</th>
+            <th>状态</th>
+            <th>当前操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <TableStateRow colSpan={7} title="正在加载归档流程..." loading />
+          ) : workflows.length === 0 ? (
+            <TableStateRow
+              colSpan={7}
+              title={hasActiveFilters ? '当前筛选无结果' : '暂无归档流程'}
+            />
+          ) : (
+            workflows.map((workflow) => {
+              const restoreStatus = getRestoreStatusMeta(workflow.canRestore);
+              const isSelected = selectedIds.includes(workflow.workflowId);
 
-            <div className="overflow-x-auto">
-              <Table className="min-w-[920px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12 px-2 text-center">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleSelectAll}
-                        aria-label={allSelected ? '取消全选当前页' : '全选当前页'}
-                        className="mx-auto h-7 w-7 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
-                      >
-                        {allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
-                      </Button>
-                    </TableHead>
-                    <TableHead>流程</TableHead>
-                    <TableHead>归档人</TableHead>
-                    <TableHead>归档时间</TableHead>
-                    <TableHead className="w-[240px]">归档原因</TableHead>
-                    <TableHead className="w-20">状态</TableHead>
-                    <TableActionHead className="w-32">操作</TableActionHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableStateRow colSpan={7} title="正在加载归档流程..." loading />
-                  ) : workflows.length === 0 ? (
-                    <TableStateRow
-                      colSpan={7}
-                      title={hasActiveFilters ? '当前筛选无结果' : '暂无归档流程'}
-                    />
-                  ) : (
-                    workflows.map((workflow) => {
-                      const restoreStatus = getRestoreStatusMeta(workflow.canRestore);
-                      const isSelected = selectedIds.includes(workflow.workflowId);
+              return (
+                <tr key={workflow.id || workflow.workflowId} data-state={isSelected ? 'selected' : undefined}>
+                  <td>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-pressed={isSelected}
+                      aria-label={isSelected ? `取消选择 ${workflow.workflowName}` : `选择 ${workflow.workflowName}`}
+                      onClick={() => handleSelectOne(workflow.workflowId)}
+                      className={cn('admin-workflow-archive-check-button', isSelected && 'is-selected')}
+                    >
+                      {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+                    </Button>
+                  </td>
+                  <td>
+                    <div className="admin-workflow-archive-name">
+                      <strong>{workflow.workflowName}</strong>
+                      <small>{workflow.workflowId}</small>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="admin-workflow-archive-muted">{workflow.archivedByName || workflow.archivedBy || '-'}</span>
+                  </td>
+                  <td>
+                    <span className="admin-workflow-archive-muted">{formatDateTime(workflow.archivedAt)}</span>
+                  </td>
+                  <td>
+                    <span className="admin-workflow-archive-reason" title={workflow.archiveReason || '-'}>
+                      {workflow.archiveReason || '-'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={cn('admin-workflow-archive-status', restoreStatus.className)}>
+                      {restoreStatus.label}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="恢复" aria-label="恢复" onClick={() => void handleRestore([workflow.workflowId])} disabled={restoring || !workflow.canRestore || !canBatchRestore}><RotateCcw size={15} /></button>
+                      <button type="button" title="删除" aria-label="删除" onClick={() => openDeleteDialog([workflow.workflowId])} disabled={deleting || !canPermanentDelete}><Trash2 size={15} /></button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </InnerTableSurface>
+  );
 
-                      return (
-                        <TableRow key={workflow.id || workflow.workflowId} data-state={isSelected ? 'selected' : undefined}>
-                          <TableCell className="w-12 px-2 py-3.5 text-center">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              aria-pressed={isSelected}
-                              aria-label={isSelected ? `取消选择 ${workflow.workflowName}` : `选择 ${workflow.workflowName}`}
-                              onClick={() => handleSelectOne(workflow.workflowId)}
-                              className={cn(
-                                'mx-auto h-7 w-7 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200',
-                                isSelected && 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-200',
-                              )}
-                            >
-                              {isSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
-                            </Button>
-                          </TableCell>
-                          <TableCell className="py-3.5">
-                            <div className="min-w-0">
-                              <div className="truncate font-medium text-slate-900 dark:text-slate-100">
-                                {workflow.workflowName}
-                              </div>
-                              <div className="mt-0.5 font-mono text-xs text-slate-500 dark:text-slate-400">
-                                {workflow.workflowId}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-3.5 text-sm text-slate-600 dark:text-slate-300">
-                            {workflow.archivedByName || workflow.archivedBy || '-'}
-                          </TableCell>
-                          <TableCell className="py-3.5 text-sm text-slate-600 dark:text-slate-300">
-                            {formatDateTime(workflow.archivedAt)}
-                          </TableCell>
-                          <TableCell className="max-w-[240px] py-3.5 text-sm text-slate-600 dark:text-slate-300">
-                            <div className="truncate" title={workflow.archiveReason || '-'}>
-                              {workflow.archiveReason || '-'}
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-3.5">
-                            <span className="text-xs text-slate-600 dark:text-slate-300">
-                              {restoreStatus.label}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3.5">
-                            <TableRowActions
-                              actions={[
-                                {
-                                  label: '恢复',
-                                  semantic: 'enable',
-                                  onClick: () => void handleRestore([workflow.workflowId]),
-                                  disabled: restoring || !workflow.canRestore || !canBatchRestore,
-                                },
-                                {
-                                  label: '删除',
-                                  semantic: 'delete',
-                                  onClick: () => openDeleteDialog([workflow.workflowId]),
-                                  disabled: deleting || !canPermanentDelete,
-                                },
-                              ]}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        </TableSurfaceCard>)}
-        pagination={(
-          <Pagination
-            total={total}
-            page={currentPage}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={(value) => {
-              setPageSize(value);
-              setCurrentPage(1);
-            }}
-          />
-        )}
-      />
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={currentPage}
+      pageSize={pageSize}
+      onPageChange={setCurrentPage}
+      onPageSizeChange={(value) => {
+        setPageSize(value);
+        setCurrentPage(1);
+      }}
+    />
+  ) : null;
+
+  return (
+    <>
+      <section className="admin-source-page admin-workflow-archive-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={deleteDialogOpen}
@@ -519,7 +556,7 @@ export const ArchivedWorkflows: React.FC = () => {
           }
         }}
         maxWidthClassName="max-w-md"
-        bodyClassName="px-4 py-3 sm:px-5 sm:py-4"
+        bodyClassName="admin-dialog-stack px-4 py-3 sm:px-5 sm:py-4"
         footerClassName="gap-2 px-4 py-2.5 sm:px-5 sm:py-3"
         footer={(
           <>
@@ -538,13 +575,13 @@ export const ArchivedWorkflows: React.FC = () => {
               onClick={() => void handlePermanentDelete()}
               disabled={deleting}
             >
-              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
               删除
             </Button>
           </>
         )}
       >
-        <div className="text-sm leading-6 text-slate-700 dark:text-slate-200">
+        <div className="admin-workflow-archive-dialog-message">
           将永久删除 {deleteTarget.length} 条归档流程。删除后不可恢复。
         </div>
       </BaseDialog>

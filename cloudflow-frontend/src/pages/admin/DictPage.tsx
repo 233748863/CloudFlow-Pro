@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { DictApprovalDialog } from '@/components/admin/DictApprovalDialog';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -14,19 +13,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
 import { dictDataApi, dictTypeApi, type DictChangeResult, type SysDictData, type SysDictType } from '../../services/api/dict';
 import { queryClient, queryKeys } from '@/lib/queryClient';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type DictTypeFilters = {
   keyword: string;
@@ -57,7 +49,7 @@ type DeleteTarget =
 
 const DEFAULT_STATUS_VALUE = '__all__';
 const DEFAULT_LIST_CLASS_VALUE = 'default';
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
 
 const createTypeForm = (): DictTypeFormState => ({
   dictName: '',
@@ -95,7 +87,7 @@ const getListClassBadgeClassName = (listClass: string) => {
     case 'info':
       return 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200';
     default:
-      return 'border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+      return 'border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
   }
 };
 
@@ -119,7 +111,7 @@ const getListClassLabel = (listClass: string) => {
 const getDefaultBadgeClassName = (isDefault: string) =>
   isDefault === 'Y'
     ? 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
-    : 'border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+    : 'border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
 
 const getRiskLevelBadgeClassName = (riskLevel: string) => {
   switch (riskLevel) {
@@ -148,31 +140,14 @@ const getRiskLevelLabel = (riskLevel: string) => {
 const getDictChangeSuccessMessage = (result: DictChangeResult | undefined, fallback: string) =>
   result?.message || fallback;
 
-const InlineState: React.FC<{
-  title: string;
-  description?: string;
-  loading?: boolean;
-  className?: string;
-}> = ({ title, description, loading = false, className }) => (
-  <div className={cn('flex flex-col items-center justify-center px-6 py-14 text-center', className)}>
-    {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-        {description}
-      </div>
-    ) : null}
-  </div>
-);
-
 const TableStateRow: React.FC<{
   colSpan: number;
   title: string;
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr>
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -182,8 +157,8 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 export const DictPage: React.FC = () => {
@@ -531,311 +506,328 @@ export const DictPage: React.FC = () => {
     }
   };
 
-  return (
+  const pageActions = (
     <>
-      <TablePageLayout
-        className="gap-3"
-        filters={(
-          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-64">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.keyword}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, keyword: event.target.value }))
-                  }
-                  placeholder="搜索字典名称或类型"
-                  className="h-10 pl-10"
-                />
-              </div>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">system dictionary</p>
+          <h2>字典管理</h2>
+          <span>集中维护系统枚举、显示标签、风险等级与默认项。</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleRefresh()}
+            disabled={typeLoading || dataLoading}
+          >
+            <RefreshCw size={15} className={cn((typeLoading || dataLoading) && 'animate-spin')} />
+            刷新
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openTypeModal()}>
+            <Plus size={15} />
+            新增类型
+          </Button>
+          <Button size="sm" onClick={() => openDataModal()} disabled={!selectedType}>
+            <Tag size={15} />
+            新增数据
+          </Button>
+        </div>
+      </header>
 
-              <div className="w-full sm:w-36">
-                <Select
-                  value={filters.status || DEFAULT_STATUS_VALUE}
-                  onValueChange={(value) =>
-                    setFilters((current) => ({
-                      ...current,
-                      status: value === DEFAULT_STATUS_VALUE ? '' : value,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={DEFAULT_STATUS_VALUE}>全部状态</SelectItem>
-                    <SelectItem value="0">正常</SelectItem>
-                    <SelectItem value="1">停用</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  <RotateCcw size={14} />
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void handleRefresh()}
-                disabled={typeLoading || dataLoading}
-              >
-                <RefreshCw size={15} className={cn((typeLoading || dataLoading) && 'animate-spin')} />
-                刷新
-              </Button>
-
-              <Button variant="outline" size="sm" onClick={() => openTypeModal()}>
-                <Plus size={15} />
-                新增类型
-              </Button>
-
-              <Button size="sm" onClick={() => openDataModal()} disabled={!selectedType}>
-                <Tag size={15} />
-                新增数据
-              </Button>
-
-              <Button variant="outline" size="sm" onClick={openApprovalDialog} disabled={!selectedType}>
-                <Eye size={15} />
-                审批记录
-              </Button>
-            </div>
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <span className="admin-source-stat-icon"><Tag size={18} /></span>
+          <div>
+            <p>字典类型</p>
+            <strong>{dictTypes.length}</strong>
+            <span>全部类型数量</span>
           </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="grid min-h-[660px] lg:grid-cols-[280px_minmax(0,1fr)]">
-              <div className="border-b border-slate-200 dark:border-slate-800 lg:border-b-0 lg:border-r">
-                <div className="border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 dark:border-slate-800 dark:text-slate-100">
-                  字典类型
-                </div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <span className="admin-source-stat-icon"><Eye size={18} /></span>
+          <div>
+            <p>当前筛选</p>
+            <strong>{filteredTypes.length}</strong>
+            <span>匹配类型数量</span>
+          </div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <span className="admin-source-stat-icon"><Tag size={18} /></span>
+          <div>
+            <p>字典数据</p>
+            <strong>{dictDataList.length}</strong>
+            <span>{selectedType ? selectedType.dictName : '未选择类型'}</span>
+          </div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <span className="admin-source-stat-icon"><RefreshCw size={18} /></span>
+          <div>
+            <p>运行状态</p>
+            <strong>{typeLoading || dataLoading ? '同步中' : '就绪'}</strong>
+            <span>字典缓存与审批联动</span>
+          </div>
+        </article>
+      </section>
+    </>
+  );
 
-                <div className="max-h-[calc(100vh-336px)] overflow-y-auto">
-                  {typeLoading ? (
-                    <InlineState title="正在加载字典类型..." loading />
-                  ) : typeError ? (
-                    <InlineState title="字典类型加载失败" />
-                  ) : filteredTypes.length === 0 ? (
-                    <InlineState title={hasActiveFilters ? '当前筛选无结果' : '暂无字典类型'} />
-                  ) : (
-                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                      {filteredTypes.map((item) => {
-                        const isSelected = item.dictId === selectedTypeId;
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form onSubmit={handleSearch} className="grid items-end gap-3 xl:grid-cols-[minmax(18rem,1fr)_180px_260px_auto]">
+        <label className="min-w-0">
+          <span className="input-label">关键词</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.keyword}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, keyword: event.target.value }))
+              }
+              placeholder="搜索字典名称或类型"
+              className="h-[42px] pl-9"
+            />
+          </div>
+        </label>
 
-                        return (
-                          <div
-                            key={item.dictId}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => setSelectedTypeId(item.dictId ?? null)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                setSelectedTypeId(item.dictId ?? null);
-                              }
-                            }}
-                            className={cn(
-                              'group flex items-start justify-between gap-3 px-4 py-3 transition-colors focus:outline-none',
-                              isSelected
-                                ? 'bg-slate-50 dark:bg-slate-900/70'
-                                : 'hover:bg-slate-50 dark:hover:bg-slate-900/50',
-                            )}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                                {item.dictName}
-                              </div>
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                <span className="font-mono">{item.dictType}</span>
-                                <span
-                                  className={cn(
-                                    'rounded-full px-2 py-0.5 font-medium',
-                                    getStatusBadgeClassName(item.status || '0'),
-                                  )}
-                                >
-                                  {(item.status || '0') === '0' ? '正常' : '停用'}
-                                </span>
-                              </div>
-                            </div>
+        <label className="min-w-0">
+          <span className="input-label">状态</span>
+          <Select
+            value={filters.status || DEFAULT_STATUS_VALUE}
+            onValueChange={(value) =>
+              setFilters((current) => ({
+                ...current,
+                status: value === DEFAULT_STATUS_VALUE ? '' : value,
+              }))
+            }
+          >
+            <SelectTrigger className="h-[42px]">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={DEFAULT_STATUS_VALUE}>全部状态</SelectItem>
+              <SelectItem value="0">正常</SelectItem>
+              <SelectItem value="1">停用</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
 
-                            <TableRowActions
-                              align="end"
-                              className="shrink-0 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100"
-                              actions={[
-                                {
-                                  label: '编辑类型',
-                                  icon: <Edit size={15} />,
-                                  onClick: (event) => {
-                                    event.stopPropagation();
-                                    openTypeModal(item);
-                                  },
-                                  tone: 'neutral',
-                                },
-                                {
-                                  label: '删除类型',
-                                  icon: <Trash2 size={15} />,
-                                  onClick: (event) => {
-                                    event.stopPropagation();
-                                    setDeleteTarget({ type: 'dictType', item });
-                                  },
-                                  tone: 'danger',
-                                },
-                              ]}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+        <label className="min-w-0">
+          <span className="input-label">字典类型</span>
+          <Select
+            value={selectedTypeId === null ? '' : String(selectedTypeId)}
+            disabled={typeLoading || filteredTypes.length === 0}
+            onValueChange={(value) => setSelectedTypeId(value ? Number(value) : null)}
+          >
+            <SelectTrigger className="h-[42px]">
+              <SelectValue placeholder="选择字典类型" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredTypes.map((item) => (
+                <SelectItem key={item.dictId} value={String(item.dictId)} label={item.dictName}>
+                  <span className="flex w-full items-center justify-between gap-3">
+                    <span className="truncate">{item.dictName}</span>
+                    <span className="truncate font-mono text-xs text-slate-400">{item.dictType}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
 
-              <div className="min-w-0">
-                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {selectedType ? selectedType.dictName : '字典数据'}
-                      </div>
-                    {selectedType ? (
-                      <div className="mt-1 truncate font-mono text-xs text-slate-500 dark:text-slate-400">
-                        {selectedType.dictType}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">
+            {selectedType ? selectedType.dictName : hasActiveFilters ? '筛选无类型' : '未选择类型'}
+          </span>
+          {selectedType ? (
+            <>
+              <Button type="button" variant="outline" size="sm" onClick={() => openTypeModal(selectedType)}>
+                <Edit size={14} />
+                编辑类型
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDeleteTarget({ type: 'dictType', item: selectedType })}>
+                <Trash2 size={14} />
+                删除类型
+              </Button>
+            </>
+          ) : null}
+          <Button type="submit" size="sm">
+            查询
+          </Button>
+          {hasActiveFilters ? (
+            <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+              <RotateCcw size={14} />
+              重置
+            </Button>
+          ) : null}
+          <Button variant="outline" size="sm" onClick={openApprovalDialog} disabled={!selectedType}>
+            <Eye size={15} />
+            审批记录
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
 
-                {!selectedType ? (
-                  <InlineState title={hasActiveFilters ? '当前筛选无可用类型' : '请选择字典类型'} className="min-h-[560px]" />
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table className="min-w-[860px]">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-20">排序</TableHead>
-                          <TableHead>标签</TableHead>
-                          <TableHead>键值</TableHead>
-                          <TableHead>样式</TableHead>
-                          <TableHead>默认</TableHead>
-                          <TableHead>风险</TableHead>
-                          <TableHead>状态</TableHead>
-                          <TableHead>备注</TableHead>
-                          <TableActionHead className="w-28">操作</TableActionHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dataLoading ? (
-                          <TableStateRow colSpan={9} title="正在加载字典数据..." loading />
-                        ) : dataError ? (
-                          <TableStateRow colSpan={9} title="字典数据加载失败" />
-                        ) : dictDataList.length === 0 ? (
-                          <TableStateRow colSpan={9} title="暂无字典数据" />
-                        ) : (
-                          dictDataList.map((item) => (
-                            <TableRow key={item.dictCode}>
-                              <TableCell className="py-4 text-sm text-slate-500 dark:text-slate-400">
-                                {item.dictSort ?? 0}
-                              </TableCell>
-                              <TableCell className="py-4">
-                                <div className="min-w-0">
-                                  <div className="truncate font-medium text-slate-900 dark:text-slate-100">
-                                    {item.dictLabel}
-                                  </div>
-                                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                    {item.createTime || '-'}
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-4">
-                                <span className="font-mono text-xs text-slate-700 dark:text-slate-200">
-                                  {item.dictValue}
-                                </span>
-                              </TableCell>
-                              <TableCell className="py-4">
-                                <span
-                                  className={cn(
-                                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                                    getListClassBadgeClassName(item.listClass || ''),
-                                  )}
-                                >
-                                  {getListClassLabel(item.listClass || '')}
-                                </span>
-                              </TableCell>
-                              <TableCell className="py-4">
-                                <span
-                                  className={cn(
-                                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                                    getDefaultBadgeClassName(item.isDefault || 'N'),
-                                  )}
-                                >
-                                  {item.isDefault === 'Y' ? '是' : '否'}
-                                </span>
-                              </TableCell>
-                              <TableCell className="py-4">
-                                <span
-                                  className={cn(
-                                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                                    getRiskLevelBadgeClassName(item.riskLevel || 'LOW'),
-                                  )}
-                                >
-                                  {getRiskLevelLabel(item.riskLevel || 'LOW')}
-                                </span>
-                              </TableCell>
-                              <TableCell className="py-4">
-                                <span
-                                  className={cn(
-                                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                                    getStatusBadgeClassName(item.status || '0'),
-                                  )}
-                                >
-                                  {(item.status || '0') === '0' ? '正常' : '停用'}
-                                </span>
-                              </TableCell>
-                              <TableCell
-                                className="max-w-[220px] truncate py-4 text-sm text-slate-500 dark:text-slate-400"
-                                title={item.remark || '-'}
-                              >
-                                {item.remark || '-'}
-                              </TableCell>
-                              <TableCell>
-                                <TableRowActions
-                                  align="end"
-                                  actions={[
-                                    {
-                                      label: '编辑数据',
-                                      icon: <Edit size={15} />,
-                                      onClick: () => openDataModal(item),
-                                      tone: 'neutral',
-                                    },
-                                    {
-                                      label: '删除数据',
-                                      icon: <Trash2 size={15} />,
-                                      onClick: () => setDeleteTarget({ type: 'dictData', item }),
-                                      tone: 'danger',
-                                    },
-                                  ]}
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+  const pageTable = (
+    <InnerTableSurface
+      className="flex min-h-0 flex-1 flex-col"
+      wrapperClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            {selectedType ? selectedType.dictName : '字典数据'}
+          </div>
+          {selectedType ? (
+            <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span className="truncate font-mono">{selectedType.dictType}</span>
+              <span
+                className={cn(
+                  'rounded-md px-2 py-0.5 font-medium',
+                  getStatusBadgeClassName(selectedType.status || '0'),
                 )}
-              </div>
+              >
+                {(selectedType.status || '0') === '0' ? '正常' : '停用'}
+              </span>
+              <span>{dictDataList.length} 条数据 · 表格视图</span>
             </div>
-        </TableSurfaceCard>)}
+          ) : null}
+        </div>
+      </div>
+
+      <div className="admin-horizontal-scroll min-h-0 flex-1 overflow-auto">
+        <table className="unity-data-table admin-source-table min-w-[860px]">
+          <thead>
+            <tr>
+              <th className="w-20">排序</th>
+              <th>标签</th>
+              <th>键值</th>
+              <th>样式</th>
+              <th>默认</th>
+              <th>风险</th>
+              <th>状态</th>
+              <th>备注</th>
+              <th className="w-28 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {typeLoading ? (
+              <TableStateRow colSpan={9} title="正在加载字典类型..." loading />
+            ) : typeError ? (
+              <TableStateRow colSpan={9} title="字典类型加载失败" />
+            ) : !selectedType ? (
+              <TableStateRow colSpan={9} title={hasActiveFilters ? '当前筛选无可用类型' : '请选择字典类型'} />
+            ) : dataLoading ? (
+              <TableStateRow colSpan={9} title="正在加载字典数据..." loading />
+            ) : dataError ? (
+              <TableStateRow colSpan={9} title="字典数据加载失败" />
+            ) : dictDataList.length === 0 ? (
+              <TableStateRow colSpan={9} title="暂无字典数据" />
+            ) : (
+              dictDataList.map((item) => (
+                <tr key={item.dictCode}>
+                  <td className="text-sm text-slate-500 dark:text-slate-400">
+                    {item.dictSort ?? 0}
+                  </td>
+                  <td>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-slate-900 dark:text-slate-100">
+                        {item.dictLabel}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {item.createTime || '-'}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="font-mono text-xs text-slate-700 dark:text-slate-200">
+                      {item.dictValue}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-md px-2.5 py-1 text-xs font-medium',
+                        getListClassBadgeClassName(item.listClass || ''),
+                      )}
+                    >
+                      {getListClassLabel(item.listClass || '')}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-md px-2.5 py-1 text-xs font-medium',
+                        getDefaultBadgeClassName(item.isDefault || 'N'),
+                      )}
+                    >
+                      {item.isDefault === 'Y' ? '是' : '否'}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-md px-2.5 py-1 text-xs font-medium',
+                        getRiskLevelBadgeClassName(item.riskLevel || 'LOW'),
+                      )}
+                    >
+                      {getRiskLevelLabel(item.riskLevel || 'LOW')}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-md px-2.5 py-1 text-xs font-medium',
+                        getStatusBadgeClassName(item.status || '0'),
+                      )}
+                    >
+                      {(item.status || '0') === '0' ? '正常' : '停用'}
+                    </span>
+                  </td>
+                  <td
+                    className="max-w-[220px] truncate text-sm text-slate-500 dark:text-slate-400"
+                    title={item.remark || '-'}
+                  >
+                    {item.remark || '-'}
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button
+                        type="button"
+                        title="编辑数据"
+                        aria-label="编辑数据"
+                        onClick={() => openDataModal(item)}
+                      >
+                        <Edit size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        title="删除数据"
+                        aria-label="删除数据"
+                        onClick={() => setDeleteTarget({ type: 'dictData', item })}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </InnerTableSurface>
+  );
+
+  return (
+    <section className="admin-source-page admin-dict-page">
+      <TablePageLayout
+        className="admin-dict-layout"
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageTable}
       />
 
       <BaseDialog
@@ -854,9 +846,9 @@ export const DictPage: React.FC = () => {
           </>
         )}
       >
-        <form id="dict-type-form" onSubmit={handleSaveType} className="space-y-4">
+        <form id="dict-type-form" onSubmit={handleSaveType} className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>
                 字典名称 <span className="text-rose-500">*</span>
               </label>
@@ -868,7 +860,7 @@ export const DictPage: React.FC = () => {
               />
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>
                 类型标识 <span className="text-rose-500">*</span>
               </label>
@@ -881,7 +873,7 @@ export const DictPage: React.FC = () => {
               />
             </div>
 
-            <div className="md:col-span-2">
+            <div className="admin-dialog-field md:col-span-2">
               <label className={fieldLabelClassName}>状态</label>
               <Select
                 value={typeForm.status}
@@ -900,7 +892,7 @@ export const DictPage: React.FC = () => {
             </div>
           </div>
 
-          <div>
+          <div className="admin-dialog-field">
             <label className={fieldLabelClassName}>备注</label>
             <Textarea
               rows={4}
@@ -930,9 +922,9 @@ export const DictPage: React.FC = () => {
           </>
         )}
       >
-        <form id="dict-data-form" onSubmit={handleSaveData} className="space-y-4">
+        <form id="dict-data-form" onSubmit={handleSaveData} className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>
                 数据标签 <span className="text-rose-500">*</span>
               </label>
@@ -944,7 +936,7 @@ export const DictPage: React.FC = () => {
               />
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>
                 数据键值 <span className="text-rose-500">*</span>
               </label>
@@ -957,7 +949,7 @@ export const DictPage: React.FC = () => {
               />
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>排序</label>
               <Input
                 type="number"
@@ -971,7 +963,7 @@ export const DictPage: React.FC = () => {
               />
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>样式</label>
               <Select
                 value={dataForm.listClass || DEFAULT_LIST_CLASS_VALUE}
@@ -996,7 +988,7 @@ export const DictPage: React.FC = () => {
               </Select>
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>状态</label>
               <Select
                 value={dataForm.status}
@@ -1014,7 +1006,7 @@ export const DictPage: React.FC = () => {
               </Select>
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>风险等级</label>
               <Select
                 value={dataForm.riskLevel}
@@ -1033,7 +1025,7 @@ export const DictPage: React.FC = () => {
               </Select>
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>默认</label>
               <Select
                 value={dataForm.isDefault}
@@ -1052,7 +1044,7 @@ export const DictPage: React.FC = () => {
             </div>
           </div>
 
-          <div>
+          <div className="admin-dialog-field">
             <label className={fieldLabelClassName}>备注</label>
             <Textarea
               rows={4}
@@ -1092,7 +1084,7 @@ export const DictPage: React.FC = () => {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
       />
-    </>
+    </section>
   );
 };
 

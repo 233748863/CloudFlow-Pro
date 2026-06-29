@@ -14,27 +14,20 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
+  Label,
   LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import { addMenu, deleteMenu, getMenuList, updateMenu, type SysMenu } from '../../services/api/auth';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type MenuNode = Omit<SysMenu, 'menuId' | 'parentId' | 'menuType' | 'menuName' | 'orderNum' | 'status' | 'children'> & {
   menuId: number;
@@ -70,8 +63,6 @@ const DEFAULT_FORM_DATA: MenuFormData = {
   status: '0',
 };
 
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
-
 const menuTypeMeta: Record<
   MenuNode['menuType'],
   { label: string; icon: React.ReactNode; className: string }
@@ -80,7 +71,7 @@ const menuTypeMeta: Record<
     label: '目录',
     icon: <Folder size={14} />,
     className:
-      'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200',
+      'border border-[#b8e7f1] bg-[#effbfe] text-[#0b7894] dark:border-[#0d95b5]/40 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]',
   },
   C: {
     label: '菜单',
@@ -92,7 +83,7 @@ const menuTypeMeta: Record<
     label: '按钮',
     icon: <File size={14} />,
     className:
-      'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300',
+      'border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300',
   },
 };
 
@@ -106,15 +97,18 @@ const TableStateRow: React.FC<{
   title: string;
   description?: string;
   loading?: boolean;
-}> = ({ colSpan, title, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+}> = ({ colSpan, title, description, loading = false }) => (
+  <tr>
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+        ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const buildTree = (items: MenuNode[], parentId = 0): MenuNode[] =>
@@ -255,6 +249,39 @@ export const MenuList = () => {
 
   const hasActiveFilters = Boolean(searchTerm.trim());
   const isEdit = Boolean(editingMenu);
+  const stats = useMemo(
+    () => [
+      {
+        label: '菜单节点',
+        value: String(flatOptions.length),
+        meta: hasActiveFilters ? '当前筛选' : '全部层级',
+        icon: <Layout size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '目录',
+        value: String(flatOptions.filter(({ item }) => item.menuType === 'M').length),
+        meta: '导航分组',
+        icon: <Folder size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '页面菜单',
+        value: String(flatOptions.filter(({ item }) => item.menuType === 'C').length),
+        meta: '可访问页面',
+        icon: <File size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '按钮权限',
+        value: String(flatOptions.filter(({ item }) => item.menuType === 'F').length),
+        meta: '操作授权',
+        icon: <ChevronRight size={18} />,
+        tone: 'violet',
+      },
+    ],
+    [flatOptions, hasActiveFilters],
+  );
 
   const handleRefresh = () => {
     void fetchMenus();
@@ -367,195 +394,225 @@ export const MenuList = () => {
 
       return (
         <React.Fragment key={node.menuId}>
-          <TableRow>
-            <TableCell>
-              <div className="flex items-start" style={{ paddingLeft: `${level * 22}px` }}>
+          <tr>
+            <td>
+              <div className="admin-menus-node" style={{ paddingLeft: `${level * 22}px` }}>
                 {hasChildren ? (
                   <button
                     type="button"
                     onClick={() => toggleExpand(node.menuId)}
-                    className="mr-2 mt-0.5 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+                    className="admin-menus-expand"
                     aria-label={showChildren ? '折叠菜单' : '展开菜单'}
                   >
                     {showChildren ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                   </button>
                 ) : (
-                  <span className="mr-2 inline-block w-6" />
+                  <span className="admin-menus-expand-placeholder" />
                 )}
 
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {node.menuName}
-                  </div>
+                <div>
+                  <strong>{node.menuName}</strong>
                   {node.path || node.component ? (
-                    <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
+                    <small>
                       {[node.path ? `路由 ${node.path}` : '', node.component ? `组件 ${node.component}` : '']
                         .filter(Boolean)
                         .join(' / ')}
-                    </div>
+                    </small>
                   ) : null}
                 </div>
               </div>
-            </TableCell>
+            </td>
 
-            <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+            <td>
               {node.icon ? (
-                <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-900">
+                <span className="admin-source-chip admin-menus-icon-text">
                   {node.icon}
                 </span>
               ) : (
                 '-'
               )}
-            </TableCell>
+            </td>
 
-            <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-              {node.orderNum}
-            </TableCell>
+            <td className="admin-source-mono">{node.orderNum}</td>
 
-            <TableCell>
+            <td>
               {node.perms ? (
-                <code className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                <code className="admin-source-code">
                   {node.perms}
                 </code>
               ) : (
                 <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
               )}
-            </TableCell>
+            </td>
 
-            <TableCell>
+            <td>
               <span
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium',
+                  'inline-flex min-w-[3.5rem] items-center justify-center gap-1 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium',
                   meta.className,
                 )}
               >
                 {meta.icon}
                 {meta.label}
               </span>
-            </TableCell>
+            </td>
 
-            <TableCell>
+            <td>
               <span
                 className={cn(
-                  'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                  'inline-flex min-w-[3.25rem] justify-center whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium',
                   getMenuStatusBadgeClassName(node.status),
                 )}
               >
                 {node.status === '0' ? '正常' : '停用'}
               </span>
-            </TableCell>
+            </td>
 
-            <TableCell>
-              <TableRowActions
-                align="end"
-                actions={[
-                  {
-                    label: '编辑菜单',
-                    icon: <Edit size={15} />,
-                    onClick: () => handleOpenModal(node),
-                    tone: 'neutral',
-                  },
-                  {
-                    label: '新增子节点',
-                    icon: <Plus size={15} />,
-                    onClick: () => handleOpenModal(undefined, node.menuId),
-                    hidden: node.menuType === 'F',
-                    tone: 'info',
-                  },
-                  {
-                    label: '删除菜单',
-                    icon: <Trash2 size={15} />,
-                    onClick: () => setPendingDeleteMenu(node),
-                    tone: 'danger',
-                  },
-                ]}
-              />
-            </TableCell>
-          </TableRow>
+            <td className="text-right">
+              <div className="admin-users-row-actions">
+                <button type="button" title="编辑菜单" onClick={() => handleOpenModal(node)}>
+                  <Edit size={15} />
+                </button>
+                {node.menuType !== 'F' ? (
+                  <button
+                    type="button"
+                    title="新增子节点"
+                    onClick={() => handleOpenModal(undefined, node.menuId)}
+                  >
+                    <Plus size={15} />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="danger"
+                  title="删除菜单"
+                  onClick={() => setPendingDeleteMenu(node)}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </td>
+          </tr>
           {showChildren ? renderRows(node.children || [], level + 1) : null}
         </React.Fragment>
       );
     });
 
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">MENU MANAGEMENT</p>
+          <h2>菜单管理</h2>
+          <span>维护后台导航、路由组件、权限标识和节点状态</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
+            刷新
+          </Button>
+          <Button size="sm" onClick={() => handleOpenModal()}>
+            <Plus size={16} />
+            新增菜单
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={cn('card admin-source-stat', `admin-source-tone-${stat.tone}`)}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form onSubmit={handleSearch} className="admin-menus-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">菜单搜索</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="名称、路由、组件或权限字符"
+              type="search"
+            />
+          </div>
+        </label>
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">当前 {filteredMenus.length} 项</span>
+          <Button type="submit" size="sm">
+            查询
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={clearFilters}
+            disabled={!hasActiveFilters}
+          >
+            重置
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface className="admin-menus-table-panel">
+      <table className="unity-data-table admin-source-table admin-menus-table">
+          <thead>
+            <tr>
+              <th>菜单名称</th>
+              <th>图标</th>
+              <th>排序</th>
+              <th>权限标识</th>
+              <th>类型</th>
+              <th>状态</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={7} title="正在加载菜单数据..." loading />
+            ) : error ? (
+              <TableStateRow colSpan={7} title="菜单数据加载失败" description={error} />
+            ) : filteredMenus.length === 0 ? (
+              <TableStateRow colSpan={7} title="暂无菜单数据" />
+            ) : (
+              renderRows(filteredMenus)
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
   return (
     <>
-      <TablePageLayout
-        className="gap-4"
-        filters={
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-1 flex-wrap items-center gap-3"
-            >
-              <div className="relative w-full sm:w-72">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="搜索名称、路由、组件或权限字符"
-                  className="h-10 pl-10"
-                />
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
-                  清空
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={() => handleOpenModal()}>
-                <Plus size={15} />
-                新增菜单
-              </Button>
-            </div>
-          </div>
-        }
-        table={(<TableSurfaceCard fill><>
-            <Table className="min-w-[1080px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[420px]">菜单名称</TableHead>
-                  <TableHead>图标</TableHead>
-                  <TableHead>排序</TableHead>
-                  <TableHead>权限标识</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableActionHead className="w-36">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableStateRow colSpan={7} title="正在加载菜单数据..." loading />
-                ) : error ? (
-                  <TableStateRow colSpan={7} title="菜单数据加载失败" description={error} />
-                ) : filteredMenus.length === 0 ? (
-                  <TableStateRow colSpan={7} title="暂无菜单数据" />
-                ) : (
-                  renderRows(filteredMenus)
-                )}
-              </TableBody>
-            </Table>
-          </></TableSurfaceCard>)}
-      />
+      <section className="admin-source-page admin-menus-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+        />
+      </section>
 
       <BaseDialog
         open={isModalOpen}
         title={isEdit ? '编辑菜单' : '新增菜单'}
         onClose={handleCloseModal}
         maxWidthClassName="max-w-4xl"
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={handleCloseModal}>
@@ -567,10 +624,10 @@ export const MenuList = () => {
           </div>
         }
       >
-        <form id="menu-form" onSubmit={handleSubmit} className="space-y-5">
+        <form id="menu-form" onSubmit={handleSubmit} className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <label className={fieldLabelClassName}>上级菜单</label>
+            <div className="admin-dialog-field">
+              <Label>上级菜单</Label>
               <Select
                 value={String(formData.parentId)}
                 onValueChange={(value) =>
@@ -595,8 +652,8 @@ export const MenuList = () => {
               </Select>
             </div>
 
-            <div>
-              <label className={fieldLabelClassName}>菜单类型</label>
+            <div className="admin-dialog-field">
+              <Label>菜单类型</Label>
               <Select
                 value={formData.menuType}
                 onValueChange={(value) =>
@@ -617,10 +674,10 @@ export const MenuList = () => {
               </Select>
             </div>
 
-            <div>
-              <label className={fieldLabelClassName}>
+            <div className="admin-dialog-field">
+              <Label>
                 菜单名称 <span className="text-rose-500">*</span>
-              </label>
+              </Label>
               <Input
                 value={formData.menuName}
                 onChange={(event) =>
@@ -633,8 +690,8 @@ export const MenuList = () => {
               />
             </div>
 
-            <div>
-              <label className={fieldLabelClassName}>显示排序</label>
+            <div className="admin-dialog-field">
+              <Label>显示排序</Label>
               <Input
                 type="number"
                 value={String(formData.orderNum)}
@@ -651,8 +708,8 @@ export const MenuList = () => {
 
           <div className="grid gap-4 md:grid-cols-2">
             {formData.menuType !== 'F' ? (
-              <div>
-                <label className={fieldLabelClassName}>路由地址</label>
+              <div className="admin-dialog-field">
+                <Label>路由地址</Label>
                 <Input
                   value={formData.path}
                   onChange={(event) =>
@@ -667,8 +724,8 @@ export const MenuList = () => {
             ) : null}
 
             {formData.menuType === 'C' ? (
-              <div>
-                <label className={fieldLabelClassName}>组件路径</label>
+              <div className="admin-dialog-field">
+                <Label>组件路径</Label>
                 <Input
                   value={formData.component}
                   onChange={(event) =>
@@ -682,8 +739,8 @@ export const MenuList = () => {
               </div>
             ) : null}
 
-            <div>
-              <label className={fieldLabelClassName}>权限标识</label>
+            <div className="admin-dialog-field">
+              <Label>权限标识</Label>
               <Input
                 value={formData.perms}
                 onChange={(event) =>
@@ -697,8 +754,8 @@ export const MenuList = () => {
               />
             </div>
 
-            <div>
-              <label className={fieldLabelClassName}>图标标识</label>
+            <div className="admin-dialog-field">
+              <Label>图标标识</Label>
               <Input
                 value={formData.icon}
                 onChange={(event) =>
@@ -711,8 +768,8 @@ export const MenuList = () => {
               />
             </div>
 
-            <div>
-              <label className={fieldLabelClassName}>状态</label>
+            <div className="admin-dialog-field">
+              <Label>状态</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) =>

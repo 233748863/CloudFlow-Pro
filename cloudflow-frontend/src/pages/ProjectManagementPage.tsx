@@ -3,7 +3,7 @@ import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CalendarRange, Edit, Eye, FolderKanban, Plus, Send, Trash2, Users, AlertTriangle, ListTree, Target, Archive, Link2, RefreshCcw, ArrowRightLeft } from 'lucide-react';
+import { CalendarRange, Edit, Eye, FolderKanban, Plus, Send, Trash2, Users, AlertTriangle, ListTree, Target, Archive, Link2, RefreshCcw, ArrowRightLeft, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { DndContext, DragEndEvent, PointerSensor, useDraggable, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -15,12 +15,13 @@ import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Pagination } from '@/components/common/Pagination';
-import { Card, CardContent, CardHeader, CardTitle, Button, DatePicker, DeptSelector, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, UserSelector } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import { Pagination } from '@/components/common/Pagination';
+import { Button, DatePicker, DeptSelector, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, UserSelector } from '@/components/common';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { useDict } from '@/hooks/useDict';
+import { cn } from '@/utils/cn';
 
 const STATUS_OPTIONS = ['DRAFT', 'PENDING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'ARCHIVED'] as const;
 const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
@@ -82,7 +83,7 @@ const emptyDependency: ProjectDependency = {
   lagDays: 0,
 };
 
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300';
+const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
 
 const tabs: Array<{ value: DetailTab; label: string; icon: React.ReactNode }> = [
   { value: 'overview', label: '概览', icon: <FolderKanban size={14} /> },
@@ -101,6 +102,32 @@ const GANTT_COMPACT_LABEL_MIN_WIDTH = 96;
 const GANTT_SHORT_LABEL_MIN_WIDTH = 48;
 const GANTT_MARKER_SIZE = 16;
 const formatMoney = (value?: number) => `¥${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const ProjectDetailMetric: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <article className="card admin-source-stat admin-source-tone-blue admin-project-detail-metric">
+    <span className="admin-source-stat-icon"><FolderKanban size={18} /></span>
+    <div className="min-w-0">
+      <p>{label}</p>
+      <strong>{value}</strong>
+      <span>项目详情</span>
+    </div>
+  </article>
+);
+
+const ProjectDetailPanel: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
+}> = ({ title, children, className, contentClassName }) => (
+  <section className={cn('admin-project-detail-panel', className)}>
+    <div className="admin-project-detail-panel-head">
+      <div>
+        <h3>{title}</h3>
+      </div>
+    </div>
+    <div className={cn('admin-project-detail-panel-body', contentClassName)}>{children}</div>
+  </section>
+);
 const normalizeRows = <T,>(result: T[] | { rows?: T[]; records?: T[] } | null | undefined): T[] =>
   Array.isArray(result) ? result : result?.rows || result?.records || [];
 const flattenDeptOptions = (items: SysDept[] = [], prefix = ''): Array<{ label: string; value: number }> =>
@@ -203,49 +230,49 @@ const DraggableGanttBar: React.FC<{
         <>
           {baselineLeft !== undefined ? (
             <div
-              className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 rounded-[3px] border border-slate-300 bg-white/90 dark:border-slate-600 dark:bg-slate-900/90"
+              className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 rounded-[3px] border border-slate-300 bg-[var(--cf-surface-strong)] dark:border-slate-600 dark:bg-slate-900"
               style={{ left: `${baselineLeft + Math.max(0, (baselineWidth || DAY_WIDTH) / 2 - 6)}px` }}
             />
           ) : null}
           <button
             ref={setNodeRef}
             type="button"
-            className={`absolute top-1/2 z-10 h-4 w-4 -translate-y-1/2 rounded-[4px] rotate-45 shadow-sm transition ${colorClassName}`}
+            className={`absolute top-1/2 z-10 h-4 w-4 -translate-y-1/2 rounded-[4px] rotate-45 transition ${colorClassName}`}
             style={{ ...baseStyle, left: `${markerLeft}px` }}
             title={`${fullLabel}，拖动可按日改期`}
+            aria-label={`${fullLabel}，拖动可按日改期`}
             {...listeners}
             {...attributes}
-          >
-            <span className="sr-only">{fullLabel}</span>
-          </button>
+          />
         </>
       ) : (
         <>
           {baselineLeft !== undefined && baselineWidth ? (
             <div
-              className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-slate-300/70 dark:bg-slate-700/70"
+              className="absolute top-1/2 h-2 -translate-y-1/2 rounded-md bg-slate-300/70 dark:bg-slate-700/70"
               style={{ left: `${baselineLeft}px`, width: `${baselineWidth}px` }}
             />
           ) : null}
           <button
             ref={setNodeRef}
             type="button"
-            className={`absolute top-1/2 z-10 h-8 -translate-y-1/2 rounded-lg px-3 text-left text-xs font-medium text-white shadow-sm transition ${colorClassName}`}
+            className={`absolute top-1/2 z-10 h-8 -translate-y-1/2 rounded-md px-3 text-left text-xs font-medium text-white transition ${colorClassName}`}
             style={{ ...baseStyle, width: `${width}px`, left: `${left}px` }}
             title={`${fullLabel}，拖动可按日改期`}
+            aria-label={`${fullLabel}，拖动可按日改期`}
             {...listeners}
             {...attributes}
           >
-            {displayLabel ? <span className="block truncate">{displayLabel}</span> : <span className="sr-only">{fullLabel}</span>}
+            {displayLabel ? <span className="block truncate">{displayLabel}</span> : null}
           </button>
         </>
       )}
       {showExternalLabel ? (
         <div
-          className={`pointer-events-none absolute top-1/2 z-20 max-w-[180px] -translate-y-1/2 truncate rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm ${
+          className={`pointer-events-none absolute top-1/2 z-20 max-w-[180px] -translate-y-1/2 truncate rounded-md border px-2 py-1 text-[11px] font-medium ${
             kind === 'milestone'
               ? 'border-cyan-200 bg-cyan-50/95 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/95 dark:text-cyan-200'
-              : 'border-slate-200 bg-white/95 text-slate-600 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200'
+              : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
           }`}
           style={externalLabelStyle}
           title={fullLabel}
@@ -291,12 +318,13 @@ export default function ProjectManagementPage() {
   const selectedMember = memberForm.userId ? userOptions.find((item) => item.userId === memberForm.userId) : undefined;
   const selectedDept = form.deptId ? deptOptions.find((item) => item.value === form.deptId) : undefined;
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / 10)), [total]);
+  const pageSize = getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10);
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [pageSize, total]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const result = await projectApi.list({ pageNum, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), projectName: keyword, status: status || undefined });
+      const result = await projectApi.list({ pageNum, pageSize, projectName: keyword, status: status || undefined });
       setRows(result.rows || []);
       setTotal(result.total || 0);
     } catch (error) {
@@ -530,76 +558,206 @@ export default function ProjectManagementPage() {
     ];
   }, [detail]);
 
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">PROJECT MANAGEMENT</p>
+          <h2>项目管理</h2>
+          <span>管理项目立项、负责人、预算成本、进度风险和业务联动</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCcw size={14} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+          <Button size="sm" onClick={() => { setEditing(null); setForm(emptyForm); setDialogOpen(true); }} disabled={!hasPermission('oa:project:add')}>
+            <Plus size={14} className="mr-1.5" />新建项目
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <div className="admin-source-stat-icon"><FolderKanban size={18} /></div>
+          <div><p>项目总数</p><strong>{total}</strong><span>当前条件</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <div className="admin-source-stat-icon"><Target size={18} /></div>
+          <div><p>执行中</p><strong>{rows.filter((row) => row.status === 'IN_PROGRESS').length}</strong><span>本页项目</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <div className="admin-source-stat-icon"><AlertTriangle size={18} /></div>
+          <div><p>高风险</p><strong>{rows.filter((row) => row.riskLevel === 'HIGH' || row.riskLevel === 'CRITICAL').length}</strong><span>需关注</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <div className="admin-source-stat-icon"><Archive size={18} /></div>
+          <div><p>预算合计</p><strong>{formatMoney(rows.reduce((sum, row) => sum + Number(row.budgetAmount || 0), 0))}</strong><span>本页汇总</span></div>
+        </article>
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="admin-oa-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">搜索项目</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              className="h-[42px]"
+              type="search"
+              value={keyword}
+              onChange={(e) => { setPageNum(1); setKeyword(e.target.value); }}
+              placeholder="项目名称 / 客户关键字"
+            />
+          </div>
+        </label>
+        <label>
+          <span className="input-label">状态</span>
+          <Select value={status || 'ALL'} onValueChange={(v) => { setPageNum(1); setStatus(v === 'ALL' ? '' : v); }}>
+            <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">全部状态</SelectItem>
+              {STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{statusDict.getLabel(item)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+        <div className="flex min-w-[12rem] items-end text-xs text-slate-500 dark:text-slate-400">第 {pageNum} / {totalPages} 页，共 {total} 条</div>
+      </div>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[1180px]">
+          <thead>
+            <tr>
+              <th>项目编号</th>
+              <th>项目 / 客户</th>
+              <th>负责人 / 部门</th>
+              <th>预算 / 成本</th>
+              <th>进度 / 风险</th>
+              <th>来源 / 基线</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
+                  <FolderKanban className="mx-auto mb-3 h-4 w-4" />正在加载项目...
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
+                  <FolderKanban className="mx-auto mb-3 h-4 w-4" />暂无项目。下一步操作：新建项目或从 CRM 商机 / 报价 / 合同生成草稿。
+                </td>
+              </tr>
+            ) : rows.map((row) => (
+              <tr key={row.projectId}>
+                <td>{row.projectNo || '-'}</td>
+                <td>
+                  <div className="admin-users-identity">
+                    <div>
+                      <strong>{row.projectName}</strong>
+                      <small>{row.customerName || '-'}</small>
+                    </div>
+                  </div>
+                </td>
+                <td><div>{row.ownerName || '-'}</div><div className="text-xs text-slate-500 dark:text-slate-400">{row.deptName || '-'}</div></td>
+                <td><div>{formatMoney(row.budgetAmount)}</div><div className="text-xs text-slate-500 dark:text-slate-400">成本 {formatMoney(row.actualCostAmount)}</div></td>
+                <td><div>{row.progress || 0}%</div><div className="text-xs text-slate-500 dark:text-slate-400">{severityDict.getLabel(row.riskLevel || '') || '-'}</div></td>
+                <td><div>{row.sourceName || sourceTypeDict.getLabel(row.sourceType || 'MANUAL') || row.sourceType || '-'}</div><div className="text-xs text-slate-500 dark:text-slate-400">基线 {row.baselineVersion || 0}</div></td>
+                <td>
+                  <TableRowActions
+                    iconOnly
+                    buttonLayout="compact"
+                    maxVisibleActions={2}
+                    overflowLabel="更多"
+                    actions={[
+                      {
+                        key: 'detail',
+                        label: '查看详情',
+                        icon: <Eye size={15} />,
+                        isPrimary: true,
+                        onClick: async () => {
+                          try {
+                            setDetail(await projectApi.getDetail(row.projectId!));
+                          } catch (error) {
+                            toast.error(getErrorMessage(error, '加载项目详情失败'));
+                          }
+                        },
+                      },
+                      {
+                        key: 'edit',
+                        label: '编辑项目',
+                        icon: <Edit size={15} />,
+                        priority: 'secondary',
+                        permissionKey: 'oa:project:edit',
+                        onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); },
+                      },
+                      {
+                        key: 'submit',
+                        label: '提交立项',
+                        icon: <Send size={15} />,
+                        priority: 'secondary',
+                        tone: 'success',
+                        hidden: row.status !== 'DRAFT' && row.status !== 'REJECTED',
+                        permissionKey: 'oa:project:submit',
+                        onClick: () => setConfirm({ type: 'submit', row }),
+                      },
+                      {
+                        key: 'baseline',
+                        label: '基线快照',
+                        icon: <RefreshCcw size={15} />,
+                        priority: 'tertiary',
+                        tone: 'info',
+                        hidden: row.status === 'ARCHIVED',
+                        permissionKey: 'oa:project:baseline',
+                        onClick: () => setConfirm({ type: 'baseline', row }),
+                      },
+                      {
+                        key: 'archive',
+                        label: '归档项目',
+                        icon: <Archive size={15} />,
+                        priority: 'tertiary',
+                        tone: 'warning',
+                        hidden: !['APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(row.status || ''),
+                        permissionKey: 'oa:project:archive',
+                        onClick: () => setConfirm({ type: 'archive', row }),
+                      },
+                      {
+                        key: 'delete',
+                        label: '删除项目',
+                        icon: <Trash2 size={15} />,
+                        danger: true,
+                        permissionKey: 'oa:project:remove',
+                        onClick: () => setConfirm({ type: 'delete', row }),
+                      },
+                    ]}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination total={total} page={pageNum} pageSize={pageSize} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} />
+  ) : null;
+
   return (
-    <div className="space-y-4">
+    <div className="admin-source-page admin-project-management-page">
       <TablePageLayout
-        filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <Input value={keyword} onChange={(e) => { setPageNum(1); setKeyword(e.target.value); }} placeholder="项目名称 / 客户关键字" className="w-full sm:w-[220px]" />
-              <div className="w-full sm:w-[180px]">
-                <Select value={status || 'ALL'} onValueChange={(v) => { setPageNum(1); setStatus(v === 'ALL' ? '' : v); }}>
-                  <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    {STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{statusDict.getLabel(item)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="text-xs text-slate-500">第 {pageNum} / {totalPages} 页，共 {total} 条</div>
-            </div>
-            <Button size="sm" onClick={() => { setEditing(null); setForm(emptyForm); setDialogOpen(true); }} disabled={!hasPermission('oa:project:add')}>
-              <Plus size={14} className="mr-1.5" />新建项目
-            </Button>
-          </div>
-        )}
-        table={(<TableSurfaceCard fill>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1180px]">
-              <TableHeader>
-                <tr>
-                  <TableHead>项目编号</TableHead>
-                  <TableHead>项目 / 客户</TableHead>
-                  <TableHead>负责人 / 部门</TableHead>
-                  <TableHead>预算 / 成本</TableHead>
-                  <TableHead>进度 / 风险</TableHead>
-                  <TableHead>来源 / 基线</TableHead>
-                  <TableActionHead>操作</TableActionHead>
-                </tr>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {rows.map((row) => (
-                  <tr key={row.projectId}>
-                    <td className="px-4 py-3 text-sm">{row.projectNo || '-'}</td>
-                    <td className="px-4 py-3 text-sm"><div>{row.projectName}</div><div className="text-xs text-slate-500">{row.customerName || '-'}</div></td>
-                    <td className="px-4 py-3 text-sm"><div>{row.ownerName || '-'}</div><div className="text-xs text-slate-500">{row.deptName || '-'}</div></td>
-                    <td className="px-4 py-3 text-sm"><div>{formatMoney(row.budgetAmount)}</div><div className="text-xs text-slate-500">成本 {formatMoney(row.actualCostAmount)}</div></td>
-                    <td className="px-4 py-3 text-sm"><div>{row.progress || 0}%</div><div className="text-xs text-slate-500">{severityDict.getLabel(row.riskLevel || '') || '-'}</div></td>
-                    <td className="px-4 py-3 text-sm"><div>{row.sourceName || sourceTypeDict.getLabel(row.sourceType || 'MANUAL') || row.sourceType || '-'}</div><div className="text-xs text-slate-500">基线 {row.baselineVersion || 0}</div></td>
-                    <td className="px-4 py-3 text-right">
-                      <TableRowActions
-                        align="end"
-                        overflowLabel="更多"
-                          actions={[
-                            { label: '查看详情', icon: <Eye size={14} />, onClick: async () => { try { setDetail(await projectApi.getDetail(row.projectId!)); } catch (error) { toast.error(getErrorMessage(error, '加载项目详情失败')); } }, semantic: 'view', isPrimary: true },
-                          { label: '编辑项目', icon: <Edit size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'oa:project:edit' },
-                          { label: '提交立项', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'submit', row }), hidden: row.status !== 'DRAFT' && row.status !== 'REJECTED', semantic: 'submit', permissionKey: 'oa:project:submit' },
-                          { label: '基线快照', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ type: 'baseline', row }), hidden: row.status === 'ARCHIVED', semantic: 'reset', permissionKey: 'oa:project:baseline' },
-                          { label: '归档项目', icon: <Archive size={14} />, onClick: () => setConfirm({ type: 'archive', row }), hidden: !['APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(row.status || ''), semantic: 'archive', danger: true, permissionKey: 'oa:project:archive' },
-                          { label: '删除项目', icon: <Trash2 size={14} />, onClick: () => setConfirm({ type: 'delete', row }), semantic: 'delete', danger: true, permissionKey: 'oa:project:remove' },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))}
-                {!loading && rows.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-16 text-center text-sm text-slate-500"><FolderKanban className="mx-auto mb-3 h-4 w-4" />暂无项目。下一步操作：新建项目或从 CRM 商机 / 报价 / 合同生成草稿。</td></tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={total > 0 ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} /> : null}
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageTable}
+        pagination={pagePagination}
       />
 
       <BaseDialog
@@ -609,8 +767,8 @@ export default function ProjectManagementPage() {
         width="wide"
         footer={<><Button variant="outline" onClick={() => setDialogOpen(false)}>取消</Button><Button onClick={() => void saveProject()}>保存</Button></>}
       >
-        <div className="space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+        <div className="admin-dialog-stack">
+          <div className="admin-project-detail-note">
             项目立项 = 项目基本信息 + CRM / 合同来源 + 预算与负责人。V3 会保留来源名称与基线版本，方便后续经营复盘。
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -704,11 +862,11 @@ export default function ProjectManagementPage() {
         </div>
       </BaseDialog>
 
-      <BaseDialog open={Boolean(detail)} title={detail?.project.projectName || '项目详情'} onClose={() => setDetail(null)} width="extra-wide">
+      <BaseDialog open={Boolean(detail)} title={detail?.project.projectName || '项目详情'} onClose={() => setDetail(null)} width="extra-wide" bodyClassName="admin-project-detail-dialog-body overflow-hidden">
         {detail ? (
-          <div className="space-y-4">
-            <Tabs value={detailTab} onValueChange={(value) => setDetailTab(value as DetailTab)}>
-              <TabsList className="w-full justify-start overflow-x-auto">
+          <div className="admin-project-detail-shell">
+            <Tabs value={detailTab} onValueChange={(value) => setDetailTab(value as DetailTab)} className="admin-source-content admin-project-detail-tabs">
+              <TabsList className="admin-project-detail-tabbar w-full justify-start overflow-x-auto">
                 {tabs.map((tab) => (
                   <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5">
                     {tab.icon}
@@ -717,18 +875,16 @@ export default function ProjectManagementPage() {
                 ))}
               </TabsList>
 
-              <TabsContent value="overview" className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <Card><CardHeader className="pb-3"><CardTitle className="text-base">项目编号</CardTitle></CardHeader><CardContent className="text-sm">{detail.project.projectNo || '-'}</CardContent></Card>
-                  <Card><CardHeader className="pb-3"><CardTitle className="text-base">状态</CardTitle></CardHeader><CardContent className="text-sm">{statusDict.getLabel(detail.project.status || 'DRAFT') || '-'}</CardContent></Card>
-                  <Card><CardHeader className="pb-3"><CardTitle className="text-base">预算 / 成本</CardTitle></CardHeader><CardContent className="text-sm">{formatMoney(detail.project.budgetAmount)} / {formatMoney(detail.costSummary?.totalAmount || detail.project.actualCostAmount)}</CardContent></Card>
-                  <Card><CardHeader className="pb-3"><CardTitle className="text-base">基线版本</CardTitle></CardHeader><CardContent className="text-sm">{detail.baselineVersion || detail.project.baselineVersion || 0}</CardContent></Card>
+              <TabsContent value="overview" className="admin-source-content-grid admin-project-detail-tab">
+                <div className="admin-source-stat-grid">
+                  <ProjectDetailMetric label="项目编号" value={detail.project.projectNo || '-'} />
+                  <ProjectDetailMetric label="状态" value={statusDict.getLabel(detail.project.status || 'DRAFT') || '-'} />
+                  <ProjectDetailMetric label="预算 / 成本" value={`${formatMoney(detail.project.budgetAmount)} / ${formatMoney(detail.costSummary?.totalAmount || detail.project.actualCostAmount)}`} />
+                  <ProjectDetailMetric label="基线版本" value={detail.baselineVersion || detail.project.baselineVersion || 0} />
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-2">
-                  <Card>
-                    <CardHeader className="pb-3"><CardTitle className="text-base">来源与 KPI</CardTitle></CardHeader>
-                    <CardContent className="space-y-2 text-sm">
+                  <ProjectDetailPanel title="来源与 KPI" contentClassName="admin-project-detail-stack text-sm">
                       <div>客户：{detail.project.customerName || '-'}</div>
                       <div>合同：{detail.project.contractNo || '-'}</div>
                       <div>来源：{detail.project.sourceName || sourceTypeDict.getLabel(detail.project.sourceType || 'MANUAL') || detail.project.sourceType || '-'} / {detail.project.sourceId || '-'}</div>
@@ -737,54 +893,54 @@ export default function ProjectManagementPage() {
                       <div>开放风险：{detail.kpi?.openRiskCount || 0}</div>
                       <div>排期偏差：{detail.kpi?.scheduleVarianceDays || 0} 天</div>
                       <div>成本执行率：{Number(detail.kpi?.costExecutionRate || 0).toFixed(1)}%</div>
-                    </CardContent>
-                  </Card>
+                  </ProjectDetailPanel>
 
-                  <Card>
-                    <CardHeader className="pb-3"><CardTitle className="text-base">项目成员</CardTitle></CardHeader>
-                    <CardContent className="space-y-2">
+                  <ProjectDetailPanel title="项目成员" contentClassName="admin-project-detail-stack">
                       {detail.members.length ? detail.members.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+                        <div key={item.id} className="admin-project-detail-row text-sm">
                           <div>
                             <div>{item.userName || '-'}</div>
                             <div className="text-xs text-slate-500">{item.roleName || item.roleCode || '-'}</div>
                           </div>
-                          <TableRowActions actions={[
-                          { label: '编辑成员', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'member', item }), semantic: 'edit', isPrimary: true, permissionKey: 'oa:project:edit' },
-                          { label: '删除成员', icon: <Trash2 size={14} />, onClick: () => void removeChild('member', item.id!), semantic: 'delete', danger: true, permissionKey: 'oa:project:edit' },
-                        ]} />
+                          {hasPermission('oa:project:edit') ? (
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="编辑成员" aria-label="编辑成员" onClick={() => openChildDialog({ type: 'member', item })}>
+                                <Edit size={15} />
+                              </button>
+                              <button className="danger" type="button" title="删除成员" aria-label="删除成员" onClick={() => void removeChild('member', item.id!)}>
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          ) : <span className="text-sm text-slate-300">-</span>}
                       </div>
                     )) : <div className="text-sm text-slate-500">暂无项目成员</div>}
                       <Button size="sm" variant="outline" onClick={() => openChildDialog({ type: 'member' })} disabled={!hasPermission('oa:project:edit')}><Users size={14} className="mr-1.5" />新增成员</Button>
-                    </CardContent>
-                  </Card>
+                  </ProjectDetailPanel>
                 </div>
               </TabsContent>
 
-              <TabsContent value="gantt" className="space-y-4">
-                <Card>
-                  <CardHeader className="pb-3"><CardTitle className="text-base">专业计划版甘特图</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
+              <TabsContent value="gantt" className="admin-source-content-grid admin-project-detail-tab">
+                <ProjectDetailPanel title="专业计划版甘特图" contentClassName="admin-project-detail-stack">
                     <div className="flex flex-wrap items-center gap-2">
                       <Button size="sm" variant="outline" onClick={() => setConfirm({ type: 'baseline', row: detail.project })} disabled={!hasPermission('oa:project:baseline')}><RefreshCcw size={14} className="mr-1.5" />重置基线</Button>
                       <div className="text-xs text-slate-500">灰条 = 基线排期；彩色条 = 当前排期；拖动彩条可按日改期。</div>
                     </div>
                     {ganttRows.length ? (
                       <DndContext sensors={sensors} onDragEnd={handleGanttDragEnd}>
-                        <div className="overflow-x-auto">
+                        <div className="admin-horizontal-scroll">
                           <div style={{ minWidth: `${260 + ganttDateColumns.length * DAY_WIDTH}px` }}>
                             <div className="grid border-b border-slate-200 pb-2 text-xs text-slate-500 dark:border-slate-800" style={{ gridTemplateColumns: `260px repeat(${ganttDateColumns.length}, ${DAY_WIDTH}px)` }}>
                               <div>任务 / 里程碑</div>
                               {ganttDateColumns.map((date) => <div key={date} className="text-center">{date.slice(5)}</div>)}
                             </div>
-                            <div className="space-y-2 pt-3">
+                            <div className="admin-project-gantt-rows pt-3">
                               {ganttRows.map((item) => {
                                 const left = diffDays(ganttDateColumns[0], item.start) * DAY_WIDTH;
                                 const width = Math.max(1, diffDays(item.start, item.end) + 1) * DAY_WIDTH;
                                 const baselineLeft = item.baselineStart ? diffDays(ganttDateColumns[0], item.baselineStart) * DAY_WIDTH : undefined;
                                 const baselineWidth = item.baselineStart && item.baselineEnd ? Math.max(1, diffDays(item.baselineStart, item.baselineEnd) + 1) * DAY_WIDTH : undefined;
                                 return (
-                                  <div key={item.key} className="grid items-center gap-0 rounded-lg border border-slate-100 bg-slate-50 px-0 py-2 dark:border-slate-800 dark:bg-slate-900" style={{ gridTemplateColumns: `260px 1fr` }}>
+                                  <div key={item.key} className="admin-project-gantt-row grid items-center gap-0" style={{ gridTemplateColumns: `260px 1fr` }}>
                                     <div className="px-3 text-sm">
                                       <div className="font-medium text-slate-900 dark:text-slate-100">{item.label}</div>
                                       <div className="text-xs text-slate-500">{item.start} ~ {item.end}{item.overdue ? ' / 已逾期' : ''}</div>
@@ -817,45 +973,51 @@ export default function ProjectManagementPage() {
                         </div>
                       </DndContext>
                     ) : <div className="text-sm text-slate-500">暂无可渲染的排期数据。先新增里程碑或 WBS 任务。</div>}
-                  </CardContent>
-                </Card>
+                </ProjectDetailPanel>
               </TabsContent>
 
-              <TabsContent value="milestone" className="space-y-4">
-                <Card>
-                  <CardHeader className="pb-3"><CardTitle className="text-base">里程碑维护</CardTitle></CardHeader>
-                  <CardContent className="space-y-2">
+              <TabsContent value="milestone" className="admin-source-content-grid admin-project-detail-tab">
+                <ProjectDetailPanel title="里程碑维护" contentClassName="admin-project-detail-stack">
                     {detail.milestones.length ? detail.milestones.map((item) => (
-                      <div key={item.milestoneId} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+                      <div key={item.milestoneId} className="admin-project-detail-row text-sm">
                         <div>
                           <div>{item.milestoneName}</div>
                           <div className="text-xs text-slate-500">计划 {item.plannedDate || '-'} / 基线 {item.baselineDate || '-'} / 实际 {item.actualDate || '-'} / {item.status || '-'}</div>
                         </div>
-                        <TableRowActions actions={[
-                          { label: '编辑里程碑', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'milestone', item }), semantic: 'edit', isPrimary: true, permissionKey: 'oa:project:edit' },
-                          { label: '删除里程碑', icon: <Trash2 size={14} />, onClick: () => void removeChild('milestone', item.milestoneId!), semantic: 'delete', danger: true, permissionKey: 'oa:project:edit' },
-                        ]} />
+                        {hasPermission('oa:project:edit') ? (
+                          <div className="admin-users-row-actions">
+                            <button type="button" title="编辑里程碑" aria-label="编辑里程碑" onClick={() => openChildDialog({ type: 'milestone', item })}>
+                              <Edit size={15} />
+                            </button>
+                            <button className="danger" type="button" title="删除里程碑" aria-label="删除里程碑" onClick={() => void removeChild('milestone', item.milestoneId!)}>
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        ) : <span className="text-sm text-slate-300">-</span>}
                       </div>
                     )) : <div className="text-sm text-slate-500">暂无里程碑</div>}
                     <Button size="sm" onClick={() => openChildDialog({ type: 'milestone' })} disabled={!hasPermission('oa:project:edit')}><Plus size={14} className="mr-1.5" />新增里程碑</Button>
-                  </CardContent>
-                </Card>
+                </ProjectDetailPanel>
               </TabsContent>
 
-              <TabsContent value="wbs" className="space-y-4">
-                <Card>
-                  <CardHeader className="pb-3"><CardTitle className="text-base">WBS 树维护</CardTitle></CardHeader>
-                  <CardContent className="space-y-2">
+              <TabsContent value="wbs" className="admin-source-content-grid admin-project-detail-tab">
+                <ProjectDetailPanel title="WBS 树维护" contentClassName="admin-project-detail-stack">
                     {detail.wbsTasks.length ? detail.wbsTasks.map((item) => (
-                      <div key={item.taskId} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+                      <div key={item.taskId} className="admin-project-detail-row text-sm">
                         <div>
                           <div>{item.wbsCode || '-'} {item.title || '-'}</div>
                           <div className="text-xs text-slate-500">计划 {item.plannedStartTime ? String(item.plannedStartTime).slice(0, 10) : '-'} ~ {item.plannedEndTime ? String(item.plannedEndTime).slice(0, 10) : '-'} / 基线 {item.baselineStartTime ? String(item.baselineStartTime).slice(0, 10) : '-'} ~ {item.baselineEndTime ? String(item.baselineEndTime).slice(0, 10) : '-'}</div>
                         </div>
-                        <TableRowActions actions={[
-                          { label: '编辑 WBS', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'wbs', item }), semantic: 'edit', isPrimary: true, permissionKey: 'oa:project:wbs' },
-                          { label: '删除 WBS', icon: <Trash2 size={14} />, onClick: () => void removeChild('wbs', item.taskId!), semantic: 'delete', danger: true, permissionKey: 'oa:project:wbs' },
-                        ]} />
+                        {hasPermission('oa:project:wbs') ? (
+                          <div className="admin-users-row-actions">
+                            <button type="button" title="编辑 WBS" aria-label="编辑 WBS" onClick={() => openChildDialog({ type: 'wbs', item })}>
+                              <Edit size={15} />
+                            </button>
+                            <button className="danger" type="button" title="删除 WBS" aria-label="删除 WBS" onClick={() => void removeChild('wbs', item.taskId!)}>
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        ) : <span className="text-sm text-slate-300">-</span>}
                       </div>
                     )) : <div className="text-sm text-slate-500">暂无 WBS 任务</div>}
                     <div className="flex flex-wrap gap-2">
@@ -869,80 +1031,77 @@ export default function ProjectManagementPage() {
                         }).catch((error) => toast.error(getErrorMessage(error, 'WBS 树保存失败')));
                       }} disabled={!hasPermission('oa:project:wbs')}><ArrowRightLeft size={14} className="mr-1.5" />保存当前顺序</Button>
                     </div>
-                  </CardContent>
-                </Card>
+                </ProjectDetailPanel>
               </TabsContent>
 
-              <TabsContent value="cost" className="space-y-4">
+              <TabsContent value="cost" className="admin-source-content-grid admin-project-detail-tab">
                 <div className="grid gap-4 md:grid-cols-3">
-                  <Card><CardHeader className="pb-3"><CardTitle className="text-base">报销成本</CardTitle></CardHeader><CardContent className="text-sm">{formatMoney(detail.costSummary?.expenseAmount)}</CardContent></Card>
-                  <Card><CardHeader className="pb-3"><CardTitle className="text-base">采购成本</CardTitle></CardHeader><CardContent className="text-sm">{formatMoney(detail.costSummary?.purchaseAmount)}</CardContent></Card>
-                  <Card><CardHeader className="pb-3"><CardTitle className="text-base">付款成本</CardTitle></CardHeader><CardContent className="text-sm">{formatMoney(detail.costSummary?.paymentAmount)}</CardContent></Card>
+                  <ProjectDetailMetric label="报销成本" value={formatMoney(detail.costSummary?.expenseAmount)} />
+                  <ProjectDetailMetric label="采购成本" value={formatMoney(detail.costSummary?.purchaseAmount)} />
+                  <ProjectDetailMetric label="付款成本" value={formatMoney(detail.costSummary?.paymentAmount)} />
                 </div>
               </TabsContent>
 
-              <TabsContent value="risk" className="space-y-4">
+              <TabsContent value="risk" className="admin-source-content-grid admin-project-detail-tab">
                 <div className="grid gap-4 xl:grid-cols-2">
-                  <Card>
-                    <CardHeader className="pb-3"><CardTitle className="text-base">项目风险维护</CardTitle></CardHeader>
-                    <CardContent className="space-y-2">
+                  <ProjectDetailPanel title="项目风险维护" contentClassName="admin-project-detail-stack">
                       {detail.risks.length ? detail.risks.map((item, index) => (
-                        <div key={`${item.riskId || item.riskCode || index}`} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+                        <div key={`${item.riskId || item.riskCode || index}`} className="admin-project-detail-row text-sm">
                           <div>
                             <div>{item.riskName || '-'}</div>
                             <div className="text-xs text-slate-500">{severityDict.getLabel(item.riskLevel || '') || '-'} / {item.triggerSource || '-'} / {item.status || '-'}</div>
                           </div>
-                          {item.riskId ? (
-                            <TableRowActions actions={[
-                              { label: '编辑风险', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'risk', item }), semantic: 'edit', isPrimary: true, permissionKey: 'oa:project:edit' },
-                              { label: '删除风险', icon: <Trash2 size={14} />, onClick: () => void removeChild('risk', item.riskId!), semantic: 'delete', danger: true, permissionKey: 'oa:project:edit' },
-                            ]} />
-                          ) : null}
+                          {item.riskId && hasPermission('oa:project:edit') ? (
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="编辑风险" aria-label="编辑风险" onClick={() => openChildDialog({ type: 'risk', item })}>
+                                <Edit size={15} />
+                              </button>
+                              <button className="danger" type="button" title="删除风险" aria-label="删除风险" onClick={() => void removeChild('risk', item.riskId!)}>
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          ) : <span className="text-sm text-slate-300">-</span>}
                         </div>
                       )) : <div className="text-sm text-slate-500">暂无项目风险</div>}
                       <Button size="sm" onClick={() => openChildDialog({ type: 'risk' })} disabled={!hasPermission('oa:project:edit')}><Plus size={14} className="mr-1.5" />新增风险</Button>
-                    </CardContent>
-                  </Card>
+                  </ProjectDetailPanel>
 
-                  <Card>
-                    <CardHeader className="pb-3"><CardTitle className="text-base">项目依赖</CardTitle></CardHeader>
-                    <CardContent className="space-y-2">
+                  <ProjectDetailPanel title="项目依赖" contentClassName="admin-project-detail-stack">
                       {detail.dependencies.length ? detail.dependencies.map((item) => (
-                        <div key={item.dependencyId} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+                        <div key={item.dependencyId} className="admin-project-detail-row text-sm">
                           <div>
                             <div>{item.predecessorType} {item.predecessorId} → {item.successorType} {item.successorId}</div>
                             <div className="text-xs text-slate-500">{item.dependencyType || 'FS'} / 延迟 {item.lagDays || 0} 天</div>
                           </div>
-                          <TableRowActions actions={[
-                            { label: '编辑依赖', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'dependency', item }), semantic: 'edit', isPrimary: true, permissionKey: 'oa:project:edit' },
-                            { label: '删除依赖', icon: <Trash2 size={14} />, onClick: () => void removeChild('dependency', item.dependencyId!), semantic: 'delete', danger: true, permissionKey: 'oa:project:edit' },
-                          ]} />
+                          {hasPermission('oa:project:edit') ? (
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="编辑依赖" aria-label="编辑依赖" onClick={() => openChildDialog({ type: 'dependency', item })}>
+                                <Edit size={15} />
+                              </button>
+                              <button className="danger" type="button" title="删除依赖" aria-label="删除依赖" onClick={() => void removeChild('dependency', item.dependencyId!)}>
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          ) : <span className="text-sm text-slate-300">-</span>}
                         </div>
                       )) : <div className="text-sm text-slate-500">暂无项目依赖</div>}
                       <Button size="sm" variant="outline" onClick={() => openChildDialog({ type: 'dependency' })} disabled={!hasPermission('oa:project:edit')}><Link2 size={14} className="mr-1.5" />新增依赖</Button>
-                    </CardContent>
-                  </Card>
+                  </ProjectDetailPanel>
                 </div>
               </TabsContent>
 
-              <TabsContent value="linkage" className="space-y-4">
+              <TabsContent value="linkage" className="admin-source-content-grid admin-project-detail-tab">
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {linkageCards.map((item) => (
-                    <Card key={item.label}>
-                      <CardHeader className="pb-3"><CardTitle className="text-base">{item.label}</CardTitle></CardHeader>
-                      <CardContent className="text-sm">{item.value}</CardContent>
-                    </Card>
+                    <ProjectDetailMetric key={item.label} label={item.label} value={item.value} />
                   ))}
                 </div>
-                <Card>
-                  <CardHeader className="pb-3"><CardTitle className="text-base">业务跳转</CardTitle></CardHeader>
-                  <CardContent className="flex flex-wrap gap-2">
+                <ProjectDetailPanel title="业务跳转" contentClassName="flex flex-wrap gap-2">
                     {detail.project.customerId ? <Button size="sm" variant="outline" onClick={() => navigate(`/office/crm/customer/${detail.project.customerId}`)}>打开客户360</Button> : null}
                     {detail.project.contractId ? <Button size="sm" variant="outline" onClick={() => navigate('/office/contracts', { state: { focusContractId: detail.project.contractId } })}>打开 OA 合同</Button> : null}
                     <Button size="sm" variant="outline" onClick={() => navigate('/office/budget')}>查看预算管理</Button>
                     <Button size="sm" variant="outline" onClick={() => navigate('/office/invoice')}>查看发票管理</Button>
-                  </CardContent>
-                </Card>
+                </ProjectDetailPanel>
               </TabsContent>
             </Tabs>
           </div>
@@ -1139,4 +1298,3 @@ export default function ProjectManagementPage() {
     </div>
   );
 }
-

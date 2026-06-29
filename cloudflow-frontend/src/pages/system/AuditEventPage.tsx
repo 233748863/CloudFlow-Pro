@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Download, Eye, FileClock, RefreshCw, RotateCcw, Search } from 'lucide-react';
+import { Download, Eye, FileClock, RefreshCw, RotateCcw, Search, ShieldCheck, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
@@ -10,20 +10,12 @@ import {
   Input,
   LoadingSpinner,
   Pagination,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { AuditEvent, AuditEventQuery, exportAuditEvents, listAuditEvents } from '@/services/api/auditEvent';
 import { downloadBlob } from '@/utils/download';
 import { cn } from '@/utils/cn';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const normalizeListResponse = (response: any) => {
   const rows = Array.isArray(response?.records)
@@ -51,12 +43,12 @@ const formatJson = (value?: string) => {
 };
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-14 text-center">
+  <tr className="hover:bg-transparent dark:hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10 text-center">
       {loading ? <LoadingSpinner size="lg" className="mx-auto mb-3" /> : null}
       <div className="text-sm text-slate-500 dark:text-slate-400">{title}</div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 export const AuditEventPage = () => {
@@ -127,90 +119,234 @@ export const AuditEventPage = () => {
     }
   };
 
+  const hasActiveFilters = Boolean(
+    query.businessType || query.businessId || query.eventType || query.operatorName || query.beginTime || query.endTime,
+  );
+
+  const stats = useMemo(
+    () => [
+      {
+        label: '事件总数',
+        value: String(total),
+        meta: `当前页 ${rows.length}`,
+        icon: <FileClock size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '业务类型',
+        value: String(new Set(rows.map((item) => item.businessType).filter(Boolean)).size),
+        meta: '本页去重',
+        icon: <ShieldCheck size={18} />,
+        tone: 'violet',
+      },
+      {
+        label: '操作人',
+        value: String(new Set(rows.map((item) => item.operatorName || 'system')).size),
+        meta: '本页去重',
+        icon: <UserRound size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '导出状态',
+        value: exporting ? '进行中' : '就绪',
+        meta: 'CSV 台账',
+        icon: <Download size={18} />,
+        tone: 'amber',
+      },
+    ],
+    [exporting, rows, total],
+  );
+
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">AUDIT EVENTS</p>
+          <h2>审计台账</h2>
+          <span>按业务、事件、操作人和时间追踪审计事件</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button type="button" variant="outline" size="sm" onClick={() => void fetchList()} disabled={loading}>
+            <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
+            刷新
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => void handleExport()} disabled={exporting}>
+            <Download size={16} className={cn(exporting && 'text-cyan-600 dark:text-cyan-300')} />
+            导出
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form onSubmit={handleSearch} className="admin-audit-event-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">业务类型</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.businessType}
+              onChange={(event) => setFilters((current) => ({ ...current, businessType: event.target.value }))}
+              placeholder="业务类型"
+              type="search"
+            />
+          </div>
+        </label>
+
+        <label>
+          <span className="input-label">业务 ID</span>
+          <Input
+            value={filters.businessId}
+            onChange={(event) => setFilters((current) => ({ ...current, businessId: event.target.value }))}
+            placeholder="业务 ID"
+          />
+        </label>
+
+        <label>
+          <span className="input-label">事件类型</span>
+          <Input
+            value={filters.eventType}
+            onChange={(event) => setFilters((current) => ({ ...current, eventType: event.target.value }))}
+            placeholder="事件类型"
+          />
+        </label>
+
+        <label>
+          <span className="input-label">操作人</span>
+          <Input
+            value={filters.operatorName}
+            onChange={(event) => setFilters((current) => ({ ...current, operatorName: event.target.value }))}
+            placeholder="操作人"
+          />
+        </label>
+
+        <label>
+          <span className="input-label">开始时间</span>
+          <DatePicker
+            type="datetime-local"
+            value={filters.beginTime}
+            onChange={(event) => setFilters((current) => ({ ...current, beginTime: event.target.value }))}
+          />
+        </label>
+
+        <label>
+          <span className="input-label">结束时间</span>
+          <DatePicker
+            type="datetime-local"
+            value={filters.endTime}
+            onChange={(event) => setFilters((current) => ({ ...current, endTime: event.target.value }))}
+          />
+        </label>
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">当前 {total} 项</span>
+          <Button type="submit" size="sm">
+            查询
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={!hasActiveFilters}
+          >
+            <RotateCcw size={14} />
+            重置
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface className="admin-audit-event-table-panel">
+      <table className="unity-data-table admin-source-table admin-audit-event-table min-w-[1080px]">
+          <thead>
+            <tr>
+              <th>事件</th>
+              <th>业务</th>
+              <th>事件类型</th>
+              <th>操作人</th>
+              <th>事件时间</th>
+              <th>内容</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={7} title="正在加载审计事件..." loading />
+            ) : rows.length === 0 ? (
+              <TableStateRow colSpan={7} title="暂无审计事件" />
+            ) : rows.map((event) => (
+              <tr key={event.id}>
+                <td>
+                  <div className="flex items-center gap-2 font-medium text-slate-900 dark:text-slate-100">
+                    <FileClock size={15} className="text-[#0d95b5]" />
+                    {event.title || event.eventType}
+                  </div>
+                </td>
+                <td>{event.businessType}#{event.businessId}</td>
+                <td>
+                  <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs dark:border-slate-700">
+                    {event.eventType}
+                  </span>
+                </td>
+                <td>{event.operatorName || 'system'}</td>
+                <td className="whitespace-nowrap">{formatDateTime(event.eventTime)}</td>
+                <td>
+                  <div className="max-w-[320px] truncate text-sm text-slate-500 dark:text-slate-400" title={event.content}>
+                    {event.content || '-'}
+                  </div>
+                </td>
+                <td>
+                  <div className="admin-users-row-actions">
+                    <button type="button" title="查看详情" onClick={() => setDetail(event)}>
+                      <Eye size={15} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={query.pageNum || 1}
+      pageSize={query.pageSize || 10}
+      onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
+      onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, pageNum: 1, pageSize }))}
+    />
+  ) : null;
+
   return (
     <>
-      <TablePageLayout
-        filters={(
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <form onSubmit={handleSearch} className="grid gap-3 lg:grid-cols-[1fr_auto]">
-              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-                <div className="relative">
-                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <Input value={filters.businessType} onChange={(event) => setFilters((current) => ({ ...current, businessType: event.target.value }))} placeholder="业务类型" className="h-10 pl-10" />
-                </div>
-                <Input value={filters.businessId} onChange={(event) => setFilters((current) => ({ ...current, businessId: event.target.value }))} placeholder="业务ID" className="h-10" />
-                <Input value={filters.eventType} onChange={(event) => setFilters((current) => ({ ...current, eventType: event.target.value }))} placeholder="事件类型" className="h-10" />
-                <Input value={filters.operatorName} onChange={(event) => setFilters((current) => ({ ...current, operatorName: event.target.value }))} placeholder="操作人" className="h-10" />
-                <DatePicker type="datetime-local" value={filters.beginTime} onChange={(event) => setFilters((current) => ({ ...current, beginTime: event.target.value }))} className="h-10" />
-                <DatePicker type="datetime-local" value={filters.endTime} onChange={(event) => setFilters((current) => ({ ...current, endTime: event.target.value }))} className="h-10" />
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Button type="submit" size="sm">查询</Button>
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}><RotateCcw size={14} />重置</Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => void fetchList()} disabled={loading}>
-                  <RefreshCw size={15} className={cn(loading && 'animate-spin')} />刷新
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => void handleExport()} disabled={exporting}>
-                  <Download size={15} className={cn(exporting && 'animate-pulse')} />导出
-                </Button>
-              </div>
-            </form>
-          </div>
-        )}
-        table={(<TableSurfaceCard fill>
-          <div className="overflow-x-auto">
-            <Table className="min-w-[1080px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>事件</TableHead>
-                  <TableHead>业务</TableHead>
-                  <TableHead>事件类型</TableHead>
-                  <TableHead>操作人</TableHead>
-                  <TableHead>事件时间</TableHead>
-                  <TableHead>内容</TableHead>
-                  <TableActionHead className="w-20">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableStateRow colSpan={7} title="正在加载审计事件..." loading />
-                ) : rows.length === 0 ? (
-                  <TableStateRow colSpan={7} title="暂无审计事件" />
-                ) : rows.map((event) => (
-                  <TableRow key={event.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2 font-medium text-slate-900 dark:text-slate-100">
-                        <FileClock size={15} className="text-cyan-600" />
-                        {event.title || event.eventType}
-                      </div>
-                    </TableCell>
-                    <TableCell>{event.businessType}#{event.businessId}</TableCell>
-                    <TableCell><span className="rounded-full border border-slate-200 px-2.5 py-1 text-xs dark:border-slate-700">{event.eventType}</span></TableCell>
-                    <TableCell>{event.operatorName || 'system'}</TableCell>
-                    <TableCell>{formatDateTime(event.eventTime)}</TableCell>
-                    <TableCell className="max-w-[320px] truncate text-sm text-slate-500" title={event.content}>{event.content || '-'}</TableCell>
-                    <TableCell>
-                      <TableRowActions
-                        align="end"
-                        actions={[{ label: '查看详情', icon: <Eye size={15} />, onClick: () => setDetail(event), tone: 'neutral' }]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={total > 0 ? (
-          <Pagination
-            total={total}
-            page={query.pageNum || 1}
-            pageSize={query.pageSize || 10}
-            onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
-            onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, pageNum: 1, pageSize }))}
-          />
-        ) : null}
-      />
+      <section className="admin-source-page admin-audit-event-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={Boolean(detail)}
@@ -219,17 +355,17 @@ export const AuditEventPage = () => {
         maxWidthClassName="max-w-3xl"
       >
         {detail ? (
-          <div className="space-y-4">
+          <div className="admin-dialog-stack">
             <div className="grid gap-3 text-sm md:grid-cols-2">
               <div><span className="text-slate-400">业务：</span>{detail.businessType}#{detail.businessId}</div>
               <div><span className="text-slate-400">事件：</span>{detail.eventType}</div>
               <div><span className="text-slate-400">操作人：</span>{detail.operatorName || 'system'}</div>
               <div><span className="text-slate-400">时间：</span>{formatDateTime(detail.eventTime)}</div>
             </div>
-            <div className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
+            <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
               {detail.content || '-'}
             </div>
-            <pre className="max-h-[420px] overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">
+            <pre className="max-h-[420px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
               {formatJson(detail.snapshotJson)}
             </pre>
           </div>

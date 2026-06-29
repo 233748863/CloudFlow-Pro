@@ -15,7 +15,6 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { getAnomalyTypeLabel } from '@/utils/enumLabels';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -26,13 +25,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import {
   getPerformanceDashboard,
@@ -47,6 +39,7 @@ import {
 } from '@/services/api/monitor';
 import { downloadBlob } from '@/utils/download';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const RANGE_PRESETS = [
   { value: '7', label: '近 7 天' },
@@ -191,7 +184,7 @@ const EmptyBlock: React.FC<{
   icon?: React.ReactNode;
   loading?: boolean;
 }> = ({ title, description, icon, loading = false }) => (
-  <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+  <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
     {loading ? (
       <RefreshCw className="mb-3 h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
     ) : icon ? (
@@ -241,21 +234,21 @@ const ChartCard: React.FC<{
   compact = false,
   contentClassName,
 }) => (
-  <div
+  <InnerTableSurface
     data-testid={testId}
-    className={cn(
-      'relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
-      compact ? 'p-4 sm:p-5' : 'p-5 sm:p-6',
-    )}
+    className="admin-performance-panel relative"
+    wrapperClassName="flex min-h-0 flex-col"
   >
     {loading ? (
-      <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-slate-950/72">
+      <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--cf-surface-strong)] dark:bg-slate-950">
         <RefreshCw className="h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
     ) : null}
-    <SectionHeader title={title} description={description} action={action} />
-    <div className={cn(compact ? 'mt-4' : 'mt-5', contentClassName)}>{children}</div>
-  </div>
+    <div className="admin-performance-panel-head">
+      <SectionHeader title={title} description={description} action={action} />
+    </div>
+    <div className={cn('admin-performance-panel-body', compact ? 'pt-4 sm:pt-5' : 'pt-5 sm:pt-6', contentClassName)}>{children}</div>
+  </InnerTableSurface>
 );
 
 const ContextPill: React.FC<{
@@ -263,8 +256,8 @@ const ContextPill: React.FC<{
   value: React.ReactNode;
   valueClassName?: string;
 }> = ({ label, value, valueClassName }) => (
-  <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/60">
-    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+  <div className="admin-performance-context-pill px-3 py-2">
+    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
       {label}
     </div>
     <div className={cn('mt-1 text-sm font-medium text-slate-900 dark:text-slate-100', valueClassName)}>
@@ -277,16 +270,16 @@ const TableEmptyRow: React.FC<{
   colSpan: number;
   loading: boolean;
 }> = ({ colSpan, loading }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr>
+    <td colSpan={colSpan} className="px-4 py-10">
       <EmptyBlock
         title={loading ? '正在加载流程明细' : '暂无流程明细'}
         description={loading ? undefined : '调整筛选条件后重试，或切换到其他时间范围查看。'}
         loading={loading}
         icon={!loading ? <Activity className="h-5 w-5" /> : undefined}
       />
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const ExecutionTrendChart: React.FC<{
@@ -325,18 +318,18 @@ const ExecutionTrendChart: React.FC<{
   const activePoint = activeIndex !== null ? data[activeIndex] : null;
 
   return (
-    <div className="space-y-4">
+    <div className="admin-source-content-grid">
       <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-slate-500 dark:text-slate-400">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-cyan-500 dark:bg-cyan-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cyan-500 dark:bg-cyan-400" />
           流程总量
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500 dark:bg-emerald-400" />
           完成数
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500 dark:bg-amber-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-amber-500 dark:bg-amber-400" />
           平均时长
         </span>
       </div>
@@ -344,7 +337,7 @@ const ExecutionTrendChart: React.FC<{
       <div className="relative" onMouseLeave={() => setHoveredIndex(null)}>
         {activePoint && activeIndex !== null ? (
           <div
-            className="pointer-events-none absolute top-2 z-20 min-w-[176px] rounded-2xl border border-slate-800/80 bg-slate-950/92 px-3 py-2 text-xs shadow-[0_18px_36px_rgba(15,23,42,0.24)] backdrop-blur-sm"
+            className="pointer-events-none absolute top-2 z-20 min-w-[176px] rounded-md border border-slate-800/80 bg-slate-950/92 px-3 py-2 text-xs shadow-none"
             style={{
               left: `${((x(activeIndex) - padding.left) / chartW) * 100}%`,
               transform: getTooltipTransform(((x(activeIndex) - padding.left) / chartW) * 100),
@@ -501,14 +494,14 @@ const RiskTrendChart: React.FC<{
   const activePoint = activeIndex !== null ? data[activeIndex] : null;
 
   return (
-    <div className="space-y-4">
+    <div className="admin-source-content-grid">
       <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-slate-500 dark:text-slate-400">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500 dark:bg-amber-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-amber-500 dark:bg-amber-400" />
           超时实例率
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500 dark:bg-rose-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-500 dark:bg-rose-400" />
           异常实例率
         </span>
       </div>
@@ -516,7 +509,7 @@ const RiskTrendChart: React.FC<{
       <div className="relative" onMouseLeave={() => setHoveredIndex(null)}>
         {activePoint && activeIndex !== null ? (
           <div
-            className="pointer-events-none absolute top-2 z-20 min-w-[200px] rounded-2xl border border-slate-800/80 bg-slate-950/92 px-3 py-2 text-xs shadow-[0_18px_36px_rgba(15,23,42,0.24)] backdrop-blur-sm"
+            className="pointer-events-none absolute top-2 z-20 min-w-[200px] rounded-md border border-slate-800/80 bg-slate-950/92 px-3 py-2 text-xs shadow-none"
             style={{
               left: `${((x(activeIndex) - padding.left) / chartW) * 100}%`,
               transform: getTooltipTransform(((x(activeIndex) - padding.left) / chartW) * 100),
@@ -636,7 +629,7 @@ const ProcessRankingChart: React.FC<{
   const maxTotal = Math.max(...rows.map((item) => item.totalCount), 1);
 
   return (
-    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="divide-y divide-slate-200 dark:divide-slate-800">
       {rows.map((item, index) => {
         const selected = selectedProcess === item.processDefKey;
         const barWidth = `${Math.max((item.totalCount / maxTotal) * 100, 8)}%`;
@@ -648,20 +641,20 @@ const ProcessRankingChart: React.FC<{
             data-testid={`performance-ranking-${item.processDefKey}`}
             aria-label={`流程排行 ${item.processName}`}
             className={cn(
-              'w-full rounded-xl px-1 py-2 text-left transition-colors',
+              'w-full rounded-md px-1 py-2 text-left transition-colors',
               selected
                 ? 'bg-cyan-50/80 dark:bg-cyan-950/18'
-                : 'hover:bg-slate-50/80 dark:hover:bg-slate-900/55',
+                : 'hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/55',
             )}
           >
             <div className="grid gap-3 md:grid-cols-[32px_minmax(0,1fr)_136px] md:items-center">
               <div className="flex items-center">
                 <span
                   className={cn(
-                    'inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold',
+                    'inline-flex h-7 w-7 items-center justify-center rounded-md text-xs font-semibold',
                     selected
                       ? 'bg-cyan-600 text-white dark:bg-cyan-500 dark:text-slate-950'
-                      : 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900',
+                      : 'bg-slate-900 text-white dark:bg-slate-800 dark:text-slate-100',
                   )}
                 >
                   {index + 1}
@@ -682,10 +675,10 @@ const ProcessRankingChart: React.FC<{
                   </div>
                 </div>
                 <div className="mt-2 flex items-center gap-3">
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                  <div className="h-2 flex-1 overflow-hidden rounded-md bg-slate-200 dark:bg-slate-800">
                     <div
                       className={cn(
-                        'h-full rounded-full',
+                        'h-full rounded-md',
                         item.successRate >= 95
                           ? 'bg-emerald-500'
                           : item.successRate >= 80
@@ -765,7 +758,7 @@ const RiskMatrixChart: React.FC<{
     <div className="relative" onMouseLeave={() => setHoveredKey(null)}>
       {activeItem ? (
         <div
-          className="pointer-events-none absolute right-0 top-0 z-20 min-w-[208px] rounded-2xl border border-slate-800/80 bg-slate-950/92 px-3 py-2 text-xs shadow-[0_18px_36px_rgba(15,23,42,0.24)] backdrop-blur-sm"
+          className="pointer-events-none absolute right-0 top-0 z-20 min-w-[208px] rounded-md border border-slate-800/80 bg-slate-950/92 px-3 py-2 text-xs shadow-none"
         >
           <div className="mb-2 font-semibold text-white">{activeItem.processName}</div>
           <div className="space-y-1.5 text-slate-200">
@@ -936,7 +929,7 @@ const TimeoutLevelDistributionCard: React.FC<{
       <div className="relative mx-auto h-28 w-28">
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <div className="text-xl font-semibold text-slate-900 dark:text-slate-100">{formatCount(total)}</div>
-          <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+          <div className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
             超时事件
           </div>
         </div>
@@ -966,13 +959,13 @@ const TimeoutLevelDistributionCard: React.FC<{
         </svg>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid gap-3">
         {segments.map((item) => {
           const tone = timeoutLevelTone(item.level);
           return (
             <div key={item.level} className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
-                <span className={cn('inline-block h-2.5 w-2.5 rounded-full', tone.dot)} />
+                <span className={cn('inline-block h-2.5 w-2.5 rounded-sm', tone.dot)} />
                 <span className="truncate text-sm text-slate-700 dark:text-slate-200">{item.label}</span>
               </div>
               <div className="text-right">
@@ -992,10 +985,10 @@ const TimeoutLevelDistributionCard: React.FC<{
 const anomalyBarTone = (index: number) => {
   const tones = [
     'bg-rose-500',
-    'bg-pink-500',
+    'bg-[#0d95b5]',
     'bg-orange-500',
     'bg-amber-500',
-    'bg-slate-500',
+    'bg-[var(--cf-text-muted)]',
   ];
   return tones[index % tones.length];
 };
@@ -1020,7 +1013,7 @@ const AnomalyTypeRankingCard: React.FC<{
   const maxCount = Math.max(...rows.map((item) => item.count), 1);
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3">
       {rows.map((item, index) => (
         <div key={item.type} className="space-y-1.5">
           <div className="flex items-center justify-between gap-3">
@@ -1032,9 +1025,9 @@ const AnomalyTypeRankingCard: React.FC<{
               <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">{formatPercent(item.rate)}</span>
             </div>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+          <div className="h-2 overflow-hidden rounded-md bg-slate-200 dark:bg-slate-800">
             <div
-              className={cn('h-full rounded-full', anomalyBarTone(index))}
+              className={cn('h-full rounded-md', anomalyBarTone(index))}
               style={{ width: `${Math.max((item.count / maxCount) * 100, 10)}%` }}
             />
           </div>
@@ -1208,197 +1201,231 @@ const PerformanceStatsPage: React.FC = () => {
     setSelectedProcess((current) => current === processDefKey ? '' : processDefKey);
   };
 
-  const kpis: Array<{
-    title: string;
+  const primaryStats: Array<{
+    label: string;
     value: React.ReactNode;
     meta: React.ReactNode;
-    icon: React.ReactNode;
-    iconVariant: 'primary' | 'success' | 'warning' | 'danger' | 'gray';
+    icon: React.ElementType;
+    tone: 'blue' | 'green' | 'amber' | 'violet';
     valueClassName?: string;
   }> = [
     {
-      title: '流程总量',
+      label: '流程总量',
       value: formatCount(summary.totalCount),
       meta: <DeltaMeta current={summary.totalCount} previous={compareSummary.totalCount} kind="count" />,
-      icon: <Workflow className="h-6 w-6" />,
-      iconVariant: 'primary',
+      icon: Workflow,
+      tone: 'blue',
     },
     {
-      title: '完成率',
-      value: formatPercent(summary.successRate),
-      meta: <DeltaMeta current={summary.successRate} previous={compareSummary.successRate} kind="success" />,
-      icon: <Gauge className="h-6 w-6" />,
-      iconVariant: 'success',
-      valueClassName: getSuccessTone(summary.successRate),
+      label: '完成实例',
+      value: formatCount(summary.completedCount),
+      meta: <DeltaMeta current={summary.completedCount} previous={compareSummary.completedCount} kind="count" />,
+      icon: Activity,
+      tone: 'green',
     },
     {
-      title: '平均时长',
-      value: formatDuration(summary.avgDurationMs),
-      meta: <DeltaMeta current={summary.avgDurationMs} previous={compareSummary.avgDurationMs} kind="duration" />,
-      icon: <Clock3 className="h-6 w-6" />,
-      iconVariant: 'warning',
-    },
-    {
-      title: '失败率',
-      value: formatPercent(summary.failedRate),
-      meta: <DeltaMeta current={summary.failedRate} previous={compareSummary.failedRate} kind="risk" />,
-      icon: <AlertTriangle className="h-6 w-6" />,
-      iconVariant: 'danger',
+      label: '失败实例',
+      value: formatCount(summary.failedCount),
+      meta: <span className={getRiskTone(summary.failedRate)}>失败率 {formatPercent(summary.failedRate)}</span>,
+      icon: AlertTriangle,
+      tone: 'amber',
       valueClassName: getRiskTone(summary.failedRate),
     },
     {
-      title: '超时实例率',
+      label: '平均时长',
+      value: formatDuration(summary.avgDurationMs),
+      meta: <DeltaMeta current={summary.avgDurationMs} previous={compareSummary.avgDurationMs} kind="duration" />,
+      icon: Clock3,
+      tone: 'violet',
+    },
+  ];
+
+  const secondaryStats: Array<{
+    label: string;
+    value: React.ReactNode;
+    meta: React.ReactNode;
+    icon: React.ElementType;
+    tone: 'blue' | 'green' | 'amber' | 'violet';
+    valueClassName?: string;
+  }> = [
+    {
+      label: '完成率',
+      value: formatPercent(summary.successRate),
+      meta: <DeltaMeta current={summary.successRate} previous={compareSummary.successRate} kind="success" />,
+      icon: Gauge,
+      tone: 'green',
+      valueClassName: getSuccessTone(summary.successRate),
+    },
+    {
+      label: '失败率',
+      value: formatPercent(summary.failedRate),
+      meta: <DeltaMeta current={summary.failedRate} previous={compareSummary.failedRate} kind="risk" />,
+      icon: BarChart3,
+      tone: 'amber',
+      valueClassName: getRiskTone(summary.failedRate),
+    },
+    {
+      label: '超时实例率',
       value: formatPercent(summary.timeoutInstanceRate),
       meta: <DeltaMeta current={summary.timeoutInstanceRate} previous={compareSummary.timeoutInstanceRate} kind="risk" />,
-      icon: <TrendingUp className="h-6 w-6" />,
-      iconVariant: 'warning',
+      icon: TrendingUp,
+      tone: 'blue',
       valueClassName: getRiskTone(summary.timeoutInstanceRate),
     },
     {
-      title: '异常实例率',
+      label: '异常实例率',
       value: formatPercent(summary.anomalyInstanceRate),
       meta: <DeltaMeta current={summary.anomalyInstanceRate} previous={compareSummary.anomalyInstanceRate} kind="risk" />,
-      icon: <ShieldAlert className="h-6 w-6" />,
-      iconVariant: 'danger',
+      icon: ShieldAlert,
+      tone: 'violet',
       valueClassName: getRiskTone(summary.anomalyInstanceRate),
     },
   ];
 
   const isInitialLoading = loading && dashboard === null;
 
-  return (
-    <TablePageLayout
-      className="gap-4 animate-fade-in"
-      filters={
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 sm:px-5">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-              <div className="flex flex-1 flex-wrap items-center gap-3">
-                <SegmentedControl className="min-h-9">
-                  {RANGE_PRESETS.map((item) => (
-                    <SegmentedControlItem
-                      key={item.value}
-                      size="sm"
-                      active={rangePreset === item.value}
-                      onClick={() => applyRangePreset(item.value)}
-                    >
-                      {item.label}
-                    </SegmentedControlItem>
-                  ))}
-                </SegmentedControl>
+  const pageActions = (
+    <div className="grid gap-4">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">WORKFLOW PERFORMANCE</p>
+          <h2>流程性能统计</h2>
+          <span>监控流程吞吐、耗时、失败、超时与异常风险。</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void loadDashboard()} disabled={loading}>
+            <RefreshCw className={cn('h-4 w-4', loading ? 'animate-spin' : '')} />
+            刷新
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportDashboard} disabled={processRows.length === 0}>
+            <Download className="h-4 w-4" />
+            导出 CSV
+          </Button>
+        </div>
+      </header>
 
-                <DatePicker
-                  className="h-10 w-full sm:w-40"
-                  type="date"
-                  value={dateRange.startDate}
-                  onChange={(event) => handleStartDateChange(event.target.value)}
-                />
-                <DatePicker
-                  className="h-10 w-full sm:w-40"
-                  type="date"
-                  value={dateRange.endDate}
-                  onChange={(event) => handleEndDateChange(event.target.value)}
-                />
-
-                <div className="w-full sm:w-60">
-                  <Select
-                    value={selectedProcess || 'all'}
-                    onValueChange={(value) => setSelectedProcess(value === 'all' ? '' : value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="全部流程" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">全部流程</SelectItem>
-                      {processOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+      <section className="admin-source-stat-grid admin-performance-dashboard-stats">
+        {primaryStats.map((item) => {
+          const Icon = item.icon;
+          return (
+            <article key={item.label} className={`card admin-source-stat admin-source-tone-${item.tone}`}>
+              <div className="admin-source-stat-icon"><Icon size={18} /></div>
+              <div>
+                <p>{item.label}</p>
+                <strong className={cn(item.valueClassName)}>{item.value}</strong>
+                <span>{item.meta}</span>
               </div>
+            </article>
+          );
+        })}
+      </section>
 
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => void loadDashboard()} disabled={loading}>
-                  <RefreshCw className={cn('h-4 w-4', loading ? 'animate-spin' : '')} />
-                  刷新
-                </Button>
-                <Button variant="outline" size="sm" onClick={exportDashboard} disabled={processRows.length === 0}>
-                  <Download className="h-4 w-4" />
-                  导出 CSV
-                </Button>
+      <section className="admin-source-stat-grid admin-performance-dashboard-stats admin-performance-secondary-stats">
+        {secondaryStats.map((item) => {
+          const Icon = item.icon;
+          return (
+            <article key={item.label} className={`card admin-source-stat admin-source-tone-${item.tone}`}>
+              <div className="admin-source-stat-icon"><Icon size={18} /></div>
+              <div>
+                <p>{item.label}</p>
+                <strong className={cn(item.valueClassName)}>{item.value}</strong>
+                <span>{item.meta}</span>
               </div>
-            </div>
+            </article>
+          );
+        })}
+      </section>
+    </div>
+  );
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <ContextPill label="当前区间" value={`${dateRange.startDate} ~ ${dateRange.endDate}`} />
-              <ContextPill
-                label="对比区间"
-                value={
-                  dashboard
-                    ? `${dashboard.context.compareStartDate} ~ ${dashboard.context.compareEndDate}`
-                    : '--'
-                }
-              />
-              <ContextPill label="流程范围" value={selectedProcessLabel} />
-              <ContextPill
-                label="健康状态"
-                value={
-                  <span
-                    className={cn(
-                      'inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold',
-                      getHealthBadgeClassName(summary.healthLabel),
-                    )}
-                  >
-                    {summary.healthLabel}
-                  </span>
-                }
-              />
-              <ContextPill
-                label="风险摘要"
-                value={`${formatPercent(summary.timeoutInstanceRate)} / ${formatPercent(summary.anomalyInstanceRate)}`}
-                valueClassName={getRiskTone(summary.timeoutInstanceRate + summary.anomalyInstanceRate)}
-              />
-            </div>
+  const pageFilters = (
+      <section className="admin-source-inline-toolbar admin-performance-filter-toolbar">
+        <div className="admin-performance-filter-controls">
+          <SegmentedControl className="min-h-9">
+            {RANGE_PRESETS.map((item) => (
+              <SegmentedControlItem
+                key={item.value}
+                size="sm"
+                active={rangePreset === item.value}
+                onClick={() => applyRangePreset(item.value)}
+              >
+                {item.label}
+              </SegmentedControlItem>
+            ))}
+          </SegmentedControl>
+
+          <DatePicker
+            className="cf-control admin-performance-date-control"
+            type="date"
+            value={dateRange.startDate}
+            onChange={(event) => handleStartDateChange(event.target.value)}
+          />
+          <DatePicker
+            className="cf-control admin-performance-date-control"
+            type="date"
+            value={dateRange.endDate}
+            onChange={(event) => handleEndDateChange(event.target.value)}
+          />
+
+          <div className="admin-performance-process-control">
+            <Select
+              value={selectedProcess || 'all'}
+              onValueChange={(value) => setSelectedProcess(value === 'all' ? '' : value)}
+            >
+              <SelectTrigger className="cf-control">
+                <SelectValue placeholder="全部流程" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部流程</SelectItem>
+                {processOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
-      }
-      table={
-        isInitialLoading ? (
-          <TableSurfaceCard>
-            <EmptyBlock title="正在加载流程性能看板" loading />
-          </TableSurfaceCard>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {kpis.map((item) => (
-                <StatCard
-                  key={item.title}
-                  title={item.title}
-                  value={item.value}
-                  meta={item.meta}
-                  icon={item.icon}
-                  iconVariant={item.iconVariant}
-                  valueClassName={item.valueClassName}
-                />
-              ))}
-            </div>
 
-            {selectedProcess ? (
-              <div className="flex justify-end">
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-200">
-                    已选流程：{selectedProcessLabel}
-                  </span>
-                  <Button variant="outline" size="sm" onClick={() => setSelectedProcess('')}>
-                    清除选择
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+        <div className="admin-performance-context-strip">
+          <ContextPill label="当前区间" value={`${dateRange.startDate} ~ ${dateRange.endDate}`} />
+          <ContextPill
+            label="对比区间"
+            value={
+              dashboard
+                ? `${dashboard.context.compareStartDate} ~ ${dashboard.context.compareEndDate}`
+                : '--'
+            }
+          />
+          <ContextPill label="流程范围" value={selectedProcessLabel} />
+          <ContextPill
+            label="健康状态"
+            value={
+              <span
+                className={cn(
+                  'inline-flex rounded-md border px-2.5 py-1 text-xs font-semibold',
+                  getHealthBadgeClassName(summary.healthLabel),
+                )}
+              >
+                {summary.healthLabel}
+              </span>
+            }
+          />
+          <ContextPill
+            label="风险摘要"
+            value={`${formatPercent(summary.timeoutInstanceRate)} / ${formatPercent(summary.anomalyInstanceRate)}`}
+            valueClassName={getRiskTone(summary.timeoutInstanceRate + summary.anomalyInstanceRate)}
+          />
+        </div>
+      </section>
+  );
 
+  const pageContent = isInitialLoading ? (
+        <InnerTableSurface className="admin-performance-panel">
+          <EmptyBlock title="正在加载流程性能看板" loading />
+        </InnerTableSurface>
+      ) : (
+          <div className="admin-source-content-grid admin-performance-content-grid">
             <div className="grid gap-4 xl:grid-cols-2">
               <ChartCard title="执行趋势图" loading={loading} testId="execution-trend-card">
                 <ExecutionTrendChart data={trendRows} loading={loading} />
@@ -1409,7 +1436,7 @@ const PerformanceStatsPage: React.FC = () => {
               </ChartCard>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:items-start">
+            <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
               <ChartCard
                 title="流程效率排行"
                 loading={loading}
@@ -1479,84 +1506,92 @@ const PerformanceStatsPage: React.FC = () => {
               </div>
             </div>
 
-            <ChartCard
-              title="流程明细表"
-              loading={loading}
-              testId="process-detail-card"
-              contentClassName="-mx-5 -mb-5 sm:-mx-6 sm:-mb-6"
-              action={
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {processRows.length} 条
-                </span>
-              }
-            >
-              <Table
-                data-testid="performance-detail-table"
-                className="min-w-[1140px]"
-                wrapperClassName="overflow-x-auto"
-              >
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                    <TableHead className="w-[22%]">流程</TableHead>
-                    <TableHead className="text-right">总量</TableHead>
-                    <TableHead className="text-right">完成</TableHead>
-                    <TableHead className="text-right">失败</TableHead>
-                    <TableHead className="text-right">平均时长</TableHead>
-                    <TableHead className="text-right">完成率</TableHead>
-                    <TableHead className="text-right">失败率</TableHead>
-                    <TableHead className="text-right">超时实例率</TableHead>
-                    <TableHead className="text-right">超时事件数</TableHead>
-                    <TableHead className="text-right">异常实例率</TableHead>
-                    <TableHead className="text-right">异常事件数</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            <InnerTableSurface data-testid="process-detail-card" className="relative">
+              {loading ? (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--cf-surface-strong)] dark:bg-slate-950">
+                  <RefreshCw className="h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
+                </div>
+              ) : null}
+              <div className="admin-performance-panel-head">
+                <SectionHeader
+                  title="流程明细表"
+                  action={
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {processRows.length} 条
+                    </span>
+                  }
+                />
+              </div>
+                <table data-testid="performance-detail-table" className="unity-data-table admin-source-table admin-performance-detail-table">
+                  <thead>
+                    <tr>
+                      <th className="w-[22%]">流程</th>
+                      <th className="text-right">总量</th>
+                      <th className="text-right">完成</th>
+                      <th className="text-right">失败</th>
+                      <th className="text-right">平均时长</th>
+                      <th className="text-right">完成率</th>
+                      <th className="text-right">失败率</th>
+                      <th className="text-right">超时率</th>
+                      <th className="text-right">超时数</th>
+                      <th className="text-right">异常率</th>
+                      <th className="text-right">异常数</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                   {processRows.length > 0 ? (
                     processRows.map((item) => (
-                      <TableRow
+                      <tr
                         key={item.processDefKey}
                         className={cn(
                           selectedProcess === item.processDefKey && 'bg-cyan-50/60 dark:bg-cyan-950/10',
                         )}
                       >
-                        <TableCell className="min-w-0">
+                        <td className="min-w-0">
                           <div className="truncate font-medium text-slate-900 dark:text-slate-100">
                             {item.processName}
                           </div>
                           <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
                             {item.processDefKey}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">{formatCount(item.totalCount)}</TableCell>
-                        <TableCell className="text-right">{formatCount(item.completedCount)}</TableCell>
-                        <TableCell className="text-right">{formatCount(item.failedCount)}</TableCell>
-                        <TableCell className="text-right">{formatDuration(item.avgDurationMs)}</TableCell>
-                        <TableCell className={cn('text-right font-semibold', getSuccessTone(item.successRate))}>
+                        </td>
+                        <td className="text-right">{formatCount(item.totalCount)}</td>
+                        <td className="text-right">{formatCount(item.completedCount)}</td>
+                        <td className="text-right">{formatCount(item.failedCount)}</td>
+                        <td className="text-right">{formatDurationCompact(item.avgDurationMs)}</td>
+                        <td className={cn('text-right font-semibold', getSuccessTone(item.successRate))}>
                           {formatPercent(item.successRate)}
-                        </TableCell>
-                        <TableCell className={cn('text-right font-semibold', getRiskTone(item.failedRate))}>
+                        </td>
+                        <td className={cn('text-right font-semibold', getRiskTone(item.failedRate))}>
                           {formatPercent(item.failedRate)}
-                        </TableCell>
-                        <TableCell className={cn('text-right font-semibold', getRiskTone(item.timeoutInstanceRate))}>
+                        </td>
+                        <td className={cn('text-right font-semibold', getRiskTone(item.timeoutInstanceRate))}>
                           {formatPercent(item.timeoutInstanceRate)}
-                        </TableCell>
-                        <TableCell className="text-right">{formatCount(item.timeoutEventCount)}</TableCell>
-                        <TableCell className={cn('text-right font-semibold', getRiskTone(item.anomalyInstanceRate))}>
+                        </td>
+                        <td className="text-right">{formatCount(item.timeoutEventCount)}</td>
+                        <td className={cn('text-right font-semibold', getRiskTone(item.anomalyInstanceRate))}>
                           {formatPercent(item.anomalyInstanceRate)}
-                        </TableCell>
-                        <TableCell className="text-right">{formatCount(item.anomalyEventCount)}</TableCell>
-                      </TableRow>
+                        </td>
+                        <td className="text-right">{formatCount(item.anomalyEventCount)}</td>
+                      </tr>
                     ))
                   ) : (
                     <TableEmptyRow colSpan={11} loading={loading} />
                   )}
-                </TableBody>
-              </Table>
-            </ChartCard>
+                  </tbody>
+                </table>
+            </InnerTableSurface>
           </div>
-        )
-      }
-    />
+      );
+
+  return (
+    <section className="admin-source-page performance-stats-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageContent}
+      />
+    </section>
   );
 };
 

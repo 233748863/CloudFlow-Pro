@@ -15,24 +15,16 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
+  Label,
   LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import {
   addRole,
@@ -52,6 +44,7 @@ import {
 import { getTenantList } from '../../services/api/tenant';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type TreeNode = {
   menuId: number;
@@ -87,7 +80,6 @@ type RoleQuery = {
 
 const DEFAULT_TENANT_VALUE = '__DEFAULT_TENANT__';
 const EMPTY_SELECT_VALUE = '__EMPTY__';
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const dsTypeMap: Record<number, string> = {
   0: '全部数据',
@@ -105,10 +97,10 @@ const getRoleStatusClassName = (status: string) =>
 const getDsTypeClassName = (dsType: number) =>
   dsType === 1
     ? 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200'
-    : 'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+    : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
 
 const checkboxClassName =
-  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-[#0d95b5] text-[#0d95b5] focus:ring-2 focus:ring-[#0d95b5]/30 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 const buildTree = (items: TreeNode[], parentId = 0): TreeNode[] =>
   items
@@ -157,8 +149,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr>
+    <td colSpan={colSpan} className="admin-settings-empty">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -168,8 +160,8 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const TreeCheckboxList: React.FC<{
@@ -188,10 +180,10 @@ const TreeCheckboxList: React.FC<{
         <div key={node.menuId} className="ml-3">
           <label
             className={cn(
-              'flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 transition',
+              'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition',
               checked
-                ? 'bg-slate-50 text-slate-900 dark:bg-slate-900/70 dark:text-slate-100'
-                : 'text-slate-700 hover:bg-white dark:text-slate-200 dark:hover:bg-slate-950/80',
+                ? 'bg-[var(--cf-surface-muted)] text-slate-900 dark:bg-slate-900/70 dark:text-slate-100'
+                : 'text-slate-700 hover:bg-[var(--cf-surface-muted)] dark:text-slate-200 dark:hover:bg-slate-950/80',
             )}
           >
             {node.children && node.children.length > 0 ? (
@@ -202,7 +194,7 @@ const TreeCheckboxList: React.FC<{
                   event.stopPropagation();
                   onToggleExpand(node.menuId);
                 }}
-                className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+                className="rounded-md p-1 text-slate-400 transition hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
               >
                 {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </button>
@@ -414,6 +406,39 @@ export const RoleList = () => {
   const canAddRole = hasRolePermission('system:role:add');
   const canEditRole = hasRolePermission('system:role:edit');
   const canRemoveRole = hasRolePermission('system:role:remove');
+  const stats = useMemo(
+    () => [
+      {
+        label: '总角色',
+        value: String(total),
+        meta: `当前页 ${roles.length}`,
+        icon: <Shield size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '正常角色',
+        value: String(roles.filter((role) => role.status === '0').length),
+        meta: '可分配权限',
+        icon: <Shield size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '自定义数据',
+        value: String(roles.filter((role) => Number(role.dsType) === 1).length),
+        meta: '按部门授权',
+        icon: <Building2 size={18} />,
+        tone: 'violet',
+      },
+      {
+        label: '租户范围',
+        value: String(Math.max(tenants.length, 1)),
+        meta: '含默认租户',
+        icon: <Building2 size={18} />,
+        tone: 'amber',
+      },
+    ],
+    [roles, tenants.length, total],
+  );
   const roleNameById = useMemo(() => {
     const map = new Map<number, string>();
     roleOptions.forEach((item) => {
@@ -714,200 +739,234 @@ export const RoleList = () => {
   const tenantNameById = (tenantId?: number) =>
     tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || '默认租户';
 
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">ROLE MANAGEMENT</p>
+          <h2>角色管理</h2>
+          <span>管理角色权限、菜单授权、数据范围和互斥规则</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
+            刷新
+          </Button>
+          {canEditRole ? (
+            <Button variant="outline" size="sm" onClick={handleOpenMutexDialog}>
+              <Shield size={16} />
+              互斥规则
+            </Button>
+          ) : null}
+          {canAddRole ? (
+            <Button size="sm" onClick={() => handleOpenModal()}>
+              <Plus size={16} />
+              新增角色
+            </Button>
+          ) : null}
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={cn('card admin-source-stat', `admin-source-tone-${stat.tone}`)}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form
+        onSubmit={handleSearch}
+        className="admin-users-filter-grid admin-roles-filter-grid"
+      >
+        <label className="admin-source-search">
+          <span className="input-label">搜索角色</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.roleName}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, roleName: event.target.value }))
+              }
+              placeholder="角色名称"
+              type="search"
+            />
+          </div>
+        </label>
+
+        <label>
+          <span className="input-label">权限字符</span>
+          <Input
+            value={filters.roleKey}
+            onChange={(event) =>
+              setFilters((current) => ({ ...current, roleKey: event.target.value }))
+            }
+            placeholder="例如 ADMIN"
+            className="h-[42px] font-mono"
+          />
+        </label>
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">当前 {total} 项</span>
+          <Button type="submit" size="sm">
+            查询
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={clearFilters}
+            disabled={!hasActiveFilters}
+          >
+            重置
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface className="admin-roles-table-panel">
+      <table className="unity-data-table admin-source-table admin-roles-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>角色名称</th>
+              <th>权限字符</th>
+              <th>所属租户</th>
+              <th>排序</th>
+              <th>数据范围</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={8} title="正在加载角色数据..." loading />
+            ) : error ? (
+              <TableStateRow colSpan={8} title="角色数据加载失败" description={error} />
+            ) : roles.length === 0 ? (
+              <TableStateRow colSpan={8} title="暂无角色数据" />
+            ) : (
+              roles.map((role) => (
+                <tr key={role.roleId}>
+                  <td className="text-sm text-slate-500 dark:text-slate-400">
+                    {role.roleId}
+                  </td>
+                  <td>
+                    <div className="admin-roles-name">
+                      <span className="admin-roles-icon">
+                        <Shield size={16} />
+                      </span>
+                      <div className="min-w-0">
+                        <strong>
+                          {role.roleName}
+                        </strong>
+                        <small>
+                          菜单授权 {normalizeNumberList(role.menuIds).length} 项
+                        </small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="admin-roles-code">{role.roleKey}</span>
+                  </td>
+                  <td>
+                    <div className="admin-roles-tenant">
+                      <Building2 size={14} />
+                      <span>{tenantNameById(role.tenantId)}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="admin-roles-order">{role.roleSort}</span>
+                  </td>
+                  <td>
+                    <span
+                      className={cn(
+                        'badge',
+                        Number(role.dsType) === 1 ? 'badge-violet' : 'badge-gray',
+                      )}
+                    >
+                      {dsTypeMap[Number(role.dsType)] || '未设置'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="admin-users-status">
+                      <i className={role.status === '0' ? 'active' : 'disabled'} />
+                      {role.status === '0' ? '正常' : '停用'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      {canEditRole ? (
+                        <button type="button" title="编辑角色" onClick={() => handleOpenModal(role)}>
+                          <Edit size={15} />
+                        </button>
+                      ) : null}
+                      {canRemoveRole ? (
+                        <button
+                          type="button"
+                          className="danger"
+                          title="删除角色"
+                          onClick={() => setPendingDeleteRole(role)}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      onPageChange={(pageNum) =>
+        setQuery((current) => ({ ...current, pageNum }))
+      }
+      onPageSizeChange={(pageSize) =>
+        setQuery((current) => ({
+          ...current,
+          pageNum: 1,
+          pageSize,
+        }))
+      }
+    />
+  ) : null;
+
   return (
     <>
-      <TablePageLayout
-        className="gap-4"
-        filters={
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-1 flex-wrap items-center gap-3"
-            >
-              <div className="relative w-full sm:w-56">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.roleName}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, roleName: event.target.value }))
-                  }
-                  placeholder="搜索角色名称"
-                  className="h-10 pl-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-56">
-                <Input
-                  value={filters.roleKey}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, roleKey: event.target.value }))
-                  }
-                  placeholder="权限字符"
-                  className="h-10 font-mono"
-                />
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              {canEditRole ? (
-                <Button variant="outline" size="sm" onClick={handleOpenMutexDialog}>
-                  <Shield size={15} />
-                  互斥规则
-                </Button>
-              ) : null}
-              {canAddRole ? (
-                <Button size="sm" onClick={() => handleOpenModal()}>
-                  <Plus size={15} />
-                  新增角色
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        }
-        table={(<TableSurfaceCard fill><>
-            <Table className="min-w-[980px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>角色名称</TableHead>
-                  <TableHead>权限字符</TableHead>
-                  <TableHead>所属租户</TableHead>
-                  <TableHead>排序</TableHead>
-                  <TableHead>数据范围</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableActionHead className="w-28">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableStateRow colSpan={8} title="正在加载角色数据..." loading />
-                ) : error ? (
-                  <TableStateRow colSpan={8} title="角色数据加载失败" description={error} />
-                ) : roles.length === 0 ? (
-                  <TableStateRow colSpan={8} title="暂无角色数据" />
-                ) : (
-                  roles.map((role) => (
-                    <TableRow key={role.roleId}>
-                      <TableCell className="text-sm text-slate-500 dark:text-slate-400">
-                        {role.roleId}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-                            <Shield size={16} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                              {role.roleName}
-                            </div>
-                            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                              菜单授权 {normalizeNumberList(role.menuIds).length} 项
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400">
-                        {role.roleKey}
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                        <div className="inline-flex items-center gap-2">
-                          <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
-                          <span>{tenantNameById(role.tenantId)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                        {role.roleSort}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                            getDsTypeClassName(Number(role.dsType)),
-                          )}
-                        >
-                          {dsTypeMap[Number(role.dsType)] || '未设置'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                            getRoleStatusClassName(role.status),
-                          )}
-                        >
-                          {role.status === '0' ? '正常' : '停用'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            {
-                              label: '编辑角色',
-                              icon: <Edit size={15} />,
-                              onClick: () => handleOpenModal(role),
-                              tone: 'neutral',
-                              hidden: !canEditRole,
-                            },
-                            {
-                              label: '删除角色',
-                              icon: <Trash2 size={15} />,
-                              onClick: () => setPendingDeleteRole(role),
-                              tone: 'danger',
-                              hidden: !canRemoveRole,
-                            },
-                          ]}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </></TableSurfaceCard>)}
-        pagination={
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={query.pageNum}
-              pageSize={query.pageSize}
-              onPageChange={(pageNum) =>
-                setQuery((current) => ({ ...current, pageNum }))
-              }
-              onPageSizeChange={(pageSize) =>
-                setQuery((current) => ({
-                  ...current,
-                  pageNum: 1,
-                  pageSize,
-                }))
-              }
-            />
-          ) : null
-        }
-      />
+      <section className="admin-source-page admin-roles-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={isModalOpen}
         title={isEdit ? '编辑角色' : '新增角色'}
         onClose={handleCloseModal}
         maxWidthClassName="max-w-5xl"
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={handleCloseModal}>
@@ -919,19 +978,18 @@ export const RoleList = () => {
           </div>
         }
       >
-        <form id="role-form" onSubmit={handleSubmit} className="space-y-5">
+        <form id="role-form" onSubmit={handleSubmit} className="admin-source-form-grid admin-roles-form-grid">
           {roleDetailLoading ? (
-            <div className="flex items-center gap-2 rounded-xl border border-cyan-100 bg-cyan-50 px-3 py-2 text-sm text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
+            <div className="admin-source-form-wide flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-[#0b7894] dark:border-cyan-900/50 dark:bg-cyan-950/30 dark:text-[#d8f3fa]">
               <LoadingSpinner size="sm" />
               正在加载角色授权...
             </div>
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <label className={fieldLabelClassName}>
+            <div className="admin-dialog-field">
+              <Label>
                 角色名称 <span className="text-rose-500">*</span>
-              </label>
+              </Label>
               <Input
                 value={formData.roleName}
                 onChange={(event) =>
@@ -941,10 +999,10 @@ export const RoleList = () => {
               />
             </div>
 
-            <div>
-              <label className={fieldLabelClassName}>
+            <div className="admin-dialog-field">
+              <Label>
                 权限字符 <span className="text-rose-500">*</span>
-              </label>
+              </Label>
               <Input
                 value={formData.roleKey}
                 onChange={(event) =>
@@ -954,8 +1012,8 @@ export const RoleList = () => {
               />
             </div>
 
-            <div>
-              <label className={fieldLabelClassName}>显示排序</label>
+            <div className="admin-dialog-field">
+              <Label>显示排序</Label>
               <Input
                 type="number"
                 value={String(formData.roleSort)}
@@ -969,8 +1027,8 @@ export const RoleList = () => {
               />
             </div>
 
-            <div>
-              <label className={fieldLabelClassName}>所属租户</label>
+            <div className="admin-dialog-field">
+              <Label>所属租户</Label>
               <Select
                 value={formData.tenantId ? String(formData.tenantId) : DEFAULT_TENANT_VALUE}
                 onValueChange={(value) =>
@@ -993,11 +1051,9 @@ export const RoleList = () => {
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className={fieldLabelClassName}>状态</label>
+            <div className="admin-dialog-field">
+              <Label>状态</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) =>
@@ -1014,8 +1070,8 @@ export const RoleList = () => {
               </Select>
             </div>
 
-            <div>
-              <label className={fieldLabelClassName}>数据权限范围</label>
+            <div className="admin-dialog-field">
+              <Label>数据权限范围</Label>
               <Select
                 value={String(formData.dsType)}
                 onValueChange={(value) => {
@@ -1039,59 +1095,71 @@ export const RoleList = () => {
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {formData.dsType === 1 ? (
-            <div>
-              <label className={fieldLabelClassName}>自定义部门范围</label>
-              <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-                {deptTree.length > 0 ? (
+          <section className="admin-source-form-wide admin-roles-permission-grid">
+            {formData.dsType === 1 ? (
+              <div className="admin-roles-tree-card">
+                <div className="admin-source-section-head">
+                  <div>
+                    <strong>自定义部门范围</strong>
+                    <span>控制该角色可以查看的数据组织边界</span>
+                  </div>
+                </div>
+                <div className="admin-roles-tree-panel">
+                  {deptTree.length > 0 ? (
+                    <TreeCheckboxList
+                      nodes={deptTree}
+                      expandedKeys={expandedDeptKeys}
+                      onToggleExpand={(id) =>
+                        setExpandedDeptKeys((current) =>
+                          current.includes(id)
+                            ? current.filter((item) => item !== id)
+                            : [...current, id],
+                        )
+                      }
+                      isChecked={(id) => parseIds(formData.dsScope).includes(id)}
+                      onToggleCheck={toggleDeptCheck}
+                    />
+                  ) : (
+                    <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                      暂无部门数据
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="admin-roles-tree-card">
+              <div className="admin-source-section-head">
+                <div>
+                  <strong>菜单权限</strong>
+                  <span>勾选后将同步包含下级菜单节点</span>
+                </div>
+                <span className="admin-users-filter-count">已选 {formData.menuIds.length} 项</span>
+              </div>
+              <div className="admin-roles-tree-panel admin-roles-menu-tree">
+                {menuTree.length > 0 ? (
                   <TreeCheckboxList
-                    nodes={deptTree}
-                    expandedKeys={expandedDeptKeys}
+                    nodes={menuTree}
+                    expandedKeys={expandedKeys}
                     onToggleExpand={(id) =>
-                      setExpandedDeptKeys((current) =>
+                      setExpandedKeys((current) =>
                         current.includes(id)
                           ? current.filter((item) => item !== id)
                           : [...current, id],
                       )
                     }
-                    isChecked={(id) => parseIds(formData.dsScope).includes(id)}
-                    onToggleCheck={toggleDeptCheck}
+                    isChecked={(id) => formData.menuIds.includes(id)}
+                    onToggleCheck={roleDetailLoading ? () => undefined : toggleMenuCheck}
                   />
                 ) : (
                   <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
-                    暂无部门数据
+                    暂无菜单数据
                   </div>
                 )}
               </div>
             </div>
-          ) : null}
-
-          <div>
-            <label className={fieldLabelClassName}>菜单权限</label>
-            <div className="max-h-[28rem] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-              {menuTree.length > 0 ? (
-                <TreeCheckboxList
-                  nodes={menuTree}
-                  expandedKeys={expandedKeys}
-                  onToggleExpand={(id) =>
-                    setExpandedKeys((current) =>
-                      current.includes(id)
-                        ? current.filter((item) => item !== id)
-                        : [...current, id],
-                    )
-                  }
-                  isChecked={(id) => formData.menuIds.includes(id)}
-                  onToggleCheck={roleDetailLoading ? () => undefined : toggleMenuCheck}
-                />
-              ) : (
-                <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
-                  暂无菜单数据
-                </div>
-              )}
-            </div>
-          </div>
+          </section>
         </form>
       </BaseDialog>
 
@@ -1100,6 +1168,7 @@ export const RoleList = () => {
         title="角色互斥规则"
         onClose={handleCloseMutexDialog}
         maxWidthClassName="max-w-4xl"
+        bodyClassName="admin-dialog-stack"
         footer={
           <div className="flex justify-end">
             <Button variant="outline" onClick={handleCloseMutexDialog}>
@@ -1108,108 +1177,111 @@ export const RoleList = () => {
           </div>
         }
       >
-        <div className="space-y-5">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/60">
-            <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">新增互斥规则</div>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <div className="admin-dialog-stack admin-roles-mutex-dialog">
+          <section className="card admin-source-panel no-padding">
+            <div className="admin-source-section-head admin-roles-mutex-head">
               <div>
-                <label className={fieldLabelClassName}>角色 A</label>
-                <Select
-                  value={mutexForm.roleId1}
-                  onValueChange={(value) => setMutexForm((current) => ({ ...current, roleId1: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择角色 A" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={EMPTY_SELECT_VALUE}>请选择角色 A</SelectItem>
-                    {roleOptions.map((role) => (
-                      <SelectItem key={`mutex-role-1-${role.roleId}`} value={String(role.roleId)}>
-                        {role.roleName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className={fieldLabelClassName}>角色 B</label>
-                <Select
-                  value={mutexForm.roleId2}
-                  onValueChange={(value) => setMutexForm((current) => ({ ...current, roleId2: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择角色 B" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={EMPTY_SELECT_VALUE}>请选择角色 B</SelectItem>
-                    {roleOptions.map((role) => (
-                      <SelectItem key={`mutex-role-2-${role.roleId}`} value={String(role.roleId)}>
-                        {role.roleName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-end">
-                <Button onClick={handleAddMutexRule} disabled={mutexLoading}>
-                  <Plus size={15} />
-                  添加规则
-                </Button>
+                <strong>新增互斥规则</strong>
+                <span>互斥角色 = 不能同时授予同一用户的角色组合。</span>
               </div>
             </div>
-            <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-              互斥角色 = 不能同时授予同一用户的角色组合。
-            </div>
-          </div>
+            <div className="admin-roles-mutex-body">
+              <div className="admin-roles-mutex-grid">
+                <div className="admin-dialog-field">
+                  <Label>角色 A</Label>
+                  <Select
+                    value={mutexForm.roleId1}
+                    onValueChange={(value) => setMutexForm((current) => ({ ...current, roleId1: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择角色 A" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={EMPTY_SELECT_VALUE}>请选择角色 A</SelectItem>
+                      {roleOptions.map((role) => (
+                        <SelectItem key={`mutex-role-1-${role.roleId}`} value={String(role.roleId)}>
+                          {role.roleName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-            <Table className="min-w-[680px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>角色 A</TableHead>
-                  <TableHead>角色 B</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableActionHead className="w-24">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                <div className="admin-dialog-field">
+                  <Label>角色 B</Label>
+                  <Select
+                    value={mutexForm.roleId2}
+                    onValueChange={(value) => setMutexForm((current) => ({ ...current, roleId2: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择角色 B" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={EMPTY_SELECT_VALUE}>请选择角色 B</SelectItem>
+                      {roleOptions.map((role) => (
+                        <SelectItem key={`mutex-role-2-${role.roleId}`} value={String(role.roleId)}>
+                          {role.roleName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-end">
+                  <Button onClick={handleAddMutexRule} disabled={mutexLoading}>
+                    <Plus size={15} />
+                    添加规则
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <InnerTableSurface className="admin-roles-mutex-table-panel">
+            <table className="unity-data-table admin-source-table admin-roles-mutex-table">
+              <thead>
+                <tr>
+                  <th>角色 A</th>
+                  <th>角色 B</th>
+                  <th>创建时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
                 {mutexLoading ? (
                   <TableStateRow colSpan={4} title="正在加载互斥规则..." loading />
                 ) : mutexRules.length === 0 ? (
                   <TableStateRow colSpan={4} title="暂无互斥规则" description="当前租户还没有配置角色互斥约束。" />
                 ) : (
                   mutexRules.map((rule) => (
-                    <TableRow key={rule.id}>
-                      <TableCell className="text-sm text-slate-700 dark:text-slate-200">
+                    <tr key={rule.id}>
+                      <td className="text-sm text-slate-700 dark:text-slate-200">
                         {roleNameById.get(rule.roleId1) || `角色 #${rule.roleId1}`}
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-700 dark:text-slate-200">
+                      </td>
+                      <td className="text-sm text-slate-700 dark:text-slate-200">
                         {roleNameById.get(rule.roleId2) || `角色 #${rule.roleId2}`}
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-500 dark:text-slate-400">
+                      </td>
+                      <td className="text-sm text-slate-500 dark:text-slate-400">
                         {rule.createTime || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            {
-                              label: '删除规则',
-                              icon: <Trash2 size={15} />,
-                              onClick: () => setPendingDeleteMutexRule(rule),
-                              tone: 'danger',
-                            },
-                          ]}
-                        />
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                      <td>
+                        <div className="admin-users-row-actions">
+                          <button
+                            type="button"
+                            className="danger"
+                            title="删除规则"
+                            onClick={() => setPendingDeleteMutexRule(rule)}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))
                 )}
-              </TableBody>
-            </Table>
-          </div>
+              </tbody>
+            </table>
+          </InnerTableSurface>
         </div>
       </BaseDialog>
 

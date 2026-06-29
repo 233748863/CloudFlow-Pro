@@ -15,28 +15,21 @@ import {
   type UserBlacklistStatus,
 } from '@/services/api/acl';
 import { BaseDialog, ConfirmDialog, Pagination, UserSelector } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
   Input,
+  Label,
   LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const ALL_VALUE = '__all__';
 
@@ -52,10 +45,8 @@ const STATUS_BADGE: Record<UserBlacklistStatus, string> = {
   ACTIVE:
     'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200',
   INACTIVE:
-    'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
+    'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
 };
-
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -63,8 +54,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent dark:hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -74,8 +65,8 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 export const UserBlacklistPage = () => {
@@ -219,182 +210,247 @@ export const UserBlacklistPage = () => {
     }
   };
 
+  const stats = useMemo(
+    () => [
+      {
+        label: '黑名单总数',
+        value: String(total),
+        meta: `当前页 ${rows.length}`,
+        icon: <UserX size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '生效中',
+        value: String(rows.filter((row) => row.status === 'ACTIVE').length),
+        meta: '禁止登录',
+        icon: <ShieldOff size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '已解除',
+        value: String(rows.filter((row) => row.status === 'INACTIVE').length),
+        meta: '恢复登录',
+        icon: <ShieldOff size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '长期限制',
+        value: String(rows.filter((row) => !row.expireAt).length),
+        meta: '无过期时间',
+        icon: <Trash2 size={18} />,
+        tone: 'violet',
+      },
+    ],
+    [rows, total],
+  );
+
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">USER BLACKLIST</p>
+          <h2>用户黑名单</h2>
+          <span>管理拉黑用户、限制原因、过期时间和解除状态</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void fetchRows()} disabled={loading}>
+            <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
+            刷新
+          </Button>
+          <Button size="sm" onClick={() => handleOpenModal()}>
+            <Plus size={16} />
+            拉黑用户
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form onSubmit={handleSearch} className="admin-user-blacklist-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">搜索用户</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.keyword}
+              onChange={(e) =>
+                setFilters((c) => ({ ...c, keyword: e.target.value }))
+              }
+              placeholder="用户名或原因"
+              type="search"
+            />
+          </div>
+        </label>
+
+        <label>
+          <span className="input-label">状态</span>
+          <Select
+            value={filters.status || ALL_VALUE}
+            onValueChange={(v) =>
+              setFilters((c) => ({ ...c, status: v === ALL_VALUE ? '' : (v as UserBlacklistStatus) }))
+            }
+          >
+            <SelectTrigger className="h-[42px]">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
+              <SelectItem value="ACTIVE">生效中</SelectItem>
+              <SelectItem value="INACTIVE">已解除</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">当前 {total} 项</span>
+          <Button type="submit" size="sm">
+            查询
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={!hasActiveFilters}
+          >
+            <RotateCcw size={14} />
+            重置
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface className="admin-user-blacklist-table-panel">
+      <table className="unity-data-table admin-source-table admin-user-blacklist-table min-w-[960px]">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>用户</th>
+              <th>原因</th>
+              <th>过期时间</th>
+              <th>操作人</th>
+              <th>状态</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={7} title="正在加载用户黑名单..." loading />
+            ) : error ? (
+              <TableStateRow colSpan={7} title="加载失败" description={error} />
+            ) : rows.length === 0 ? (
+              <TableStateRow colSpan={7} title="暂无黑名单记录" />
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id}>
+                  <td className="text-sm text-slate-500 dark:text-slate-400">{row.id}</td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <UserX size={14} className="text-rose-500" />
+                      <span className="font-medium">{row.userName || `#${row.userId}`}</span>
+                    </div>
+                  </td>
+                  <td className="text-xs text-slate-600 dark:text-slate-300">{row.reason || '—'}</td>
+                  <td>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {row.expireAt ? formatDateTimeDisplay(row.expireAt) : '长期'}
+                    </span>
+                  </td>
+                  <td className="text-xs text-slate-500 dark:text-slate-400">{row.opUserName || '—'}</td>
+                  <td>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-md px-2.5 py-1 text-xs font-medium',
+                        STATUS_BADGE[row.status],
+                      )}
+                    >
+                      {row.status === 'ACTIVE' ? '生效中' : '已解除'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      {row.status === 'ACTIVE' ? (
+                        <button type="button" title="解除拉黑" onClick={() => handleUnban(row)}>
+                          <ShieldOff size={15} />
+                        </button>
+                      ) : null}
+                      <button type="button" title="编辑记录" onClick={() => handleOpenModal(row)}>
+                        <Edit size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        title="删除记录"
+                        onClick={() => setPendingDelete(row)}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      total={total}
+      onPageChange={(pageNum) => setQuery((c) => ({ ...c, pageNum }))}
+      onPageSizeChange={(pageSize) => setQuery((c) => ({ ...c, pageNum: 1, pageSize }))}
+    />
+  ) : null;
+
   return (
     <>
-      <TablePageLayout
-        className="gap-3"
-        filters={(
-          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-64">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.keyword}
-                  onChange={(e) =>
-                    setFilters((c) => ({ ...c, keyword: e.target.value }))
-                  }
-                  placeholder="搜索用户名/原因"
-                  className="h-10 pl-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-36">
-                <Select
-                  value={filters.status || ALL_VALUE}
-                  onValueChange={(v) =>
-                    setFilters((c) => ({ ...c, status: v === ALL_VALUE ? '' : (v as UserBlacklistStatus) }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
-                    <SelectItem value="ACTIVE">生效中</SelectItem>
-                    <SelectItem value="INACTIVE">已解除</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  <RotateCcw size={14} />
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => void fetchRows()} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={() => handleOpenModal()}>
-                <Plus size={15} />
-                拉黑用户
-              </Button>
-            </div>
-          </div>
-        )}
-        table={(
-          <TableSurfaceCard fill>
-            <>
-              <div className="overflow-x-auto">
-                <Table className="min-w-[960px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>用户</TableHead>
-                      <TableHead>原因</TableHead>
-                      <TableHead>过期时间</TableHead>
-                      <TableHead>操作人</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableActionHead className="w-40">操作</TableActionHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableStateRow colSpan={7} title="正在加载用户黑名单..." loading />
-                    ) : error ? (
-                      <TableStateRow colSpan={7} title="加载失败" description={error} />
-                    ) : rows.length === 0 ? (
-                      <TableStateRow colSpan={7} title="暂无黑名单记录" />
-                    ) : (
-                      rows.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell className="text-sm text-slate-500 dark:text-slate-400">
-                            {row.id}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <UserX size={14} className="text-rose-500" />
-                              <span className="font-medium">{row.userName || `#${row.userId}`}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-600 dark:text-slate-300">
-                            {row.reason || '—'}
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {row.expireAt ? formatDateTimeDisplay(row.expireAt) : '长期'}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-500 dark:text-slate-400">
-                            {row.opUserName || '—'}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={cn(
-                                'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                                STATUS_BADGE[row.status],
-                              )}
-                            >
-                              {row.status === 'ACTIVE' ? '生效中' : '已解除'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <TableRowActions
-                              align="end"
-                              actions={[
-                                ...(row.status === 'ACTIVE'
-                                  ? [
-                                      {
-                                        label: '解除拉黑',
-                                        icon: <ShieldOff size={15} />,
-                                        onClick: () => handleUnban(row),
-                                        tone: 'success' as const,
-                                      },
-                                    ]
-                                  : []),
-                                {
-                                  label: '编辑记录',
-                                  icon: <Edit size={15} />,
-                                  onClick: () => handleOpenModal(row),
-                                  tone: 'neutral',
-                                },
-                                {
-                                  label: '删除记录',
-                                  icon: <Trash2 size={15} />,
-                                  onClick: () => setPendingDelete(row),
-                                  tone: 'danger',
-                                },
-                              ]}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              <Pagination
-                page={query.pageNum}
-                pageSize={query.pageSize}
-                total={total}
-                onPageChange={(pageNum) => setQuery((c) => ({ ...c, pageNum }))}
-                onPageSizeChange={(pageSize) => setQuery((c) => ({ ...c, pageNum: 1, pageSize }))}
-              />
-            </>
-          </TableSurfaceCard>
-        )}
-      />
+      <section className="admin-source-page admin-user-blacklist-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={isModalOpen}
         onClose={handleCloseModal}
         title={editing ? '编辑黑名单' : '拉黑用户'}
         width="normal"
+        bodyClassName="admin-dialog-stack"
+        footer={(
+          <>
+            <Button type="button" variant="outline" onClick={handleCloseModal}>
+              取消
+            </Button>
+            <Button type="submit" form="user-blacklist-form">{editing ? '保存修改' : '拉黑'}</Button>
+          </>
+        )}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className={fieldLabelClassName}>用户 *</label>
+        <form id="user-blacklist-form" onSubmit={handleSubmit} className="admin-dialog-stack">
+          <div className="admin-dialog-field">
+            <Label>用户 *</Label>
             <UserSelector
               single
               value={formData.userId ? String(formData.userId) : ''}
@@ -409,8 +465,8 @@ export const UserBlacklistPage = () => {
               placeholder="选择要拉黑的用户"
             />
           </div>
-          <div>
-            <label className={fieldLabelClassName}>过期时间 (可选, 留空= 长期)</label>
+          <div className="admin-dialog-field">
+            <Label>过期时间 (可选, 留空= 长期)</Label>
             <DatePicker
               type="datetime-local"
               value={formData.expireAt ? toLocalDatetimeString(formData.expireAt) : ''}
@@ -422,8 +478,8 @@ export const UserBlacklistPage = () => {
               }
             />
           </div>
-          <div>
-            <label className={fieldLabelClassName}>状态</label>
+          <div className="admin-dialog-field">
+            <Label>状态</Label>
             <Select
               value={formData.status}
               onValueChange={(v) => setFormData((c) => ({ ...c, status: v as UserBlacklistStatus }))}
@@ -437,20 +493,14 @@ export const UserBlacklistPage = () => {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <label className={fieldLabelClassName}>原因</label>
+          <div className="admin-dialog-field">
+            <Label>原因</Label>
             <Textarea
               rows={3}
               value={formData.reason || ''}
               onChange={(e) => setFormData((c) => ({ ...c, reason: e.target.value }))}
               placeholder="请说明拉黑原因, 例如: 风控告警 / 离职封禁 / 异常登录"
             />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={handleCloseModal}>
-              取消
-            </Button>
-            <Button type="submit">{editing ? '保存修改' : '拉黑'}</Button>
           </div>
         </form>
       </BaseDialog>

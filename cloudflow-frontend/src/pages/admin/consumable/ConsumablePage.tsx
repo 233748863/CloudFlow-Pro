@@ -9,6 +9,7 @@ import {
   History,
   Loader2,
   Package,
+  Search,
   ShoppingCart,
   Plus,
   RotateCcw,
@@ -18,24 +19,20 @@ import { toast } from "sonner";
 import { BaseDialog } from "@/components/common/BaseDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Pagination } from "@/components/common/Pagination";
-import { TablePageLayout, TableSurfaceCard } from "@/components/layout/TablePageLayout";
-import { FilterBar } from "@/components/layout";
+import { InnerTableSurface, TablePageLayout } from "@/components/layout/TablePageLayout";
 import {
   Button,
   DatePicker,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
   Switch,
 } from "@/components/common";
-import { TableRowActions } from "@/components/common/table-row-actions";
 import {
   consumableApi,
   Consumable,
@@ -135,6 +132,17 @@ const ConsumablePage: React.FC = () => {
     () => list.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
     [list],
   );
+  const warnEnabledCount = useMemo(
+    () => list.filter((item) => Number(item.warnEnabled ?? 1) === 1).length,
+    [list],
+  );
+  const hasActiveFilters = Boolean(searchParams.name);
+  const metrics = [
+    { label: "耗材", value: String(total), meta: `当前页 ${list.length}`, icon: <Package size={18} />, tone: "blue" },
+    { label: "库存量", value: String(totalQuantity), meta: "当前页合计", icon: <ArrowUpCircle size={18} />, tone: "green" },
+    { label: "低库存", value: String(lowStockCount), meta: "触发补货", icon: <AlertTriangle size={18} />, tone: "red" },
+    { label: "预警项", value: String(warnEnabledCount), meta: `第 ${searchParams.pageNum}/${totalPages} 页`, icon: <ShoppingCart size={18} />, tone: "amber" },
+  ];
 
   const handleSearch = () => {
     setSearchParams((prev) => ({
@@ -326,73 +334,96 @@ const ConsumablePage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-4"
-        filters={
-          <FilterBar
-            search={{
-              value: searchName,
-              onChange: setSearchName,
-              onSubmit: handleSearch,
-              placeholder: '搜索耗材名称',
-              widthClassName: 'w-full sm:w-[280px]',
-            }}
-            stats={[
-              { label: '', value: `第 ${searchParams.pageNum} / ${totalPages} 页` },
-              { label: '', value: `共 ${total} 条` },
-              { label: '', value: `当前页库存 ${totalQuantity}` },
-              { label: '', value: `低库存 ${lowStockCount} 项` },
-            ]}
-            actions={[
-              <Button key="search" variant="outline" size="sm" onClick={handleSearch}>
-                搜索
-              </Button>,
-              <Button key="reset" variant="outline" size="sm" onClick={handleReset}>
-                <RotateCcw size={14} className="mr-1.5" />
-                清空条件
-              </Button>,
-              <Button key="suggestion" variant="outline" size="sm" onClick={() => void openSuggestion()}>
-                <ShoppingCart size={14} className="mr-1.5" />
+  const pageActions = (
+    <>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">CONSUMABLES</p>
+            <h2>耗材管理</h2>
+            <span>维护耗材库存、预警阈值、供应商、入库出库和补货建议</span>
+          </div>
+          <div className="admin-source-controls">
+              <Button variant="outline" size="sm" onClick={() => void openSuggestion()}>
+                <ShoppingCart size={16} />
                 补货建议
-              </Button>,
-              <Button key="add" size="sm" onClick={handleAdd} disabled={!hasPermission('oa:consumable:add')}>
-                <Plus size={14} className="mr-1.5" />
+              </Button>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:consumable:add')}>
+                <Plus size={16} />
                 新增耗材
-              </Button>,
-            ]}
-          />
-        }
-        table={(<TableSurfaceCard><div className="min-h-[38rem] overflow-x-auto">
-            <table className="w-full min-w-[980px]">
-              <TableHeader className="sticky top-0 z-10">
+              </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid">
+          {metrics.map((metric) => (
+            <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+              <div className="admin-source-stat-icon">{metric.icon}</div>
+              <div>
+                <p>{metric.label}</p>
+                <strong>{metric.value}</strong>
+                <span>{metric.meta}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar">
+          <div className="admin-oa-filter-grid">
+            <label>
+              <span className="input-label">耗材名称</span>
+              <div className="admin-source-search-field">
+                <Search size={16} />
+                <Input
+                  value={searchName}
+                  onChange={(event) => setSearchName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") handleSearch();
+                  }}
+                  placeholder="搜索耗材名称"
+                  className="h-[42px]"
+                />
+              </div>
+            </label>
+            <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">{hasActiveFilters ? searchParams.name : "全部耗材"}</span>
+              <Button variant="outline" size="sm" onClick={handleSearch}>
+                <Search size={14} />
+                搜索
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasActiveFilters}>
+                <RotateCcw size={14} />
+                重置
+              </Button>
+            </div>
+          </div>
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
+            <table className="unity-data-table admin-source-table min-w-[980px]">
+              <thead>
                 <tr>
-                  <TableHead className="px-4 py-3 text-left">耗材</TableHead>
-                  <TableHead className="px-4 py-3 text-left">型号</TableHead>
-                  <TableHead className="px-4 py-3 text-left">单位</TableHead>
-                  <TableHead className="px-4 py-3 text-center">库存</TableHead>
-                  <TableHead className="px-4 py-3 text-center">
-                    预警阈值
-                  </TableHead>
-                  <TableHead className="px-4 py-3 text-center">
-                    目标库存
-                  </TableHead>
-                  <TableHead className="px-4 py-3 text-left">
-                    默认供应商
-                  </TableHead>
-                  <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                  <TableActionHead className="w-44 px-4 py-3 text-right">
-                    操作
-                  </TableActionHead>
+                  <th>耗材</th>
+                  <th>型号</th>
+                  <th>单位</th>
+                  <th className="text-center">库存</th>
+                  <th className="text-center">预警阈值</th>
+                  <th className="text-center">目标库存</th>
+                  <th>默认供应商</th>
+                  <th>状态</th>
+                  <th className="text-right">当前操作</th>
                 </tr>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              </thead>
+              <tbody>
                 {loading ? (
                   <tr>
                     <td
                       colSpan={9}
-                      className="px-4 py-16 text-center text-sm text-slate-500"
+                      className="px-4 py-10 text-center text-sm text-slate-500"
                     >
                       正在加载耗材...
                     </td>
@@ -401,18 +432,15 @@ const ConsumablePage: React.FC = () => {
                   <tr>
                     <td
                       colSpan={9}
-                      className="px-4 py-16 text-center text-sm text-slate-500"
+                      className="px-4 py-10 text-center text-sm text-slate-500"
                     >
                       暂无耗材
                     </td>
                   </tr>
                 ) : (
                   list.map((item) => (
-                    <tr
-                      key={item.consumableId}
-                      className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60"
-                    >
-                      <td className="px-4 py-3">
+                    <tr key={item.consumableId}>
+                      <td>
                         <div className="font-medium text-slate-900 dark:text-slate-100">
                           {item.name}
                         </div>
@@ -420,13 +448,13 @@ const ConsumablePage: React.FC = () => {
                           ID {item.consumableId || "-"}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      <td>
                         {item.model || "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      <td>
                         {item.unit || "-"}
                       </td>
-                      <td className="px-4 py-3 text-center text-sm">
+                      <td className="text-center">
                         <span
                           className={
                             isLowStock(item)
@@ -437,87 +465,50 @@ const ConsumablePage: React.FC = () => {
                           {item.quantity ?? 0}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center text-sm text-slate-600 dark:text-slate-300">
+                      <td className="text-center">
                         {item.lowStockThreshold ?? "-"}
                       </td>
-                      <td className="px-4 py-3 text-center text-sm text-slate-600 dark:text-slate-300">
+                      <td className="text-center">
                         {item.targetStock ?? "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      <td>
                         {suppliers.find((supplier) => supplier.supplierId === item.defaultSupplierId)?.supplierName || "-"}
                       </td>
-                      <td className="px-4 py-3">
+                      <td>
                         {Number(item.warnEnabled ?? 1) !== 1 ? (
-                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                          <span className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                             未预警
                           </span>
                         ) : isLowStock(item) ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
+                          <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
                             <AlertTriangle size={12} />
                             库存不足
                           </span>
                         ) : (
-                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+                          <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
                             正常
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            {
-                              label: "采购",
-                              icon: <ShoppingCart size={14} />,
-                              onClick: () => void openSuggestion(item),
-                              tone: "primary",
-                              hidden: !isLowStock(item),
-                            },
-                            {
-                              label: "入库",
-                              icon: <ArrowUpCircle size={14} />,
-                              onClick: () => openStockModal(item, "add"),
-                              tone: "success",
-                              permissionKey: "oa:consumable:add-stock",
-                            },
-                            {
-                              label: "出库",
-                              icon: <ArrowDownCircle size={14} />,
-                              onClick: () => openStockModal(item, "reduce"),
-                              tone: "warning",
-                              permissionKey: "oa:consumable:reduce-stock",
-                            },
-                            {
-                              label: "流水",
-                              icon: <History size={14} />,
-                              onClick: () => void openLogs(item),
-                              tone: "info",
-                            },
-                            {
-                              label: "编辑",
-                              icon: <Edit size={14} />,
-                              onClick: () => handleEdit(item),
-                              tone: "primary",
-                              permissionKey: "oa:consumable:edit",
-                            },
-                            {
-                              label: "删除",
-                              icon: <Trash2 size={14} />,
-                              onClick: () => setDeleteTarget(item),
-                              tone: "danger",
-                              permissionKey: "oa:consumable:remove",
-                            },
-                          ]}
-                        />
+                      <td>
+                        <div className="admin-users-row-actions">
+                          {isLowStock(item) ? <button type="button" title="采购" aria-label="采购" onClick={() => void openSuggestion(item)}><ShoppingCart size={15} /></button> : null}
+                          {hasPermission("oa:consumable:add-stock") ? <button type="button" title="入库" aria-label="入库" onClick={() => openStockModal(item, "add")}><ArrowUpCircle size={15} /></button> : null}
+                          {hasPermission("oa:consumable:reduce-stock") ? <button type="button" title="出库" aria-label="出库" onClick={() => openStockModal(item, "reduce")}><ArrowDownCircle size={15} /></button> : null}
+                          <button type="button" title="流水" aria-label="流水" onClick={() => void openLogs(item)}><History size={15} /></button>
+                          {hasPermission("oa:consumable:edit") ? <button type="button" title="编辑" aria-label="编辑" onClick={() => handleEdit(item)}><Edit size={15} /></button> : null}
+                          {hasPermission("oa:consumable:remove") ? <button type="button" title="删除" aria-label="删除" onClick={() => setDeleteTarget(item)}><Trash2 size={15} /></button> : null}
+                        </div>
                       </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
-          </div></TableSurfaceCard>)}
-        pagination={
-          total > 0 ? (
+        </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
             <Pagination
               total={total}
               page={searchParams.pageNum}
@@ -529,9 +520,18 @@ const ConsumablePage: React.FC = () => {
               }
               onPageSizeChange={() => {}}
             />
-          ) : null
-        }
-      />
+  ) : null;
+
+  return (
+    <>
+      <section className="admin-source-page consumable-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showForm}
@@ -543,6 +543,7 @@ const ConsumablePage: React.FC = () => {
         }
         onClose={() => setShowForm(false)}
         width="wide"
+        bodyClassName="admin-dialog-stack"
         footer={
           <>
             <Button variant="outline" onClick={() => setShowForm(false)}>
@@ -558,10 +559,8 @@ const ConsumablePage: React.FC = () => {
         }
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              耗材名称
-            </label>
+          <div className="admin-dialog-field">
+            <Label>耗材名称</Label>
             <Input
               value={formData.name}
               onChange={(event) =>
@@ -570,10 +569,8 @@ const ConsumablePage: React.FC = () => {
               placeholder="请输入耗材名称"
             />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              型号
-            </label>
+          <div className="admin-dialog-field">
+            <Label>型号</Label>
             <Input
               value={formData.model || ""}
               onChange={(event) =>
@@ -582,10 +579,8 @@ const ConsumablePage: React.FC = () => {
               placeholder="如 70g/500张"
             />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              单位
-            </label>
+          <div className="admin-dialog-field">
+            <Label>单位</Label>
             <Input
               value={formData.unit || ""}
               onChange={(event) =>
@@ -594,10 +589,8 @@ const ConsumablePage: React.FC = () => {
               placeholder="如 个/箱/包"
             />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              低库存预警
-            </label>
+          <div className="admin-dialog-field">
+            <Label>低库存预警</Label>
             <Input
               type="number"
               min={0}
@@ -611,10 +604,8 @@ const ConsumablePage: React.FC = () => {
               }
             />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              目标库存
-            </label>
+          <div className="admin-dialog-field">
+            <Label>目标库存</Label>
             <Input
               type="number"
               min={0}
@@ -627,10 +618,8 @@ const ConsumablePage: React.FC = () => {
               }
             />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              默认供应商
-            </label>
+          <div className="admin-dialog-field">
+            <Label>默认供应商</Label>
             <Select
               value={formData.defaultSupplierId ? String(formData.defaultSupplierId) : "NONE"}
               onValueChange={(value) =>
@@ -653,7 +642,7 @@ const ConsumablePage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800">
+          <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70 md:col-span-2">
             <div>
               <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 启用库存预警
@@ -677,6 +666,7 @@ const ConsumablePage: React.FC = () => {
         title={suggestionTarget ? `补货采购 - ${suggestionTarget.name}` : "补货建议"}
         onClose={() => setShowSuggestionModal(false)}
         width="wide"
+        bodyClassName="admin-dialog-stack"
         footer={
           <>
             <Button variant="outline" onClick={() => setShowSuggestionModal(false)}>
@@ -689,12 +679,10 @@ const ConsumablePage: React.FC = () => {
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                供应商
-              </label>
+            <div className="admin-dialog-field md:col-span-2">
+              <Label>供应商</Label>
               <Select
                 value={suggestionSupplierId ? String(suggestionSupplierId) : "AUTO"}
                 onValueChange={(value) => setSuggestionSupplierId(value === "AUTO" ? undefined : Number(value))}
@@ -712,10 +700,8 @@ const ConsumablePage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                期望到货日期
-              </label>
+            <div className="admin-dialog-field">
+              <Label>期望到货日期</Label>
               <DatePicker
                 type="date"
                 value={suggestionExpectedDate}
@@ -724,29 +710,27 @@ const ConsumablePage: React.FC = () => {
               />
             </div>
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              采购事由
-            </label>
+          <div className="admin-dialog-field">
+            <Label>采购事由</Label>
             <Textarea
               value={suggestionReason}
               onChange={(event) => setSuggestionReason(event.target.value)}
               rows={3}
             />
           </div>
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-            <table className="w-full min-w-[760px]">
-              <TableHeader>
+          <div className="admin-horizontal-scroll">
+            <table className="unity-data-table admin-source-table min-w-[760px]">
+              <thead>
                 <tr>
-                  <TableHead className="px-4 py-3 text-left">耗材</TableHead>
-                  <TableHead className="px-4 py-3 text-center">库存</TableHead>
-                  <TableHead className="px-4 py-3 text-center">阈值</TableHead>
-                  <TableHead className="px-4 py-3 text-center">目标</TableHead>
-                  <TableHead className="px-4 py-3 text-center">建议采购</TableHead>
-                  <TableHead className="px-4 py-3 text-left">默认供应商</TableHead>
+                  <th>耗材</th>
+                  <th className="text-center">库存</th>
+                  <th className="text-center">阈值</th>
+                  <th className="text-center">目标</th>
+                  <th className="text-center">建议采购</th>
+                  <th>默认供应商</th>
                 </tr>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              </thead>
+              <tbody>
                 {suggestionLoading ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
@@ -761,17 +745,17 @@ const ConsumablePage: React.FC = () => {
                   </tr>
                 ) : suggestions.map((item) => (
                   <tr key={item.consumableId}>
-                    <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
+                    <td>
                       {item.name}
                       <div className="mt-1 text-xs text-slate-400">{item.model || "-"} / {item.unit || "-"}</div>
                     </td>
-                    <td className="px-4 py-3 text-center text-sm text-slate-600">{item.quantity ?? 0}</td>
-                    <td className="px-4 py-3 text-center text-sm text-slate-600">{item.lowStockThreshold ?? 0}</td>
-                    <td className="px-4 py-3 text-center text-sm text-slate-600">{item.targetStock ?? 0}</td>
-                    <td className="px-4 py-3 text-center text-sm font-semibold text-cyan-700 dark:text-cyan-200">
+                    <td className="text-center">{item.quantity ?? 0}</td>
+                    <td className="text-center">{item.lowStockThreshold ?? 0}</td>
+                    <td className="text-center">{item.targetStock ?? 0}</td>
+                    <td className="text-center font-semibold text-cyan-700 dark:text-cyan-200">
                       {item.suggestedQuantity ?? 0}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{item.defaultSupplierName || "-"}</td>
+                    <td>{item.defaultSupplierName || "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -786,6 +770,7 @@ const ConsumablePage: React.FC = () => {
         description={`当前库存：${currentItem?.quantity ?? 0} ${currentItem?.unit || "个"}`}
         onClose={() => setShowStockModal(false)}
         width="narrow"
+        bodyClassName="admin-dialog-stack"
         footer={
           <>
             <Button variant="outline" onClick={() => setShowStockModal(false)}>
@@ -803,49 +788,41 @@ const ConsumablePage: React.FC = () => {
           </>
         }
       >
-        <div>
-          <div className="space-y-4">
-            {stockAction === "reduce" ? (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  出库类型
-                </label>
-                <Select value={stockOutType} onValueChange={(value) => setStockOutType(value as "ISSUE" | "LOSS")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ISSUE">领用出库</SelectItem>
-                    <SelectItem value="LOSS">盘亏调整</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                {stockAction === "add" ? "入库" : "出库"}数量
-              </label>
-              <Input
-                type="number"
-                min={1}
-                max={stockAction === "reduce" ? currentItem?.quantity : undefined}
-                value={stockQuantity}
-                onChange={(event) =>
-                  setStockQuantity(Number.parseInt(event.target.value, 10) || 0)
-                }
-              />
+        <div className="admin-dialog-stack">
+          {stockAction === "reduce" ? (
+            <div className="admin-dialog-field">
+              <Label>出库类型</Label>
+              <Select value={stockOutType} onValueChange={(value) => setStockOutType(value as "ISSUE" | "LOSS")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ISSUE">领用出库</SelectItem>
+                  <SelectItem value="LOSS">盘亏调整</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                {stockAction === "add" ? "入库" : "出库"}原因
-              </label>
-              <Textarea
-                value={stockRemark}
-                onChange={(event) => setStockRemark(event.target.value)}
-                placeholder={stockAction === "add" ? "如 初始库存、采购入库、盘盈调整" : "如 部门领用、盘点盘亏"}
-                rows={3}
-              />
-            </div>
+          ) : null}
+          <div className="admin-dialog-field">
+            <Label>{stockAction === "add" ? "入库" : "出库"}数量</Label>
+            <Input
+              type="number"
+              min={1}
+              max={stockAction === "reduce" ? currentItem?.quantity : undefined}
+              value={stockQuantity}
+              onChange={(event) =>
+                setStockQuantity(Number.parseInt(event.target.value, 10) || 0)
+              }
+            />
+          </div>
+          <div className="admin-dialog-field">
+            <Label>{stockAction === "add" ? "入库" : "出库"}原因</Label>
+            <Textarea
+              value={stockRemark}
+              onChange={(event) => setStockRemark(event.target.value)}
+              placeholder={stockAction === "add" ? "如 初始库存、采购入库、盘盈调整" : "如 部门领用、盘点盘亏"}
+              rows={3}
+            />
           </div>
         </div>
       </BaseDialog>
@@ -856,17 +833,17 @@ const ConsumablePage: React.FC = () => {
         onClose={() => setLogTarget(null)}
         width="wide"
       >
-        <div className="min-h-64 overflow-x-auto">
-          <table className="w-full min-w-[720px]">
-            <TableHeader>
+        <div className="admin-horizontal-scroll min-h-64">
+          <table className="unity-data-table admin-source-table min-w-[720px]">
+            <thead>
               <tr>
-                <TableHead className="px-4 py-3 text-left">类型</TableHead>
-                <TableHead className="px-4 py-3 text-center">数量变动</TableHead>
-                <TableHead className="px-4 py-3 text-left">原因</TableHead>
-                <TableHead className="px-4 py-3 text-left">时间</TableHead>
+                <th>类型</th>
+                <th className="text-center">数量变动</th>
+                <th>原因</th>
+                <th>时间</th>
               </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            </thead>
+            <tbody>
               {logLoading ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-12 text-center text-sm text-slate-500">
@@ -882,18 +859,18 @@ const ConsumablePage: React.FC = () => {
               ) : (
                 stockLogs.map((log) => (
                   <tr key={log.logId}>
-                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
+                    <td>
                       {log.type || "-"}
                     </td>
-                    <td className="px-4 py-3 text-center text-sm">
+                    <td className="text-center">
                       <span className={Number(log.quantityChange || 0) >= 0 ? "font-semibold text-emerald-600" : "font-semibold text-rose-600"}>
                         {Number(log.quantityChange || 0) > 0 ? "+" : ""}{log.quantityChange ?? 0}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                    <td>
                       {log.remark || "-"}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-500">
+                    <td>
                       {log.createTime || "-"}
                     </td>
                   </tr>
@@ -914,10 +891,8 @@ const ConsumablePage: React.FC = () => {
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
-    </div>
+    </>
   );
 };
 
 export default ConsumablePage;
-
-

@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   ParkingCircle,
   Plus,
+  RefreshCw,
   RotateCcw,
   Send,
   Shield,
@@ -26,8 +27,7 @@ import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -40,17 +40,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
   UserSelector,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { cn } from '@/utils/cn';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -113,12 +105,12 @@ const USAGE_STATUS: Record<string, { label: string; className: string; icon: Rea
   },
   '4': {
     label: '已完成',
-    className: 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
+    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
     icon: <CheckCircle size={14} />,
   },
   '5': {
     label: '已取消',
-    className: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
     icon: <Ban size={14} />,
   },
 };
@@ -169,44 +161,46 @@ const createDispatchForm = () => ({
 });
 
 const TableStateRow: React.FC<TableStateRowProps> = ({ colSpan, title, description, icon, loading = false }) => (
-  <TableRow className="hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon || <Car className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
         {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
-  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
-    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="max-w-[65%] text-right text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  <div>
+    <span>{label}</span>
+    <strong>{value || '-'}</strong>
   </div>
 );
 
 const DetailSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
-    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+  <section className="table-scroll-container admin-inner-table-surface">
+    <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div>
+        <strong>{title}</strong>
+      </div>
     </div>
-    <div>{children}</div>
+    <div className="p-4">{children}</div>
   </section>
 );
 
 const UsageStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const config = USAGE_STATUS[status] || {
     label: '未知',
-    className: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
     icon: null,
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${config.className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${config.className}`}>
       {config.icon}
       {config.label}
     </span>
@@ -229,7 +223,7 @@ const renderText = (value?: string | number | null) => (value === null || value 
 
 const VehicleUsageList: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState<'usage' | 'expense'>('usage');
   const [usages, setUsages] = useState<VehicleUsage[]>([]);
   const [usageTotal, setUsageTotal] = useState(0);
@@ -520,6 +514,19 @@ const VehicleUsageList: React.FC = () => {
 
   const resetUsageFilters = () => setUsageQuery((prev) => ({ ...prev, status: '', pageNum: 1 }));
   const resetExpenseFilters = () => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, expenseType: '', startDate: '', endDate: '', vehicleId: '', usageId: '' }));
+  const summaryStats = activeTab === 'usage'
+    ? [
+        { label: '用车记录', value: String(usageTotal), meta: '当前筛选', icon: <Car size={18} />, tone: 'blue' },
+        { label: '待审批', value: String(usagePrimaryActions.pending), meta: '需处理', icon: <Clock size={18} />, tone: 'amber' },
+        { label: '待派车', value: String(usagePrimaryActions.approved), meta: '已批准', icon: <UserCog size={18} />, tone: 'violet' },
+        { label: '进行中', value: String(usagePrimaryActions.inUse), meta: '已派车', icon: <Shield size={18} />, tone: 'green' },
+      ]
+    : [
+        { label: '总费用', value: formatCurrency(stats?.totalAmount), meta: expenseDateSummary, icon: <DollarSign size={18} />, tone: 'blue' },
+        { label: '本月', value: formatCurrency(stats?.monthlyAmount), meta: '本月费用', icon: <Fuel size={18} />, tone: 'green' },
+        { label: '上月', value: formatCurrency(stats?.lastMonthAmount), meta: '对比基线', icon: <ArrowLeftRight size={18} />, tone: 'violet' },
+        { label: '费用记录', value: String(expenseTotal), meta: '当前筛选', icon: <ParkingCircle size={18} />, tone: 'amber' },
+      ];
 
   const usageTable = (
     <div className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -536,70 +543,67 @@ const VehicleUsageList: React.FC = () => {
         </div>
         <div className="text-xs text-slate-400 dark:text-slate-500">共 {usageTotal} 条</div>
       </div>
-      <div className="overflow-x-auto">
-        <Table className="min-w-[1200px]">
-          <TableHeader>
-            <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-              <TableHead>车辆</TableHead>
-              <TableHead>申请人 / 司机</TableHead>
-              <TableHead>用车时间</TableHead>
-              <TableHead>目的地</TableHead>
-              <TableHead>里程 / 费用</TableHead>
-              <TableHead>状态</TableHead>
-              <TableActionHead className="text-right">操作</TableActionHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="admin-horizontal-scroll">
+        <table className="unity-data-table admin-source-table admin-vehicle-usage-table min-w-[1200px]">
+          <thead>
+            <tr>
+              <th>车辆</th>
+              <th>申请人 / 司机</th>
+              <th>用车时间</th>
+              <th>目的地</th>
+              <th>里程 / 费用</th>
+              <th>状态</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
             {loading ? (
               <TableStateRow loading colSpan={7} title="正在加载用车记录" />
             ) : usages.length === 0 ? (
               <TableStateRow colSpan={7} icon={<Car size={20} />} title="暂无用车记录" description="新建申请后，这里会显示审批、派车、归还和录费处理。" />
             ) : (
               usages.map((usage) => (
-                <TableRow key={usage.usageId}>
-                  <TableCell className="align-top">
+                <tr key={usage.usageId}>
+                  <td className="align-top">
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{usage.vehiclePlate || `车辆#${usage.vehicleId}`}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">申请单 #{usage.usageId}</div>
-                  </TableCell>
-                  <TableCell className="align-top text-sm">
+                  </td>
+                  <td className="align-top text-sm">
                     <div className="font-medium text-slate-900 dark:text-slate-100">{usage.applicantName || `用户${usage.applicantId}`}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       司机 {usage.driverName || (usage.driverMode === 0 ? '自驾' : '-')}
                     </div>
-                  </TableCell>
-                  <TableCell className="align-top text-sm text-slate-600 dark:text-slate-300">
+                  </td>
+                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">
                     <div>{formatDateTime(usage.startTime)}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">至 {formatDateTime(usage.endTime)}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">派车 {formatDateTime(usage.dispatchTime)}</div>
-                  </TableCell>
-                  <TableCell className="align-top text-sm text-slate-600 dark:text-slate-300">
+                  </td>
+                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">
                     <div className="font-medium text-slate-900 dark:text-slate-100">{usage.destination || '-'}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{usage.reason || '-'}</div>
-                  </TableCell>
-                  <TableCell className="align-top text-sm text-slate-600 dark:text-slate-300">
+                  </td>
+                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">
                     <div>起 {renderText(usage.startMileage)} km / 终 {renderText(usage.endMileage)} km</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">单次费用 {formatCurrency(usage.totalExpenseAmount)}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">里程 {usage.tripDistance != null ? `${usage.tripDistance} km` : '-'}</div>
-                  </TableCell>
-                  <TableCell className="align-top"><UsageStatusBadge status={usage.status || '0'} /></TableCell>
-                  <TableCell className="align-top text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        { label: '详情', icon: <Eye size={14} />, onClick: () => handleViewDetail(usage), tone: 'neutral' },
-                        { label: '审批', icon: <CheckCircle size={14} />, onClick: () => handleOpenApprove(usage), hidden: usage.status !== '0', tone: 'neutral', permissionKey: 'oa:vehicle:approve' },
-                        { label: '派车', icon: <UserCog size={14} />, onClick: () => handleOpenDispatch(usage), hidden: usage.status !== '1', tone: 'neutral', permissionKey: 'oa:vehicle:dispatch' },
-                        { label: '归还', icon: <Send size={14} />, onClick: () => handleOpenReturn(usage), hidden: usage.status !== '3', tone: 'neutral', permissionKey: 'oa:vehicle:return' },
-                        { label: '录费', icon: <DollarSign size={14} />, onClick: () => handleOpenExpense(usage), hidden: !['3', '4'].includes(usage.status || ''), tone: 'neutral', permissionKey: 'oa:vehicle:expense:add' },
-                        { label: '取消', icon: <Ban size={14} />, onClick: () => openCancelConfirm(usage), hidden: usage.status !== '0', tone: 'neutral', permissionKey: 'oa:vehicle:cancel' },
-                      ]}
-                    />
-                  </TableCell>
-                </TableRow>
+                  </td>
+                  <td className="align-top"><UsageStatusBadge status={usage.status || '0'} /></td>
+                  <td className="align-top">
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="详情" onClick={() => handleViewDetail(usage)}><Eye size={15} /></button>
+                      {usage.status === '0' && hasPermission('oa:vehicle:approve') ? <button type="button" title="审批" onClick={() => handleOpenApprove(usage)}><CheckCircle size={15} /></button> : null}
+                      {usage.status === '1' && hasPermission('oa:vehicle:dispatch') ? <button type="button" title="派车" onClick={() => handleOpenDispatch(usage)}><UserCog size={15} /></button> : null}
+                      {usage.status === '3' && hasPermission('oa:vehicle:return') ? <button type="button" title="归还" onClick={() => handleOpenReturn(usage)}><Send size={15} /></button> : null}
+                      {['3', '4'].includes(usage.status || '') && hasPermission('oa:vehicle:expense:add') ? <button type="button" title="录费" onClick={() => handleOpenExpense(usage)}><DollarSign size={15} /></button> : null}
+                      {usage.status === '0' && hasPermission('oa:vehicle:cancel') ? <button type="button" className="danger" title="取消" onClick={() => openCancelConfirm(usage)}><Ban size={15} /></button> : null}
+                    </div>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -622,67 +626,65 @@ const VehicleUsageList: React.FC = () => {
           </Button>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <Table className="min-w-[1180px]">
-          <TableHeader>
-            <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-              <TableHead className="w-12">
-                <input
-                  type="checkbox"
+      <div className="admin-horizontal-scroll">
+        <table className="unity-data-table admin-source-table admin-vehicle-expense-table min-w-[1180px]">
+          <thead>
+            <tr>
+              <th className="w-12">
+                <input type="checkbox"
                   checked={expenses.length > 0 && selectedExpenseIds.length === expenses.filter((item) => item.expenseId).length}
                   onChange={() => {
                     const pageIds = expenses.map((item) => item.expenseId).filter(Boolean) as number[];
                     setSelectedExpenseIds((prev) => prev.length === pageIds.length ? [] : pageIds);
                   }}
-                  className="rounded border-gray-300"
+                  className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-slate-700 dark:bg-slate-900"
                 />
-              </TableHead>
-              <TableHead>车辆 / 申请</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>金额</TableHead>
-              <TableHead>日期</TableHead>
-              <TableHead>说明</TableHead>
-              <TableHead>创建时间</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </th>
+              <th>车辆 / 申请</th>
+              <th>类型</th>
+              <th>金额</th>
+              <th>日期</th>
+              <th>说明</th>
+              <th>创建时间</th>
+            </tr>
+          </thead>
+          <tbody>
             {expenseLoading ? (
               <TableStateRow loading colSpan={7} title="正在加载费用记录" />
             ) : expenses.length === 0 ? (
               <TableStateRow colSpan={7} icon={<DollarSign size={20} />} title="暂无费用记录" description="用车进行中或已完成后，可以在记录里补录车辆费用。" />
             ) : (
               expenses.map((expense) => (
-                <TableRow key={expense.expenseId}>
-                  <TableCell className="align-top">
-                    <input
-                      type="checkbox"
+                <tr key={expense.expenseId}>
+                  <td className="align-top">
+                    <input type="checkbox"
                       checked={selectedExpenseIds.includes(expense.expenseId || 0)}
                       onChange={() => {
                         if (!expense.expenseId) return;
                         setSelectedExpenseIds((prev) => prev.includes(expense.expenseId!) ? prev.filter((item) => item !== expense.expenseId) : [...prev, expense.expenseId!]);
                       }}
-                      className="rounded border-gray-300"
+                      className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-slate-700 dark:bg-slate-900"
                     />
-                  </TableCell>
-                  <TableCell className="align-top">
+                  </td>
+                  <td className="align-top">
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{expense.vehiclePlate || `车辆#${expense.vehicleId}`}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">申请 #{expense.usageId || '-'}</div>
-                  </TableCell>
-                  <TableCell className="align-top"><ExpenseTypeBadge expenseType={expense.expenseType} /></TableCell>
-                  <TableCell className="align-top text-sm font-medium text-slate-900 dark:text-slate-100">{formatCurrency(expense.amount)}</TableCell>
-                  <TableCell className="align-top text-sm text-slate-600 dark:text-slate-300">{expense.expenseDate || '-'}</TableCell>
-                  <TableCell className="align-top text-sm text-slate-600 dark:text-slate-300">{expense.description || '-'}</TableCell>
-                  <TableCell className="align-top text-xs text-slate-500 dark:text-slate-400">{renderText(expense.createTime)}</TableCell>
-                </TableRow>
+                  </td>
+                  <td className="align-top"><ExpenseTypeBadge expenseType={expense.expenseType} /></td>
+                  <td className="align-top text-sm font-medium text-slate-900 dark:text-slate-100">{formatCurrency(expense.amount)}</td>
+                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">{expense.expenseDate || '-'}</td>
+                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">{expense.description || '-'}</td>
+                  <td className="align-top text-xs text-slate-500 dark:text-slate-400">{renderText(expense.createTime)}</td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
       {expenseTypeSummary.length ? (
         <div className="grid gap-3 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
           {expenseTypeSummary.map((item) => (
-            <div key={item.type} className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
+            <div key={item.type} className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
               <div className={cn('inline-flex items-center gap-1.5 text-sm font-medium', item.color)}>{item.icon}{item.label}</div>
               <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(item.amount)}</div>
             </div>
@@ -692,96 +694,118 @@ const VehicleUsageList: React.FC = () => {
     </div>
   );
 
+  const pageActions = (
+    <>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">VEHICLE OPERATIONS</p>
+            <h2>用车记录</h2>
+            <span>处理用车审批、派车归还、费用录入和报销转换</span>
+          </div>
+          <div className="admin-source-controls">
+            <Button variant="outline" size="sm" onClick={() => void refreshCurrentView()}>
+              <RefreshCw size={16} />
+              刷新
+            </Button>
+            <Button size="sm" onClick={() => navigate('/admin/vehicle/booking')}>
+              <Plus size={16} />
+              新建申请
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid">
+          {summaryStats.map((stat) => (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon">{stat.icon}</div>
+              <div>
+                <p>{stat.label}</p>
+                <strong>{stat.value}</strong>
+                <span>{stat.meta}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar">
+          <div className="admin-vehicle-usage-filter-grid">
+            <div className="admin-source-tabs">
+              <button type="button" className={activeTab === 'usage' ? 'active' : ''} onClick={() => setActiveTab('usage')}><Car size={15} />用车记录</button>
+              <button type="button" className={activeTab === 'expense' ? 'active' : ''} onClick={() => setActiveTab('expense')}><DollarSign size={15} />费用明细</button>
+            </div>
+            {activeTab === 'usage' ? (
+              <label>
+                <span className="input-label">状态</span>
+                <Select value={usageQuery.status || ALL_FILTER_VALUE} onValueChange={(value) => setUsageQuery((prev) => ({ ...prev, pageNum: 1, status: value === ALL_FILTER_VALUE ? '' : value }))}>
+                  <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部状态" /></SelectTrigger>
+                  <SelectContent>
+                    {USAGE_STATUS_OPTIONS.map((item) => (
+                      <SelectItem key={item.value || ALL_FILTER_VALUE} value={item.value || ALL_FILTER_VALUE}>{item.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+            ) : (
+              <>
+                <label>
+                  <span className="input-label">费用类型</span>
+                  <Select value={expenseQuery.expenseType || ALL_FILTER_VALUE} onValueChange={(value) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, expenseType: value === ALL_FILTER_VALUE ? '' : value }))}>
+                    <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部类型" /></SelectTrigger>
+                    <SelectContent>
+                      {EXPENSE_TYPE_OPTIONS.map((item) => (
+                        <SelectItem key={item.value || ALL_FILTER_VALUE} value={item.value || ALL_FILTER_VALUE}>{item.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label><span className="input-label">车辆ID</span><Input className="h-[42px]" value={expenseQuery.vehicleId} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, vehicleId: event.target.value }))} /></label>
+                <label><span className="input-label">申请ID</span><Input className="h-[42px]" value={expenseQuery.usageId} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, usageId: event.target.value }))} /></label>
+                <label><span className="input-label">开始日期</span><DatePicker className="h-[42px]" type="date" value={expenseQuery.startDate} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, startDate: event.target.value }))} /></label>
+                <label><span className="input-label">结束日期</span><DatePicker className="h-[42px]" type="date" value={expenseQuery.endDate} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, endDate: event.target.value }))} /></label>
+              </>
+            )}
+            <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">{activeTab === 'usage' ? `${usageTotal} 条` : `${expenseTotal} 条`}</span>
+              {activeTab === 'usage' && hasUsageFilters ? <Button variant="outline" size="sm" onClick={resetUsageFilters}><RotateCcw size={14} />重置</Button> : null}
+              {activeTab === 'expense' && hasExpenseFilters ? <Button variant="outline" size="sm" onClick={resetExpenseFilters}><RotateCcw size={14} />重置</Button> : null}
+            </div>
+          </div>
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface
+          className="admin-vehicle-usage-table-panel flex min-h-0 flex-1 flex-col"
+          wrapperClassName="flex min-h-0 flex-1 flex-col overflow-auto"
+        >
+          {activeTab === 'usage' ? usageTable : expenseTable}
+        </InnerTableSurface>
+  );
+
+  const pagePagination = activeTab === 'usage'
+    ? (usageTotal > 0 ? <Pagination total={usageTotal} page={usageQuery.pageNum} pageSize={usageQuery.pageSize} onPageChange={(page) => setUsageQuery((prev) => ({ ...prev, pageNum: page }))} onPageSizeChange={(pageSize) => setUsageQuery((prev) => ({ ...prev, pageNum: 1, pageSize }))} /> : null)
+    : expenseTotal > 0 ? <Pagination total={expenseTotal} page={expenseQuery.pageNum} pageSize={expenseQuery.pageSize} onPageChange={(page) => setExpenseQuery((prev) => ({ ...prev, pageNum: page }))} onPageSizeChange={(pageSize) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, pageSize }))} /> : null;
+
   return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-3"
-        filters={
-          <FilterBar
-            filters={[
-              <SegmentedControl key="tabs" className="min-h-9">
-                <SegmentedControlItem size="sm" active={activeTab === 'usage'} onClick={() => setActiveTab('usage')}>
-                  <Car size={14} className="mr-1.5" />
-                  用车记录
-                </SegmentedControlItem>
-                <SegmentedControlItem size="sm" active={activeTab === 'expense'} onClick={() => setActiveTab('expense')}>
-                  <DollarSign size={14} className="mr-1.5" />
-                  费用明细
-                </SegmentedControlItem>
-              </SegmentedControl>,
-              ...(activeTab === 'usage'
-                ? [
-                    <div key="usage-status" className="w-full sm:w-40">
-                      <Select value={usageQuery.status || ALL_FILTER_VALUE} onValueChange={(value) => setUsageQuery((prev) => ({ ...prev, pageNum: 1, status: value === ALL_FILTER_VALUE ? '' : value }))}>
-                        <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
-                        <SelectContent>
-                          {USAGE_STATUS_OPTIONS.map((item) => (
-                            <SelectItem key={item.value || ALL_FILTER_VALUE} value={item.value || ALL_FILTER_VALUE}>{item.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>,
-                  ]
-                : [
-                    <div key="expense-type" className="w-full sm:w-40">
-                      <Select value={expenseQuery.expenseType || ALL_FILTER_VALUE} onValueChange={(value) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, expenseType: value === ALL_FILTER_VALUE ? '' : value }))}>
-                        <SelectTrigger className="h-10"><SelectValue placeholder="全部类型" /></SelectTrigger>
-                        <SelectContent>
-                          {EXPENSE_TYPE_OPTIONS.map((item) => (
-                            <SelectItem key={item.value || ALL_FILTER_VALUE} value={item.value || ALL_FILTER_VALUE}>{item.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>,
-                    <Input key="vehicle-id" className="h-10 w-full sm:w-32" placeholder="车辆ID" value={expenseQuery.vehicleId} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, vehicleId: event.target.value }))} />,
-                    <Input key="usage-id" className="h-10 w-full sm:w-32" placeholder="申请ID" value={expenseQuery.usageId} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, usageId: event.target.value }))} />,
-                    <DatePicker key="start-date" className="h-10 w-full sm:w-40" type="date" value={expenseQuery.startDate} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, startDate: event.target.value }))} />,
-                    <DatePicker key="end-date" className="h-10 w-full sm:w-40" type="date" value={expenseQuery.endDate} onChange={(event) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, endDate: event.target.value }))} />,
-                  ]),
-            ]}
-            stats={activeTab === 'usage'
-              ? [
-                  { label: '共', value: `${usageTotal} 条` },
-                  { label: '待审批', value: usagePrimaryActions.pending },
-                  { label: '待派车', value: usagePrimaryActions.approved },
-                  { label: '进行中', value: usagePrimaryActions.inUse },
-                ]
-              : [
-                  { label: '总费用', value: formatCurrency(stats?.totalAmount) },
-                  { label: '本月', value: formatCurrency(stats?.monthlyAmount) },
-                  { label: '上月', value: formatCurrency(stats?.lastMonthAmount) },
-                  { label: '共', value: `${expenseTotal} 条` },
-                ]}
-            actions={[
-              ...(activeTab === 'usage' && hasUsageFilters
-                ? [<Button key="clear-usage" variant="outline" size="sm" onClick={resetUsageFilters}>清空筛选</Button>]
-                : []),
-              ...(activeTab === 'expense' && hasExpenseFilters
-                ? [<Button key="clear-expense" variant="outline" size="sm" onClick={resetExpenseFilters}>清空筛选</Button>]
-                : []),
-              <Button key="refresh" variant="outline" size="sm" onClick={() => void refreshCurrentView()}>
-                <RotateCcw size={14} className="mr-1.5" />
-                刷新
-              </Button>,
-              <Button key="new" size="sm" onClick={() => navigate('/admin/vehicle/booking')}>
-                <Plus size={14} className="mr-1.5" />
-                新建申请
-              </Button>,
-            ]}
-          />
-        }
-        table={(<TableSurfaceCard fill>{activeTab === 'usage' ? usageTable : expenseTable}</TableSurfaceCard>)}
-        pagination={activeTab === 'usage'
-          ? (usageTotal > 0 ? <Pagination total={usageTotal} page={usageQuery.pageNum} pageSize={usageQuery.pageSize} onPageChange={(page) => setUsageQuery((prev) => ({ ...prev, pageNum: page }))} onPageSizeChange={(pageSize) => setUsageQuery((prev) => ({ ...prev, pageNum: 1, pageSize }))} /> : undefined)
-          : expenseTotal > 0 ? <Pagination total={expenseTotal} page={expenseQuery.pageNum} pageSize={expenseQuery.pageSize} onPageChange={(page) => setExpenseQuery((prev) => ({ ...prev, pageNum: page }))} onPageSizeChange={(pageSize) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, pageSize }))} /> : undefined}
-      />
+    <>
+      <section className="admin-source-page admin-vehicle-page admin-vehicle-usage-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showDetailDialog && Boolean(currentUsage)}
         title="用车详情"
         onClose={() => { setShowDetailDialog(false); setCurrentUsage(null); }}
         width="wide"
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={<Button variant="outline" onClick={() => { setShowDetailDialog(false); setCurrentUsage(null); }}>关闭</Button>}
       >
         {currentUsage ? (
@@ -798,29 +822,35 @@ const VehicleUsageList: React.FC = () => {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <DetailSection title="行程信息">
-                <DetailField label="开始时间" value={formatDateTime(currentUsage.startTime)} />
-                <DetailField label="结束时间" value={formatDateTime(currentUsage.endTime)} />
-                <DetailField label="目的地" value={renderText(currentUsage.destination)} />
-                <DetailField label="还车地点" value={renderText(currentUsage.returnLocation)} />
-                <DetailField label="行程类型" value={currentUsage.isRoundTrip ? '往返' : '单程'} />
-                <DetailField label="随行人数" value={`${currentUsage.passengerCount || 0} 人`} />
+                <div className="admin-finance-detail-list">
+                  <DetailField label="开始时间" value={formatDateTime(currentUsage.startTime)} />
+                  <DetailField label="结束时间" value={formatDateTime(currentUsage.endTime)} />
+                  <DetailField label="目的地" value={renderText(currentUsage.destination)} />
+                  <DetailField label="还车地点" value={renderText(currentUsage.returnLocation)} />
+                  <DetailField label="行程类型" value={currentUsage.isRoundTrip ? '往返' : '单程'} />
+                  <DetailField label="随行人数" value={`${currentUsage.passengerCount || 0} 人`} />
+                </div>
               </DetailSection>
 
               <DetailSection title="执行信息">
-                <DetailField label="司机模式" value={currentUsage.driverMode === 1 ? '行政派司机' : '自驾'} />
-                <DetailField label="派车时间" value={formatDateTime(currentUsage.dispatchTime)} />
-                <DetailField label="派车备注" value={renderText(currentUsage.dispatchRemark)} />
-                <DetailField label="出发里程" value={currentUsage.startMileage != null ? `${currentUsage.startMileage} km` : '-'} />
-                <DetailField label="归还里程" value={currentUsage.endMileage != null ? `${currentUsage.endMileage} km` : '-'} />
-                <DetailField label="归还备注" value={renderText(currentUsage.returnRemark)} />
+                <div className="admin-finance-detail-list">
+                  <DetailField label="司机模式" value={currentUsage.driverMode === 1 ? '行政派司机' : '自驾'} />
+                  <DetailField label="派车时间" value={formatDateTime(currentUsage.dispatchTime)} />
+                  <DetailField label="派车备注" value={renderText(currentUsage.dispatchRemark)} />
+                  <DetailField label="出发里程" value={currentUsage.startMileage != null ? `${currentUsage.startMileage} km` : '-'} />
+                  <DetailField label="归还里程" value={currentUsage.endMileage != null ? `${currentUsage.endMileage} km` : '-'} />
+                  <DetailField label="归还备注" value={renderText(currentUsage.returnRemark)} />
+                </div>
               </DetailSection>
             </div>
 
             <DetailSection title="费用与执行摘要">
-              <DetailField label="单次费用" value={formatCurrency(currentUsage.totalExpenseAmount)} />
-              <DetailField label="本次里程" value={currentUsage.tripDistance != null ? `${currentUsage.tripDistance} km` : '-'} />
-              <DetailField label="实际出发" value={formatDateTime(currentUsage.actualStartTime)} />
-              <DetailField label="实际归还" value={formatDateTime(currentUsage.actualEndTime)} />
+              <div className="admin-finance-detail-list admin-contract-detail-grid">
+                <DetailField label="单次费用" value={formatCurrency(currentUsage.totalExpenseAmount)} />
+                <DetailField label="本次里程" value={currentUsage.tripDistance != null ? `${currentUsage.tripDistance} km` : '-'} />
+                <DetailField label="实际出发" value={formatDateTime(currentUsage.actualStartTime)} />
+                <DetailField label="实际归还" value={formatDateTime(currentUsage.actualEndTime)} />
+              </div>
             </DetailSection>
 
             <DetailSection title="用车事由">
@@ -835,7 +865,7 @@ const VehicleUsageList: React.FC = () => {
         title="审批申请"
         onClose={() => { setShowApproveDialog(false); setCurrentUsage(null); }}
         maxWidthClassName="max-w-2xl"
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => { setShowApproveDialog(false); setCurrentUsage(null); }}>取消</Button>
@@ -847,13 +877,15 @@ const VehicleUsageList: React.FC = () => {
         {currentUsage ? (
           <>
             <DetailSection title="申请信息">
-              <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
-              <DetailField label="申请人" value={currentUsage.applicantName || `用户${currentUsage.applicantId}`} />
-              <DetailField label="用车时间" value={`${formatDateTime(currentUsage.startTime)} 至 ${formatDateTime(currentUsage.endTime)}`} />
-              <DetailField label="目的地" value={renderText(currentUsage.destination)} />
+              <div className="admin-finance-detail-list admin-contract-detail-grid">
+                <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
+                <DetailField label="申请人" value={currentUsage.applicantName || `用户${currentUsage.applicantId}`} />
+                <DetailField label="用车时间" value={`${formatDateTime(currentUsage.startTime)} 至 ${formatDateTime(currentUsage.endTime)}`} />
+                <DetailField label="目的地" value={renderText(currentUsage.destination)} />
+              </div>
             </DetailSection>
 
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>审批意见</Label>
               <Textarea className="min-h-[120px] resize-none" placeholder="可选" value={approveRemark} onChange={(event) => setApproveRemark(event.target.value)} />
             </div>
@@ -866,7 +898,7 @@ const VehicleUsageList: React.FC = () => {
         title="派车"
         onClose={() => { setShowDispatchDialog(false); setCurrentUsage(null); }}
         maxWidthClassName="max-w-2xl"
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => { setShowDispatchDialog(false); setCurrentUsage(null); }}>取消</Button>
@@ -877,13 +909,15 @@ const VehicleUsageList: React.FC = () => {
         {currentUsage ? (
           <>
             <DetailSection title="当前申请">
-              <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
-              <DetailField label="申请人" value={currentUsage.applicantName || `用户${currentUsage.applicantId}`} />
-              <DetailField label="用车时间" value={`${formatDateTime(currentUsage.startTime)} 至 ${formatDateTime(currentUsage.endTime)}`} />
+              <div className="admin-finance-detail-list admin-contract-detail-grid">
+                <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
+                <DetailField label="申请人" value={currentUsage.applicantName || `用户${currentUsage.applicantId}`} />
+                <DetailField label="用车时间" value={`${formatDateTime(currentUsage.startTime)} 至 ${formatDateTime(currentUsage.endTime)}`} />
+              </div>
             </DetailSection>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label>司机模式</Label>
                 <Select value={dispatchForm.driverMode} onValueChange={(value) => setDispatchForm((prev) => ({ ...prev, driverMode: value }))}>
                   <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
@@ -893,11 +927,11 @@ const VehicleUsageList: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label>实际出发时间</Label>
                 <DatePicker type="datetime-local" value={dispatchForm.actualStartTime} onChange={(event) => setDispatchForm((prev) => ({ ...prev, actualStartTime: event.target.value }))} className="h-11" />
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="admin-dialog-field md:col-span-2">
                 <Label>司机</Label>
                 <UserSelector
                   value={dispatchForm.driverIds}
@@ -909,11 +943,11 @@ const VehicleUsageList: React.FC = () => {
                   dropdownPlacement="top"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label>出发里程 (km)</Label>
                 <Input type="number" min={0} value={dispatchForm.startMileage || ''} onChange={(event) => setDispatchForm((prev) => ({ ...prev, startMileage: parseFloat(event.target.value) || 0 }))} className="h-11" />
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="admin-dialog-field md:col-span-2">
                 <Label>派车备注</Label>
                 <Textarea className="min-h-[100px] resize-none" value={dispatchForm.dispatchRemark} onChange={(event) => setDispatchForm((prev) => ({ ...prev, dispatchRemark: event.target.value }))} />
               </div>
@@ -927,7 +961,7 @@ const VehicleUsageList: React.FC = () => {
         title="归还车辆"
         onClose={() => { setShowReturnDialog(false); setCurrentUsage(null); }}
         maxWidthClassName="max-w-xl"
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => { setShowReturnDialog(false); setCurrentUsage(null); }}>取消</Button>
@@ -938,19 +972,21 @@ const VehicleUsageList: React.FC = () => {
         {currentUsage ? (
           <>
             <DetailSection title="当前申请">
-              <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
-              <DetailField label="目的地" value={renderText(currentUsage.destination)} />
+              <div className="admin-finance-detail-list admin-contract-detail-grid">
+                <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
+                <DetailField label="目的地" value={renderText(currentUsage.destination)} />
+              </div>
             </DetailSection>
 
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>归还里程 (km)</Label>
               <Input type="number" min={0} placeholder="请输入当前里程" value={returnMileage || ''} onChange={(event) => setReturnMileage(parseFloat(event.target.value) || 0)} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>还车地点</Label>
               <Input value={returnLocation} onChange={(event) => setReturnLocation(event.target.value)} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>归还备注</Label>
               <Textarea className="min-h-[100px] resize-none" value={returnRemark} onChange={(event) => setReturnRemark(event.target.value)} />
             </div>
@@ -963,7 +999,7 @@ const VehicleUsageList: React.FC = () => {
         title="录入费用"
         onClose={() => { setShowExpenseDialog(false); setCurrentUsage(null); }}
         maxWidthClassName="max-w-xl"
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => { setShowExpenseDialog(false); setCurrentUsage(null); }}>取消</Button>
@@ -974,11 +1010,13 @@ const VehicleUsageList: React.FC = () => {
         {currentUsage ? (
           <>
             <DetailSection title="当前申请">
-              <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
-              <DetailField label="申请" value={`#${currentUsage.usageId}`} />
+              <div className="admin-finance-detail-list admin-contract-detail-grid">
+                <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
+                <DetailField label="申请" value={`#${currentUsage.usageId}`} />
+              </div>
             </DetailSection>
 
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>费用类型</Label>
               <Select value={expenseForm.expenseType || '1'} onValueChange={(value) => setExpenseForm((prev) => ({ ...prev, expenseType: value as VehicleExpense['expenseType'] }))}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
@@ -994,17 +1032,17 @@ const VehicleUsageList: React.FC = () => {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label>金额 (元)</Label>
                 <Input type="number" min={0} step={0.01} placeholder="0.00" value={expenseForm.amount || ''} onChange={(event) => setExpenseForm((prev) => ({ ...prev, amount: parseFloat(event.target.value) || 0 }))} className="h-11" />
               </div>
-              <div className="space-y-2">
+              <div className="admin-dialog-field">
                 <Label>日期</Label>
                 <DatePicker type="date" value={expenseForm.expenseDate || ''} onChange={(event) => setExpenseForm((prev) => ({ ...prev, expenseDate: event.target.value }))} className="h-11" />
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>说明</Label>
               <Input placeholder="可选" value={expenseForm.description || ''} onChange={(event) => setExpenseForm((prev) => ({ ...prev, description: event.target.value }))} className="h-11" />
             </div>
@@ -1021,9 +1059,8 @@ const VehicleUsageList: React.FC = () => {
         onConfirm={() => void handleCancelConfirm()}
         onCancel={() => setCancelState(null)}
       />
-    </div>
+    </>
   );
 };
 
 export default VehicleUsageList;
-

@@ -10,6 +10,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/common';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { checkIn } from '@/services/api/admin';
 import { EffectiveAttendanceRule, getEffectiveAttendanceRule } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
@@ -40,7 +41,7 @@ const InlineState = ({
   className?: string;
 }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3">
       {icon || <Clock3 className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -48,7 +49,7 @@ const InlineState = ({
   </div>
 );
 
-const SideItem = ({
+const DetailItem = ({
   label,
   value,
   description,
@@ -60,7 +61,7 @@ const SideItem = ({
   icon: React.ReactNode;
 }) => (
   <div className="flex gap-3 px-4 py-3">
-    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+    <div className="admin-source-stat-icon flex-shrink-0 text-slate-500 dark:text-slate-400">
       {icon}
     </div>
     <div className="min-w-0 flex-1">
@@ -88,12 +89,12 @@ const ActionButton = ({
 }) => (
   <Button
     variant={variant}
-    className="h-12 justify-start rounded-xl px-4 text-left"
+    className="h-12 justify-start px-4 text-left"
     onClick={onClick}
     disabled={disabled}
   >
     <div className="flex items-center gap-3">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-current/10 bg-white/70 text-current dark:bg-slate-950/30">
+      <div className="admin-source-stat-icon text-current">
         {icon}
       </div>
       <div className="text-sm font-semibold">{title}</div>
@@ -291,66 +292,69 @@ const AttendanceCheckIn: React.FC = () => {
   const locationSummary = location ? '定位已就绪' : '待定位';
   const locationDetail = location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : locationStatus.title;
 
-  if (ruleLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-            <Clock3 className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-            Attendance Check-In
+  const pageActions = (
+    <div className="grid gap-5">
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">ATTENDANCE CHECK-IN</p>
+            <h2>考勤打卡</h2>
+            <span>同步今日考勤规则、定位状态和员工签到签退</span>
           </div>
-          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            考勤打卡
-          </h1>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <InlineState title="正在加载考勤规则..." className="py-16" />
-        </div>
-      </div>
-    );
-  }
+          {!ruleLoading ? (
+            <div className="admin-source-controls">
+              <Button variant="outline" size="sm" onClick={getLocation} disabled={loading || selfServiceLocked}>
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {loading ? '定位中...' : '刷新定位'}
+              </Button>
+            </div>
+          ) : null}
+        </header>
 
-  return (
-    <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <Clock3 className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Attendance Check-In
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          考勤打卡
-        </h1>
-      </div>
+        {!ruleLoading ? (
+          <section className="admin-source-stat-grid">
+            {[
+              { label: '当前日期', value: dateLabel, meta: dayTypeLabel, icon: <Calendar size={18} />, tone: 'blue' },
+              { label: '当前时间', value: timeLabel, meta: phaseInfo.title, icon: <Clock3 size={18} />, tone: 'green' },
+              { label: '今日班次', value: shiftLabel, meta: rule?.ruleName || '未配置', icon: <CheckCircle2 size={18} />, tone: 'amber' },
+              { label: '定位状态', value: locationSummary, meta: locationDetail, icon: <MapPin size={18} />, tone: 'violet' },
+            ].map((stat) => (
+              <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+                <div className="admin-source-stat-icon">{stat.icon}</div>
+                <div>
+                  <p>{stat.label}</p>
+                  <strong>{stat.value}</strong>
+                  <span>{stat.meta}</span>
+                </div>
+              </article>
+            ))}
+          </section>
+        ) : null}
+    </div>
+  );
 
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          {dateLabel}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          规则 {rule?.ruleName || '未配置'}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          {dayTypeLabel}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          {locationSummary}
-        </span>
-
-        <div className="ml-auto flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={getLocation} disabled={loading || selfServiceLocked}>
-            <RefreshCw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
-            {loading ? '定位中...' : '刷新定位'}
-          </Button>
+  const pageFilters = (
+    <div className="grid gap-4">
+      <section className="card admin-users-toolbar">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            规则 {rule?.ruleName || '未配置'}
+          </span>
+          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            {sourceLabel}
+          </span>
+          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            {methodLabel}
+          </span>
         </div>
-      </div>
+      </section>
 
       {restrictionMessage ? (
         <div
           data-testid="hr-self-service-restriction"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
         >
           <div className="flex items-start gap-3">
-            <div className="rounded-full border border-amber-200 bg-white p-2 text-amber-600 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+            <div className="rounded-md border border-amber-200 bg-[var(--cf-surface-strong)] p-2 text-amber-600 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
               <AlertCircle size={16} />
             </div>
             <div>
@@ -360,9 +364,23 @@ const AttendanceCheckIn: React.FC = () => {
           </div>
         </div>
       ) : null}
+    </div>
+  );
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+  const pageContent = ruleLoading ? (
+    <InnerTableSurface
+      className="flex min-h-0 flex-1 flex-col"
+      wrapperClassName="flex min-h-0 flex-1 flex-col"
+    >
+      <InlineState title="正在加载考勤规则..." className="py-10" />
+    </InnerTableSurface>
+  ) : (
+    <InnerTableSurface
+      className="flex min-h-0 flex-1 flex-col"
+      wrapperClassName="flex min-h-0 flex-1 flex-col"
+    >
+      <div className="flex min-h-[560px] flex-col">
+        <section className="min-w-0">
           <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -373,9 +391,9 @@ const AttendanceCheckIn: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-4 p-5">
-            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-900/60">
-              <div className="text-[40px] font-semibold leading-none tracking-[0.08em] text-slate-900 dark:text-slate-100">
+          <div className="admin-source-content-grid p-5">
+            <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-5 dark:border-slate-800 dark:bg-slate-950">
+              <div className="text-[40px] font-semibold leading-none text-slate-900 dark:text-slate-100">
                 {secondLabel}
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -400,10 +418,10 @@ const AttendanceCheckIn: React.FC = () => {
               />
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 dark:border-slate-800 dark:bg-slate-950">
+            <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3.5 dark:border-slate-800 dark:bg-slate-950">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                  <div className="admin-source-stat-icon flex-shrink-0 text-slate-500 dark:text-slate-400">
                     <MapPin size={15} />
                   </div>
                   <div className="min-w-0">
@@ -418,12 +436,12 @@ const AttendanceCheckIn: React.FC = () => {
             </div>
 
             <div
-              className={`rounded-xl border px-4 py-4 text-sm leading-6 ${
+              className={`rounded-md border px-4 py-4 text-sm leading-6 ${
                 result
                   ? result.success
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200'
-                    : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200'
-                  : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200'
+                    : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200'
+                  : 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400'
               }`}
             >
               {result ? (
@@ -443,51 +461,61 @@ const AttendanceCheckIn: React.FC = () => {
                 </div>
               )}
             </div>
+
+            <section className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">今日规则</div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">当前考勤规则、允许方式和定位状态</div>
+              </div>
+              <div className="grid divide-y divide-slate-200 dark:divide-slate-800 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-3">
+                <DetailItem
+                  label="当前阶段"
+                  value={phaseInfo.title}
+                  icon={<Calendar size={15} />}
+                />
+                <DetailItem
+                  label="规则来源"
+                  value={sourceLabel}
+                  description={rule?.ruleName}
+                  icon={<CheckCircle2 size={15} />}
+                />
+                <DetailItem
+                  label="允许方式"
+                  value={methodLabel}
+                  description={`半径 ${rule?.radius ?? '--'} 米`}
+                  icon={<MapPin size={15} />}
+                />
+                <DetailItem
+                  label="定位状态"
+                  value={locationDetail}
+                  icon={<MapPin size={15} />}
+                />
+                <DetailItem
+                  label="签到时间"
+                  value={rule?.checkInTime || '--:--'}
+                  icon={<LogIn size={15} />}
+                />
+                <DetailItem
+                  label="签退时间"
+                  value={rule?.checkOutTime || '--:--'}
+                  icon={<LogOut size={15} />}
+                />
+              </div>
+            </section>
           </div>
         </section>
-
-        <aside className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">今日规则</div>
-          </div>
-
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            <SideItem
-              label="当前阶段"
-              value={phaseInfo.title}
-              icon={<Calendar size={15} />}
-            />
-            <SideItem
-              label="规则来源"
-              value={sourceLabel}
-              description={rule?.ruleName}
-              icon={<CheckCircle2 size={15} />}
-            />
-            <SideItem
-              label="允许方式"
-              value={methodLabel}
-              description={`半径 ${rule?.radius ?? '--'} 米`}
-              icon={<MapPin size={15} />}
-            />
-            <SideItem
-              label="定位状态"
-              value={locationDetail}
-              icon={<MapPin size={15} />}
-            />
-            <SideItem
-              label="签到时间"
-              value={rule?.checkInTime || '--:--'}
-              icon={<LogIn size={15} />}
-            />
-            <SideItem
-              label="签退时间"
-              value={rule?.checkOutTime || '--:--'}
-              icon={<LogOut size={15} />}
-            />
-          </div>
-        </aside>
       </div>
-    </div>
+    </InnerTableSurface>
+  );
+
+  return (
+    <section className="admin-source-page admin-attendance-check-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={ruleLoading ? undefined : pageFilters}
+        table={pageContent}
+      />
+    </section>
   );
 };
 

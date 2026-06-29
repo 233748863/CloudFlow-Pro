@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Banknote, ClipboardList, Edit, Eye, Plus, Send } from 'lucide-react';
+import { AlertTriangle, Banknote, ClipboardList, Edit, Eye, Plus, RefreshCw, Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { budgetApi, BudgetAdjustment, BudgetExecutionSummary, BudgetLedger, BudgetLine, BudgetPlan, BudgetSubject } from '@/services/api/budget';
 import { projectApi, Project } from '@/services/api/project';
@@ -8,11 +8,10 @@ import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type BudgetDialog =
   | { type: 'plan'; item?: BudgetPlan | null }
@@ -22,7 +21,7 @@ type BudgetDialog =
   | { type: 'adjustment-detail'; item: BudgetAdjustment }
   | null;
 
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300';
+const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
 
 const emptyPlanLine: BudgetLine = {
   subjectCode: '',
@@ -73,6 +72,54 @@ const formatMoney = (value?: number) =>
 
 const formatPercent = (value?: number) =>
   `${Number((value || 0) * 100).toFixed(1)}%`;
+
+const BudgetMetric: React.FC<{
+  label: string;
+  value: React.ReactNode;
+  meta?: React.ReactNode;
+  icon: React.ReactNode;
+  tone?: 'blue' | 'green' | 'amber' | 'violet';
+}> = ({ label, value, meta, icon, tone = 'blue' }) => (
+  <article className={`card admin-source-stat admin-source-tone-${tone}`}>
+    <div className="admin-source-stat-icon">{icon}</div>
+    <div className="min-w-0">
+      <p>{label}</p>
+      <strong className="truncate">{value}</strong>
+      {meta ? <span>{meta}</span> : null}
+    </div>
+  </article>
+);
+
+const BudgetSurface: React.FC<{
+  title: string;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, action, children, className = '', bodyClassName = '' }) => (
+  <InnerTableSurface className={`admin-budget-surface ${className}`} wrapperClassName="admin-budget-surface-wrapper">
+    <div className="admin-budget-surface-head">
+      <div>
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
+      {action ? <div className="admin-budget-surface-action">{action}</div> : null}
+    </div>
+    <div className={`admin-budget-surface-body ${bodyClassName}`}>{children}</div>
+  </InnerTableSurface>
+);
+
+const BudgetPanel: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, children, className, bodyClassName }) => (
+  <BudgetSurface title={title} className={className} bodyClassName={bodyClassName}>
+    {children}
+  </BudgetSurface>
+);
 
 const flattenDeptOptions = (items: SysDept[] = [], prefix = ''): Array<{ label: string; value: number }> =>
   items.flatMap((item) => {
@@ -267,138 +314,166 @@ export default function BudgetManagementPage() {
   const thresholdBadge = (status?: string) => (
     <DictBadge dictType="oa_budget_threshold" value={String(status || 'NORMAL')} fallback="正常" />
   );
+  const totalBudgetAmount = plans.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+  const pendingAdjustments = adjustments.filter((item) => item.status === 'DRAFT' || item.status === 'REJECTED').length;
+  const metrics = [
+    { label: '预算主表', value: String(plans.length), meta: formatMoney(totalBudgetAmount), icon: <Banknote size={18} />, tone: 'blue' },
+    { label: '预算科目', value: String(subjects.length), meta: '校验口径', icon: <ClipboardList size={18} />, tone: 'green' },
+    { label: '预算调整', value: String(adjustments.length), meta: `待提交 ${pendingAdjustments}`, icon: <AlertTriangle size={18} />, tone: 'amber' },
+    { label: '已执行额', value: formatMoney(plans.reduce((sum, item) => sum + Number(item.actualAmount || 0), 0)), meta: '实际核销', icon: <Send size={18} />, tone: 'violet' },
+  ];
+
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">BUDGET CONTROL</p>
+          <h2>预算管理</h2>
+          <span>统一维护预算主表、预算科目、执行台账和调整提审</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void load()}>
+            <RefreshCw size={16} />
+            刷新
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void openDialog({ type: 'subject' })} disabled={!hasPermission('oa:budget:subject')}>
+            <Plus size={16} />新增科目
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void openDialog({ type: 'adjustment' })} disabled={!hasPermission('oa:budget:adjustment')}>
+            <Plus size={16} />新增调整
+          </Button>
+          <Button size="sm" onClick={() => void openDialog({ type: 'plan' })} disabled={!hasPermission('oa:budget:add')}>
+            <Plus size={16} />新增预算
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {metrics.map((metric) => (
+          <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+            <div className="admin-source-stat-icon">{metric.icon}</div>
+            <div>
+              <p>{metric.label}</p>
+              <strong>{metric.value}</strong>
+              <span>{metric.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="admin-finance-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">预算名称</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input className="h-[42px]" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜索预算名称" type="search" />
+          </div>
+        </label>
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">{keyword ? `预算名称：${keyword}` : '全部预算'}</span>
+        </div>
+      </div>
+    </section>
+  );
+
+  const pageTable = (
+    <div className="admin-budget-board grid h-full min-h-0 gap-4 xl:grid-cols-3">
+      <BudgetSurface title="预算主表" description="预算提审后进入执行" className="admin-budget-table-panel" bodyClassName="admin-budget-table-body">
+          <table className="unity-data-table admin-source-table finance-source-table admin-budget-table">
+            <thead><tr><th>预算</th><th>执行</th><th className="text-right">操作</th></tr></thead>
+            <tbody>
+              {plans.map((item) => (
+                <tr key={item.budgetId}>
+                  <td>
+                    <strong>{item.budgetName}</strong>
+                    <div className="text-xs text-slate-500">{item.budgetNo || '-'} / {targetTypeDict.getLabel(item.targetType || 'DEPT') || item.targetType || '-'}</div>
+                    <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || item.status || '-'}</div>
+                  </td>
+                  <td>
+                    <div>{formatMoney(item.totalAmount)}</div>
+                    <div className="text-xs text-slate-500">占用 {formatMoney(item.reservedAmount)} / 实际 {formatMoney(item.actualAmount)}</div>
+                    <div className="mt-1 text-xs text-slate-400">可用 {formatMoney(item.availableAmount)}</div>
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="详情" aria-label="详情" onClick={() => void openDialog({ type: 'plan-detail', item })}><Eye size={15} /></button>
+                      {(item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:budget:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'plan', item })}><Edit size={15} /></button> : null}
+                      {(item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:budget:submit') ? <button type="button" title="提交" aria-label="提交" onClick={() => setConfirm({ type: 'plan-submit', item })}><Send size={15} /></button> : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!plans.length ? <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-slate-500">暂无预算主表</td></tr> : null}
+            </tbody>
+          </table>
+      </BudgetSurface>
+
+      <BudgetSurface title="预算科目" description="报销、采购、付款共用校验口径" className="admin-budget-table-panel" bodyClassName="admin-budget-table-body">
+          <table className="unity-data-table admin-source-table finance-source-table admin-budget-table">
+            <thead><tr><th>科目</th><th>状态</th><th className="text-right">操作</th></tr></thead>
+            <tbody>
+              {subjects.map((item) => (
+                <tr key={item.subjectId}>
+                  <td>
+                    <strong>{item.subjectName}</strong>
+                    <div className="text-xs text-slate-500">{item.subjectCode}</div>
+                  </td>
+                  <td>
+                    <div>{item.subjectType || '-'}</div>
+                    <div className="text-xs text-slate-500">{item.enabled === 1 ? '启用' : '停用'}</div>
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      {hasPermission('oa:budget:subject') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'subject', item })}><Edit size={15} /></button> : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!subjects.length ? <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-slate-500">暂无预算科目</td></tr> : null}
+            </tbody>
+          </table>
+      </BudgetSurface>
+
+      <BudgetSurface title="预算调整" description="调整单提审后改变预算额度" className="admin-budget-table-panel" bodyClassName="admin-budget-table-body">
+          <table className="unity-data-table admin-source-table finance-source-table admin-budget-table">
+            <thead><tr><th>调整</th><th>金额</th><th className="text-right">操作</th></tr></thead>
+            <tbody>
+              {adjustments.map((item) => (
+                <tr key={item.adjustmentId}>
+                  <td>
+                    <strong>{item.adjustmentNo}</strong>
+                    <div className="text-xs text-slate-500">{item.subjectName || item.subjectCode || '-'}</div>
+                    <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || item.status || '-'}</div>
+                  </td>
+                  <td>{formatMoney(item.changeAmount)}</td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="详情" aria-label="详情" onClick={() => void openDialog({ type: 'adjustment-detail', item })}><Eye size={15} /></button>
+                      {(item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:budget:adjustment') ? <button type="button" title="提交" aria-label="提交" onClick={() => setConfirm({ type: 'adjustment-submit', item })}><Send size={15} /></button> : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!adjustments.length ? <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-slate-500">暂无预算调整</td></tr> : null}
+            </tbody>
+          </table>
+      </BudgetSurface>
+    </div>
+  );
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout
-        filters={(
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-1 flex-wrap items-center gap-3">
-                <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="按预算名称搜索，例如：交付部 2026 年预算" className="max-w-md" />
-                <div className="text-xs text-slate-500">
-                  预算管理 = 预算主表 + 预算明细 + 执行台账 + 阈值状态 + 调整提审。
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => void openDialog({ type: 'subject' })} disabled={!hasPermission('oa:budget:subject')}>
-                  <Plus size={14} className="mr-1.5" />新增科目
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void openDialog({ type: 'adjustment' })} disabled={!hasPermission('oa:budget:adjustment')}>
-                  <Plus size={14} className="mr-1.5" />新增调整
-                </Button>
-                <Button size="sm" onClick={() => void openDialog({ type: 'plan' })} disabled={!hasPermission('oa:budget:add')}>
-                  <Plus size={14} className="mr-1.5" />新增预算
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-        table={(
-          <div className="grid gap-4 lg:grid-cols-3">
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/88">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-sm font-medium"><Banknote size={16} />预算主表</div>
-                <div className="text-xs text-slate-500">预算提审后才进入执行</div>
-              </div>
-              <table className="w-full">
-                <TableHeader><tr><TableHead>预算</TableHead><TableHead>执行</TableHead><TableActionHead>操作</TableActionHead></tr></TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {plans.map((item) => (
-                    <tr key={item.budgetId}>
-                      <td className="px-4 py-3 text-sm">
-                        <div>{item.budgetName}</div>
-                        <div className="text-xs text-slate-500">{item.budgetNo || '-'} / {targetTypeDict.getLabel(item.targetType || 'DEPT') || item.targetType || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || item.status || '-'}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div>{formatMoney(item.totalAmount)}</div>
-                        <div className="text-xs text-slate-500">占用 {formatMoney(item.reservedAmount)} / 实际 {formatMoney(item.actualAmount)}</div>
-                        <div className="mt-1 text-xs text-slate-400">可用 {formatMoney(item.availableAmount)}</div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          overflowLabel="更多"
-                          actions={[
-                            { label: '查看预算详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'plan-detail', item }), semantic: 'view', isPrimary: true },
-                            { label: '编辑预算', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'plan', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'edit', isPrimary: true, permissionKey: 'oa:budget:edit' },
-                            { label: '提交预算', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'plan-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit', permissionKey: 'oa:budget:submit' },
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/88">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-sm font-medium"><ClipboardList size={16} />预算科目</div>
-                <div className="text-xs text-slate-500">报销 / 采购 / 付款都按科目校验</div>
-              </div>
-              <table className="w-full">
-                <TableHeader><tr><TableHead>科目</TableHead><TableHead>状态</TableHead><TableActionHead>操作</TableActionHead></tr></TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {subjects.map((item) => (
-                    <tr key={item.subjectId}>
-                      <td className="px-4 py-3 text-sm">
-                        <div>{item.subjectName}</div>
-                        <div className="text-xs text-slate-500">{item.subjectCode}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div>{item.subjectType || '-'}</div>
-                        <div className="text-xs text-slate-500">{item.enabled === 1 ? '启用' : '停用'}</div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            { label: '编辑科目', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'subject', item }), semantic: 'edit', isPrimary: true, permissionKey: 'oa:budget:subject' },
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/88">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-sm font-medium"><AlertTriangle size={16} />预算调整</div>
-                <div className="text-xs text-slate-500">调整要提审，不能直接改主表</div>
-              </div>
-              <table className="w-full">
-                <TableHeader><tr><TableHead>调整</TableHead><TableHead>金额</TableHead><TableActionHead>操作</TableActionHead></tr></TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {adjustments.map((item) => (
-                    <tr key={item.adjustmentId}>
-                      <td className="px-4 py-3 text-sm">
-                        <div>{item.adjustmentNo}</div>
-                        <div className="text-xs text-slate-500">{item.subjectName || item.subjectCode || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || item.status || '-'}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">{formatMoney(item.changeAmount)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          overflowLabel="更多"
-                          actions={[
-                            { label: '查看调整详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'adjustment-detail', item }), semantic: 'view', isPrimary: true },
-                            { label: '提交调整', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'adjustment-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit', permissionKey: 'oa:budget:adjustment' },
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          </div>
-        )}
-      />
+    <>
+      <section className="admin-source-page finance-source-page budget-management-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+        />
+      </section>
 
       <BaseDialog
         open={dialog?.type === 'plan-detail'}
@@ -407,79 +482,70 @@ export default function BudgetManagementPage() {
         width="extra-wide"
       >
         {planDetail && planSummary ? (
-          <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <div className="text-sm font-medium">预算总额</div>
-                <div className="mt-2 text-sm">{formatMoney(planSummary.totalAmount)}</div>
-              </div>
-              <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <div className="text-sm font-medium">预算占用</div>
-                <div className="mt-2 text-sm">{formatMoney(planSummary.reservedAmount)}</div>
-              </div>
-              <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <div className="text-sm font-medium">实际执行</div>
-                <div className="mt-2 text-sm">{formatMoney(planSummary.actualAmount)}</div>
-              </div>
-              <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <div className="text-sm font-medium">阈值状态</div>
-                <div className="mt-2">{thresholdBadge(planSummary.thresholdStatus)}</div>
-                <div className="mt-1 text-xs text-slate-500">执行率 {formatPercent(planSummary.executionRatio)}</div>
-              </div>
+          <div className="admin-dialog-stack">
+            <div className="admin-source-stat-grid">
+              <BudgetMetric label="预算总额" value={formatMoney(planSummary.totalAmount)} meta="预算详情" icon={<Banknote size={18} />} tone="blue" />
+              <BudgetMetric label="预算占用" value={formatMoney(planSummary.reservedAmount)} meta="已锁定" icon={<ClipboardList size={18} />} tone="amber" />
+              <BudgetMetric label="实际执行" value={formatMoney(planSummary.actualAmount)} meta="已核销" icon={<Send size={18} />} tone="green" />
+              <BudgetMetric label="阈值状态" value={thresholdBadge(planSummary.thresholdStatus)} meta={`执行率 ${formatPercent(planSummary.executionRatio)}`} icon={<AlertTriangle size={18} />} tone="violet" />
             </div>
 
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <div className="mb-3 text-sm font-medium">预算主表</div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">预算编号：{planDetail.budgetNo || '-'}</div>
-                  <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">目标对象：{targetTypeDict.getLabel(planDetail.targetType || 'DEPT') || planDetail.targetType} / {planDetail.targetName || planDetail.projectName || planDetail.deptName || '-'}</div>
-                  <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">负责人：{planDetail.ownerName || '-'}</div>
-                  <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">可用余额：{formatMoney(planSummary.availableAmount)}</div>
+              <BudgetPanel title="预算主表">
+                <div className="admin-budget-detail-list">
+                  <div><span>预算编号</span><strong>{planDetail.budgetNo || '-'}</strong></div>
+                  <div><span>目标对象</span><strong>{targetTypeDict.getLabel(planDetail.targetType || 'DEPT') || planDetail.targetType} / {planDetail.targetName || planDetail.projectName || planDetail.deptName || '-'}</strong></div>
+                  <div><span>负责人</span><strong>{planDetail.ownerName || '-'}</strong></div>
+                  <div><span>可用余额</span><strong>{formatMoney(planSummary.availableAmount)}</strong></div>
                 </div>
                 <div className="mt-3 text-xs text-slate-500">
                   阈值 = 预警 {formatPercent(planSummary.warningThreshold)} / 告警 {formatPercent(planSummary.alertThreshold)} / 拦截 {formatPercent(planSummary.blockThreshold)}
                 </div>
-              </div>
+              </BudgetPanel>
 
-              <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <div className="mb-3 text-sm font-medium">预算科目明细</div>
-                <div className="space-y-2">
+              <BudgetPanel title="预算科目明细">
+                  <div className="admin-dialog-stack">
                   {(planDetail.lines || []).map((line, index) => (
-                    <div key={`${line.lineId || line.subjectCode || 'line'}-${index}`} className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+                    <div key={`${line.lineId || line.subjectCode || 'line'}-${index}`} className="admin-budget-line-row">
                       <div>{line.subjectCode || '-'} / {line.subjectName || '-'}</div>
                       <div className="text-xs text-slate-500">预算 {formatMoney(line.amount)} / 占用 {formatMoney(line.reservedAmount)} / 实际 {formatMoney(line.actualAmount)} / 可用 {formatMoney(line.availableAmount)}</div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </BudgetPanel>
             </div>
 
-            <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-              <div className="mb-3 text-sm font-medium">执行台账</div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[860px]">
-                  <TableHeader><tr><TableHead>业务</TableHead><TableHead>科目</TableHead><TableHead>操作</TableHead><TableHead>金额</TableHead><TableHead>可用余额</TableHead><TableHead>备注</TableHead></tr></TableHeader>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <BudgetSurface title="执行台账" className="admin-budget-ledger-surface" bodyClassName="admin-budget-table-body">
+                <table className="unity-data-table admin-source-table min-w-[860px]">
+                  <thead>
+                    <tr>
+                      <th>业务</th>
+                      <th>科目</th>
+                      <th>操作</th>
+                      <th>金额</th>
+                      <th>可用余额</th>
+                      <th>备注</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {planLedger.length ? planLedger.map((item) => (
                       <tr key={item.ledgerId}>
-                        <td className="px-4 py-3 text-sm">
+                        <td>
                           <div>{item.businessType || '-'}</div>
                           <div className="text-xs text-slate-500">{item.businessNo || item.businessId || '-'}</div>
                         </td>
-                        <td className="px-4 py-3 text-sm">{item.subjectName || item.subjectCode || '-'}</td>
-                        <td className="px-4 py-3 text-sm">{operationTypeDict.getLabel(item.operationType || '') || item.operationType || '-'}</td>
-                        <td className="px-4 py-3 text-sm">{formatMoney(item.amount)}</td>
-                        <td className="px-4 py-3 text-sm">{formatMoney(item.availableAfter)}</td>
-                        <td className="px-4 py-3 text-sm">{item.remark || '-'}</td>
+                        <td>{item.subjectName || item.subjectCode || '-'}</td>
+                        <td>{operationTypeDict.getLabel(item.operationType || '') || item.operationType || '-'}</td>
+                        <td>{formatMoney(item.amount)}</td>
+                        <td>{formatMoney(item.availableAfter)}</td>
+                        <td>{item.remark || '-'}</td>
                       </tr>
                     )) : (
                       <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">暂无执行台账，当前预算还没有被业务单据占用或核销。</td></tr>
                     )}
                   </tbody>
                 </table>
-              </div>
-            </div>
+            </BudgetSurface>
           </div>
         ) : null}
       </BaseDialog>
@@ -491,8 +557,8 @@ export default function BudgetManagementPage() {
         width="extra-wide"
         footer={<><Button variant="outline" onClick={() => void openDialog(null)}>取消</Button><Button onClick={() => void saveDialog()} disabled={saving}>{saving ? '保存中...' : '保存'}</Button></>}
       >
-        <div className="space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+        <div className="admin-dialog-stack">
+          <div className="admin-budget-note">
             预算主表 = 预算名称 + 目标对象 + 负责人 + 至少 1 条预算科目明细。提审通过后，报销 / 采购 / 付款会真实占用和核销这张预算。
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -564,16 +630,17 @@ export default function BudgetManagementPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="text-sm font-medium">预算科目明细</div>
+          <BudgetSurface
+            title="预算科目明细"
+            action={(
               <Button size="sm" variant="outline" onClick={() => setPlanForm((prev) => ({ ...prev, lines: [...(prev.lines || []), { ...emptyPlanLine }] }))}>
                 <Plus size={14} className="mr-1.5" />新增一行
               </Button>
-            </div>
-            <div className="space-y-3">
+            )}
+            bodyClassName="admin-budget-line-editor"
+          >
               {(planForm.lines || []).map((line, index) => (
-                <div key={`${line.lineId || line.subjectCode || 'line'}-${index}`} className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 md:grid-cols-5 dark:border-slate-800 dark:bg-slate-900/60">
+                <div key={`${line.lineId || line.subjectCode || 'line'}-${index}`} className="admin-budget-line-row admin-budget-line-grid">
                   <Select value={line.subjectCode || 'NONE'} onValueChange={(value) => {
                     const matched = subjects.find((item) => item.subjectCode === value);
                     const next = [...(planForm.lines || [])];
@@ -596,7 +663,7 @@ export default function BudgetManagementPage() {
                     next[index] = { ...next[index], amount: Number(e.target.value || 0) };
                     setPlanForm((prev) => ({ ...prev, lines: next }));
                   }} placeholder="预算金额" />
-                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="admin-budget-threshold-cell">
                     阈值：{formatPercent(line.warningRatio)} / {formatPercent(line.alertRatio)} / {formatPercent(line.blockRatio)}
                   </div>
                   <Button variant="outline" onClick={() => setPlanForm((prev) => ({ ...prev, lines: (prev.lines || []).filter((_, lineIndex) => lineIndex !== index) || [{ ...emptyPlanLine }] }))} disabled={(planForm.lines || []).length === 1}>
@@ -604,8 +671,7 @@ export default function BudgetManagementPage() {
                   </Button>
                 </div>
               ))}
-            </div>
-          </div>
+          </BudgetSurface>
         </div>
       </BaseDialog>
 
@@ -643,8 +709,8 @@ export default function BudgetManagementPage() {
         width="normal"
         footer={<><Button variant="outline" onClick={() => void openDialog(null)}>取消</Button><Button onClick={() => void saveDialog()} disabled={saving}>{saving ? '保存中...' : '保存'}</Button></>}
       >
-        <div className="space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+        <div className="admin-dialog-stack">
+          <div className="admin-budget-note">
             预算调整 = 对已存在预算的某个科目做追加或压缩。调整单创建后还要提审，提审通过才会真正改变预算额度。
           </div>
           <div>
@@ -698,23 +764,15 @@ export default function BudgetManagementPage() {
         width="normal"
       >
         {dialog?.type === 'adjustment-detail' ? (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-              <div className="text-sm font-medium">调整单号</div>
-              <div className="mt-2 text-sm">{dialog.item.adjustmentNo || '-'}</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-              <div className="text-sm font-medium">预算 / 科目</div>
-              <div className="mt-2 text-sm">{dialog.item.budgetNo || dialog.item.budgetId || '-'} / {dialog.item.subjectName || dialog.item.subjectCode || '-'}</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-              <div className="text-sm font-medium">调整金额</div>
-              <div className="mt-2 text-sm">{formatMoney(dialog.item.changeAmount)}</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-              <div className="text-sm font-medium">调整原因</div>
-              <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">{dialog.item.reason || '无'}</div>
-            </div>
+          <div className="admin-dialog-stack">
+            <BudgetPanel title="调整单信息">
+              <div className="admin-budget-detail-list">
+                <div><span>调整单号</span><strong>{dialog.item.adjustmentNo || '-'}</strong></div>
+                <div><span>预算 / 科目</span><strong>{dialog.item.budgetNo || dialog.item.budgetId || '-'} / {dialog.item.subjectName || dialog.item.subjectCode || '-'}</strong></div>
+                <div><span>调整金额</span><strong>{formatMoney(dialog.item.changeAmount)}</strong></div>
+                <div><span>调整原因</span><strong>{dialog.item.reason || '无'}</strong></div>
+              </div>
+            </BudgetPanel>
           </div>
         ) : null}
       </BaseDialog>
@@ -744,7 +802,6 @@ export default function BudgetManagementPage() {
           }
         }}
       />
-    </div>
+    </>
   );
 }
-

@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -49,16 +49,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import AssetForm from './AssetForm';
 
 interface InlineStateProps {
@@ -123,7 +115,7 @@ const InlineState: React.FC<InlineStateProps> = ({
   className,
 }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3">
       {icon || <Package className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -140,10 +132,10 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
   icon,
   loading = false,
 }) => (
-  <TableRow className="hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3">
           {loading ? <RotateCcw className="h-4 w-4 animate-spin" /> : icon || <Package className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -151,31 +143,48 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
           <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
+);
+
+const DialogPanel: React.FC<{
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, actions, children, className, bodyClassName }) => (
+  <section className={['table-scroll-container admin-inner-table-surface', className].filter(Boolean).join(' ')}>
+    {title || description || actions ? (
+      <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div>
+          {title ? <strong>{title}</strong> : null}
+          {description ? <span>{description}</span> : null}
+        </div>
+        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      </div>
+    ) : null}
+    <div className={['p-4', bodyClassName].filter(Boolean).join(' ')}>{children}</div>
+  </section>
 );
 
 const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
-  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
-    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
-      {label}
-    </div>
-    <div className="max-w-[65%] text-right text-sm font-medium text-slate-900 dark:text-slate-100">
-      {value}
-    </div>
+  <div className="admin-asset-detail-item">
+    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
   </div>
 );
 
 const DetailSection: React.FC<{
   title: string;
   children: React.ReactNode;
-}> = ({ title, children }) => (
-  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
-    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-    </div>
-    <div>{children}</div>
-  </section>
+  description?: string;
+  bodyClassName?: string;
+}> = ({ title, children, description, bodyClassName }) => (
+  <DialogPanel title={title} description={description} bodyClassName={bodyClassName}>
+    {children}
+  </DialogPanel>
 );
 
 const formatAmount = (value?: number | null) => {
@@ -560,7 +569,7 @@ const AssetList: React.FC = () => {
   const getStatusBadge = (status?: string) => {
     const meta = STATUS_META[status || '1'];
     return (
-      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${meta.className}`}>
+      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${meta.className}`}>
         {meta.label}
       </span>
     );
@@ -576,6 +585,12 @@ const AssetList: React.FC = () => {
   const currentCategoryLabel = searchParams.category || '全部分类';
   const currentNameLabel = searchParams.name || '全部名称';
   const currentCodeLabel = searchParams.assetCode || '全部编码';
+  const metrics = [
+    { label: '资产总数', value: String(stats?.total ?? total), meta: `当前页 ${assets.length}`, icon: <Package size={18} />, tone: 'blue' },
+    { label: '闲置', value: String(stats?.statusCount?.idle ?? assets.filter((item) => item.status === '1').length), meta: '可领用', icon: <UserCheck size={18} />, tone: 'green' },
+    { label: '在用', value: String(stats?.statusCount?.inUse ?? assets.filter((item) => item.status === '2').length), meta: '待归还', icon: <History size={18} />, tone: 'violet' },
+    { label: '总价值', value: formatAmount(stats?.totalValue ?? 0), meta: '资产账面', icon: <QrCode size={18} />, tone: 'amber' },
+  ];
   const renderDetailValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === '') {
       return '-';
@@ -584,34 +599,48 @@ const AssetList: React.FC = () => {
     return String(value);
   };
 
-  return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-3"
-        actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-medium text-slate-900 dark:text-slate-100">共 {stats?.total ?? total} 条</span>
-              <span className="text-slate-500 dark:text-slate-400">总价值 {formatAmount(stats?.totalValue ?? 0)}</span>
-            </div>
-
-            <div className="ml-auto flex flex-wrap gap-2">
+  const pageActions = (
+    <>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">ASSET LEDGER</p>
+            <h2>资产管理</h2>
+            <span>维护资产编码、分类、状态、位置、领用归还和标签日志</span>
+          </div>
+          <div className="admin-source-controls">
               <Button variant="outline" size="sm" onClick={() => void refreshPage()} disabled={loading}>
-                <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
+                <RotateCcw size={16} className={loading ? 'animate-spin' : ''} />
                 刷新
               </Button>
               <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:asset:add')}>
-                <Plus size={14} className="mr-1.5" />
+                <Plus size={16} />
                 新增资产
               </Button>
-            </div>
           </div>
-        )}
-        filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
-            <div className="grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+        </header>
+
+        <section className="admin-source-stat-grid">
+          {metrics.map((metric) => (
+            <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+              <div className="admin-source-stat-icon">{metric.icon}</div>
+              <div>
+                <p>{metric.label}</p>
+                <strong>{metric.value}</strong>
+                <span>{metric.meta}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar">
+          <div className="admin-oa-filter-grid">
+            <label>
+              <span className="input-label">资产名称</span>
+              <div className="admin-source-search-field">
+                <Search size={16} />
                 <Input
                   value={searchNameInput}
                   onChange={(event) => setSearchNameInput(event.target.value)}
@@ -621,10 +650,13 @@ const AssetList: React.FC = () => {
                     }
                   }}
                   placeholder="按资产名称搜索"
-                  className="h-10 pl-10"
+                  className="h-[42px]"
                 />
               </div>
+            </label>
 
+            <label>
+              <span className="input-label">资产编码</span>
               <Input
                 value={searchCodeInput}
                 onChange={(event) => setSearchCodeInput(event.target.value)}
@@ -634,11 +666,14 @@ const AssetList: React.FC = () => {
                   }
                 }}
                 placeholder="按资产编码搜索"
-                className="h-10"
+                className="h-[42px]"
               />
+            </label>
 
+            <label>
+              <span className="input-label">分类</span>
               <Select value={categoryInput || ALL_FILTER_VALUE} onValueChange={(value) => setCategoryInput(value === ALL_FILTER_VALUE ? '' : value)}>
-                <SelectTrigger className="h-10">
+                <SelectTrigger className="h-[42px]">
                   <SelectValue placeholder="全部分类" />
                 </SelectTrigger>
                 <SelectContent>
@@ -650,9 +685,12 @@ const AssetList: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </label>
 
+            <label>
+              <span className="input-label">状态</span>
               <Select value={statusInput || ALL_FILTER_VALUE} onValueChange={(value) => setStatusInput(value === ALL_FILTER_VALUE ? '' : value)}>
-                <SelectTrigger className="h-10">
+                <SelectTrigger className="h-[42px]">
                   <SelectValue placeholder="全部状态" />
                 </SelectTrigger>
                 <SelectContent>
@@ -663,39 +701,37 @@ const AssetList: React.FC = () => {
                   <SelectItem value="4">报废</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </label>
 
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              {hasActiveFilters ? `${currentStatusLabel} / ${currentCategoryLabel} / ${currentNameLabel} / ${currentCodeLabel}` : '全部资产'}
-            </div>
-
-            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:justify-start">
+            <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">{hasActiveFilters ? `${currentStatusLabel} / ${currentCategoryLabel} / ${currentNameLabel} / ${currentCodeLabel}` : '全部资产'}</span>
               <Button variant="outline" size="sm" onClick={handleSearch}>
-                <Search size={14} className="mr-1.5" />
+                <Search size={14} />
                 应用
               </Button>
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <RotateCcw size={14} className="mr-1.5" />
-                清空筛选
+              <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasActiveFilters}>
+                <RotateCcw size={14} />
+                重置
               </Button>
             </div>
           </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col">
-            <div className="overflow-x-auto">
-              <Table className="min-w-[980px]">
-                <TableHeader className="sticky top-0 z-10">
-                  <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
-                    <TableHead className="px-4 py-3 text-left">资产编码</TableHead>
-                    <TableHead className="px-4 py-3 text-left">资产信息</TableHead>
-                    <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                    <TableHead className="px-4 py-3 text-left">价格 / 位置</TableHead>
-                    <TableActionHead className="px-4 py-3 text-right">操作</TableActionHead>
-                  </TableRow>
-                </TableHeader>
+        </section>
+  );
 
-                <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+  const pageTable = (
+        <InnerTableSurface>
+              <table className="unity-data-table admin-source-table min-w-[980px]">
+                <thead>
+                  <tr>
+                    <th>资产编码</th>
+                    <th>资产信息</th>
+                    <th>状态</th>
+                    <th>价格 / 位置</th>
+                    <th className="text-right">当前操作</th>
+                  </tr>
+                </thead>
+
+                <tbody>
                   {loading ? (
                     <TableStateRow colSpan={5} title="正在加载资产数据..." loading />
                   ) : assets.length === 0 ? (
@@ -705,75 +741,45 @@ const AssetList: React.FC = () => {
                     />
                   ) : (
                     assets.map((asset) => (
-                      <TableRow key={asset.assetId} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                        <TableCell className="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                      <tr key={asset.assetId}>
+                        <td>
                           <div>{asset.assetCode || '-'}</div>
                           <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                             {asset.purchaseDate || '-'}
                           </div>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        </td>
+                        <td>
                           <div className="font-medium text-slate-900 dark:text-slate-100">{asset.name}</div>
                           <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                             {[asset.category || '-', asset.model || '-'].join(' / ')}
                           </div>
-                        </TableCell>
-                        <TableCell className="px-4 py-3">
+                        </td>
+                        <td>
                           {getStatusBadge(asset.status)}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        </td>
+                        <td>
                           <div className="font-medium text-slate-900 dark:text-slate-100">{formatAmount(asset.price)}</div>
                           <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                             {asset.location || '-'}
                           </div>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-right">
-                          <TableRowActions
-                            align="end"
-                            className="gap-1"
-                            actions={[
-                              {
-                                label: '详情',
-                                icon: <Eye size={14} />,
-                                onClick: () => handleShowDetail(asset),
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '编辑',
-                                icon: <Edit size={14} />,
-                                onClick: () => handleEdit(asset),
-                                tone: 'neutral',
-                                permissionKey: 'oa:asset:edit',
-                              },
-                              {
-                                label: '领用',
-                                icon: <UserCheck size={14} />,
-                                onClick: () => openBorrowDialog(asset),
-                                tone: 'neutral',
-                                hidden: asset.status !== '1',
-                                permissionKey: 'oa:asset:borrow',
-                              },
-                              {
-                                label: '归还',
-                                icon: <RotateCcw size={14} />,
-                                onClick: () => openReturnConfirm(asset),
-                                tone: 'neutral',
-                                hidden: asset.status !== '2',
-                                permissionKey: 'oa:asset:return',
-                              },
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                        <td>
+                          <div className="admin-users-row-actions">
+                            <button type="button" title="详情" aria-label="详情" onClick={() => handleShowDetail(asset)}><Eye size={15} /></button>
+                            {hasPermission('oa:asset:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => handleEdit(asset)}><Edit size={15} /></button> : null}
+                            {asset.status === '1' && hasPermission('oa:asset:borrow') ? <button type="button" title="领用" aria-label="领用" onClick={() => openBorrowDialog(asset)}><UserCheck size={15} /></button> : null}
+                            {asset.status === '2' && hasPermission('oa:asset:return') ? <button type="button" title="归还" aria-label="归还" onClick={() => openReturnConfirm(asset)}><RotateCcw size={15} /></button> : null}
+                          </div>
+                        </td>
+                      </tr>
                     ))
                   )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
+                </tbody>
+              </table>
+        </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
             <Pagination
               total={total}
               page={searchParams.pageNum || 1}
@@ -783,9 +789,18 @@ const AssetList: React.FC = () => {
               onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
               onPageSizeChange={(pageSize) => setSearchParams((prev) => ({ ...prev, pageSize, pageNum: 1 }))}
             />
-          ) : null
-        )}
-      />
+  ) : null;
+
+  return (
+    <>
+      <section className="admin-source-page asset-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showFormDialog}
@@ -832,7 +847,7 @@ const AssetList: React.FC = () => {
         onClose={() => setDetailAsset(null)}
         maxWidthClassName="max-w-xl"
         headerAside={detailAsset ? getStatusBadge(detailAsset.status) : null}
-        bodyClassName="space-y-3"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => setDetailAsset(null)}>
@@ -933,13 +948,13 @@ const AssetList: React.FC = () => {
               ) : null}
             </div>
 
-            <DetailSection title="基础信息">
+            <DetailSection title="基础信息" bodyClassName="admin-asset-detail-grid">
               <DetailField label="资产编码" value={renderDetailValue(detailAsset.assetCode)} />
               <DetailField label="分类" value={renderDetailValue(detailAsset.category)} />
               <DetailField label="规格型号" value={renderDetailValue(detailAsset.model)} />
             </DetailSection>
 
-            <DetailSection title="台账信息">
+            <DetailSection title="台账信息" bodyClassName="admin-asset-detail-grid">
               <DetailField label="价格" value={formatAmount(detailAsset.price)} />
               <DetailField label="存放位置" value={renderDetailValue(detailAsset.location)} />
               <DetailField label="购入日期" value={renderDetailValue(detailAsset.purchaseDate)} />
@@ -947,7 +962,7 @@ const AssetList: React.FC = () => {
 
             {detailAsset.remark ? (
               <DetailSection title="备注">
-                <div className="px-4 py-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                <div className="admin-dialog-value-note">
                   {detailAsset.remark}
                 </div>
               </DetailSection>
@@ -976,14 +991,14 @@ const AssetList: React.FC = () => {
         )}
       >
         {qrAsset?.assetId ? (
-          <div className="space-y-4 py-1">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+          <div className="admin-dialog-stack py-1">
+            <DialogPanel title="资产信息">
               <div className="font-medium text-slate-900 dark:text-slate-100">{qrAsset.name}</div>
               <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{qrAsset.assetCode || '-'}</div>
-            </div>
-            <div className="flex flex-col items-center justify-center gap-4">
+            </DialogPanel>
+            <DialogPanel title="二维码标签" bodyClassName="flex flex-col items-center justify-center gap-4">
               {qrCodeLoading ? (
-                <div className="flex h-52 w-52 items-center justify-center rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800">
+                <div className="flex h-52 w-52 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 dark:border-slate-800 dark:bg-slate-950">
                   <RotateCcw className="h-5 w-5 animate-spin text-slate-400" />
                 </div>
               ) : qrCodeError ? (
@@ -991,19 +1006,19 @@ const AssetList: React.FC = () => {
                   title="二维码加载失败"
                   description={qrCodeError}
                   icon={<QrCode className="h-4 w-4" />}
-                  className="h-52 w-52 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
+                  className="h-52 w-52 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-4 dark:border-slate-800 dark:bg-slate-950"
                 />
               ) : qrCodeUrl ? (
                 <img
                   src={qrCodeUrl}
                   alt="资产二维码"
-                  className="h-52 w-52 rounded-xl border border-slate-200 bg-white p-3"
+                  className="h-52 w-52 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 dark:border-slate-800 dark:bg-slate-950"
                 />
               ) : null}
               <div className="text-sm text-slate-500 dark:text-slate-400">
                 {qrAsset.assetCode || '-'}
               </div>
-            </div>
+            </DialogPanel>
           </div>
         ) : null}
       </BaseDialog>
@@ -1019,15 +1034,15 @@ const AssetList: React.FC = () => {
         bodyClassName="max-h-[60vh] overflow-y-auto"
       >
         {logLoading ? (
-          <InlineState title="正在加载资产日志..." className="py-12" icon={<History className="h-4 w-4 animate-pulse" />} />
+          <InlineState title="正在加载资产日志..." className="py-12" icon={<History className="h-4 w-4" />} />
         ) : assetLogs.length === 0 ? (
-          <InlineState title="暂无变动记录" className="py-8" icon={<History className="h-4 w-4" />} />
+          <InlineState title="暂无变动记录" className="py-6" icon={<History className="h-4 w-4" />} />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
+          <DialogPanel title="变动明细" bodyClassName="admin-asset-log-list">
             {assetLogs.map((log, index) => (
               <div
                 key={log.logId || `${log.type || 'log'}-${index}`}
-                className="border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800"
+                className="admin-asset-log-item"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -1045,7 +1060,7 @@ const AssetList: React.FC = () => {
                 ) : null}
               </div>
             ))}
-          </div>
+          </DialogPanel>
         )}
       </BaseDialog>
 
@@ -1076,14 +1091,14 @@ const AssetList: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
+        <div className="admin-dialog-stack">
           {borrowTarget ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+            <DialogPanel title="当前资产">
               {borrowTarget.name}
-            </div>
+            </DialogPanel>
           ) : null}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">领用人 ID</Label>
+          <div className="admin-dialog-field">
+            <Label>领用人 ID</Label>
             <Input
               value={borrowUserId}
               onChange={(event) => setBorrowUserId(event.target.value)}
@@ -1123,14 +1138,14 @@ const AssetList: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
+        <div className="admin-dialog-stack">
           {remarkAsset ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+            <DialogPanel title="当前资产">
               {remarkAsset.name}
-            </div>
+            </DialogPanel>
           ) : null}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">备注</Label>
+          <div className="admin-dialog-field">
+            <Label>备注</Label>
             <Textarea
               value={remarkText}
               onChange={(event) => setRemarkText(event.target.value)}
@@ -1149,7 +1164,7 @@ const AssetList: React.FC = () => {
         onConfirm={() => void handleConfirmAction()}
         onCancel={() => setConfirmState(null)}
       />
-    </div>
+    </>
   );
 };
 

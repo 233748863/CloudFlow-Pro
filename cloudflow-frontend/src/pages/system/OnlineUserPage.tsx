@@ -1,23 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { LogOut, RefreshCw, RotateCcw, Search } from 'lucide-react';
+import { Building2, Clock, LogOut, RefreshCw, RotateCcw, Search, ShieldCheck, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
   LoadingSpinner,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import {
   forceLogoutOnlineUsers,
@@ -26,6 +17,7 @@ import {
   OnlineUserQuery,
 } from '@/services/api/onlineUser';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type OnlineUserFilters = {
   username: string;
@@ -65,7 +57,7 @@ const getAvatarText = (item: OnlineUserItem) =>
 const getSessionStatusClassName = (item: OnlineUserItem) =>
   item.currentLogin
     ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
-    : 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
+    : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
 
 const getRemainingClassName = (seconds?: number) => {
   if (seconds == null) return 'text-slate-500 dark:text-slate-400';
@@ -75,7 +67,7 @@ const getRemainingClassName = (seconds?: number) => {
 };
 
 const checkboxClassName =
-  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-[#0d95b5] text-[#0d95b5] focus:ring-2 focus:ring-[#0d95b5]/30 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -83,8 +75,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent dark:hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -94,8 +86,8 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 export const OnlineUserPage: React.FC = () => {
@@ -222,231 +214,277 @@ export const OnlineUserPage: React.FC = () => {
     query.username || query.nickName || query.deptName || query.tenantId,
   );
 
+  const stats = useMemo(
+    () => [
+      {
+        label: '在线总数',
+        value: String(total),
+        meta: `当前页 ${records.length}`,
+        icon: <Users size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '可强退',
+        value: String(selectableRecords.length),
+        meta: '排除当前会话',
+        icon: <LogOut size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '当前会话',
+        value: String(records.filter((item) => item.currentLogin).length),
+        meta: '受保护',
+        icon: <ShieldCheck size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '已选中',
+        value: String(selectedTokens.length),
+        meta: '待批量强退',
+        icon: <Clock size={18} />,
+        tone: 'violet',
+      },
+    ],
+    [records, selectableRecords.length, selectedTokens.length, total],
+  );
+
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">ONLINE USERS</p>
+          <h2>在线用户</h2>
+          <span>查看当前会话、租户归属、角色和强退状态</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
+            刷新
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => handleForceLogout(selectedTokens)}
+            disabled={!selectedTokens.length}
+          >
+            <LogOut size={16} />
+            批量强退
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={cn('card admin-source-stat', `admin-source-tone-${stat.tone}`)}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form onSubmit={handleSearch} className="admin-online-user-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">搜索账号</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.username}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, username: event.target.value }))
+              }
+              placeholder="按账号搜索"
+              type="search"
+            />
+          </div>
+        </label>
+
+        <label>
+          <span className="input-label">昵称</span>
+          <Input
+            value={filters.nickName}
+            onChange={(event) =>
+              setFilters((current) => ({ ...current, nickName: event.target.value }))
+            }
+            placeholder="按昵称搜索"
+          />
+        </label>
+
+        <label>
+          <span className="input-label">部门</span>
+          <Input
+            value={filters.deptName}
+            onChange={(event) =>
+              setFilters((current) => ({ ...current, deptName: event.target.value }))
+            }
+            placeholder="按部门搜索"
+          />
+        </label>
+
+        <label>
+          <span className="input-label">租户 ID</span>
+          <Input
+            type="number"
+            value={filters.tenantId}
+            onChange={(event) =>
+              setFilters((current) => ({ ...current, tenantId: event.target.value }))
+            }
+            placeholder="租户 ID"
+          />
+        </label>
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">当前 {total} 项</span>
+          <Button type="submit" size="sm">
+            查询
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={!hasActiveFilters}
+          >
+            <RotateCcw size={14} />
+            重置
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface className="admin-online-user-table-panel">
+      <table className="unity-data-table admin-source-table admin-online-user-table min-w-[1120px]">
+          <thead>
+            <tr>
+              <th className="w-10">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  className={checkboxClassName}
+                />
+              </th>
+              <th>用户</th>
+              <th>部门</th>
+              <th>租户</th>
+              <th>角色</th>
+              <th>登录时间</th>
+              <th>剩余有效期</th>
+              <th>状态</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={9} title="正在加载在线用户..." loading />
+            ) : error ? (
+              <TableStateRow colSpan={9} title="在线用户加载失败" description={error} />
+            ) : records.length === 0 ? (
+              <TableStateRow colSpan={9} title="暂无在线用户数据" />
+            ) : (
+              records.map((item) => (
+                <tr key={item.token}>
+                  <td className="align-top">
+                    <input
+                      type="checkbox"
+                      disabled={item.currentLogin}
+                      checked={selectedTokens.includes(item.token)}
+                      onChange={() => toggleSelect(item.token)}
+                      className={cn(checkboxClassName, 'disabled:opacity-40')}
+                    />
+                  </td>
+                  <td>
+                    <div className="admin-users-identity">
+                      <div className="admin-users-avatar">{getAvatarText(item)}</div>
+                      <div className="min-w-0">
+                        <strong className="truncate">{item.username || '-'}</strong>
+                        <small className="truncate">{item.nickName || '-'}</small>
+                        <small className="truncate font-mono" title={item.token}>
+                          Token: {item.token.slice(0, 12)}...
+                        </small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{item.deptName || '-'}</td>
+                  <td>
+                    <span className="inline-flex items-center gap-2">
+                      <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
+                      {item.tenantId ?? '-'}
+                    </span>
+                  </td>
+                  <td>{item.roles?.length ? item.roles.join('、') : '-'}</td>
+                  <td className="whitespace-nowrap">{formatDateTime(item.loginTime)}</td>
+                  <td>
+                    <span className={cn('text-sm font-medium', getRemainingClassName(item.remainingSeconds))}>
+                      {formatDuration(item.remainingSeconds)}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-md px-2.5 py-1 text-xs font-medium',
+                        getSessionStatusClassName(item),
+                      )}
+                    >
+                      {item.currentLogin ? '当前在线' : '在线'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button
+                        type="button"
+                        className="danger"
+                        title="强制下线"
+                        disabled={Boolean(item.currentLogin)}
+                        onClick={() => handleForceLogout([item.token])}
+                      >
+                        <LogOut size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={query.pageNum || 1}
+      pageSize={query.pageSize || 10}
+      onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
+      onPageSizeChange={(pageSize) =>
+        setQuery((current) => ({
+          ...current,
+          pageNum: 1,
+          pageSize,
+        }))
+      }
+    />
+  ) : null;
+
   return (
     <>
-      <TablePageLayout
-        className="gap-3"
-        filters={(
-          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-40">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.username}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, username: event.target.value }))
-                  }
-                  placeholder="按账号搜索"
-                  className="h-10 pl-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-36">
-                <Input
-                  value={filters.nickName}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, nickName: event.target.value }))
-                  }
-                  placeholder="按昵称搜索"
-                  className="h-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-36">
-                <Input
-                  value={filters.deptName}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, deptName: event.target.value }))
-                  }
-                  placeholder="按部门搜索"
-                  className="h-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-32">
-                <Input
-                  type="number"
-                  value={filters.tenantId}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, tenantId: event.target.value }))
-                  }
-                  placeholder="租户 ID"
-                  className="h-10"
-                />
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  <RotateCcw size={14} />
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleForceLogout(selectedTokens)}
-                disabled={!selectedTokens.length}
-              >
-                <LogOut size={15} />
-                批量强退
-              </Button>
-            </div>
-          </div>
-        )}
-        table={(<TableSurfaceCard fill>
-          <>
-            <div className="overflow-x-auto">
-              <Table className="min-w-[1120px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        onChange={toggleSelectAll}
-                        className={checkboxClassName}
-                      />
-                    </TableHead>
-                    <TableHead>用户</TableHead>
-                    <TableHead>部门</TableHead>
-                    <TableHead>租户</TableHead>
-                    <TableHead>角色</TableHead>
-                    <TableHead>登录时间</TableHead>
-                    <TableHead>剩余有效期</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableActionHead className="w-24">操作</TableActionHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableStateRow colSpan={9} title="正在加载在线用户..." loading />
-                  ) : error ? (
-                    <TableStateRow colSpan={9} title="在线用户加载失败" description={error} />
-                  ) : records.length === 0 ? (
-                    <TableStateRow colSpan={9} title="暂无在线用户数据" />
-                  ) : (
-                    records.map((item) => (
-                      <TableRow key={item.token}>
-                        <TableCell className="py-4 align-top">
-                          <input
-                            type="checkbox"
-                            disabled={item.currentLogin}
-                            checked={selectedTokens.includes(item.token)}
-                            onChange={() => toggleSelect(item.token)}
-                            className={cn(checkboxClassName, 'disabled:opacity-40')}
-                          />
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200">
-                              {getAvatarText(item)}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-slate-900 dark:text-slate-100">
-                                  {item.username || '-'}
-                                </span>
-                                {item.currentLogin ? (
-                                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
-                                    当前会话
-                                  </span>
-                                ) : null}
-                              </div>
-                              <div className="mt-1 text-slate-500 dark:text-slate-400">
-                                {item.nickName || '-'}
-                              </div>
-                              <div
-                                className="mt-1 font-mono text-xs text-slate-400 dark:text-slate-500"
-                                title={item.token}
-                              >
-                                Token: {item.token.slice(0, 12)}...
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 text-slate-600 dark:text-slate-300">
-                          {item.deptName || '-'}
-                        </TableCell>
-                        <TableCell className="py-4 text-slate-600 dark:text-slate-300">
-                          {item.tenantId ?? '-'}
-                        </TableCell>
-                        <TableCell className="py-4 text-slate-600 dark:text-slate-300">
-                          {item.roles?.length ? item.roles.join('、') : '-'}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-4 text-slate-600 dark:text-slate-300">
-                          {formatDateTime(item.loginTime)}
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <span
-                            className={cn('text-sm font-medium', getRemainingClassName(item.remainingSeconds))}
-                          >
-                            {formatDuration(item.remainingSeconds)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                              getSessionStatusClassName(item),
-                            )}
-                          >
-                            {item.currentLogin ? '当前在线' : '在线'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <TableRowActions
-                            align="end"
-                            actions={[
-                              {
-                                label: '强制下线',
-                                icon: <LogOut size={15} />,
-                                onClick: () => handleForceLogout([item.token]),
-                                disabled: Boolean(item.currentLogin),
-                                tone: 'danger',
-                              },
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={query.pageNum || 1}
-              pageSize={query.pageSize || 10}
-              onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
-              onPageSizeChange={(pageSize) =>
-                setQuery((current) => ({
-                  ...current,
-                  pageNum: 1,
-                  pageSize,
-                }))
-              }
-            />
-          ) : null
-        )}
-      />
+      <section className="admin-source-page admin-online-user-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <ConfirmDialog
         open={pendingLogoutTokens.length > 0}
@@ -467,4 +505,3 @@ export const OnlineUserPage: React.FC = () => {
 };
 
 export default OnlineUserPage;
-

@@ -1,18 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { getConfigIntSync } from '../hooks/useSystemConfig';
-import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import {
   Activity,
   AlertTriangle,
+  CheckCircle2,
   Clock3,
+  ListChecks,
   RefreshCw,
+  TimerReset,
   TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/utils/errorMessage';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { Button, LoadingSpinner, Switch } from '@/components/common';
-import { cn } from '@/utils/cn';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { LoadingSpinner, Switch } from '@/components/common';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   AnomalyAlert,
   MonitorOverview,
@@ -23,6 +24,8 @@ import {
   getProcessTrend,
   getTimeoutAlerts,
 } from '@/services/api/monitor';
+import { cn } from '@/utils/cn';
+import { getErrorMessage } from '@/utils/errorMessage';
 
 const EmptyBlock: React.FC<{
   title: string;
@@ -30,50 +33,53 @@ const EmptyBlock: React.FC<{
   icon?: React.ReactNode;
   loading?: boolean;
 }> = ({ title, description, icon, loading = false }) => (
-  <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-    {loading ? (
-      <LoadingSpinner size="lg" className="mb-3" />
-    ) : icon ? (
-      <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div>
-    ) : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
+  <div className="workflow-monitor-empty">
+    {loading ? <LoadingSpinner size="lg" /> : icon ? <span>{icon}</span> : null}
+    <strong>{title}</strong>
+    {description ? <p>{description}</p> : null}
   </div>
 );
 
-const KeyValueRow: React.FC<{
-  label: string;
-  value: React.ReactNode;
-}> = ({ label, value }) => (
-  <div className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
-    <div className="w-24 flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">{label}</div>
-    <div className="min-w-0 flex-1 text-sm text-slate-700 dark:text-slate-200 sm:text-right">{value}</div>
-  </div>
+const PanelShell: React.FC<{
+  title: string;
+  description?: string;
+  meta?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ title, description, meta, children, className }) => (
+  <InnerTableSurface className={cn('workflow-monitor-panel', className)} wrapperClassName="p-0">
+    <div className="workflow-monitor-panel-head">
+      <div>
+        <h3>{title}</h3>
+        {description ? <span>{description}</span> : null}
+      </div>
+      {meta ? <div className="workflow-monitor-panel-meta">{meta}</div> : null}
+    </div>
+    {children}
+  </InnerTableSurface>
 );
 
 const getTimeoutLevelMeta = (level: TimeoutAlert['timeoutLevel']) => {
   if (level === 'CRITICAL') {
-    return { label: '严重' };
+    return { label: '严重', className: 'workflow-monitor-badge-danger' };
   }
   if (level === 'WARNING') {
-    return { label: '警告' };
+    return { label: '警告', className: 'badge-warning' };
   }
-  return { label: '提醒' };
+  return { label: '提醒', className: 'badge-gray' };
 };
 
 const getAnomalySeverityMeta = (severity: AnomalyAlert['severity']) => {
   if (severity === 'CRITICAL') {
-    return { label: '严重' };
+    return { label: '严重', className: 'workflow-monitor-badge-danger' };
   }
   if (severity === 'HIGH') {
-    return { label: '高' };
+    return { label: '高', className: 'badge-warning' };
   }
   if (severity === 'MEDIUM') {
-    return { label: '中' };
+    return { label: '中', className: 'badge-primary' };
   }
-  return { label: '低' };
+  return { label: '低', className: 'badge-gray' };
 };
 
 const formatDuration = (ms: number): string => {
@@ -86,76 +92,31 @@ const formatDuration = (ms: number): string => {
   return `${seconds}秒`;
 };
 
-const getAlertDisplayTime = (alert: TimeoutAlert | AnomalyAlert, type: 'timeout' | 'anomaly') =>
-  new Date(
-    type === 'timeout'
-      ? (alert as TimeoutAlert).alertTime || (alert as TimeoutAlert).createTime
-      : (alert as AnomalyAlert).alertTime || (alert as AnomalyAlert).createTime,
-  ).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+const formatAlertTime = (value?: string) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const formatTrendDate = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(-5) || value;
+  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+};
+
+const percentOf = (value: number, total: number) => {
+  if (total <= 0) return 0;
+  return Math.max(0, Math.min(100, (value / total) * 100));
+};
 
 const getAnomalyMessage = (alert: AnomalyAlert) =>
   alert.errorMessage || alert.description || '暂无异常说明';
-
-const AlertFeedRow: React.FC<{
-  alert: TimeoutAlert | AnomalyAlert;
-  type: 'timeout' | 'anomaly';
-}> = ({ alert, type }) => {
-  const isTimeout = type === 'timeout';
-  const timeoutAlert = alert as TimeoutAlert;
-  const anomalyAlert = alert as AnomalyAlert;
-  const meta = isTimeout
-    ? getTimeoutLevelMeta(timeoutAlert.timeoutLevel)
-    : getAnomalySeverityMeta(anomalyAlert.severity);
-  const category = isTimeout
-    ? timeoutAlert.alertType === 'TASK'
-      ? '任务超时'
-      : '流程超时'
-    : anomalyAlert.anomalyType;
-  const title = isTimeout ? timeoutAlert.targetName : anomalyAlert.processName;
-  const description = isTimeout
-    ? `已超时 ${Math.max(1, Math.ceil(timeoutAlert.timeoutDuration / (1000 * 60 * 60)))} 小时`
-    : getAnomalyMessage(anomalyAlert);
-  const identityLabel = isTimeout ? '目标标识' : '流程 Key';
-  const identityValue = isTimeout ? timeoutAlert.targetId : anomalyAlert.processDefKey;
-  const statusLabel = isTimeout ? '处理人' : '状态';
-  const statusValue = isTimeout
-    ? timeoutAlert.assigneeName || '未分配'
-    : anomalyAlert.resolved === 'Y'
-      ? '已解决'
-      : '待处理';
-
-  return (
-    <div className="grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,1fr)_160px_120px] md:items-start">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-500 dark:text-slate-400">{meta.label}</span>
-          <span className="text-xs text-slate-400 dark:text-slate-500">{category}</span>
-        </div>
-        <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-        <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-      </div>
-
-      <div className="min-w-0">
-        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-          {identityLabel}
-        </div>
-        <div className="mt-1.5 break-all text-sm font-medium text-slate-700 dark:text-slate-200">
-          {identityValue || '-'}
-        </div>
-      </div>
-
-      <div className="min-w-0">
-        <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-          {statusLabel}
-        </div>
-        <div className="mt-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">{statusValue}</div>
-        <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-          {getAlertDisplayTime(alert, type)}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const WorkflowMonitor: React.FC = () => {
   const [overview, setOverview] = useState<MonitorOverview | null>(null);
@@ -170,11 +131,12 @@ const WorkflowMonitor: React.FC = () => {
     try {
       setLoading(true);
 
+      const pageSize = getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10);
       const [overviewData, trendData, timeoutData, anomalyData] = await Promise.all([
         getMonitorOverview(),
         getProcessTrend({ days: 7 }),
-        getTimeoutAlerts({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), resolved: false }),
-        getAnomalyAlerts({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), resolved: false }),
+        getTimeoutAlerts({ pageNum: 1, pageSize, resolved: false }),
+        getAnomalyAlerts({ pageNum: 1, pageSize, resolved: false }),
       ]);
 
       setOverview(overviewData);
@@ -207,229 +169,377 @@ const WorkflowMonitor: React.FC = () => {
   const summary = useMemo(() => {
     const warningTimeouts = overview?.warningAlertCount || 0;
     const criticalTimeouts = overview?.criticalAlertCount || 0;
+    const timeoutCount = warningTimeouts + criticalTimeouts;
+    const anomalyCount = overview?.unresolvedAnomalyCount || anomalyAlerts.length;
+    const todayStarted = overview?.todayStarted || 0;
+    const todayCompleted = overview?.todayCompleted || 0;
 
     return {
-      todayStarted: overview?.todayStarted || 0,
-      todayCompleted: overview?.todayCompleted || 0,
-      timeoutCount: warningTimeouts + criticalTimeouts,
-      anomalyCount: overview?.unresolvedAnomalyCount || anomalyAlerts.length,
+      todayStarted,
+      todayCompleted,
+      completionRate: todayStarted > 0 ? percentOf(todayCompleted, todayStarted) : overview?.successRate || 0,
+      runningCount: overview?.runningCount || 0,
+      pendingTaskCount: overview?.pendingTaskCount || 0,
+      warningTimeouts,
+      criticalTimeouts,
+      timeoutCount,
+      anomalyCount,
+      avgCompletionTimeMs: overview?.avgCompletionTimeMs || 0,
+      successRate: overview?.successRate || 0,
     };
   }, [anomalyAlerts.length, overview]);
 
   const visibleTrends = useMemo(() => trend.slice(-7), [trend]);
+  const trendPeak = useMemo(() => {
+    const peak = visibleTrends.reduce((max, item) => {
+      return Math.max(max, item.started, item.completed, item.timeout, item.anomaly, item.running || 0);
+    }, 0);
+    return Math.max(peak, 1);
+  }, [visibleTrends]);
+
   const lastUpdateTime = lastUpdate.toLocaleTimeString('zh-CN', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
   });
 
+  const statusLevel = summary.criticalTimeouts > 0 || summary.anomalyCount > 0
+    ? { label: '需处理', className: 'workflow-monitor-badge-danger' }
+    : summary.warningTimeouts > 0
+      ? { label: '需关注', className: 'badge-warning' }
+      : { label: '正常', className: 'badge-success' };
+
+  const signalCards = [
+    {
+      label: '今日启动',
+      value: String(summary.todayStarted),
+      detail: `完成 ${summary.todayCompleted}`,
+      icon: Activity,
+      tone: 'blue',
+    },
+    {
+      label: '运行中',
+      value: String(summary.runningCount),
+      detail: `待办 ${summary.pendingTaskCount}`,
+      icon: TrendingUp,
+      tone: 'green',
+    },
+    {
+      label: '超时告警',
+      value: String(summary.timeoutCount),
+      detail: `严重 ${summary.criticalTimeouts}`,
+      icon: Clock3,
+      tone: 'amber',
+    },
+    {
+      label: '异常未解',
+      value: String(summary.anomalyCount),
+      detail: `成功率 ${summary.successRate.toFixed(1)}%`,
+      icon: AlertTriangle,
+      tone: 'violet',
+    },
+  ];
+
+  const healthRows = [
+    { label: '今日完成率', value: `${summary.completionRate.toFixed(1)}%`, percent: summary.completionRate, tone: 'success' },
+    { label: '整体成功率', value: `${summary.successRate.toFixed(1)}%`, percent: summary.successRate, tone: 'primary' },
+    {
+      label: '待办压力',
+      value: `${summary.pendingTaskCount} / ${Math.max(summary.runningCount, 1)}`,
+      percent: percentOf(summary.pendingTaskCount, Math.max(summary.runningCount + summary.pendingTaskCount, 1)),
+      tone: 'warning',
+    },
+    {
+      label: '告警密度',
+      value: `${summary.timeoutCount + summary.anomalyCount} 条`,
+      percent: percentOf(summary.timeoutCount + summary.anomalyCount, Math.max(summary.todayStarted + summary.runningCount, 1)),
+      tone: 'danger',
+    },
+  ];
+
+  const header = (
+    <header className="admin-source-header workflow-monitor-header">
+      <div>
+        <p className="admin-source-kicker">WORKFLOW MONITORING</p>
+        <h2>流程监控</h2>
+        <span>查看流程运行趋势、超时告警、异常告警和实时处理状态</span>
+      </div>
+      <div className="admin-source-controls workflow-monitor-header-actions">
+        <div className="workflow-monitor-switch" aria-label="自动刷新">
+          <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} disabled={loading && !overview} />
+          <span>自动刷新</span>
+        </div>
+        <button className="btn btn-secondary" type="button" onClick={() => void loadData()} disabled={loading}>
+          <RefreshCw className={cn('h-4 w-4', loading ? 'animate-spin' : '')} />
+          刷新
+        </button>
+      </div>
+    </header>
+  );
+
+  const stats = (
+    <section className="admin-source-stat-grid workflow-monitor-stat-grid">
+      {signalCards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <article key={card.label} className={`card admin-source-stat admin-source-tone-${card.tone}`}>
+            <div className="admin-source-stat-icon">
+              <Icon size={18} />
+            </div>
+            <div>
+              <p>{card.label}</p>
+              <strong>{card.value}</strong>
+              <span>{card.detail}</span>
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+
   if (loading && !overview) {
     return (
-      <div className="space-y-4">
-        <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            流程监控
-          </h1>
-        </div>
-        <EmptyBlock
-          title="正在加载流程监控"
-          loading
+      <section className="admin-source-page workflow-monitor-page">
+        <TablePageLayout
+          className="workflow-monitor-layout"
+          actions={(
+            <div className="workflow-monitor-top">
+              {header}
+              {stats}
+            </div>
+          )}
+          table={(
+            <InnerTableSurface className="workflow-monitor-loading-panel" wrapperClassName="p-0">
+              <EmptyBlock title="正在加载流程监控" loading />
+            </InnerTableSurface>
+          )}
         />
-      </div>
+      </section>
     );
   }
 
-  return (
-      <TablePageLayout
-        className="gap-3"
-        filters={
-          <div className="space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">流程监控</div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  今日启动 {summary.todayStarted} · 今日完成 {summary.todayCompleted} · 运行中 {overview?.runningCount || 0} · 待办 {overview?.pendingTaskCount || 0}
-                </div>
-              </div>
+  const filters = (
+    <div className="card workflow-monitor-statusbar">
+      <div className="workflow-monitor-statusbar-main">
+        <span className={cn('badge', statusLevel.className)}>{statusLevel.label}</span>
+        <span>最后更新 <strong>{lastUpdateTime}</strong></span>
+        <span>刷新间隔 <strong>{autoRefresh ? '30秒' : '手动'}</strong></span>
+      </div>
+      <div className="workflow-monitor-statusbar-meta">
+        <span>平均完成 <strong>{formatDuration(summary.avgCompletionTimeMs)}</strong></span>
+        <span>今日超时 <strong>{overview?.todayTimeout || 0}</strong></span>
+        <span>今日异常 <strong>{overview?.todayAnomaly || 0}</strong></span>
+      </div>
+    </div>
+  );
 
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => void loadData()} disabled={loading}>
-                  <RefreshCw className={cn('h-4 w-4', loading ? 'animate-spin' : '')} />
-                  刷新
-                </Button>
-              </div>
-            </div>
+  const trendPanel = (
+    <PanelShell
+      className="workflow-monitor-trend-panel"
+      title="运行趋势"
+      description="最近 7 天"
+      meta={<span className="badge badge-primary">趋势</span>}
+    >
+      {visibleTrends.length === 0 ? (
+        <EmptyBlock title="暂无趋势数据" icon={<TrendingUp size={22} />} />
+      ) : (
+        <div className="workflow-monitor-trend-grid">
+          {visibleTrends.map((item) => {
+            const bars = [
+              { key: 'started', label: '启动', value: item.started },
+              { key: 'completed', label: '完成', value: item.completed },
+              { key: 'timeout', label: '超时', value: item.timeout },
+              { key: 'anomaly', label: '异常', value: item.anomaly },
+            ];
 
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="inline-flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-200">
-                <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} />
-                自动刷新
-              </label>
-              <span className="text-xs text-slate-400 dark:text-slate-500">30 秒</span>
-              <div className="text-sm text-slate-500 dark:text-slate-400">
-                最后更新
-                <span className="ml-2 font-medium text-slate-700 dark:text-slate-200">{lastUpdateTime}</span>
-              </div>
-            </div>
-          </div>
-        }
-        table={(
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_284px]">
-            <div className="space-y-4">
-              <TableSurfaceCard>
-                <section className="p-5 sm:p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">运行趋势</div>
-                    </div>
-                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                      最近 7 天
-                    </span>
-                  </div>
-
-                  {visibleTrends.length === 0 ? (
-                    <EmptyBlock
-                      title="暂无趋势数据"
-                      icon={<TrendingUp className="h-5 w-5" />}
+            return (
+              <article key={item.date} className="workflow-monitor-trend-day">
+                <div className="workflow-monitor-trend-bars">
+                  {bars.map((bar) => (
+                    <span
+                      key={bar.key}
+                      className={`workflow-monitor-trend-bar is-${bar.key}`}
+                      style={{ height: `${Math.max(8, percentOf(bar.value, trendPeak))}%` }}
+                      title={`${bar.label} ${bar.value}`}
                     />
-                  ) : (
-                    <div className="mt-4 overflow-x-auto">
-                      <div className="min-w-[760px]">
-                        <div className="hidden border-y border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-500 md:grid md:grid-cols-[120px_repeat(4,minmax(0,1fr))_140px]">
-                          <span>日期</span>
-                          <span>启动</span>
-                          <span>完成</span>
-                          <span>超时</span>
-                          <span>异常</span>
-                          <span>运行中</span>
-                        </div>
+                  ))}
+                </div>
+                <div className="workflow-monitor-trend-date">{formatTrendDate(item.date)}</div>
+                <div className="workflow-monitor-trend-count">{item.started}/{item.completed}</div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+      <div className="workflow-monitor-trend-legend">
+        <span><i className="is-started" />启动</span>
+        <span><i className="is-completed" />完成</span>
+        <span><i className="is-timeout" />超时</span>
+        <span><i className="is-anomaly" />异常</span>
+      </div>
+    </PanelShell>
+  );
 
-                        {visibleTrends.map((item) => (
-                          <div
-                            key={item.date}
-                            className="grid gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 md:grid-cols-[120px_repeat(4,minmax(0,1fr))_140px] md:items-center"
-                          >
-                            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                              {item.date}
-                            </div>
-                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.started}</div>
-                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.completed}</div>
-                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.timeout}</div>
-                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.anomaly}</div>
-                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.running}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </section>
-              </TableSurfaceCard>
-
-              <TableSurfaceCard>
-                <section className="p-5 sm:p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">超时告警</div>
-                    </div>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {timeoutAlerts.length} 条
-                    </span>
-                  </div>
-
-                  <div className="mt-4 border-t border-slate-200 dark:border-slate-800">
-                    {timeoutAlerts.length > 0 ? (
-                      timeoutAlerts.map((alert, index) => (
-                        <div
-                          key={alert.id}
-                          className={cn(index > 0 && 'border-t border-slate-200 dark:border-slate-800')}
-                        >
-                          <AlertFeedRow alert={alert} type="timeout" />
-                        </div>
-                      ))
-                    ) : (
-                      <EmptyBlock
-                        title="暂无超时告警"
-                        icon={<Clock3 className="h-5 w-5" />}
-                      />
-                    )}
-                  </div>
-                </section>
-              </TableSurfaceCard>
-
-              <TableSurfaceCard>
-                <section className="p-5 sm:p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">异常告警</div>
-                    </div>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {anomalyAlerts.length} 条
-                    </span>
-                  </div>
-
-                  <div className="mt-4 border-t border-slate-200 dark:border-slate-800">
-                    {anomalyAlerts.length > 0 ? (
-                      anomalyAlerts.map((alert, index) => (
-                        <div
-                          key={alert.id}
-                          className={cn(index > 0 && 'border-t border-slate-200 dark:border-slate-800')}
-                        >
-                          <AlertFeedRow alert={alert} type="anomaly" />
-                        </div>
-                      ))
-                    ) : (
-                      <EmptyBlock
-                        title="暂无异常告警"
-                        icon={<AlertTriangle className="h-5 w-5" />}
-                      />
-                    )}
-                  </div>
-                </section>
-              </TableSurfaceCard>
+  const healthPanel = (
+    <PanelShell
+      className="workflow-monitor-health-panel"
+      title="运行状态"
+      description="关键健康指标"
+      meta={<span className={cn('badge', statusLevel.className)}>{statusLevel.label}</span>}
+    >
+      <div className="workflow-monitor-health-list">
+        {healthRows.map((item) => (
+          <article key={item.label} className={`workflow-monitor-health-row is-${item.tone}`}>
+            <div>
+              <strong>{item.label}</strong>
+              <span>{item.value}</span>
             </div>
+            <div className="workflow-monitor-progress">
+              <i style={{ width: `${Math.max(2, Math.min(100, item.percent))}%` }} />
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="workflow-monitor-health-footer">
+        <div>
+          <ListChecks size={16} />
+          <span>待办任务</span>
+          <strong>{summary.pendingTaskCount}</strong>
+        </div>
+        <div>
+          <TimerReset size={16} />
+          <span>平均时长</span>
+          <strong>{formatDuration(summary.avgCompletionTimeMs)}</strong>
+        </div>
+      </div>
+    </PanelShell>
+  );
 
-            <aside className="space-y-4">
-              <TableSurfaceCard>
-                <section className="p-5 sm:p-6">
-                  <div className="border-y border-slate-200 dark:border-slate-800">
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                      <KeyValueRow label="最后更新" value={lastUpdateTime} />
-                      <KeyValueRow label="自动刷新" value={autoRefresh ? '开启' : '关闭'} />
-                      <KeyValueRow label="运行中 / 待办" value={`${overview?.runningCount || 0} / ${overview?.pendingTaskCount || 0}`} />
-                      <KeyValueRow label="严重超时" value={`${overview?.criticalAlertCount || 0} 条`} />
-                      <KeyValueRow label="警告提醒" value={`${overview?.warningAlertCount || 0} 条`} />
-                      <KeyValueRow label="异常未解决" value={`${overview?.unresolvedAnomalyCount || anomalyAlerts.length} 条`} />
-                      <KeyValueRow label="平均完成时间" value={formatDuration(overview?.avgCompletionTimeMs || 0)} />
-                      <KeyValueRow label="整体成功率" value={`${(overview?.successRate || 0).toFixed(1)}%`} />
-                    </div>
-                  </div>
-                </section>
-              </TableSurfaceCard>
-
-              <TableSurfaceCard>
-                <section className="p-5 sm:p-6">
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {[
-                      { label: '超时告警', value: summary.timeoutCount },
-                      { label: '异常告警', value: summary.anomalyCount },
-                      { label: '成功率', value: `${(overview?.successRate || 0).toFixed(1)}%` },
-                      { label: '平均时长', value: formatDuration(overview?.avgCompletionTimeMs || 0) },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                      >
-                        <span className="text-sm text-slate-600 dark:text-slate-300">{item.label}</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.value}</span>
+  const timeoutTable = (
+    <PanelShell
+      className="workflow-monitor-alert-panel"
+      title="超时告警"
+      description="未处理的流程和任务超时"
+      meta={<span className="badge badge-warning">{timeoutAlerts.length} 条</span>}
+    >
+      {timeoutAlerts.length === 0 ? (
+        <EmptyBlock title="暂无超时告警" icon={<CheckCircle2 size={22} />} />
+      ) : (
+        <div className="workflow-monitor-table-wrap">
+          <table className="unity-data-table workflow-monitor-alert-table">
+            <thead>
+              <tr>
+                <th>对象</th>
+                <th>类型</th>
+                <th>级别</th>
+                <th>处理人</th>
+                <th>超时</th>
+                <th>时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {timeoutAlerts.map((alert) => {
+                const meta = getTimeoutLevelMeta(alert.timeoutLevel);
+                return (
+                  <tr key={alert.id}>
+                    <td>
+                      <div className="workflow-monitor-name-cell">
+                        <strong>{alert.targetName}</strong>
+                        <span>{alert.targetId || '-'}</span>
                       </div>
-                    ))}
-                  </div>
-                </section>
-              </TableSurfaceCard>
-            </aside>
+                    </td>
+                    <td>{alert.alertType === 'TASK' ? '任务' : '流程'}</td>
+                    <td><span className={cn('badge', meta.className)}>{meta.label}</span></td>
+                    <td>{alert.assigneeName || '未分配'}</td>
+                    <td>{formatDuration(alert.timeoutDuration)}</td>
+                    <td>{formatAlertTime(alert.alertTime || alert.createTime)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </PanelShell>
+  );
+
+  const anomalyTable = (
+    <PanelShell
+      className="workflow-monitor-alert-panel"
+      title="异常告警"
+      description="流程执行异常和待处理问题"
+      meta={<span className="badge workflow-monitor-badge-danger">{anomalyAlerts.length} 条</span>}
+    >
+      {anomalyAlerts.length === 0 ? (
+        <EmptyBlock title="暂无异常告警" icon={<CheckCircle2 size={22} />} />
+      ) : (
+        <div className="workflow-monitor-table-wrap">
+          <table className="unity-data-table workflow-monitor-alert-table">
+            <thead>
+              <tr>
+                <th>流程</th>
+                <th>类型</th>
+                <th>级别</th>
+                <th>状态</th>
+                <th>说明</th>
+                <th>时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {anomalyAlerts.map((alert) => {
+                const meta = getAnomalySeverityMeta(alert.severity);
+                return (
+                  <tr key={alert.id}>
+                    <td>
+                      <div className="workflow-monitor-name-cell">
+                        <strong>{alert.processName}</strong>
+                        <span>{alert.processDefKey || '-'}</span>
+                      </div>
+                    </td>
+                    <td>{alert.anomalyType || '-'}</td>
+                    <td><span className={cn('badge', meta.className)}>{meta.label}</span></td>
+                    <td>{alert.resolved === 'Y' ? '已解决' : '待处理'}</td>
+                    <td>
+                      <span className="workflow-monitor-clamp">{getAnomalyMessage(alert)}</span>
+                    </td>
+                    <td>{formatAlertTime(alert.alertTime || alert.createTime)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </PanelShell>
+  );
+
+  const content = (
+    <section className="workflow-monitor-workbench">
+      <div className="workflow-monitor-overview-grid">
+        {trendPanel}
+        {healthPanel}
+      </div>
+      <div className="workflow-monitor-alert-grid">
+        {timeoutTable}
+        {anomalyTable}
+      </div>
+    </section>
+  );
+
+  return (
+    <section className="admin-source-page workflow-monitor-page">
+      <TablePageLayout
+        className="workflow-monitor-layout"
+        actions={(
+          <div className="workflow-monitor-top">
+            {header}
+            {stats}
           </div>
         )}
+        filters={filters}
+        table={content}
       />
+    </section>
   );
 };
 

@@ -13,7 +13,6 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -23,17 +22,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import { SYS_UPLOAD_MAX_FILE_SIZE, SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { useConfigInt, getConfigIntSync } from '../../hooks/useSystemConfig';
+import { useDict } from '@/hooks/useDict';
 import {
   deleteFile,
   getFileList,
@@ -43,6 +35,13 @@ import {
 } from '../../services/api/file';
 import type { TenantStorageSummary } from '../../services/api/tenant';
 import { cn } from '@/utils/cn';
+import {
+  getSystemFileTypeCategory,
+  getSystemFileTypeLabel,
+  SYSTEM_FILE_TYPE_CATEGORY,
+  SYSTEM_FILE_TYPE_FILTER_OPTIONS,
+} from '@/utils/enumLabels';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface SysFile {
   fileId: number;
@@ -71,11 +70,7 @@ const ALL_FILE_TYPE = '__ALL_FILE_TYPE__';
 
 const FILE_TYPE_OPTIONS = [
   { value: ALL_FILE_TYPE, label: '全部类型' },
-  { value: 'jpg', label: '图片' },
-  { value: 'pdf', label: 'PDF' },
-  { value: 'docx', label: 'Word' },
-  { value: 'xlsx', label: 'Excel' },
-  { value: 'zip', label: '压缩包' },
+  ...SYSTEM_FILE_TYPE_FILTER_OPTIONS,
 ] as const;
 
 const formatSize = (size: number) => {
@@ -110,42 +105,25 @@ const formatDateTime = (value?: string) => {
   });
 };
 
-const getNormalizedFileType = (type: string) => type.toLowerCase().replace(/^\./, '');
-
-const isImageFile = (type: string) =>
-  ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(getNormalizedFileType(type));
-
-const isPdfFile = (type: string) => getNormalizedFileType(type) === 'pdf';
-
-const isWordFile = (type: string) => ['doc', 'docx'].includes(getNormalizedFileType(type));
-
-const isExcelFile = (type: string) => ['xls', 'xlsx', 'csv'].includes(getNormalizedFileType(type));
-
-const isZipFile = (type: string) => ['zip', 'rar', '7z', 'tar', 'gz'].includes(getNormalizedFileType(type));
-
-const getFileTypeLabel = (type: string) => {
-  const normalizedType = getNormalizedFileType(type);
-  if (isImageFile(normalizedType)) return '图片';
-  if (isPdfFile(normalizedType)) return 'PDF';
-  if (isWordFile(normalizedType)) return 'Word';
-  if (isExcelFile(normalizedType)) return 'Excel';
-  if (isZipFile(normalizedType)) return '压缩包';
-  return normalizedType.toUpperCase() || '文件';
-};
-
 const getFileIcon = (type: string) => {
-  const normalizedType = getNormalizedFileType(type);
-  if (isImageFile(normalizedType)) {
+  const category = getSystemFileTypeCategory(type);
+  if (category === SYSTEM_FILE_TYPE_CATEGORY.IMAGE) {
     return <ImageIcon size={16} className="text-slate-500 dark:text-slate-400" />;
   }
-  if (isPdfFile(normalizedType) || isWordFile(normalizedType) || isExcelFile(normalizedType)) {
+  if (
+    category === SYSTEM_FILE_TYPE_CATEGORY.PDF ||
+    category === SYSTEM_FILE_TYPE_CATEGORY.WORD ||
+    category === SYSTEM_FILE_TYPE_CATEGORY.EXCEL ||
+    category === SYSTEM_FILE_TYPE_CATEGORY.PPT ||
+    category === SYSTEM_FILE_TYPE_CATEGORY.TEXT
+  ) {
     return <FileText size={16} className="text-slate-500 dark:text-slate-400" />;
   }
   return <FileIcon size={16} className="text-slate-500 dark:text-slate-400" />;
 };
 
 const getFileTypeBadgeClassName = () =>
-  'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
+  'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -153,8 +131,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent dark:hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -164,8 +142,8 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const normalizeListResponse = (response: any): { rows: SysFile[]; total: number } => {
@@ -191,6 +169,7 @@ const normalizeListResponse = (response: any): { rows: SysFile[]; total: number 
 
 export const FileList = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileTypeDict = useDict('sys_file_type');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<SysFile[]>([]);
@@ -211,6 +190,16 @@ export const FileList = () => {
   });
 
   const [maxFileSizeMB] = useConfigInt(SYS_UPLOAD_MAX_FILE_SIZE, 50);
+  const fileTypeOptions = useMemo(() => {
+    const dictOptions = fileTypeDict.getOptions();
+    return [FILE_TYPE_OPTIONS[0], ...(dictOptions.length > 0 ? dictOptions : FILE_TYPE_OPTIONS.slice(1))];
+  }, [fileTypeDict]);
+
+  const getFileTypeDisplayLabel = (type: string) => {
+    const category = getSystemFileTypeCategory(type);
+    const dictLabel = fileTypeDict.getLabel(category);
+    return dictLabel === category ? getSystemFileTypeLabel(type) : dictLabel;
+  };
 
   const fetchData = async (nextQuery: QueryState) => {
     setLoading(true);
@@ -342,202 +331,268 @@ export const FileList = () => {
   };
 
   const hasActiveFilters = Boolean(query.fileName || query.fileType);
+  const stats = useMemo(
+    () => [
+      {
+        label: '文件总数',
+        value: String(total),
+        meta: `当前页 ${data.length}`,
+        icon: <FileIcon size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '已用空间',
+        value: formatStorage(storageSummary?.storageUsed),
+        meta: `上限 ${formatStorage(storageSummary?.storageLimit)}`,
+        icon: <HardDrive size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '类型分布',
+        value: String(new Set(data.map((file) => getSystemFileTypeCategory(file.fileType))).size),
+        meta: query.fileType ? getFileTypeDisplayLabel(query.fileType) : '本页统计',
+        icon: <FileText size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '上传状态',
+        value: uploading ? '上传中' : '就绪',
+        meta: `单文件 ${maxFileSizeMB} MB`,
+        icon: <Upload size={18} />,
+        tone: 'violet',
+      },
+    ],
+    [data, maxFileSizeMB, query.fileType, storageSummary, total, uploading],
+  );
+
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">FILE MANAGEMENT</p>
+          <h2>文件管理</h2>
+          <span>维护上传文件、类型、容量占用和存储校准</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={handleRefreshList} disabled={loading}>
+            <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
+            刷新
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefreshStorage}
+            disabled={storageLoading}
+          >
+            <HardDrive size={16} className={cn(storageLoading && 'animate-spin')} />
+            {storageLoading ? '校准中' : '校准空间'}
+          </Button>
+          <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            <Upload size={16} />
+            {uploading ? '上传中' : '上传文件'}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleUpload}
+            disabled={uploading}
+          />
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form onSubmit={handleSearch} className="admin-files-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">文件名</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.fileName}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, fileName: event.target.value }))
+              }
+              placeholder="按文件名搜索"
+              type="search"
+            />
+          </div>
+        </label>
+
+        <label>
+          <span className="input-label">文件类型</span>
+          <Select
+            value={filters.fileType}
+            onValueChange={(value) =>
+              setFilters((current) => ({ ...current, fileType: value }))
+            }
+          >
+            <SelectTrigger className="h-[42px]">
+              <SelectValue placeholder="全部类型" />
+            </SelectTrigger>
+            <SelectContent>
+              {fileTypeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">当前 {total} 项</span>
+          <Button type="submit" size="sm">
+            查询
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={!hasActiveFilters}
+          >
+            重置
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface className="admin-files-table-panel">
+      <table
+          className="unity-data-table admin-source-table admin-files-table min-w-[1040px]"
+          style={{ minWidth: 1040 }}
+        >
+          <thead>
+            <tr>
+              <th className="w-[38%]">文件名</th>
+              <th>大小</th>
+              <th>类型</th>
+              <th>上传者</th>
+              <th>上传时间</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={6} title="正在加载文件列表..." loading />
+            ) : error ? (
+              <TableStateRow colSpan={6} title="文件列表加载失败" description={error} />
+            ) : data.length === 0 ? (
+              <TableStateRow colSpan={6} title="暂无文件数据" />
+            ) : (
+              data.map((file) => (
+                <tr key={file.fileId}>
+                  <td>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 dark:border-slate-800 dark:bg-slate-950">
+                        {getFileIcon(file.fileType)}
+                      </div>
+                      <div className="min-w-0">
+                        <div
+                          className="max-w-md truncate text-sm font-semibold text-slate-900 dark:text-slate-100"
+                          title={file.fileName}
+                        >
+                          {file.fileName}
+                        </div>
+                        <div
+                          className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500"
+                          title={file.filePath}
+                        >
+                          {file.filePath}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                    {formatSize(file.fileSize)}
+                  </td>
+                  <td>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-md px-2.5 py-1 text-xs font-medium',
+                        getFileTypeBadgeClassName(),
+                      )}
+                    >
+                      {getFileTypeDisplayLabel(file.fileType)}
+                    </span>
+                  </td>
+                  <td className="text-sm text-slate-600 dark:text-slate-300">
+                    {file.createBy || '-'}
+                  </td>
+                  <td className="text-sm text-slate-500 dark:text-slate-400">
+                    {formatDateTime(file.createTime)}
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button
+                        type="button"
+                        title="下载文件"
+                        onClick={() => window.open(file.url, '_blank', 'noopener,noreferrer')}
+                      >
+                        <Download size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        title="删除文件"
+                        onClick={() => setPendingDeleteFile(file)}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
+      onPageSizeChange={(pageSize) =>
+        setQuery((current) => ({
+          ...current,
+          pageNum: 1,
+          pageSize,
+        }))
+      }
+    />
+  ) : null;
 
   return (
     <>
-      <TablePageLayout
-        className="gap-4"
-        filters={
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-1 flex-wrap items-center gap-3"
-            >
-              <div className="relative w-full sm:w-60">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.fileName}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, fileName: event.target.value }))
-                  }
-                  placeholder="搜索文件名"
-                  className="h-10 pl-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-40">
-                <Select
-                  value={filters.fileType}
-                  onValueChange={(value) =>
-                    setFilters((current) => ({ ...current, fileType: value }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FILE_TYPE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {storageSummary ? (
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {formatStorage(storageSummary.storageUsed)} / {formatStorage(storageSummary.storageLimit)}
-                </span>
-              ) : null}
-              <Button variant="outline" size="sm" onClick={handleRefreshList} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefreshStorage}
-                disabled={storageLoading}
-              >
-                <HardDrive size={15} className={cn(storageLoading && 'animate-spin')} />
-                {storageLoading ? '校准中' : '校准空间'}
-              </Button>
-              <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                <Upload size={15} />
-                {uploading ? '上传中' : '上传文件'}
-              </Button>
-              {/* 复用原生文件选择器，避免再叠一层独立上传壳层。 */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleUpload}
-                disabled={uploading}
-              />
-            </div>
-          </div>
-        }
-        table={(<TableSurfaceCard fill><>
-            <Table className="min-w-[1040px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[38%]">文件名</TableHead>
-                  <TableHead className="w-32">大小</TableHead>
-                  <TableHead className="w-32">类型</TableHead>
-                  <TableHead className="w-32">上传者</TableHead>
-                  <TableHead className="w-48">上传时间</TableHead>
-                  <TableActionHead className="w-32">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableStateRow colSpan={6} title="正在加载文件列表..." loading />
-                ) : error ? (
-                  <TableStateRow colSpan={6} title="文件列表加载失败" description={error} />
-                ) : data.length === 0 ? (
-                  <TableStateRow colSpan={6} title="暂无文件数据" />
-                ) : (
-                  data.map((file) => (
-                    <TableRow key={file.fileId}>
-                      <TableCell className="py-4">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/70">
-                            {getFileIcon(file.fileType)}
-                          </div>
-                          <div className="min-w-0">
-                            <div
-                              className="max-w-md truncate text-sm font-semibold text-slate-900 dark:text-slate-100"
-                              title={file.fileName}
-                            >
-                              {file.fileName}
-                            </div>
-                            <div
-                              className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500"
-                              title={file.filePath}
-                            >
-                              {file.filePath}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4 font-mono text-xs text-slate-500 dark:text-slate-400">
-                        {formatSize(file.fileSize)}
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium uppercase',
-                            getFileTypeBadgeClassName(),
-                          )}
-                        >
-                          {getFileTypeLabel(file.fileType)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                        {file.createBy || '-'}
-                      </TableCell>
-                      <TableCell className="py-4 text-sm text-slate-500 dark:text-slate-400">
-                        {formatDateTime(file.createTime)}
-                      </TableCell>
-                      <TableCell>
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            {
-                              label: '下载文件',
-                              icon: <Download size={15} />,
-                              onClick: () => window.open(file.url, '_blank', 'noopener,noreferrer'),
-                              tone: 'neutral',
-                            },
-                            {
-                              label: '删除文件',
-                              icon: <Trash2 size={15} />,
-                              onClick: () => setPendingDeleteFile(file),
-                              tone: 'danger',
-                            },
-                          ]}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </></TableSurfaceCard>)}
-        pagination={
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={query.pageNum}
-              pageSize={query.pageSize}
-              onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
-              onPageSizeChange={(pageSize) =>
-                setQuery((current) => ({
-                  ...current,
-                  pageNum: 1,
-                  pageSize,
-                }))
-              }
-            />
-          ) : null
-        }
-      />
+      <section className="admin-source-page admin-files-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <ConfirmDialog
         open={Boolean(pendingDeleteFile)}
@@ -558,4 +613,3 @@ export const FileList = () => {
 };
 
 export default FileList;
-

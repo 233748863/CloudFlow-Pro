@@ -1,5 +1,20 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Building2, Eye, EyeOff, Loader2, Lock, LogIn, Mail, RefreshCcw, ShieldAlert, UserPlus, Users, Settings } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Building2,
+  Check,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  LogIn,
+  Mail,
+  RefreshCcw,
+  Settings,
+  ShieldAlert,
+  ShieldCheck,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AuthCaptchaDialog } from '@/components/auth/AuthExperienceShell';
@@ -31,13 +46,11 @@ type SavedAccount = {
   tenantName?: string;
 };
 
-const resolveModeByPathname = (pathname: string): AuthMode =>
-  pathname === '/register' ? 'register' : 'login';
-
-const TENANT_RETRY_WINDOW_MS = 30000;
-const TENANT_RETRY_INTERVAL_MS = 2000;
-const TENANT_REQUEST_TIMEOUT_MS = 5000;
-const TENANT_LOAD_ERROR_MESSAGE = '后端服务暂未就绪，请确认服务已启动后重试';
+type CloudChip = {
+  tone: 'teal' | 'slate' | 'amber' | 'indigo';
+  mark: string;
+  name: string;
+};
 
 type TenantSelectProps = {
   value: string;
@@ -46,6 +59,56 @@ type TenantSelectProps = {
   placeholder: string;
   options: TenantOption[];
 };
+
+const resolveModeByPathname = (pathname: string): AuthMode =>
+  pathname === '/register' ? 'register' : 'login';
+
+const TENANT_RETRY_WINDOW_MS = 30000;
+const TENANT_RETRY_INTERVAL_MS = 2000;
+const TENANT_REQUEST_TIMEOUT_MS = 5000;
+const TENANT_LOAD_ERROR_MESSAGE = '后端服务暂未就绪，请确认服务已启动后重试';
+
+const cloudRows: CloudChip[][] = [
+  [
+    { tone: 'teal', mark: 'OA', name: '流程审批' },
+    { tone: 'slate', mark: 'HR', name: '人事工作台' },
+    { tone: 'amber', mark: 'CRM', name: '客户管理' },
+    { tone: 'indigo', mark: 'API', name: '开放网关' },
+  ],
+  [
+    { tone: 'slate', mark: 'WF', name: '工作流引擎' },
+    { tone: 'teal', mark: 'SEC', name: '权限隔离' },
+    { tone: 'amber', mark: 'DATA', name: '经营洞察' },
+  ],
+  [
+    { tone: 'indigo', mark: 'DOC', name: '知识协同' },
+    { tone: 'teal', mark: 'TASK', name: '任务中心' },
+    { tone: 'slate', mark: 'OPS', name: '运维控制台' },
+  ],
+  [
+    { tone: 'amber', mark: 'APP', name: '桌面客户端' },
+    { tone: 'teal', mark: 'TEN', name: '多租户' },
+    { tone: 'indigo', mark: 'SYNC', name: '离线同步' },
+    { tone: 'slate', mark: 'AUDIT', name: '审计日志' },
+  ],
+  [
+    { tone: 'teal', mark: 'FORM', name: '表单设计' },
+    { tone: 'slate', mark: 'ROLE', name: '角色授权' },
+    { tone: 'amber', mark: 'FILE', name: '文件协作' },
+  ],
+  [
+    { tone: 'indigo', mark: 'BI', name: '指标分析' },
+    { tone: 'teal', mark: 'MSG', name: '消息通知' },
+    { tone: 'slate', mark: 'MOB', name: '移动适配' },
+  ],
+];
+
+const agreementDocuments = [
+  { id: 'terms', title: '服务条款' },
+  { id: 'privacy', title: '隐私政策' },
+  { id: 'security', title: '安全规范' },
+  { id: 'regions', title: '部署与支持范围' },
+];
 
 const TenantSelect: React.FC<TenantSelectProps> = ({
   value,
@@ -73,6 +136,38 @@ const TenantSelect: React.FC<TenantSelectProps> = ({
   </div>
 );
 
+const AuthModelCloud = () => {
+  const bands = [cloudRows.slice(0, 3), cloudRows.slice(3)];
+
+  return (
+    <div className="cf-auth-model-cloud" aria-hidden="true">
+      {bands.map((band, bandIndex) => (
+        <div
+          key={bandIndex}
+          className={`cf-auth-model-band ${bandIndex === 0 ? 'is-top' : 'is-bottom'}`}
+        >
+          {band.map((row, rowIndex) => (
+            <div
+              key={`${bandIndex}-${rowIndex}`}
+              className={`cf-auth-model-row ${(bandIndex + rowIndex) % 2 === 1 ? 'is-offset' : ''}`}
+            >
+              {[...row, ...row].map((item, itemIndex) => (
+                <span
+                  key={`${bandIndex}-${rowIndex}-${itemIndex}-${item.mark}-${item.name}`}
+                  className="cf-auth-model-chip"
+                >
+                  <span className={`cf-auth-provider-mark is-${item.tone}`}>{item.mark}</span>
+                  <span>{item.name}</span>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const AuthPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,18 +187,16 @@ export const AuthPage: React.FC = () => {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
-  
-  // 💾 桌面端专属高级状态
   const [rememberMe, setRememberMe] = useState(true);
   const [accountHistory, setAccountHistory] = useState<SavedAccount[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [customApiUrl, setCustomApiUrl] = useState('');
-  
-  // ⚡ 桌面端高品质人机微交互状态
-  const [isShaking, setIsShaking] = useState(false); // 颤抖动画
-  const [capsLockActive, setCapsLockActive] = useState(false); // Caps Lock 检测
+  const [isShaking, setIsShaking] = useState(false);
+  const [capsLockActive, setCapsLockActive] = useState(false);
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [publicAccepted, setPublicAccepted] = useState(false);
+  const [agreementVisible, setAgreementVisible] = useState(true);
 
-  // 🎯 光标自动聚焦组件引用
   const loginUsernameRef = useRef<HTMLInputElement>(null);
   const loginPasswordRef = useRef<HTMLInputElement>(null);
   const registerUsernameRef = useRef<HTMLInputElement>(null);
@@ -142,26 +235,22 @@ export const AuthPage: React.FC = () => {
     }
   }, [loading, user, location.pathname, location.search, navigate]);
 
-  // 💾 桌面端：初始化加载历史登录记录与自定义服务器 API 路径
   useEffect(() => {
     try {
       const savedHistory = localStorage.getItem('cf_auth_history');
       if (savedHistory) {
         const parsed = JSON.parse(savedHistory);
-        setAccountHistory(parsed);
-        
-        // 🎯 智能自动聚焦链路：有历史账户时秒聚焦密码，否则聚焦账号
+        setAccountHistory(Array.isArray(parsed) ? parsed : []);
+
         if (mode === 'login') {
-          if (parsed && parsed.length > 0) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setTimeout(() => loginPasswordRef.current?.focus(), 150);
           } else {
             setTimeout(() => loginUsernameRef.current?.focus(), 150);
           }
         }
-      } else {
-        if (mode === 'login') {
-          setTimeout(() => loginUsernameRef.current?.focus(), 150);
-        }
+      } else if (mode === 'login') {
+        setTimeout(() => loginUsernameRef.current?.focus(), 150);
       }
     } catch (err) {
       logger.warn('加载历史登录账户失败:', err);
@@ -174,7 +263,6 @@ export const AuthPage: React.FC = () => {
     setCustomApiUrl(savedApiUrl);
   }, [mode]);
 
-  // 🎯 注册模式下的自动聚焦
   useEffect(() => {
     if (mode === 'register') {
       setTimeout(() => registerUsernameRef.current?.focus(), 150);
@@ -281,6 +369,7 @@ export const AuthPage: React.FC = () => {
   const switchMode = (nextMode: AuthMode) => {
     setLoginError('');
     setRegisterError('');
+    setCapsLockActive(false);
     setMode(nextMode);
     navigate(nextMode === 'login' ? '/login' : '/register');
   };
@@ -289,13 +378,38 @@ export const AuthPage: React.FC = () => {
     setTenantReloadKey((prev) => prev + 1);
   };
 
-  // ⚡ 触发物理颤抖反馈
   const triggerShakeFeedback = () => {
     setIsShaking(true);
     setTimeout(() => setIsShaking(false), 450);
   };
 
-  // ⌨️ 大写锁定（Caps Lock）检测键盘方法
+  const ensureAgreementReady = (intent: AuthMode) => {
+    if (!agreementAccepted) {
+      const message = intent === 'register' ? '继续注册前需要先同意最新条款' : '继续登录前需要先同意最新条款';
+      if (intent === 'login') {
+        setLoginError(message);
+      } else {
+        setRegisterError(message);
+      }
+      setAgreementVisible(true);
+      triggerShakeFeedback();
+      return false;
+    }
+
+    if (!publicAccepted) {
+      const message = '请先勾选已阅读并同意服务协议';
+      if (intent === 'login') {
+        setLoginError(message);
+      } else {
+        setRegisterError(message);
+      }
+      triggerShakeFeedback();
+      return false;
+    }
+
+    return true;
+  };
+
   const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.getModifierState) {
       setCapsLockActive(e.getModifierState('CapsLock'));
@@ -305,6 +419,10 @@ export const AuthPage: React.FC = () => {
   const handleLoginSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     setLoginError('');
+
+    if (!ensureAgreementReady('login')) {
+      return;
+    }
 
     if (!loginForm.tenantCode) {
       setLoginError('请选择租户');
@@ -324,6 +442,10 @@ export const AuthPage: React.FC = () => {
   const handleRegisterSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     setRegisterError('');
+
+    if (!ensureAgreementReady('register')) {
+      return;
+    }
 
     if (!registerForm.tenantCode) {
       setRegisterError('请选择租户');
@@ -352,7 +474,6 @@ export const AuthPage: React.FC = () => {
     setCaptchaIntent('register');
   };
 
-  // 💾 桌面端：保存历史登录账号
   const saveAccountHistory = (tenantCode: string, username: string) => {
     try {
       const historyStr = localStorage.getItem('cf_auth_history') || '[]';
@@ -366,9 +487,8 @@ export const AuthPage: React.FC = () => {
         history = [];
       }
 
-      // 过滤重复
       history = history.filter((item) => !(item.tenantCode === tenantCode && item.username === username));
-      
+
       const matchedTenant = tenantOptions.find((t) => t.tenantCode === tenantCode);
       history.unshift({
         tenantCode,
@@ -376,7 +496,6 @@ export const AuthPage: React.FC = () => {
         tenantName: matchedTenant ? matchedTenant.tenantName : tenantCode,
       });
 
-      // 最多保存 3 个历史账户
       const trimmedHistory = history.slice(0, 3);
       setAccountHistory(trimmedHistory);
       localStorage.setItem('cf_auth_history', JSON.stringify(trimmedHistory));
@@ -385,7 +504,6 @@ export const AuthPage: React.FC = () => {
     }
   };
 
-  // 💾 桌面端：删除历史记录
   const handleDeleteHistory = (e: React.MouseEvent, tenantCode: string, username: string) => {
     e.stopPropagation();
     const filtered = accountHistory.filter((item) => !(item.tenantCode === tenantCode && item.username === username));
@@ -394,7 +512,6 @@ export const AuthPage: React.FC = () => {
     toast.success('已删除账号记录');
   };
 
-  // 💾 桌面端：快速填充历史账号
   const handleSelectHistory = (item: SavedAccount) => {
     setLoginForm((prev) => ({
       ...prev,
@@ -405,7 +522,6 @@ export const AuthPage: React.FC = () => {
     setTimeout(() => loginPasswordRef.current?.focus(), 100);
   };
 
-  // 💾 桌面端：保存高级 API 网络网关地址
   const handleSaveCustomApiUrl = () => {
     const trimmed = customApiUrl.trim();
     if (trimmed) {
@@ -418,7 +534,6 @@ export const AuthPage: React.FC = () => {
     setShowSettings(false);
   };
 
-  // 🧹 桌面端高品质细节：一键清除当前输入框文本，并重新聚焦
   const handleClearField = (field: 'login-username' | 'register-username' | 'register-email') => {
     if (field === 'login-username') {
       setLoginForm((prev) => ({ ...prev, username: '' }));
@@ -445,7 +560,6 @@ export const AuthPage: React.FC = () => {
       if (currentIntent === 'login') {
         const response = await apiLogin(loginForm.tenantCode, loginForm.username.trim(), loginForm.password, token);
         if (response?.token) {
-          // 桌面端：如果勾选了记住我，则将其记录到历史中
           if (rememberMe) {
             saveAccountHistory(loginForm.tenantCode, loginForm.username.trim());
           }
@@ -462,7 +576,7 @@ export const AuthPage: React.FC = () => {
 
         const errorMessage = '登录失败，未获取到有效凭证';
         setLoginError(errorMessage);
-        triggerShakeFeedback(); // 接口鉴权失败触发抖动
+        triggerShakeFeedback();
         toast.error(errorMessage);
         return;
       }
@@ -490,7 +604,7 @@ export const AuthPage: React.FC = () => {
       toast.success('注册成功，请登录');
       switchMode('login');
     } catch (error: any) {
-      triggerShakeFeedback(); // 请求异常触发物理抖动
+      triggerShakeFeedback();
       if (currentIntent === 'login') {
         logger.error('Login error:', error);
         const errorMessage = error.message || '登录失败，请检查账号和密码';
@@ -506,11 +620,30 @@ export const AuthPage: React.FC = () => {
     }
   };
 
+  const acceptAgreement = () => {
+    setAgreementAccepted(true);
+    setAgreementVisible(false);
+    setLoginError('');
+    setRegisterError('');
+  };
+
+  const rejectAgreement = () => {
+    setAgreementAccepted(false);
+    setPublicAccepted(false);
+    setAgreementVisible(false);
+  };
+
+  const handlePlaceholderAction = (label: string) => {
+    toast.info(`${label}暂未配置`);
+  };
+
   const isLogin = mode === 'login';
   const currentError = isLogin ? loginError : registerError;
   const currentYear = new Date().getFullYear();
-  const tenantSelectDisabled = tenantLoading || tenantOptions.length === 0;
+  const formsDisabled = !agreementAccepted;
+  const tenantSelectDisabled = formsDisabled || tenantLoading || tenantOptions.length === 0;
   const tenantPlaceholder = tenantLoading ? '租户加载中' : tenantLoadError ? '租户加载失败' : '请选择租户';
+  const canSubmit = agreementAccepted && publicAccepted && pendingAction === null;
   const tenantStatus = tenantRetrying ? (
     <p className="cf-auth-hint">后端服务启动中，正在自动重试</p>
   ) : tenantLoadError ? (
@@ -525,468 +658,565 @@ export const AuthPage: React.FC = () => {
 
   return (
     <>
-      <div className="cf-auth-page" onKeyDown={() => setCapsLockActive(false)}>
-        {/* ==========================================
-            [桌面端专享] 左侧高阶科技质感大屏展示区 
-            ========================================== */}
-        <div className="cf-auth-sidebar">
-          <div className="cf-auth-sidebar-brand">
-            <div className="cf-auth-sidebar-brand__logo">
-              <img src="/icon.svg" alt="CloudFlow Pro Logo" className="cf-auth-sidebar-brand__image" />
-            </div>
-            <span className="cf-auth-sidebar-brand__title">CloudFlow Pro</span>
-          </div>
+      <div className={`cf-auth-page ${isLogin ? 'is-login' : 'is-register'}`}>
+        <AuthModelCloud />
 
-          <div className="cf-auth-sidebar-promo">
-            <h2 className="cf-auth-sidebar-promo__headline">开启高效的<br />社区协同办公新体验</h2>
-            <p className="cf-auth-sidebar-promo__description">
-              CloudFlow Pro 是多租户分布式社区云工作台。在这里您可以实现智能人事流程引擎、敏捷沟通、数据洞察，以及全自动安全加密的文件协作体系。
+        <header className="cf-auth-header">
+          <nav className="cf-auth-nav" aria-label="认证页导航">
+            <button type="button" className="cf-auth-brand-link" onClick={() => navigate('/')} aria-label="返回 CloudFlow Pro">
+              <span className="cf-auth-brand-mark">
+                <img src="/icon.svg" alt="" />
+              </span>
+              <span className="cf-auth-brand-text">CloudFlow Pro</span>
+            </button>
+
+          </nav>
+        </header>
+
+        <main className="cf-auth-main">
+          <section className="cf-auth-intro" aria-label="CloudFlow Pro">
+            <p className="cf-auth-kicker">企业协同云工作台</p>
+            <h1>继续使用 CloudFlow Pro</h1>
+            <p>
+              用统一入口连接流程审批、人事服务、客户协作和经营数据，让团队在同一套权限和租户边界内完成日常工作。
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              <span className="cf-auth-feature-badge">✓ 纯正桌面端</span>
-              <span className="cf-auth-feature-badge">✓ 多租户隔离</span>
-              <span className="cf-auth-feature-badge">✓ 自主流程引擎</span>
-              <span className="cf-auth-feature-badge">✓ 全链路加密</span>
+            <div className="cf-auth-proof-list">
+              <span><Check size={15} /> 多租户隔离</span>
+              <span><Check size={15} /> 流程引擎</span>
+              <span><Check size={15} /> 桌面客户端</span>
             </div>
-          </div>
+          </section>
 
-          <div className="cf-auth-sidebar-footer">
-            <span>客户端版本 v0.1.0 · SSL 安全通信加密</span>
-          </div>
-        </div>
-
-        {/* ==========================================
-            右侧清爽核心表单容器区域（双端自适应）
-            ========================================== */}
-        <div className="cf-auth-main">
-          <div className="cf-auth-grid" />
-
-          {/* ⚡ 绑定 isShaking 动画状态 */}
-          <div className={`cf-auth-card ${isShaking ? 'shake' : ''}`}>
-            {/* 简易 Brand：仅在小窗口/小屏幕移动端下自适应显示，大屏幕则隐藏 */}
-            <div className="cf-auth-brand">
-              <div className="cf-auth-brand__logo">
-                <img src="/icon.svg" alt="CloudFlow Pro" className="cf-auth-brand__image" />
-              </div>
-              <h1 className="cf-auth-brand__title">CloudFlow Pro</h1>
-              <p className="cf-auth-brand__subtitle">社区协同办公统一入口</p>
-            </div>
-
-            <div className="cf-auth-card__section">
-              {/* ==========================================
-                  [极致桌面化重构]：去掉生硬大标题与说明
-                  替换为高级、轻量化无刷双态 Tab 切换栏
-                  ========================================== */}
-              <div className="flex border-b border-slate-100 dark:border-slate-800/60 pb-3.5 mb-5 justify-start gap-6 relative">
-                <button
-                  type="button"
-                  onClick={() => switchMode('login')}
-                  className={`pb-1 text-[15px] font-bold transition-all relative no-min-size ${
-                    isLogin 
-                      ? 'text-teal-600 dark:text-teal-400 font-extrabold' 
-                      : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
-                  }`}
-                >
-                  账号登录
-                  {isLogin && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-teal-600 dark:bg-teal-400 rounded-full animate-fade-in" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchMode('register')}
-                  className={`pb-1 text-[15px] font-bold transition-all relative no-min-size ${
-                    !isLogin 
-                      ? 'text-teal-600 dark:text-teal-400 font-extrabold' 
-                      : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
-                  }`}
-                >
-                  加入我们
-                  {!isLogin && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-teal-600 dark:bg-teal-400 rounded-full animate-fade-in" />
-                  )}
-                </button>
-
-                {/* 桌面端特有：高级设置按钮（并排完美嵌入 Tab 右侧） */}
-                <button
-                  type="button"
-                  onClick={() => setShowSettings((prev) => !prev)}
-                  className="cf-auth-settings-btn"
-                  style={{ top: '-0.125rem' }}
-                  title="服务器连接设置"
-                >
-                  <Settings size={14} className={`transition-transform duration-300 ${showSettings ? 'rotate-90 text-teal-600' : ''}`} />
-                </button>
-              </div>
-
-              {/* 展开的高级网关配置 */}
-              {showSettings && (
-                <div className="cf-auth-config-drawer mb-4">
-                  <label className="cf-auth-label">API 服务器基准地址</label>
-                  <div className="flex gap-2 mt-1">
-                    <input
-                      type="text"
-                      value={customApiUrl}
-                      onChange={(e) => setCustomApiUrl(e.target.value)}
-                      placeholder="默认: 读取当前客户端配置"
-                      className="cf-auth-input"
-                      style={{ paddingLeft: '0.75rem' }}
-                    />
-                    <Button
-                      type="button"
-                      variant="soft"
-                      size="sm"
-                      onClick={handleSaveCustomApiUrl}
-                      className="cf-auth-retry-button !h-10"
-                    >
-                      保存
-                    </Button>
-                  </div>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                    适用于局域网、专有网络及私有部署环境。留空保存即恢复系统默认。
-                  </p>
-                </div>
-              )}
-
-              {/* 历史快速登录账号区（仅登录状态，且有记录时展示） */}
-              {isLogin && accountHistory.length > 0 && (
-                <div className="cf-auth-history">
-                  <div className="cf-auth-history-title">最近登录账号</div>
-                  <div className="cf-auth-history-list">
-                    {accountHistory.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="cf-auth-history-item"
-                        onClick={() => handleSelectHistory(item)}
-                      >
-                        <div className="cf-auth-history-item__avatar">
-                          {item.username[0]?.toUpperCase() || 'U'}
-                        </div>
-                        <div className="cf-auth-history-item__text max-w-[8rem] truncate">
-                          {item.username}
-                        </div>
-                        <button
-                          type="button"
-                          className="cf-auth-history-item__delete"
-                          onClick={(e) => handleDeleteHistory(e, item.tenantCode, item.username)}
-                          title="删除记录"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {isLogin ? (
-                <form onSubmit={handleLoginSubmit} className="cf-auth-form">
+          <section className="cf-auth-panel-section" aria-label={isLogin ? '登录' : '注册'}>
+            <div className={`cf-auth-panel ${isShaking ? 'shake' : ''}`}>
+              <div className="cf-auth-form">
+                <div className="cf-auth-form-head">
                   <div>
-                    <label className="cf-auth-label">租户</label>
-                    <TenantSelect
-                      value={loginForm.tenantCode}
-                      onChange={(tenantCode) => setLoginForm((prev) => ({ ...prev, tenantCode }))}
-                      disabled={tenantSelectDisabled}
-                      placeholder={tenantPlaceholder}
-                      options={tenantOptions}
-                    />
-                    {tenantStatus}
+                    <h2>{isLogin ? '欢迎回来' : '创建账户'}</h2>
+                    <p>{isLogin ? '登录你的账号以继续使用工作台。' : '加入 CloudFlow Pro，开始协同办公。'}</p>
                   </div>
+                  <button
+                    type="button"
+                    className="cf-auth-settings-btn"
+                    title="服务器连接设置"
+                    aria-label="服务器连接设置"
+                    aria-expanded={showSettings}
+                    onClick={() => setShowSettings((prev) => !prev)}
+                  >
+                    <Settings size={16} />
+                  </button>
+                </div>
 
-                  <div>
-                    <label htmlFor="auth-login-username" className="cf-auth-label">账号</label>
-                    <div className="cf-auth-input-wrap">
-                      <div className="cf-auth-input-icon">
-                        <Users size={16} />
-                      </div>
+                <div className="cf-auth-mode-tabs" role="tablist" aria-label="认证方式">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={isLogin}
+                    className={isLogin ? 'active' : ''}
+                    onClick={() => switchMode('login')}
+                  >
+                    账号登录
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!isLogin}
+                    className={!isLogin ? 'active' : ''}
+                    onClick={() => switchMode('register')}
+                  >
+                    加入我们
+                  </button>
+                </div>
+
+                {showSettings ? (
+                  <div className="cf-auth-config-drawer">
+                    <label className="cf-auth-label" htmlFor="cf-auth-api-url">API 服务器基准地址</label>
+                    <div className="cf-auth-config-row">
                       <input
-                        id="auth-login-username"
-                        ref={loginUsernameRef}
-                        value={loginForm.username}
-                        onChange={(event) =>
-                          setLoginForm((prev) => ({ ...prev, username: event.target.value }))
-                        }
+                        id="cf-auth-api-url"
                         type="text"
-                        autoComplete="username"
-                        required
-                        placeholder="请输入账号"
-                        className="cf-auth-input"
+                        value={customApiUrl}
+                        onChange={(e) => setCustomApiUrl(e.target.value)}
+                        placeholder="默认读取当前客户端配置"
+                        className="cf-auth-input cf-auth-input--plain"
                       />
-                      {/* 🧹 一键清除按钮 */}
-                      {loginForm.username && (
+                      <Button
+                        type="button"
+                        variant="soft"
+                        size="sm"
+                        onClick={handleSaveCustomApiUrl}
+                        className="cf-auth-retry-button"
+                      >
+                        保存
+                      </Button>
+                    </div>
+                    <p>适用于局域网、专有网络及私有部署环境。留空保存即恢复系统默认。</p>
+                  </div>
+                ) : null}
+
+                {isLogin && accountHistory.length > 0 ? (
+                  <div className="cf-auth-history">
+                    <div className="cf-auth-history-title">最近登录账号</div>
+                    <div className="cf-auth-history-list">
+                      {accountHistory.map((item) => (
+                        <div
+                          key={`${item.tenantCode}-${item.username}`}
+                          className="cf-auth-history-item"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleSelectHistory(item)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              handleSelectHistory(item);
+                            }
+                          }}
+                        >
+                          <span className="cf-auth-history-item__avatar">
+                            {item.username[0]?.toUpperCase() || 'U'}
+                          </span>
+                          <span className="cf-auth-history-item__body">
+                            <span>{item.username}</span>
+                            <small>{item.tenantName || item.tenantCode}</small>
+                          </span>
+                          <button
+                            type="button"
+                            className="cf-auth-history-item__delete"
+                            onClick={(e) => handleDeleteHistory(e, item.tenantCode, item.username)}
+                            aria-label="删除账号记录"
+                          >
+                            x
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {isLogin ? (
+                  <form onSubmit={handleLoginSubmit} className="cf-auth-source-form">
+                    <label className="cf-auth-field-block">
+                      <span className="cf-auth-label">租户</span>
+                      <TenantSelect
+                        value={loginForm.tenantCode}
+                        onChange={(tenantCode) => setLoginForm((prev) => ({ ...prev, tenantCode }))}
+                        disabled={tenantSelectDisabled}
+                        placeholder={tenantPlaceholder}
+                        options={tenantOptions}
+                      />
+                      {tenantStatus}
+                    </label>
+
+                    <label className="cf-auth-field-block" htmlFor="auth-login-username">
+                      <span className="cf-auth-label">账号</span>
+                      <span className="cf-auth-input-wrap">
+                        <span className="cf-auth-input-icon">
+                          <Users size={16} />
+                        </span>
+                        <input
+                          id="auth-login-username"
+                          ref={loginUsernameRef}
+                          value={loginForm.username}
+                          onChange={(event) =>
+                            setLoginForm((prev) => ({ ...prev, username: event.target.value }))
+                          }
+                          type="text"
+                          autoComplete="username"
+                          required
+                          disabled={formsDisabled}
+                          placeholder="请输入账号"
+                          className="cf-auth-input"
+                        />
+                        {loginForm.username ? (
+                          <button
+                            type="button"
+                            className="cf-auth-input-clear has-value"
+                            onClick={() => handleClearField('login-username')}
+                            title="清空账号"
+                            disabled={formsDisabled}
+                          >
+                            x
+                          </button>
+                        ) : null}
+                      </span>
+                    </label>
+
+                    <label className="cf-auth-field-block" htmlFor="auth-login-password">
+                      <span className="cf-auth-label">密码</span>
+                      <span className="cf-auth-input-wrap">
+                        <span className="cf-auth-input-icon">
+                          <Lock size={16} />
+                        </span>
+                        <input
+                          id="auth-login-password"
+                          ref={loginPasswordRef}
+                          value={loginForm.password}
+                          onChange={(event) =>
+                            setLoginForm((prev) => ({ ...prev, password: event.target.value }))
+                          }
+                          onKeyDown={handlePasswordKeyDown}
+                          onKeyUp={handlePasswordKeyDown}
+                          onBlur={() => setCapsLockActive(false)}
+                          type={showLoginPassword ? 'text' : 'password'}
+                          autoComplete="current-password"
+                          required
+                          disabled={formsDisabled}
+                          placeholder="请输入密码"
+                          className="cf-auth-input cf-auth-input--password"
+                        />
+                        {capsLockActive ? (
+                          <span className="cf-auth-capslock-badge" title="大写锁定已开启">
+                            A
+                          </span>
+                        ) : null}
                         <button
                           type="button"
-                          className="cf-auth-input-clear has-value"
-                          onClick={() => handleClearField('login-username')}
-                          title="清空账号"
+                          className="cf-auth-input-toggle"
+                          onClick={() => setShowLoginPassword((prev) => !prev)}
+                          aria-label={showLoginPassword ? '隐藏密码' : '显示密码'}
+                          disabled={formsDisabled}
                         >
-                          ×
+                          {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
-                      )}
-                    </div>
-                  </div>
+                      </span>
+                      <span className="cf-auth-forgot-row">
+                        <span />
+                        <button type="button" onClick={() => handlePlaceholderAction('密码找回')}>
+                          忘记密码？
+                        </button>
+                      </span>
+                    </label>
 
-                  <div>
-                    <label htmlFor="auth-login-password" className="cf-auth-label">密码</label>
-                    <div className="cf-auth-input-wrap">
-                      <div className="cf-auth-input-icon">
-                        <Lock size={16} />
-                      </div>
-                      <input
-                        id="auth-login-password"
-                        ref={loginPasswordRef}
-                        value={loginForm.password}
-                        onChange={(event) =>
-                          setLoginForm((prev) => ({ ...prev, password: event.target.value }))
-                        }
-                        onKeyDown={handlePasswordKeyDown}
-                        onKeyUp={handlePasswordKeyDown}
-                        type={showLoginPassword ? 'text' : 'password'}
-                        autoComplete="current-password"
-                        required
-                        placeholder="请输入密码"
-                        className="cf-auth-input cf-auth-input--password"
-                      />
-                      
-                      {/* ⌨️ 经典大写锁定侦测徽标 */}
-                      {capsLockActive && (
-                        <span className="cf-auth-capslock-badge" title="大写锁定已开启">
-                          A
-                        </span>
-                      )}
-
-                      <button
-                        type="button"
-                        className="cf-auth-input-toggle"
-                        onClick={() => setShowLoginPassword((prev) => !prev)}
-                        aria-label={showLoginPassword ? '隐藏密码' : '显示密码'}
-                      >
-                        {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 记住我选框（桌面级登录必备） */}
-                  <div className="cf-auth-remember">
-                    <label className="cf-auth-remember__checkbox">
+                    <label className="cf-auth-remember">
                       <input
                         type="checkbox"
                         checked={rememberMe}
                         onChange={(e) => setRememberMe(e.target.checked)}
+                        disabled={formsDisabled}
                       />
-                      记住我（下次自动填充账号与租户）
+                      <span>记住账号与租户</span>
                     </label>
-                  </div>
 
-                  {currentError ? (
-                    <div className="cf-auth-error">
-                      <ShieldAlert size={16} className="cf-auth-error__icon" />
-                      <p>{currentError}</p>
-                    </div>
-                  ) : null}
-
-                  <Button
-                    type="submit"
-                    disabled={pendingAction === 'login'}
-                    className="cf-auth-submit"
-                  >
-                    {pendingAction === 'login' ? (
-                      <>
-                        <Loader2 size={14} className="cf-auth-spin" />
-                        正在登录
-                      </>
-                    ) : (
-                      <>
-                        <LogIn size={14} />
-                        登录
-                      </>
-                    )}
-                  </Button>
-                </form>
-              ) : (
-                <form onSubmit={handleRegisterSubmit} className="cf-auth-form">
-                  <div>
-                    <label className="cf-auth-label">租户</label>
-                    <TenantSelect
-                      value={registerForm.tenantCode}
-                      onChange={(tenantCode) => setRegisterForm((prev) => ({ ...prev, tenantCode }))}
-                      disabled={tenantSelectDisabled}
-                      placeholder={tenantPlaceholder}
-                      options={tenantOptions}
-                    />
-                    {tenantStatus}
-                  </div>
-
-                  <div>
-                    <label htmlFor="auth-register-username" className="cf-auth-label">用户名</label>
-                    <div className="cf-auth-input-wrap">
-                      <div className="cf-auth-input-icon">
-                        <Users size={16} />
+                    {!agreementAccepted ? (
+                      <div className="cf-auth-agreement-inline">
+                        <div>
+                          <p>继续登录前需要先同意最新条款。</p>
+                          <span>未同意前，账号密码输入和快捷登录会保持禁用。</span>
+                        </div>
+                        <button type="button" onClick={() => setAgreementVisible(true)}>查看条款</button>
                       </div>
+                    ) : null}
+
+                    <label className="cf-auth-public-agreement">
                       <input
-                        id="auth-register-username"
-                        ref={registerUsernameRef}
-                        value={registerForm.username}
-                        onChange={(event) =>
-                          setRegisterForm((prev) => ({ ...prev, username: event.target.value }))
-                        }
-                        type="text"
-                        autoComplete="username"
-                        required
-                        placeholder="请输入用户名"
-                        className="cf-auth-input"
+                        type="checkbox"
+                        checked={publicAccepted}
+                        onChange={(event) => setPublicAccepted(event.target.checked)}
+                        disabled={!agreementAccepted}
                       />
-                      {/* 🧹 一键清除按钮 */}
-                      {registerForm.username && (
+                      <span>
+                        我已阅读并同意
+                        <button type="button" onClick={() => handlePlaceholderAction('服务条款')}>服务条款</button>、
+                        <button type="button" onClick={() => handlePlaceholderAction('隐私政策')}>隐私政策</button>、
+                        <button type="button" onClick={() => handlePlaceholderAction('安全规范')}>安全规范</button>
+                      </span>
+                    </label>
+
+                    {currentError ? (
+                      <div className="cf-auth-error">
+                        <ShieldAlert size={16} className="cf-auth-error__icon" />
+                        <p>{currentError}</p>
+                      </div>
+                    ) : null}
+
+                    <Button
+                      type="submit"
+                      disabled={!canSubmit || pendingAction === 'login'}
+                      className="cf-auth-submit"
+                    >
+                      {pendingAction === 'login' ? (
+                        <>
+                          <Loader2 size={14} className="cf-auth-spin" />
+                          正在登录
+                        </>
+                      ) : (
+                        <>
+                          <LogIn size={14} />
+                          登录
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleRegisterSubmit} className="cf-auth-source-form">
+                    <label className="cf-auth-field-block">
+                      <span className="cf-auth-label">租户</span>
+                      <TenantSelect
+                        value={registerForm.tenantCode}
+                        onChange={(tenantCode) => setRegisterForm((prev) => ({ ...prev, tenantCode }))}
+                        disabled={tenantSelectDisabled}
+                        placeholder={tenantPlaceholder}
+                        options={tenantOptions}
+                      />
+                      {tenantStatus}
+                    </label>
+
+                    <label className="cf-auth-field-block" htmlFor="auth-register-username">
+                      <span className="cf-auth-label">用户名</span>
+                      <span className="cf-auth-input-wrap">
+                        <span className="cf-auth-input-icon">
+                          <Users size={16} />
+                        </span>
+                        <input
+                          id="auth-register-username"
+                          ref={registerUsernameRef}
+                          value={registerForm.username}
+                          onChange={(event) =>
+                            setRegisterForm((prev) => ({ ...prev, username: event.target.value }))
+                          }
+                          type="text"
+                          autoComplete="username"
+                          required
+                          disabled={formsDisabled}
+                          placeholder="请输入用户名"
+                          className="cf-auth-input"
+                        />
+                        {registerForm.username ? (
+                          <button
+                            type="button"
+                            className="cf-auth-input-clear has-value"
+                            onClick={() => handleClearField('register-username')}
+                            title="清空用户名"
+                            disabled={formsDisabled}
+                          >
+                            x
+                          </button>
+                        ) : null}
+                      </span>
+                    </label>
+
+                    <label className="cf-auth-field-block" htmlFor="auth-register-password">
+                      <span className="cf-auth-label">密码</span>
+                      <span className="cf-auth-input-wrap">
+                        <span className="cf-auth-input-icon">
+                          <Lock size={16} />
+                        </span>
+                        <input
+                          id="auth-register-password"
+                          value={registerForm.password}
+                          onChange={(event) =>
+                            setRegisterForm((prev) => ({ ...prev, password: event.target.value }))
+                          }
+                          onKeyDown={handlePasswordKeyDown}
+                          onKeyUp={handlePasswordKeyDown}
+                          onBlur={() => setCapsLockActive(false)}
+                          type={showRegisterPassword ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          required
+                          disabled={formsDisabled}
+                          placeholder="至少 6 位字符"
+                          className="cf-auth-input cf-auth-input--password"
+                        />
+                        {capsLockActive ? (
+                          <span className="cf-auth-capslock-badge" title="大写锁定已开启">
+                            A
+                          </span>
+                        ) : null}
                         <button
                           type="button"
-                          className="cf-auth-input-clear has-value"
-                          onClick={() => handleClearField('register-username')}
-                          title="清空用户名"
+                          className="cf-auth-input-toggle"
+                          onClick={() => setShowRegisterPassword((prev) => !prev)}
+                          aria-label={showRegisterPassword ? '隐藏密码' : '显示密码'}
+                          disabled={formsDisabled}
                         >
-                          ×
+                          {showRegisterPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="auth-register-password" className="cf-auth-label">密码</label>
-                    <div className="cf-auth-input-wrap">
-                      <div className="cf-auth-input-icon">
-                        <Lock size={16} />
-                      </div>
-                      <input
-                        id="auth-register-password"
-                        value={registerForm.password}
-                        onChange={(event) =>
-                          setRegisterForm((prev) => ({ ...prev, password: event.target.value }))
-                        }
-                        onKeyDown={handlePasswordKeyDown}
-                        onKeyUp={handlePasswordKeyDown}
-                        type={showRegisterPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        required
-                        placeholder="请输入密码"
-                        className="cf-auth-input cf-auth-input--password"
-                      />
-                      
-                      {/* ⌨️ 大写锁定提示 */}
-                      {capsLockActive && (
-                        <span className="cf-auth-capslock-badge" title="大写锁定已开启">
-                          A
-                        </span>
-                      )}
-
-                      <button
-                        type="button"
-                        className="cf-auth-input-toggle"
-                        onClick={() => setShowRegisterPassword((prev) => !prev)}
-                        aria-label={showRegisterPassword ? '隐藏密码' : '显示密码'}
-                      >
-                        {showRegisterPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                    <p className="cf-auth-hint">至少 6 个字符</p>
-                  </div>
-
-                  <div>
-                    <label htmlFor="auth-register-confirm" className="cf-auth-label">确认密码</label>
-                    <div className="cf-auth-input-wrap">
-                      <div className="cf-auth-input-icon">
-                        <Lock size={16} />
-                      </div>
-                      <input
-                        id="auth-register-confirm"
-                        value={registerForm.confirmPassword}
-                        onChange={(event) =>
-                          setRegisterForm((prev) => ({
-                            ...prev,
-                            confirmPassword: event.target.value,
-                          }))
-                        }
-                        onKeyDown={handlePasswordKeyDown}
-                        onKeyUp={handlePasswordKeyDown}
-                        type={showRegisterConfirmPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        required
-                        placeholder="请再次输入密码"
-                        className="cf-auth-input cf-auth-input--password"
-                      />
-                      
-                      {/* ⌨️ 大写锁定提示 */}
-                      {capsLockActive && (
-                        <span className="cf-auth-capslock-badge" title="大写锁定已开启">
-                          A
-                        </span>
-                      )}
-
-                      <button
-                        type="button"
-                        className="cf-auth-input-toggle"
-                        onClick={() => setShowRegisterConfirmPassword((prev) => !prev)}
-                        aria-label={showRegisterConfirmPassword ? '隐藏确认密码' : '显示确认密码'}
-                      >
-                        {showRegisterConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="auth-register-email" className="cf-auth-label">
-                      邮箱
-                      <span className="cf-auth-label__optional">（可选）</span>
+                      </span>
+                      <span className="cf-auth-hint">建议包含大小写字母、数字和符号。</span>
                     </label>
-                    <div className="cf-auth-input-wrap">
-                      <div className="cf-auth-input-icon">
-                        <Mail size={16} />
+
+                    <label className="cf-auth-field-block" htmlFor="auth-register-confirm">
+                      <span className="cf-auth-label">确认密码</span>
+                      <span className="cf-auth-input-wrap">
+                        <span className="cf-auth-input-icon">
+                          <Lock size={16} />
+                        </span>
+                        <input
+                          id="auth-register-confirm"
+                          value={registerForm.confirmPassword}
+                          onChange={(event) =>
+                            setRegisterForm((prev) => ({
+                              ...prev,
+                              confirmPassword: event.target.value,
+                            }))
+                          }
+                          onKeyDown={handlePasswordKeyDown}
+                          onKeyUp={handlePasswordKeyDown}
+                          onBlur={() => setCapsLockActive(false)}
+                          type={showRegisterConfirmPassword ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          required
+                          disabled={formsDisabled}
+                          placeholder="请再次输入密码"
+                          className="cf-auth-input cf-auth-input--password"
+                        />
+                        {capsLockActive ? (
+                          <span className="cf-auth-capslock-badge" title="大写锁定已开启">
+                            A
+                          </span>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="cf-auth-input-toggle"
+                          onClick={() => setShowRegisterConfirmPassword((prev) => !prev)}
+                          aria-label={showRegisterConfirmPassword ? '隐藏确认密码' : '显示确认密码'}
+                          disabled={formsDisabled}
+                        >
+                          {showRegisterConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </span>
+                    </label>
+
+                    <label className="cf-auth-field-block" htmlFor="auth-register-email">
+                      <span className="cf-auth-label">
+                        邮箱 <em>可选</em>
+                      </span>
+                      <span className="cf-auth-input-wrap">
+                        <span className="cf-auth-input-icon">
+                          <Mail size={16} />
+                        </span>
+                        <input
+                          id="auth-register-email"
+                          value={registerForm.email}
+                          onChange={(event) =>
+                            setRegisterForm((prev) => ({ ...prev, email: event.target.value }))
+                          }
+                          type="email"
+                          autoComplete="email"
+                          disabled={formsDisabled}
+                          placeholder="请输入邮箱"
+                          className="cf-auth-input"
+                        />
+                        {registerForm.email ? (
+                          <button
+                            type="button"
+                            className="cf-auth-input-clear has-value"
+                            onClick={() => handleClearField('register-email')}
+                            title="清空邮箱"
+                            disabled={formsDisabled}
+                          >
+                            x
+                          </button>
+                        ) : null}
+                      </span>
+                    </label>
+
+                    {!agreementAccepted ? (
+                      <div className="cf-auth-agreement-inline">
+                        <div>
+                          <p>继续注册前需要先同意最新条款。</p>
+                          <span>未同意前，注册和快捷登录会保持禁用。</span>
+                        </div>
+                        <button type="button" onClick={() => setAgreementVisible(true)}>查看条款</button>
                       </div>
+                    ) : null}
+
+                    <label className="cf-auth-public-agreement">
                       <input
-                        id="auth-register-email"
-                        value={registerForm.email}
-                        onChange={(event) =>
-                          setRegisterForm((prev) => ({ ...prev, email: event.target.value }))
-                        }
-                        type="email"
-                        autoComplete="email"
-                        placeholder="请输入邮箱（可选）"
-                        className="cf-auth-input"
+                        type="checkbox"
+                        checked={publicAccepted}
+                        onChange={(event) => setPublicAccepted(event.target.checked)}
+                        disabled={!agreementAccepted}
                       />
-                    </div>
-                  </div>
+                      <span>
+                        我已阅读并同意
+                        <button type="button" onClick={() => handlePlaceholderAction('服务条款')}>服务条款</button>、
+                        <button type="button" onClick={() => handlePlaceholderAction('隐私政策')}>隐私政策</button>、
+                        <button type="button" onClick={() => handlePlaceholderAction('安全规范')}>安全规范</button>
+                      </span>
+                    </label>
 
-                  {currentError ? (
-                    <div className="cf-auth-error">
-                      <ShieldAlert size={16} className="cf-auth-error__icon" />
-                      <p>{currentError}</p>
-                    </div>
-                  ) : null}
+                    {currentError ? (
+                      <div className="cf-auth-error">
+                        <ShieldAlert size={16} className="cf-auth-error__icon" />
+                        <p>{currentError}</p>
+                      </div>
+                    ) : null}
 
-                  <Button
-                    type="submit"
-                    disabled={pendingAction === 'register'}
-                    className="cf-auth-submit"
-                  >
-                    {pendingAction === 'register' ? (
-                      <>
-                        <Loader2 size={14} className="cf-auth-spin" />
-                        正在创建
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus size={14} />
-                        创建账号
-                      </>
-                    )}
-                  </Button>
-                </form>
+                    <Button
+                      type="submit"
+                      disabled={!canSubmit || pendingAction === 'register'}
+                      className="cf-auth-submit"
+                    >
+                      {pendingAction === 'register' ? (
+                        <>
+                          <Loader2 size={14} className="cf-auth-spin" />
+                          正在创建
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus size={14} />
+                          创建账号
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                )}
+
+              </div>
+            </div>
+
+            <div className="cf-auth-mode-footer">
+              {isLogin ? (
+                <p>还没有账号？ <button type="button" onClick={() => switchMode('register')}>注册</button></p>
+              ) : (
+                <p>已有账号？ <button type="button" onClick={() => switchMode('login')}>登录</button></p>
               )}
             </div>
-          </div>
-
-          <div className="cf-auth-copyright">© {currentYear} CloudFlow Pro. All rights reserved.</div>
-        </div>
+            <footer className="cf-auth-copyright">
+              <p>© {currentYear} CloudFlow Pro</p>
+            </footer>
+          </section>
+        </main>
       </div>
+
+      {agreementVisible ? (
+        <div className="cf-auth-agreement-overlay" role="dialog" aria-modal="true" aria-labelledby="cf-auth-agreement-title">
+          <div className="cf-auth-agreement-panel">
+            <div className="cf-auth-agreement-head">
+              <span className="cf-auth-agreement-icon">
+                <ShieldCheck size={21} />
+              </span>
+              <div>
+                <div className="cf-auth-agreement-title-row">
+                  <h2 id="cf-auth-agreement-title">条款更新通知</h2>
+                  <span>2026-03-31</span>
+                </div>
+                <p>CloudFlow Pro 服务条款已于 2026-03-31 更新。在继续使用服务之前，请仔细阅读并同意以下条款。</p>
+              </div>
+            </div>
+            <div className="cf-auth-agreement-body">
+              <p>相关文档</p>
+              <div className="cf-auth-agreement-doc-grid">
+                {agreementDocuments.map((doc) => (
+                  <button
+                    key={doc.id}
+                    type="button"
+                    className="cf-auth-agreement-doc-card"
+                    onClick={() => handlePlaceholderAction(doc.title)}
+                  >
+                    <ShieldCheck size={16} />
+                    <span>{doc.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="cf-auth-agreement-actions">
+              <button type="button" onClick={rejectAgreement}>拒绝</button>
+              <button type="button" onClick={acceptAgreement}>同意并继续</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <AuthCaptchaDialog
         open={captchaIntent !== null}

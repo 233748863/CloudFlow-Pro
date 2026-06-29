@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -16,17 +16,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableRowActions,
   Textarea,
 } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   contractThresholdApi,
   type ContractAmountTier,
@@ -38,7 +30,7 @@ import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 
 const ALL_VALUE = '__all__';
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+const fieldLabelClassName = 'input-label';
 
 const DEFAULT_FORM: OaContractAmountThreshold = {
   businessUnit: '',
@@ -60,8 +52,8 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; description?: st
   description,
   loading = false,
 }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr>
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -69,8 +61,8 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; description?: st
           <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 export const ContractThresholdPage: React.FC = () => {
@@ -186,131 +178,185 @@ export const ContractThresholdPage: React.FC = () => {
       return <TableStateRow colSpan={colCount} title="暂无规则" description="点击右上角新建合同金额审批阈值规则" />;
     }
     return rows.map((row) => (
-      <TableRow key={row.id}>
-        <TableCell>{row.businessUnit || '—'}</TableCell>
-        <TableCell className="font-mono text-sm">
+      <tr key={row.id}>
+        <td>{row.businessUnit || '—'}</td>
+        <td className="font-mono text-sm">
           ¥{Number(row.thresholdMin).toLocaleString()} – {row.thresholdMax != null ? `¥${Number(row.thresholdMax).toLocaleString()}` : '∞'}
-        </TableCell>
-        <TableCell>
+        </td>
+        <td>
           <DictBadge dictType="oa_contract_amount_tier" value={String(row.amountTier || '')} />
-        </TableCell>
-        <TableCell>{roleDict.getLabel(row.approverRole)}</TableCell>
-        <TableCell>
+        </td>
+        <td>{roleDict.getLabel(row.approverRole)}</td>
+        <td>
           <DictBadge dictType="oa_contract_threshold_status" value={String(row.status || '')} />
-        </TableCell>
-        <TableCell className="max-w-[240px] truncate text-xs text-slate-500" title={row.remark}>
+        </td>
+        <td className="max-w-[240px] truncate text-xs text-slate-500" title={row.remark}>
           {row.remark || '—'}
-        </TableCell>
-        <TableCell className="text-xs text-slate-500">{row.updateTime || '—'}</TableCell>
-        <TableCell className="text-right">
-          <TableRowActions
-            actions={[
-              { key: 'edit', label: '编辑', semantic: 'edit', icon: <Pencil size={15} />, onClick: () => openEdit(row) },
-              { key: 'delete', label: '删除', semantic: 'delete', icon: <Trash2 size={15} />, onClick: () => row.id && setConfirmId(row.id) },
-            ]}
-          />
-        </TableCell>
-      </TableRow>
+        </td>
+        <td className="text-xs text-slate-500">{row.updateTime || '—'}</td>
+        <td>
+          <div className="admin-users-row-actions">
+            <button type="button" title="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
+            <button type="button" className="danger" title="删除" aria-label="删除" onClick={() => row.id && setConfirmId(row.id)}><Trash2 size={15} /></button>
+          </div>
+        </td>
+      </tr>
     ));
   }, [loading, error, rows]);
 
-  return (
+  const activeCount = rows.filter((row) => row.status === 'ACTIVE').length;
+  const inactiveCount = rows.filter((row) => row.status === 'INACTIVE').length;
+  const currentTierLabel = query.amountTier ? tierDict.getLabel(query.amountTier) || query.amountTier : '全部档位';
+  const currentStatusLabel = query.status ? statusDict.getLabel(query.status) || query.status : '全部状态';
+  const hasActiveFilters = Boolean(query.keyword || query.businessUnit || query.amountTier || query.status);
+  const statCards = [
+    { label: '阈值规则', value: String(total), detail: '审批路由', icon: FileSpreadsheet, tone: 'blue' },
+    { label: '启用中', value: String(activeCount), detail: '当前页', icon: RefreshCw, tone: 'green' },
+    { label: '停用', value: String(inactiveCount), detail: '当前页', icon: RefreshCw, tone: 'amber' },
+    { label: '档位', value: String(TIER_VALUES.length), detail: currentTierLabel, icon: Pencil, tone: 'violet' },
+  ];
+
+  const pageActions = (
     <>
-      <TablePageLayout
-        className="gap-3"
-        filters={(
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">CONTRACT THRESHOLD</p>
+          <h2>合同金额阈值</h2>
+          <span>配置合同金额区间、审批档位和审批角色路由</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => load()} disabled={loading}>
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+            刷新
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            新建
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon"><Icon size={18} /></div>
+              <div>
+                <p>{stat.label}</p>
+                <strong>{stat.value}</strong>
+                <span>{stat.detail}</span>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+      <section className="card admin-users-toolbar">
+        <div className="admin-oa-filter-grid">
+          <label>
+            <span className="input-label">备注</span>
               <Input
                 value={query.keyword}
                 placeholder="按备注搜索"
-                className="max-w-sm"
+                className="h-[42px]"
                 onChange={(e) => setQuery((c) => ({ ...c, keyword: e.target.value, pageNum: 1 }))}
               />
-              <div className="w-full sm:w-[160px]">
-                <Input
-                  value={query.businessUnit}
-                  placeholder="业务单元"
-                  onChange={(e) => setQuery((c) => ({ ...c, businessUnit: e.target.value, pageNum: 1 }))}
-                />
-              </div>
-              <div className="w-full sm:w-[140px]">
-                <Select
-                  value={query.amountTier || ALL_VALUE}
-                  onValueChange={(v) => setQuery((c) => ({ ...c, amountTier: v === ALL_VALUE ? '' : v, pageNum: 1 }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="档位" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_VALUE}>全部</SelectItem>
-                    {TIER_VALUES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {tierDict.getLabel(t)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full sm:w-[140px]">
-                <Select
-                  value={query.status || ALL_VALUE}
-                  onValueChange={(v) => setQuery((c) => ({ ...c, status: v === ALL_VALUE ? '' : v, pageNum: 1 }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_VALUE}>全部</SelectItem>
-                    {STATUS_VALUES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {statusDict.getLabel(s)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => load()} disabled={loading}>
-                <RefreshCw className={cn('mr-1.5 h-4 w-4', loading && 'animate-spin')} /> 刷新
-              </Button>
-              <Button size="sm" onClick={openCreate}>
-                <Plus className="mr-1.5 h-4 w-4" /> 新建
-              </Button>
-            </div>
+          </label>
+          <label>
+            <span className="input-label">业务单元</span>
+            <Input
+              value={query.businessUnit}
+              placeholder="业务单元"
+              className="h-[42px]"
+              onChange={(e) => setQuery((c) => ({ ...c, businessUnit: e.target.value, pageNum: 1 }))}
+            />
+          </label>
+          <label>
+            <span className="input-label">档位</span>
+            <Select
+              value={query.amountTier || ALL_VALUE}
+              onValueChange={(v) => setQuery((c) => ({ ...c, amountTier: v === ALL_VALUE ? '' : v, pageNum: 1 }))}
+            >
+              <SelectTrigger className="h-[42px]">
+                <SelectValue placeholder="档位" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>全部</SelectItem>
+                {TIER_VALUES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {tierDict.getLabel(t)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <label>
+            <span className="input-label">状态</span>
+            <Select
+              value={query.status || ALL_VALUE}
+              onValueChange={(v) => setQuery((c) => ({ ...c, status: v === ALL_VALUE ? '' : v, pageNum: 1 }))}
+            >
+              <SelectTrigger className="h-[42px]">
+                <SelectValue placeholder="状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>全部</SelectItem>
+                {STATUS_VALUES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {statusDict.getLabel(s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{hasActiveFilters ? `${currentTierLabel} / ${currentStatusLabel}` : `共 ${total} 条`}</span>
           </div>
-        )}
-        table={(
-          <TableSurfaceCard>
-            <>
-              <div className="overflow-x-auto">
-                <Table className="min-w-[1100px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>业务单元</TableHead>
-                      <TableHead>金额区间</TableHead>
-                      <TableHead>档位</TableHead>
-                      <TableHead>审批角色</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>备注</TableHead>
-                      <TableHead>更新时间</TableHead>
-                      <TableActionHead className="w-32">操作</TableActionHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>{tableBody}</TableBody>
-                </Table>
-              </div>
-              <Pagination
-                page={query.pageNum}
-                pageSize={query.pageSize}
-                total={total}
-                onPageChange={(pageNum) => setQuery((c) => ({ ...c, pageNum }))}
-                onPageSizeChange={(pageSize) => setQuery((c) => ({ ...c, pageNum: 1, pageSize }))}
-              />
-            </>
-          </TableSurfaceCard>
-        )}
+        </div>
+      </section>
+  );
+
+  const pageTable = (
+      <InnerTableSurface>
+          <table className="unity-data-table admin-source-table min-w-[1100px]">
+            <thead>
+              <tr>
+                <th>业务单元</th>
+                <th>金额区间</th>
+                <th>档位</th>
+                <th>审批角色</th>
+                <th>状态</th>
+                <th>备注</th>
+                <th>更新时间</th>
+                <th className="text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>{tableBody}</tbody>
+          </table>
+      </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      total={total}
+      onPageChange={(pageNum) => setQuery((c) => ({ ...c, pageNum }))}
+      onPageSizeChange={(pageSize) => setQuery((c) => ({ ...c, pageNum: 1, pageSize }))}
+    />
+  ) : null;
+
+  return (
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageTable}
+        pagination={pagePagination}
       />
 
       <BaseDialog
@@ -428,7 +474,7 @@ export const ContractThresholdPage: React.FC = () => {
         onCancel={() => setConfirmId(null)}
         onConfirm={() => confirmId && onRemove(confirmId)}
       />
-    </>
+    </section>
   );
 };
 

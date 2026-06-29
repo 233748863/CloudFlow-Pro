@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Eye, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Clock, Eye, Globe2, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -16,14 +15,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import {
   deleteLoginLogs,
@@ -33,6 +24,7 @@ import {
   SysLog,
 } from '@/services/api/log';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type LoginLogFilters = {
   createBy: string;
@@ -50,7 +42,7 @@ const getLoginStatusBadgeClassName = (logType: string) =>
     : 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200';
 
 const checkboxClassName =
-  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-[#0d95b5] text-[#0d95b5] focus:ring-2 focus:ring-[#0d95b5]/30 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -58,8 +50,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent dark:hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -69,8 +61,8 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const LoginDetailDialog: React.FC<{
@@ -86,7 +78,7 @@ const LoginDetailDialog: React.FC<{
       log ? (
         <span
           className={cn(
-            'rounded-full px-2.5 py-1 text-xs font-medium',
+            'rounded-md px-2.5 py-1 text-xs font-medium',
             getLoginStatusBadgeClassName(log.logType),
           )}
         >
@@ -96,7 +88,7 @@ const LoginDetailDialog: React.FC<{
     }
   >
     {log ? (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+      <div className="card overflow-hidden">
         {[
           { label: '用户', value: log.createBy || '-' },
           { label: '客户端 IP', value: log.remoteAddr || '-' },
@@ -106,8 +98,8 @@ const LoginDetailDialog: React.FC<{
           { label: '请求参数', value: log.params || '-' },
           { label: '异常信息', value: log.exception || '-' },
         ].map((item) => (
-          <div key={item.label} className="border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
-            <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">{item.label}</div>
+          <div key={item.label} className="border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800">
+            <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{item.label}</div>
             <div className="mt-2 break-all whitespace-pre-wrap text-sm text-slate-900 dark:text-slate-100">{item.value}</div>
           </div>
         ))}
@@ -249,211 +241,261 @@ export const LoginLogPage: React.FC = () => {
     query.createBy || query.remoteAddr || query.logType || query.startTime || query.endTime,
   );
 
+  const stats = useMemo(
+    () => [
+      {
+        label: '日志总数',
+        value: String(total),
+        meta: `当前页 ${records.length}`,
+        icon: <Clock size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '成功登录',
+        value: String(records.filter((item) => item.logType !== '9').length),
+        meta: '本页通过',
+        icon: <ShieldCheck size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '失败登录',
+        value: String(records.filter((item) => item.logType === '9').length),
+        meta: '本页异常',
+        icon: <Globe2 size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '已选中',
+        value: String(selectedIds.length),
+        meta: '待批量处理',
+        icon: <Trash2 size={18} />,
+        tone: 'violet',
+      },
+    ],
+    [records, selectedIds.length, total],
+  );
+
   return (
     <>
-      <TablePageLayout
-        className="gap-3"
-        filters={(
-          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-44">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.createBy}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, createBy: event.target.value }))
-                  }
-                  placeholder="按用户搜索"
-                  className="h-10 pl-10"
-                />
-              </div>
+      <section className="admin-source-page admin-login-log-page">
+        <TablePageLayout
+          actions={(
+            <div className="grid gap-5">
+              <header className="admin-source-header">
+                <div>
+                  <p className="admin-source-kicker">LOGIN LOGS</p>
+                  <h2>登录日志</h2>
+                  <span>管理登录行为、客户端 IP、耗时和异常状态</span>
+                </div>
+                <div className="admin-source-controls">
+                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                    <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
+                    刷新
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBatchDelete}
+                    disabled={!selectedIds.length}
+                  >
+                    <Trash2 size={16} />
+                    删除选中
+                  </Button>
+                </div>
+              </header>
 
-              <div className="w-full sm:w-44">
-                <Input
-                  value={filters.remoteAddr}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, remoteAddr: event.target.value }))
-                  }
-                  placeholder="客户端 IP"
-                  className="h-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-36">
-                <Select
-                  value={filters.logType || ALL_FILTER_VALUE}
-                  onValueChange={(value) =>
-                    setFilters((current) => ({
-                      ...current,
-                      logType: value === ALL_FILTER_VALUE ? '' : value,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>全部状态</SelectItem>
-                    <SelectItem value="0">成功</SelectItem>
-                    <SelectItem value="9">失败</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-full sm:w-40">
-                <DatePicker
-                  type="date"
-                  value={filters.startTime}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, startTime: event.target.value }))
-                  }
-                  className="h-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-40">
-                <DatePicker
-                  type="date"
-                  value={filters.endTime}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, endTime: event.target.value }))
-                  }
-                  className="h-10"
-                />
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  <RotateCcw size={14} />
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBatchDelete}
-                disabled={!selectedIds.length}
-              >
-                <Trash2 size={15} />
-                删除选中
-              </Button>
+              <section className="admin-source-stat-grid">
+                {stats.map((stat) => (
+                  <article key={stat.label} className={cn('card admin-source-stat', `admin-source-tone-${stat.tone}`)}>
+                    <div className="admin-source-stat-icon">{stat.icon}</div>
+                    <div>
+                      <p>{stat.label}</p>
+                      <strong>{stat.value}</strong>
+                      <span>{stat.meta}</span>
+                    </div>
+                  </article>
+                ))}
+              </section>
             </div>
-          </div>
-        )}
-        table={(<TableSurfaceCard fill>
-          <>
-            <div className="overflow-x-auto">
-              <Table className="min-w-[1040px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        onChange={toggleSelectAll}
-                        className={checkboxClassName}
-                      />
-                    </TableHead>
-                    <TableHead>用户</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>客户端 IP</TableHead>
-                    <TableHead>耗时</TableHead>
-                    <TableHead>浏览器</TableHead>
-                    <TableHead>登录时间</TableHead>
-                    <TableActionHead className="w-28">操作</TableActionHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableStateRow colSpan={8} title="正在加载登录日志..." loading />
-                  ) : error ? (
-                    <TableStateRow colSpan={8} title="登录日志加载失败" description={error} />
-                  ) : records.length === 0 ? (
-                    <TableStateRow colSpan={8} title="暂无登录日志" />
-                  ) : (
-                    records.map((item) => (
-                      <TableRow key={item.logId}>
-                        <TableCell className="py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(item.logId)}
-                            onChange={() => toggleSelect(item.logId)}
-                            className={checkboxClassName}
-                          />
-                        </TableCell>
-                        <TableCell className="py-4 font-medium text-slate-900 dark:text-slate-100">
-                          {item.createBy || '-'}
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                              getLoginStatusBadgeClassName(item.logType),
-                            )}
-                          >
-                            {item.logType === '9' ? '失败' : '成功'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-4 text-slate-600 dark:text-slate-300">
-                          {item.remoteAddr || '-'}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-4 text-slate-600 dark:text-slate-300">
-                          {item.time ?? 0} ms
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <div
-                            className="max-w-[260px] truncate text-slate-500 dark:text-slate-400"
-                            title={item.userAgent || ''}
-                          >
-                            {item.userAgent || '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-4 text-slate-500 dark:text-slate-400">
-                          {item.createTime || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <TableRowActions
-                            align="end"
-                            actions={[
-                              {
-                                label: '查看详情',
-                                icon: <Eye size={15} />,
-                                onClick: () => void handleView(item.logId),
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '删除日志',
-                                icon: <Trash2 size={15} />,
-                                onClick: () => setPendingDeleteIds([item.logId]),
-                                tone: 'danger',
-                              },
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
+          )}
+          filters={(
+            <section className="card admin-users-toolbar">
+              <form onSubmit={handleSearch} className="admin-login-log-filter-grid">
+                <label className="admin-source-search">
+                  <span className="input-label">搜索用户</span>
+                  <div className="admin-source-search-field">
+                    <Search size={16} />
+                    <Input
+                      value={filters.createBy}
+                      onChange={(event) =>
+                        setFilters((current) => ({ ...current, createBy: event.target.value }))
+                      }
+                      placeholder="按用户搜索"
+                      type="search"
+                    />
+                  </div>
+                </label>
+
+                <label>
+                  <span className="input-label">客户端 IP</span>
+                  <Input
+                    value={filters.remoteAddr}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, remoteAddr: event.target.value }))
+                    }
+                    placeholder="例如 192.168.1.10"
+                  />
+                </label>
+
+                <label>
+                  <span className="input-label">状态</span>
+                  <Select
+                    value={filters.logType || ALL_FILTER_VALUE}
+                    onValueChange={(value) =>
+                      setFilters((current) => ({
+                        ...current,
+                        logType: value === ALL_FILTER_VALUE ? '' : value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="h-[42px]">
+                      <SelectValue placeholder="全部状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_FILTER_VALUE}>全部状态</SelectItem>
+                      <SelectItem value="0">成功</SelectItem>
+                      <SelectItem value="9">失败</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+
+                <label>
+                  <span className="input-label">开始日期</span>
+                  <DatePicker
+                    type="date"
+                    value={filters.startTime}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, startTime: event.target.value }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span className="input-label">结束日期</span>
+                  <DatePicker
+                    type="date"
+                    value={filters.endTime}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, endTime: event.target.value }))
+                    }
+                  />
+                </label>
+
+                <div className="admin-users-toolbar-actions">
+                  <span className="admin-users-filter-count">当前 {total} 项</span>
+                  <Button type="submit" size="sm">
+                    查询
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReset}
+                    disabled={!hasActiveFilters}
+                  >
+                    <RotateCcw size={14} />
+                    重置
+                  </Button>
+                </div>
+              </form>
+            </section>
+          )}
+          table={(
+            <InnerTableSurface className="admin-login-log-table-panel">
+              <table className="unity-data-table admin-source-table admin-login-log-table min-w-[1040px]">
+                  <thead>
+                    <tr>
+                      <th className="w-10">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleSelectAll}
+                          className={checkboxClassName}
+                        />
+                      </th>
+                      <th>用户</th>
+                      <th>状态</th>
+                      <th>客户端 IP</th>
+                      <th>耗时</th>
+                      <th>浏览器</th>
+                      <th>登录时间</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <TableStateRow colSpan={8} title="正在加载登录日志..." loading />
+                    ) : error ? (
+                      <TableStateRow colSpan={8} title="登录日志加载失败" description={error} />
+                    ) : records.length === 0 ? (
+                      <TableStateRow colSpan={8} title="暂无登录日志" />
+                    ) : (
+                      records.map((item) => (
+                        <tr key={item.logId}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(item.logId)}
+                              onChange={() => toggleSelect(item.logId)}
+                              className={checkboxClassName}
+                            />
+                          </td>
+                          <td>
+                            <strong className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {item.createBy || '-'}
+                            </strong>
+                          </td>
+                          <td>
+                            <span
+                              className={cn(
+                                'inline-flex rounded-md px-2.5 py-1 text-xs font-medium',
+                                getLoginStatusBadgeClassName(item.logType),
+                              )}
+                            >
+                              {item.logType === '9' ? '失败' : '成功'}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap">{item.remoteAddr || '-'}</td>
+                          <td className="whitespace-nowrap">{item.time ?? 0} ms</td>
+                          <td>
+                            <div className="max-w-[260px] truncate text-slate-500 dark:text-slate-400" title={item.userAgent || ''}>
+                              {item.userAgent || '-'}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap">{item.createTime || '-'}</td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="查看详情" onClick={() => void handleView(item.logId)}>
+                                <Eye size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="danger"
+                                title="删除日志"
+                                onClick={() => setPendingDeleteIds([item.logId])}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+              </table>
+            </InnerTableSurface>
+          )}
+          pagination={total > 0 ? (
             <Pagination
               total={total}
               page={query.pageNum || 1}
@@ -467,9 +509,9 @@ export const LoginLogPage: React.FC = () => {
                 }))
               }
             />
-          ) : null
-        )}
-      />
+          ) : null}
+        />
+      </section>
 
       <LoginDetailDialog log={detailLog} onClose={() => setDetailLog(null)} />
 

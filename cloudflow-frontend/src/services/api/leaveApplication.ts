@@ -76,16 +76,22 @@ export const leaveApplicationApi = {
     userId?: number;
   }) => {
     const employeeId = await resolveCurrentEmployeeId(params.userId);
-    const page = await listHrLeaveApplications({
+    const pageData = await listHrLeaveApplications({
       employeeId,
       leaveTypeId: params.leaveTypeId,
       status: normalizeOptionalFilter(params.status),
       pageNum: params.pageNum,
       pageSize: params.pageSize,
-    });
-    const records = (page.records || []).map(mapRecord);
+    }) as unknown;
+    const pageObject = pageData && typeof pageData === 'object' && !Array.isArray(pageData)
+      ? pageData as { records?: HrLeaveApplicationVO[]; rows?: HrLeaveApplicationVO[]; total?: number }
+      : null;
+    const sourceRows = Array.isArray(pageData)
+      ? pageData
+      : pageObject?.records || pageObject?.rows || [];
+    const records = sourceRows.map(mapRecord);
     return {
-      total: page.total || records.length,
+      total: pageObject?.total || records.length,
       rows: records,
       records,
     } as PageResult<LeaveApplication>;

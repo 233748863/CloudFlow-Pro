@@ -28,11 +28,11 @@ import {
   SelectValue,
 } from '@/components/common';
 import { BaseDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { ProcessTrace } from '../components/ProcessTrace';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const PAGE_SIZE = 12;
 const ALL_PROCESS_VALUE = '__ALL__';
@@ -64,14 +64,32 @@ const InlineState: React.FC<{
   action?: React.ReactNode;
   className?: string;
 }> = ({ title, description, icon, action, className }) => (
-  <div className={cn('flex flex-col items-center justify-center px-6 py-10 text-center', className)}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+  <div className={cn('admin-dialog-empty-note', className)}>
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <Mail className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
     {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
     {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
   </div>
+);
+
+const DialogPanel: React.FC<{
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, children, className, bodyClassName }) => (
+  <section className={cn('table-scroll-container admin-inner-table-surface', className)}>
+    <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div>
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
+    </div>
+    <div className={cn('p-4', bodyClassName)}>{children}</div>
+  </section>
 );
 
 export const CopyListPage: React.FC = () => {
@@ -325,7 +343,7 @@ export const CopyListPage: React.FC = () => {
       case 'REVOKED':
         return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
       default:
-        return 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
+        return 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
     }
   };
 
@@ -359,6 +377,12 @@ export const CopyListPage: React.FC = () => {
     { label: '未读', value: 'UNREAD' as CopyReadFilter },
     { label: '已读', value: 'READ' as CopyReadFilter },
   ];
+  const statCards = [
+    { label: '抄送总数', value: String(total), detail: currentReadFilterLabel, icon: Mail, tone: 'blue' },
+    { label: '未读', value: String(unreadCount), detail: '待处理', icon: CheckCheck, tone: unreadCount > 0 ? 'amber' : 'green' },
+    { label: '当前页', value: String(records.length), detail: `每页 ${PAGE_SIZE}`, icon: FileText, tone: 'violet' },
+    { label: '流程类型', value: String(processDefOptions.length), detail: currentProcessLabel, icon: FileText, tone: 'green' },
+  ];
 
   if (!user) {
     return null;
@@ -366,300 +390,293 @@ export const CopyListPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
-        <InlineState
-          icon={<Mail className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />}
-        title="正在加载抄送记录..."
-        description="系统正在整理你的流程抄送和已读状态，请稍候。"
-        action={
-          <Button variant="outline" onClick={handleRefresh}>
-            <RefreshCw size={16} className="mr-2" />
-            刷新状态
-          </Button>
-        }
-        className="py-14"
-        />
-      </div>
+      <section className="admin-source-page">
+        <InnerTableSurface className="flex min-h-[24rem] flex-1 flex-col" wrapperClassName="flex min-h-[24rem] flex-1 flex-col">
+          <InlineState
+            icon={<Mail className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />}
+            title="正在加载抄送记录..."
+            description="系统正在整理你的流程抄送和已读状态，请稍候。"
+            action={
+              <Button variant="outline" onClick={handleRefresh}>
+                <RefreshCw size={16} className="mr-2" />
+                刷新状态
+              </Button>
+            }
+            className="py-10"
+          />
+        </InnerTableSurface>
+      </section>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
-        <InlineState
-        icon={<Mail className="h-4 w-4 text-rose-500 dark:text-rose-300" />}
-        title="抄送记录加载失败"
-        description={error}
-        action={
-          <Button onClick={() => void fetchList()}>
-            重试加载
-          </Button>
-        }
-        className="py-14"
-        />
-      </div>
+      <section className="admin-source-page">
+        <InnerTableSurface className="flex min-h-[24rem] flex-1 flex-col" wrapperClassName="flex min-h-[24rem] flex-1 flex-col">
+          <InlineState
+            icon={<Mail className="h-4 w-4 text-rose-500 dark:text-rose-300" />}
+            title="抄送记录加载失败"
+            description={error}
+            action={
+              <Button onClick={() => void fetchList()}>
+                重试加载
+              </Button>
+            }
+            className="py-10"
+          />
+        </InnerTableSurface>
+      </section>
     );
   }
 
-  return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_240px_auto]">
-              <div className="relative">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  type="text"
-                  placeholder="搜索流程标题..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={handleSearchKeyDown}
-                  className="h-10 rounded-xl pl-10 pr-16"
-                />
-                {searchInput && searchInput.trim() !== keyword ? (
-                  <button
-                    type="button"
-                    onClick={handleSearch}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                  >
-                    搜索
-                  </button>
-                ) : null}
+  const pageActions = (
+    <div className="space-y-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">COPY TASKS</p>
+          <h2>抄送我的</h2>
+          <span>集中查看流程抄送、阅读状态和审批轨迹</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : undefined} />
+            刷新
+          </Button>
+          <Button size="sm" onClick={handleBatchMarkRead} disabled={selectedIds.size === 0}>
+            <CheckCheck size={16} />
+            批量已读
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon"><Icon size={18} /></div>
+              <div>
+                <p>{stat.label}</p>
+                <strong>{stat.value}</strong>
+                <span>{stat.detail}</span>
               </div>
+            </article>
+          );
+        })}
+      </section>
+    </div>
+  );
 
-              {processDefOptions.length > 0 ? (
-                <Select
-                  value={processDefKey || ALL_PROCESS_VALUE}
-                  onValueChange={(value) =>
-                    handleProcessTypeChange(value === ALL_PROCESS_VALUE ? '' : value)
-                  }
-                >
-                  <SelectTrigger className="h-10 rounded-xl">
-                    <SelectValue placeholder="全部流程类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem className="rounded-lg" value={ALL_PROCESS_VALUE}>
-                      全部流程类型
-                    </SelectItem>
-                    {processDefOptions.map((option) => (
-                      <SelectItem
-                        key={option.key}
-                        className="rounded-lg"
-                        value={String(option.key)}
-                      >
-                        {option.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div />
-              )}
-
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Button
-                  size="sm"
-                  className="h-10 rounded-xl"
-                  onClick={handleSearch}
-                >
-                  <Search size={15} className="mr-2" />
-                  应用搜索
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 rounded-xl px-4"
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                >
-                  <RefreshCw
-                    size={15}
-                    className={`mr-2 ${refreshing ? 'animate-spin text-slate-500' : 'text-slate-500'}`}
-                  />
-                  刷新
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-1 flex-wrap items-center gap-2">
-                <SegmentedControl className="min-h-9 flex-wrap">
-                  {readQuickFilters.map((filter) => (
-                    <SegmentedControlItem
-                      key={filter.value}
-                      size="sm"
-                      active={readFilter === filter.value}
-                      onClick={() => handleReadFilterChange(filter.value)}
-                    >
-                      {filter.label}
-                    </SegmentedControlItem>
-                  ))}
-                </SegmentedControl>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {unreadOnPage.length > 0 ? (
-                  <label className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                    <input
-                      type="checkbox"
-                      checked={allUnreadSelected}
-                      onChange={handleToggleSelectAll}
-                      className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
-                    />
-                    全选当前页未读
-                  </label>
-                ) : null}
-                {selectedIds.size > 0 ? (
-                  <Button size="sm" onClick={handleBatchMarkRead}>
-                    <CheckCheck size={15} className="mr-2" />
-                    批量已读 ({selectedIds.size})
-                  </Button>
-                ) : null}
-                {hasActiveFilters ? (
-                  <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                    <X size={15} className="mr-2 text-slate-400" />
-                    清空筛选
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-              <span>{summary}</span>
-              <span>{currentReadFilterLabel}</span>
-              <span>{currentProcessLabel}</span>
-              <span>已选 {selectedIds.size} 条</span>
-            </div>
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="admin-oa-filter-grid">
+        <label>
+          <span className="input-label">流程标题</span>
+          <div className="relative">
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              type="search"
+              placeholder="搜索流程标题"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              className="h-[42px] pl-10"
+            />
           </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col">
-            <div className="flex flex-1 flex-col">
-            {records.length === 0 ? (
-              <InlineState
-                icon={<Mail className="h-4 w-4 text-cyan-600 dark:text-cyan-200" />}
-                title="暂无抄送记录"
-                description="后续有流程抄送到你时，这里会展示流程标题、节点和阅读状态。"
+        </label>
+
+        {processDefOptions.length > 0 ? (
+          <label>
+            <span className="input-label">流程类型</span>
+            <Select
+              value={processDefKey || ALL_PROCESS_VALUE}
+              onValueChange={(value) =>
+                handleProcessTypeChange(value === ALL_PROCESS_VALUE ? '' : value)
+              }
+            >
+              <SelectTrigger className="h-[42px]">
+                <SelectValue placeholder="全部流程类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_PROCESS_VALUE}>全部流程类型</SelectItem>
+                {processDefOptions.map((option) => (
+                  <SelectItem key={option.key} value={String(option.key)}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+        ) : null}
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">{summary}</span>
+          <Button variant="outline" size="sm" onClick={handleSearch}>
+            <Search size={14} />
+            应用
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleClearFilters} disabled={!hasActiveFilters && !searchInput}>
+            <X size={14} />
+            重置
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          <SegmentedControl className="min-h-9 flex-wrap">
+            {readQuickFilters.map((filter) => (
+              <SegmentedControlItem
+                key={filter.value}
+                size="sm"
+                active={readFilter === filter.value}
+                onClick={() => handleReadFilterChange(filter.value)}
+              >
+                {filter.label}
+              </SegmentedControlItem>
+            ))}
+          </SegmentedControl>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {unreadOnPage.length > 0 ? (
+            <label className="admin-dialog-checkline h-9 min-h-0 py-0">
+              <input type="checkbox"
+                checked={allUnreadSelected}
+                onChange={handleToggleSelectAll}
+                className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
               />
-            ) : (
-              <>
-                <div className="border-b border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  {summary}
-                </div>
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {records.map((record) => {
-                    const isUnread = record.isRead === 0;
-                    const isSelected = selectedIds.has(record.id);
+              全选当前页未读
+            </label>
+          ) : null}
+          <span className="admin-users-filter-count">{currentReadFilterLabel} / {currentProcessLabel} / 已选 {selectedIds.size} 条</span>
+        </div>
+      </div>
+    </section>
+  );
 
-                    return (
-                      <div
-                        key={record.id}
-                        className={cn(
-                          'cursor-pointer px-4 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40',
-                          isSelected && 'bg-slate-50 dark:bg-slate-900/40',
+  const pageContent = (
+    <InnerTableSurface
+      className="flex min-h-0 flex-1 flex-col"
+      wrapperClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      {records.length === 0 ? (
+        <InlineState
+          icon={<Mail className="h-4 w-4 text-cyan-600 dark:text-cyan-200" />}
+          title="暂无抄送记录"
+          description="后续有流程抄送到你时，这里会展示流程标题、节点和阅读状态。"
+          className="flex-1"
+        />
+      ) : (
+        <>
+          <div className="border-b border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            {summary}
+          </div>
+          <div className="min-h-0 flex-1 divide-y divide-slate-200 overflow-auto dark:divide-slate-800">
+            {records.map((record) => {
+              const isUnread = record.isRead === 0;
+              const isSelected = selectedIds.has(record.id);
+
+              return (
+                <div
+                  key={record.id}
+                  className={cn(
+                    'cursor-pointer px-4 py-4 transition-colors hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/40',
+                    isSelected && 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/40',
+                  )}
+                  onClick={() => handleViewDetail(record)}
+                >
+                  <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="shrink-0 pt-1" onClick={(e) => e.stopPropagation()}>
+                        {isUnread ? (
+                          <input type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelect(record.id)}
+                            className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                          />
+                        ) : (
+                          <div className="w-4" />
                         )}
-                        onClick={() => handleViewDetail(record)}
-                      >
-                        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                          <div className="flex min-w-0 items-start gap-3">
-                            <div className="shrink-0 pt-1" onClick={(e) => e.stopPropagation()}>
-                              {isUnread ? (
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => handleToggleSelect(record.id)}
-                                  className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
-                                />
-                              ) : (
-                                <div className="w-4" />
-                              )}
-                            </div>
+                      </div>
 
-                            <div className="min-w-0 flex-1">
-                              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                <h4
-                                  className={cn(
-                                    'min-w-0 truncate text-sm font-semibold',
-                                    isUnread ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200',
-                                  )}
-                                >
-                                  {record.title || '未命名流程'}
-                                </h4>
-                                <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold', getStatusStyle(record.processStatus))}>
-                                  {getStatusLabel(record.processStatus)}
-                                </span>
-                                <span className={cn(
-                                  'shrink-0 rounded-full px-2.5 py-1 text-xs font-medium',
-                                  isUnread
-                                    ? 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
-                                    : 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-                                )}>
-                                  {isUnread ? '未读' : '已读'}
-                                </span>
-                              </div>
-
-                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                                <span>发起人 {record.startUserName || '-'}</span>
-                                {record.processName ? <span>流程 {record.processName}</span> : null}
-                                <span>抄送节点 {record.nodeName || '-'}</span>
-                                <span>{record.createTime ? new Date(record.createTime).toLocaleString() : '-'}</span>
-                                {record.readTime && !isUnread ? (
-                                  <span>阅读 {new Date(record.readTime).toLocaleString()}</span>
-                                ) : null}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div
-                            className="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:border-l lg:border-slate-100 lg:pl-6 dark:lg:border-slate-800"
-                            onClick={(e) => e.stopPropagation()}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <h4
+                            className={cn(
+                              'min-w-0 truncate text-sm font-semibold',
+                              isUnread ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200',
+                            )}
                           >
-                            {isUnread ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => void handleMarkRead(record)}
-                              >
-                                标记已读
-                              </Button>
-                            ) : null}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewDetail(record)}
-                            >
-                              <Eye size={14} className="mr-2 text-slate-400 dark:text-slate-500" />
-                              查看
-                            </Button>
-                          </div>
+                            {record.title || '未命名流程'}
+                          </h4>
+                          <span className={cn('shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold', getStatusStyle(record.processStatus))}>
+                            {getStatusLabel(record.processStatus)}
+                          </span>
+                          <span className={cn(
+                            'shrink-0 rounded-md px-2.5 py-1 text-xs font-medium',
+                            isUnread
+                              ? 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
+                              : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+                          )}>
+                            {isUnread ? '未读' : '已读'}
+                          </span>
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                          <span>发起人 {record.startUserName || '-'}</span>
+                          {record.processName ? <span>流程 {record.processName}</span> : null}
+                          <span>抄送节点 {record.nodeName || '-'}</span>
+                          <span>{record.createTime ? new Date(record.createTime).toLocaleString() : '-'}</span>
+                          {record.readTime && !isUnread ? (
+                            <span>阅读 {new Date(record.readTime).toLocaleString()}</span>
+                          ) : null}
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+
+                    <div
+                      className="admin-users-row-actions lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isUnread ? (
+                        <button type="button" title="标记已读" aria-label="标记已读" onClick={() => void handleMarkRead(record)}>
+                          <CheckCheck size={15} />
+                        </button>
+                      ) : null}
+                      <button type="button" title="查看" aria-label="查看" onClick={() => handleViewDetail(record)}>
+                        <Eye size={15} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </>
-            )}
-            </div>
+              );
+            })}
           </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={pageNum}
-              pageSize={PAGE_SIZE}
-              showPageSizeSelector={false}
-              showJump={false}
-              onPageChange={(page) => setPageNum(page)}
-              onPageSizeChange={() => {}}
-            />
-          ) : null
-        )}
+        </>
+      )}
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={pageNum}
+      pageSize={PAGE_SIZE}
+      showPageSizeSelector={false}
+      showJump={false}
+      onPageChange={(page) => setPageNum(page)}
+      onPageSizeChange={() => {}}
+    />
+  ) : null;
+
+  return (
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageContent}
+        pagination={pagePagination}
       />
 
       <BaseDialog
@@ -671,13 +688,13 @@ export const CopyListPage: React.FC = () => {
         headerAside={
           selectedRecord?.processStatus ? (
             <span
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${getStatusStyle(selectedRecord.processStatus)}`}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold ${getStatusStyle(selectedRecord.processStatus)}`}
             >
               {getStatusLabel(selectedRecord.processStatus)}
             </span>
           ) : undefined
         }
-        bodyClassName="space-y-6"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <Button variant="outline" onClick={handleCloseDetail}>
             关闭
@@ -687,28 +704,24 @@ export const CopyListPage: React.FC = () => {
         {selectedRecord ? (
           <>
           {selectedRecord.formData ? (
-            <div className="space-y-3">
-              <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                <FileText size={16} className="text-cyan-600 dark:text-cyan-300" />
-                表单数据快照
-              </h4>
-              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+            <DialogPanel
+              title="表单数据快照"
+              description="流程发起时提交的关键字段"
+            >
                 {(() => {
                   const data = parseFormData(selectedRecord.formData);
                   if (!data) {
                     return (
-                      <div className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">
-                        无法解析表单数据
-                      </div>
+                      <InlineState title="无法解析表单数据" className="py-6" icon={<FileText className="h-4 w-4" />} />
                     );
                   }
 
                   return (
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <div className="admin-copy-snapshot">
                       {Object.entries(data).map(([key, value]) => (
                         <div
                           key={key}
-                          className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:gap-4"
+                          className="admin-copy-snapshot-row"
                         >
                           <div className="w-28 flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">
                             {key}
@@ -723,20 +736,16 @@ export const CopyListPage: React.FC = () => {
                     </div>
                   );
                 })()}
-              </div>
-            </div>
+            </DialogPanel>
           ) : null}
 
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">流程轨迹</h4>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/78">
-              <ProcessTrace instanceId={selectedRecord.instanceId} />
-            </div>
-          </div>
+          <DialogPanel title="流程轨迹" description={selectedRecord.instanceId}>
+            <ProcessTrace instanceId={selectedRecord.instanceId} />
+          </DialogPanel>
           </>
         ) : null}
       </BaseDialog>
-    </div>
+    </section>
   );
 };
 

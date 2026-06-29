@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
+import { AlertTriangle, FileCode2, GitBranch, Layers3, RefreshCw } from 'lucide-react';
 import {
+  Button,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Button,
 } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { SourceCodeViewer } from '../components/SourceCodeViewer';
 import { getProcessDefinitions } from '../services/api/workflow';
 import { WorkflowDefinition } from '../types';
@@ -42,16 +40,39 @@ const InlineState: React.FC<{
   title: string;
   description?: string;
   loading?: boolean;
-}> = ({ title, description, loading = false }) => (
-  <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-    {loading ? (
-      <RefreshCw size={18} className="mb-3 animate-spin text-slate-400 dark:text-slate-500" />
-    ) : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-        {description}
-      </div>
+  skippedModelCount?: number;
+  publishedCount?: number;
+  onRefresh?: () => void;
+}> = ({
+  title,
+  description,
+  loading = false,
+  skippedModelCount = 0,
+  publishedCount = 0,
+  onRefresh,
+}) => (
+  <div className="code-generation-state">
+    <div className="code-generation-state-icon">
+      {loading ? (
+        <RefreshCw size={18} className="animate-spin" />
+      ) : (
+        <FileCode2 size={18} />
+      )}
+    </div>
+    <div>
+      <h3>{title}</h3>
+      {description ? <p>{description}</p> : null}
+    </div>
+    <div className="code-generation-state-grid">
+      <span>已发布 {publishedCount}</span>
+      <span>可解析 {Math.max(publishedCount - skippedModelCount, 0)}</span>
+      <span className={cn(skippedModelCount > 0 && 'is-warning')}>异常 {skippedModelCount}</span>
+    </div>
+    {onRefresh ? (
+      <Button type="button" variant="outline" size="sm" disabled={loading} onClick={onRefresh}>
+        <RefreshCw size={14} className={cn(loading && 'animate-spin')} />
+        刷新
+      </Button>
     ) : null}
   </div>
 );
@@ -61,10 +82,12 @@ export const CodeGeneration = () => {
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowDefinition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [skippedModelCount, setSkippedModelCount] = useState(0);
 
   const loadWorkflows = async () => {
     setLoading(true);
     setError(null);
+    setSkippedModelCount(0);
 
     try {
       const response = await getProcessDefinitions({ status: 'PUBLISHED', latestOnly: false });
@@ -113,22 +136,18 @@ export const CodeGeneration = () => {
         .filter((item): item is WorkflowDefinition => item !== null);
 
       setWorkflows(mapped);
+      setSkippedModelCount(invalidModelCount);
       setSelectedWorkflow((current) => {
         if (!mapped.length) return null;
         if (!current) return mapped[0];
         return mapped.find((workflow) => workflow.id === current.id) || mapped[0];
       });
-
-      if (invalidModelCount > 0) {
-        toast.warning(`有 ${invalidModelCount} 条流程定义模型异常，已自动跳过`);
-      }
     } catch (fetchError) {
       console.error(fetchError);
       const message = '加载已发布流程失败，请稍后重试';
       setWorkflows([]);
       setSelectedWorkflow(null);
       setError(message);
-      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -142,20 +161,26 @@ export const CodeGeneration = () => {
   const selectedEdgeCount = selectedWorkflow?.graph.edges.length ?? 0;
   const currentVersionLabel = selectedWorkflow ? `v${selectedWorkflow.version}` : '--';
   const currentFormLabel = selectedWorkflow?.formId || '未绑定';
+  const statCards = [
+    { label: '已发布流程', value: String(workflows.length), detail: '可生成代码', icon: FileCode2, tone: 'blue' },
+    { label: '当前版本', value: currentVersionLabel, detail: selectedWorkflow?.key || '未选择', icon: GitBranch, tone: 'green' },
+    { label: '流程节点', value: String(selectedNodeCount), detail: `连线 ${selectedEdgeCount}`, icon: Layers3, tone: 'amber' },
+    { label: '绑定表单', value: currentFormLabel === '未绑定' ? '--' : '已绑定', detail: currentFormLabel, icon: FileCode2, tone: 'violet' },
+  ];
 
   return (
-    <TablePageLayout
-      className="gap-3"
-      filters={
-        <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="min-w-[300px] flex-1">
+    <section className="playground-container source-playground code-generation-workbench -m-4 md:-m-6 lg:-m-8">
+      <div className="playground-config-bar code-generation-config-bar">
+        <div className="playground-control-group">
+          <span className="code-generation-control-label">流程定义</span>
+          <div className="code-generation-flow-select">
             <Select
               value={selectedWorkflow?.id || ''}
               onValueChange={(value) =>
                 setSelectedWorkflow(workflows.find((workflow) => workflow.id === value) || null)
               }
             >
-              <SelectTrigger className="h-11">
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder={loading ? '正在加载流程...' : '请选择流程'} />
               </SelectTrigger>
               <SelectContent>
@@ -167,45 +192,91 @@ export const CodeGeneration = () => {
               </SelectContent>
             </Select>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {selectedWorkflow ? (
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {selectedWorkflow.key} · {currentVersionLabel} · 表单 {currentFormLabel} · 节点 {selectedNodeCount} · 连线 {selectedEdgeCount}
-              </span>
-            ) : (
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                已发布流程 {workflows.length}
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void loadWorkflows()}
-              disabled={loading}
-            >
-              <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-              刷新流程
-            </Button>
-          </div>
         </div>
-      }
-      table={(<TableSurfaceCard fill>{loading ? (
-          <InlineState
-            title="正在加载已发布流程"
-            description="系统正在读取流程定义并准备代码预览。"
-            loading
-          />
-        ) : error ? (
-          <InlineState title="流程定义加载失败" description={error} />
-        ) : selectedWorkflow ? (
-          <SourceCodeViewer workflow={selectedWorkflow} />
-        ) : (
-          <InlineState
-            title="暂无可生成的已发布流程"
-            description="请先确认流程已发布且模型可被正确解析。"
-          />
-        )}</TableSurfaceCard>)}
-    />
+
+        <div className="code-generation-context-strip">
+          <span>{selectedWorkflow?.key || '未选择流程'}</span>
+          <span>{currentVersionLabel}</span>
+          <span>表单 {currentFormLabel}</span>
+          <span>{selectedNodeCount} 节点 / {selectedEdgeCount} 连线</span>
+        </div>
+
+        <div className="playground-actions">
+          {skippedModelCount > 0 ? (
+            <span className="code-generation-warning">
+              <AlertTriangle size={13} />
+              跳过 {skippedModelCount} 条异常模型
+            </span>
+          ) : null}
+          <Button type="button" variant="outline" size="sm" disabled={loading} onClick={() => void loadWorkflows()}>
+            <RefreshCw size={14} className={cn(loading && 'animate-spin')} />
+            刷新流程
+          </Button>
+        </div>
+      </div>
+
+      <div className="code-generation-body">
+        <aside className="code-generation-sidebar">
+          <div className="code-generation-sidebar-head">
+            <p>CODE GENERATION</p>
+            <h2>代码生成</h2>
+            <span>读取已发布流程并生成可预览的源代码结构</span>
+          </div>
+
+          <div className="code-generation-stat-list">
+            {statCards.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className={`code-generation-stat code-generation-tone-${stat.tone}`}>
+                  <span className="code-generation-stat-icon"><Icon size={16} /></span>
+                  <div>
+                    <p>{stat.label}</p>
+                    <strong>{stat.value}</strong>
+                    <span>{stat.detail}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        <main className="code-generation-main">
+          {loading ? (
+            <InlineState
+              title="正在加载已发布流程"
+              description="系统正在读取流程定义并准备代码预览。"
+              loading
+              publishedCount={workflows.length}
+              skippedModelCount={skippedModelCount}
+              onRefresh={() => void loadWorkflows()}
+            />
+          ) : error ? (
+            <InlineState
+              title="流程定义加载失败"
+              description={error}
+              publishedCount={workflows.length}
+              skippedModelCount={skippedModelCount}
+              onRefresh={() => void loadWorkflows()}
+            />
+          ) : selectedWorkflow ? (
+            <SourceCodeViewer workflow={selectedWorkflow} />
+          ) : (
+            <InlineState
+              title="暂无可生成的已发布流程"
+              description="请先确认流程已发布且模型可被正确解析。"
+              publishedCount={workflows.length}
+              skippedModelCount={skippedModelCount}
+              onRefresh={() => void loadWorkflows()}
+            />
+          )}
+        </main>
+      </div>
+
+      <div className="code-generation-statusbar">
+        <span>已发布流程 {workflows.length}</span>
+        <span>可解析模型 {Math.max(workflows.length - skippedModelCount, 0)}</span>
+        <span>异常模型 {skippedModelCount}</span>
+      </div>
+    </section>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { Clock3, Download, Edit, Eye, Paperclip, Plus, Receipt, RotateCcw, Send, Trash2 } from 'lucide-react';
+import { CheckCircle2, Clock3, Download, Edit, Eye, Paperclip, Plus, Receipt, RefreshCw, RotateCcw, Search, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '@/services/api/expense';
 import { crmApi, CrmCustomer } from '@/services/api/crm';
@@ -15,8 +15,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { ListResultFooter } from '@/components/common/ListResultFooter';
 import { useAuth } from '@/context/AuthContext';
 import {
   Button,
@@ -28,14 +27,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'pay';
@@ -104,14 +100,16 @@ const InlineState: React.FC<{
   icon?: React.ReactNode;
   className?: string;
 }> = ({ title, description, icon, className }) => (
-  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-      {icon || <Receipt className="h-4 w-4" />}
+  <div className={['admin-dialog-empty-note', className].filter(Boolean).join(' ')}>
+    <div className="flex flex-col items-center justify-center text-center">
+      <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
+        {icon || <Receipt className="h-4 w-4" />}
+      </div>
+      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+      {description ? (
+        <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      ) : null}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
@@ -123,9 +121,9 @@ const TableStateRow: React.FC<{
   loading?: boolean;
 }> = ({ colSpan, title, description, icon, loading = false }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-16">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : icon || <Receipt className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -137,13 +135,37 @@ const TableStateRow: React.FC<{
   </tr>
 );
 
+const DialogPanel: React.FC<{
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, actions, children, className, bodyClassName }) => (
+  <section className={['table-scroll-container admin-inner-table-surface', className].filter(Boolean).join(' ')}>
+    {title || description || actions ? (
+      <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div>
+          {title ? <strong>{title}</strong> : null}
+          {description ? <span>{description}</span> : null}
+        </div>
+        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      </div>
+    ) : null}
+    <div className={['p-4', bodyClassName].filter(Boolean).join(' ')}>{children}</div>
+  </section>
+);
+
 const DetailRows: React.FC<{
   children: React.ReactNode;
   className?: string;
-}> = ({ children, className }) => (
-  <div className={['grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3', className].filter(Boolean).join(' ')}>
+  title?: string;
+  description?: string;
+}> = ({ children, className, title = '基础信息', description }) => (
+  <DialogPanel title={title} description={description} className="admin-expense-detail-panel" bodyClassName={['admin-expense-detail-grid', className].filter(Boolean).join(' ')}>
     {children}
-  </div>
+  </DialogPanel>
 );
 
 const DetailRow: React.FC<{
@@ -151,15 +173,22 @@ const DetailRow: React.FC<{
   value: React.ReactNode;
   alignStart?: boolean;
 }> = ({ label, value, alignStart = false }) => (
-  <div
-    className={[
-      'border-b border-slate-100 pb-3 dark:border-slate-800',
-      alignStart ? 'md:col-span-2 xl:col-span-3' : '',
-    ].filter(Boolean).join(' ')}
-  >
+  <div className={['admin-expense-detail-item', alignStart && 'admin-expense-detail-item-wide'].filter(Boolean).join(' ')}>
     <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
     <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
   </div>
+);
+
+const ExpensePanel: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  meta?: React.ReactNode;
+  actions?: React.ReactNode;
+  bodyClassName?: string;
+}> = ({ title, children, meta, actions, bodyClassName }) => (
+  <DialogPanel title={title} description={meta ? String(meta) : undefined} actions={actions} bodyClassName={bodyClassName}>
+    {children}
+  </DialogPanel>
 );
 
 export const ExpenseClaimPage: React.FC = () => {
@@ -249,7 +278,14 @@ export const ExpenseClaimPage: React.FC = () => {
     ? categoryDict.getLabel(searchParams.category)
     : '全部类别';
   const totalPages = Math.max(1, Math.ceil(remoteTotal / searchParams.pageSize));
+  const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentCategoryLabel}` : '全部报销';
   const formTotalAmount = formData.items?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0;
+  const metrics = [
+    { label: '报销申请', value: String(remoteTotal), meta: `当前页 ${claims.length}`, icon: <Receipt size={18} />, tone: 'blue' },
+    { label: '审批中', value: String(pendingCount), meta: '待审批流转', icon: <Clock3 size={18} />, tone: 'amber' },
+    { label: '已通过', value: String(approvedCount), meta: '待打款', icon: <CheckCircle2 size={18} />, tone: 'green' },
+    { label: '已打款', value: String(paidCount), meta: `草稿 ${draftCount}`, icon: <Send size={18} />, tone: 'violet' },
+  ];
 
   const handleApplyFilters = () => {
     setSearchParams((prev) => ({
@@ -462,216 +498,171 @@ export const ExpenseClaimPage: React.FC = () => {
     return value;
   };
 
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">EXPENSE CLAIM</p>
+          <h2>报销申请</h2>
+          <span>集中查看报销类别、费用明细、预算科目和审批打款状态</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void fetchClaims()} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            刷新
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download size={16} />
+            导出结果
+          </Button>
+          <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:expense:add')}>
+            <Plus size={16} />
+            新建申请
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {metrics.map((metric) => (
+          <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+            <div className="admin-source-stat-icon">{metric.icon}</div>
+            <div>
+              <p>{metric.label}</p>
+              <strong>{metric.value}</strong>
+              <span>{metric.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="admin-finance-filter-grid">
+        <label>
+          <span className="input-label">状态</span>
+          <Select
+            value={searchParams.status || 'ALL'}
+            onValueChange={(value) =>
+              setSearchParams((prev) => ({
+                ...prev,
+                status: value === 'ALL' ? '' : value,
+                pageNum: 1,
+              }))
+            }
+          >
+            <SelectTrigger className="h-[42px]">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">全部状态</SelectItem>
+              {statusDict.getOptions().map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <label>
+          <span className="input-label">报销类别</span>
+          <Select value={categoryDraft || 'ALL'} onValueChange={(value) => setCategoryDraft(value === 'ALL' ? '' : value)}>
+            <SelectTrigger className="h-[42px]">
+              <SelectValue placeholder="全部类别" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">全部类别</SelectItem>
+              {categoryDict.getOptions().map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <div className="admin-users-toolbar-actions">
+          <Button size="sm" onClick={handleApplyFilters}><Search size={14} />查询</Button>
+          <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={!hasActiveFilters && !categoryDraft}><RotateCcw size={14} />重置</Button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table finance-source-table min-w-[1080px]">
+          <thead>
+            <tr>
+              <th>报销单号</th>
+              <th>申请人 / 部门</th>
+              <th>类别 / 明细</th>
+              <th>金额</th>
+              <th>说明</th>
+              <th>状态</th>
+              <th className="text-right">当前操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={7} title="正在加载报销申请..." loading />
+            ) : claims.length === 0 ? (
+              <TableStateRow colSpan={7} title={hasActiveFilters ? '当前筛选下暂无记录' : '暂无报销申请'} />
+            ) : (
+              claims.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <strong>{item.claimNo || '-'}</strong>
+                    <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.createTime)}</div>
+                  </td>
+                  <td>
+                    <strong>{item.userName || '-'}</strong>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.deptName || '-'}</div>
+                  </td>
+                  <td>
+                    <strong>{categoryDict.getLabel(String(item.category ?? '')) || '-'}</strong>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{(item.items?.length || 0)} 条明细</div>
+                  </td>
+                  <td>{formatAmount(item.totalAmount)}</td>
+                  <td><div className="max-w-sm truncate">{item.description || '-'}</div></td>
+                  <td>{getStatusBadge(item.status)}</td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item)}><Eye size={15} /></button>
+                      {item.status === 'DRAFT' && hasPermission('oa:expense:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                      {item.status === 'DRAFT' && hasPermission('oa:expense:submit') ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                      {item.status === 'APPROVED' && hasPermission('oa:expense:pay') ? <button type="button" title="打款" aria-label="打款" onClick={() => openPayConfirm(item.id!)}><Receipt size={15} /></button> : null}
+                      {item.status === 'DRAFT' && hasPermission('oa:expense:remove') ? <button type="button" className="danger" title="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = (
+    <ListResultFooter
+      total={remoteTotal}
+      page={searchParams.pageNum}
+      pageSize={searchParams.pageSize}
+      summary={resultSummary}
+      onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
+    />
+  );
+
   return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="w-full sm:w-[180px]">
-                <Select
-                  value={searchParams.status || 'ALL'}
-                  onValueChange={(value) =>
-                    setSearchParams((prev) => ({
-                      ...prev,
-                      status: value === 'ALL' ? '' : value,
-                      pageNum: 1,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusDict.getOptions().map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-full sm:w-[180px]">
-                <Select
-                  value={categoryDraft || 'ALL'}
-                  onValueChange={(value) => setCategoryDraft(value === 'ALL' ? '' : value)}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="报销类别" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部类别</SelectItem>
-                    {categoryDict.getOptions().map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex min-w-[280px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>{hasActiveFilters ? `${currentStatusLabel} / ${currentCategoryLabel}` : '全部'}</span>
-                <span>第 {searchParams.pageNum} / {totalPages} 页</span>
-                <span>共 {remoteTotal} 条</span>
-                <span>草稿 {draftCount}</span>
-                <span>审批中 {pendingCount}</span>
-                <span>已通过 {approvedCount}</span>
-                <span>已打款 {paidCount}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={handleApplyFilters}>
-                应用
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleResetFilters}>
-                <RotateCcw size={14} className="mr-1.5" />
-                清空条件
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download size={14} className="mr-1.5" />
-                导出结果
-              </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:expense:add')}>
-                <Plus size={14} className="mr-1.5" />
-                新建申请
-              </Button>
-            </div>
-          </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1080px]">
-                <TableHeader className="sticky top-0 z-10">
-                  <tr>
-                    <TableHead className="px-4 py-3 text-left">
-                      报销单号
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      申请人 / 部门
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      类别 / 明细
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      金额
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      说明
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      状态
-                    </TableHead>
-                    <TableActionHead className="w-40 px-4 py-3 text-right">
-                      当前操作
-                    </TableActionHead>
-                  </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {loading ? (
-                    <TableStateRow colSpan={7} title="正在加载报销申请..." loading />
-                  ) : claims.length === 0 ? (
-                    <TableStateRow
-                      colSpan={7}
-                      title={hasActiveFilters ? '当前筛选下暂无记录' : '暂无报销申请'}
-                    />
-                  ) : (
-                    claims.map((item) => (
-                      <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.claimNo || '-'}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.createTime)}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.userName || '-'}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.deptName || '-'}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                          <div className="font-medium text-slate-900 dark:text-slate-100">
-                            {categoryDict.getLabel(String(item.category ?? '')) || '-'}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                            {(item.items?.length || 0)} 条明细
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{formatAmount(item.totalAmount)}</td>
-                        <td className="max-w-sm truncate px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                          {item.description || '-'}
-                        </td>
-                        <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
-                        <td className="px-4 py-3 text-right">
-                          <TableRowActions
-                            align="end"
-                            className="gap-1"
-                            actions={[
-                              {
-                                label: '详情',
-                                icon: <Eye size={14} />,
-                                onClick: () => void handleView(item),
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '编辑',
-                                icon: <Edit size={14} />,
-                                onClick: () => void handleEdit(item.id!),
-                                tone: 'primary',
-                                hidden: item.status !== 'DRAFT',
-                                permissionKey: 'oa:expense:edit',
-                              },
-                              {
-                                label: '提交',
-                                icon: <Send size={14} />,
-                                onClick: () => openSubmitConfirm(item.id!),
-                                tone: 'success',
-                                hidden: item.status !== 'DRAFT',
-                                permissionKey: 'oa:expense:submit',
-                              },
-                              {
-                                label: '打款',
-                                icon: <Receipt size={14} />,
-                                onClick: () => openPayConfirm(item.id!),
-                                tone: 'success',
-                                hidden: item.status !== 'APPROVED',
-                                permissionKey: 'oa:expense:pay',
-                              },
-                              {
-                                label: '删除',
-                                icon: <Trash2 size={14} />,
-                                onClick: () => openDeleteConfirm(item.id!),
-                                tone: 'danger',
-                                hidden: item.status !== 'DRAFT',
-                                permissionKey: 'oa:expense:remove',
-                              },
-                            ]}
-                          />
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          remoteTotal > 0 ? (
-            <Pagination
-              total={remoteTotal}
-              page={searchParams.pageNum}
-              pageSize={searchParams.pageSize}
-              showPageSizeSelector={false}
-              showJump={false}
-              onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
-              onPageSizeChange={() => {}}
-            />
-          ) : null
-        )}
-      />
+    <>
+      <section className="admin-source-page finance-source-page expense-claim-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showDialog}
@@ -689,9 +680,9 @@ export const ExpenseClaimPage: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
+        <div className="admin-dialog-stack">
+          <DialogPanel title="基础信息" bodyClassName="grid gap-4 md:grid-cols-2">
+            <div className="admin-dialog-field">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">报销类别</Label>
               <Select
                 value={formData.category}
@@ -710,14 +701,14 @@ export const ExpenseClaimPage: React.FC = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">汇总金额</Label>
               <Input className="h-11" value={formatAmount(formTotalAmount)} disabled />
             </div>
-          </div>
+          </DialogPanel>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
+          <DialogPanel title="业务归属" bodyClassName="grid gap-4 md:grid-cols-3">
+            <div className="admin-dialog-field">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">关联项目</Label>
               <Select
                 value={formData.projectId ? String(formData.projectId) : 'NONE'}
@@ -744,7 +735,7 @@ export const ExpenseClaimPage: React.FC = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">客户</Label>
               <Select
                 value={formData.customerId ? String(formData.customerId) : 'NONE'}
@@ -769,7 +760,7 @@ export const ExpenseClaimPage: React.FC = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">预算科目</Label>
               <Select
                 value={formData.budgetSubjectCode || 'NONE'}
@@ -798,35 +789,35 @@ export const ExpenseClaimPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          </DialogPanel>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">报销说明</Label>
-            <Textarea
-              className="min-h-[120px] resize-none"
-              value={formData.description || ''}
-              onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
-              placeholder="填写报销原因"
-            />
-          </div>
+          <DialogPanel title="报销说明">
+            <div className="admin-dialog-field">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">说明内容</Label>
+              <Textarea
+                className="min-h-[120px] resize-none"
+                value={formData.description || ''}
+                onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="填写报销原因"
+              />
+            </div>
+          </DialogPanel>
 
-          <div className="rounded-lg border border-slate-200 px-4 py-4 dark:border-slate-800">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">费用明细</div>
+          <ExpensePanel
+            title="费用明细"
+            meta={`${formData.items?.length || 0} 条费用记录`}
+            bodyClassName="admin-expense-item-list"
+            actions={(
               <Button type="button" size="sm" onClick={addItem} className="h-10">
                 <Plus size={14} className="mr-1.5" />
                 添加明细
               </Button>
-            </div>
-
-            <div className="space-y-2">
-              {formData.items?.length ? formData.items.map((item, index) => (
-                <div
-                  key={item.clientKey}
-                  className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/60"
-                >
-                  <div className="grid gap-3 md:grid-cols-[minmax(140px,1fr)_120px_160px_minmax(160px,1.2fr)_40px] md:items-end">
-                    <div className="space-y-2">
+            )}
+          >
+            {formData.items?.length ? formData.items.map((item, index) => (
+              <article key={item.clientKey} className="admin-expense-item-card">
+                <div className="admin-expense-item-grid">
+                    <div className="admin-dialog-field">
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">费用类型</Label>
                       <Select value={item.expenseType} onValueChange={(value) => updateItem(index, 'expenseType', value)}>
                         <SelectTrigger className={expenseItemControlClass}>
@@ -842,7 +833,7 @@ export const ExpenseClaimPage: React.FC = () => {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="admin-dialog-field">
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">金额</Label>
                       <Input
                         className={expenseItemControlClass}
@@ -855,7 +846,7 @@ export const ExpenseClaimPage: React.FC = () => {
                       />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="admin-dialog-field">
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">费用日期</Label>
                       <DatePicker
                         className={expenseItemControlClass}
@@ -865,7 +856,7 @@ export const ExpenseClaimPage: React.FC = () => {
                       />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="admin-dialog-field">
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">费用说明</Label>
                       <Input
                         className={expenseItemControlClass}
@@ -876,40 +867,38 @@ export const ExpenseClaimPage: React.FC = () => {
                       />
                     </div>
 
-                    <div className="flex items-end justify-end">
+                    <div className="admin-expense-item-actions">
                       <Button
                         type="button"
                         variant="destructive"
                         size="icon"
                         onClick={() => removeItem(index)}
-                        className="h-10 w-10 rounded-lg"
+                        className="h-10 w-10 rounded-md"
                         aria-label="删除明细"
                         title="删除明细"
                       >
                         <Trash2 size={14} />
                       </Button>
                     </div>
-                  </div>
-
-                  <div className="mt-3 space-y-2">
-                    <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">凭证附件</Label>
-                    <FileUpload
-                      value={item.receiptUrl || ''}
-                      onChange={(urls) => updateItem(index, 'receiptUrl', urls)}
-                      maxCount={5}
-                      variant="glass"
-                    />
-                  </div>
                 </div>
-              )) : (
-                <InlineState
-                  title="暂无费用明细"
-                  description="点击添加明细录入报销费用。"
-                  className="rounded-lg border border-dashed border-slate-200 bg-slate-50/80 py-8 dark:border-slate-800 dark:bg-slate-900/60"
-                />
-              )}
-            </div>
-          </div>
+
+                <div className="admin-dialog-field mt-3">
+                  <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">凭证附件</Label>
+                  <FileUpload
+                    value={item.receiptUrl || ''}
+                    onChange={(urls) => updateItem(index, 'receiptUrl', urls)}
+                    maxCount={5}
+                  />
+                </div>
+              </article>
+            )) : (
+              <InlineState
+                title="暂无费用明细"
+                description="点击添加明细录入报销费用。"
+                className="min-h-[7rem]"
+              />
+            )}
+          </ExpensePanel>
         </div>
       </BaseDialog>
 
@@ -919,7 +908,7 @@ export const ExpenseClaimPage: React.FC = () => {
         onClose={closeDetailDialog}
         width="wide"
         headerAside={detailClaim && !detailLoading ? getStatusBadge(detailClaim.status) : null}
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <Button variant="outline" onClick={closeDetailDialog}>
             关闭
@@ -931,7 +920,7 @@ export const ExpenseClaimPage: React.FC = () => {
         ) : detailClaim ? (
           <>
             {detailClaim.exceededStandard ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              <div className="admin-dialog-warning">
                 <div className="font-medium">超标提示</div>
                 <div className="mt-1 text-xs">
                   超出标准合计 {formatAmount(detailClaim.exceededAmount || 0)}，已触发上级追加审批。
@@ -959,37 +948,35 @@ export const ExpenseClaimPage: React.FC = () => {
               <DetailRow label="更新时间" value={formatDateTimeDisplay(detailClaim.updateTime)} />
             </DetailRows>
 
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">报销说明</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+            <ExpensePanel title="报销说明">
+              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {detailClaim.description || '-'}
               </div>
-            </div>
+            </ExpensePanel>
 
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">报销明细</div>
+            <ExpensePanel title="报销明细" meta={`${detailClaim.items?.length || 0} 条费用记录`}>
               {detailClaim.items?.length ? (
-                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-                  <table className="w-full min-w-[820px]">
-                    <thead className="bg-slate-50/80 dark:bg-slate-900/70">
+                <InnerTableSurface>
+                  <table className="unity-data-table admin-source-table min-w-[820px]">
+                    <thead>
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">费用类型</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">金额</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">费用日期</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">说明</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">凭证</th>
+                        <th>费用类型</th>
+                        <th>金额</th>
+                        <th>费用日期</th>
+                        <th>说明</th>
+                        <th>凭证</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody>
                       {detailClaim.items.map((item, index) => (
-                        <tr key={`${index}-${item.expenseDate || 'detail'}`} className="hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                          <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
+                        <tr key={`${index}-${item.expenseDate || 'detail'}`}>
+                          <td>
                             {expenseTypeDict.getLabel(String(item.expenseType ?? '')) || '-'}
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{formatAmount(item.amount)}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{renderDetailValue(item.expenseDate)}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{renderDetailValue(item.description)}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                          <td>{formatAmount(item.amount)}</td>
+                          <td>{renderDetailValue(item.expenseDate)}</td>
+                          <td>{renderDetailValue(item.description)}</td>
+                          <td>
                             {getReceiptList(item.receiptUrl).length ? (
                               <div className="flex flex-col gap-1.5">
                                 {getReceiptList(item.receiptUrl).map((url) => {
@@ -1016,11 +1003,11 @@ export const ExpenseClaimPage: React.FC = () => {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </InnerTableSurface>
               ) : (
-                <InlineState title="暂无报销明细" className="py-8" />
+                <InlineState title="暂无报销明细" className="py-6" />
               )}
-            </div>
+            </ExpensePanel>
           </>
         ) : null}
       </BaseDialog>
@@ -1034,7 +1021,7 @@ export const ExpenseClaimPage: React.FC = () => {
         onConfirm={() => void handleConfirmAction()}
         onCancel={() => setConfirmState(null)}
       />
-    </div>
+    </>
   );
 };
 

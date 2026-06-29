@@ -2,10 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import {
+  Activity,
   Eye,
   RefreshCw,
   RotateCcw,
   Search,
+  ShieldAlert,
+  ShieldCheck,
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,13 +17,10 @@ import {
   deleteSysLogs,
   getSysLogDetail,
   getSysLogPage,
-  getSysLogTrend,
-  LogTrendItem,
   SysLog,
   SysLogQuery,
 } from '@/services/api/log';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -31,16 +31,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 type OperationLogFilters = {
   titleKeyword: string;
@@ -57,7 +50,7 @@ const getLogTypeBadgeClassName = (logType: string) =>
     : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
 
 const checkboxClassName =
-  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-[#0d95b5] text-[#0d95b5] focus:ring-2 focus:ring-[#0d95b5]/30 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -65,8 +58,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent dark:hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -76,120 +69,9 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
-
-const TrendChart: React.FC<{ data: LogTrendItem[] }> = ({ data }) => {
-  if (!data.length) {
-    return (
-      <div className="rounded-xl border border-dashed border-slate-200 px-4 py-12 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        暂无趋势数据
-      </div>
-    );
-  }
-
-  const width = 920;
-  const height = 240;
-  const padding = { top: 20, right: 28, bottom: 36, left: 44 };
-  const chartW = width - padding.left - padding.right;
-  const chartH = height - padding.top - padding.bottom;
-  const maxVal = Math.max(...data.map((item) => Math.max(item.success, item.fail)), 1);
-  const yStep = Math.max(1, Math.ceil(maxVal / 5));
-  const yMax = yStep * 5;
-
-  const toX = (index: number) => padding.left + (index / Math.max(data.length - 1, 1)) * chartW;
-  const toY = (value: number) => padding.top + chartH - (value / yMax) * chartH;
-
-  const linePath = (key: 'success' | 'fail') =>
-    data.map((item, index) => `${index === 0 ? 'M' : 'L'}${toX(index)},${toY(item[key])}`).join(' ');
-
-  const areaPath = (key: 'success' | 'fail') =>
-    `${linePath(key)} L${toX(data.length - 1)},${toY(0)} L${toX(0)},${toY(0)} Z`;
-
-  const labelStep = Math.max(1, Math.ceil(data.length / 8));
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-slate-500 dark:text-slate-400">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-cyan-500 dark:bg-cyan-400" />
-          成功
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-500" />
-          失败
-        </span>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950/88">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full min-w-[760px]">
-          {Array.from({ length: 6 }, (_, index) => {
-            const value = yStep * index;
-            const y = toY(value);
-
-            return (
-              <g key={index}>
-                <line
-                  x1={padding.left}
-                  y1={y}
-                  x2={width - padding.right}
-                  y2={y}
-                  stroke="currentColor"
-                  strokeWidth={1}
-                  className="text-slate-200 dark:text-slate-800"
-                />
-                <text
-                  x={padding.left - 8}
-                  y={y + 4}
-                  textAnchor="end"
-                  fontSize={10}
-                  fill="currentColor"
-                  className="text-slate-400 dark:text-slate-500"
-                >
-                  {value}
-                </text>
-              </g>
-            );
-          })}
-
-          <path d={areaPath('success')} fill="rgba(6,182,212,0.12)" />
-          <path d={linePath('success')} fill="none" stroke="#06b6d4" strokeWidth={2.5} />
-
-          <path d={areaPath('fail')} fill="rgba(148,163,184,0.12)" />
-          <path d={linePath('fail')} fill="none" stroke="#94a3b8" strokeWidth={2.5} />
-
-          {data.map((item, index) => (
-            <g key={item.date}>
-              <circle cx={toX(index)} cy={toY(item.success)} r={3} fill="#06b6d4" />
-              <circle cx={toX(index)} cy={toY(item.fail)} r={3} fill="#94a3b8" />
-            </g>
-          ))}
-
-          {data.map((item, index) => {
-            if (index % labelStep !== 0 && index !== data.length - 1) {
-              return null;
-            }
-
-            return (
-              <text
-                key={item.date}
-                x={toX(index)}
-                y={height - 8}
-                textAnchor="middle"
-                fontSize={10}
-                fill="currentColor"
-                className="text-slate-400 dark:text-slate-500"
-              >
-                {item.date.slice(5)}
-              </text>
-            );
-          })}
-        </svg>
-      </div>
-    </div>
-  );
-};
 
 const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
   log,
@@ -219,7 +101,7 @@ const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
         log ? (
           <span
             className={cn(
-              'rounded-full px-2.5 py-1 text-xs font-medium',
+              'rounded-md px-2.5 py-1 text-xs font-medium',
               getLogTypeBadgeClassName(log.logType),
             )}
           >
@@ -229,14 +111,14 @@ const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
       }
     >
       {log ? (
-        <div className="space-y-4">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+        <div className="admin-dialog-stack">
+          <section className="card overflow-hidden">
             {items.map((item) => (
               <div
                 key={item.label}
-                className="border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800"
+                className="border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800"
               >
-                <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+                <div className="text-xs font-medium text-slate-400 dark:text-slate-500">
                   {item.label}
                 </div>
                 <div className="mt-2 break-all text-sm text-slate-900 dark:text-slate-100">
@@ -244,15 +126,19 @@ const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
                 </div>
               </div>
             ))}
-          </div>
+          </section>
 
           {log.exception ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/40">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">异常信息</div>
-              <div className="mt-3 break-all text-sm leading-7 text-slate-700 dark:text-slate-200">
+            <section className="card">
+              <div className="admin-source-section-head border-b border-slate-200 p-4 dark:border-slate-800">
+                <div>
+                  <strong>异常信息</strong>
+                </div>
+              </div>
+              <div className="break-all p-4 text-sm leading-7 text-slate-700 dark:text-slate-200">
                 {log.exception}
               </div>
-            </div>
+            </section>
           ) : null}
         </div>
       ) : null}
@@ -272,8 +158,6 @@ export const OperationLogPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [trendLoading, setTrendLoading] = useState(false);
-  const [trendData, setTrendData] = useState<LogTrendItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [detailLog, setDetailLog] = useState<SysLog | null>(null);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<number[]>([]);
@@ -298,27 +182,9 @@ export const OperationLogPage: React.FC = () => {
     }
   }, [query]);
 
-  const loadTrend = useCallback(async () => {
-    setTrendLoading(true);
-    try {
-      const response = await getSysLogTrend();
-      setTrendData(response || []);
-    } catch (fetchError) {
-      console.error(fetchError);
-      setTrendData([]);
-      toast.error(getErrorMessage(fetchError, '加载趋势数据失败'));
-    } finally {
-      setTrendLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     void loadData();
   }, [loadData]);
-
-  useEffect(() => {
-    void loadTrend();
-  }, [loadTrend]);
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -344,10 +210,6 @@ export const OperationLogPage: React.FC = () => {
 
   const handleRefreshList = () => {
     void loadData();
-  };
-
-  const handleRefreshTrend = () => {
-    void loadTrend();
   };
 
   const handleBatchDelete = () => {
@@ -377,7 +239,7 @@ export const OperationLogPage: React.FC = () => {
       await deleteSysLogs(pendingDeleteIds);
       toast.success('删除成功');
       setPendingDeleteIds([]);
-      await Promise.all([loadData(), loadTrend()]);
+      await loadData();
     } catch (deleteError) {
       console.error(deleteError);
       toast.error(getErrorMessage(deleteError, '删除日志失败'));
@@ -403,154 +265,186 @@ export const OperationLogPage: React.FC = () => {
 
   const hasActiveFilters = Boolean(query.title || query.logType || query.startTime || query.endTime);
 
+  const stats = [
+    {
+      label: '日志总数',
+      value: String(total),
+      meta: `当前页 ${records.length}`,
+      icon: <Activity size={18} />,
+      tone: 'blue',
+    },
+    {
+      label: '正常操作',
+      value: String(records.filter((item) => item.logType === '0').length),
+      meta: '本页成功',
+      icon: <ShieldCheck size={18} />,
+      tone: 'green',
+    },
+    {
+      label: '错误操作',
+      value: String(records.filter((item) => item.logType !== '0').length),
+      meta: '本页异常',
+      icon: <ShieldAlert size={18} />,
+      tone: 'amber',
+    },
+    {
+      label: '已选中',
+      value: String(selectedIds.length),
+      meta: '待批量删除',
+      icon: <Trash2 size={18} />,
+      tone: 'violet',
+    },
+  ];
+
   return (
     <>
-      <TablePageLayout
-        className="gap-3"
-        filters={(
-          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-60">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.titleKeyword}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, titleKeyword: event.target.value }))
-                  }
-                  placeholder="按操作标题搜索"
-                  className="h-10 pl-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-36">
-                <Select
-                  value={filters.logType || ALL_FILTER_VALUE}
-                  onValueChange={(value) =>
-                    setFilters((current) => ({
-                      ...current,
-                      logType: value === ALL_FILTER_VALUE ? '' : value,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
-                    <SelectItem value="0">正常</SelectItem>
-                    <SelectItem value="9">错误</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-full sm:w-40">
-                <DatePicker
-                  type="date"
-                  value={filters.startTime}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, startTime: event.target.value }))
-                  }
-                  className="h-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-40">
-                <DatePicker
-                  type="date"
-                  value={filters.endTime}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, endTime: event.target.value }))
-                  }
-                  className="h-10"
-                />
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  <RotateCcw size={14} />
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefreshList} disabled={loading}>
-                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-                刷新
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBatchDelete}
-                disabled={!selectedIds.length}
-              >
-                <Trash2 size={15} />
-                删除选中
-              </Button>
-            </div>
-          </div>
-        )}
-        table={(<TableSurfaceCard fill>
-          <div className="divide-y divide-slate-200 dark:divide-slate-800">
-            <section className="p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+      <section className="admin-source-page admin-operation-log-page">
+        <TablePageLayout
+          actions={(
+            <div className="grid gap-5">
+              <header className="admin-source-header">
                 <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    近 30 天趋势
-                  </div>
+                  <p className="admin-source-kicker">OPERATION LOGS</p>
+                  <h2>操作日志</h2>
+                  <span>追踪请求标题、调用地址、执行耗时和异常明细</span>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleRefreshTrend} disabled={trendLoading}>
-                    <RefreshCw size={15} className={trendLoading ? 'animate-spin' : ''} />
-                    刷新趋势
+                <div className="admin-source-controls">
+                  <Button variant="outline" size="sm" onClick={handleRefreshList} disabled={loading}>
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    刷新
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBatchDelete}
+                    disabled={!selectedIds.length}
+                  >
+                    <Trash2 size={16} />
+                    删除选中
                   </Button>
                 </div>
-              </div>
+              </header>
 
-              <div className="mt-4">
-                {trendLoading ? (
-                  <div className="flex items-center justify-center rounded-xl border border-slate-200 px-4 py-16 dark:border-slate-800">
-                    <LoadingSpinner size="lg" />
+              <section className="admin-source-stat-grid">
+                {stats.map((stat) => (
+                  <article key={stat.label} className={cn('card admin-source-stat', `admin-source-tone-${stat.tone}`)}>
+                    <div className="admin-source-stat-icon">{stat.icon}</div>
+                    <div>
+                      <p>{stat.label}</p>
+                      <strong>{stat.value}</strong>
+                      <span>{stat.meta}</span>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            </div>
+          )}
+          filters={(
+            <section className="card admin-users-toolbar">
+              <form onSubmit={handleSearch} className="admin-operation-log-filter-grid">
+                <label className="admin-source-search">
+                  <span className="input-label">搜索标题</span>
+                  <div className="admin-source-search-field">
+                    <Search size={16} />
+                    <Input
+                      value={filters.titleKeyword}
+                      onChange={(event) =>
+                        setFilters((current) => ({ ...current, titleKeyword: event.target.value }))
+                      }
+                      placeholder="按操作标题搜索"
+                      type="search"
+                    />
                   </div>
-                ) : (
-                  <TrendChart data={trendData} />
-                )}
-              </div>
-            </section>
+                </label>
 
-            <section className="min-h-[24rem]">
-              <div className="overflow-x-auto border-t border-slate-200 dark:border-slate-800">
-                <Table className="min-w-[1180px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10">
+                <label>
+                  <span className="input-label">类型</span>
+                  <Select
+                    value={filters.logType || ALL_FILTER_VALUE}
+                    onValueChange={(value) =>
+                      setFilters((current) => ({
+                        ...current,
+                        logType: value === ALL_FILTER_VALUE ? '' : value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="h-[42px]">
+                      <SelectValue placeholder="全部类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
+                      <SelectItem value="0">正常</SelectItem>
+                      <SelectItem value="9">错误</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+
+                <label>
+                  <span className="input-label">开始日期</span>
+                  <DatePicker
+                    type="date"
+                    value={filters.startTime}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, startTime: event.target.value }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span className="input-label">结束日期</span>
+                  <DatePicker
+                    type="date"
+                    value={filters.endTime}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, endTime: event.target.value }))
+                    }
+                  />
+                </label>
+
+                <div className="admin-users-toolbar-actions">
+                  <span className="admin-users-filter-count">当前 {total} 项</span>
+                  <Button type="submit" size="sm">
+                    查询
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReset}
+                    disabled={!hasActiveFilters}
+                  >
+                    <RotateCcw size={14} />
+                    重置
+                  </Button>
+                </div>
+              </form>
+            </section>
+          )}
+          table={(
+            <InnerTableSurface className="admin-operation-log-table-panel">
+              <table className="unity-data-table admin-source-table admin-operation-log-table min-w-[1180px]">
+                  <thead>
+                    <tr>
+                      <th className="w-10">
                         <input
                           type="checkbox"
                           checked={allSelected}
                           onChange={toggleAll}
                           className={checkboxClassName}
                         />
-                      </TableHead>
-                      <TableHead className="w-14">#</TableHead>
-                      <TableHead>类型</TableHead>
-                      <TableHead>标题</TableHead>
-                      <TableHead>IP 地址</TableHead>
-                      <TableHead>请求方法</TableHead>
-                      <TableHead>耗时</TableHead>
-                      <TableHead>请求时间</TableHead>
-                      <TableHead>操作人</TableHead>
-                      <TableActionHead className="w-24">操作</TableActionHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                      </th>
+                      <th className="w-14">#</th>
+                      <th>类型</th>
+                      <th>标题</th>
+                      <th>IP 地址</th>
+                      <th>请求方法</th>
+                      <th>耗时</th>
+                      <th>请求时间</th>
+                      <th>操作人</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {loading ? (
                       <TableStateRow colSpan={10} title="正在加载操作日志..." loading />
                     ) : error ? (
@@ -559,89 +453,66 @@ export const OperationLogPage: React.FC = () => {
                       <TableStateRow colSpan={10} title="暂无操作日志" />
                     ) : (
                       records.map((log, index) => (
-                        <TableRow key={log.logId}>
-                          <TableCell className="py-4">
+                        <tr key={log.logId}>
+                          <td>
                             <input
                               type="checkbox"
                               checked={selectedIds.includes(log.logId)}
                               onChange={() => toggleOne(log.logId)}
                               className={checkboxClassName}
                             />
-                          </TableCell>
-                          <TableCell className="py-4 text-slate-400 dark:text-slate-500">
+                          </td>
+                          <td className="text-slate-400 dark:text-slate-500">
                             {((query.pageNum || 1) - 1) * (query.pageSize || 10) + index + 1}
-                          </TableCell>
-                          <TableCell className="py-4">
+                          </td>
+                          <td>
                             <span
                               className={cn(
-                                'rounded-full px-2.5 py-1 text-xs font-medium',
+                                'rounded-md px-2.5 py-1 text-xs font-medium',
                                 getLogTypeBadgeClassName(log.logType),
                               )}
                             >
                               {log.logType === '0' ? '正常' : '错误'}
                             </span>
-                          </TableCell>
-                          <TableCell className="py-4">
+                          </td>
+                          <td>
                             <div className="max-w-[280px]">
-                              <div
-                                className="truncate text-sm font-medium text-slate-900 dark:text-slate-100"
-                                title={log.title}
-                              >
+                              <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100" title={log.title}>
                                 {log.title}
                               </div>
-                              <div
-                                className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400"
-                                title={log.requestUri || ''}
-                              >
+                              <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={log.requestUri || ''}>
                                 {log.requestUri || '未记录请求地址'}
                               </div>
                             </div>
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap py-4 text-slate-500 dark:text-slate-400">
-                            {log.remoteAddr || '-'}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap py-4 text-slate-500 dark:text-slate-400">
-                            {log.method || '-'}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap py-4 text-slate-500 dark:text-slate-400">
-                            {log.time ? `${log.time} ms` : '-'}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap py-4 text-slate-500 dark:text-slate-400">
-                            {log.createTime || '-'}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap py-4 text-slate-700 dark:text-slate-200">
-                            {log.createBy || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <TableRowActions
-                              align="end"
-                              actions={[
-                                {
-                                  label: '查看详情',
-                                  icon: <Eye size={15} />,
-                                  onClick: () => void handleViewDetail(log.logId),
-                                  tone: 'neutral',
-                                },
-                                {
-                                  label: '删除日志',
-                                  icon: <Trash2 size={15} />,
-                                  onClick: () => setPendingDeleteIds([log.logId]),
-                                  tone: 'danger',
-                                },
-                              ]}
-                            />
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                          <td className="whitespace-nowrap">{log.remoteAddr || '-'}</td>
+                          <td className="whitespace-nowrap">{log.method || '-'}</td>
+                          <td className="whitespace-nowrap">{log.time ? `${log.time} ms` : '-'}</td>
+                          <td className="whitespace-nowrap">{log.createTime || '-'}</td>
+                          <td className="whitespace-nowrap text-slate-700 dark:text-slate-200">{log.createBy || '-'}</td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="查看详情" onClick={() => void handleViewDetail(log.logId)}>
+                                <Eye size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="danger"
+                                title="删除日志"
+                                onClick={() => setPendingDeleteIds([log.logId])}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       ))
                     )}
-                  </TableBody>
-                </Table>
-              </div>
-            </section>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
+                  </tbody>
+              </table>
+            </InnerTableSurface>
+          )}
+          pagination={total > 0 ? (
             <Pagination
               total={total}
               page={query.pageNum || 1}
@@ -655,9 +526,9 @@ export const OperationLogPage: React.FC = () => {
                 }))
               }
             />
-          ) : null
-        )}
-      />
+          ) : null}
+        />
+      </section>
 
       <DetailDialog log={detailLog} onClose={() => setDetailLog(null)} />
 

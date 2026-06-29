@@ -10,6 +10,7 @@ import {
   Edit,
   Eye,
   Plus,
+  RefreshCw,
   RotateCcw,
   Send,
   Trash2,
@@ -26,25 +27,22 @@ import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { ListResultFooter } from '@/components/common/ListResultFooter';
 import { ProcessTrace } from '@/components/ProcessTrace';
 import {
   Button,
   DatePicker,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface InlineStateProps {
   title: string;
@@ -98,7 +96,7 @@ const InlineState: React.FC<InlineStateProps> = ({
   className,
 }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
       {icon || <ClipboardCheck className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -112,10 +110,10 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
   loading = false,
 }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-16">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-          {loading ? <ClipboardCheck className="h-4 w-4 animate-pulse" /> : icon || <ClipboardCheck className="h-4 w-4" />}
+        <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
+          {loading ? <ClipboardCheck className="h-4 w-4" /> : icon || <ClipboardCheck className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
       </div>
@@ -124,10 +122,22 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
 );
 
 const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
-  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  <div>
+    <span>{label}</span>
+    <strong>{value || '-'}</strong>
   </div>
+);
+
+const SupplementPanel: React.FC<{ title: string; children: React.ReactNode; meta?: React.ReactNode }> = ({ title, children, meta }) => (
+  <section className="table-scroll-container admin-inner-table-surface">
+    <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div>
+        <strong>{title}</strong>
+        {meta ? <span>{meta}</span> : null}
+      </div>
+    </div>
+    <div className="p-4">{children}</div>
+  </section>
 );
 
 export const AttendanceSupplementPage: React.FC = () => {
@@ -197,9 +207,13 @@ export const AttendanceSupplementPage: React.FC = () => {
     ? (checkTypeDict.getLabel(searchParams.checkType) || searchParams.checkType)
     : '全部类型';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.checkType);
-  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
-
-  const statusQuickFilters = [{ label: '全部', value: '' }, ...statusDict.getOptions()];
+  const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部补录';
+  const metrics = [
+    { label: '补录申请', value: String(total), meta: `当前页 ${list.length}`, icon: <ClipboardCheck size={18} />, tone: 'blue' },
+    { label: '草稿', value: String(draftCount), meta: '待提交', icon: <Edit size={18} />, tone: 'amber' },
+    { label: '审批中', value: String(pendingCount), meta: '流程流转', icon: <Send size={18} />, tone: 'violet' },
+    { label: '已补录', value: String(approvedCount), meta: '考勤已修正', icon: <CalendarClock size={18} />, tone: 'green' },
+  ];
 
   const renderDetailValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === '') {
@@ -359,203 +373,149 @@ export const AttendanceSupplementPage: React.FC = () => {
     <DictBadge dictType="hr_attendance_supplement_status" value={String(status || 'MISSING')} fallback="草稿" />
   );
 
-  return (
-    <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <CalendarClock className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Attendance Supplements
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">ATTENDANCE SUPPLEMENTS</p>
+          <h2>考勤补录申请</h2>
+          <span>跟踪补录日期、打卡类型、补录时间和审批结果</span>
         </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          考勤补录申请
-        </h1>
-      </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void fetchList()} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            刷新
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
+            <Download size={16} />
+            导出
+          </Button>
+          <Button size="sm" onClick={handleAdd} disabled={selfServiceLocked}>
+            <Plus size={16} />
+            新建申请
+          </Button>
+        </div>
+      </header>
 
       {restrictionMessage ? (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+        <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{restrictionMessage}</span>
         </div>
       ) : null}
 
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-1 flex-wrap items-center gap-2">
-              {statusQuickFilters.map((filter) => (
-                <Button
-                  key={filter.value || 'all'}
-                  variant={searchParams.status === filter.value ? 'secondary' : 'outline'}
-                  size="sm"
-                  onClick={() => setSearchParams((prev) => ({ ...prev, status: filter.value, pageNum: 1 }))}
-                >
-                  {filter.label}
-                </Button>
-              ))}
-              <div className="w-full sm:w-[220px]">
-                <Select
-                  value={searchParams.checkType || ALL_FILTER_VALUE}
-                  onValueChange={(value) =>
-                    setSearchParams((prev) => ({
-                      ...prev,
-                      checkType: value === ALL_FILTER_VALUE ? '' : value,
-                      pageNum: 1,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="按打卡类型筛选" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
-                    {checkTypeDict.getOptions().map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {`共 ${total} 条 · 草稿 ${draftCount} · 审批中 ${pendingCount} · 已补录 ${approvedCount}${hasActiveFilters ? ` · ${currentStatusLabel} · ${currentTypeLabel}` : ''}`}
-              </span>
+      <section className="admin-source-stat-grid">
+        {metrics.map((metric) => (
+          <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+            <div className="admin-source-stat-icon">{metric.icon}</div>
+            <div>
+              <p>{metric.label}</p>
+              <strong>{metric.value}</strong>
+              <span>{metric.meta}</span>
             </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSearchParams({ status: '', checkType: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })}
-              >
-                <RotateCcw size={14} className="mr-1.5" />
-                清空条件
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
-                <Download size={14} className="mr-1.5" />
-                导出
-              </Button>
-              <Button size="sm" onClick={handleAdd} disabled={selfServiceLocked}>
-                <Plus size={14} className="mr-1.5" />
-                新建申请
-              </Button>
-            </div>
-          </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[36rem] flex-col">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px]">
-                <TableHeader className="sticky top-0 z-10">
-                  <tr>
-                    <TableHead className="px-4 py-3 text-left">
-                      补录单号
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      补录日期
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      打卡类型
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      补录时间
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      原因
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      状态
-                    </TableHead>
-                    <TableActionHead className="w-52 px-4 py-3 text-right">
-                      当前操作
-                    </TableActionHead>
-                  </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {loading ? (
-                    <TableStateRow colSpan={7} title="正在加载补录申请..." loading />
-                  ) : list.length === 0 ? (
-                    <TableStateRow
-                      colSpan={7}
-                      icon={<ClipboardCheck className="h-4 w-4" />}
-                      title={hasActiveFilters ? '当前条件下暂无记录' : '暂无考勤补录申请'}
-                    />
-                  ) : (
-                    list.map((item) => (
-                      <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                        <td className="px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100">
-                          {item.supplementNo || '-'}
-                        </td>
-                        <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {item.attendanceDate || '-'}
-                        </td>
-                        <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {checkTypeDict.getLabel(item.checkType || '') || item.checkType}
-                        </td>
-                        <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {toTimeValue(item.checkTime) || '-'}
-                        </td>
-                        <td className="max-w-xs truncate px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {item.reason || '-'}
-                        </td>
-                        <td className="px-4 py-2.5">{getStatusBadge(item.status || 'MISSING')}</td>
-                        <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                          <TableRowActions
-                            align="end"
-                            className="gap-1"
-                            actions={[
-                              {
-                                label: '详情',
-                                icon: <Eye size={14} />,
-                                onClick: () => void handleView(item.id!),
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '编辑',
-                                icon: <Edit size={14} />,
-                                onClick: () => void handleEdit(item.id!),
-                                tone: 'primary',
-                                hidden: item.status !== 'MISSING' || selfServiceLocked,
-                              },
-                              {
-                                label: '提交',
-                                icon: <Send size={14} />,
-                                onClick: () => openSubmitConfirm(item.id!),
-                                tone: 'success',
-                                hidden: item.status !== 'MISSING' || selfServiceLocked,
-                              },
-                              {
-                                label: '删除',
-                                icon: <Trash2 size={14} />,
-                                onClick: () => openDeleteConfirm(item.id!),
-                                tone: 'danger',
-                                hidden: item.status !== 'MISSING' || selfServiceLocked,
-                              },
-                            ]}
-                          />
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={searchParams.pageNum}
-              pageSize={searchParams.pageSize}
-              showPageSizeSelector={false}
-              showJump={false}
-              onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
-              onPageSizeChange={(pageSize) =>
-                setSearchParams((prev) => ({ ...prev, pageSize, pageNum: 1 }))
-              }
-            />
-          ) : null
-        )}
-      />
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="admin-oa-filter-grid">
+        <label>
+          <span className="input-label">状态</span>
+          <Select value={searchParams.status || ALL_FILTER_VALUE} onValueChange={(value) => setSearchParams((prev) => ({ ...prev, status: value === ALL_FILTER_VALUE ? '' : value, pageNum: 1 }))}>
+            <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_FILTER_VALUE}>全部状态</SelectItem>
+              {statusDict.getOptions().map((filter) => <SelectItem key={filter.value} value={filter.value}>{filter.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+        <label>
+          <span className="input-label">打卡类型</span>
+          <Select value={searchParams.checkType || ALL_FILTER_VALUE} onValueChange={(value) => setSearchParams((prev) => ({ ...prev, checkType: value === ALL_FILTER_VALUE ? '' : value, pageNum: 1 }))}>
+            <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部类型" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
+              {checkTypeDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+        <div className="admin-users-toolbar-actions">
+          <Button variant="outline" size="sm" onClick={() => setSearchParams({ status: '', checkType: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })} disabled={!hasActiveFilters}>
+            <RotateCcw size={14} />重置
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[980px]">
+          <thead>
+            <tr>
+              <th>补录单号</th>
+              <th>补录日期</th>
+              <th>打卡类型</th>
+              <th>补录时间</th>
+              <th>原因</th>
+              <th>状态</th>
+              <th className="text-right">当前操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={7} title="正在加载补录申请..." loading />
+            ) : list.length === 0 ? (
+              <TableStateRow colSpan={7} icon={<ClipboardCheck className="h-4 w-4" />} title={hasActiveFilters ? '当前条件下暂无记录' : '暂无考勤补录申请'} />
+            ) : (
+              list.map((item) => (
+                <tr key={item.id}>
+                  <td><strong>{item.supplementNo || '-'}</strong></td>
+                  <td>{item.attendanceDate || '-'}</td>
+                  <td>{checkTypeDict.getLabel(item.checkType || '') || item.checkType}</td>
+                  <td>{toTimeValue(item.checkTime) || '-'}</td>
+                  <td><div className="max-w-xs truncate">{item.reason || '-'}</div></td>
+                  <td>{getStatusBadge(item.status || 'MISSING')}</td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
+                      {item.status === 'MISSING' && !selfServiceLocked ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                      {item.status === 'MISSING' && !selfServiceLocked ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                      {item.status === 'MISSING' && !selfServiceLocked ? <button type="button" className="danger" title="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = (
+    <ListResultFooter
+      total={total}
+      page={searchParams.pageNum}
+      pageSize={searchParams.pageSize}
+      summary={resultSummary}
+      onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
+      onPageSizeChange={(pageSize) => setSearchParams((prev) => ({ ...prev, pageSize, pageNum: 1 }))}
+    />
+  );
+
+  return (
+    <>
+      <section className="admin-source-page oa-approval-page attendance-supplement-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showDialog}
@@ -571,14 +531,12 @@ export const AttendanceSupplementPage: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
+        <div className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                补录日期
-              </label>
+            <div className="admin-dialog-field">
+              <Label>补录日期</Label>
               <DatePicker
-                className="h-11 rounded-xl"
+                className="h-11"
                 type="date"
                 value={formData.attendanceDate}
                 onChange={(event) =>
@@ -586,15 +544,13 @@ export const AttendanceSupplementPage: React.FC = () => {
                 }
               />
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                打卡类型
-              </label>
+            <div className="admin-dialog-field">
+              <Label>打卡类型</Label>
               <Select
                 value={formData.checkType}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, checkType: value }))}
               >
-                <SelectTrigger className="h-11 rounded-xl">
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="请选择打卡类型" />
                 </SelectTrigger>
                 <SelectContent>
@@ -606,12 +562,10 @@ export const AttendanceSupplementPage: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              补录时间
-            </label>
+          <div className="admin-dialog-field">
+            <Label>补录时间</Label>
             <DatePicker
-              className="h-11 rounded-xl"
+              className="h-11"
               type="time"
               value={formData.checkTime}
               onChange={(event) =>
@@ -620,12 +574,10 @@ export const AttendanceSupplementPage: React.FC = () => {
             />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              补录原因
-            </label>
+          <div className="admin-dialog-field">
+            <Label>补录原因</Label>
             <Textarea
-              className="min-h-[120px] rounded-xl"
+              className="min-h-[120px]"
               value={formData.reason}
               onChange={(event) =>
                 setFormData((prev) => ({ ...prev, reason: event.target.value }))
@@ -641,7 +593,7 @@ export const AttendanceSupplementPage: React.FC = () => {
         onClose={closeDetailDialog}
         width="wide"
         headerAside={detailRecord ? getStatusBadge(detailRecord.status || 'MISSING') : null}
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <Button variant="outline" onClick={closeDetailDialog}>
             关闭
@@ -652,7 +604,7 @@ export const AttendanceSupplementPage: React.FC = () => {
           <InlineState title="正在加载补录详情..." className="py-12" />
         ) : (
           <>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="admin-finance-detail-list admin-contract-detail-grid">
               <DetailField label="补录单号" value={renderDetailValue(detailRecord.supplementNo)} />
               <DetailField label="申请人" value={renderDetailValue(detailRecord.employeeName)} />
               <DetailField label="补录日期" value={renderDetailValue(detailRecord.attendanceDate)} />
@@ -661,26 +613,22 @@ export const AttendanceSupplementPage: React.FC = () => {
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">补录原因</div>
+            <SupplementPanel title="补录原因">
               <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {detailRecord.reason || '-'}
               </div>
-            </div>
+            </SupplementPanel>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">流程轨迹</div>
-                {detailRecord.processInstanceId ? (
-                  <div className="text-xs text-slate-500 dark:text-slate-400">{detailRecord.processInstanceId}</div>
-                ) : null}
-              </div>
+            <SupplementPanel
+              title="流程轨迹"
+              meta={detailRecord.processInstanceId ? detailRecord.processInstanceId : undefined}
+            >
               {detailRecord.processInstanceId ? (
                 <ProcessTrace instanceId={detailRecord.processInstanceId} />
               ) : (
-                <InlineState title="暂无流程轨迹" className="py-8" />
+                <InlineState title="暂无流程轨迹" className="py-6" />
               )}
-            </div>
+            </SupplementPanel>
           </>
         )}
       </BaseDialog>
@@ -694,7 +642,7 @@ export const AttendanceSupplementPage: React.FC = () => {
         onConfirm={() => void handleConfirmAction()}
         onCancel={() => setConfirmState(null)}
       />
-    </div>
+    </>
   );
 };
 

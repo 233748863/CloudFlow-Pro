@@ -1,15 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { Bell, Edit, Eye, FileClock, Plus, RotateCcw, Send, Stamp, Trash2, XCircle } from 'lucide-react';
+import { Bell, Edit, Eye, FileClock, Plus, RefreshCw, RotateCcw, Search, Send, Stamp, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea, UserSelector } from '@/components/common';
+import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, UserSelector } from '@/components/common';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import FileUpload from '@/components/FileUpload';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
 import { OaSeal, OaSealRenewal, sealApi, sealRenewalApi } from '@/services/api/sealLicense';
 import { useAuth } from '@/context/AuthContext';
 import { PageResult } from '@/types';
@@ -18,6 +15,8 @@ import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { TableRowActions } from '@/components/common/table-row-actions';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const EDITABLE_SEAL_STATUSES = ['AVAILABLE', 'DISABLED'] as const;
 
@@ -67,28 +66,28 @@ const canRemindExpiry = (item: Pick<OaSeal, 'expireDate' | 'status'>) => {
 const getExpiryBadge = (expireDate?: string) => {
   const days = getDaysUntil(expireDate);
   if (days === null) {
-    return <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">未维护</span>;
+    return <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">未维护</span>;
   }
   if (days < 0) {
-    return <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">已到期</span>;
+    return <span className="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">已到期</span>;
   }
   if (days === 0) {
-    return <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">今日到期</span>;
+    return <span className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">今日到期</span>;
   }
   if (days <= 7) {
-    return <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200">{days} 天内</span>;
+    return <span className="rounded-md border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200">{days} 天内</span>;
   }
   if (days <= 30) {
-    return <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">{days} 天内</span>;
+    return <span className="rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">{days} 天内</span>;
   }
-  return <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">正常</span>;
+  return <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">正常</span>;
 };
 
 const TableStateRow: React.FC<{ colSpan: number; title: string }> = ({ colSpan, title }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-16">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3">
           <Stamp className="h-4 w-4" />
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -97,8 +96,30 @@ const TableStateRow: React.FC<{ colSpan: number; title: string }> = ({ colSpan, 
   </tr>
 );
 
+const DialogPanel: React.FC<{
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, actions, children, className, bodyClassName }) => (
+  <section className={['table-scroll-container admin-inner-table-surface', className].filter(Boolean).join(' ')}>
+    {title || description || actions ? (
+      <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div>
+          {title ? <strong>{title}</strong> : null}
+          {description ? <span>{description}</span> : null}
+        </div>
+        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      </div>
+    ) : null}
+    <div className={['p-4', bodyClassName].filter(Boolean).join(' ')}>{children}</div>
+  </section>
+);
+
 const DetailField: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="border-b border-slate-100 pb-3 dark:border-slate-800">
+  <div className="admin-seal-detail-item">
     <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
     <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
   </div>
@@ -120,6 +141,13 @@ export const SealListPage: React.FC = () => {
   const [renewalSeal, setRenewalSeal] = useState<OaSeal | null>(null);
   const [renewalForm, setRenewalForm] = useState<OaSealRenewal>(emptyRenewalForm);
   const [renewalRows, setRenewalRows] = useState<OaSealRenewal[]>([]);
+  const activeFilterCount = [query.sealName, query.status, query.expiry].filter(Boolean).length;
+  const stats = [
+    { label: '印章总数', value: String(total), meta: `当前页 ${rows.length}`, icon: <Stamp size={18} />, tone: 'blue' },
+    { label: '可用印章', value: String(rows.filter((item) => item.status === 'AVAILABLE').length), meta: '可借用', icon: <Stamp size={18} />, tone: 'green' },
+    { label: '借用中', value: String(rows.filter((item) => item.status === 'BORROWED').length), meta: '已占用', icon: <FileClock size={18} />, tone: 'violet' },
+    { label: '到期提醒', value: String(rows.filter(canRemindExpiry).length), meta: '30 天内', icon: <Bell size={18} />, tone: 'amber' },
+  ];
 
   const fetchRows = useCallback(async () => {
     try {
@@ -309,116 +337,173 @@ export const SealListPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <FilterBar
-            filters={[
-              <div key="name" className="w-full sm:w-[220px]">
-                <Input className="h-10" value={query.sealName} onChange={(event) => setQuery((prev) => ({ ...prev, pageNum: 1, sealName: event.target.value }))} placeholder="印章名称" />
-              </div>,
-              <div key="status" className="w-full sm:w-[160px]">
-                <Select value={query.status || 'ALL'} onValueChange={(value) => setQuery((prev) => ({ ...prev, pageNum: 1, status: value === 'ALL' ? '' : value }))}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>,
-              <div key="expiry" className="w-full sm:w-[160px]">
-                <Select value={query.expiry || 'ALL'} onValueChange={(value) => setQuery((prev) => ({ ...prev, pageNum: 1, expiry: value === 'ALL' ? '' : value }))}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="到期筛选" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部有效期</SelectItem>
-                    <SelectItem value="30">30天内到期</SelectItem>
-                    <SelectItem value="15">15天内到期</SelectItem>
-                    <SelectItem value="7">7天内到期</SelectItem>
-                    <SelectItem value="0">今日到期</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>,
-            ]}
-            stats={[{ label: '', value: `共 ${total} 条` }]}
-            actions={[
-              <Button key="reset" variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), sealName: '', status: '', expiry: '' })}>
-                <RotateCcw size={14} className="mr-1.5" />
-                清空条件
-              </Button>,
-              <Button key="add" size="sm" onClick={openCreate} disabled={!hasPermission('oa:seal:add')}>
-                <Plus size={14} className="mr-1.5" />
-                新增印章
-              </Button>,
-            ]}
-          />
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1180px]">
-                <TableHeader className="sticky top-0 z-10">
-                  <tr>
-                    <TableHead className="px-4 py-3 text-left">编码</TableHead>
-                    <TableHead className="px-4 py-3 text-left">名称 / 类型</TableHead>
-                    <TableHead className="px-4 py-3 text-left">编号 / 签发机构</TableHead>
-                    <TableHead className="px-4 py-3 text-left">有效期</TableHead>
-                    <TableHead className="px-4 py-3 text-left">到期状态</TableHead>
-                    <TableHead className="px-4 py-3 text-left">附件</TableHead>
-                    <TableHead className="px-4 py-3 text-left">状态 / 预计归还</TableHead>
-                    <TableActionHead className="w-44 px-4 py-3 text-right">操作</TableActionHead>
-                  </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {rows.length === 0 ? (
-                    <TableStateRow colSpan={8} title="暂无印章" />
-                  ) : rows.map((item) => (
-                    <tr key={item.sealId} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{item.sealCode}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.sealName}</div>
-                        <div className="mt-1 text-xs text-slate-400">{typeDict.getLabel(item.sealType) || item.sealType}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        <div>{item.sealNo || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{item.issuer || '-'}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        <div>{item.issueDate || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{item.expireDate || '-'}</div>
-                      </td>
-                      <td className="px-4 py-3">{getExpiryBadge(item.expireDate)}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        {getAttachmentList(item.attachmentUrl).length ? `${getAttachmentList(item.attachmentUrl).length} 个` : '-'}
-                      </td>
-                      <td className="px-4 py-3">
-                        {getStatusBadge(item.status)}
-                        <div className="mt-1 text-xs text-slate-400">{item.borrowDueTime ? formatDateTimeDisplay(item.borrowDueTime) : '-'}</div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            { label: '详情', icon: <Eye size={14} />, onClick: () => setDetailSeal(item), tone: 'neutral' },
-                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: isBorrowLocked(item), permissionKey: 'oa:seal:edit' },
-                            { label: '到期提醒', icon: <Bell size={14} />, onClick: () => void remindExpiry(item), tone: 'warning', hidden: !canRemindExpiry(item), permissionKey: 'oa:seal:remind' },
-                            { label: '续期', icon: <FileClock size={14} />, onClick: () => void openRenewalDialog(item), tone: 'success', hidden: item.status === 'DISABLED' || isBorrowLocked(item), permissionKey: 'oa:seal-renewal:add' },
-                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => item.sealId && setDeleteId(item.sealId), tone: 'danger', hidden: isBorrowLocked(item), permissionKey: 'oa:seal:remove' },
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">SEAL LEDGER</p>
+          <h2>印章台账</h2>
+          <span>维护印章编码、保管人、有效期和借用占用状态</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void fetchRows()}>
+            <RefreshCw size={16} />
+            刷新
+          </Button>
+          <Button size="sm" onClick={openCreate} disabled={!hasPermission('oa:seal:add')}>
+            <Plus size={16} />
+            新增印章
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
             </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="admin-seal-license-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">印章名称</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={query.sealName}
+              onChange={(event) => setQuery((prev) => ({ ...prev, pageNum: 1, sealName: event.target.value }))}
+              placeholder="按印章名称搜索"
+              type="search"
+            />
           </div>
-        </TableSurfaceCard>)}
-        pagination={total > 0 ? (
-          <Pagination total={total} page={query.pageNum} pageSize={query.pageSize} showPageSizeSelector={false} showJump={false} onPageChange={(pageNum) => setQuery((prev) => ({ ...prev, pageNum }))} onPageSizeChange={() => {}} />
-        ) : null}
-      />
+        </label>
+        <label>
+          <span className="input-label">状态</span>
+          <Select value={query.status || 'ALL'} onValueChange={(value) => setQuery((prev) => ({ ...prev, pageNum: 1, status: value === 'ALL' ? '' : value }))}>
+            <SelectTrigger className="h-[42px]"><SelectValue placeholder="状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">全部状态</SelectItem>
+              {statusDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+        <label>
+          <span className="input-label">到期筛选</span>
+          <Select value={query.expiry || 'ALL'} onValueChange={(value) => setQuery((prev) => ({ ...prev, pageNum: 1, expiry: value === 'ALL' ? '' : value }))}>
+            <SelectTrigger className="h-[42px]"><SelectValue placeholder="到期筛选" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">全部有效期</SelectItem>
+              <SelectItem value="30">30天内到期</SelectItem>
+              <SelectItem value="15">15天内到期</SelectItem>
+              <SelectItem value="7">7天内到期</SelectItem>
+              <SelectItem value="0">今日到期</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">筛选 {activeFilterCount} 项</span>
+          <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), sealName: '', status: '', expiry: '' })} disabled={activeFilterCount === 0}>
+            <RotateCcw size={14} />
+            重置
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface className="admin-seal-list-table-panel">
+      <table className="unity-data-table admin-source-table admin-seal-license-table min-w-[1180px]">
+          <thead>
+            <tr>
+              <th>编码</th>
+              <th>名称 / 类型</th>
+              <th>编号 / 签发机构</th>
+              <th>有效期</th>
+              <th>到期状态</th>
+              <th>附件</th>
+              <th>状态 / 预计归还</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <TableStateRow colSpan={8} title="暂无印章" />
+            ) : rows.map((item) => (
+              <tr key={item.sealId}>
+                <td>{item.sealCode}</td>
+                <td>
+                  <div className="font-medium text-slate-900 dark:text-slate-100">{item.sealName}</div>
+                  <div className="mt-1 text-xs text-slate-400">{typeDict.getLabel(item.sealType) || item.sealType}</div>
+                </td>
+                <td>
+                  <div>{item.sealNo || '-'}</div>
+                  <div className="mt-1 text-xs text-slate-400">{item.issuer || '-'}</div>
+                </td>
+                <td>
+                  <div>{item.issueDate || '-'}</div>
+                  <div className="mt-1 text-xs text-slate-400">{item.expireDate || '-'}</div>
+                </td>
+                <td>{getExpiryBadge(item.expireDate)}</td>
+                <td>{getAttachmentList(item.attachmentUrl).length ? `${getAttachmentList(item.attachmentUrl).length} 个` : '-'}</td>
+                <td>
+                  {getStatusBadge(item.status)}
+                  <div className="mt-1 text-xs text-slate-400">{item.borrowDueTime ? formatDateTimeDisplay(item.borrowDueTime) : '-'}</div>
+                </td>
+                <td>
+                  <TableRowActions
+                    iconOnly
+                    buttonLayout="compact"
+                    maxVisibleActions={2}
+                    overflowLabel="更多"
+                    actions={[
+                      { key: 'detail', label: '详情', icon: <Eye size={15} />, isPrimary: true, onClick: () => setDetailSeal(item) },
+                      { key: 'edit', label: '编辑', icon: <Edit size={15} />, priority: 'secondary', hidden: isBorrowLocked(item), permissionKey: 'oa:seal:edit', onClick: () => openEdit(item) },
+                      { key: 'remind', label: '到期提醒', icon: <Bell size={15} />, priority: 'secondary', tone: 'warning', hidden: !canRemindExpiry(item), permissionKey: 'oa:seal:remind', onClick: () => void remindExpiry(item) },
+                      { key: 'renewal', label: '续期', icon: <FileClock size={15} />, priority: 'secondary', tone: 'info', hidden: item.status === 'DISABLED' || isBorrowLocked(item), permissionKey: 'oa:seal-renewal:add', onClick: () => void openRenewalDialog(item) },
+                      { key: 'delete', label: '删除', icon: <Trash2 size={15} />, danger: true, hidden: isBorrowLocked(item), permissionKey: 'oa:seal:remove', onClick: () => item.sealId && setDeleteId(item.sealId) },
+                    ]}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      showPageSizeSelector={false}
+      showJump={false}
+      onPageChange={(pageNum) => setQuery((prev) => ({ ...prev, pageNum }))}
+      onPageSizeChange={() => {}}
+    />
+  ) : null;
+
+  return (
+    <>
+      <section className="admin-source-page admin-seal-license-page admin-seal-list-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={dialogOpen}
@@ -426,7 +511,7 @@ export const SealListPage: React.FC = () => {
         onClose={() => { setDialogOpen(false); resetForm(); }}
         maxWidthClassName="w-full sm:max-w-5xl"
         panelClassName="max-h-[92vh]"
-        bodyClassName="max-h-[74vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
+        bodyClassName="admin-dialog-stack max-h-[74vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
         footer={(
           <>
             <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>取消</Button>
@@ -434,74 +519,68 @@ export const SealListPage: React.FC = () => {
           </>
         )}
       >
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-5">
-            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
-              <h4 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">基础信息</h4>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>编码</Label>
-                  <Input className="h-11" value={form.sealCode} onChange={(event) => setForm((prev) => ({ ...prev, sealCode: event.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>名称</Label>
-                  <Input className="h-11" value={form.sealName} onChange={(event) => setForm((prev) => ({ ...prev, sealName: event.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>类型</Label>
-                  <Select value={form.sealType} onValueChange={(value) => setForm((prev) => ({ ...prev, sealType: value }))}>
-                    <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                    <SelectContent>{typeDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>状态</Label>
-                  <Select value={form.status || 'AVAILABLE'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value as OaSeal['status'] }))}>
-                    <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                    <SelectContent>{EDITABLE_SEAL_STATUSES.map((value) => <SelectItem key={value} value={value}>{statusDict.getLabel(value)}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>印章编号</Label>
-                  <Input className="h-11" value={form.sealNo || ''} onChange={(event) => setForm((prev) => ({ ...prev, sealNo: event.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>签发机构</Label>
-                  <Input className="h-11" value={form.issuer || ''} onChange={(event) => setForm((prev) => ({ ...prev, issuer: event.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>签发日期</Label>
-                  <DatePicker className="h-11" type="date" value={form.issueDate || ''} onChange={(event) => setForm((prev) => ({ ...prev, issueDate: event.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>到期日期</Label>
-                  <DatePicker className="h-11" type="date" value={form.expireDate || ''} onChange={(event) => setForm((prev) => ({ ...prev, expireDate: event.target.value }))} />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>存放位置</Label>
-                  <Input className="h-11" value={form.location || ''} onChange={(event) => setForm((prev) => ({ ...prev, location: event.target.value }))} />
-                </div>
+        <div className="admin-dialog-stack">
+            <DialogPanel title="基础信息" bodyClassName="grid gap-4 sm:grid-cols-2">
+              <div className="admin-dialog-field">
+                <Label>编码</Label>
+                <Input className="h-11" value={form.sealCode} onChange={(event) => setForm((prev) => ({ ...prev, sealCode: event.target.value }))} />
               </div>
-            </section>
+              <div className="admin-dialog-field">
+                <Label>名称</Label>
+                <Input className="h-11" value={form.sealName} onChange={(event) => setForm((prev) => ({ ...prev, sealName: event.target.value }))} />
+              </div>
+              <div className="admin-dialog-field">
+                <Label>类型</Label>
+                <Select value={form.sealType} onValueChange={(value) => setForm((prev) => ({ ...prev, sealType: value }))}>
+                  <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                  <SelectContent>{typeDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="admin-dialog-field">
+                <Label>状态</Label>
+                <Select value={form.status || 'AVAILABLE'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value as OaSeal['status'] }))}>
+                  <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                  <SelectContent>{EDITABLE_SEAL_STATUSES.map((value) => <SelectItem key={value} value={value}>{statusDict.getLabel(value)}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="admin-dialog-field">
+                <Label>印章编号</Label>
+                <Input className="h-11" value={form.sealNo || ''} onChange={(event) => setForm((prev) => ({ ...prev, sealNo: event.target.value }))} />
+              </div>
+              <div className="admin-dialog-field">
+                <Label>签发机构</Label>
+                <Input className="h-11" value={form.issuer || ''} onChange={(event) => setForm((prev) => ({ ...prev, issuer: event.target.value }))} />
+              </div>
+              <div className="admin-dialog-field">
+                <Label>签发日期</Label>
+                <DatePicker className="h-11" type="date" value={form.issueDate || ''} onChange={(event) => setForm((prev) => ({ ...prev, issueDate: event.target.value }))} />
+              </div>
+              <div className="admin-dialog-field">
+                <Label>到期日期</Label>
+                <DatePicker className="h-11" type="date" value={form.expireDate || ''} onChange={(event) => setForm((prev) => ({ ...prev, expireDate: event.target.value }))} />
+              </div>
+              <div className="admin-dialog-field sm:col-span-2">
+                <Label>存放位置</Label>
+                <Input className="h-11" value={form.location || ''} onChange={(event) => setForm((prev) => ({ ...prev, location: event.target.value }))} />
+              </div>
+            </DialogPanel>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
-              <div className="space-y-2">
+            <DialogPanel title="印章附件">
+              <div className="admin-dialog-field">
                 <Label>印章附件</Label>
                 <FileUpload value={form.attachmentUrl || ''} onChange={(urls) => setForm((prev) => ({ ...prev, attachmentUrl: urls }))} maxCount={5} />
               </div>
-            </section>
+            </DialogPanel>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
-              <div className="space-y-2">
+            <DialogPanel title="备注">
+              <div className="admin-dialog-field">
                 <Label>备注</Label>
                 <Textarea className="min-h-[140px] resize-none" value={form.remark || ''} onChange={(event) => setForm((prev) => ({ ...prev, remark: event.target.value }))} />
               </div>
-            </section>
-          </div>
+            </DialogPanel>
 
-          <aside className="space-y-4 lg:sticky lg:top-0 lg:self-start">
-            <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-              <div className="space-y-2">
+            <DialogPanel title="保管人">
+              <div className="admin-dialog-field">
                 <Label>保管人</Label>
                 <UserSelector
                   value={selectedKeeperIds}
@@ -513,15 +592,14 @@ export const SealListPage: React.FC = () => {
                 />
               </div>
               {form.keeperName ? (
-                <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950">
+                <div className="admin-dialog-value-note mt-3">
                   <div className="font-medium text-slate-900 dark:text-slate-100">{form.keeperName}</div>
                 </div>
               ) : null}
-            </section>
+            </DialogPanel>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
-              <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">印章摘要</h4>
-              <dl className="space-y-3 text-sm">
+            <DialogPanel title="印章摘要">
+              <dl className="admin-dialog-stack text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500 dark:text-slate-400">类型</dt>
                   <dd className="font-medium text-slate-900 dark:text-slate-100">{typeDict.getLabel(form.sealType) || '-'}</dd>
@@ -543,8 +621,7 @@ export const SealListPage: React.FC = () => {
                   <dd className="max-w-[12rem] truncate font-medium text-slate-900 dark:text-slate-100">{form.location || '-'}</dd>
                 </div>
               </dl>
-            </section>
-          </aside>
+            </DialogPanel>
         </div>
       </BaseDialog>
 
@@ -554,11 +631,12 @@ export const SealListPage: React.FC = () => {
         onClose={() => setDetailSeal(null)}
         width="wide"
         headerAside={detailSeal ? getStatusBadge(detailSeal.status) : null}
+        bodyClassName="admin-dialog-stack"
         footer={<Button variant="outline" onClick={() => setDetailSeal(null)}>关闭</Button>}
       >
         {detailSeal ? (
-          <div className="space-y-4">
-            <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="admin-dialog-stack">
+            <DialogPanel title="印章主信息" bodyClassName="admin-seal-detail-grid">
               <DetailField label="印章编码" value={detailSeal.sealCode} />
               <DetailField label="印章类型" value={typeDict.getLabel(detailSeal.sealType) || detailSeal.sealType} />
               <DetailField label="印章编号" value={detailSeal.sealNo} />
@@ -569,15 +647,16 @@ export const SealListPage: React.FC = () => {
               <DetailField label="保管人" value={detailSeal.keeperName} />
               <DetailField label="存放位置" value={detailSeal.location} />
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailSeal.createTime)} />
-            </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">附件</div>
+            </DialogPanel>
+            <DialogPanel title="附件">
               <AttachmentLinks value={detailSeal.attachmentUrl} />
-            </div>
+            </DialogPanel>
             {detailSeal.remark ? (
-              <div className="rounded-xl border border-slate-200 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:text-slate-300">
+              <DialogPanel title="备注">
+                <div className="admin-dialog-value-note">
                 {detailSeal.remark}
-              </div>
+                </div>
+              </DialogPanel>
             ) : null}
             <BusinessTimeline businessType="SEAL" businessId={detailSeal.sealId} />
           </div>
@@ -589,6 +668,7 @@ export const SealListPage: React.FC = () => {
         title={renewalSeal ? `${renewalSeal.sealName} 续期` : '印章续期'}
         onClose={() => { setRenewalDialogOpen(false); setRenewalSeal(null); setRenewalRows([]); }}
         width="wide"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => { setRenewalDialogOpen(false); setRenewalSeal(null); setRenewalRows([]); }}>关闭</Button>
@@ -596,20 +676,19 @@ export const SealListPage: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-5">
+        <div className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2"><Label>原签发日期</Label><Input className="h-11" value={renewalSeal?.issueDate || '-'} disabled /></div>
-            <div className="space-y-2"><Label>原到期日期</Label><Input className="h-11" value={renewalSeal?.expireDate || '-'} disabled /></div>
-            <div className="space-y-2"><Label>新签发日期</Label><DatePicker className="h-11" type="date" value={renewalForm.newIssueDate || ''} onChange={(event) => setRenewalForm((prev) => ({ ...prev, newIssueDate: event.target.value }))} /></div>
-            <div className="space-y-2"><Label>新到期日期</Label><DatePicker className="h-11" type="date" value={renewalForm.newExpireDate || ''} onChange={(event) => setRenewalForm((prev) => ({ ...prev, newExpireDate: event.target.value }))} /></div>
+            <div className="admin-dialog-field"><Label>原签发日期</Label><Input className="h-11" value={renewalSeal?.issueDate || '-'} disabled /></div>
+            <div className="admin-dialog-field"><Label>原到期日期</Label><Input className="h-11" value={renewalSeal?.expireDate || '-'} disabled /></div>
+            <div className="admin-dialog-field"><Label>新签发日期</Label><DatePicker className="h-11" type="date" value={renewalForm.newIssueDate || ''} onChange={(event) => setRenewalForm((prev) => ({ ...prev, newIssueDate: event.target.value }))} /></div>
+            <div className="admin-dialog-field"><Label>新到期日期</Label><DatePicker className="h-11" type="date" value={renewalForm.newExpireDate || ''} onChange={(event) => setRenewalForm((prev) => ({ ...prev, newExpireDate: event.target.value }))} /></div>
           </div>
-          <div className="space-y-2"><Label>续期原因</Label><Textarea className="min-h-[100px] resize-none" value={renewalForm.renewalReason} onChange={(event) => setRenewalForm((prev) => ({ ...prev, renewalReason: event.target.value }))} /></div>
-          <div className="space-y-2"><Label>续期附件</Label><FileUpload value={renewalForm.attachmentUrl || ''} onChange={(urls) => setRenewalForm((prev) => ({ ...prev, attachmentUrl: urls }))} maxCount={5} /></div>
-          <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-            <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">续期记录</div>
-            <div className="space-y-3">
+          <div className="admin-dialog-field"><Label>续期原因</Label><Textarea className="min-h-[100px] resize-none" value={renewalForm.renewalReason} onChange={(event) => setRenewalForm((prev) => ({ ...prev, renewalReason: event.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>续期附件</Label><FileUpload value={renewalForm.attachmentUrl || ''} onChange={(urls) => setRenewalForm((prev) => ({ ...prev, attachmentUrl: urls }))} maxCount={5} /></div>
+          <DialogPanel title="续期记录">
+            <div className="admin-dialog-stack">
               {renewalRows.length ? renewalRows.map((item) => (
-                <div key={item.id} className="rounded-lg border border-slate-100 px-3 py-3 dark:border-slate-800">
+                <div key={item.id} className="admin-seal-renewal-card">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.renewalNo || '-'}</div>
@@ -617,30 +696,26 @@ export const SealListPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {getRenewalStatusBadge(item.status)}
-                      <TableRowActions
-                        align="end"
-                        actions={[
-                          { label: '编辑', icon: <Edit size={14} />, onClick: () => setRenewalForm({ ...item }), tone: 'primary', hidden: item.status !== 'DRAFT', permissionKey: 'oa:seal-renewal:edit' },
-                          { label: '提交', icon: <Send size={14} />, onClick: () => void submitRenewal(item.id), tone: 'success', hidden: item.status !== 'DRAFT', permissionKey: 'oa:seal-renewal:submit' },
-                          { label: '取消', icon: <XCircle size={14} />, onClick: () => void cancelRenewal(item.id), tone: 'warning', hidden: item.status !== 'PENDING', permissionKey: 'oa:seal-renewal:cancel' },
-                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => void removeRenewal(item.id), tone: 'danger', hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' && item.status !== 'CANCELLED', permissionKey: 'oa:seal-renewal:remove' },
-                        ]}
-                      />
+                      <div className="admin-users-row-actions">
+                        {item.status === 'DRAFT' && hasPermission('oa:seal-renewal:edit') ? <button type="button" title="编辑" onClick={() => setRenewalForm({ ...item })}><Edit size={15} /></button> : null}
+                        {item.status === 'DRAFT' && hasPermission('oa:seal-renewal:submit') ? <button type="button" title="提交" onClick={() => void submitRenewal(item.id)}><Send size={15} /></button> : null}
+                        {item.status === 'PENDING' && hasPermission('oa:seal-renewal:cancel') ? <button type="button" title="取消" onClick={() => void cancelRenewal(item.id)}><XCircle size={15} /></button> : null}
+                        {item.status && ['DRAFT', 'REJECTED', 'CANCELLED'].includes(item.status) && hasPermission('oa:seal-renewal:remove') ? <button type="button" className="danger" title="删除" onClick={() => void removeRenewal(item.id)}><Trash2 size={15} /></button> : null}
+                      </div>
                     </div>
                   </div>
                   <div className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.renewalReason || '-'}</div>
                   {getAttachmentList(item.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={item.attachmentUrl} compact /></div> : null}
                 </div>
-              )) : <div className="py-8 text-center text-sm text-slate-400">暂无续期记录</div>}
+              )) : <div className="py-6 text-center text-sm text-slate-400">暂无续期记录</div>}
             </div>
-          </div>
+          </DialogPanel>
         </div>
       </BaseDialog>
 
       <ConfirmDialog open={Boolean(deleteId)} title="删除印章" message="删除后当前台账记录不可恢复；已有申请记录时后端会转为逻辑删除。" confirmText="删除" danger onConfirm={() => void remove()} onCancel={() => setDeleteId(null)} />
-    </div>
+    </>
   );
 };
 
 export default SealListPage;
-

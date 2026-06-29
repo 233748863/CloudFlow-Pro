@@ -7,8 +7,10 @@ import {
   Calendar,
   ClipboardList,
   Download,
+  Edit,
   Eye,
   Plus,
+  RefreshCw,
   RotateCcw,
   Send,
 } from 'lucide-react';
@@ -25,25 +27,22 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay, toBackendDateString } from '@/utils/dateFormat';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { ListResultFooter } from '@/components/common/ListResultFooter';
 import { ProcessTrace } from '@/components/ProcessTrace';
 import {
   Button,
   DatePicker,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
-import { TableRowActions } from '@/components/common/table-row-actions';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface LeaveApplicationDraftForm {
   leaveTypeId?: number;
@@ -89,7 +88,7 @@ const InlineState: React.FC<InlineStateProps> = ({
   className,
 }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3">
       {icon || <ClipboardList className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -103,10 +102,10 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
   loading = false,
 }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-16">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-          {loading ? <ClipboardList className="h-4 w-4 animate-pulse" /> : icon || <ClipboardList className="h-4 w-4" />}
+        <div className="admin-source-stat-icon mb-3">
+          {loading ? <ClipboardList className="h-4 w-4" /> : icon || <ClipboardList className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
       </div>
@@ -115,9 +114,9 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
 );
 
 const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
-  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+  <div className="border-b border-slate-200 pb-3 dark:border-slate-800">
     <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -282,11 +281,13 @@ export const LeaveApplicationPage: React.FC = () => {
     ? (leaveTypes.find((item) => String(item.id) === searchParams.leaveTypeId)?.leaveName || '指定类型')
     : '全部类型';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.leaveTypeId);
+  const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部请假';
   const selfServiceLocked = loadingTypes || eligibilityLoading || !canStartSelfService;
-
-  const statusQuickFilters = [
-    { label: '全部', value: '' },
-    ...statusDict.getOptions(),
+  const metrics = [
+    { label: '请假申请', value: String(total), meta: `当前页 ${list.length}`, icon: <ClipboardList size={18} />, tone: 'blue' },
+    { label: '草稿', value: String(draftCount), meta: '待提交', icon: <Edit size={18} />, tone: 'amber' },
+    { label: '审批中', value: String(pendingCount), meta: '流程流转', icon: <Send size={18} />, tone: 'violet' },
+    { label: '已通过', value: String(approvedCount), meta: '已归档', icon: <Calendar size={18} />, tone: 'green' },
   ];
 
   const renderDetailValue = (value?: string | number | null) => {
@@ -557,212 +558,158 @@ export const LeaveApplicationPage: React.FC = () => {
     <DictBadge dictType="hr_leave_status" value={String(status || 'DRAFT')} fallback="草稿" />
   );
 
-  return (
-    <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <Calendar className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Leave Applications
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">LEAVE APPLICATIONS</p>
+          <h2>请假申请</h2>
+          <span>跟踪请假类型、时间区间、时长、审批状态和流程轨迹</span>
         </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          请假申请
-        </h1>
-      </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void fetchList()} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            刷新
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
+            <Download size={16} />
+            导出
+          </Button>
+          <Button size="sm" onClick={openCreateDialog} disabled={selfServiceLocked}>
+            <Plus size={16} />
+            新建申请
+          </Button>
+        </div>
+      </header>
 
       {restrictionMessage ? (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+        <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{restrictionMessage}</span>
         </div>
       ) : null}
 
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-1 flex-wrap items-center gap-2">
-              {statusQuickFilters.map((filter) => (
-                <Button
-                  key={filter.value || 'all'}
-                  variant={searchParams.status === filter.value ? 'secondary' : 'outline'}
-                  size="sm"
-                  onClick={() => setSearchParams((prev) => ({ ...prev, status: filter.value, pageNum: 1 }))}
-                >
-                  {filter.label}
-                </Button>
-              ))}
-              <div className="w-full sm:w-[220px]">
-                <Select
-                  value={searchParams.leaveTypeId || ALL_FILTER_VALUE}
-                  onValueChange={(value) =>
-                    setSearchParams((prev) => ({
-                      ...prev,
-                      leaveTypeId: value === ALL_FILTER_VALUE ? '' : value,
-                      pageNum: 1,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="按请假类型筛选" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
-                    {leaveTypes.map((item) => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {item.leaveName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {`共 ${total} 条 · 草稿 ${draftCount} · 审批中 ${pendingCount} · 已通过 ${approvedCount}${hasActiveFilters ? ` · ${currentStatusLabel} · ${currentTypeLabel}` : ''}`}
-              </span>
+      <section className="admin-source-stat-grid">
+        {metrics.map((metric) => (
+          <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+            <div className="admin-source-stat-icon">{metric.icon}</div>
+            <div>
+              <p>{metric.label}</p>
+              <strong>{metric.value}</strong>
+              <span>{metric.meta}</span>
             </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchParams({
-                    status: '',
-                    leaveTypeId: '',
-                    pageNum: 1,
-                    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
-                  });
-                }}
-              >
-                <RotateCcw size={14} className="mr-1.5" />
-                清空条件
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
-                <Download size={14} className="mr-1.5" />
-                导出
-              </Button>
-              <Button size="sm" onClick={openCreateDialog} disabled={selfServiceLocked}>
-                <Plus size={14} className="mr-1.5" />
-                新建申请
-              </Button>
-            </div>
-          </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[36rem] flex-col">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px]">
-                <TableHeader className="sticky top-0 z-10">
-                  <tr>
-                    <TableHead className="px-4 py-3 text-left">
-                      申请单号
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      请假类型
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      时间区间
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      时长
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      原因
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      状态
-                    </TableHead>
-                    <TableActionHead className="w-40 px-4 py-3 text-right">
-                      当前操作
-                    </TableActionHead>
-                  </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {loading ? (
-                    <TableStateRow colSpan={7} title="正在加载请假申请..." loading />
-                  ) : list.length === 0 ? (
-                    <TableStateRow
-                      colSpan={7}
-                      icon={<ClipboardList className="h-4 w-4" />}
-                      title={hasActiveFilters ? '当前条件下暂无记录' : '暂无请假申请'}
-                    />
-                  ) : (
-                    list.map((item) => (
-                      <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                        <td className="px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100">
-                          {item.applicationNo || '-'}
-                        </td>
-                        <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {item.leaveTypeName || '-'}
-                        </td>
-                        <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          <div>{formatDateTimeDisplay(item.startTime)}</div>
-                          <div className="text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.endTime)}</div>
-                        </td>
-                        <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {formatDuration(item)}
-                        </td>
-                        <td className="max-w-sm truncate px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          {item.reason || '-'}
-                        </td>
-                        <td className="px-4 py-2.5">{getStatusBadge(item.status || 'DRAFT')}</td>
-                        <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                          <TableRowActions
-                            align="end"
-                            className="gap-1"
-                            actions={[
-                              {
-                                label: '详情',
-                                icon: <Eye size={14} />,
-                                onClick: () => void handleView(item.id!),
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '提交',
-                                icon: <Send size={14} />,
-                                onClick: () => openSubmitConfirm(item.id!),
-                                hidden: item.status !== 'DRAFT' || selfServiceLocked,
-                                tone: 'primary',
-                              },
-                              {
-                                label: '撤销',
-                                icon: <RotateCcw size={14} />,
-                                onClick: () => openCancelConfirm(item.id!),
-                                hidden: (item.status !== 'APPROVING' && item.status !== 'APPROVED') || selfServiceLocked,
-                                tone: 'warning',
-                              },
-                            ]}
-                          />
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={searchParams.pageNum}
-              pageSize={searchParams.pageSize}
-              showPageSizeSelector={false}
-              showJump={false}
-              onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
-              onPageSizeChange={(pageSize) =>
-                setSearchParams((prev) => ({ ...prev, pageSize, pageNum: 1 }))
-              }
-            />
-          ) : null
-        )}
-      />
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="admin-oa-filter-grid">
+        <label>
+          <span className="input-label">状态</span>
+          <Select value={searchParams.status || ALL_FILTER_VALUE} onValueChange={(value) => setSearchParams((prev) => ({ ...prev, status: value === ALL_FILTER_VALUE ? '' : value, pageNum: 1 }))}>
+            <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_FILTER_VALUE}>全部状态</SelectItem>
+              {statusDict.getOptions().map((filter) => <SelectItem key={filter.value} value={filter.value}>{filter.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+        <label>
+          <span className="input-label">请假类型</span>
+          <Select value={searchParams.leaveTypeId || ALL_FILTER_VALUE} onValueChange={(value) => setSearchParams((prev) => ({ ...prev, leaveTypeId: value === ALL_FILTER_VALUE ? '' : value, pageNum: 1 }))}>
+            <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部类型" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
+              {leaveTypes.map((item) => <SelectItem key={item.id} value={String(item.id)}>{item.leaveName}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </label>
+        <div className="admin-users-toolbar-actions">
+          <Button variant="outline" size="sm" onClick={() => setSearchParams({ status: '', leaveTypeId: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })} disabled={!hasActiveFilters}>
+            <RotateCcw size={14} />重置
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[980px]">
+          <thead>
+            <tr>
+              <th>申请单号</th>
+              <th>请假类型</th>
+              <th>时间区间</th>
+              <th>时长</th>
+              <th>原因</th>
+              <th>状态</th>
+              <th className="text-right">当前操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={7} title="正在加载请假申请..." loading />
+            ) : list.length === 0 ? (
+              <TableStateRow colSpan={7} icon={<ClipboardList className="h-4 w-4" />} title={hasActiveFilters ? '当前条件下暂无记录' : '暂无请假申请'} />
+            ) : (
+              list.map((item) => (
+                <tr key={item.id}>
+                  <td><strong>{item.applicationNo || '-'}</strong></td>
+                  <td>{item.leaveTypeName || '-'}</td>
+                  <td>
+                    <div>{formatDateTimeDisplay(item.startTime)}</div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDateTimeDisplay(item.endTime)}</div>
+                  </td>
+                  <td>{formatDuration(item)}</td>
+                  <td><div className="max-w-sm truncate">{item.reason || '-'}</div></td>
+                  <td>{getStatusBadge(item.status || 'DRAFT')}</td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
+                      {item.status === 'DRAFT' && !selfServiceLocked ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                      {(item.status === 'APPROVING' || item.status === 'APPROVED') && !selfServiceLocked ? <button type="button" title="撤销" aria-label="撤销" onClick={() => openCancelConfirm(item.id!)}><RotateCcw size={15} /></button> : null}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = (
+    <ListResultFooter
+      total={total}
+      page={searchParams.pageNum}
+      pageSize={searchParams.pageSize}
+      summary={resultSummary}
+      onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
+      onPageSizeChange={(pageSize) => setSearchParams((prev) => ({ ...prev, pageSize, pageNum: 1 }))}
+    />
+  );
+
+  return (
+    <>
+      <section className="admin-source-page oa-approval-page leave-application-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showDialog}
         title="新建请假申请"
         onClose={closeCreateDialog}
         width="wide"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={closeCreateDialog} disabled={submitting}>
@@ -778,17 +725,15 @@ export const LeaveApplicationPage: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
+        <div className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                请假类型
-              </label>
+            <div className="admin-dialog-field">
+              <Label>请假类型</Label>
               <Select
                 value={formData.leaveTypeId ? String(formData.leaveTypeId) : undefined}
                 onValueChange={handleLeaveTypeChange}
               >
-                <SelectTrigger className="h-11 rounded-xl">
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="请选择请假类型" />
                 </SelectTrigger>
                 <SelectContent>
@@ -801,12 +746,10 @@ export const LeaveApplicationPage: React.FC = () => {
               </Select>
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                {selectedType?.unit === 'HOUR' ? '开始时间' : '开始日期'}
-              </label>
+            <div className="admin-dialog-field">
+              <Label>{selectedType?.unit === 'HOUR' ? '开始时间' : '开始日期'}</Label>
               <DatePicker
-                className="h-11 rounded-xl"
+                className="h-11"
                 type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
                 value={formData.startValue}
                 onChange={(event) =>
@@ -815,12 +758,10 @@ export const LeaveApplicationPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                {selectedType?.unit === 'HOUR' ? '结束时间' : '结束日期'}
-              </label>
+            <div className="admin-dialog-field">
+              <Label>{selectedType?.unit === 'HOUR' ? '结束时间' : '结束日期'}</Label>
               <DatePicker
-                className="h-11 rounded-xl"
+                className="h-11"
                 type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
                 value={formData.endValue}
                 onChange={(event) =>
@@ -836,12 +777,10 @@ export const LeaveApplicationPage: React.FC = () => {
             <span>{selectedType?.needQuota ? '占用额度' : '不校验额度'}</span>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              请假原因
-            </label>
+          <div className="admin-dialog-field">
+            <Label>请假原因</Label>
             <Textarea
-              className="min-h-[120px] rounded-xl"
+              className="min-h-[120px]"
               value={formData.reason}
               onChange={(event) =>
                 setFormData((prev) => ({ ...prev, reason: event.target.value }))
@@ -858,7 +797,7 @@ export const LeaveApplicationPage: React.FC = () => {
         onClose={closeDetailDialog}
         width="wide"
         headerAside={detailRecord ? getStatusBadge(detailRecord.status || 'DRAFT') : null}
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <Button variant="outline" onClick={closeDetailDialog}>
             关闭
@@ -881,26 +820,34 @@ export const LeaveApplicationPage: React.FC = () => {
               <DetailField label="更新时间" value={formatDateTimeDisplay(detailRecord.updateTime)} />
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">请假原因</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+            <section className="table-scroll-container admin-inner-table-surface admin-source-panel">
+              <div className="admin-source-panel-head">
+                <div>
+                  <h3>请假原因</h3>
+                </div>
+              </div>
+              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {detailRecord.reason || '-'}
               </div>
-            </div>
+            </section>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">流程轨迹</div>
+            <section className="table-scroll-container admin-inner-table-surface admin-source-panel">
+              <div className="admin-source-panel-head">
+                <div>
+                  <h3>流程轨迹</h3>
+                </div>
                 {detailRecord.processInstanceId ? (
                   <div className="text-xs text-slate-500 dark:text-slate-400">{detailRecord.processInstanceId}</div>
                 ) : null}
               </div>
-              {detailRecord.processInstanceId ? (
-                <ProcessTrace instanceId={detailRecord.processInstanceId} />
-              ) : (
-                <InlineState title="暂无流程轨迹" className="py-8" />
-              )}
-            </div>
+              <div>
+                {detailRecord.processInstanceId ? (
+                  <ProcessTrace instanceId={detailRecord.processInstanceId} />
+                ) : (
+                  <InlineState title="暂无流程轨迹" className="py-6" />
+                )}
+              </div>
+            </section>
           </>
         )}
       </BaseDialog>
@@ -913,7 +860,7 @@ export const LeaveApplicationPage: React.FC = () => {
         onConfirm={() => void handleConfirmAction()}
         onCancel={() => setConfirmState(null)}
       />
-    </div>
+    </>
   );
 };
 

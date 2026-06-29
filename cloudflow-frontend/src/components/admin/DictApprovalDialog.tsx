@@ -21,13 +21,13 @@ interface DictApprovalDialogProps {
 const getApprovalStatusBadgeClassName = (status: string) => {
   switch (status) {
     case 'APPROVED':
-      return 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200';
+      return 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200';
     case 'REJECTED':
-      return 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
+      return 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-800 dark:bg-rose-950/20 dark:text-rose-200';
     case 'IN_PROGRESS':
-      return 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200';
+      return 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/20 dark:text-cyan-200';
     default:
-      return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
+      return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-200';
   }
 };
 
@@ -236,16 +236,16 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
       {!dictType ? (
         <InlineState title="请先选择字典类型" />
       ) : (
-        <div className="space-y-4">
+        <div className="admin-dialog-stack">
           {pendingResult?.approvalRequired ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+            <div className="border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
               已提交审批单 {pendingResult.approvalNo || '-'}，可在此查看审批状态。
             </div>
           ) : null}
 
-          <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
-              <div className="border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 dark:border-slate-800 dark:text-slate-100">
+          <div className="admin-dialog-stack">
+            <div className="card admin-source-panel no-padding overflow-hidden">
+              <div className="p-4 admin-source-section-head text-sm font-medium text-slate-900 dark:text-slate-100">
                 审批单列表
               </div>
               <div className="max-h-[560px] overflow-y-auto">
@@ -265,15 +265,15 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
                           type="button"
                           onClick={() => setSelectedApprovalId(item.approvalId)}
                           className={cn(
-                            'flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors',
-                            isSelected ? 'bg-slate-50 dark:bg-slate-900/70' : 'hover:bg-slate-50 dark:hover:bg-slate-900/50',
+                            'cf-side-link flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors',
+                            isSelected ? 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/70' : 'hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/50',
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{item.approvalNo}</div>
                             <span
                               className={cn(
-                                'rounded-full px-2 py-0.5 text-xs font-medium',
+                                'rounded-md px-2 py-0.5 text-xs font-medium',
                                 getApprovalStatusBadgeClassName(item.status || 'PENDING'),
                               )}
                             >
@@ -292,8 +292,8 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
-              <div className="border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 dark:border-slate-800 dark:text-slate-100">
+            <div className="card admin-source-panel no-padding overflow-hidden">
+              <div className="p-4 admin-source-section-head text-sm font-medium text-slate-900 dark:text-slate-100">
                 审批单详情
               </div>
               {detailLoading ? (
@@ -305,20 +305,20 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
               ) : !approvalDetail ? (
                 <InlineState title={selectedSummary ? `未找到审批单 ${selectedSummary.approvalNo}` : '审批单不存在'} />
               ) : (
-                <div className="max-h-[560px] space-y-4 overflow-y-auto p-4">
+                <div className="admin-dialog-stack max-h-[560px] overflow-y-auto p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={cn(
-                        'rounded-full px-2.5 py-1 text-xs font-medium',
+                        'rounded-md px-2.5 py-1 text-xs font-medium',
                         getApprovalStatusBadgeClassName(approvalDetail.status || 'PENDING'),
                       )}
                     >
                       {getApprovalStatusLabel(approvalDetail.status || 'PENDING')}
                     </span>
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    <span className="badge badge-gray">
                       {getApprovalActionLabel(approvalDetail.actionType)}
                     </span>
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    <span className="badge badge-gray">
                       {approvalDetail.riskLevel || 'LOW'}
                     </span>
                   </div>
@@ -336,21 +336,21 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
                   <Block title="审批意见" value={approvalDetail.approvalComment || '-'} />
                   <Block title="备注" value={approvalDetail.remark || '-'} />
 
-                  <div className="rounded-lg border border-slate-200 px-3 py-3 dark:border-slate-800">
+                  <div className="px-3 py-3">
                     <div className="text-xs text-slate-400 dark:text-slate-500">载荷概览</div>
                     <div className="mt-2 grid gap-3 md:grid-cols-2">
-                      <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      <div className="bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                         旧数据 {approvalDetail.payload?.oldDictDataList?.length || 0} 条
                       </div>
-                      <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      <div className="bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                         新数据 {approvalDetail.payload?.newDictDataList?.length || 0} 条
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 px-3 py-3 dark:border-slate-800">
+                  <div className="px-3 py-3">
                     <div className="text-xs text-slate-400 dark:text-slate-500">载荷 JSON</div>
-                    <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-950 px-3 py-3 text-xs leading-6 text-slate-100">
+                    <pre className="mt-2 overflow-x-auto bg-slate-950 px-3 py-3 text-xs leading-6 text-slate-100">
                       {formatPayload(approvalDetail.payload, approvalDetail.payloadJson)}
                     </pre>
                   </div>
@@ -369,7 +369,7 @@ const InfoCard: React.FC<{
   value: string;
   mono?: boolean;
 }> = ({ label, value, mono = false }) => (
-  <div className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800">
+  <div className="px-3 py-2">
     <div className="text-xs text-slate-400 dark:text-slate-500">{label}</div>
     <div className={cn('mt-1 text-sm text-slate-900 dark:text-slate-100', mono && 'font-mono')}>{value}</div>
   </div>
@@ -379,7 +379,7 @@ const Block: React.FC<{
   title: string;
   value: string;
 }> = ({ title, value }) => (
-  <div className="rounded-lg border border-slate-200 px-3 py-3 dark:border-slate-800">
+  <div className="px-3 py-3">
     <div className="text-xs text-slate-400 dark:text-slate-500">{title}</div>
     <div className="mt-1 text-sm text-slate-900 dark:text-slate-100">{value}</div>
   </div>

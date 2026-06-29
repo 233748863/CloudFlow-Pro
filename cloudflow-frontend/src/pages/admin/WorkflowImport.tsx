@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   ImportResult,
   ValidationResult,
@@ -36,13 +36,15 @@ type FileStatus =
   | 'failed'
   | 'skipped';
 
+type ConflictStrategy = 'overwrite' | 'rename' | 'skip';
+
 interface FileWithStatus {
   id: string;
   file: File;
   status: FileStatus;
   validation?: ValidationResult;
   importResult?: ImportResult;
-  conflictStrategy?: 'overwrite' | 'rename' | 'skip';
+  conflictStrategy?: ConflictStrategy;
 }
 
 interface ImportSummary {
@@ -57,7 +59,7 @@ interface FileItemProps {
   fileWithStatus: FileWithStatus;
   disabled: boolean;
   onRemove: () => void;
-  onUpdateStrategy: (strategy: 'overwrite' | 'rename' | 'skip') => void;
+  onUpdateStrategy: (strategy: ConflictStrategy) => void;
 }
 
 const createFileId = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -69,24 +71,73 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
-const conflictStrategyMeta = {
+const conflictStrategyMeta: Record<ConflictStrategy, { label: string; description: string }> = {
   skip: {
     label: '跳过',
     description: '保留现有流程，本次冲突文件记为已跳过'
   },
   rename: {
     label: '重命名',
-    description: '自动生成“原名称_副本_序号”，作为新流程导入'
+    description: '自动生成副本名称，作为新流程导入'
   },
   overwrite: {
     label: '覆盖',
-    description: '替换现有流程并创建新版本，影响同名流程'
+    description: '替换同名流程并创建新版本'
   }
-} as const;
+};
 
-const strategyKeys = ['skip', 'rename', 'overwrite'] as const;
+const strategyKeys: ConflictStrategy[] = ['skip', 'rename', 'overwrite'];
 const IMPORT_FILE_LIMIT_MB = 10;
 const IMPORT_BATCH_LIMIT = 100;
+
+const statusTextMap: Record<FileStatus, string> = {
+  pending: '等待校验',
+  validating: '校验中',
+  valid: '校验通过',
+  invalid: '校验失败',
+  importing: '导入中',
+  success: '导入成功',
+  partial: '部分成功',
+  failed: '导入失败',
+  skipped: '已跳过'
+};
+
+const formatFileSize = (bytes: number) => {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  }
+  return `${(bytes / 1024).toFixed(2)} KB`;
+};
+
+const getStatusIcon = (status: FileStatus) => {
+  if (status === 'validating' || status === 'importing') {
+    return <Loader2 size={15} className="animate-spin" />;
+  }
+  if (status === 'valid') return <CheckCircle2 size={15} />;
+  if (status === 'invalid') return <AlertCircle size={15} />;
+  if (status === 'success') return <FileCheck size={15} />;
+  if (status === 'partial') return <AlertTriangle size={15} />;
+  if (status === 'failed') return <FileX size={15} />;
+  if (status === 'skipped') return <FileWarning size={15} />;
+  return <FileText size={15} />;
+};
+
+const summarizeValidation = (status: FileStatus, validation?: ValidationResult) => {
+  if (!validation) {
+    return status === 'validating' ? '正在读取文件结构' : '等待系统校验';
+  }
+  if (validation.valid) {
+    return validation.workflowName || '结构完整';
+  }
+  return validation.errors[0] || '文件结构未通过校验';
+};
+
+const summarizeResult = (importResult?: ImportResult) => {
+  if (!importResult) {
+    return '暂无导入结果';
+  }
+  return importResult.message || importResult.errors?.[0] || importResult.warnings?.[0] || '导入请求已完成';
+};
 
 const ImportStatePanel: React.FC<{
   icon: React.ReactNode;
@@ -95,39 +146,11 @@ const ImportStatePanel: React.FC<{
   actions?: React.ReactNode;
   className?: string;
 }> = ({ icon, title, description, actions, className }) => (
-  <div className={cn('flex flex-col items-center justify-center px-5 py-10 text-center', className)}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-      {icon}
-    </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    <div className="mt-1.5 max-w-2xl text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    {actions ? <div className="mt-3 flex flex-wrap justify-center gap-2">{actions}</div> : null}
-  </div>
-);
-
-const DetailRows: React.FC<{
-  children: React.ReactNode;
-  className?: string;
-}> = ({ children, className }) => <div className={cn('space-y-2', className)}>{children}</div>;
-
-const DetailRow: React.FC<{
-  label: string;
-  value: React.ReactNode;
-  className?: string;
-  valueClassName?: string;
-}> = ({ label, value, className, valueClassName }) => (
-  <div
-    className={cn(
-      'flex flex-col gap-1 border-b border-slate-100 pb-2 last:border-b-0 last:pb-0 sm:flex-row sm:items-start sm:gap-4 dark:border-slate-800',
-      className
-    )}
-  >
-    <div className="w-20 flex-shrink-0 text-xs leading-6 text-slate-500 dark:text-slate-400">
-      {label}
-    </div>
-    <div className={cn('min-w-0 flex-1 text-sm leading-6 text-slate-700 dark:text-slate-200', valueClassName)}>
-      {value}
-    </div>
+  <div className={cn('admin-workflow-import-state', className)}>
+    <div className="admin-source-stat-icon">{icon}</div>
+    <strong>{title}</strong>
+    <span>{description}</span>
+    {actions ? <div className="admin-workflow-import-state-actions">{actions}</div> : null}
   </div>
 );
 
@@ -141,32 +164,29 @@ const FeedbackGroup: React.FC<{
     return null;
   }
 
+  const visibleItems = items?.slice(0, 2) || [];
+  const hiddenCount = items && items.length > visibleItems.length ? items.length - visibleItems.length : 0;
+
   return (
-    <div className="space-y-1 text-xs leading-6 text-slate-600 dark:text-slate-300">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+    <div className="admin-workflow-import-feedback-group">
+      <div className="admin-workflow-import-feedback-title">
         {icon}
         <span>{title}</span>
       </div>
-      {value ? <div>{value}</div> : null}
-      {items?.length ? (
-        <div className="space-y-0.5">
-          {items.map((item, index) => (
-            <div key={`${title}-${index}-${item}`} className="flex items-start gap-2">
-              <span className="mt-[10px] h-1 w-1 flex-shrink-0 rounded-full bg-slate-400 dark:bg-slate-500" />
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {value ? <p>{value}</p> : null}
+      {visibleItems.map((item, index) => (
+        <p key={`${title}-${index}-${item}`}>{item}</p>
+      ))}
+      {hiddenCount > 0 ? <p>另有 {hiddenCount} 条</p> : null}
     </div>
   );
 };
 
 interface ConflictStrategySelectorProps {
-  value: 'overwrite' | 'rename' | 'skip';
+  value: ConflictStrategy;
   disabled?: boolean;
   compact?: boolean;
-  onChange: (strategy: 'overwrite' | 'rename' | 'skip') => void;
+  onChange: (strategy: ConflictStrategy) => void;
 }
 
 const ConflictStrategySelector: React.FC<ConflictStrategySelectorProps> = ({
@@ -175,24 +195,19 @@ const ConflictStrategySelector: React.FC<ConflictStrategySelectorProps> = ({
   compact = false,
   onChange,
 }) => (
-  <div className="max-w-full overflow-x-auto">
-    <SegmentedControl className={cn('min-w-max flex-nowrap', compact ? 'min-h-8' : 'min-h-9')}>
-      {strategyKeys.map((strategy) => {
-        const active = value === strategy;
-        return (
-          <SegmentedControlItem
-            key={strategy}
-            size={compact ? 'sm' : 'default'}
-            active={active}
-            disabled={disabled}
-            onClick={() => onChange(strategy)}
-          >
-            {conflictStrategyMeta[strategy].label}
-          </SegmentedControlItem>
-        );
-      })}
-    </SegmentedControl>
-  </div>
+  <SegmentedControl className={cn('admin-workflow-import-segment', compact && 'compact')}>
+    {strategyKeys.map((strategy) => (
+      <SegmentedControlItem
+        key={strategy}
+        size={compact ? 'sm' : 'default'}
+        active={value === strategy}
+        disabled={disabled}
+        onClick={() => onChange(strategy)}
+      >
+        {conflictStrategyMeta[strategy].label}
+      </SegmentedControlItem>
+    ))}
+  </SegmentedControl>
 );
 
 /**
@@ -239,7 +254,7 @@ export const WorkflowImport: React.FC = () => {
 
   const [files, setFiles] = useState<FileWithStatus[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [globalConflictStrategy, setGlobalConflictStrategy] = useState<'overwrite' | 'rename' | 'skip'>('skip');
+  const [globalConflictStrategy, setGlobalConflictStrategy] = useState<ConflictStrategy>('skip');
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
@@ -330,7 +345,7 @@ export const WorkflowImport: React.FC = () => {
     setFiles((prev) => prev.filter((item) => item.id !== fileId));
   };
 
-  const updateConflictStrategy = (fileId: string, strategy: 'overwrite' | 'rename' | 'skip') => {
+  const updateConflictStrategy = (fileId: string, strategy: ConflictStrategy) => {
     setFiles((prev) => prev.map((item) => (item.id === fileId ? { ...item, conflictStrategy: strategy } : item)));
   };
 
@@ -504,254 +519,248 @@ export const WorkflowImport: React.FC = () => {
 
   const currentStrategyMeta = conflictStrategyMeta[globalConflictStrategy];
   const waitingCount = stats.pending + stats.validating;
-  const hasQueuedFiles = stats.total > 0;
   const completedCount = stats.success + stats.partial + stats.failed + stats.skipped;
+  const exceptionCount = stats.invalid + stats.failed + stats.partial;
 
   const importProgressPercent =
     importing && importProgress.total > 0
       ? Math.min(100, Math.round((importProgress.current / importProgress.total) * 100))
       : 0;
 
+  const renderHeader = (showUpload = true) => (
+    <header className="admin-source-header">
+      <div>
+        <p className="admin-source-kicker">WORKFLOW IMPORT</p>
+        <h2>流程导入</h2>
+        <span>校验 JSON 流程文件、处理同名冲突并执行导入队列</span>
+      </div>
+      <div className="admin-source-controls">
+        <Button variant="outline" size="sm" onClick={() => navigate('/workflow/management')}>
+          <ArrowLeft size={15} className="mr-2" />
+          返回管理
+        </Button>
+        {showUpload ? (
+          <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+            <Upload size={15} className="mr-2" />
+            选择文件
+          </Button>
+        ) : null}
+      </div>
+    </header>
+  );
+
   if (!canImport) {
     return (
-      <ImportStatePanel
-        icon={<AlertTriangle size={20} className="text-slate-500 dark:text-slate-400" />}
-        title="当前账号没有流程导入权限"
-        description="流程导入仅对具备相应权限的账号开放。"
-        actions={(
-          <Button onClick={() => navigate('/workflow/management')}>
-            <ArrowLeft size={16} className="mr-2" />
-            返回流程管理
-          </Button>
-        )}
-      />
+      <section className="admin-source-page admin-workflow-import-page">
+        <TablePageLayout
+          actions={renderHeader(false)}
+          table={(
+            <InnerTableSurface className="admin-workflow-import-table-panel" wrapperClassName="admin-workflow-import-empty-wrapper">
+              <ImportStatePanel
+                icon={<AlertTriangle size={20} />}
+                title="当前账号没有流程导入权限"
+                description="流程导入仅对具备相应权限的账号开放。"
+              />
+            </InnerTableSurface>
+          )}
+        />
+      </section>
     );
   }
 
-  return (
-    <TablePageLayout
-      className="gap-2.5"
-      filters={(
-          <div className="space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>策略 {currentStrategyMeta.label}</span>
-                {hasQueuedFiles ? <span>队列 {stats.total} 个</span> : null}
-                {!canImportBatch ? <span>单文件</span> : null}
-              </div>
+  const pageActions = (
+    <>
+      {renderHeader()}
 
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => navigate('/workflow/management')}>
-                  <ArrowLeft size={15} className="mr-2" />
-                  返回管理
-                </Button>
-                <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-                  <Upload size={15} className="mr-2" />
-                  选择文件
-                </Button>
-              </div>
-            </div>
+      <section className="admin-source-stat-grid admin-workflow-import-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <div className="admin-source-stat-icon"><FileText size={18} /></div>
+          <div><p>队列文件</p><strong>{stats.total}</strong><span>当前策略 {currentStrategyMeta.label}</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <div className="admin-source-stat-icon"><CheckCircle2 size={18} /></div>
+          <div><p>可导入</p><strong>{stats.valid}</strong><span>校验通过</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <div className="admin-source-stat-icon"><Loader2 size={18} /></div>
+          <div><p>待处理</p><strong>{waitingCount}</strong><span>{canImportBatch ? `批量最多 ${IMPORT_BATCH_LIMIT} 个` : '当前账号仅单文件'}</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <div className="admin-source-stat-icon"><FileCheck size={18} /></div>
+          <div><p>已完成</p><strong>{completedCount}</strong><span>异常 {exceptionCount}</span></div>
+        </article>
+      </section>
+    </>
+  );
 
-            <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-              <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-                <div className="flex flex-col gap-2.5 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      冲突策略
-                    </div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                      命中同名流程时按当前规则处理；新加入队列的文件默认继承这里的策略，队列行内仍可单独改。
-                    </div>
-                  </div>
-                  <div className="xl:flex-shrink-0">
-                    <ConflictStrategySelector
-                      value={globalConflictStrategy}
-                      onChange={setGlobalConflictStrategy}
-                    />
-                  </div>
-                </div>
+  const pageFilters = (
+    <section className="card admin-source-panel admin-workflow-import-workbench">
+      <div className="admin-source-panel-head">
+        <div>
+          <h3>导入工作台</h3>
+          <span>文件进入队列后先校验，校验通过后才会执行导入</span>
+        </div>
+        <ConflictStrategySelector value={globalConflictStrategy} onChange={setGlobalConflictStrategy} />
+      </div>
 
-                <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-md border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/60">
-                    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                      触发条件
-                    </div>
-                    <div className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                      导入文件中的流程名称已存在。
-                    </div>
-                  </div>
-                  <div className="rounded-md border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/60">
-                    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                      当前策略
-                    </div>
-                    <div className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                      {currentStrategyMeta.description}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-2.5 grid gap-2 xl:grid-cols-3">
-                  {strategyKeys.map((strategy) => {
-                    const active = strategy === globalConflictStrategy;
-
-                    return (
-                      <div
-                        key={strategy}
-                        className={cn(
-                          'rounded-md border px-3 py-2.5 transition-colors',
-                          active
-                            ? 'border-cyan-200 bg-cyan-50/80 dark:border-cyan-900/70 dark:bg-cyan-950/30'
-                            : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72',
-                        )}
-                      >
-                        <div className="text-xs font-medium text-slate-900 dark:text-slate-100">
-                          {conflictStrategyMeta[strategy].label}
-                        </div>
-                        <div className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
-                          {conflictStrategyMeta[strategy].description}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div
-                className={cn(
-                  'rounded-lg border border-dashed px-4 py-3 transition-colors',
-                  isDragging
-                    ? 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/70'
-                    : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
-                )}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <div className="flex min-h-[88px] flex-col justify-center gap-2.5">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    accept=".json,application/json"
-                    multiple={canImportBatch}
-                    onChange={(event) => {
-                      handleFileSelect(event.target.files);
-                      event.currentTarget.value = '';
-                    }}
-                  />
-
-                  <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                        拖拽或选择导入文件
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                        <span>仅支持 .json</span>
-                        <span>单文件 ≤ {IMPORT_FILE_LIMIT_MB} MB</span>
-                        {canImportBatch ? <span>批量最多 {IMPORT_BATCH_LIMIT} 个</span> : <span>当前账号仅单文件</span>}
-                        <span>校验通过后才可导入</span>
-                        {hasQueuedFiles ? <span>已加入 {stats.total} 个</span> : null}
-                      </div>
-                    </div>
-
-                    <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-                      <Upload size={16} className="mr-2" />
-                      选择文件
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <div className="admin-workflow-import-workbench-grid">
+        <div
+          className={cn('admin-workflow-import-dropzone', isDragging && 'is-active')}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <input
+            ref={fileInputRef}
+            className="admin-workflow-import-file-input"
+            type="file"
+            accept=".json,application/json"
+            multiple={canImportBatch}
+            onChange={(event) => {
+              handleFileSelect(event.target.files);
+              event.currentTarget.value = '';
+            }}
+          />
+          <div className="admin-workflow-import-drop-icon">
+            <Upload size={20} />
           </div>
-        )}
-        table={(<TableSurfaceCard fill>
-          <>
-            <div className="border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
-              <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-900 dark:text-slate-100">
-                    <span className="font-medium">导入队列</span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{stats.total} 个文件</span>
-                    {waitingCount > 0 ? <span className="text-xs text-slate-500 dark:text-slate-400">待处理 {waitingCount}</span> : null}
-                    {stats.valid > 0 ? <span className="text-xs text-slate-500 dark:text-slate-400">可导入 {stats.valid}</span> : null}
-                    {stats.invalid > 0 ? <span className="text-xs text-slate-500 dark:text-slate-400">无效 {stats.invalid}</span> : null}
-                    {completedCount > 0 ? <span className="text-xs text-slate-500 dark:text-slate-400">已完成 {completedCount}</span> : null}
-                  </div>
-                  {importing ? (
-                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <Loader2 size={14} className="animate-spin" />
-                      当前进度 {importProgress.current}/{importProgress.total} · {importProgressPercent}%
-                    </div>
-                  ) : null}
-                </div>
+          <div className="admin-workflow-import-drop-copy">
+            <strong>拖拽或选择导入文件</strong>
+            <span>仅支持 .json，单文件 {'<= '}{IMPORT_FILE_LIMIT_MB} MB，{canImportBatch ? `批量最多 ${IMPORT_BATCH_LIMIT} 个` : '当前账号仅单文件'}</span>
+          </div>
+          <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+            <Upload size={15} className="mr-2" />
+            选择文件
+          </Button>
+        </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  {stats.failed > 0 && !importing ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={retryFailed}
-                    >
-                      重试失败
-                    </Button>
-                  ) : null}
-                  <Button variant="outline" size="sm" onClick={clearAll} disabled={importing}>
-                    清空列表
-                  </Button>
-                  <Button onClick={handleImport} disabled={importing || stats.valid === 0}>
-                    {importing ? (
-                      <>
-                        <Loader2 size={16} className="mr-2 animate-spin" />
-                        导入中...
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={16} className="mr-2" />
-                        开始导入 ({stats.valid})
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
+        <div className="admin-workflow-import-strategy-list">
+          {strategyKeys.map((strategy) => (
+            <button
+              key={strategy}
+              type="button"
+              className={cn('admin-workflow-import-strategy-item', strategy === globalConflictStrategy && 'is-active')}
+              onClick={() => setGlobalConflictStrategy(strategy)}
+            >
+              <strong>{conflictStrategyMeta[strategy].label}</strong>
+              <span>{conflictStrategyMeta[strategy].description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 
-            <div className="space-y-3.5 px-4 py-4">
-              {files.length > 0 ? (
-                <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
-                  <div className="max-h-[34rem] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
-                    {files.map((fileWithStatus) => (
-                      <FileItem
-                        key={fileWithStatus.id}
-                        fileWithStatus={fileWithStatus}
-                        disabled={importing}
-                        onRemove={() => removeFile(fileWithStatus.id)}
-                        onUpdateStrategy={(strategy) => updateConflictStrategy(fileWithStatus.id, strategy)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <ImportStatePanel
-                  icon={<Upload size={18} className="text-slate-500 dark:text-slate-400" />}
-                  title="导入队列为空"
-                  description="先选择 JSON 文件，系统会先做校验；同名流程按上方冲突策略处理。"
+  const pageTable = (
+    <InnerTableSurface
+      className="admin-workflow-import-table-panel"
+      wrapperClassName="admin-workflow-import-table-shell"
+    >
+      <div className="admin-workflow-import-table-toolbar">
+        <div>
+          <h3>导入队列</h3>
+          <span>{stats.total} 个文件 · 可导入 {stats.valid} · 无效 {stats.invalid}</span>
+        </div>
+        <div className="admin-workflow-import-table-actions">
+          {stats.failed > 0 && !importing ? (
+            <Button variant="outline" size="sm" onClick={retryFailed}>
+              重试失败
+            </Button>
+          ) : null}
+          <Button variant="outline" size="sm" onClick={clearAll} disabled={importing || stats.total === 0}>
+            清空列表
+          </Button>
+          <Button onClick={handleImport} disabled={importing || stats.valid === 0}>
+            {importing ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                导入中
+              </>
+            ) : (
+              <>
+                <Upload size={16} className="mr-2" />
+                开始导入 ({stats.valid})
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {importing ? (
+        <div className="admin-workflow-import-progress">
+          <div>
+            <span>当前进度 {importProgress.current}/{importProgress.total}</span>
+            <strong>{importProgressPercent}%</strong>
+          </div>
+          <i style={{ width: `${importProgressPercent}%` }} />
+        </div>
+      ) : null}
+
+      {importSummary ? (
+        <div className="admin-workflow-import-result-strip">
+          <span>最近结果</span>
+          <strong>处理 {importSummary.total}</strong>
+          <em>成功 {importSummary.success}</em>
+          <em>部分成功 {importSummary.partial}</em>
+          <em>失败 {importSummary.failed}</em>
+          <em>跳过 {importSummary.skipped}</em>
+        </div>
+      ) : null}
+
+      <div className="admin-workflow-import-table-scroll">
+        <table className="unity-data-table admin-workflow-import-table">
+          <thead>
+            <tr>
+              <th>文件</th>
+              <th>状态</th>
+              <th>校验</th>
+              <th>冲突策略</th>
+              <th>反馈</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {files.length > 0 ? (
+              files.map((fileWithStatus) => (
+                <FileItem
+                  key={fileWithStatus.id}
+                  fileWithStatus={fileWithStatus}
+                  disabled={importing}
+                  onRemove={() => removeFile(fileWithStatus.id)}
+                  onUpdateStrategy={(strategy) => updateConflictStrategy(fileWithStatus.id, strategy)}
                 />
-              )}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} className="admin-workflow-import-empty-cell">
+                  <ImportStatePanel
+                    icon={<Upload size={18} />}
+                    title="导入队列为空"
+                    description="先选择 JSON 文件，系统会先做校验；同名流程按上方冲突策略处理。"
+                    actions={(
+                      <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+                        <Upload size={15} className="mr-2" />
+                        选择文件
+                      </Button>
+                    )}
+                  />
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </InnerTableSurface>
+  );
 
-              {importSummary ? (
-                <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
-                  <DetailRows className="mt-3">
-                    <DetailRow
-                      label="最近结果"
-                      value={`处理 ${importSummary.total} 个；成功 ${importSummary.success}，部分成功 ${importSummary.partial}，失败 ${importSummary.failed}，跳过 ${importSummary.skipped}`}
-                    />
-                  </DetailRows>
-                </div>
-              ) : null}
-            </div>
-          </>
-        </TableSurfaceCard>)}
+  return (
+    <section className="admin-source-page admin-workflow-import-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageTable}
       />
+    </section>
   );
 };
 
@@ -762,134 +771,95 @@ const FileItem: React.FC<FileItemProps> = ({
   onUpdateStrategy
 }) => {
   const { file, status, validation, importResult, conflictStrategy } = fileWithStatus;
-
-  const statusTextMap: Record<FileStatus, string> = {
-    pending: '等待校验',
-    validating: '校验中...',
-    valid: '校验通过',
-    invalid: '校验失败',
-    importing: '导入中...',
-    success: '导入成功',
-    partial: '部分成功',
-    failed: '导入失败',
-    skipped: '已跳过'
-  };
-
   const canAdjustStrategy = ['valid', 'failed', 'partial', 'skipped'].includes(status);
-
-  const StatusIcon = () => {
-    if (status === 'validating') return <Loader2 size={16} className="animate-spin text-slate-500 dark:text-slate-400" />;
-    if (status === 'valid') return <CheckCircle2 size={16} className="text-slate-500 dark:text-slate-400" />;
-    if (status === 'invalid') return <AlertCircle size={16} className="text-slate-500 dark:text-slate-400" />;
-    if (status === 'importing') return <Loader2 size={16} className="animate-spin text-slate-500 dark:text-slate-400" />;
-    if (status === 'success') return <FileCheck size={16} className="text-slate-500 dark:text-slate-400" />;
-    if (status === 'partial') return <AlertTriangle size={16} className="text-slate-500 dark:text-slate-400" />;
-    if (status === 'failed') return <FileX size={16} className="text-slate-500 dark:text-slate-400" />;
-    if (status === 'skipped') return <FileWarning size={16} className="text-slate-500 dark:text-slate-400" />;
-    return <FileText size={16} className="text-slate-400 dark:text-slate-500" />;
-  };
+  const currentStrategy = conflictStrategy || 'skip';
 
   return (
-    <div className="px-3.5 py-2.5 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-900/40">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-          <StatusIcon />
-        </div>
-
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {file.name}
-                </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {statusTextMap[status]}
-                </span>
-              </div>
-
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>{(file.size / 1024).toFixed(2)} KB</span>
-                {validation?.workflowName ? (
-                  <span>流程 {validation.workflowName}</span>
-                ) : null}
-                {validation?.version ? (
-                  <span>版本 v{validation.version}</span>
-                ) : null}
-              </div>
-            </div>
-
-            {!disabled && status !== 'importing' ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onRemove}
-                className="mt-0.5 h-7 w-7 text-slate-400 hover:bg-transparent hover:text-red-500 dark:text-slate-500 dark:hover:text-red-300"
-                title="移除"
-              >
-                <X size={16} />
-              </Button>
-            ) : null}
+    <tr className={cn('admin-workflow-import-row', `is-${status}`)}>
+      <td>
+        <div className="admin-workflow-import-file-cell">
+          <span className="admin-workflow-import-file-status">{getStatusIcon(status)}</span>
+          <div>
+            <strong title={file.name}>{file.name}</strong>
+            <span>{formatFileSize(file.size)}</span>
           </div>
-
-          {validation && (
-            <div className="space-y-1.5 border-t border-slate-100 pt-2.5 dark:border-slate-800">
-              <FeedbackGroup
-                title="校验错误"
-                items={validation.errors}
-                icon={<AlertCircle size={12} className="text-slate-400 dark:text-slate-500" />}
-              />
-              <FeedbackGroup
-                title="校验警告"
-                items={validation.warnings}
-                icon={<AlertTriangle size={12} className="text-slate-400 dark:text-slate-500" />}
-              />
-              <FeedbackGroup
-                title="不支持节点"
-                value={validation.unsupportedNodeTypes?.join(', ')}
-                icon={<FileWarning size={12} className="text-slate-400 dark:text-slate-500" />}
-              />
-            </div>
-          )}
-
-          {importResult && (
-            <div className="space-y-1.5 border-t border-slate-100 pt-2.5 dark:border-slate-800">
-              <FeedbackGroup
-                title="导入反馈"
-                value={importResult.message}
-                icon={<FileText size={12} className="text-slate-400 dark:text-slate-500" />}
-              />
-              <FeedbackGroup
-                title="导入错误"
-                items={importResult.errors}
-                icon={<AlertCircle size={12} className="text-slate-400 dark:text-slate-500" />}
-              />
-              <FeedbackGroup
-                title="导入警告"
-                items={importResult.warnings}
-                icon={<AlertTriangle size={12} className="text-slate-400 dark:text-slate-500" />}
-              />
-            </div>
-          )}
-
-          {canAdjustStrategy ? (
-            <div className="border-t border-slate-100 pt-2.5 dark:border-slate-800">
-              <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
-                <div className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  当前文件策略 {conflictStrategyMeta[conflictStrategy || 'skip'].label}
-                </div>
-                <ConflictStrategySelector
-                  value={conflictStrategy || 'skip'}
-                  compact
-                  disabled={disabled}
-                  onChange={onUpdateStrategy}
-                />
-              </div>
-            </div>
-          ) : null}
         </div>
-      </div>
-    </div>
+      </td>
+      <td>
+        <span className={cn('admin-workflow-import-status', `is-${status}`)}>
+          {statusTextMap[status]}
+        </span>
+      </td>
+      <td>
+        <div className="admin-workflow-import-validation-cell">
+          <strong>{summarizeValidation(status, validation)}</strong>
+          <span>
+            {validation?.workflowName ? `流程 ${validation.workflowName}` : '等待流程名称'}
+            {validation?.version ? ` · v${validation.version}` : ''}
+          </span>
+          <FeedbackGroup
+            title="校验错误"
+            items={validation?.errors}
+            icon={<AlertCircle size={12} />}
+          />
+          <FeedbackGroup
+            title="校验警告"
+            items={validation?.warnings}
+            icon={<AlertTriangle size={12} />}
+          />
+          <FeedbackGroup
+            title="不支持节点"
+            value={validation?.unsupportedNodeTypes?.join(', ')}
+            icon={<FileWarning size={12} />}
+          />
+        </div>
+      </td>
+      <td>
+        {canAdjustStrategy ? (
+          <div className="admin-workflow-import-strategy-cell">
+            <ConflictStrategySelector
+              value={currentStrategy}
+              compact
+              disabled={disabled}
+              onChange={onUpdateStrategy}
+            />
+          </div>
+        ) : (
+          <span className="admin-workflow-import-muted">校验后可改</span>
+        )}
+      </td>
+      <td>
+        <div className="admin-workflow-import-result-cell">
+          <strong>{summarizeResult(importResult)}</strong>
+          <FeedbackGroup
+            title="导入错误"
+            items={importResult?.errors}
+            icon={<AlertCircle size={12} />}
+          />
+          <FeedbackGroup
+            title="导入警告"
+            items={importResult?.warnings}
+            icon={<AlertTriangle size={12} />}
+          />
+        </div>
+      </td>
+      <td>
+        {!disabled && status !== 'importing' ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRemove}
+            className="admin-workflow-import-remove"
+            title="移除文件"
+            aria-label="移除文件"
+          >
+            <X size={15} />
+          </Button>
+        ) : (
+          <span className="admin-workflow-import-muted">锁定</span>
+        )}
+      </td>
+    </tr>
   );
 };
 

@@ -3,15 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, FileSpreadsheet, GitMerge, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { FormBuilder } from '../components/FormBuilder';
-import { EmptyError, EmptyForms, SkeletonForm, Button } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { cn } from '@/utils/cn';
+import {
+  EmptyError,
+  EmptyForms,
+  SkeletonForm,
+  Button,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/common';
 import { useMount } from '../hooks/useMount';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { getFormDefinitions, saveFormDefinition } from '../services/api/workflow';
 import { logForm } from '../lib/logger';
 import { FormDefinition } from '../types';
 import { mapBackendFormDefinitions } from '@/utils/formDefinition';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const NEW_FORM_NAME = '新表单';
 
@@ -21,32 +30,20 @@ const StatusPanel: React.FC<{
   description?: React.ReactNode;
   actions?: React.ReactNode;
 }> = ({ icon, title, description, actions }) => (
-  <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-      {icon}
-    </div>
-    <div className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
-    {actions ? <div className="mt-5 flex justify-center gap-3">{actions}</div> : null}
-  </div>
-);
-
-const InlineState: React.FC<{
-  title: string;
-  description?: string;
-  icon?: React.ReactNode;
-}> = ({ title, description, icon }) => (
-  <div className="flex flex-col items-center justify-center px-5 py-10 text-center">
-    {icon ? <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div> : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-        {description}
+  <section className="admin-source-page">
+    <InnerTableSurface wrapperClassName="p-0">
+      <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+        <div className="admin-source-stat-icon text-slate-500 dark:text-slate-300">
+          {icon}
+        </div>
+        <div className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+        ) : null}
+        {actions ? <div className="mt-5 flex justify-center gap-3">{actions}</div> : null}
       </div>
-    ) : null}
-  </div>
+    </InnerTableSurface>
+  </section>
 );
 
 export const FormDesign = () => {
@@ -151,14 +148,19 @@ export const FormDesign = () => {
 
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">表单设计</div>
-        </div>
-        <div className="px-4 py-4">
-          <SkeletonForm fields={5} />
-        </div>
-      </div>
+      <section className="admin-source-page">
+        <InnerTableSurface className="form-design-workbench" wrapperClassName="flex min-h-0 flex-col p-0">
+          <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div>
+              <strong>表单设计</strong>
+              <span>正在加载表单定义</span>
+            </div>
+          </div>
+          <div className="p-4">
+            <SkeletonForm fields={5} />
+          </div>
+        </InnerTableSurface>
+      </section>
     );
   }
 
@@ -183,78 +185,130 @@ export const FormDesign = () => {
     );
   }
 
-  return (
-    <TablePageLayout
-      className="gap-3"
-      filters={
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">表单设计</div>
-            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              共 {forms.length} 个 · 当前 {selectedForm.name} · {selectedForm.fields.length} 字段
-            </div>
-          </div>
+  const statCards = [
+    { label: '表单总数', value: String(forms.length), detail: '可编辑定义', icon: FileSpreadsheet, tone: 'blue' },
+    { label: '当前字段', value: String(selectedForm.fields.length), detail: selectedForm.name, icon: FileSpreadsheet, tone: 'green' },
+    { label: '当前表单', value: selectedForm.id.startsWith('new_') ? '新建' : '已保存', detail: selectedForm.id.startsWith('new_') ? '待首次保存' : selectedForm.id, icon: Plus, tone: 'amber' },
+    { label: '流程绑定', value: '入口', detail: '工作流设计中心', icon: GitMerge, tone: 'violet' },
+  ];
+  const formOptions = forms.some((form) => form.id === selectedForm.id)
+    ? forms
+    : [selectedForm, ...forms];
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={() => navigate('/workflow')}>
-              <GitMerge className="h-4 w-4" />
-              绑定流程
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-            <Button onClick={handleCreateNew}>
-              <Plus className="h-4 w-4" />
-              新建表单
-            </Button>
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">FORM DESIGN</p>
+          <h2>表单设计</h2>
+          <span>维护流程表单定义、字段结构和流程绑定入口</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" onClick={() => navigate('/workflow')}>
+            <GitMerge className="h-4 w-4" />
+            绑定流程
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+          <Button onClick={handleCreateNew}>
+            <Plus className="h-4 w-4" />
+            新建表单
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon"><Icon size={18} /></div>
+              <div>
+                <p>{stat.label}</p>
+                <strong>{stat.value}</strong>
+                <span>{stat.detail}</span>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="grid items-end gap-3 xl:grid-cols-[minmax(16rem,22rem)_minmax(18rem,1fr)_auto]">
+        <label className="min-w-0">
+          <span className="input-label">当前表单</span>
+          <Select
+            value={selectedForm.id}
+            onValueChange={(value) => {
+              const nextForm = formOptions.find((form) => form.id === value);
+              if (nextForm) {
+                setSelectedForm(nextForm);
+              }
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="选择表单" />
+            </SelectTrigger>
+            <SelectContent>
+              {formOptions.map((form) => (
+                <SelectItem key={form.id} value={form.id} label={form.name}>
+                  <span className="flex w-full items-center justify-between gap-3">
+                    <span className="truncate">{form.name}</span>
+                    <span className="text-xs text-slate-400">{form.fields.length} 字段</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+
+        <div className="min-w-0">
+          <span className="input-label">设计上下文</span>
+          <div className="admin-users-filter-count truncate">
+            共 {forms.length} 个 / 当前 {selectedForm.name} / {selectedForm.fields.length} 字段
           </div>
         </div>
-      }
-      table={(<TableSurfaceCard><div className="grid min-h-full xl:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="border-b border-slate-200 dark:border-slate-800 xl:border-b-0 xl:border-r">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">表单列表</div>
-              <div className="text-xs text-slate-400 dark:text-slate-500">{forms.length}</div>
-            </div>
 
-            <div className="space-y-2 p-3">
-              {forms.length === 0 ? (
-                <InlineState
-                  icon={<FileSpreadsheet className="h-5 w-5" />}
-                  title="暂无表单"
-                />
-              ) : (
-                forms.map((form) => {
-                  const active = selectedForm.id === form.id;
-                  return (
-                    <button
-                      key={form.id}
-                      type="button"
-                      onClick={() => setSelectedForm(form)}
-                      className={cn(
-                        'w-full rounded-lg border px-3 py-3 text-left transition-colors',
-                        active
-                          ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-200 dark:hover:bg-slate-900/80',
-                      )}
-                    >
-                      <div className="truncate text-sm font-medium">{form.name}</div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        {form.fields.length} 个字段
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </aside>
+        <div className="admin-users-toolbar-actions">
+          <Button type="button" variant="outline" size="sm" onClick={handleCreateNew}>
+            <Plus className="h-4 w-4" />
+            新建表单
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
 
-          <section className="min-h-[42rem] p-3 sm:p-4">
-            <FormBuilder
-              key={selectedForm.id}
-              onSave={handleSaveForm}
-              initialForm={selectedForm}
-            />
-          </section>
-        </div></TableSurfaceCard>)}
-    />
+  const pageContent = (
+    <InnerTableSurface
+      className="form-design-workbench flex min-h-0 flex-1 flex-col overflow-hidden"
+      wrapperClassName="flex min-h-0 flex-1 flex-col p-0"
+    >
+      <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div>
+          <strong>{selectedForm.name}</strong>
+          <span>{selectedForm.fields.length} 个字段 · 设计画布</span>
+        </div>
+      </div>
+      <div className="min-h-[42rem] overflow-auto">
+        <FormBuilder
+          key={selectedForm.id}
+          onSave={handleSaveForm}
+          initialForm={selectedForm}
+        />
+      </div>
+    </InnerTableSurface>
+  );
+
+  return (
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageContent}
+      />
+    </section>
   );
 };

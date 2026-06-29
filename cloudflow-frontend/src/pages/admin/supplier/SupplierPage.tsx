@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { Edit, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Edit, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supplierApi, Supplier } from '@/services/api/purchase';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -9,21 +9,17 @@ import { useAuth } from '@/context/AuthContext';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 
@@ -77,6 +73,15 @@ const SupplierPage: React.FC = () => {
 
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const activeCount = useMemo(() => suppliers.filter((item) => item.status !== 'DISABLED').length, [suppliers]);
+  const disabledCount = useMemo(() => suppliers.filter((item) => item.status === 'DISABLED').length, [suppliers]);
+  const hasActiveFilters = Boolean(searchParams.supplierName || searchParams.status);
+  const currentStatusLabel = searchParams.status ? statusDict.getLabel(searchParams.status) || searchParams.status : '全部状态';
+  const metrics = [
+    { label: '供应商', value: String(total), meta: `当前页 ${suppliers.length}`, icon: <Plus size={18} />, tone: 'blue' },
+    { label: '启用', value: String(activeCount), meta: '当前页可用', icon: <Edit size={18} />, tone: 'green' },
+    { label: '停用', value: String(disabledCount), meta: '当前页不可选', icon: <Trash2 size={18} />, tone: 'amber' },
+    { label: '页码', value: `${searchParams.pageNum}/${totalPages}`, meta: '分页位置', icon: <Search size={18} />, tone: 'violet' },
+  ];
 
   const handleSearch = () => {
     setSearchParams((prev) => ({ ...prev, supplierName: searchName.trim(), pageNum: 1 }));
@@ -131,20 +136,61 @@ const SupplierPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <FilterBar
-            search={{
-              value: searchName,
-              onChange: setSearchName,
-              onSubmit: handleSearch,
-              placeholder: '搜索供应商名称',
-            }}
-            filters={[
-              <div key="status" className="w-full sm:w-[160px]">
+  const pageActions = (
+    <>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">SUPPLIERS</p>
+            <h2>供应商管理</h2>
+            <span>维护采购供应商、联系人、开户信息和可用状态</span>
+          </div>
+          <div className="admin-source-controls">
+            <Button variant="outline" size="sm" onClick={() => void fetchSuppliers()} disabled={loading}>
+              <RotateCcw size={16} className={loading ? 'animate-spin' : ''} />
+              刷新
+            </Button>
+            <Button size="sm" onClick={openAdd} disabled={!hasPermission('oa:supplier:add')}>
+              <Plus size={16} />
+              新增供应商
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid">
+          {metrics.map((metric) => (
+            <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+              <div className="admin-source-stat-icon">{metric.icon}</div>
+              <div>
+                <p>{metric.label}</p>
+                <strong>{metric.value}</strong>
+                <span>{metric.meta}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar">
+          <div className="admin-oa-filter-grid">
+            <label>
+              <span className="input-label">供应商名称</span>
+              <div className="admin-source-search-field">
+                <Search size={16} />
+                <Input
+                  value={searchName}
+                  onChange={(event) => setSearchName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') handleSearch();
+                  }}
+                  placeholder="搜索供应商名称"
+                  className="h-[42px]"
+                />
+              </div>
+            </label>
+            <label>
+              <span className="input-label">状态</span>
                 <Select
                   value={searchParams.status || 'ALL'}
                   onValueChange={(value) => setSearchParams((prev) => ({
@@ -153,7 +199,7 @@ const SupplierPage: React.FC = () => {
                     pageNum: 1,
                   }))}
                 >
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className="h-[42px]">
                     <SelectValue placeholder="状态" />
                   </SelectTrigger>
                   <SelectContent>
@@ -161,75 +207,68 @@ const SupplierPage: React.FC = () => {
                     {statusDict.getOptions().map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </div>,
-            ]}
-            stats={[
-              { label: '', value: `第 ${searchParams.pageNum} / ${totalPages} 页` },
-              { label: '', value: `共 ${total} 条` },
-              { label: '', value: `当前页启用 ${activeCount}` },
-            ]}
-            actions={[
-              <Button key="search" variant="outline" size="sm" onClick={handleSearch}>搜索</Button>,
-              <Button key="reset" variant="outline" size="sm" onClick={handleReset}>
-                <RotateCcw size={14} className="mr-1.5" />
-                清空条件
-              </Button>,
-              <Button key="add" size="sm" onClick={openAdd} disabled={!hasPermission('oa:supplier:add')}>
-                <Plus size={14} className="mr-1.5" />
-                新增供应商
-              </Button>,
-            ]}
-          />
-        )}
-        table={(<TableSurfaceCard>
-          <div className="min-h-[38rem] overflow-x-auto">
-            <table className="w-full min-w-[980px]">
-              <TableHeader className="sticky top-0 z-10">
+            </label>
+            <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">{hasActiveFilters ? `${currentStatusLabel} / ${searchParams.supplierName || '全部名称'}` : '全部供应商'}</span>
+              <Button variant="outline" size="sm" onClick={handleSearch}>
+                <Search size={14} />
+                搜索
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasActiveFilters}>
+                <RotateCcw size={14} />
+                重置
+              </Button>
+            </div>
+          </div>
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface>
+            <table className="unity-data-table admin-source-table min-w-[980px]">
+              <thead>
                 <tr>
-                  <TableHead className="px-4 py-3 text-left">供应商</TableHead>
-                  <TableHead className="px-4 py-3 text-left">联系人</TableHead>
-                  <TableHead className="px-4 py-3 text-left">开户信息</TableHead>
-                  <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                  <TableActionHead className="w-36 px-4 py-3 text-right">操作</TableActionHead>
+                  <th>供应商</th>
+                  <th>联系人</th>
+                  <th>开户信息</th>
+                  <th>状态</th>
+                  <th className="text-right">当前操作</th>
                 </tr>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              </thead>
+              <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} className="px-4 py-16 text-center text-sm text-slate-500">正在加载供应商...</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">正在加载供应商...</td></tr>
                 ) : suppliers.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-16 text-center text-sm text-slate-500">暂无供应商</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">暂无供应商</td></tr>
                 ) : suppliers.map((item) => (
-                  <tr key={item.supplierId} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                    <td className="px-4 py-3">
+                  <tr key={item.supplierId}>
+                    <td>
                       <div className="font-medium text-slate-900 dark:text-slate-100">{item.supplierName}</div>
                       <div className="mt-1 text-xs text-slate-400">{item.createTime || '-'}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                    <td>
                       <div>{item.contactName || '-'}</div>
                       <div className="mt-1 text-xs text-slate-400">{item.contactPhone || '-'}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                    <td>
                       <div>{item.bankName || '-'}</div>
                       <div className="mt-1 text-xs text-slate-400">{item.bankAccount || '-'}</div>
                     </td>
-                    <td className="px-4 py-3">{statusBadge(item.status)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <TableRowActions
-                        align="end"
-                        actions={[
-                          { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', permissionKey: 'oa:supplier:edit' },
-                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => setDeleteId(item.supplierId!), tone: 'danger', permissionKey: 'oa:supplier:remove' },
-                        ]}
-                      />
+                    <td>{statusBadge(item.status)}</td>
+                    <td>
+                      <div className="admin-users-row-actions">
+                        {hasPermission('oa:supplier:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
+                        {hasPermission('oa:supplier:remove') ? <button type="button" title="删除" aria-label="删除" onClick={() => setDeleteId(item.supplierId!)}><Trash2 size={15} /></button> : null}
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
+        </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
             <Pagination
               total={total}
               page={searchParams.pageNum}
@@ -239,15 +278,25 @@ const SupplierPage: React.FC = () => {
               onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
               onPageSizeChange={() => {}}
             />
-          ) : null
-        )}
-      />
+  ) : null;
+
+  return (
+    <>
+      <section className="admin-source-page supplier-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showDialog}
         title={currentSupplier ? '编辑供应商' : '新增供应商'}
         onClose={() => setShowDialog(false)}
         width="wide"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => setShowDialog(false)}>取消</Button>
@@ -256,12 +305,12 @@ const SupplierPage: React.FC = () => {
         )}
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">供应商名称</label>
+          <div className="admin-dialog-field">
+            <Label>供应商名称</Label>
             <Input value={formData.supplierName} onChange={(event) => setFormData((prev) => ({ ...prev, supplierName: event.target.value }))} />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">状态</label>
+          <div className="admin-dialog-field">
+            <Label>状态</Label>
             <Select value={formData.status || 'ACTIVE'} onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -269,20 +318,20 @@ const SupplierPage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">联系人</label>
+          <div className="admin-dialog-field">
+            <Label>联系人</Label>
             <Input value={formData.contactName || ''} onChange={(event) => setFormData((prev) => ({ ...prev, contactName: event.target.value }))} />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">联系电话</label>
+          <div className="admin-dialog-field">
+            <Label>联系电话</Label>
             <Input value={formData.contactPhone || ''} onChange={(event) => setFormData((prev) => ({ ...prev, contactPhone: event.target.value }))} />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">开户行</label>
+          <div className="admin-dialog-field">
+            <Label>开户行</Label>
             <Input value={formData.bankName || ''} onChange={(event) => setFormData((prev) => ({ ...prev, bankName: event.target.value }))} />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">银行账号</label>
+          <div className="admin-dialog-field">
+            <Label>银行账号</Label>
             <Input value={formData.bankAccount || ''} onChange={(event) => setFormData((prev) => ({ ...prev, bankAccount: event.target.value }))} />
           </div>
         </div>
@@ -297,10 +346,8 @@ const SupplierPage: React.FC = () => {
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteId(null)}
       />
-    </div>
+    </>
   );
 };
 
 export default SupplierPage;
-
-

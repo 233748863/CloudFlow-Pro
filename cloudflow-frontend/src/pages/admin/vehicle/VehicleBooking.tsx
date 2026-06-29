@@ -5,6 +5,7 @@ import {
   CheckCircle,
   ChevronRight,
   Loader2,
+  RefreshCw,
   Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileUpload } from '@/components/FileUpload';
 import { getErrorMessage } from '@/utils/errorMessage';
 import type { UserBrief } from '@/types/workflow';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface InlineStateProps {
   title: string;
@@ -35,8 +37,8 @@ const InlineState: React.FC<InlineStateProps> = ({
   icon,
   action,
 }) => (
-  <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+  <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+    <div className="admin-source-stat-icon mb-4">
       {icon || <Car size={18} />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -56,10 +58,10 @@ const VehicleCard: React.FC<{
     type="button"
     onClick={onSelect}
     className={[
-      'w-full rounded-xl border px-4 py-3 text-left transition-colors',
+      'w-full cursor-pointer rounded-md border px-4 py-3 text-left transition',
       selected
-        ? 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
-        : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:border-slate-700',
+        ? 'border-[#0d95b5] bg-[#effbfe] dark:border-[#0d95b5]/70 dark:bg-[#0d95b5]/15'
+        : 'border-slate-200 bg-[var(--cf-surface-strong)] hover:border-[#0d95b5]/50 hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:hover:border-[#0d95b5]/45 dark:hover:bg-slate-900',
     ].join(' ')}
   >
     <div className="flex items-start justify-between gap-3">
@@ -95,10 +97,10 @@ const StepStrip: React.FC<{ current: number; steps: string[] }> = ({ current, st
         >
           <span
             className={[
-              'inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs font-medium',
+              'inline-flex h-6 w-6 items-center justify-center rounded-md border text-xs font-medium',
               index === current
-                ? 'border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900'
-                : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
+                ? 'border-slate-300 bg-[var(--cf-surface-muted)] dark:border-slate-700 dark:bg-slate-900'
+                : 'border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950/88',
             ].join(' ')}
           >
             {index + 1}
@@ -114,22 +116,34 @@ const StepStrip: React.FC<{ current: number; steps: string[] }> = ({ current, st
 );
 
 const SummaryField: React.FC<SummaryFieldProps> = ({ label, value }) => (
-  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
-    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">{label}</div>
+  <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800">
+    <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{label}</div>
     <div className="max-w-[65%] text-right text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
   </div>
+);
+
+const VehicleBookingSurface: React.FC<{
+  title: string;
+  description?: string;
+  bodyClassName?: string;
+  children: React.ReactNode;
+}> = ({ title, description, bodyClassName = '', children }) => (
+  <section className="admin-vehicle-booking-surface">
+    <div className="admin-vehicle-booking-surface-head">
+      <strong>{title}</strong>
+      {description ? <span>{description}</span> : null}
+    </div>
+    <div className={`admin-vehicle-booking-surface-body ${bodyClassName}`}>{children}</div>
+  </section>
 );
 
 const SummarySection: React.FC<{
   title: string;
   children: React.ReactNode;
 }> = ({ title, children }) => (
-  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
-    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-    </div>
-    <div>{children}</div>
-  </section>
+  <VehicleBookingSurface title={title} bodyClassName="admin-vehicle-booking-summary-body">
+    {children}
+  </VehicleBookingSurface>
 );
 
 export const VehicleBooking: React.FC = () => {
@@ -267,11 +281,47 @@ export const VehicleBooking: React.FC = () => {
   const selectedVehicleSummary = selectedVehicle
     ? `${selectedVehicle.brand} ${selectedVehicle.model || ''} · ${selectedVehicle.capacity} 座${selectedVehicle.location ? ` · ${selectedVehicle.location}` : ''}`
     : '--';
+  const metrics = [
+    { label: '可预约车辆', value: String(vehicles.length), meta: loading ? '同步中' : '车辆池', icon: <Car size={18} />, tone: 'blue' },
+    { label: '筛选结果', value: String(filteredVehicles.length), meta: searchText || capacityFilter !== 'all' ? '已应用筛选' : '全部车辆', icon: <Search size={18} />, tone: 'green' },
+    { label: '当前步骤', value: currentStepTitle, meta: `第 ${step + 1} 步 / 共 ${steps.length} 步`, icon: <ChevronRight size={18} />, tone: 'amber' },
+    { label: '已选车辆', value: selectedVehicle?.licensePlate || '--', meta: selectedVehicle ? selectedVehicleSummary : '待选择', icon: <CheckCircle size={18} />, tone: 'violet' },
+  ];
 
-  return (
-    <div className="space-y-4">
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
-        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:px-6 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">VEHICLE BOOKING</p>
+          <h2>车辆预约</h2>
+          <span>选择可用车辆、填写用车信息并提交审批</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void loadVehicles()} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            刷新
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {metrics.map((metric) => (
+          <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+            <div className="admin-source-stat-icon">{metric.icon}</div>
+            <div>
+              <p>{metric.label}</p>
+              <strong>{metric.value}</strong>
+              <span>{metric.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+      <section className="card admin-users-toolbar">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{currentStepTitle}</div>
             {currentStepMeta ? (
@@ -280,7 +330,14 @@ export const VehicleBooking: React.FC = () => {
           </div>
           {!loading && !loadError && vehicles.length > 0 ? <StepStrip current={step} steps={steps} /> : null}
         </div>
+      </section>
+  );
 
+  const pageTable = (
+      <InnerTableSurface
+        className="admin-vehicle-booking-panel flex min-h-0 flex-1 flex-col"
+        wrapperClassName="flex min-h-0 flex-1 flex-col"
+      >
         <div className="px-4 py-4 sm:px-6 sm:py-5">
           {loading ? (
             <InlineState
@@ -302,7 +359,7 @@ export const VehicleBooking: React.FC = () => {
           ) : (
             <>
               {step === 0 ? (
-                <div className="space-y-4">
+                <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex flex-1 flex-wrap items-center gap-3">
                       <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
@@ -367,9 +424,9 @@ export const VehicleBooking: React.FC = () => {
               ) : null}
 
               {step === 1 ? (
-                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-4">
+                    <div className="admin-vehicle-booking-selected">
                       <div className="min-w-0 flex-1">
                         <div className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {selectedVehicle?.licensePlate}
@@ -383,16 +440,8 @@ export const VehicleBooking: React.FC = () => {
                       </Button>
                     </div>
 
-                    <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/72">
-                      <div className="mb-4 flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">时间和地点</div>
-                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">用车时段、目的地和还车位置</div>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-4 lg:grid-cols-2">
-                        <div className="space-y-2">
+                    <VehicleBookingSurface title="时间和地点" description="用车时段、目的地和还车位置" bodyClassName="grid gap-4 lg:grid-cols-2">
+                        <div className="admin-dialog-field">
                           <Label>开始时间</Label>
                           <DatePicker
                             className="h-11"
@@ -401,7 +450,7 @@ export const VehicleBooking: React.FC = () => {
                             onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="admin-dialog-field">
                           <Label>结束时间</Label>
                           <DatePicker
                             className="h-11"
@@ -410,7 +459,7 @@ export const VehicleBooking: React.FC = () => {
                             onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="admin-dialog-field">
                           <Label>目的地</Label>
                           <Input
                             value={formData.destination}
@@ -418,7 +467,7 @@ export const VehicleBooking: React.FC = () => {
                             className="h-11"
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="admin-dialog-field">
                           <Label>还车地点</Label>
                           <Input
                             value={formData.returnLocation}
@@ -426,34 +475,27 @@ export const VehicleBooking: React.FC = () => {
                             className="h-11"
                           />
                         </div>
-                      </div>
-                    </section>
+                    </VehicleBookingSurface>
 
                     {timeError ? (
-                      <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
+                      <div className="admin-vehicle-booking-warning">
                         <AlertCircle size={16} />
                         {timeError}
                       </div>
                     ) : null}
 
-                    <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/72">
-                      <div className="mb-4">
-                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">行程和材料</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">选择行程类型、填写事由并上传附件</div>
-                      </div>
-
-                      <div className="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
-                        <div className="space-y-2">
+                    <VehicleBookingSurface title="行程和材料" description="选择行程类型、填写事由并上传附件" bodyClassName="grid gap-4 lg:grid-cols-2">
+                        <div className="admin-dialog-field">
                           <Label>行程类型</Label>
                           <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
                             <button
                               type="button"
                               onClick={() => setFormData({ ...formData, isRoundTrip: 0 })}
                               className={[
-                                'h-10 rounded-lg border px-4 text-sm transition-colors',
+                                'inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium transition',
                                 formData.isRoundTrip === 0
-                                  ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
-                                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
+                                  ? 'border-[#0d95b5] bg-[#effbfe] text-[#0b7894] dark:border-[#0d95b5]/70 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
+                                  : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 hover:border-[#0d95b5]/50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
                               ].join(' ')}
                             >
                               单程
@@ -462,17 +504,17 @@ export const VehicleBooking: React.FC = () => {
                               type="button"
                               onClick={() => setFormData({ ...formData, isRoundTrip: 1 })}
                               className={[
-                                'h-10 rounded-lg border px-4 text-sm transition-colors',
+                                'inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium transition',
                                 formData.isRoundTrip === 1
-                                  ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
-                                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
+                                  ? 'border-[#0d95b5] bg-[#effbfe] text-[#0b7894] dark:border-[#0d95b5]/70 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
+                                  : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 hover:border-[#0d95b5]/50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
                               ].join(' ')}
                             >
                               往返
                             </button>
                           </div>
                         </div>
-                        <div className="space-y-2">
+                        <div className="admin-dialog-field">
                           <Label>附件</Label>
                           <FileUpload
                             value={formData.attachmentUrl}
@@ -481,28 +523,21 @@ export const VehicleBooking: React.FC = () => {
                             hint=""
                           />
                         </div>
-                      </div>
 
-                      <div className="mt-4 space-y-2">
+                      <div className="admin-dialog-field lg:col-span-2">
                         <Label>用车事由</Label>
-                        <Textarea
+                      <Textarea
                           className="min-h-[88px] resize-none"
                           value={formData.reason}
                           onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                         />
                       </div>
-                    </section>
+                    </VehicleBookingSurface>
                   </div>
 
-                  <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">
-                    <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/45">
-                      <div className="mb-4">
-                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">乘员信息</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">人数和名单单独维护</div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="space-y-2">
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    <VehicleBookingSurface title="乘员信息" description="人数和名单单独维护" bodyClassName="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
+                        <div className="admin-dialog-field">
                           <Label>随行人数</Label>
                           <Input
                             type="number"
@@ -513,7 +548,7 @@ export const VehicleBooking: React.FC = () => {
                             className="h-11"
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="admin-dialog-field">
                           <Label>随行人员</Label>
                           <UserSelector
                             value={formData.passengerIds}
@@ -523,12 +558,9 @@ export const VehicleBooking: React.FC = () => {
                             dropdownPlacement="top"
                           />
                         </div>
-                      </div>
-                    </section>
+                    </VehicleBookingSurface>
 
-                    <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/72">
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请摘要</div>
-                      <div className="mt-3 space-y-2 text-sm">
+                    <VehicleBookingSurface title="申请摘要" bodyClassName="flex flex-col gap-2 text-sm">
                         <div className="flex justify-between gap-3">
                           <span className="text-slate-500 dark:text-slate-400">车辆</span>
                           <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{selectedVehicle?.licensePlate || '--'}</span>
@@ -545,25 +577,24 @@ export const VehicleBooking: React.FC = () => {
                           <span className="text-slate-500 dark:text-slate-400">附件</span>
                           <span className="font-medium text-slate-900 dark:text-slate-100">{attachmentCount} 个</span>
                         </div>
-                      </div>
-                    </section>
+                    </VehicleBookingSurface>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button variant="outline" onClick={() => setStep(0)}>
-                        上一步
-                      </Button>
-                      <Button onClick={() => setStep(2)} disabled={!canProceedToStep3 || Boolean(timeError)}>
-                        下一步
-                        <ChevronRight size={16} className="ml-1.5" />
-                      </Button>
-                    </div>
-                  </aside>
+                  <div className="flex justify-between gap-3">
+                    <Button variant="outline" onClick={() => setStep(0)}>
+                      上一步
+                    </Button>
+                    <Button onClick={() => setStep(2)} disabled={!canProceedToStep3 || Boolean(timeError)}>
+                      下一步
+                      <ChevronRight size={16} className="ml-1.5" />
+                    </Button>
+                  </div>
                 </div>
               ) : null}
 
               {step === 2 ? (
-                <div className="space-y-5">
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
+                <div className="flex flex-col gap-5">
+                  <div className="grid gap-3 lg:grid-cols-2">
                     <SummarySection title="申请信息">
                       <SummaryField label="车辆" value={selectedVehicle?.licensePlate || '--'} />
                       <SummaryField label="开始时间" value={formData.startTime.replace('T', ' ')} />
@@ -605,8 +636,17 @@ export const VehicleBooking: React.FC = () => {
             </>
           )}
         </div>
-      </div>
-    </div>
+      </InnerTableSurface>
+  );
+
+  return (
+    <section className="admin-source-page admin-vehicle-booking-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageTable}
+      />
+    </section>
   );
 };
 

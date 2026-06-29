@@ -6,15 +6,15 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  Search,
   ShieldOff,
   Trash2,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog, Pagination, TableRowActions } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { FilterBar } from '@/components/layout';
+import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -24,14 +24,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SideNavItem,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
 import { cn } from '@/utils/cn';
@@ -47,7 +39,7 @@ interface TemplateItem {
   description?: string;
   categoryId: string;
   categoryName?: string;
-  tags?: string[];
+  tags?: string[] | string | null;
   usageCount?: number;
   status: TemplateStatus;
   definition?: unknown;
@@ -103,7 +95,7 @@ const DEFAULT_TEMPLATE_DEFINITION = {
 };
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
 const tagTokenClassName =
   'inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-0.5 text-[11px] text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 dark:border-slate-800 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-200';
 const selectTriggerClassName = 'h-10';
@@ -123,6 +115,38 @@ const createCategoryForm = (): CategoryFormState => ({
   description: '',
   parentId: '',
   orderNum: 0,
+});
+
+const normalizeTemplateTags = (tags?: TemplateItem['tags']): string[] => {
+  if (Array.isArray(tags)) {
+    return tags.map((tag) => String(tag).trim()).filter(Boolean);
+  }
+
+  if (typeof tags !== 'string') {
+    return [];
+  }
+
+  const trimmed = tags.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.map((tag) => String(tag).trim()).filter(Boolean);
+    }
+  } catch {
+    // Fallback to delimiter parsing for legacy comma-separated tags.
+  }
+
+  return trimmed.split(/[,，;；]/).map((tag) => tag.trim()).filter(Boolean);
+};
+
+const normalizeTemplateItem = (template: TemplateItem): TemplateItem => ({
+  ...template,
+  tags: normalizeTemplateTags(template.tags),
+  status: template.status || 'active',
 });
 
 const flattenCategoryTree = (
@@ -154,29 +178,15 @@ const collectDescendantIds = (node: CategoryNode): Set<string> => {
   return ids;
 };
 
-const formatTemplateTags = (tags?: string[]) => {
-  if (!tags || tags.length === 0) {
+const formatTemplateTags = (tags?: TemplateItem['tags']) => {
+  const normalizedTags = normalizeTemplateTags(tags);
+  if (normalizedTags.length === 0) {
     return '-';
   }
 
-  const visibleTags = tags.slice(0, 2).join(' / ');
-  return tags.length > 2 ? `${visibleTags} +${tags.length - 2}` : visibleTags;
+  const visibleTags = normalizedTags.slice(0, 2).join(' / ');
+  return normalizedTags.length > 2 ? `${visibleTags} +${normalizedTags.length - 2}` : visibleTags;
 };
-
-const InlineState: React.FC<{
-  title: string;
-  description?: string;
-  loading?: boolean;
-  className?: string;
-}> = ({ title, description, loading = false, className }) => (
-  <div className={cn('flex flex-col items-center justify-center px-6 py-14 text-center', className)}>
-    {loading ? <LoadingSpinner size="lg" className="mb-3" /> : <FolderOpen className="mb-3 h-5 w-5 text-slate-400 dark:text-slate-500" />}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
-  </div>
-);
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -184,8 +194,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr>
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -193,21 +203,32 @@ const TableStateRow: React.FC<{
           <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const AccessState: React.FC<{
   title: string;
   description: string;
 }> = ({ title, description }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-      <ShieldOff className="h-5 w-5" />
-    </div>
-    <div className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-    <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</div>
-  </div>
+  <section className="admin-source-page admin-template-management-page">
+    <TablePageLayout
+      table={(
+        <InnerTableSurface
+          className="flex min-h-0 flex-1 flex-col"
+          wrapperClassName="flex min-h-0 flex-1 flex-col"
+        >
+        <div className="flex flex-col items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-6 py-10 text-center dark:border-slate-800 dark:bg-slate-950">
+          <div className="admin-source-stat-icon mb-4">
+            <ShieldOff className="h-5 w-5" />
+          </div>
+          <div className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+          <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</div>
+        </div>
+        </InnerTableSurface>
+      )}
+    />
+  </section>
 );
 
 const RowActionButton: React.FC<{
@@ -223,10 +244,10 @@ const RowActionButton: React.FC<{
     size="icon"
     onClick={onClick}
     className={cn(
-      'h-8 w-8 rounded-lg p-0 shadow-none',
+      'h-8 w-8 rounded-md p-0 shadow-none',
       tone === 'danger'
         ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
+        : 'text-slate-400 hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
       className,
     )}
     title={label}
@@ -319,7 +340,7 @@ export const TemplateManagement: React.FC = () => {
       }
 
       const data = await request.get<TemplateListResult>('/workflow/templates', { params });
-      setTemplates(Array.isArray(data?.records) ? data.records : []);
+      setTemplates(Array.isArray(data?.records) ? data.records.map(normalizeTemplateItem) : []);
       setTotal(Number(data?.total || 0));
     } catch (error) {
       console.error('加载模板列表失败:', error);
@@ -362,15 +383,16 @@ export const TemplateManagement: React.FC = () => {
 
   const openTemplateModal = (template?: TemplateItem) => {
     if (template) {
-      setEditingTemplate(template);
+      const normalizedTemplate = normalizeTemplateItem(template);
+      setEditingTemplate(normalizedTemplate);
       setTemplateForm({
-        name: template.name || '',
-        description: template.description || '',
-        categoryId: template.categoryId || '',
-        tags: template.tags || [],
-        definition: JSON.stringify(template.definition || DEFAULT_TEMPLATE_DEFINITION, null, 2),
-        previewImage: template.previewImage || '',
-        status: template.status || 'active',
+        name: normalizedTemplate.name || '',
+        description: normalizedTemplate.description || '',
+        categoryId: normalizedTemplate.categoryId || '',
+        tags: normalizeTemplateTags(normalizedTemplate.tags),
+        definition: JSON.stringify(normalizedTemplate.definition || DEFAULT_TEMPLATE_DEFINITION, null, 2),
+        previewImage: normalizedTemplate.previewImage || '',
+        status: normalizedTemplate.status || 'active',
       });
     } else {
       setEditingTemplate(null);
@@ -566,264 +588,269 @@ export const TemplateManagement: React.FC = () => {
     return <AccessState title="当前账号没有模板管理权限" description="模板治理仅对具备管理权限的账号开放。" />;
   }
 
-  return (
+  const pageActions = (
     <>
-      <TablePageLayout
-        filters={(
-          <FilterBar
-            search={{
-              value: filters.keyword,
-              onChange: (value) => setFilters((current) => ({ ...current, keyword: value })),
-              onSubmit: applySearch,
-              placeholder: '搜索模板名称',
-              widthClassName: 'w-full sm:w-72',
-            }}
-            filters={[
-              <Select
-                key="status"
-                value={filters.status}
-                onValueChange={(value) =>
-                  setFilters((current) => ({
-                    ...current,
-                    status: value as StatusFilter,
-                  }))
-                }
-              >
-                <SelectTrigger className={cn(selectTriggerClassName, 'w-full sm:w-40')}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="active">仅启用</SelectItem>
-                  <SelectItem value="inactive">仅禁用</SelectItem>
-                </SelectContent>
-              </Select>,
-            ]}
-            actions={[
-              <Button key="search" type="button" size="sm" onClick={applySearch}>
-                查询
-              </Button>,
-              ...(hasActiveFilters
-                ? [
-                    <Button key="reset" type="button" variant="outline" size="sm" onClick={handleReset}>
-                      清空
-                    </Button>,
-                  ]
-                : []),
-              <Button key="refresh" type="button" variant="outline" size="sm" onClick={() => void Promise.all([loadCategories(), loadTemplates()])}>
-                <RefreshCw className="h-4 w-4" />
-                刷新
-              </Button>,
-              <Button key="new-category" type="button" variant="outline" size="sm" onClick={() => openCategoryModal()}>
-                <FolderPlus className="h-4 w-4" />
-                新建分类
-              </Button>,
-              <Button key="new-template" type="button" size="sm" onClick={() => openTemplateModal()} disabled={flatCategories.length === 0}>
-                <Plus className="h-4 w-4" />
-                新建模板
-              </Button>,
-            ]}
-          />
-        )}
-        table={(<TableSurfaceCard>
-          <div className="grid min-h-[620px] grid-cols-1 xl:grid-cols-[248px_minmax(0,1fr)]">
-            <div className="border-b border-slate-200 xl:border-b-0 xl:border-r dark:border-slate-800">
-              <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5 dark:border-slate-800">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">分类</div>
-                <div className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">{flatCategories.length}</div>
-              </div>
-
-              <div className="max-h-[calc(100vh-312px)] overflow-y-auto px-1.5 py-1.5">
-                {categoryLoading ? (
-                  <InlineState title="正在加载分类..." loading className="py-14" />
-                ) : flatCategories.length === 0 ? (
-                  <InlineState title="暂无分类" className="py-14" />
-                ) : (
-                  <div className="space-y-1">
-                    <SideNavItem
-                      size="sm"
-                      active={!selectedCategory}
-                      onClick={() => {
-                        setSelectedCategory('');
-                        setCurrentPage(1);
-                      }}
-                      className="justify-between"
-                    >
-                      <span className="font-medium">全部分类</span>
-                      <span className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">{total}</span>
-                    </SideNavItem>
-
-                    {flatCategories.map((category) => {
-                      const selected = selectedCategory === category.id;
-
-                      return (
-                        <div
-                          key={category.id}
-                          className={cn(
-                            'cf-side-link cf-side-link-sm group',
-                            selected && 'cf-side-link-active',
-                          )}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedCategory(category.id);
-                              setCurrentPage(1);
-                            }}
-                            className="min-w-0 flex-1 text-left"
-                            style={{ paddingLeft: `${category.depth * 10}px` }}
-                          >
-                            <div className="flex items-center gap-2">
-                              <FolderOpen className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                              <span
-                                className={cn(
-                                  'truncate text-sm',
-                                  selected && 'font-medium',
-                                )}
-                              >
-                                {category.name}
-                              </span>
-                            </div>
-                          </button>
-
-                          <span className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
-                            {category.templateCount ?? 0}
-                          </span>
-                          <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                            <RowActionButton
-                              label="编辑分类"
-                              icon={<Edit className="h-3.5 w-3.5" />}
-                              className="h-7 w-7 rounded-md"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                openCategoryModal(category);
-                              }}
-                            />
-                            <RowActionButton
-                              label="删除分类"
-                              icon={<Trash2 className="h-3.5 w-3.5" />}
-                              tone="danger"
-                              className="h-7 w-7 rounded-md"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setDeleteTarget({
-                                  type: 'category',
-                                  id: category.id,
-                                  name: category.name,
-                                });
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
-                <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {selectedCategoryNode?.name || '模板列表'}
-                </div>
-                <div className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">{total}</div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <Table className="min-w-[840px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[34%]">模板</TableHead>
-                      <TableHead className="w-[15%]">分类</TableHead>
-                      <TableHead className="w-[19%]">标签</TableHead>
-                      <TableHead className="w-[12%]">使用次数</TableHead>
-                      <TableHead className="w-[10%]">状态</TableHead>
-                      <TableActionHead className="w-40">操作</TableActionHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {templateLoading ? (
-                      <TableStateRow colSpan={6} title="正在加载模板..." loading />
-                    ) : templates.length === 0 ? (
-                      <TableStateRow colSpan={6} title={hasActiveFilters ? '当前筛选无结果' : '暂无模板'} />
-                    ) : (
-                      templates.map((template) => (
-                        <TableRow key={template.id}>
-                          <TableCell className="py-3">
-                            <div className="min-w-0">
-                              <div className="truncate font-medium text-slate-900 dark:text-slate-100">
-                                {template.name}
-                              </div>
-                              <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
-                                {template.description || '-'}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-3 text-sm text-slate-600 dark:text-slate-300">
-                            {template.categoryName || '-'}
-                          </TableCell>
-                          <TableCell className="py-3 text-sm text-slate-600 dark:text-slate-300">
-                            {formatTemplateTags(template.tags)}
-                          </TableCell>
-                          <TableCell className="py-3 text-sm text-slate-600 dark:text-slate-300">
-                            {template.usageCount ?? 0}
-                          </TableCell>
-                          <TableCell className="py-3">
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {template.status === 'active' ? '启用' : '禁用'}
-                            </span>
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap py-3 text-right">
-                            <TableRowActions
-                              align="end"
-                              className="gap-1"
-                              actions={[
-                                {
-                                  label: '编辑',
-                                  icon: <Edit size={16} />,
-                                  onClick: () => openTemplateModal(template),
-                                  tone: 'neutral',
-                                  semantic: 'edit',
-                                },
-                                {
-                                  label: '删除',
-                                  icon: <Trash2 size={16} />,
-                                  onClick: () =>
-                                    setDeleteTarget({
-                                      type: 'template',
-                                      id: template.id,
-                                      name: template.name,
-                                    }),
-                                  tone: 'danger',
-                                  semantic: 'delete',
-                                },
-                              ]}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">TEMPLATE GOVERNANCE</p>
+            <h2>模板管理</h2>
+            <span>维护流程模板、分类树、标签和启停状态</span>
           </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          <Pagination
-            total={total}
-            page={currentPage}
-            pageSize={pageSize}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={(value) => {
-              setPageSize(value);
+          <div className="admin-source-controls">
+            <Button type="button" variant="outline" size="sm" onClick={() => void Promise.all([loadCategories(), loadTemplates()])}>
+              <RefreshCw className="h-4 w-4" />
+              刷新
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => openCategoryModal()}>
+              <FolderPlus className="h-4 w-4" />
+              新建分类
+            </Button>
+            <Button type="button" size="sm" onClick={() => openTemplateModal()} disabled={flatCategories.length === 0}>
+              <Plus className="h-4 w-4" />
+              新建模板
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid">
+          <article className="card admin-source-stat admin-source-tone-blue">
+            <div className="admin-source-stat-icon"><FolderOpen size={18} /></div>
+            <div><p>模板总数</p><strong>{total}</strong><span>当前条件</span></div>
+          </article>
+          <article className="card admin-source-stat admin-source-tone-green">
+            <div className="admin-source-stat-icon"><Plus size={18} /></div>
+            <div><p>本页启用</p><strong>{templates.filter((template) => template.status === 'active').length}</strong><span>可用模板</span></div>
+          </article>
+          <article className="card admin-source-stat admin-source-tone-violet">
+            <div className="admin-source-stat-icon"><FolderPlus size={18} /></div>
+            <div><p>分类</p><strong>{flatCategories.length}</strong><span>分类树节点</span></div>
+          </article>
+          <article className="card admin-source-stat admin-source-tone-amber">
+            <div className="admin-source-stat-icon"><ShieldOff size={18} /></div>
+            <div><p>本页禁用</p><strong>{templates.filter((template) => template.status === 'inactive').length}</strong><span>暂停使用</span></div>
+          </article>
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="grid items-end gap-3 xl:grid-cols-[minmax(18rem,1fr)_220px_180px_auto]">
+        <label className="min-w-0">
+          <span className="input-label">搜索模板</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.keyword}
+              onChange={(event) => setFilters((current) => ({ ...current, keyword: event.target.value }))}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  applySearch();
+                }
+              }}
+              placeholder="模板名称"
+              className="h-[42px] pl-9"
+            />
+          </div>
+        </label>
+
+        <label className="min-w-0">
+          <span className="input-label">分类</span>
+          <Select
+            value={selectedCategory}
+            disabled={categoryLoading}
+            onValueChange={(value) => {
+              setSelectedCategory(value);
               setCurrentPage(1);
             }}
-          />
-        )}
-      />
+          >
+            <SelectTrigger className={cn(selectTriggerClassName, 'w-full')}>
+              <SelectValue placeholder="全部分类" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="" label="全部分类">
+                <span className="flex w-full items-center justify-between gap-3">
+                  <span>全部分类</span>
+                  <span className="text-xs text-slate-400">{flatCategories.length}</span>
+                </span>
+              </SelectItem>
+              {flatCategories.map((category) => (
+                <SelectItem key={category.id} value={category.id} label={category.name}>
+                  <span className="flex w-full items-center justify-between gap-3">
+                    <span className="truncate">{`${'　'.repeat(category.depth)}${category.name}`}</span>
+                    <span className="text-xs text-slate-400">{category.templateCount ?? 0}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+
+        <label className="min-w-0">
+          <span className="input-label">状态</span>
+          <Select
+            value={filters.status}
+            onValueChange={(value) =>
+              setFilters((current) => ({
+                ...current,
+                status: value as StatusFilter,
+              }))
+            }
+          >
+            <SelectTrigger className={cn(selectTriggerClassName, 'w-full')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部状态</SelectItem>
+              <SelectItem value="active">仅启用</SelectItem>
+              <SelectItem value="inactive">仅禁用</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">
+            {selectedCategoryNode ? selectedCategoryNode.name : `共 ${total} 项`}
+          </span>
+          {selectedCategoryNode ? (
+            <>
+              <RowActionButton
+                label="编辑分类"
+                icon={<Edit className="h-4 w-4" />}
+                onClick={() => openCategoryModal(selectedCategoryNode)}
+              />
+              <RowActionButton
+                label="删除分类"
+                icon={<Trash2 className="h-4 w-4" />}
+                tone="danger"
+                onClick={() =>
+                  setDeleteTarget({
+                    type: 'category',
+                    id: selectedCategoryNode.id,
+                    name: selectedCategoryNode.name,
+                  })
+                }
+              />
+            </>
+          ) : null}
+          <Button type="button" size="sm" onClick={applySearch}>
+            查询
+          </Button>
+          {hasActiveFilters ? (
+            <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+              清空
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface
+      className="flex min-h-0 flex-1 flex-col"
+      wrapperClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
+        <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+          {selectedCategoryNode?.name || '模板列表'}
+        </div>
+        <div className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+          {total} 项 · 表格视图
+        </div>
+      </div>
+
+      <div className="admin-horizontal-scroll min-h-0 flex-1 overflow-auto">
+        <table className="unity-data-table admin-source-table min-w-[840px]">
+          <thead>
+            <tr>
+              <th>模板</th>
+              <th>分类</th>
+              <th>标签</th>
+              <th>使用次数</th>
+              <th>状态</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {templateLoading ? (
+              <TableStateRow colSpan={6} title="正在加载模板..." loading />
+            ) : templates.length === 0 ? (
+              <TableStateRow colSpan={6} title={hasActiveFilters ? '当前筛选无结果' : '暂无模板'} />
+            ) : (
+              templates.map((template) => (
+                <tr key={template.id}>
+                  <td>
+                    <div className="admin-users-identity">
+                      <div>
+                        <strong>{template.name}</strong>
+                        <small>{template.description || '-'}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{template.categoryName || '-'}</td>
+                  <td>{formatTemplateTags(template.tags)}</td>
+                  <td>{template.usageCount ?? 0}</td>
+                  <td>
+                    <span className={template.status === 'active' ? 'badge badge-success' : 'badge badge-gray'}>
+                      {template.status === 'active' ? '启用' : '禁用'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      <button type="button" title="编辑" aria-label="编辑模板" onClick={() => openTemplateModal(template)}>
+                        <Edit size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        title="删除"
+                        aria-label="删除模板"
+                        onClick={() =>
+                          setDeleteTarget({
+                            type: 'template',
+                            id: template.id,
+                            name: template.name,
+                          })
+                        }
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={currentPage}
+      pageSize={pageSize}
+      pageSizeOptions={PAGE_SIZE_OPTIONS}
+      onPageChange={setCurrentPage}
+      onPageSizeChange={(value) => {
+        setPageSize(value);
+        setCurrentPage(1);
+      }}
+    />
+  ) : null;
+
+  return (
+    <>
+      <section className="admin-source-page admin-template-management-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showTemplateModal}
@@ -842,9 +869,9 @@ export const TemplateManagement: React.FC = () => {
           </>
         )}
       >
-        <form id="template-form" onSubmit={saveTemplate} className="space-y-3.5">
+        <form id="template-form" onSubmit={saveTemplate} className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>
                 模板名称 <span className="text-rose-500">*</span>
               </label>
@@ -854,7 +881,7 @@ export const TemplateManagement: React.FC = () => {
               />
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>
                 分类 <span className="text-rose-500">*</span>
               </label>
@@ -882,7 +909,7 @@ export const TemplateManagement: React.FC = () => {
             </div>
           </div>
 
-          <div>
+          <div className="admin-dialog-field">
             <label className={fieldLabelClassName}>模板描述</label>
             <Textarea
               rows={2}
@@ -897,7 +924,7 @@ export const TemplateManagement: React.FC = () => {
             />
           </div>
 
-          <div>
+          <div className="admin-dialog-field">
             <label className={fieldLabelClassName}>
               标签 <span className="text-rose-500">*</span>
             </label>
@@ -936,7 +963,7 @@ export const TemplateManagement: React.FC = () => {
             </div>
           </div>
 
-          <div>
+          <div className="admin-dialog-field">
             <label className={fieldLabelClassName}>
               流程定义（JSON） <span className="text-rose-500">*</span>
             </label>
@@ -954,7 +981,7 @@ export const TemplateManagement: React.FC = () => {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>预览图 URL</label>
               <Input
                 value={templateForm.previewImage}
@@ -967,7 +994,7 @@ export const TemplateManagement: React.FC = () => {
               />
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>状态</label>
               <Select
                 value={templateForm.status}
@@ -1008,9 +1035,9 @@ export const TemplateManagement: React.FC = () => {
           </>
         )}
       >
-        <form id="template-category-form" onSubmit={saveCategory} className="space-y-3.5">
+        <form id="template-category-form" onSubmit={saveCategory} className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_120px]">
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>父分类</label>
               <Select
                 value={categoryForm.parentId}
@@ -1035,7 +1062,7 @@ export const TemplateManagement: React.FC = () => {
               </Select>
             </div>
 
-            <div>
+            <div className="admin-dialog-field">
               <label className={fieldLabelClassName}>排序号</label>
               <Input
                 type="number"
@@ -1050,7 +1077,7 @@ export const TemplateManagement: React.FC = () => {
             </div>
           </div>
 
-          <div>
+          <div className="admin-dialog-field">
             <label className={fieldLabelClassName}>
               分类名称 <span className="text-rose-500">*</span>
             </label>
@@ -1065,7 +1092,7 @@ export const TemplateManagement: React.FC = () => {
             />
           </div>
 
-          <div>
+          <div className="admin-dialog-field">
             <label className={fieldLabelClassName}>分类描述</label>
             <Textarea
               rows={3}

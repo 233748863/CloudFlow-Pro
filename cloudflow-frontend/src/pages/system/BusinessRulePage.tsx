@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { CheckCircle2, Edit, History, ListChecks, Play, RefreshCw, RotateCcw, Search, Undo2 } from 'lucide-react';
@@ -8,6 +8,7 @@ import {
   Button,
   ConfirmDialog,
   Input,
+  Label,
   LoadingSpinner,
   Pagination,
   Select,
@@ -16,21 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Textarea,
 } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import {
   BusinessRule,
   BusinessRuleHitRecord,
@@ -47,9 +35,9 @@ import { cn } from '@/utils/cn';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const ALL_VALUE = '__all__';
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const normalizeListResponse = <T,>(response: any) => {
   const rows = Array.isArray(response?.records)
@@ -68,12 +56,12 @@ const normalizeListResponse = <T,>(response: any) => {
 const formatDateTime = (value?: string) => value ? value.replace('T', ' ').slice(0, 19) : '-';
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-14 text-center">
+  <tr>
+    <td colSpan={colSpan} className="px-4 py-10 text-center">
       {loading ? <LoadingSpinner size="lg" className="mx-auto mb-3" /> : null}
       <div className="text-sm text-slate-500 dark:text-slate-400">{title}</div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 type ConfirmState =
@@ -253,257 +241,389 @@ export const BusinessRulePage = () => {
     setHitQuery((current) => ({ ...current, pageNum: 1, ruleCode: hitFilters.ruleCode.trim(), businessType: hitFilters.businessType.trim(), hitResult: hitFilters.hitResult }));
   };
 
-  const renderRuleFilters = (
-    <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-      <form onSubmit={handleRuleSearch} className="flex flex-1 flex-wrap items-center gap-3">
-        <div className="relative w-full sm:w-56">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <Input value={filters.ruleCode} onChange={(event) => setFilters((current) => ({ ...current, ruleCode: event.target.value }))} placeholder="规则编码" className="h-10 pl-10 font-mono" />
-        </div>
-        <Select value={filters.module || ALL_VALUE} onValueChange={(value) => setFilters((current) => ({ ...current, module: value === ALL_VALUE ? '' : value }))}>
-          <SelectTrigger className="h-10 w-full sm:w-36"><SelectValue placeholder="模块" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>全部模块</SelectItem>
-            <SelectItem value="OA">OA</SelectItem>
-            <SelectItem value="HR">HR</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filters.enabled || ALL_VALUE} onValueChange={(value) => setFilters((current) => ({ ...current, enabled: value === ALL_VALUE ? '' : value }))}>
-          <SelectTrigger className="h-10 w-full sm:w-36"><SelectValue placeholder="状态" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
-            <SelectItem value="1">启用</SelectItem>
-            <SelectItem value="0">停用</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button type="submit" size="sm">查询</Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => { setFilters({ module: '', ruleCode: '', enabled: '' }); setQuery((current) => ({ ...current, pageNum: 1, module: '', ruleCode: '', enabled: '' })); }}>
-          <RotateCcw size={14} />重置
-        </Button>
-      </form>
-      <Button variant="outline" size="sm" onClick={() => void fetchRules()} disabled={loading}>
-        <RefreshCw size={15} className={cn(loading && 'animate-spin')} />刷新
-      </Button>
-    </div>
-  );
-
   const renderRuleTable = (
-    <div className="overflow-x-auto">
-      <Table className="min-w-[980px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead>规则</TableHead>
-            <TableHead>模块</TableHead>
-            <TableHead>阈值</TableHead>
-            <TableHead>效果</TableHead>
-            <TableHead>优先级</TableHead>
-            <TableHead>启用</TableHead>
-            <TableHead>备注</TableHead>
-            <TableActionHead className="w-24">操作</TableActionHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[980px]">
+        <thead>
+          <tr>
+            <th>规则</th>
+            <th>模块</th>
+            <th>阈值</th>
+            <th>效果</th>
+            <th>优先级</th>
+            <th>启用</th>
+            <th>备注</th>
+            <th className="text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
           {loading ? (
             <TableStateRow colSpan={8} title="正在加载业务规则..." loading />
           ) : rows.length === 0 ? (
             <TableStateRow colSpan={8} title="暂无业务规则" />
           ) : rows.map((rule) => (
-            <TableRow key={rule.id}>
-              <TableCell>
+            <tr key={rule.id}>
+              <td>
                 <div className="font-medium text-slate-900 dark:text-slate-100">{rule.ruleName}</div>
                 <code className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{rule.ruleCode}</code>
-              </TableCell>
-              <TableCell>{rule.module}</TableCell>
-              <TableCell>{rule.thresholdValue ?? '-'}</TableCell>
-              <TableCell><DictBadge dictType="oa_business_rule_effect" value={String(rule.effect || '')} /></TableCell>
-              <TableCell>{rule.priority}</TableCell>
-              <TableCell>
+              </td>
+              <td>{rule.module}</td>
+              <td>{rule.thresholdValue ?? '-'}</td>
+              <td><DictBadge dictType="oa_business_rule_effect" value={String(rule.effect || '')} /></td>
+              <td>{rule.priority}</td>
+              <td>
                 <Switch checked={rule.enabled === 1} onCheckedChange={(checked) => void toggleEnabled(rule, checked)} />
-              </TableCell>
-              <TableCell className="max-w-[260px] truncate text-sm text-slate-500 dark:text-slate-400" title={rule.remark}>{rule.remark || '-'}</TableCell>
-              <TableCell>
-                <TableRowActions
-                  align="end"
-                  actions={[{ label: '编辑规则', icon: <Edit size={15} />, onClick: () => { setEditingRule(rule); setForm({ ...rule }); }, tone: 'neutral' }]}
-                />
-              </TableCell>
-            </TableRow>
+              </td>
+              <td className="max-w-[260px] truncate text-sm text-slate-500 dark:text-slate-400" title={rule.remark}>{rule.remark || '-'}</td>
+              <td>
+                <div className="admin-users-row-actions">
+                  <button
+                    type="button"
+                    title="编辑规则"
+                    onClick={() => {
+                      setEditingRule(rule);
+                      setForm({ ...rule });
+                    }}
+                  >
+                    <Edit size={15} />
+                  </button>
+                </div>
+              </td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
-    </div>
+        </tbody>
+      </table>
+    </InnerTableSurface>
   );
+
+  const stats = useMemo(
+    () => [
+      {
+        label: '业务规则',
+        value: String(total),
+        meta: '规则配置',
+        icon: <ListChecks size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '启用规则',
+        value: String(rows.filter((rule) => rule.enabled === 1).length),
+        meta: '当前页',
+        icon: <CheckCircle2 size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '规则版本',
+        value: String(versionTotal),
+        meta: '发布记录',
+        icon: <History size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '命中记录',
+        value: String(hitTotal),
+        meta: '审计追踪',
+        icon: <Play size={18} />,
+        tone: 'violet',
+      },
+    ],
+    [hitTotal, rows, total, versionTotal],
+  );
+
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">BUSINESS RULES</p>
+          <h2>业务规则</h2>
+          <span>维护规则阈值、发布版本、回滚记录和命中审计</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (activeTab === 'rules') void fetchRules();
+              if (activeTab === 'versions') void fetchVersions();
+              if (activeTab === 'hits') void fetchHits();
+            }}
+            disabled={loading || versionLoading || hitLoading}
+          >
+            <RefreshCw size={16} className={cn((loading || versionLoading || hitLoading) && 'animate-spin')} />
+            刷新
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={cn('card admin-source-stat', `admin-source-tone-${stat.tone}`)}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="admin-source-tabs">
+        <button type="button" className={cn(activeTab === 'rules' && 'active')} onClick={() => setActiveTab('rules')}>
+          <ListChecks size={15} />规则
+        </button>
+        <button type="button" className={cn(activeTab === 'versions' && 'active')} onClick={() => setActiveTab('versions')}>
+          <History size={15} />版本
+        </button>
+        <button type="button" className={cn(activeTab === 'hits' && 'active')} onClick={() => setActiveTab('hits')}>
+          <CheckCircle2 size={15} />命中记录
+        </button>
+      </div>
+
+      {activeTab === 'rules' ? (
+        <form onSubmit={handleRuleSearch} className="admin-business-rules-filter-grid">
+          <label className="admin-source-search">
+            <span className="input-label">规则编码</span>
+            <div className="admin-source-search-field">
+              <Search size={16} />
+              <Input
+                value={filters.ruleCode}
+                onChange={(event) => setFilters((current) => ({ ...current, ruleCode: event.target.value }))}
+                placeholder="规则编码"
+                type="search"
+                className="font-mono"
+              />
+            </div>
+          </label>
+          <label>
+            <span className="input-label">模块</span>
+            <Select value={filters.module || ALL_VALUE} onValueChange={(value) => setFilters((current) => ({ ...current, module: value === ALL_VALUE ? '' : value }))}>
+              <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部模块" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>全部模块</SelectItem>
+                <SelectItem value="OA">OA</SelectItem>
+                <SelectItem value="HR">HR</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
+          <label>
+            <span className="input-label">状态</span>
+            <Select value={filters.enabled || ALL_VALUE} onValueChange={(value) => setFilters((current) => ({ ...current, enabled: value === ALL_VALUE ? '' : value }))}>
+              <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部状态" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
+                <SelectItem value="1">启用</SelectItem>
+                <SelectItem value="0">停用</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">当前 {total} 项</span>
+            <Button type="submit" size="sm">查询</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => { setFilters({ module: '', ruleCode: '', enabled: '' }); setQuery((current) => ({ ...current, pageNum: 1, module: '', ruleCode: '', enabled: '' })); }}>
+              <RotateCcw size={14} />重置
+            </Button>
+          </div>
+        </form>
+      ) : null}
+
+      {activeTab === 'versions' ? (
+        <form onSubmit={handleVersionSearch} className="admin-business-versions-filter-grid">
+          <label className="admin-source-search">
+            <span className="input-label">规则编码</span>
+            <div className="admin-source-search-field">
+              <Search size={16} />
+              <Input
+                value={versionFilters.ruleCode}
+                onChange={(event) => setVersionFilters((current) => ({ ...current, ruleCode: event.target.value }))}
+                placeholder="规则编码"
+                type="search"
+                className="font-mono"
+              />
+            </div>
+          </label>
+          <label>
+            <span className="input-label">版本状态</span>
+            <Select value={versionFilters.status || ALL_VALUE} onValueChange={(value) => setVersionFilters((current) => ({ ...current, status: value === ALL_VALUE ? '' : value }))}>
+              <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部状态" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
+                {(workflowDefStatusDict.data || []).map((item) => (
+                  <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">当前 {versionTotal} 项</span>
+            <Button type="submit" size="sm">查询</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => { setVersionFilters({ ruleCode: '', status: '' }); setVersionQuery((current) => ({ ...current, pageNum: 1, ruleCode: '', status: '' })); }}>
+              <RotateCcw size={14} />重置
+            </Button>
+          </div>
+        </form>
+      ) : null}
+
+      {activeTab === 'hits' ? (
+        <form onSubmit={handleHitSearch} className="admin-business-hits-filter-grid">
+          <label className="admin-source-search">
+            <span className="input-label">规则编码</span>
+            <div className="admin-source-search-field">
+              <Search size={16} />
+              <Input
+                value={hitFilters.ruleCode}
+                onChange={(event) => setHitFilters((current) => ({ ...current, ruleCode: event.target.value }))}
+                placeholder="规则编码"
+                type="search"
+                className="font-mono"
+              />
+            </div>
+          </label>
+          <label>
+            <span className="input-label">业务类型</span>
+            <Input value={hitFilters.businessType} onChange={(event) => setHitFilters((current) => ({ ...current, businessType: event.target.value }))} placeholder="业务类型" />
+          </label>
+          <label>
+            <span className="input-label">命中结果</span>
+            <Select value={hitFilters.hitResult || ALL_VALUE} onValueChange={(value) => setHitFilters((current) => ({ ...current, hitResult: value === ALL_VALUE ? '' : value }))}>
+              <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部结果" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>全部结果</SelectItem>
+                {effectDict.getOptions().map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">当前 {hitTotal} 项</span>
+            <Button type="submit" size="sm">查询</Button>
+          </div>
+        </form>
+      ) : null}
+    </section>
+  );
+
+  const versionTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[1050px]">
+        <thead>
+          <tr>
+            <th>版本</th>
+            <th>规则编码</th>
+            <th>阈值</th>
+            <th>效果</th>
+            <th>状态</th>
+            <th>发布人</th>
+            <th>发布时间</th>
+            <th>备注</th>
+            <th className="text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {versionLoading ? (
+            <TableStateRow colSpan={9} title="正在加载规则版本..." loading />
+          ) : versions.length === 0 ? (
+            <TableStateRow colSpan={9} title="暂无规则版本" />
+          ) : versions.map((version) => (
+            <tr key={version.id}>
+              <td>v{version.versionNo}</td>
+              <td className="font-mono text-xs">{version.ruleCode}</td>
+              <td>{version.thresholdValue ?? '-'}</td>
+              <td><DictBadge dictType="oa_business_rule_effect" value={String(version.effect || '')} /></td>
+              <td><DictBadge dictType="workflow_definition_status" value={version.status || ''} /></td>
+              <td>{version.publisherName || '-'}</td>
+              <td>{formatDateTime(version.publishedTime)}</td>
+              <td className="max-w-[240px] truncate text-sm text-slate-500" title={version.remark}>{version.remark || '-'}</td>
+              <td>
+                <div className="admin-users-row-actions">
+                  {version.status === 'DRAFT' ? (
+                    <button type="button" title="发布版本" onClick={() => setConfirmState({ type: 'publish', version })}>
+                      <Play size={15} />
+                    </button>
+                  ) : null}
+                  {version.status !== 'DRAFT' ? (
+                    <button type="button" title="回滚版本" onClick={() => setConfirmState({ type: 'rollback', version })}>
+                      <Undo2 size={15} />
+                    </button>
+                  ) : null}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const hitTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[980px]">
+        <thead>
+          <tr>
+            <th>规则编码</th>
+            <th>业务</th>
+            <th>阈值</th>
+            <th>实际值</th>
+            <th>效果</th>
+            <th>结果</th>
+            <th>命中时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {hitLoading ? (
+            <TableStateRow colSpan={7} title="正在加载命中记录..." loading />
+          ) : hits.length === 0 ? (
+            <TableStateRow colSpan={7} title="暂无命中记录" />
+          ) : hits.map((hit) => (
+            <tr key={hit.id}>
+              <td className="font-mono text-xs">{hit.ruleCode}</td>
+              <td>{hit.businessType}#{hit.businessId || '-'}</td>
+              <td>{hit.thresholdValue ?? '-'}</td>
+              <td>{hit.actualValue ?? '-'}</td>
+              <td><DictBadge dictType="oa_business_rule_effect" value={String(hit.effect || '')} /></td>
+              <td><DictBadge dictType="oa_business_rule_hit_result" value={String(hit.hitResult || '')} /></td>
+              <td>{formatDateTime(hit.createdTime)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pageTable =
+    activeTab === 'rules' ? renderRuleTable : activeTab === 'versions' ? versionTable : hitTable;
+
+  const pagePagination =
+    activeTab === 'rules' && total > 0 ? (
+      <Pagination total={total} page={query.pageNum} pageSize={query.pageSize} onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />
+    ) : activeTab === 'versions' && versionTotal > 0 ? (
+      <Pagination total={versionTotal} page={versionQuery.pageNum} pageSize={versionQuery.pageSize} onPageChange={(pageNum) => setVersionQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setVersionQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />
+    ) : activeTab === 'hits' && hitTotal > 0 ? (
+      <Pagination total={hitTotal} page={hitQuery.pageNum} pageSize={hitQuery.pageSize} onPageChange={(pageNum) => setHitQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setHitQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />
+    ) : null;
 
   return (
     <>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-        <TabsList className="w-fit">
-          <TabsTrigger value="rules"><ListChecks size={15} className="mr-1" />规则</TabsTrigger>
-          <TabsTrigger value="versions"><History size={15} className="mr-1" />版本</TabsTrigger>
-          <TabsTrigger value="hits"><CheckCircle2 size={15} className="mr-1" />命中记录</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="rules" className="mt-0">
-          <TablePageLayout
-            className="gap-3"
-            filters={renderRuleFilters}
-            table={<TableSurfaceCard fill>{renderRuleTable}</TableSurfaceCard>}
-            pagination={total > 0 ? (
-              <Pagination total={total} page={query.pageNum} pageSize={query.pageSize} onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />
-            ) : null}
-          />
-        </TabsContent>
-
-        <TabsContent value="versions" className="mt-0">
-          <TablePageLayout
-            filters={(
-              <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-                <form onSubmit={handleVersionSearch} className="flex flex-1 flex-wrap items-center gap-3">
-                  <Input value={versionFilters.ruleCode} onChange={(event) => setVersionFilters((current) => ({ ...current, ruleCode: event.target.value }))} placeholder="规则编码" className="h-10 w-full font-mono sm:w-56" />
-                  <Select value={versionFilters.status || ALL_VALUE} onValueChange={(value) => setVersionFilters((current) => ({ ...current, status: value === ALL_VALUE ? '' : value }))}>
-                    <SelectTrigger className="h-10 w-full sm:w-40"><SelectValue placeholder="版本状态" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
-                      {(workflowDefStatusDict.data || []).map((item) => (
-                        <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button type="submit" size="sm">查询</Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => { setVersionFilters({ ruleCode: '', status: '' }); setVersionQuery((current) => ({ ...current, pageNum: 1, ruleCode: '', status: '' })); }}>
-                    <RotateCcw size={14} />重置
-                  </Button>
-                </form>
-                <Button variant="outline" size="sm" onClick={() => void fetchVersions()} disabled={versionLoading}>
-                  <RefreshCw size={15} className={cn(versionLoading && 'animate-spin')} />刷新
-                </Button>
-              </div>
-            )}
-            table={(
-              <TableSurfaceCard fill>
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[1050px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>版本</TableHead>
-                        <TableHead>规则编码</TableHead>
-                        <TableHead>阈值</TableHead>
-                        <TableHead>效果</TableHead>
-                        <TableHead>状态</TableHead>
-                        <TableHead>发布人</TableHead>
-                        <TableHead>发布时间</TableHead>
-                        <TableHead>备注</TableHead>
-                        <TableActionHead className="w-28">操作</TableActionHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {versionLoading ? (
-                        <TableStateRow colSpan={9} title="正在加载规则版本..." loading />
-                      ) : versions.length === 0 ? (
-                        <TableStateRow colSpan={9} title="暂无规则版本" />
-                      ) : versions.map((version) => (
-                        <TableRow key={version.id}>
-                          <TableCell>v{version.versionNo}</TableCell>
-                          <TableCell className="font-mono text-xs">{version.ruleCode}</TableCell>
-                          <TableCell>{version.thresholdValue ?? '-'}</TableCell>
-                          <TableCell><DictBadge dictType="oa_business_rule_effect" value={String(version.effect || '')} /></TableCell>
-                          <TableCell><DictBadge dictType="workflow_definition_status" value={version.status || ''} /></TableCell>
-                          <TableCell>{version.publisherName || '-'}</TableCell>
-                          <TableCell>{formatDateTime(version.publishedTime)}</TableCell>
-                          <TableCell className="max-w-[240px] truncate text-sm text-slate-500" title={version.remark}>{version.remark || '-'}</TableCell>
-                          <TableCell>
-                            <TableRowActions
-                              align="end"
-                              actions={[
-                                { label: '发布版本', icon: <Play size={15} />, hidden: version.status !== 'DRAFT', onClick: () => setConfirmState({ type: 'publish', version }), tone: 'success' },
-                                { label: '回滚版本', icon: <Undo2 size={15} />, hidden: version.status === 'DRAFT', onClick: () => setConfirmState({ type: 'rollback', version }), tone: 'warning' },
-                              ]}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </TableSurfaceCard>
-            )}
-            pagination={versionTotal > 0 ? (
-              <Pagination total={versionTotal} page={versionQuery.pageNum} pageSize={versionQuery.pageSize} onPageChange={(pageNum) => setVersionQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setVersionQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />
-            ) : null}
-          />
-        </TabsContent>
-
-        <TabsContent value="hits" className="mt-0">
-          <TablePageLayout
-            filters={(
-              <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-                <form onSubmit={handleHitSearch} className="flex flex-1 flex-wrap items-center gap-3">
-                  <Input value={hitFilters.ruleCode} onChange={(event) => setHitFilters((current) => ({ ...current, ruleCode: event.target.value }))} placeholder="规则编码" className="h-10 w-full font-mono sm:w-56" />
-                  <Input value={hitFilters.businessType} onChange={(event) => setHitFilters((current) => ({ ...current, businessType: event.target.value }))} placeholder="业务类型" className="h-10 w-full sm:w-40" />
-                  <Select value={hitFilters.hitResult || ALL_VALUE} onValueChange={(value) => setHitFilters((current) => ({ ...current, hitResult: value === ALL_VALUE ? '' : value }))}>
-                    <SelectTrigger className="h-10 w-full sm:w-36"><SelectValue placeholder="结果" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_VALUE}>全部结果</SelectItem>
-                      {effectDict.getOptions().map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button type="submit" size="sm">查询</Button>
-                </form>
-                <Button variant="outline" size="sm" onClick={() => void fetchHits()} disabled={hitLoading}>
-                  <RefreshCw size={15} className={cn(hitLoading && 'animate-spin')} />刷新
-                </Button>
-              </div>
-            )}
-            table={(
-              <TableSurfaceCard fill>
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[980px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>规则编码</TableHead>
-                        <TableHead>业务</TableHead>
-                        <TableHead>阈值</TableHead>
-                        <TableHead>实际值</TableHead>
-                        <TableHead>效果</TableHead>
-                        <TableHead>结果</TableHead>
-                        <TableHead>命中时间</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {hitLoading ? (
-                        <TableStateRow colSpan={7} title="正在加载命中记录..." loading />
-                      ) : hits.length === 0 ? (
-                        <TableStateRow colSpan={7} title="暂无命中记录" />
-                      ) : hits.map((hit) => (
-                        <TableRow key={hit.id}>
-                          <TableCell className="font-mono text-xs">{hit.ruleCode}</TableCell>
-                          <TableCell>{hit.businessType}#{hit.businessId || '-'}</TableCell>
-                          <TableCell>{hit.thresholdValue ?? '-'}</TableCell>
-                          <TableCell>{hit.actualValue ?? '-'}</TableCell>
-                          <TableCell><DictBadge dictType="oa_business_rule_effect" value={String(hit.effect || '')} /></TableCell>
-                          <TableCell><DictBadge dictType="oa_business_rule_hit_result" value={String(hit.hitResult || '')} /></TableCell>
-                          <TableCell>{formatDateTime(hit.createdTime)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </TableSurfaceCard>
-            )}
-            pagination={hitTotal > 0 ? (
-              <Pagination total={hitTotal} page={hitQuery.pageNum} pageSize={hitQuery.pageSize} onPageChange={(pageNum) => setHitQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setHitQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />
-            ) : null}
-          />
-        </TabsContent>
-      </Tabs>
+      <section className="admin-source-page admin-business-rules-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={Boolean(editingRule && form)}
         title="保存规则草稿"
         onClose={() => { setEditingRule(null); setForm(null); }}
         maxWidthClassName="max-w-2xl"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => { setEditingRule(null); setForm(null); }}>取消</Button>
@@ -512,8 +632,8 @@ export const BusinessRulePage = () => {
         )}
       >
         {form ? (
-          <form id="business-rule-form" onSubmit={saveRule} className="space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/40">
+          <form id="business-rule-form" onSubmit={saveRule} className="admin-dialog-stack">
+            <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-3 dark:border-slate-800 dark:bg-slate-950">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
                 <ListChecks size={16} />
                 {editingRule?.ruleName}
@@ -521,12 +641,12 @@ export const BusinessRulePage = () => {
               <div className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">{editingRule?.ruleCode}</div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className={fieldLabelClassName}>阈值</label>
+              <div className="admin-dialog-field">
+                <Label>阈值</Label>
                 <Input type="number" step="0.01" value={form.thresholdValue ?? ''} onChange={(event) => setForm((current) => current ? { ...current, thresholdValue: Number(event.target.value) } : current)} />
               </div>
-              <div>
-                <label className={fieldLabelClassName}>命中效果</label>
+              <div className="admin-dialog-field">
+                <Label>命中效果</Label>
                 <Select value={form.effect} onValueChange={(value) => setForm((current) => current ? { ...current, effect: value as BusinessRule['effect'] } : current)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -536,20 +656,20 @@ export const BusinessRulePage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <label className={fieldLabelClassName}>优先级</label>
+              <div className="admin-dialog-field">
+                <Label>优先级</Label>
                 <Input type="number" value={form.priority} onChange={(event) => setForm((current) => current ? { ...current, priority: Number(event.target.value) } : current)} />
               </div>
-              <div>
-                <label className={fieldLabelClassName}>启用状态</label>
+              <div className="admin-dialog-field">
+                <Label>启用状态</Label>
                 <div className="flex h-10 items-center gap-3">
                   <Switch checked={form.enabled === 1} onCheckedChange={(checked) => setForm((current) => current ? { ...current, enabled: checked ? 1 : 0 } : current)} />
                   <span className="text-sm text-slate-600 dark:text-slate-300">{form.enabled === 1 ? '启用' : '停用'}</span>
                 </div>
               </div>
             </div>
-            <div>
-              <label className={fieldLabelClassName}>备注</label>
+            <div className="admin-dialog-field">
+              <Label>备注</Label>
               <Textarea rows={3} value={form.remark || ''} onChange={(event) => setForm((current) => current ? { ...current, remark: event.target.value } : current)} />
             </div>
           </form>
@@ -570,4 +690,3 @@ export const BusinessRulePage = () => {
 };
 
 export default BusinessRulePage;
-

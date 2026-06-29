@@ -21,15 +21,10 @@ import {
   AnnouncementTargetingEditor,
   type DeptItem,
 } from '@/components/admin/announcements';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
+  BaseDialog,
   Button,
   ConfirmDialog,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Input,
   Label,
   Pagination,
@@ -38,16 +33,13 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  TableActionHead,
-  TableHead,
-  TableHeader,
-  TableRowActions,
   SelectTrigger,
   SelectValue,
   Textarea,
 } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import { AnnouncementScope } from '@/types';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { getDeptTree, getRoleOptions, type SysRole } from '@/services/api/auth';
 import {
   knowledgeApi,
@@ -94,7 +86,7 @@ const InlineState: React.FC<{
   icon?: React.ReactNode;
 }> = ({ title, description, icon }) => (
   <div className="flex min-h-[18rem] flex-col items-center justify-center px-6 py-12 text-center">
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3">
       {icon || <Inbox className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -110,9 +102,9 @@ const TableStateRow: React.FC<{
   loading?: boolean;
 }> = ({ colSpan, title, description, icon, loading = false }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-16">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3">
           {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : icon || <BookOpenText className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -120,6 +112,24 @@ const TableStateRow: React.FC<{
       </div>
     </td>
   </tr>
+);
+
+const KnowledgeSurface: React.FC<{
+  title: string;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, children, className = '', bodyClassName = '' }) => (
+  <InnerTableSurface className={`admin-knowledge-surface ${className}`} wrapperClassName="admin-knowledge-surface-wrapper">
+    <div className="admin-knowledge-surface-head">
+      <div>
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
+    </div>
+    <div className={`admin-knowledge-surface-body ${bodyClassName}`}>{children}</div>
+  </InnerTableSurface>
 );
 
 const StatusBadge: React.FC<{ status?: string }> = ({ status }) => (
@@ -141,7 +151,7 @@ const AttachmentLinks: React.FC<{ value?: string }> = ({ value }) => {
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-cyan-900 dark:hover:text-cyan-200"
+            className="cf-side-link cf-side-link-sm inline-flex max-w-full items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium"
           >
             <FileText className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{label}</span>
@@ -563,8 +573,8 @@ const KnowledgePage: React.FC = () => {
   };
 
   const renderFilters = (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 xl:flex-row xl:items-center xl:justify-between">
-      <div className="flex flex-1 flex-wrap items-center gap-3">
+    <section className="card admin-users-toolbar admin-knowledge-toolbar">
+      <div className="admin-knowledge-toolbar-head">
         <SegmentedControl className="min-h-9">
           <SegmentedControlItem size="sm" active={viewMode === 'library'} onClick={() => { setViewMode('library'); setPageNum(1); }}>
             知识库
@@ -578,25 +588,38 @@ const KnowledgePage: React.FC = () => {
             </SegmentedControlItem>
           ) : null}
         </SegmentedControl>
-
-        <div className="relative w-full sm:w-[240px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                applyFilters();
-              }
-            }}
-            className="h-10 pl-9"
-            placeholder="搜索标题、摘要或正文"
-          />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <span>{hasActiveFilters ? `${currentCategoryLabel} / ${currentStatusLabel}` : '全部'}</span>
+          <span>第 {pageNum} / {totalPages} 页</span>
+          <span>共 {tableTotal} 条</span>
+          {viewMode === 'library' ? <span>未读 {unreadCount}</span> : <span>已发布 {publishedCount}</span>}
         </div>
+      </div>
 
-        <div className="w-full sm:w-[160px]">
+      <div className="admin-knowledge-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">搜索文档</span>
+          <div className="relative">
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              type="search"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  applyFilters();
+                }
+              }}
+              placeholder="标题、摘要或正文"
+              className="h-[42px] pl-10"
+            />
+          </div>
+        </label>
+
+        <label>
+          <span className="input-label">分类</span>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="h-10">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="全部分类" />
             </SelectTrigger>
             <SelectContent>
@@ -604,12 +627,13 @@ const KnowledgePage: React.FC = () => {
               {categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
+        </label>
 
         {viewMode !== 'library' ? (
-          <div className="w-full sm:w-[160px]">
+          <label>
+            <span className="input-label">状态</span>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="h-10">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="全部状态" />
               </SelectTrigger>
               <SelectContent>
@@ -619,49 +643,36 @@ const KnowledgePage: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </label>
         ) : (
-          <Button variant={unreadOnly ? 'default' : 'outline'} size="sm" onClick={() => setUnreadOnly((value) => !value)}>
-            <CheckCheck className="h-4 w-4" />
-            仅未读
-          </Button>
+          <div className="admin-knowledge-filter-toggle">
+            <span className="input-label">阅读</span>
+            <Button variant={unreadOnly ? 'default' : 'outline'} size="sm" onClick={() => setUnreadOnly((value) => !value)}>
+              <CheckCheck className="h-4 w-4" />
+              仅未读
+            </Button>
+          </div>
         )}
 
-        <div className="flex min-w-[280px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-          <span>{hasActiveFilters ? `${currentCategoryLabel} / ${currentStatusLabel}` : '全部'}</span>
-          <span>第 {pageNum} / {totalPages} 页</span>
-          <span>共 {tableTotal} 条</span>
-          {viewMode === 'library' ? (
-            <span>未读 {unreadCount}</span>
-          ) : (
-            <>
-              <span>草稿 {draftCount}</span>
-              <span>审批中 {pendingCount}</span>
-              <span>已发布 {publishedCount}</span>
-              <span>已驳回 {rejectedCount}</span>
-            </>
-          )}
+        <div className="admin-users-toolbar-actions admin-knowledge-filter-actions">
+          <Button variant="outline" size="sm" onClick={applyFilters}>
+            应用
+          </Button>
+          <Button variant="outline" size="sm" onClick={resetFilters}>
+            <RotateCcw size={14} className="mr-1.5" />
+            清空条件
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void fetchData()} disabled={loading}>
+            <RefreshCw size={14} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+          <Button size="sm" onClick={openCreate} disabled={!hasPermission('oa:knowledge:add')}>
+            <Plus size={14} className="mr-1.5" />
+            新建文档
+          </Button>
         </div>
       </div>
-
-      <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-        <Button variant="outline" size="sm" onClick={applyFilters}>
-          应用
-        </Button>
-        <Button variant="outline" size="sm" onClick={resetFilters}>
-          <RotateCcw size={14} className="mr-1.5" />
-          清空条件
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => void fetchData()} disabled={loading}>
-          <RefreshCw size={14} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-          刷新
-        </Button>
-        <Button size="sm" onClick={openCreate} disabled={!hasPermission('oa:knowledge:add')}>
-          <Plus size={14} className="mr-1.5" />
-          新建文档
-        </Button>
-      </div>
-    </div>
+    </section>
   );
 
   const renderTableRows = () => {
@@ -681,10 +692,10 @@ const KnowledgePage: React.FC = () => {
     return (
       <>
         {activeRows.map((item, index) => (
-          <tr key={item.documentId ?? `${item.title}-${index}`} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-            <td className="px-4 py-3">
-              <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-2">
+          <tr key={item.documentId ?? `${item.title}-${index}`}>
+            <td>
+              <div className="admin-users-identity">
+                <div>
                   <button
                     type="button"
                     onClick={() => void openDetail(item)}
@@ -693,96 +704,70 @@ const KnowledgePage: React.FC = () => {
                     {item.title || '-'}
                   </button>
                   {viewMode === 'library' && !item.isRead ? (
-                    <span className="shrink-0 rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-medium text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200">未读</span>
+                    <span className="shrink-0 rounded-md bg-cyan-50 px-2 py-0.5 text-[11px] font-medium text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200">未读</span>
                   ) : null}
-                </div>
-                <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                  {formatDateTimeDisplay(item.publishTime || item.createTime)}
+                  <small>{formatDateTimeDisplay(item.publishTime || item.createTime)}</small>
                 </div>
               </div>
             </td>
-            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+            <td>
               <div className="font-medium text-slate-900 dark:text-slate-100">{item.category || '-'}</div>
               <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                 {item.scopeType ? formatScopeDisplay(item) : '-'}
               </div>
             </td>
-            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+            <td>
               <div className="font-medium text-slate-900 dark:text-slate-100">{item.submitterName || '-'}</div>
               <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.deptName || '-'}</div>
             </td>
-            <td className="max-w-sm truncate px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+            <td className="max-w-sm truncate">
               {item.summary || '-'}
             </td>
-            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+            <td>
               <div className="font-medium text-slate-900 dark:text-slate-100">{item.readCount || 0}</div>
               <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                 {viewMode === 'library' ? (item.isRead ? '已读' : '未读') : '已读人数'}
               </div>
             </td>
-            <td className="px-4 py-3">
+            <td>
               <StatusBadge status={item.status} />
             </td>
-            <td className="px-4 py-3 text-right">
-              <TableRowActions
-                align="end"
-                className="gap-1"
-                actions={[
-                  {
-                    label: '详情',
-                    icon: <Eye size={14} />,
-                    onClick: () => void openDetail(item),
-                    tone: 'neutral',
-                  },
-                  {
-                    label: '编辑',
-                    icon: <Pencil size={14} />,
-                    onClick: () => openEdit(item),
-                    tone: 'primary',
-                    permissionKey: 'oa:knowledge:edit',
-                    hidden: !(viewMode === 'mine' || viewMode === 'manage') || (item.status !== 'DRAFT' && item.status !== 'REJECTED'),
-                  },
-                  {
-                    label: '提交',
-                    icon: <Send size={14} />,
-                    onClick: () => openSubmitConfirm(item),
-                    tone: 'success',
-                    permissionKey: 'oa:knowledge:submit',
-                    hidden: !(viewMode === 'mine' || viewMode === 'manage') || (item.status !== 'DRAFT' && item.status !== 'REJECTED'),
-                  },
-                  {
-                    label: '撤回',
-                    icon: <RotateCcw size={14} />,
-                    onClick: () => openRecallConfirm(item),
-                    tone: 'warning',
-                    permissionKey: 'oa:knowledge:recall',
-                    hidden: viewMode !== 'mine' || item.status !== 'PENDING',
-                  },
-                  {
-                    label: '阅读统计',
-                    icon: <Shield size={14} />,
-                    onClick: () => void openReadStats(item),
-                    tone: 'info',
-                    permissionKey: 'oa:knowledge:manage',
-                    hidden: viewMode !== 'manage',
-                  },
-                  {
-                    label: '版本历史',
-                    icon: <RotateCcw size={14} />,
-                    onClick: () => void openVersions(item),
-                    tone: 'neutral',
-                    hidden: !(viewMode === 'mine' || viewMode === 'manage'),
-                  },
-                  {
-                    label: '删除',
-                    icon: <Trash2 size={14} />,
-                    onClick: () => openDeleteConfirm(item),
-                    tone: 'danger',
-                    permissionKey: 'oa:knowledge:remove',
-                    hidden: !(viewMode === 'mine' || viewMode === 'manage') || item.status === 'PENDING',
-                  },
-                ]}
-              />
+            <td>
+              <div className="admin-users-row-actions">
+                <button type="button" title="详情" aria-label="查看详情" onClick={() => void openDetail(item)}>
+                  <Eye size={15} />
+                </button>
+                {(viewMode === 'mine' || viewMode === 'manage') && (item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:knowledge:edit') ? (
+                  <button type="button" title="编辑" aria-label="编辑文档" onClick={() => openEdit(item)}>
+                    <Pencil size={15} />
+                  </button>
+                ) : null}
+                {(viewMode === 'mine' || viewMode === 'manage') && (item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:knowledge:submit') ? (
+                  <button type="button" title="提交" aria-label="提交文档" onClick={() => openSubmitConfirm(item)}>
+                    <Send size={15} />
+                  </button>
+                ) : null}
+                {viewMode === 'mine' && item.status === 'PENDING' && hasPermission('oa:knowledge:recall') ? (
+                  <button type="button" title="撤回" aria-label="撤回文档" onClick={() => openRecallConfirm(item)}>
+                    <RotateCcw size={15} />
+                  </button>
+                ) : null}
+                {viewMode === 'manage' && hasPermission('oa:knowledge:manage') ? (
+                  <button type="button" title="阅读统计" aria-label="阅读统计" onClick={() => void openReadStats(item)}>
+                    <Shield size={15} />
+                  </button>
+                ) : null}
+                {(viewMode === 'mine' || viewMode === 'manage') ? (
+                  <button type="button" title="版本历史" aria-label="版本历史" onClick={() => void openVersions(item)}>
+                    <RotateCcw size={15} />
+                  </button>
+                ) : null}
+                {(viewMode === 'mine' || viewMode === 'manage') && item.status !== 'PENDING' && hasPermission('oa:knowledge:remove') ? (
+                  <button type="button" className="danger" title="删除" aria-label="删除文档" onClick={() => openDeleteConfirm(item)}>
+                    <Trash2 size={15} />
+                  </button>
+                ) : null}
+              </div>
             </td>
           </tr>
         ))}
@@ -794,103 +779,126 @@ const KnowledgePage: React.FC = () => {
     return null;
   }
 
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">KNOWLEDGE BASE</p>
+          <h2>知识库</h2>
+          <span>维护制度文档、阅读状态、审批流转和版本历史</span>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <div className="admin-source-stat-icon"><BookOpenText size={18} /></div>
+          <div><p>文档总数</p><strong>{tableTotal}</strong><span>当前视图</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <div className="admin-source-stat-icon"><CheckCheck size={18} /></div>
+          <div><p>未读</p><strong>{unreadCount}</strong><span>知识库视图</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <div className="admin-source-stat-icon"><Send size={18} /></div>
+          <div><p>审批中</p><strong>{pendingCount}</strong><span>提交待处理</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <div className="admin-source-stat-icon"><Shield size={18} /></div>
+          <div><p>已发布</p><strong>{publishedCount}</strong><span>可阅读文档</span></div>
+        </article>
+      </section>
+    </div>
+  );
+
+  const pageTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[1180px]">
+          <thead>
+            <tr>
+              <th>文档标题</th>
+              <th>分类 / 范围</th>
+              <th>提交人 / 部门</th>
+              <th>摘要</th>
+              <th>阅读</th>
+              <th>状态</th>
+              <th className="text-right">当前操作</th>
+            </tr>
+          </thead>
+          <tbody>{renderTableRows()}</tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = viewMode !== 'library' ? (
+    <Pagination
+      page={pageNum}
+      total={total}
+      pageSize={pageSize}
+      onPageChange={setPageNum}
+      onPageSizeChange={(size) => { setPageSize(size); setPageNum(1); }}
+    />
+  ) : null;
+
   return (
-    <div className="space-y-4">
+    <div className="admin-source-page admin-knowledge-page">
       <TablePageLayout
-        className="gap-4"
+        actions={pageActions}
         filters={renderFilters}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1180px]">
-                <TableHeader className="sticky top-0 z-10">
-                  <tr>
-                    <TableHead className="w-[24%] px-4 py-3 text-left">
-                      文档标题
-                    </TableHead>
-                    <TableHead className="w-[16%] px-4 py-3 text-left">
-                      分类 / 范围
-                    </TableHead>
-                    <TableHead className="w-[16%] px-4 py-3 text-left">
-                      提交人 / 部门
-                    </TableHead>
-                    <TableHead className="w-[22%] px-4 py-3 text-left">
-                      摘要
-                    </TableHead>
-                    <TableHead className="w-[10%] px-4 py-3 text-left">
-                      阅读
-                    </TableHead>
-                    <TableHead className="w-[10%] px-4 py-3 text-left">
-                      状态
-                    </TableHead>
-                    <TableActionHead className="w-44 px-4 py-3 text-right">
-                      当前操作
-                    </TableActionHead>
-                  </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {renderTableRows()}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={viewMode !== 'library' ? (
-          <Pagination
-            page={pageNum}
-            total={total}
-            pageSize={pageSize}
-            onPageChange={setPageNum}
-            onPageSizeChange={(size) => { setPageSize(size); setPageNum(1); }}
-          />
-        ) : null}
+        table={pageTable}
+        pagination={pagePagination}
       />
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent
-          disableDefaultMaxWidth
-          className="w-[calc(100vw-2rem)] sm:max-w-5xl xl:max-w-6xl"
-        >
-          <DialogHeader>
-            <DialogTitle>{formData.documentId ? '编辑知识文档' : '新建知识文档'}</DialogTitle>
-          </DialogHeader>
-          {!formData.documentId ? (
-            <div className="-mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-slate-500">不知道怎么开头？</span>
-              <Button size="sm" variant="outline" onClick={() => void openTemplatePicker()}>
-                <FileText className="mr-1 h-3.5 w-3.5" />从模板开始
-              </Button>
-            </div>
-          ) : null}
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_27rem]">
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
-                <div className="space-y-2">
-                  <Label>标题</Label>
-                  <Input value={formData.title} onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))} />
+      <BaseDialog
+        open={formOpen}
+        title={formData.documentId ? '编辑知识文档' : '新建知识文档'}
+        onClose={() => setFormOpen(false)}
+        width="full"
+        maxWidthClassName="w-[calc(100vw-2rem)] sm:max-w-5xl xl:max-w-6xl"
+        bodyClassName="flex flex-col !overflow-hidden"
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
+            <Button onClick={() => void saveForm()}>保存草稿</Button>
+          </>
+        )}
+      >
+          <div className="admin-dialog-stack min-h-0 flex-1 overflow-y-auto pr-1">
+            {!formData.documentId ? (
+              <div className="admin-dialog-subsection flex flex-wrap items-center justify-between gap-3 text-xs">
+                <span className="text-slate-500 dark:text-slate-400">不知道怎么开头？</span>
+                <Button size="sm" variant="outline" onClick={() => void openTemplatePicker()}>
+                  <FileText className="mr-1 h-3.5 w-3.5" />从模板开始
+                </Button>
+              </div>
+            ) : null}
+            <div className="admin-dialog-stack">
+              <KnowledgeSurface title="文档内容" description="标题、分类、摘要、正文和附件" bodyClassName="admin-dialog-stack">
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                  <div className="admin-dialog-field">
+                    <Label>标题</Label>
+                    <Input value={formData.title} onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))} />
+                  </div>
+                  <div className="admin-dialog-field">
+                    <Label>分类</Label>
+                    <Select value={formData.category} onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}>
+                      <SelectTrigger><SelectValue placeholder="选择分类" /></SelectTrigger>
+                      <SelectContent>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>分类</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}>
-                    <SelectTrigger><SelectValue placeholder="选择分类" /></SelectTrigger>
-                    <SelectContent>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div className="admin-dialog-field">
+                  <Label>摘要</Label>
+                  <Textarea rows={3} value={formData.summary || ''} onChange={(event) => setFormData((prev) => ({ ...prev, summary: event.target.value }))} />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>摘要</Label>
-                <Textarea rows={3} value={formData.summary || ''} onChange={(event) => setFormData((prev) => ({ ...prev, summary: event.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>正文</Label>
-                <Textarea rows={8} value={formData.content} onChange={(event) => setFormData((prev) => ({ ...prev, content: event.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>附件</Label>
-                <FileUpload value={formData.attachmentUrl || ''} onChange={(value) => setFormData((prev) => ({ ...prev, attachmentUrl: value }))} maxCount={5} />
-              </div>
-            </div>
-            <div className="min-w-0">
+                <div className="admin-dialog-field">
+                  <Label>正文</Label>
+                  <Textarea rows={8} value={formData.content} onChange={(event) => setFormData((prev) => ({ ...prev, content: event.target.value }))} />
+                </div>
+                <div className="admin-dialog-field">
+                  <Label>附件</Label>
+                  <FileUpload value={formData.attachmentUrl || ''} onChange={(value) => setFormData((prev) => ({ ...prev, attachmentUrl: value }))} maxCount={5} />
+                </div>
+              </KnowledgeSurface>
               <AnnouncementTargetingEditor
                 scopeType={(formData.scopeType as AnnouncementScope) || AnnouncementScope.ALL}
                 scopeValue={formData.scopeValue || ''}
@@ -904,18 +912,15 @@ const KnowledgePage: React.FC = () => {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
-            <Button onClick={() => void saveForm()}>保存草稿</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </BaseDialog>
 
-      <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>选择文档模板</DialogTitle>
-          </DialogHeader>
+      <BaseDialog
+        open={templatePickerOpen}
+        title="选择文档模板"
+        onClose={() => setTemplatePickerOpen(false)}
+        maxWidthClassName="sm:max-w-2xl"
+        footer={<Button variant="outline" onClick={() => setTemplatePickerOpen(false)}>取消</Button>}
+      >
           {templatesLoading ? (
             <div className="flex items-center justify-center py-10 text-sm text-slate-400">
               <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />加载模板中...
@@ -923,17 +928,17 @@ const KnowledgePage: React.FC = () => {
           ) : templates.length === 0 ? (
             <div className="py-10 text-center text-sm text-slate-400">暂无可用模板</div>
           ) : (
-            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+            <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
               {templates.map((tpl) => (
                 <button
                   key={tpl.id}
                   type="button"
                   onClick={() => void applyTemplate(tpl)}
-                  className="cf-interactive-card w-full rounded-xl border border-slate-200 px-4 py-3 text-left dark:border-slate-700"
+                  className="cf-side-link cf-side-link-sm w-full cursor-pointer px-4 py-3 text-left"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tpl.templateName}</div>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                       {tpl.category}
                     </span>
                   </div>
@@ -945,28 +950,26 @@ const KnowledgePage: React.FC = () => {
               ))}
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTemplatePickerOpen(false)}>取消</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </BaseDialog>
 
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="sm:max-w-4xl">
+      <BaseDialog
+        open={detailOpen}
+        title={detail?.title || '文档详情'}
+        onClose={() => setDetailOpen(false)}
+        width="wide"
+        maxWidthClassName="sm:max-w-4xl"
+      >
           {detail ? (
             <>
-              <DialogHeader>
-                <DialogTitle>{detail.title}</DialogTitle>
-              </DialogHeader>
               <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <StatusBadge status={detail.status} />
-                <span className="rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-800">{detail.category}</span>
-                <span className="rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-800">{formatScopeDisplay(detail)}</span>
-                <span className="rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-800">提交人：{detail.submitterName || '-'}</span>
+                <span className="admin-users-filter-count">{detail.category}</span>
+                <span className="admin-users-filter-count">{formatScopeDisplay(detail)}</span>
+                <span className="admin-users-filter-count">提交人：{detail.submitterName || '-'}</span>
               </div>
-              {detail.summary ? <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:bg-slate-900 dark:text-slate-300">{detail.summary}</p> : null}
+              {detail.summary ? <p className="admin-knowledge-note">{detail.summary}</p> : null}
               <div
-                className="prose prose-slate max-w-none rounded-lg border border-slate-200 bg-white p-4 text-sm leading-7 dark:prose-invert dark:border-slate-800 dark:bg-slate-950"
+                className="admin-knowledge-article prose prose-slate max-w-none text-sm leading-7 dark:prose-invert"
                 dangerouslySetInnerHTML={{ __html: renderAnnouncementHtml(detail.content) }}
               />
               <div>
@@ -975,35 +978,33 @@ const KnowledgePage: React.FC = () => {
               </div>
             </>
           ) : null}
-        </DialogContent>
-      </Dialog>
+      </BaseDialog>
 
-      <Dialog open={statsOpen} onOpenChange={setStatsOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>阅读统计</DialogTitle>
-          </DialogHeader>
+      <BaseDialog
+        open={statsOpen}
+        title="阅读统计"
+        onClose={() => setStatsOpen(false)}
+        maxWidthClassName="sm:max-w-2xl"
+      >
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="admin-knowledge-stat-box">
               <div className="text-xs text-slate-500 dark:text-slate-400">应读</div>
               <div className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{readStats?.expectedCount ?? 0}</div>
             </div>
-            <div className="rounded-lg border border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="admin-knowledge-stat-box">
               <div className="text-xs text-slate-500 dark:text-slate-400">已读</div>
               <div className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-300">{readStats?.readCount || 0}</div>
             </div>
-            <div className="rounded-lg border border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="admin-knowledge-stat-box">
               <div className="text-xs text-slate-500 dark:text-slate-400">未读</div>
               <div className="mt-1 text-lg font-semibold text-amber-600 dark:text-amber-300">{readStats?.unreadCount ?? 0}</div>
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-              <div className="border-b border-slate-100 px-4 py-2 text-sm font-medium text-slate-900 dark:border-slate-800 dark:text-slate-100">已读人员</div>
-              <div className="max-h-72 overflow-y-auto">
+            <KnowledgeSurface title="已读人员" bodyClassName="admin-knowledge-list-body">
                 {readStats?.readUsers?.length ? (
                   readStats.readUsers.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 dark:border-slate-800">
+                    <div key={item.id} className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 text-sm last:border-b-0 dark:border-slate-800">
                       <span className="truncate text-slate-900 dark:text-slate-100">{item.userName || item.userId}</span>
                       <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{item.readTime || '-'}</span>
                     </div>
@@ -1011,40 +1012,37 @@ const KnowledgePage: React.FC = () => {
                 ) : (
                   <InlineState title="暂无阅读记录" />
                 )}
-              </div>
-            </div>
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-              <div className="border-b border-slate-100 px-4 py-2 text-sm font-medium text-slate-900 dark:border-slate-800 dark:text-slate-100">未读人员</div>
-              <div className="max-h-72 overflow-y-auto">
+            </KnowledgeSurface>
+            <KnowledgeSurface title="未读人员" bodyClassName="admin-knowledge-list-body">
                 {readStats?.unreadUsers?.length ? (
                   readStats.unreadUsers.map((item) => (
-                    <div key={item.userId} className="border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 dark:border-slate-800">
+                    <div key={item.userId} className="border-b border-slate-200 px-4 py-3 text-sm last:border-b-0 dark:border-slate-800">
                       <div className="font-medium text-slate-900 dark:text-slate-100">{item.userName || item.userId}</div>
                       <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.deptName || '-'}</div>
                     </div>
                   ))
                 ) : (
                   <InlineState title="暂无未读人员" />
-                )}
-              </div>
-            </div>
+              )}
+            </KnowledgeSurface>
           </div>
-        </DialogContent>
-      </Dialog>
+      </BaseDialog>
 
-      <Dialog open={versionOpen} onOpenChange={setVersionOpen}>
-        <DialogContent className="sm:max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>版本历史 · {versionDocTitle || '-'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
+      <BaseDialog
+        open={versionOpen}
+        title={`版本历史 · ${versionDocTitle || '-'}`}
+        onClose={() => setVersionOpen(false)}
+        width="wide"
+        maxWidthClassName="sm:max-w-4xl"
+      >
+          <div className="admin-dialog-stack">
             {versionLoading ? (
               <InlineState title="加载中..." />
             ) : versions.length === 0 ? (
               <InlineState title="暂无版本快照" />
             ) : (
               <>
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                <div className="admin-dialog-subsection flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                   <span>对比：</span>
                   <Select value={diffFrom != null ? String(diffFrom) : ''} onValueChange={(v) => setDiffFrom(Number(v))}>
                     <SelectTrigger className="h-8 w-32">
@@ -1052,7 +1050,7 @@ const KnowledgePage: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {versions.map((v) => (
-                        <SelectItem key={`from-${v.versionNo}`} value={String(v.versionNo)}>
+                        <SelectItem key={`version-base-${v.versionNo}`} value={String(v.versionNo)}>
                           v{v.versionNo}
                         </SelectItem>
                       ))}
@@ -1065,7 +1063,7 @@ const KnowledgePage: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {versions.map((v) => (
-                        <SelectItem key={`to-${v.versionNo}`} value={String(v.versionNo)}>
+                        <SelectItem key={`version-target-${v.versionNo}`} value={String(v.versionNo)}>
                           v{v.versionNo}
                         </SelectItem>
                       ))}
@@ -1074,9 +1072,9 @@ const KnowledgePage: React.FC = () => {
                   <Button size="sm" variant="soft" onClick={() => void handleVersionDiff()}>对比</Button>
                 </div>
 
-                <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                <InnerTableSurface className="admin-knowledge-version-list">
                   {versions.map((v) => (
-                    <div key={v.versionNo} className="flex items-center justify-between border-b border-slate-100 px-4 py-2 text-sm last:border-b-0 dark:border-slate-800">
+                    <div key={v.versionNo} className="flex items-center justify-between border-b border-slate-200 px-4 py-2 text-sm last:border-b-0 dark:border-slate-800">
                       <div className="flex flex-col">
                         <div className="font-medium text-slate-900 dark:text-slate-100">v{v.versionNo} · {v.title || '-'}</div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -1088,10 +1086,10 @@ const KnowledgePage: React.FC = () => {
                       </Button>
                     </div>
                   ))}
-                </div>
+                </InnerTableSurface>
 
                 {versionDiff ? (
-                  <div className="rounded-lg border border-slate-200 p-3 text-xs dark:border-slate-800">
+                  <div className="admin-dialog-subsection text-xs">
                     <div className="mb-2 font-medium">
                       v{versionDiff.fromVersion?.versionNo} → v{versionDiff.toVersion?.versionNo}
                       {versionDiff.titleChanged ? ' · 标题已变化' : ''}
@@ -1120,8 +1118,7 @@ const KnowledgePage: React.FC = () => {
               </>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+      </BaseDialog>
 
       <ConfirmDialog
         open={Boolean(confirmState)}

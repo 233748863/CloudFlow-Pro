@@ -34,7 +34,7 @@ interface Props {
 
 const MILESTONE_STATUS_META: Record<ContractMilestoneStatus, { cls: string; icon: React.ReactNode }> = {
   PENDING: {
-    cls: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300',
+    cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300',
     icon: <CircleDashed size={12} className="mr-1" />,
   },
   IN_PROGRESS: {
@@ -50,16 +50,16 @@ const MILESTONE_STATUS_META: Record<ContractMilestoneStatus, { cls: string; icon
     icon: <CircleX size={12} className="mr-1" />,
   },
   CANCELLED: {
-    cls: 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
+    cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
     icon: <CircleX size={12} className="mr-1" />,
   },
 };
 
 const PAYMENT_STATUS_META: Record<PaymentStatus, { cls: string }> = {
-  PENDING: { cls: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300' },
+  PENDING: { cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300' },
   PAID: { cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200' },
   OVERDUE: { cls: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200' },
-  CANCELLED: { cls: 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400' },
+  CANCELLED: { cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400' },
 };
 
 const MILESTONE_TYPE_VALUES: ContractMilestoneType[] = ['DELIVERY', 'PAYMENT', 'ACCEPTANCE', 'OTHER'];
@@ -227,13 +227,13 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+    <div className="rounded-md border border-slate-200 px-4 py-4 dark:border-slate-800">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
           <Wallet className="h-4 w-4 text-sky-500" />
           履约 / 付款节点
           {overdueCount > 0 ? (
-            <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">
+            <span className="inline-flex rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">
               {overdueCount} 项逾期
             </span>
           ) : null}
@@ -265,29 +265,29 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
         <div>
           <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">履约里程碑 ({milestones.length})</div>
           {milestones.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400 dark:border-slate-800">
+            <div className="rounded-md border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400 dark:border-slate-800">
               暂无履约节点
             </div>
           ) : (
-            <ul className="space-y-2">
+            <ul className="admin-dialog-field">
               {milestones.map((m) => {
                 const meta = MILESTONE_STATUS_META[m.status];
                 return (
                   <li
                     key={m.id}
-                    className="rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800"
+                    className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-800"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                           {m.milestoneName}
                         </span>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+                        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-0.5 text-[10px] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
                           {milestoneTypeDict.getLabel(m.milestoneType)}
                         </span>
                         <span
                           className={cn(
-                            'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                            'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium',
                             meta.cls,
                           )}
                         >
@@ -336,17 +336,17 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
         <div>
           <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">付款计划 ({payments.length})</div>
           {payments.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400 dark:border-slate-800">
+            <div className="rounded-md border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400 dark:border-slate-800">
               暂无付款节点
             </div>
           ) : (
-            <ul className="space-y-2">
+            <ul className="admin-dialog-field">
               {payments.map((p) => {
                 const meta = PAYMENT_STATUS_META[p.status];
                 return (
                   <li
                     key={p.id}
-                    className="rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800"
+                    className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-800"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -355,7 +355,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                         </span>
                         <span
                           className={cn(
-                            'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                            'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium',
                             meta.cls,
                           )}
                         >

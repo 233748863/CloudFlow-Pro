@@ -15,10 +15,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { visitorApi, Visitor } from '../services/api/visitor';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -29,16 +29,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 
@@ -62,7 +54,7 @@ const InlineState: React.FC<{
   className?: string;
 }> = ({ title, description, icon, className }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <UserCheck className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -78,9 +70,9 @@ const TableStateRow: React.FC<{
   loading?: boolean;
 }> = ({ colSpan, title, description, icon, loading = false }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-16">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
           {loading ? <RotateCcw className="h-4 w-4 animate-spin" /> : icon || <UserCheck className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -275,257 +267,238 @@ export const VisitorPage: React.FC = () => {
     ? statusDict.getLabel(searchParams.status) || searchParams.status
     : '全部状态';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.visitorName || searchParams.visitDate);
+  const pendingCount = list.filter((item) => item.status === 'PENDING').length;
+  const activeCount = list.filter((item) => item.status === 'CONFIRMED' || item.status === 'ARRIVED').length;
+  const finishedCount = list.filter((item) => item.status === 'CHECKED_OUT' || item.status === 'FINISHED' || item.status === 'COMPLETED').length;
+
+  const pageActions = (
+    <>
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">visitor access</p>
+          <h2>访客预约</h2>
+          <span>管理访客预约、通行码、签到签退和取消流程。</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void fetchList()} disabled={loading}>
+            <RotateCcw size={14} className={loading ? 'animate-spin' : ''} />刷新
+          </Button>
+          <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:visitor:add')}>
+            <Plus size={14} />新增预约
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <span className="admin-source-stat-icon"><UserCheck size={18} /></span>
+          <div><p>预约总数</p><strong>{total}</strong><span>当前查询范围</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <span className="admin-source-stat-icon"><CheckCircle size={18} /></span>
+          <div><p>待确认</p><strong>{pendingCount}</strong><span>需人工确认</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <span className="admin-source-stat-icon"><LogIn size={18} /></span>
+          <div><p>进行中</p><strong>{activeCount}</strong><span>已确认或已签到</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <span className="admin-source-stat-icon"><LogOut size={18} /></span>
+          <div><p>已完成</p><strong>{finishedCount}</strong><span>已签退记录</span></div>
+        </article>
+      </section>
+    </>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form
+        className="admin-users-filter-grid"
+        onSubmit={(event) => {
+          event.preventDefault();
+          applySearch();
+        }}
+      >
+        <label>
+          <span>访客姓名</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={visitorNameInput}
+              onChange={(event) => setVisitorNameInput(event.target.value)}
+              placeholder="按访客姓名搜索"
+              className="cf-control"
+            />
+          </div>
+        </label>
+        <label>
+          <span>状态</span>
+          <Select
+            value={searchParams.status || 'ALL'}
+            onValueChange={(value) => setSearchParams((prev) => ({
+              ...prev,
+              status: value === 'ALL' ? '' : value,
+              pageNum: 1,
+            }))}
+          >
+            <SelectTrigger className="cf-control">
+              <SelectValue placeholder="状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">全部状态</SelectItem>
+              {statusDict.getOptions().map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <label>
+          <span>来访日期</span>
+          <DatePicker
+            className="cf-control"
+            type="date"
+            value={visitDateInput}
+            onChange={(event) => setVisitDateInput(event.target.value)}
+          />
+        </label>
+        <div className="admin-users-toolbar-actions">
+          <Button type="submit" size="sm"><Search size={14} />搜索</Button>
+          {hasActiveFilters ? (
+            <Button type="button" variant="outline" size="sm" onClick={handleResetFilters}>
+              清空筛选
+            </Button>
+          ) : null}
+          <span className="admin-users-filter-count">
+            {hasActiveFilters ? `${currentStatusLabel} / ${searchParams.visitorName || '全部访客'} / ${searchParams.visitDate || '全部日期'}` : `共 ${total} 条`}
+          </span>
+        </div>
+      </form>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table min-w-[1020px]">
+          <thead>
+            <tr>
+              <th>访客</th>
+              <th>单位</th>
+              <th>来访日期</th>
+              <th>被访人</th>
+              <th>来访事由</th>
+              <th>通行码</th>
+              <th>状态</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={8} title="正在加载访客记录..." loading />
+            ) : list.length === 0 ? (
+              <TableStateRow colSpan={8} title="暂无访客记录" />
+            ) : (
+              list.map((item) => (
+                <tr key={item.visitorId}>
+                  <td>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.visitorName}</div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.visitorPhone || '未填写联系电话'}</div>
+                  </td>
+                  <td className="text-sm">
+                    <span className="inline-flex items-center gap-1">
+                      <Building2 size={12} className="text-slate-400 dark:text-slate-500" />
+                      {item.visitorCompany || '-'}
+                    </span>
+                  </td>
+                  <td className="text-sm">{item.visitDate}</td>
+                  <td className="text-sm">{item.hostName || '-'}</td>
+                  <td className="max-w-xs text-sm"><span className="line-clamp-1">{item.visitReason}</span></td>
+                  <td>
+                    {item.passCode ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2.5"
+                        onClick={() => setPassVisitor(item)}
+                        title={item.passCode}
+                      >
+                        <QrCode size={14} className="mr-1.5" />查看
+                      </Button>
+                    ) : (
+                      <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+                    )}
+                  </td>
+                  <td><DictBadge dictType="oa_visitor_status" value={String(item.status || 'PENDING')} fallback="待确认" /></td>
+                  <td>
+                    <div className="admin-users-row-actions">
+                      {item.status === 'PENDING' && hasPermission('oa:visitor:confirm') ? (
+                        <button type="button" title="确认" aria-label="确认" onClick={() => handleConfirm(item.visitorId!)}><CheckCircle size={15} /></button>
+                      ) : null}
+                      {item.status === 'CONFIRMED' && hasPermission('oa:visitor:checkin') ? (
+                        <button type="button" title="签到" aria-label="签到" onClick={() => handleCheckIn(item.visitorId!)}><LogIn size={15} /></button>
+                      ) : null}
+                      {item.status === 'ARRIVED' && hasPermission('oa:visitor:checkout') ? (
+                        <button type="button" title="签退" aria-label="签退" onClick={() => handleCheckOut(item.visitorId!)}><LogOut size={15} /></button>
+                      ) : null}
+                      {(item.status === 'PENDING' || item.status === 'CONFIRMED') && hasPermission('oa:visitor:cancel') ? (
+                        <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => setCancelTarget(item)}><XCircle size={15} /></button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={searchParams.pageNum}
+      pageSize={searchParams.pageSize}
+      showPageSizeSelector={false}
+      showJump={false}
+      onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
+      onPageSizeChange={() => {}}
+    />
+  ) : null;
 
   return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-3"
-        actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
-            </div>
-
-            <div className="ml-auto flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => void fetchList()} disabled={loading}>
-                <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:visitor:add')}>
-                <Plus size={14} className="mr-1.5" />
-                新增预约
-              </Button>
-            </div>
-          </div>
-        )}
-        filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <Input
-                  value={visitorNameInput}
-                  onChange={(event) => setVisitorNameInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      applySearch();
-                    }
-                  }}
-                  placeholder="按访客姓名搜索"
-                  className="h-10 pl-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-[170px]">
-                <Select
-                  value={searchParams.status || 'ALL'}
-                  onValueChange={(value) => setSearchParams((prev) => ({
-                    ...prev,
-                    status: value === 'ALL' ? '' : value,
-                    pageNum: 1,
-                  }))}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusDict.getOptions().map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-full sm:w-[180px]">
-                <DatePicker
-                  className="h-10"
-                  type="date"
-                  value={visitDateInput}
-                  onChange={(event) => setVisitDateInput(event.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              {hasActiveFilters
-                ? `${currentStatusLabel} / ${searchParams.visitorName || '全部访客'} / ${searchParams.visitDate || '全部日期'}`
-                : '全部预约'}
-            </div>
-
-            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:justify-start">
-              <Button variant="outline" size="sm" onClick={applySearch}>
-                <Search size={14} className="mr-1.5" />
-                搜索
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleResetFilters}>
-                清空筛选
-              </Button>
-            </div>
-          </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col">
-            <div className="overflow-x-auto">
-              <Table className="min-w-[1020px]">
-                <TableHeader className="sticky top-0 z-10">
-                  <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
-                    <TableHead className="px-4 py-3 text-left">访客</TableHead>
-                    <TableHead className="px-4 py-3 text-left">单位</TableHead>
-                    <TableHead className="px-4 py-3 text-left">来访日期</TableHead>
-                    <TableHead className="px-4 py-3 text-left">被访人</TableHead>
-                    <TableHead className="px-4 py-3 text-left">来访事由</TableHead>
-                    <TableHead className="px-4 py-3 text-left">通行码</TableHead>
-                    <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                    <TableActionHead className="px-4 py-3 text-right">操作</TableActionHead>
-                  </TableRow>
-                </TableHeader>
-
-                <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {loading ? (
-                    <TableStateRow colSpan={8} title="正在加载访客记录..." loading />
-                  ) : list.length === 0 ? (
-                    <TableStateRow colSpan={8} title="暂无访客记录" />
-                  ) : (
-                    list.map((item) => {
-                      return (
-                        <TableRow key={item.visitorId} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                          <TableCell className="px-4 py-3 align-top">
-                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              {item.visitorName}
-                            </div>
-                            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                              {item.visitorPhone || '未填写联系电话'}
-                            </div>
-                          </TableCell>
-
-                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
-                            <span className="inline-flex items-center gap-1">
-                              <Building2 size={12} className="text-slate-400 dark:text-slate-500" />
-                              {item.visitorCompany || '-'}
-                            </span>
-                          </TableCell>
-
-                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
-                            {item.visitDate}
-                          </TableCell>
-
-                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
-                            {item.hostName || '-'}
-                          </TableCell>
-
-                          <TableCell className="max-w-xs px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
-                            <span className="line-clamp-1">{item.visitReason}</span>
-                          </TableCell>
-
-                          <TableCell className="px-4 py-3 align-top">
-                            {item.passCode ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-2.5"
-                                onClick={() => setPassVisitor(item)}
-                                title={item.passCode}
-                              >
-                                <QrCode size={14} className="mr-1.5" />
-                                查看
-                              </Button>
-                            ) : (
-                              <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
-                            )}
-                          </TableCell>
-
-                          <TableCell className="px-4 py-3 align-top">
-                            <DictBadge dictType="oa_visitor_status" value={String(item.status || 'PENDING')} fallback="待确认" />
-                          </TableCell>
-
-                          <TableCell className="px-4 py-3 align-top text-right">
-                            <TableRowActions
-                              align="end"
-                              className="gap-1"
-                              actions={[
-                                {
-                                  label: '确认',
-                                  icon: <CheckCircle size={14} />,
-                                  onClick: () => handleConfirm(item.visitorId!),
-                                  tone: 'neutral',
-                                  hidden: item.status !== 'PENDING',
-                                  permissionKey: 'oa:visitor:confirm',
-                                },
-                                {
-                                  label: '签到',
-                                  icon: <LogIn size={14} />,
-                                  onClick: () => handleCheckIn(item.visitorId!),
-                                  tone: 'neutral',
-                                  hidden: item.status !== 'CONFIRMED',
-                                  permissionKey: 'oa:visitor:checkin',
-                                },
-                                {
-                                  label: '签退',
-                                  icon: <LogOut size={14} />,
-                                  onClick: () => handleCheckOut(item.visitorId!),
-                                  tone: 'neutral',
-                                  hidden: item.status !== 'ARRIVED',
-                                  permissionKey: 'oa:visitor:checkout',
-                                },
-                                {
-                                  label: '取消',
-                                  icon: <XCircle size={14} />,
-                                  onClick: () => setCancelTarget(item),
-                                  tone: 'neutral',
-                                  hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
-                                  permissionKey: 'oa:visitor:cancel',
-                                },
-                              ]}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={searchParams.pageNum}
-              pageSize={searchParams.pageSize}
-              showPageSizeSelector={false}
-              showJump={false}
-              onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
-              onPageSizeChange={() => {}}
-            />
-          ) : null
-        )}
-      />
+    <>
+      <section className="admin-source-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={Boolean(passVisitor)}
         title={passVisitor?.passCode || '访客通行码'}
         onClose={() => setPassVisitor(null)}
         maxWidthClassName="max-w-md"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <Button variant="outline" onClick={() => setPassVisitor(null)}>
             关闭
           </Button>
-        )}
+        )} 
       >
         {passVisitor ? (
-          <div className="space-y-4 py-1">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+          <div className="admin-dialog-stack py-1">
+            <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
               <div className="font-medium text-slate-900 dark:text-slate-100">{passVisitor.visitorName}</div>
               <div className="mt-1 grid gap-1 text-xs text-slate-500 dark:text-slate-400">
                 <span>{passVisitor.visitorCompany || '-'}</span>
                 <span>{passVisitor.visitDate || '-'} / {passVisitor.hostName || '-'}</span>
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center gap-4">
+            <div className="flex flex-col items-center justify-center gap-4 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-4 dark:border-slate-800 dark:bg-slate-950">
               {passQrCodeLoading ? (
-                <div className="flex h-52 w-52 items-center justify-center rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800">
+                <div className="flex h-52 w-52 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-3 dark:border-slate-800 dark:bg-slate-900">
                   <RotateCcw className="h-5 w-5 animate-spin text-slate-400" />
                 </div>
               ) : passQrCodeError ? (
@@ -533,13 +506,13 @@ export const VisitorPage: React.FC = () => {
                   title="二维码加载失败"
                   description={passQrCodeError}
                   icon={<QrCode className="h-4 w-4" />}
-                  className="h-52 w-52 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
+                  className="h-52 w-52 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-4 dark:border-slate-800 dark:bg-slate-900"
                 />
               ) : passQrCodeUrl ? (
                 <img
                   src={passQrCodeUrl}
                   alt="访客通行二维码"
-                  className="h-52 w-52 rounded-xl border border-slate-200 bg-white p-3"
+                  className="h-52 w-52 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3"
                 />
               ) : null}
               <div className="font-mono text-sm text-slate-500 dark:text-slate-400">
@@ -559,7 +532,7 @@ export const VisitorPage: React.FC = () => {
         }}
         maxWidthClassName="max-w-2xl"
         panelClassName="max-h-[92vh]"
-        bodyClassName="max-h-[72vh] overflow-y-auto"
+        bodyClassName="admin-dialog-stack max-h-[72vh] overflow-y-auto"
         footer={(
           <>
             <Button
@@ -576,8 +549,8 @@ export const VisitorPage: React.FC = () => {
         )}
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">访客姓名</Label>
+          <div className="admin-dialog-field">
+            <Label>访客姓名</Label>
             <Input
               type="text"
               value={formData.visitorName}
@@ -587,8 +560,8 @@ export const VisitorPage: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">访客电话</Label>
+          <div className="admin-dialog-field">
+            <Label>访客电话</Label>
             <Input
               type="text"
               value={formData.visitorPhone || ''}
@@ -598,8 +571,8 @@ export const VisitorPage: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">访客单位</Label>
+          <div className="admin-dialog-field">
+            <Label>访客单位</Label>
             <Input
               type="text"
               value={formData.visitorCompany || ''}
@@ -609,8 +582,8 @@ export const VisitorPage: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">来访人数</Label>
+          <div className="admin-dialog-field">
+            <Label>来访人数</Label>
             <Input
               type="number"
               value={formData.visitorCount || 1}
@@ -623,8 +596,8 @@ export const VisitorPage: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">来访日期</Label>
+          <div className="admin-dialog-field">
+            <Label>来访日期</Label>
             <DatePicker
               className="h-11"
               type="date"
@@ -633,8 +606,8 @@ export const VisitorPage: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">车牌号</Label>
+          <div className="admin-dialog-field">
+            <Label>车牌号</Label>
             <Input
               type="text"
               value={formData.carPlate || ''}
@@ -644,8 +617,8 @@ export const VisitorPage: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">被访人姓名</Label>
+          <div className="admin-dialog-field md:col-span-2">
+            <Label>被访人姓名</Label>
             <Input
               type="text"
               value={formData.hostName || ''}
@@ -655,8 +628,8 @@ export const VisitorPage: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">来访事由</Label>
+          <div className="admin-dialog-field md:col-span-2">
+            <Label>来访事由</Label>
             <Textarea
               className="min-h-[120px]"
               value={formData.visitReason}
@@ -676,7 +649,7 @@ export const VisitorPage: React.FC = () => {
         onCancel={() => setCancelTarget(null)}
         onConfirm={() => void handleCancel()}
       />
-    </div>
+    </>
   );
 };
 

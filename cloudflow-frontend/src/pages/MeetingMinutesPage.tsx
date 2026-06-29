@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import {
+  CheckCheck,
   ClipboardList,
   Clock3,
   FileText,
   LoaderCircle,
   Plus,
   RefreshCw,
+  Search,
   Send,
   Trash2,
   UserCheck,
@@ -28,14 +30,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
   UserSelector,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   meetingMinutesApi,
   parseDecisions,
@@ -55,17 +53,50 @@ import { DictBadge } from '@/components/common/DictBadge';
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
+const formatTableDateTime = (value?: string) => {
+  const text = formatDateTimeDisplay(value);
+  if (!text || text === '-') return text;
+  return text.replace(/^\d{4}-/, '').replace(/:\d{2}$/, '');
+};
+
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading = false }) => (
   <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-16">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
       </div>
     </td>
   </tr>
+);
+
+interface MinutesSurfaceProps {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  bodyClassName?: string;
+  children: React.ReactNode;
+}
+
+const MinutesSurface: React.FC<MinutesSurfaceProps> = ({
+  title,
+  description,
+  action,
+  bodyClassName = '',
+  children,
+}) => (
+  <InnerTableSurface className="admin-meeting-minutes-surface" wrapperClassName="admin-meeting-minutes-surface-wrapper">
+    <div className="admin-meeting-minutes-surface-head">
+      <div>
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
+      {action ? <div className="admin-meeting-minutes-surface-action">{action}</div> : null}
+    </div>
+    <div className={`admin-meeting-minutes-surface-body ${bodyClassName}`}>{children}</div>
+  </InnerTableSurface>
 );
 
 const getStatusBadge = (status?: string) => (
@@ -337,19 +368,25 @@ const MeetingMinutesPage: React.FC = () => {
   };
 
   const filters = (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex flex-1 flex-wrap items-center gap-3">
-        <div className="w-full sm:w-[220px]">
-          <Input
-            className="h-10"
-            value={query.keyword}
-            onChange={(e) => setQuery((q) => ({ ...q, keyword: e.target.value }))}
-            placeholder="会议标题 / 内容"
-          />
-        </div>
-        <div className="w-full sm:w-[180px]">
+    <section className="card admin-users-toolbar">
+      <div className="admin-oa-filter-grid">
+        <label className="admin-source-search">
+          <span className="input-label">搜索纪要</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              className="h-[42px]"
+              type="search"
+              value={query.keyword}
+              onChange={(e) => setQuery((q) => ({ ...q, keyword: e.target.value }))}
+              placeholder="会议标题 / 内容"
+            />
+          </div>
+        </label>
+        <label>
+          <span className="input-label">状态</span>
           <Select value={query.status || 'ALL'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === 'ALL' ? '' : v }))}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectTrigger className="h-[42px] w-full"><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">全部状态</SelectItem>
               {statusDict.getOptions().map((opt) => (
@@ -357,9 +394,8 @@ const MeetingMinutesPage: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        </label>
+      <div className="admin-source-controls">
         <Button variant="outline" size="sm" onClick={() => setQuery({ keyword: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })}>
           <RefreshCw size={14} className="mr-1.5" />清空条件
         </Button>
@@ -369,77 +405,95 @@ const MeetingMinutesPage: React.FC = () => {
           </Button>
         ) : null}
       </div>
-    </div>
+      </div>
+    </section>
   );
 
   const decisionCounts = useMemo(() => rows.map((r) => parseDecisions(r.decisions).length), [rows]);
 
   const table = (
-    <TableSurfaceCard>
-      <div className="flex min-h-[40rem] flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px]">
-            <TableHeader className="sticky top-0 z-10">
-              <tr>
-                <TableHead className="px-4 py-3 text-left">会议标题</TableHead>
-                <TableHead className="px-4 py-3 text-left">组织者</TableHead>
-                <TableHead className="px-4 py-3 text-left">会议时间</TableHead>
-                <TableHead className="px-4 py-3 text-left">地点</TableHead>
-                <TableHead className="px-4 py-3 text-left">决议项</TableHead>
-                <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                <TableHead className="px-4 py-3 text-left">更新时间</TableHead>
-                <TableActionHead className="w-40 px-4 py-3 text-right">操作</TableActionHead>
+    <InnerTableSurface>
+      <table className="unity-data-table admin-source-table admin-meeting-minutes-table">
+          <colgroup>
+            <col />
+            <col />
+            <col />
+            <col />
+            <col />
+            <col />
+            <col />
+            <col />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>会议标题</th>
+              <th>组织者</th>
+              <th>会议时间</th>
+              <th>地点</th>
+              <th>决议项</th>
+              <th>状态</th>
+              <th>更新时间</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={8} title="正在加载会议纪要..." loading />
+            ) : rows.length === 0 ? (
+              <TableStateRow colSpan={8} title="暂无会议纪要" />
+            ) : rows.map((row, idx) => (
+              <tr key={row.id}>
+                <td>
+                  <div className="admin-users-identity">
+                    <div>
+                      <strong>{row.meetingTitle}</strong>
+                      <small>{formatTableDateTime(row.createTime)}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>{row.organizerName || '-'}</td>
+                <td>{formatTableDateTime(row.meetingTime)}</td>
+                <td>{row.location || '-'}</td>
+                <td>
+                  <span className="inline-flex items-center gap-1">
+                    <ClipboardList className="h-3.5 w-3.5 text-slate-400" />
+                    {decisionCounts[idx]} 项
+                  </span>
+                </td>
+                <td>{getStatusBadge(row.status)}</td>
+                <td className="text-xs text-slate-400 dark:text-slate-500">{formatTableDateTime(row.updateTime || row.createTime)}</td>
+                <td>
+                  <div className="admin-users-row-actions">
+                    <button type="button" title="查看" aria-label="查看会议纪要" onClick={() => void openDetail(row)}>
+                      <FileText size={15} />
+                    </button>
+                    {canEdit && row.status === 'DRAFT' ? (
+                      <>
+                        <button type="button" title="编辑" aria-label="编辑会议纪要" onClick={() => openEdit(row)}>
+                          <RefreshCw size={15} />
+                        </button>
+                        <button type="button" title="确认纪要" aria-label="确认纪要" onClick={() => setPendingConfirmRow(row)}>
+                          <CheckCheck size={15} />
+                        </button>
+                      </>
+                    ) : null}
+                    {canEdit ? (
+                      <>
+                        <button type="button" title="派发决议" aria-label="派发决议" onClick={() => setPendingDispatch(row)}>
+                          <Send size={15} />
+                        </button>
+                        <button type="button" className="danger" title="删除" aria-label="删除会议纪要" onClick={() => setPendingDelete(row)}>
+                          <Trash2 size={15} />
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                </td>
               </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loading ? (
-                <TableStateRow colSpan={8} title="正在加载会议纪要..." loading />
-              ) : rows.length === 0 ? (
-                <TableStateRow colSpan={8} title="暂无会议纪要" />
-              ) : rows.map((row, idx) => (
-                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                  <td className="px-4 py-3 text-sm">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{row.meetingTitle}</div>
-                    <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(row.createTime)}</div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{row.organizerName || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{formatDateTimeDisplay(row.meetingTime)}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{row.location || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">
-                    <span className="inline-flex items-center gap-1">
-                      <ClipboardList className="h-3.5 w-3.5 text-slate-400" />
-                      {decisionCounts[idx]} 项
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{getStatusBadge(row.status)}</td>
-                  <td className="px-4 py-3 text-xs text-slate-400">{formatDateTimeDisplay(row.updateTime || row.createTime)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        { key: 'detail', label: '查看', semantic: 'view', onClick: () => void openDetail(row) },
-                        ...(canEdit && row.status === 'DRAFT'
-                          ? ([
-                              { key: 'edit', label: '编辑', semantic: 'edit' as const, onClick: () => openEdit(row) },
-                              { key: 'confirm', label: '确认纪要', semantic: 'confirm' as const, onClick: () => setPendingConfirmRow(row) },
-                            ])
-                          : []),
-                        ...(canEdit
-                          ? ([
-                              { key: 'dispatch', label: '派发决议', semantic: 'send' as const, onClick: () => setPendingDispatch(row) },
-                              { key: 'delete', label: '删除', semantic: 'delete' as const, onClick: () => setPendingDelete(row) },
-                            ])
-                          : []),
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </TableSurfaceCard>
+            ))}
+          </tbody>
+      </table>
+    </InnerTableSurface>
   );
 
   const pagination = total > 0 ? (
@@ -454,15 +508,52 @@ const MeetingMinutesPage: React.FC = () => {
     />
   ) : null;
 
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">MEETING MINUTES</p>
+          <h2>会议纪要</h2>
+          <span>沉淀会议内容、出席记录、确认状态和决议派发</span>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        <article className="card admin-source-stat admin-source-tone-blue">
+          <div className="admin-source-stat-icon"><FileText size={18} /></div>
+          <div><p>纪要总数</p><strong>{total}</strong><span>当前条件</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-green">
+          <div className="admin-source-stat-icon"><ClipboardList size={18} /></div>
+          <div><p>本页决议</p><strong>{decisionCounts.reduce((sum, count) => sum + count, 0)}</strong><span>待跟进事项</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-violet">
+          <div className="admin-source-stat-icon"><Users size={18} /></div>
+          <div><p>本页会议</p><strong>{rows.length}</strong><span>列表加载</span></div>
+        </article>
+        <article className="card admin-source-stat admin-source-tone-amber">
+          <div className="admin-source-stat-icon"><Clock3 size={18} /></div>
+          <div><p>草稿</p><strong>{rows.filter((row) => row.status === 'DRAFT').length}</strong><span>可编辑状态</span></div>
+        </article>
+      </section>
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
-      <TablePageLayout className="gap-4" filters={filters} table={table} pagination={pagination} />
+    <div className="admin-source-page admin-meeting-minutes-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={filters}
+        table={table}
+        pagination={pagination}
+      />
 
       <BaseDialog
         open={formOpen}
         title={formData.id ? '编辑会议纪要' : '新建会议纪要'}
         onClose={() => setFormOpen(false)}
         width="wide"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
@@ -470,9 +561,9 @@ const MeetingMinutesPage: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
+        <div className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>会议标题</Label>
               <Input
                 className="!h-11 min-h-11"
@@ -480,7 +571,7 @@ const MeetingMinutesPage: React.FC = () => {
                 onChange={(e) => setFormData((f) => ({ ...f, meetingTitle: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>组织者</Label>
               <UserSelector
                 single
@@ -494,7 +585,7 @@ const MeetingMinutesPage: React.FC = () => {
                 placeholder="选择组织者"
               />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>会议时间</Label>
               <DatePicker
                 className="!h-11 min-h-11"
@@ -503,7 +594,7 @@ const MeetingMinutesPage: React.FC = () => {
                 onChange={(e) => setFormData((f) => ({ ...f, meetingTime: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>地点</Label>
               <MeetingRoomSelector
                 value={formData.roomId || null}
@@ -517,7 +608,7 @@ const MeetingMinutesPage: React.FC = () => {
               />
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="admin-dialog-field">
             <Label>纪要内容</Label>
             <Textarea
               className="min-h-[120px] resize-none"
@@ -525,7 +616,7 @@ const MeetingMinutesPage: React.FC = () => {
               onChange={(e) => setFormData((f) => ({ ...f, minutesContent: e.target.value }))}
             />
           </div>
-          <div className="space-y-2">
+          <div className="admin-dialog-field">
             <div className="flex items-center justify-between">
               <Label>决议项</Label>
               <Button size="sm" variant="outline" onClick={() => setDecisions((prev) => [...prev, emptyDecision()])}>
@@ -533,13 +624,13 @@ const MeetingMinutesPage: React.FC = () => {
               </Button>
             </div>
             {decisions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400 dark:border-slate-700">
+              <div className="admin-meeting-minutes-empty">
                 暂无决议项
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="grid gap-2">
                 {decisions.map((d, idx) => (
-                  <div key={idx} className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
+                  <div key={idx} className="admin-meeting-minutes-decision-editor">
                     <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_8rem_2.75rem]">
                       <Input
                         className="!h-11 min-h-11"
@@ -587,10 +678,11 @@ const MeetingMinutesPage: React.FC = () => {
         onClose={() => setDetailOpen(false)}
         width="wide"
         headerAside={detail ? getStatusBadge(detail.status) : null}
+        bodyClassName="admin-dialog-stack"
         footer={<Button variant="outline" onClick={() => setDetailOpen(false)}>关闭</Button>}
       >
         {detail ? (
-          <div className="space-y-4">
+          <div className="admin-dialog-stack">
             <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
               {[
                 ['组织者', detail.organizerName],
@@ -598,37 +690,34 @@ const MeetingMinutesPage: React.FC = () => {
                 ['地点', detail.location],
                 ['创建时间', formatDateTimeDisplay(detail.createTime)],
               ].map(([label, value]) => (
-                <div key={label} className="border-b border-slate-100 pb-3 dark:border-slate-800">
+                <div key={label} className="border-b border-slate-200 pb-3 dark:border-slate-800">
                   <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-                  <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
-                </div>
-              ))}
+                <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+              </div>
+            ))}
             </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">纪要内容</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{detail.minutesContent}</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  <ClipboardList className="mr-1 inline h-4 w-4" />决议项 ({detailDecisions.length})
-                </div>
-                {canEdit ? (
+            <MinutesSurface title="纪要内容" description="会议正文记录">
+              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{detail.minutesContent}</div>
+            </MinutesSurface>
+            <MinutesSurface
+              title={`决议项 (${detailDecisions.length})`}
+              description="责任人、截止时间和任务派发状态"
+              action={canEdit ? (
                   <Button size="sm" variant="outline" onClick={() => setPendingDispatch(detail)}>
                     <Send size={14} className="mr-1.5" />一键派发为工作任务
                   </Button>
                 ) : null}
-              </div>
+            >
               {detailDecisions.length === 0 ? (
-                <div className="py-4 text-center text-xs text-slate-400">暂无决议项</div>
+                <div className="admin-meeting-minutes-empty">暂无决议项</div>
               ) : (
-                <ul className="space-y-2 text-sm">
+                <ul className="admin-meeting-minutes-decision-list">
                   {detailDecisions.map((d, idx) => (
-                    <li key={idx} className="rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
+                    <li key={idx} className="admin-meeting-minutes-decision-item">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-slate-900 dark:text-slate-100">{d.title || '-'}</span>
                         {d.workTaskId ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                          <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
                             已派发 #{d.workTaskId}
                           </span>
                         ) : null}
@@ -641,29 +730,27 @@ const MeetingMinutesPage: React.FC = () => {
                   ))}
                 </ul>
               )}
-            </div>
+            </MinutesSurface>
 
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  <Users className="mr-1 inline h-4 w-4" />出席记录 ({attendance.length})
-                </div>
-                {canEdit ? (
+            <MinutesSurface
+              title={`出席记录 (${attendance.length})`}
+              description="参会人签到和出席状态"
+              action={canEdit ? (
                   <Button size="sm" variant="outline" onClick={openAttendanceCreate}>
                     <UserCheck size={14} className="mr-1.5" />登记出席
                   </Button>
                 ) : null}
-              </div>
+            >
               {attendanceLoading ? (
-                <div className="py-4 text-center text-xs text-slate-400">
+                <div className="admin-meeting-minutes-empty">
                   <LoaderCircle className="mx-auto mb-1 h-4 w-4 animate-spin" />加载中...
                 </div>
               ) : attendance.length === 0 ? (
-                <div className="py-4 text-center text-xs text-slate-400">暂无出席记录</div>
+                <div className="admin-meeting-minutes-empty">暂无出席记录</div>
               ) : (
-                <ul className="space-y-1 text-sm">
+                <ul className="admin-meeting-minutes-attendance-list">
                   {attendance.map((a) => (
-                    <li key={a.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
+                    <li key={a.id} className="admin-meeting-minutes-attendance-item">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-slate-900 dark:text-slate-100">{a.userName || '-'}</span>
                         <DictBadge dictType="oa_meeting_attend_status" value={String(a.attendStatus || 'NOT_CHECKED')} />
@@ -684,7 +771,7 @@ const MeetingMinutesPage: React.FC = () => {
                   ))}
                 </ul>
               )}
-            </div>
+            </MinutesSurface>
           </div>
         ) : null}
       </BaseDialog>
@@ -693,6 +780,7 @@ const MeetingMinutesPage: React.FC = () => {
         open={attendanceFormOpen}
         title={attendanceForm.id ? '编辑出席记录' : '登记出席'}
         onClose={() => setAttendanceFormOpen(false)}
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => setAttendanceFormOpen(false)}>取消</Button>
@@ -700,8 +788,8 @@ const MeetingMinutesPage: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
-          <div className="space-y-2">
+        <div className="admin-dialog-stack">
+          <div className="admin-dialog-field">
             <Label>参会人</Label>
             <Input
               className="h-11"
@@ -709,7 +797,7 @@ const MeetingMinutesPage: React.FC = () => {
               onChange={(e) => setAttendanceForm((f) => ({ ...f, userName: e.target.value }))}
             />
           </div>
-          <div className="space-y-2">
+          <div className="admin-dialog-field">
             <Label>出席状态</Label>
             <Select
               value={attendanceForm.attendStatus}
@@ -723,7 +811,7 @@ const MeetingMinutesPage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="admin-dialog-field">
             <Label>签到时间</Label>
             <DatePicker
               className="h-11"
@@ -732,7 +820,7 @@ const MeetingMinutesPage: React.FC = () => {
               onChange={(e) => setAttendanceForm((f) => ({ ...f, checkInTime: e.target.value }))}
             />
           </div>
-          <div className="space-y-2">
+          <div className="admin-dialog-field">
             <Label>备注</Label>
             <Textarea
               className="min-h-[80px] resize-none"

@@ -33,8 +33,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { ListResultFooter } from '@/components/common/ListResultFooter';
 import {
   Button,
   DatePicker,
@@ -45,14 +44,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TableActionHead,
-  TableHead,
-  TableHeader,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'payment';
@@ -95,20 +91,68 @@ const getPaymentStatusBadge = (status?: string) => (
   <DictBadge dictType="oa_payment_status" value={String(status || 'NONE')} />
 );
 
+const getReceivableQuantity = (item: PurchaseItem) =>
+  Math.max(0, Number(item.quantity || 0) - Number(item.receivedQuantity || 0));
+
+const hasReceivableItems = (items?: PurchaseItem[]) =>
+  Boolean(items?.some((item) => getReceivableQuantity(item) > 0));
+
 const InlineState: React.FC<{ title: string; icon?: React.ReactNode; className?: string }> = ({ title, icon, className }) => (
-  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-      {icon || <ShoppingCart className="h-4 w-4" />}
+  <div className={['admin-dialog-empty-note', className].filter(Boolean).join(' ')}>
+    <div className="flex flex-col items-center justify-center text-center">
+      <div className="admin-source-stat-icon mb-3">
+        {icon || <ShoppingCart className="h-4 w-4" />}
+      </div>
+      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
   </div>
 );
 
+const DialogPanel: React.FC<{
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, actions, children, className, bodyClassName }) => (
+  <section className={['table-scroll-container admin-inner-table-surface', className].filter(Boolean).join(' ')}>
+    {title || description || actions ? (
+      <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div>
+          {title ? <strong>{title}</strong> : null}
+          {description ? <span>{description}</span> : null}
+        </div>
+        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      </div>
+    ) : null}
+    <div className={['p-4', bodyClassName].filter(Boolean).join(' ')}>{children}</div>
+  </section>
+);
+
+const DetailRows: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <DialogPanel title="基础信息" bodyClassName={['admin-purchase-detail-grid', className].filter(Boolean).join(' ')}>
+    {children}
+  </DialogPanel>
+);
+
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="border-b border-slate-100 pb-3 dark:border-slate-800">
+  <div className="admin-purchase-detail-item">
     <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
     <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
   </div>
+);
+
+const PurchasePanel: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  meta?: React.ReactNode;
+  actions?: React.ReactNode;
+  bodyClassName?: string;
+}> = ({ title, children, meta, actions, bodyClassName }) => (
+  <DialogPanel title={title} description={meta ? String(meta) : undefined} actions={actions} bodyClassName={bodyClassName}>
+    {children}
+  </DialogPanel>
 );
 
 export const PurchaseRequestPage: React.FC = () => {
@@ -177,12 +221,13 @@ export const PurchaseRequestPage: React.FC = () => {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const formTotalAmount = useMemo(
     () => formData.items?.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0) || 0,
     [formData.items],
   );
   const pendingCount = useMemo(() => purchases.filter((item) => item.status === 'PENDING').length, [purchases]);
+  const draftCount = useMemo(() => purchases.filter((item) => item.status === 'DRAFT').length, [purchases]);
+  const approvedCount = useMemo(() => purchases.filter((item) => item.status === 'APPROVED').length, [purchases]);
   const canProcess = (status?: string) =>
     ['APPROVED', 'PARTIAL_RECEIVED'].includes(status || '');
 
@@ -316,10 +361,15 @@ export const PurchaseRequestPage: React.FC = () => {
   const openReceipt = async (purchase: PurchaseRequest) => {
     try {
       const detail = await purchaseRequestApi.getInfo(purchase.id!);
+      if (!hasReceivableItems(detail.items)) {
+        toast.info('该采购单已全部入库，无需重复入库');
+        await fetchPurchases();
+        return;
+      }
       setReceiptPurchase(detail);
       const next: Record<number, number> = {};
       detail.items?.forEach((item) => {
-        if (item.id) next[item.id] = 0;
+        if (item.id) next[item.id] = getReceivableQuantity(item);
       });
       setReceiptQuantities(next);
       setReceiptRemark('');
@@ -337,6 +387,16 @@ export const PurchaseRequestPage: React.FC = () => {
       toast.error('请填写本次入库数量');
       return;
     }
+    const itemMap = new Map((receiptPurchase.items || []).map((item) => [item.id, item]));
+    for (const item of items) {
+      const purchaseItem = itemMap.get(item.itemId);
+      if (!purchaseItem) continue;
+      const remain = getReceivableQuantity(purchaseItem);
+      if (item.quantity > remain) {
+        toast.error(`本次入库不能超过剩余数量：${purchaseItem.consumableName || '采购明细'}`);
+        return;
+      }
+    }
     try {
       await purchaseRequestApi.receipt(receiptPurchase.id, { remark: receiptRemark, items });
       toast.success('入库成功');
@@ -349,146 +409,189 @@ export const PurchaseRequestPage: React.FC = () => {
 
   const renderDetailValue = (value?: string | number | null) =>
     value === undefined || value === null || value === '' ? '-' : value;
+  const hasActiveFilters = Boolean(searchParams.status || searchParams.supplierId);
+  const currentStatusLabel = searchParams.status ? statusDict.getLabel(searchParams.status) : '全部状态';
+  const currentSupplierLabel = searchParams.supplierId
+    ? suppliers.find((supplier) => supplier.supplierId === searchParams.supplierId)?.supplierName || '指定供应商'
+    : '全部供应商';
+  const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentSupplierLabel}` : '全部采购';
+  const receiptTotal = useMemo(
+    () => Object.values(receiptQuantities).reduce((sum, quantity) => sum + Number(quantity || 0), 0),
+    [receiptQuantities],
+  );
+  const metrics = [
+    { label: '采购申请', value: String(total), meta: `当前页 ${purchases.length}`, icon: <ShoppingCart size={18} />, tone: 'blue' },
+    { label: '草稿', value: String(draftCount), meta: '待提交', icon: <Edit size={18} />, tone: 'amber' },
+    { label: '审批中', value: String(pendingCount), meta: '流程流转', icon: <Send size={18} />, tone: 'violet' },
+    { label: '已通过', value: String(approvedCount), meta: '可入库付款', icon: <PackageCheck size={18} />, tone: 'green' },
+  ];
 
-  return (
-    <div className="space-y-4">
-      <TablePageLayout
-        className="gap-4"
-        filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="w-full sm:w-[170px]">
-                <Select
-                  value={searchParams.status || 'ALL'}
-                  onValueChange={(value) => setSearchParams((prev) => ({
-                    ...prev,
-                    status: value === 'ALL' ? '' : value,
-                    pageNum: 1,
-                  }))}
-                >
-                  <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusDict.getOptions().map((option) => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+  const pageActions = (
+    <div className="grid gap-5">
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">PURCHASE REQUESTS</p>
+            <h2>采购申请</h2>
+            <span>跟踪供应商、采购明细、入库、付款和审批状态</span>
+          </div>
+          <div className="admin-source-controls">
+            <Button variant="outline" size="sm" onClick={() => void fetchPurchases()} disabled={loading}>
+              <RotateCcw size={16} className={loading ? 'animate-spin' : ''} />
+              刷新
+            </Button>
+            <Button size="sm" onClick={handleAdd}>
+              <Plus size={16} />
+              新建采购
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid">
+          {metrics.map((metric) => (
+            <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+              <div className="admin-source-stat-icon">{metric.icon}</div>
+              <div>
+                <p>{metric.label}</p>
+                <strong>{metric.value}</strong>
+                <span>{metric.meta}</span>
               </div>
-              <div className="w-full sm:w-[220px]">
-                <Select
-                  value={searchParams.supplierId ? String(searchParams.supplierId) : 'ALL'}
-                  onValueChange={(value) => setSearchParams((prev) => ({
-                    ...prev,
-                    supplierId: value === 'ALL' ? undefined : Number(value),
-                    pageNum: 1,
-                  }))}
-                >
-                  <SelectTrigger className="h-10"><SelectValue placeholder="供应商" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">全部供应商</SelectItem>
-                    {suppliers.map((supplier) => (
-                      <SelectItem key={supplier.supplierId} value={String(supplier.supplierId)}>
-                        {supplier.supplierName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>第 {searchParams.pageNum} / {totalPages} 页</span>
-                <span>共 {total} 条</span>
-                <span>审批中 {pendingCount}</span>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={resetFilters}>
-                <RotateCcw size={14} className="mr-1.5" />
-                清空条件
-              </Button>
-              <Button size="sm" onClick={handleAdd}>
-                <Plus size={14} className="mr-1.5" />
-                新建采购
+            </article>
+          ))}
+        </section>
+    </div>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar">
+          <div className="admin-oa-filter-grid">
+            <label>
+              <span className="input-label">状态</span>
+              <Select
+                value={searchParams.status || 'ALL'}
+                onValueChange={(value) => setSearchParams((prev) => ({
+                  ...prev,
+                  status: value === 'ALL' ? '' : value,
+                  pageNum: 1,
+                }))}
+              >
+                <SelectTrigger className="h-[42px]"><SelectValue placeholder="状态" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部状态</SelectItem>
+                  {statusDict.getOptions().map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <label>
+              <span className="input-label">供应商</span>
+              <Select
+                value={searchParams.supplierId ? String(searchParams.supplierId) : 'ALL'}
+                onValueChange={(value) => setSearchParams((prev) => ({
+                  ...prev,
+                  supplierId: value === 'ALL' ? undefined : Number(value),
+                  pageNum: 1,
+                }))}
+              >
+                <SelectTrigger className="h-[42px]"><SelectValue placeholder="供应商" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部供应商</SelectItem>
+                  {suppliers.map((supplier) => (
+                    <SelectItem key={supplier.supplierId} value={String(supplier.supplierId)}>
+                      {supplier.supplierName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="admin-users-toolbar-actions">
+              <Button variant="outline" size="sm" onClick={resetFilters} disabled={!hasActiveFilters}>
+                <RotateCcw size={14} />
+                重置
               </Button>
             </div>
           </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1160px]">
-                <TableHeader className="sticky top-0 z-10">
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface>
+              <table className="unity-data-table admin-source-table min-w-[1160px]">
+                <thead>
                   <tr>
-                    <TableHead className="px-4 py-3 text-left">采购单号</TableHead>
-                    <TableHead className="px-4 py-3 text-left">供应商</TableHead>
-                    <TableHead className="px-4 py-3 text-left">申请人 / 部门</TableHead>
-                    <TableHead className="px-4 py-3 text-left">金额 / 到货</TableHead>
-                    <TableHead className="px-4 py-3 text-left">事由</TableHead>
-                    <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                    <TableHead className="px-4 py-3 text-left">付款</TableHead>
-                    <TableActionHead className="w-48 px-4 py-3 text-right">操作</TableActionHead>
+                    <th>采购单号</th>
+                    <th>供应商</th>
+                    <th>申请人 / 部门</th>
+                    <th>金额 / 到货</th>
+                    <th>事由</th>
+                    <th>状态</th>
+                    <th>付款</th>
+                    <th className="text-right">当前操作</th>
                   </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                </thead>
+                <tbody>
                   {loading ? (
-                    <tr><td colSpan={8} className="px-4 py-16 text-center text-sm text-slate-500">正在加载采购申请...</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">正在加载采购申请...</td></tr>
                   ) : purchases.length === 0 ? (
-                    <tr><td colSpan={8} className="px-4 py-16 text-center text-sm text-slate-500">暂无采购申请</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">暂无采购申请</td></tr>
                   ) : purchases.map((item) => (
-                    <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                      <td className="px-4 py-3">
+                    <tr key={item.id}>
+                      <td>
                         <div className="font-medium text-slate-900 dark:text-slate-100">{item.purchaseNo || '-'}</div>
                         <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(item.createTime)}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      <td>
                         <div className="font-medium text-slate-900 dark:text-slate-100">{item.supplierName || '-'}</div>
                         <div className="mt-1 text-xs text-slate-400">{item.supplierContact || item.supplierPhone || '-'}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      <td>
                         <div>{item.userName || '-'}</div>
                         <div className="mt-1 text-xs text-slate-400">{item.deptName || '-'}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">
+                      <td>
                         <div>{formatAmount(item.totalAmount)}</div>
                         <div className="mt-1 text-xs text-slate-400">{item.expectedDate || '-'}</div>
                       </td>
-                      <td className="max-w-xs truncate px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{item.reason || '-'}</td>
-                      <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
-                      <td className="px-4 py-3">{getPaymentStatusBadge(item.paymentStatus)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            { label: '详情', icon: <Eye size={14} />, onClick: () => void handleView(item), tone: 'neutral' },
-                            { label: '编辑', icon: <Edit size={14} />, onClick: () => void handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT' },
-                            { label: '提交', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.id!, title: '提交采购申请', message: '提交后将进入采购审批流程。', confirmText: '提交' }), tone: 'success', hidden: item.status !== 'DRAFT' },
-                            { label: '入库', icon: <PackageCheck size={14} />, onClick: () => void openReceipt(item), tone: 'warning', hidden: !canProcess(item.status) },
-                            { label: '付款', icon: <CreditCard size={14} />, onClick: () => setConfirmState({ type: 'payment', id: item.id!, title: '生成付款申请', message: '将基于当前采购单创建付款申请草稿。', confirmText: '生成' }), tone: 'primary', hidden: !canProcess(item.status) || Boolean(item.paymentRequestId) },
-                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => setConfirmState({ type: 'delete', id: item.id!, title: '删除采购申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true }), tone: 'danger', hidden: item.status !== 'DRAFT' },
-                          ]}
-                        />
+                      <td><div className="max-w-xs truncate">{item.reason || '-'}</div></td>
+                      <td>{getStatusBadge(item.status)}</td>
+                      <td>{getPaymentStatusBadge(item.paymentStatus)}</td>
+                      <td>
+                        <div className="admin-users-row-actions">
+                          <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item)}><Eye size={15} /></button>
+                          {item.status === 'DRAFT' ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                          {item.status === 'DRAFT' ? <button type="button" title="提交" aria-label="提交" onClick={() => setConfirmState({ type: 'submit', id: item.id!, title: '提交采购申请', message: '提交后将进入采购审批流程。', confirmText: '提交' })}><Send size={15} /></button> : null}
+                          {canProcess(item.status) ? <button type="button" title="入库" aria-label="入库" onClick={() => void openReceipt(item)}><PackageCheck size={15} /></button> : null}
+                          {canProcess(item.status) && !item.paymentRequestId ? <button type="button" title="付款" aria-label="付款" onClick={() => setConfirmState({ type: 'payment', id: item.id!, title: '生成付款申请', message: '将基于当前采购单创建付款申请草稿。', confirmText: '生成' })}><CreditCard size={15} /></button> : null}
+                          {item.status === 'DRAFT' ? <button type="button" title="删除" aria-label="删除" onClick={() => setConfirmState({ type: 'delete', id: item.id!, title: '删除采购申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true })}><Trash2 size={15} /></button> : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={searchParams.pageNum}
-              pageSize={searchParams.pageSize}
-              showPageSizeSelector={false}
-              showJump={false}
-              onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
-              onPageSizeChange={() => {}}
-            />
-          ) : null
-        )}
-      />
+        </InnerTableSurface>
+  );
+
+  const pagePagination = (
+    <ListResultFooter
+      total={total}
+      page={searchParams.pageNum}
+      pageSize={searchParams.pageSize}
+      summary={resultSummary}
+      onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
+    />
+  );
+
+  return (
+    <>
+      <section className="admin-source-page oa-approval-page purchase-request-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showDialog}
@@ -502,9 +605,9 @@ export const PurchaseRequestPage: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2 md:col-span-2">
+        <div className="admin-dialog-stack">
+          <DialogPanel title="基础信息" bodyClassName="grid gap-4 md:grid-cols-3">
+            <div className="admin-dialog-field md:col-span-2">
               <Label>供应商</Label>
               <Select
                 value={formData.supplierId ? String(formData.supplierId) : ''}
@@ -520,7 +623,7 @@ export const PurchaseRequestPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>期望到货日期</Label>
               <DatePicker
                 className="h-11"
@@ -529,10 +632,10 @@ export const PurchaseRequestPage: React.FC = () => {
                 onChange={(event) => setFormData((prev) => ({ ...prev, expectedDate: event.target.value }))}
               />
             </div>
-          </div>
+          </DialogPanel>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
+          <DialogPanel title="业务归属" bodyClassName="grid gap-4 md:grid-cols-3">
+            <div className="admin-dialog-field">
               <Label>关联项目</Label>
               <Select
                 value={formData.projectId ? String(formData.projectId) : 'NONE'}
@@ -558,7 +661,7 @@ export const PurchaseRequestPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>客户</Label>
               <Select
                 value={formData.customerId ? String(formData.customerId) : 'NONE'}
@@ -582,7 +685,7 @@ export const PurchaseRequestPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>默认预算科目</Label>
               <Select
                 value={formData.budgetSubjectCode || 'NONE'}
@@ -611,34 +714,35 @@ export const PurchaseRequestPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          </DialogPanel>
 
-          <div className="space-y-2">
-            <Label>采购事由</Label>
-            <Textarea
-              className="min-h-[100px] resize-none"
-              value={formData.reason}
-              onChange={(event) => setFormData((prev) => ({ ...prev, reason: event.target.value }))}
-              placeholder="填写采购原因"
-            />
-          </div>
+          <DialogPanel title="采购事由">
+            <div className="admin-dialog-field">
+              <Label>事由说明</Label>
+              <Textarea
+                className="min-h-[100px] resize-none"
+                value={formData.reason}
+                onChange={(event) => setFormData((prev) => ({ ...prev, reason: event.target.value }))}
+                placeholder="填写采购原因"
+              />
+            </div>
+          </DialogPanel>
 
-          <div className="rounded-lg border border-slate-200 px-4 py-4 dark:border-slate-800">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">采购明细</div>
-                <div className="mt-1 text-xs text-slate-500">汇总金额 {formatAmount(formTotalAmount)}</div>
-              </div>
+          <PurchasePanel
+            title="采购明细"
+            meta={`汇总金额 ${formatAmount(formTotalAmount)}`}
+            bodyClassName="admin-purchase-item-list"
+            actions={(
               <Button size="sm" onClick={addItem}>
                 <Plus size={14} className="mr-1.5" />
                 添加明细
               </Button>
-            </div>
-            <div className="space-y-2">
-              {formData.items?.map((item, index) => (
-                <div key={`${index}-${item.id || 'draft'}`} className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_140px_120px_120px_120px_40px]">
-                    <div className="space-y-2">
+            )}
+          >
+            {formData.items?.map((item, index) => (
+              <article key={`${index}-${item.id || 'draft'}`} className="admin-purchase-item-card">
+                <div className="admin-purchase-item-grid">
+                    <div className="admin-dialog-field">
                       <Label className="text-xs text-slate-500">耗材</Label>
                       <Select value={item.consumableId ? String(item.consumableId) : ''} onValueChange={(value) => updateItem(index, 'consumableId', Number(value))}>
                         <SelectTrigger className="h-10"><SelectValue placeholder="请选择耗材" /></SelectTrigger>
@@ -651,7 +755,7 @@ export const PurchaseRequestPage: React.FC = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="admin-dialog-field">
                       <Label className="text-xs text-slate-500">预算科目</Label>
                       <Select value={item.budgetSubjectCode || 'NONE'} onValueChange={(value) => {
                         const subject = budgetSubjectOptions.find((option) => option.subjectCode === value);
@@ -674,48 +778,49 @@ export const PurchaseRequestPage: React.FC = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="admin-dialog-field">
                       <Label className="text-xs text-slate-500">数量</Label>
                       <Input className="h-10" type="number" min="1" value={item.quantity || ''} onChange={(event) => updateItem(index, 'quantity', parseInt(event.target.value, 10) || 0)} />
                     </div>
-                    <div className="space-y-2">
+                    <div className="admin-dialog-field">
                       <Label className="text-xs text-slate-500">单价</Label>
                       <Input className="h-10" type="number" min="0" step="0.01" value={item.unitPrice || ''} onChange={(event) => updateItem(index, 'unitPrice', parseFloat(event.target.value) || 0)} />
                     </div>
-                    <div className="space-y-2">
+                    <div className="admin-dialog-field">
                       <Label className="text-xs text-slate-500">金额</Label>
                       <Input className="h-10" value={formatAmount(Number(item.quantity || 0) * Number(item.unitPrice || 0))} disabled />
                     </div>
-                    <div className="flex items-end justify-end">
+                    <div className="admin-purchase-item-actions">
                       <Button
                         type="button"
                         variant="destructive"
                         size="icon"
                         onClick={() => removeItem(index)}
-                        className="h-10 w-10 rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:bg-slate-950 dark:text-rose-300"
+                        className="h-10 w-10 border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950/20 dark:text-rose-300"
                         aria-label="删除明细"
                         title="删除明细"
                       >
                         <Trash2 size={14} />
                       </Button>
                     </div>
-                  </div>
-                  <div className="mt-2 text-xs text-slate-500">
-                    {item.consumableName || '-'} {item.model ? ` / ${item.model}` : ''} {item.unit ? ` / ${item.unit}` : ''}
-                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
+                <div className="mt-2 text-xs text-slate-500">
+                  {item.consumableName || '-'} {item.model ? ` / ${item.model}` : ''} {item.unit ? ` / ${item.unit}` : ''}
+                </div>
+              </article>
+            ))}
+          </PurchasePanel>
 
-          <div>
-            <Label className="mb-1.5 block">附件</Label>
-            <FileUpload
-              value={formData.attachmentUrl || ''}
-              onChange={(urls) => setFormData((prev) => ({ ...prev, attachmentUrl: urls }))}
-              maxCount={5}
-            />
-          </div>
+          <DialogPanel title="附件">
+            <div className="admin-dialog-field">
+              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">附件文件</Label>
+              <FileUpload
+                value={formData.attachmentUrl || ''}
+                onChange={(urls) => setFormData((prev) => ({ ...prev, attachmentUrl: urls }))}
+                maxCount={5}
+              />
+            </div>
+          </DialogPanel>
         </div>
       </BaseDialog>
 
@@ -725,14 +830,14 @@ export const PurchaseRequestPage: React.FC = () => {
         onClose={() => setDetailPurchase(null)}
         width="wide"
         headerAside={detailPurchase && !detailLoading ? getStatusBadge(detailPurchase.status) : null}
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={<Button variant="outline" onClick={() => setDetailPurchase(null)}>关闭</Button>}
       >
         {detailLoading ? (
           <InlineState title="正在加载采购详情..." icon={<Clock3 className="h-4 w-4 animate-spin" />} />
         ) : detailPurchase ? (
           <>
-            <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
+            <DetailRows>
               <DetailRow label="供应商" value={renderDetailValue(detailPurchase.supplierName)} />
               <DetailRow label="联系人" value={renderDetailValue(detailPurchase.supplierContact)} />
               <DetailRow label="联系电话" value={renderDetailValue(detailPurchase.supplierPhone)} />
@@ -748,17 +853,15 @@ export const PurchaseRequestPage: React.FC = () => {
               <DetailRow label="流程实例" value={renderDetailValue(detailPurchase.instanceId)} />
               <DetailRow label="创建时间" value={formatDateTimeDisplay(detailPurchase.createTime)} />
               <DetailRow label="更新时间" value={formatDateTimeDisplay(detailPurchase.updateTime)} />
-            </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">采购事由</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{detailPurchase.reason || '-'}</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">采购明细</div>
+            </DetailRows>
+            <PurchasePanel title="采购事由">
+              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{detailPurchase.reason || '-'}</div>
+            </PurchasePanel>
+            <PurchasePanel title="采购明细">
               {detailPurchase.items?.length ? (
-                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                  <table className="w-full min-w-[760px]">
-                    <thead className="bg-slate-50/80 dark:bg-slate-900/70">
+                <InnerTableSurface>
+                  <table className="unity-data-table admin-source-table min-w-[760px]">
+                    <thead>
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">耗材</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">数量</th>
@@ -767,34 +870,33 @@ export const PurchaseRequestPage: React.FC = () => {
                         <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">已入库</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody>
                       {detailPurchase.items.map((item) => (
                         <tr key={item.id}>
-                          <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">{item.consumableName || '-'}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{item.quantity} {item.unit || ''}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{formatAmount(item.unitPrice)}</td>
-                          <td className="px-4 py-3 text-sm text-slate-700">{formatAmount(item.amount)}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{item.receivedQuantity || 0}</td>
+                          <td>{item.consumableName || '-'}</td>
+                          <td>{item.quantity} {item.unit || ''}</td>
+                          <td>{formatAmount(item.unitPrice)}</td>
+                          <td>{formatAmount(item.amount)}</td>
+                          <td>{item.receivedQuantity || 0}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
-              ) : <InlineState title="暂无采购明细" className="py-8" />}
-            </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">附件</div>
+                </InnerTableSurface>
+              ) : <InlineState title="暂无采购明细" className="py-6" />}
+            </PurchasePanel>
+            <PurchasePanel title="附件">
               {getAttachmentList(detailPurchase.attachmentUrl).length ? (
-                <div className="space-y-2">
+                <div className="admin-dialog-link-list">
                   {getAttachmentList(detailPurchase.attachmentUrl).map((url) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300">
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className="admin-dialog-link-card">
                       <Paperclip size={14} />
                       <span className="truncate">{getAttachmentDisplayName(url)}</span>
                     </a>
                   ))}
                 </div>
               ) : <InlineState title="暂无附件" className="py-5" icon={<Paperclip className="h-4 w-4" />} />}
-            </div>
+            </PurchasePanel>
           </>
         ) : null}
       </BaseDialog>
@@ -807,53 +909,60 @@ export const PurchaseRequestPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => setReceiptPurchase(null)}>取消</Button>
-            <Button onClick={() => void handleReceipt()}>确认入库</Button>
+            <Button onClick={() => void handleReceipt()} disabled={receiptTotal <= 0}>确认入库</Button>
           </>
         )}
       >
-        <div className="space-y-4">
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-            <table className="w-full min-w-[720px]">
-              <thead className="bg-slate-50/80 dark:bg-slate-900/70">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">耗材</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">申请数量</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">已入库</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">本次入库</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {receiptPurchase?.items?.map((item) => {
-                  const remain = Math.max(0, Number(item.quantity || 0) - Number(item.receivedQuantity || 0));
-                  return (
-                    <tr key={item.id}>
-                      <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">{item.consumableName || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{item.quantity} {item.unit || ''}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{item.receivedQuantity || 0}</td>
-                      <td className="px-4 py-3">
-                        <Input
-                          className="h-10 max-w-[160px]"
-                          type="number"
-                          min="0"
-                          max={remain}
-                          value={item.id ? receiptQuantities[item.id] ?? 0 : 0}
-                          disabled={remain <= 0}
-                          onChange={(event) => item.id && setReceiptQuantities((prev) => ({
-                            ...prev,
-                            [item.id!]: Math.min(remain, parseInt(event.target.value, 10) || 0),
-                          }))}
-                        />
-                      </td>
+        <div className="admin-dialog-stack">
+          <PurchasePanel title="入库明细">
+            <InnerTableSurface>
+                <table className="unity-data-table admin-source-table min-w-[720px]">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">耗材</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">申请数量</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">已入库</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">本次入库</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div>
-            <Label className="mb-1.5 block">入库备注</Label>
-            <Textarea className="min-h-[90px] resize-none" value={receiptRemark} onChange={(event) => setReceiptRemark(event.target.value)} />
-          </div>
+                  </thead>
+                  <tbody>
+                    {receiptPurchase?.items?.map((item) => {
+                      const remain = getReceivableQuantity(item);
+                      return (
+                        <tr key={item.id}>
+                          <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">{item.consumableName || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{item.quantity} {item.unit || ''}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{item.receivedQuantity || 0}</td>
+                          <td className="px-4 py-3">
+                            <Input
+                              className="h-10 max-w-[160px]"
+                              type="number"
+                              min="0"
+                              max={remain}
+                              value={item.id ? receiptQuantities[item.id] ?? 0 : 0}
+                              disabled={remain <= 0}
+                              onChange={(event) => item.id && setReceiptQuantities((prev) => ({
+                                ...prev,
+                                [item.id!]: Math.min(remain, parseInt(event.target.value, 10) || 0),
+                              }))}
+                            />
+                            <div className="mt-1 text-xs text-slate-400">
+                              {remain > 0 ? `剩余可入库 ${remain}${item.unit || ''}` : '已全部入库'}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+            </InnerTableSurface>
+          </PurchasePanel>
+          <DialogPanel title="入库备注">
+            <div className="admin-dialog-field">
+              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">备注内容</Label>
+              <Textarea className="min-h-[90px] resize-none" value={receiptRemark} onChange={(event) => setReceiptRemark(event.target.value)} />
+            </div>
+          </DialogPanel>
         </div>
       </BaseDialog>
 
@@ -866,7 +975,7 @@ export const PurchaseRequestPage: React.FC = () => {
         onConfirm={() => void handleConfirmAction()}
         onCancel={() => setConfirmState(null)}
       />
-    </div>
+    </>
   );
 };
 

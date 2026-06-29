@@ -10,6 +10,7 @@ import {
   Eye,
   MapPin,
   Plus,
+  RefreshCw,
   RotateCcw,
   Search,
   ShieldAlert,
@@ -21,8 +22,8 @@ import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { useAuth } from '@/context/AuthContext';
 import {
   Button,
@@ -34,15 +35,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHead,
-  TableRow,
   Textarea,
 } from '@/components/common';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import {
@@ -111,22 +105,22 @@ const STATUS_FILTER_VALUES = ['1', '2', '3', '4', '5'];
 const FORM_STATUS_VALUES = ['1', '4', '5'];
 
 const TableStateRow: React.FC<TableStateRowProps> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3">
           {loading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Car className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
         {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const SummaryMetric: React.FC<SummaryMetricProps> = ({ label, value, tone = 'default' }) => {
   const toneClassName = {
-    default: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200',
+    default: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200',
     warning: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
     danger: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
   }[tone];
@@ -140,18 +134,20 @@ const SummaryMetric: React.FC<SummaryMetricProps> = ({ label, value, tone = 'def
 };
 
 const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
-  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
-    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="max-w-[65%] text-right text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  <div>
+    <span>{label}</span>
+    <strong>{value || '-'}</strong>
   </div>
 );
 
 const DetailSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
-    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+  <section className="table-scroll-container admin-inner-table-surface">
+    <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div>
+        <strong>{title}</strong>
+      </div>
     </div>
-    <div>{children}</div>
+    <div className="p-4">{children}</div>
   </section>
 );
 
@@ -175,12 +171,12 @@ const createVehicleForm = (): Partial<SysVehicle> => ({
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const statusDict = useDict('oa_vehicle_status');
   const config = STATUS_CONFIG[status] || {
-    className: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
     icon: null,
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${config.className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${config.className}`}>
       {config.icon}
       {statusDict.getLabel(status) || '未知'}
     </span>
@@ -212,14 +208,14 @@ const WarningTags: React.FC<{ value?: string; compact?: boolean; maxVisible?: nu
       {visibleTags.map((tag) => (
         <span
           key={tag}
-          className={`inline-flex min-w-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200 ${compact ? 'max-w-[7rem]' : ''}`}
+          className={`inline-flex min-w-0 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200 ${compact ? 'max-w-[7rem]' : ''}`}
         >
           <AlertTriangle size={11} />
           <span className={compact ? 'truncate' : ''}>{tag}</span>
         </span>
       ))}
       {hiddenCount > 0 ? (
-        <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+        <span className="rounded-md bg-[var(--cf-surface-muted)] px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-400">
           +{hiddenCount}
         </span>
       ) : null}
@@ -412,90 +408,105 @@ const VehicleList: React.FC = () => {
   const statusLabel = query.status ? (vehicleStatusDict.getLabel(query.status) || '全部状态') : '全部状态';
   const runtimeInUse = vehicles.filter((item) => (item.runtimeStatus || item.status) === '3').length;
   const runtimeBooked = vehicles.filter((item) => (item.runtimeStatus || item.status) === '2').length;
+  const metrics = [
+    { label: '车辆总数', value: String(stats?.total ?? total), meta: `当前页 ${vehicles.length}`, icon: <Car size={18} />, tone: 'blue' },
+    { label: '使用中', value: String(stats?.inUse ?? runtimeInUse), meta: '实时占用', icon: <Clock size={18} />, tone: 'green' },
+    { label: '逾期风险', value: String(stats?.overdueRiskCount ?? 0), meta: '需处理', icon: <ShieldAlert size={18} />, tone: 'amber' },
+    { label: '30天费用', value: formatCurrency(stats?.expenseAmount30d), meta: '运营成本', icon: <Wrench size={18} />, tone: 'violet' },
+  ];
 
-  return (
-    <div className="space-y-4">
-      <TablePageLayout
-        actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-wrap items-center gap-2">
-              <SummaryMetric label="车辆总数" value={stats?.total ?? total} />
-              <SummaryMetric label="使用中" value={stats?.inUse ?? runtimeInUse} />
-              <SummaryMetric label="已预约" value={stats?.booked ?? runtimeBooked} />
-              <SummaryMetric label="逾期风险" value={stats?.overdueRiskCount ?? 0} tone={(stats?.overdueRiskCount ?? 0) > 0 ? 'danger' : 'default'} />
-              <SummaryMetric label="维保到期" value={stats?.maintenanceDueSoon ?? 0} tone={(stats?.maintenanceDueSoon ?? 0) > 0 ? 'warning' : 'default'} />
-              <SummaryMetric label="保险到期" value={stats?.insuranceExpiringSoon ?? 0} tone={(stats?.insuranceExpiringSoon ?? 0) > 0 ? 'warning' : 'default'} />
-              <SummaryMetric label="30天费用" value={formatCurrency(stats?.expenseAmount30d)} />
-            </div>
-            <div className="ml-auto flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => void refreshPage()} disabled={loading}>
-                <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:vehicle:add')}>
-                <Plus size={14} className="mr-1.5" />
-                新增车辆
-              </Button>
-            </div>
+  const pageActions = (
+    <>
+        <header className="admin-source-header">
+          <div>
+            <p className="admin-source-kicker">VEHICLE LEDGER</p>
+            <h2>车辆管理</h2>
+            <span>维护车辆台账、占用状态、预约风险和运营成本</span>
           </div>
-        )}
-        className="gap-3"
-        filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <div className="admin-source-controls">
+            <Button variant="outline" size="sm" onClick={() => void refreshPage()} disabled={loading}>
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              刷新
+            </Button>
+            <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:vehicle:add')}>
+              <Plus size={16} />
+              新增车辆
+            </Button>
+          </div>
+        </header>
+
+        <section className="admin-source-stat-grid">
+          {metrics.map((metric) => (
+            <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+              <div className="admin-source-stat-icon">{metric.icon}</div>
+              <div>
+                <p>{metric.label}</p>
+                <strong>{metric.value}</strong>
+                <span>{metric.meta}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+    </>
+  );
+
+  const pageFilters = (
+        <section className="card admin-users-toolbar">
+          <div className="admin-vehicle-filter-grid">
+            <label className="admin-source-search">
+              <span className="input-label">车牌号</span>
+              <div className="admin-source-search-field">
+                <Search size={16} />
                 <Input
-                  placeholder="搜索车牌号"
                   value={searchPlate}
                   onChange={(event) => setSearchPlate(event.target.value)}
                   onKeyDown={(event) => event.key === 'Enter' && handleSearch()}
-                  className="h-10 pl-10"
+                  placeholder="搜索车牌号"
+                  type="search"
+                  className="h-[42px] pl-9"
                 />
               </div>
-              <div className="w-full sm:w-[170px]">
-                <Select value={statusInput || ALL_FILTER_VALUE} onValueChange={(value) => setStatusInput(value === ALL_FILTER_VALUE ? '' : value)}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>全部状态</SelectItem>
-                    {STATUS_FILTER_VALUES.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {vehicleStatusDict.getLabel(value)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">
-                {hasActiveFilters ? `${statusLabel} / ${query.licensePlate || '全部车牌'}` : '全部车辆'}
-              </div>
-            </div>
-            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
-              <Button variant="outline" size="sm" onClick={handleSearch}>
-                <Search size={14} className="mr-1.5" />
-                应用
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <RotateCcw size={14} className="mr-1.5" />
-                清空筛选
-              </Button>
+            </label>
+            <label>
+              <span className="input-label">状态</span>
+              <Select value={statusInput || ALL_FILTER_VALUE} onValueChange={(value) => setStatusInput(value === ALL_FILTER_VALUE ? '' : value)}>
+                <SelectTrigger className="h-[42px]">
+                  <SelectValue placeholder="全部状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_FILTER_VALUE}>全部状态</SelectItem>
+                  {STATUS_FILTER_VALUES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {vehicleStatusDict.getLabel(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">{hasActiveFilters ? `${statusLabel} / ${query.licensePlate || '全部车牌'}` : '全部车辆'}</span>
+              <Button size="sm" onClick={handleSearch}><Search size={14} />查询</Button>
+              <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasActiveFilters}><RotateCcw size={14} />重置</Button>
             </div>
           </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col">
+        </section>
+  );
+
+  const pageTable = (
+        <InnerTableSurface
+          className="admin-vehicle-table-panel flex min-h-0 flex-1 flex-col"
+          wrapperClassName="flex min-h-0 flex-1 flex-col"
+        >
             {selectedIds.length > 0 ? (
               <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                  <span className="inline-flex items-center rounded-md bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
                     已选 {selectedIds.length} 辆
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 justify-start px-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                    className="h-8 justify-start px-2 text-slate-600 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                     onClick={() => openDeleteConfirm(selectedIds, `确认删除选中的 ${selectedIds.length} 辆车？`)}
                   >
                     <Trash2 size={14} className="mr-1.5" />
@@ -504,8 +515,7 @@ const VehicleList: React.FC = () => {
                 </div>
               </div>
             ) : null}
-            <div className="overflow-x-auto">
-              <Table disableScrollWrapper className="min-w-[1640px] table-fixed">
+              <table className="unity-data-table admin-source-table admin-vehicle-table min-w-[1640px] table-fixed">
                 <colgroup>
                   <col className="w-11" />
                   <col className="w-32" />
@@ -519,28 +529,26 @@ const VehicleList: React.FC = () => {
                   <col className="w-32" />
                   <col className="w-32" />
                   <col className="w-44" />
-                  </colgroup>
-                <TableHeader className="sticky top-0 z-10">
-                  <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
-                    <TableHead className="px-3 py-3">
-                      <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="rounded border-gray-300" />
-                    </TableHead>
-                    <TableHead className="px-3 py-3">车牌号</TableHead>
-                    <TableHead className="px-3 py-3">车型</TableHead>
-                    <TableHead className="px-3 py-3">里程 / 位置</TableHead>
-                    <TableHead className="px-3 py-3">状态</TableHead>
-                    <TableHead className="px-3 py-3">使用人 / 司机</TableHead>
-                    <TableHead className="px-3 py-3">目的地</TableHead>
-                    <TableHead className="px-3 py-3">归还 / 预约</TableHead>
-                    <TableHead className="px-3 py-3">保险 / 年检</TableHead>
-                    <TableHead className="px-3 py-3">30天成本</TableHead>
-                    <TableHead className="px-3 py-3">风险</TableHead>
-                    <TableHead className="sticky right-0 z-20 bg-slate-50 px-4 py-3 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.55)] dark:bg-slate-900">
-                      操作
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>
+                      <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950" />
+                    </th>
+                    <th>车牌号</th>
+                    <th>车型</th>
+                    <th>里程 / 位置</th>
+                    <th>状态</th>
+                    <th>使用人 / 司机</th>
+                    <th>目的地</th>
+                    <th>归还 / 预约</th>
+                    <th>保险 / 年检</th>
+                    <th>30天成本</th>
+                    <th>风险</th>
+                    <th className="text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {loading ? (
                     <TableStateRow colSpan={12} title="正在加载车辆数据" loading />
                   ) : vehicles.length === 0 ? (
@@ -550,30 +558,29 @@ const VehicleList: React.FC = () => {
                       const runtimeStatus = vehicle.runtimeStatus || vehicle.status;
                       const currentUsageStatusLabel = vehicle.currentUsageStatus ? usageStatusDict.getLabel(vehicle.currentUsageStatus) : '';
                       return (
-                        <TableRow key={vehicle.vehicleId} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                          <TableCell className="px-3 py-2.5">
-                            <input
-                              type="checkbox"
+                        <tr key={vehicle.vehicleId}>
+                          <td>
+                            <input type="checkbox"
                               checked={selectedIds.includes(vehicle.vehicleId!)}
                               onChange={() => toggleSelect(vehicle.vehicleId!)}
-                              className="rounded border-gray-300"
+                              className="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950"
                             />
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5 font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
+                          </td>
+                          <td className="font-mono">
                             <div className="truncate" title={vehicle.licensePlate}>{vehicle.licensePlate}</div>
                             <div className="mt-1 truncate text-xs font-normal text-slate-400 dark:text-slate-500" title={vehicle.purchaseDate || '-'}>
                               购置 {vehicle.purchaseDate || '-'}
                             </div>
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
+                          </td>
+                          <td>
                             <div className="truncate font-medium text-slate-900 dark:text-slate-100" title={`${vehicle.brand || '-'} / ${vehicle.model || '-'}`}>
                               {[vehicle.brand || '-', vehicle.model || '-'].join(' / ')}
                             </div>
                             <div className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500" title={`${vehicle.color || '-'} / ${vehicle.capacity || 0} 座`}>
                               {[vehicle.color || '-', `${vehicle.capacity || 0} 座`].join(' / ')}
                             </div>
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
+                          </td>
+                          <td>
                             <div className="truncate font-medium text-slate-900 dark:text-slate-100" title={formatMileage(vehicle.mileage)}>
                               {formatMileage(vehicle.mileage)}
                             </div>
@@ -581,22 +588,22 @@ const VehicleList: React.FC = () => {
                               <MapPin size={12} className="shrink-0 text-slate-400 dark:text-slate-500" />
                               <span className="truncate">{vehicle.location || '-'}</span>
                             </div>
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5">
+                          </td>
+                          <td>
                             <div className="space-y-1.5">
                               <StatusBadge status={runtimeStatus} />
                               <div className="truncate text-xs text-slate-500 dark:text-slate-400" title={`基础 ${vehicleStatusDict.getLabel(vehicle.status || '1') || '-'}`}>
                                 基础 {vehicleStatusDict.getLabel(vehicle.status || '1') || '-'}
                               </div>
                             </div>
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
+                          </td>
+                          <td>
                             <div className="flex min-w-0 items-center gap-1.5">
                               <span className="truncate font-medium text-slate-900 dark:text-slate-100" title={vehicle.currentUserName || '-'}>
                                 {vehicle.currentUserName || '-'}
                               </span>
                               {currentUsageStatusLabel ? (
-                                <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                                <span className="shrink-0 rounded-md bg-[var(--cf-surface-muted)] px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                                   {currentUsageStatusLabel}
                                 </span>
                               ) : null}
@@ -604,72 +611,59 @@ const VehicleList: React.FC = () => {
                             <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={vehicle.currentDriverName || '-'}>
                               司机 {vehicle.currentDriverName || '-'}
                             </div>
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
+                          </td>
+                          <td>
                             <div className="line-clamp-2 min-h-[2.25rem] leading-5" title={vehicle.currentDestination || '-'}>
                               {vehicle.currentDestination || '-'}
                             </div>
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
+                          </td>
+                          <td>
                             <div className="truncate font-medium text-slate-900 dark:text-slate-100" title={formatDateTime(vehicle.plannedReturnTime)}>
                               还 {formatShortDateTime(vehicle.plannedReturnTime)}
                             </div>
                             <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={formatDateTime(vehicle.nextBookingStartTime)}>
                               约 {formatShortDateTime(vehicle.nextBookingStartTime)}
                             </div>
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300">
+                          </td>
+                          <td>
                             <div className="truncate" title={vehicle.insuranceExpiry || '-'}>
                               保 {vehicle.insuranceExpiry || '-'}
                             </div>
                             <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={vehicle.annualInspectionExpiry || '-'}>
                               检 {vehicle.annualInspectionExpiry || '-'}
                             </div>
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5 text-sm">
+                          </td>
+                          <td>
                             <div className="truncate font-medium text-slate-900 dark:text-slate-100" title={formatCurrency(vehicle.expenseAmount30d)}>
                               {formatCurrency(vehicle.expenseAmount30d)}
                             </div>
                             <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={`保养 ${vehicle.nextMaintenanceMileage != null ? `${vehicle.nextMaintenanceMileage} km` : '-'}`}>
                               保养 {vehicle.nextMaintenanceMileage != null ? `${vehicle.nextMaintenanceMileage} km` : '-'}
                             </div>
-                          </TableCell>
-                          <TableCell className="px-3 py-2.5 text-sm">
+                          </td>
+                          <td>
                             <div title={vehicle.warningTags || '-'}>
                               <WarningTags value={vehicle.warningTags} compact maxVisible={1} />
                             </div>
-                          </TableCell>
-                          <TableCell className="sticky right-0 z-10 bg-white px-4 py-2.5 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.5)] dark:bg-slate-950">
-                            <TableRowActions
-                              align="end"
-                              maxVisibleActions={1}
-                              overflowLabel="更多"
-                              buttonLayout="compact"
-                              actions={[
-                                { label: '详情', icon: <Eye size={14} />, onClick: () => handleViewDetail(vehicle), tone: 'neutral', isPrimary: true },
-                                { label: '编辑', icon: <Edit2 size={14} />, onClick: () => handleEdit(vehicle), tone: 'neutral', menuOnly: true, permissionKey: 'oa:vehicle:edit' },
-                                {
-                                  label: '删除',
-                                  icon: <Trash2 size={14} />,
-                                  onClick: () => openDeleteConfirm([vehicle.vehicleId!], '确认删除该车辆？删除后不可恢复。'),
-                                  tone: 'neutral',
-                                  menuOnly: true,
-                                  permissionKey: 'oa:vehicle:remove',
-                                },
-                              ]}
-                            />
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="详情" onClick={() => handleViewDetail(vehicle)}><Eye size={15} /></button>
+                              {hasPermission('oa:vehicle:edit') ? <button type="button" title="编辑" onClick={() => handleEdit(vehicle)}><Edit2 size={15} /></button> : null}
+                              {hasPermission('oa:vehicle:remove') ? <button type="button" className="danger" title="删除" onClick={() => openDeleteConfirm([vehicle.vehicleId!], '确认删除该车辆？删除后不可恢复。')}><Trash2 size={15} /></button> : null}
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })
                     )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </TableSurfaceCard>)}
-        pagination={total > 0 ? (
-          <Pagination
+                </tbody>
+              </table>
+        </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+        <Pagination
             total={total}
             page={query.pageNum}
             pageSize={query.pageSize}
@@ -678,8 +672,18 @@ const VehicleList: React.FC = () => {
             onPageChange={(page) => setQuery((prev) => ({ ...prev, pageNum: page }))}
             onPageSizeChange={() => {}}
           />
-        ) : null}
-      />
+  ) : null;
+
+  return (
+    <>
+      <section className="admin-source-page admin-vehicle-page admin-vehicle-list-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={showFormDialog}
@@ -689,7 +693,7 @@ const VehicleList: React.FC = () => {
           setCurrentVehicle(null);
         }}
         maxWidthClassName="max-w-4xl"
-        bodyClassName="space-y-5"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => { setShowFormDialog(false); setCurrentVehicle(null); }}>
@@ -699,32 +703,32 @@ const VehicleList: React.FC = () => {
           </>
         )}
       >
-        <div className="grid gap-5">
+        <div className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>车牌号</Label>
               <Input value={formData.licensePlate || ''} onChange={(event) => setFormData({ ...formData, licensePlate: event.target.value })} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>品牌</Label>
               <Input value={formData.brand || ''} onChange={(event) => setFormData({ ...formData, brand: event.target.value })} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>型号</Label>
               <Input value={formData.model || ''} onChange={(event) => setFormData({ ...formData, model: event.target.value })} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>颜色</Label>
               <Input value={formData.color || ''} onChange={(event) => setFormData({ ...formData, color: event.target.value })} className="h-11" />
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>座位数</Label>
               <Input type="number" min={1} max={50} value={formData.capacity || 5} onChange={(event) => setFormData({ ...formData, capacity: parseInt(event.target.value, 10) || 5 })} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>状态</Label>
               <Select value={formData.status || '1'} onValueChange={(value) => setFormData({ ...formData, status: value as SysVehicle['status'] })}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
@@ -735,37 +739,37 @@ const VehicleList: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>当前里程 (km)</Label>
               <Input type="number" min={0} value={formData.mileage || 0} onChange={(event) => setFormData({ ...formData, mileage: parseFloat(event.target.value) || 0 })} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>停放位置</Label>
               <Input value={formData.location || ''} onChange={(event) => setFormData({ ...formData, location: event.target.value })} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>购买日期</Label>
               <DatePicker type="date" value={formData.purchaseDate || ''} onChange={(event) => setFormData({ ...formData, purchaseDate: event.target.value })} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>保险到期日</Label>
               <DatePicker type="date" value={formData.insuranceExpiry || ''} onChange={(event) => setFormData({ ...formData, insuranceExpiry: event.target.value })} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>年检到期日</Label>
               <DatePicker type="date" value={formData.annualInspectionExpiry || ''} onChange={(event) => setFormData({ ...formData, annualInspectionExpiry: event.target.value })} className="h-11" />
             </div>
-            <div className="space-y-2">
+            <div className="admin-dialog-field">
               <Label>保养周期 (km)</Label>
               <Input type="number" min={0} value={formData.maintenanceCycleKm || 0} onChange={(event) => setFormData({ ...formData, maintenanceCycleKm: parseFloat(event.target.value) || 0 })} className="h-11" />
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="admin-dialog-field md:col-span-2">
               <Label>下次保养里程 (km)</Label>
               <Input type="number" min={0} value={formData.nextMaintenanceMileage || 0} onChange={(event) => setFormData({ ...formData, nextMaintenanceMileage: parseFloat(event.target.value) || 0 })} className="h-11" />
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="admin-dialog-field">
             <Label>备注</Label>
             <Textarea className="min-h-[120px] resize-none" value={formData.remark || ''} onChange={(event) => setFormData({ ...formData, remark: event.target.value })} />
           </div>
@@ -778,7 +782,7 @@ const VehicleList: React.FC = () => {
         onClose={() => setShowDetailDialog(false)}
         maxWidthClassName="max-w-5xl"
         headerAside={detailVehicle ? <StatusBadge status={detailVehicle.runtimeStatus || detailVehicle.status} /> : null}
-        bodyClassName="space-y-4"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             <Button variant="outline" onClick={() => setShowDetailDialog(false)}>关闭</Button>
@@ -795,36 +799,40 @@ const VehicleList: React.FC = () => {
         )}
       >
         {!detailVehicle ? null : detailLoading ? (
-          <div className="py-16 text-center text-sm text-slate-500 dark:text-slate-400">正在加载运营详情...</div>
+          <div className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">正在加载运营详情...</div>
         ) : (
           <>
             <div className="grid gap-4 xl:grid-cols-2">
               <DetailSection title="基础与台账">
-                <DetailField label="品牌 / 型号" value={`${renderText(detailVehicle.brand)} / ${renderText(detailVehicle.model)}`} />
-                <DetailField label="颜色 / 座位" value={`${renderText(detailVehicle.color)} / ${detailVehicle.capacity || 0} 座`} />
-                <DetailField label="当前里程" value={`${detailVehicle.mileage?.toLocaleString() || 0} km`} />
-                <DetailField label="停放位置" value={renderText(detailVehicle.location)} />
-                <DetailField label="保险到期" value={renderText(detailVehicle.insuranceExpiry)} />
-                <DetailField label="年检到期" value={renderText(detailVehicle.annualInspectionExpiry)} />
-                <DetailField label="下次保养里程" value={detailVehicle.nextMaintenanceMileage != null ? `${detailVehicle.nextMaintenanceMileage} km` : '-'} />
+                <div className="admin-finance-detail-list">
+                  <DetailField label="品牌 / 型号" value={`${renderText(detailVehicle.brand)} / ${renderText(detailVehicle.model)}`} />
+                  <DetailField label="颜色 / 座位" value={`${renderText(detailVehicle.color)} / ${detailVehicle.capacity || 0} 座`} />
+                  <DetailField label="当前里程" value={`${detailVehicle.mileage?.toLocaleString() || 0} km`} />
+                  <DetailField label="停放位置" value={renderText(detailVehicle.location)} />
+                  <DetailField label="保险到期" value={renderText(detailVehicle.insuranceExpiry)} />
+                  <DetailField label="年检到期" value={renderText(detailVehicle.annualInspectionExpiry)} />
+                  <DetailField label="下次保养里程" value={detailVehicle.nextMaintenanceMileage != null ? `${detailVehicle.nextMaintenanceMileage} km` : '-'} />
+                </div>
               </DetailSection>
 
               <DetailSection title="运营摘要">
-                <DetailField label="当前使用人" value={renderText(detailProfile?.currentUsage?.applicantName)} />
-                <DetailField label="当前司机" value={renderText(detailProfile?.currentUsage?.driverName)} />
-                <DetailField label="当前目的地" value={renderText(detailProfile?.currentUsage?.destination)} />
-                <DetailField label="预计归还" value={formatDateTime(detailProfile?.currentUsage?.endTime)} />
-                <DetailField label="下一预约" value={formatDateTime(detailProfile?.nextUsage?.startTime)} />
-                <DetailField label="30 天费用" value={formatCurrency(detailProfile?.expenseAmount30d)} />
-                <DetailField label="90 天费用" value={formatCurrency(detailProfile?.expenseAmount90d)} />
-                <DetailField label="30 天单公里成本" value={formatCurrency(detailProfile?.costPerKm30d)} />
+                <div className="admin-finance-detail-list">
+                  <DetailField label="当前使用人" value={renderText(detailProfile?.currentUsage?.applicantName)} />
+                  <DetailField label="当前司机" value={renderText(detailProfile?.currentUsage?.driverName)} />
+                  <DetailField label="当前目的地" value={renderText(detailProfile?.currentUsage?.destination)} />
+                  <DetailField label="预计归还" value={formatDateTime(detailProfile?.currentUsage?.endTime)} />
+                  <DetailField label="下一预约" value={formatDateTime(detailProfile?.nextUsage?.startTime)} />
+                  <DetailField label="30 天费用" value={formatCurrency(detailProfile?.expenseAmount30d)} />
+                  <DetailField label="90 天费用" value={formatCurrency(detailProfile?.expenseAmount90d)} />
+                  <DetailField label="30 天单公里成本" value={formatCurrency(detailProfile?.costPerKm30d)} />
+                </div>
               </DetailSection>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-3">
               <DetailSection title="最近用车">
                 {(detailProfile?.recentUsages || []).length ? (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {detailProfile?.recentUsages.map((item) => (
                       <div key={item.usageId} className="px-4 py-3 text-sm">
                         <div className="font-medium text-slate-900 dark:text-slate-100">{item.applicantName || `用户${item.applicantId}`}</div>
@@ -840,7 +848,7 @@ const VehicleList: React.FC = () => {
 
               <DetailSection title="最近费用">
                 {(detailProfile?.recentExpenses || []).length ? (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {detailProfile?.recentExpenses.map((item) => (
                       <div key={item.expenseId} className="px-4 py-3 text-sm">
                         <div className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(item.amount)}</div>
@@ -855,9 +863,9 @@ const VehicleList: React.FC = () => {
 
               <DetailSection title="风险与预警">
                 {(detailProfile?.risks || []).length ? (
-                  <div className="space-y-2 px-4 py-3">
+                  <div className="admin-dialog-stack">
                     {detailProfile?.risks.map((risk) => (
-                      <div key={risk.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                      <div key={risk.id} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
                         <div className="flex items-center gap-2 font-medium">
                           <ShieldAlert size={14} />
                           {risk.riskName}
@@ -875,7 +883,7 @@ const VehicleList: React.FC = () => {
             <div className="grid gap-4 xl:grid-cols-2">
               <DetailSection title="维保摘要">
                 {(detailProfile?.maintenances || []).length ? (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {detailProfile?.maintenances.map((item) => (
                       <div key={item.maintenanceId} className="px-4 py-3 text-sm">
                         <div className="font-medium text-slate-900 dark:text-slate-100">{item.title}</div>
@@ -891,7 +899,7 @@ const VehicleList: React.FC = () => {
 
               <DetailSection title="违章摘要">
                 {(detailProfile?.violations || []).length ? (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {detailProfile?.violations.map((item) => (
                       <div key={item.violationId} className="px-4 py-3 text-sm">
                         <div className="font-medium text-slate-900 dark:text-slate-100">{item.violationReason}</div>
@@ -908,7 +916,7 @@ const VehicleList: React.FC = () => {
 
             <DetailSection title="油耗记录 (最近 10 笔)">
               {detailFuelLogs.length ? (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="divide-y divide-slate-200 dark:divide-slate-800">
                   {detailFuelLogs.map((item) => (
                     <div key={item.fuelLogId} className="grid grid-cols-2 gap-2 px-4 py-3 text-sm sm:grid-cols-5">
                       <div>
@@ -963,7 +971,7 @@ const VehicleList: React.FC = () => {
         onConfirm={() => void handleDeleteConfirm()}
         onCancel={() => setDeleteState(null)}
       />
-    </div>
+    </>
   );
 };
 

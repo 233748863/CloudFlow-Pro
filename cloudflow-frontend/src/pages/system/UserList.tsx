@@ -16,7 +16,6 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -26,14 +25,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
 import {
@@ -47,6 +38,7 @@ import {
 } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface DeptItem {
   deptId: number;
@@ -98,7 +90,7 @@ type UserQuery = UserFilters & {
 };
 
 const DEFAULT_TENANT_VALUE = '__DEFAULT_TENANT__';
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+const fieldLabelClassName = 'input-label';
 
 const flattenDepts = (
   depts: DeptItem[],
@@ -138,13 +130,8 @@ const normalizeNumberList = (value: unknown): number[] => {
   return [];
 };
 
-const getUserStatusBadgeClassName = (status: string) =>
-  status === '0'
-    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
-    : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
-
 const checkboxClassName =
-  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-[#0d95b5] text-[#0d95b5] focus:ring-2 focus:ring-[#0d95b5]/30 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -152,8 +139,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent dark:hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -163,8 +150,8 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 export const UserList = () => {
@@ -527,235 +514,274 @@ export const UserList = () => {
   const tenantNameById = (tenantId?: number) =>
     tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || '默认租户';
 
+  const stats = useMemo(
+    () => [
+      {
+        label: '总用户',
+        value: String(allUsers.length),
+        meta: `当前筛选 ${total}`,
+        icon: <Users size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '正常用户',
+        value: String(allUsers.filter((user) => user.status === '0').length),
+        meta: '可登录账号',
+        icon: <ShieldCheck size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '停用用户',
+        value: String(allUsers.filter((user) => user.status !== '0').length),
+        meta: '受限账号',
+        icon: <UserRound size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '租户范围',
+        value: String(Math.max(tenants.length, 1)),
+        meta: '含默认租户',
+        icon: <Building2 size={18} />,
+        tone: 'violet',
+      },
+    ],
+    [allUsers, tenants.length, total],
+  );
+
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">USER MANAGEMENT</p>
+          <h2>用户管理</h2>
+          <span>管理用户账号、角色、部门、租户和登录状态</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
+            刷新
+          </Button>
+          <Button size="sm" onClick={() => handleOpenModal()}>
+            <Plus size={16} />
+            新增用户
+          </Button>
+        </div>
+      </header>
+
+      <section className="admin-users-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={cn('card admin-source-stat', `admin-source-tone-${stat.tone}`)}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form onSubmit={handleSearch} className="admin-users-filter-grid">
+        <label className="admin-source-search">
+          <span className={fieldLabelClassName}>搜索用户</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.keyword}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, keyword: event.target.value }))
+              }
+              placeholder="用户名、昵称、邮箱或手机号"
+              type="search"
+            />
+          </div>
+        </label>
+
+        <label>
+          <span className={fieldLabelClassName}>角色</span>
+          <Select
+            value={filters.roleId}
+            onValueChange={(value) =>
+              setFilters((current) => ({ ...current, roleId: value }))
+            }
+          >
+            <SelectTrigger className="h-[42px]">
+              <SelectValue placeholder="全部角色" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">全部角色</SelectItem>
+              {roles.map((role) => (
+                <SelectItem key={role.roleId} value={String(role.roleId)}>
+                  {role.roleName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+
+        <label>
+          <span className={fieldLabelClassName}>状态</span>
+          <Select
+            value={filters.status}
+            onValueChange={(value) =>
+              setFilters((current) => ({ ...current, status: value }))
+            }
+          >
+            <SelectTrigger className="h-[42px]">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">全部状态</SelectItem>
+              <SelectItem value="0">正常</SelectItem>
+              <SelectItem value="1">停用</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">当前 {total} 项</span>
+          <Button type="submit" size="sm">
+            查询
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={clearFilters}
+            disabled={!hasActiveFilters}
+          >
+            重置
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface className="admin-users-table-panel">
+      <table className="unity-data-table admin-source-table admin-users-table">
+          <thead>
+            <tr>
+              <th>用户</th>
+              <th>ID</th>
+              <th>昵称</th>
+              <th>租户</th>
+              <th>部门</th>
+              <th>角色</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={8} title="正在加载用户数据..." loading />
+            ) : error ? (
+              <TableStateRow colSpan={8} title="用户数据加载失败" description={error} />
+            ) : users.length === 0 ? (
+              <TableStateRow colSpan={8} title="暂无用户数据" />
+            ) : (
+              users.map((user) => {
+                const roleNames = getRoleNames(user);
+                return (
+                  <tr key={user.userId}>
+                    <td>
+                      <div className="admin-users-identity">
+                        <span className="admin-users-avatar">
+                          {(user.nickName || user.userName || '?')[0]}
+                        </span>
+                        <div className="admin-users-identity-copy">
+                          <strong>{user.userName}</strong>
+                          <small>
+                            {user.email || user.phonenumber || '未补充联系方式'}
+                          </small>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="font-mono text-xs">U-{user.userId}</td>
+                    <td>{user.nickName || '-'}</td>
+                    <td>{tenantNameById(user.tenantId)}</td>
+                    <td>{user.deptName || '-'}</td>
+                    <td>
+                      {roleNames.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {roleNames.slice(0, 2).map((roleName) => (
+                            <span key={`${user.userId}-${roleName}`} className="badge badge-gray">
+                              {roleName}
+                            </span>
+                          ))}
+                          {roleNames.length > 2 ? (
+                            <span className="badge badge-gray">+{roleNames.length - 2}</span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="admin-users-muted">无角色</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="admin-users-status">
+                        <i className={user.status === '0' ? 'active' : 'disabled'} />
+                        {user.status === '0' ? '正常' : '停用'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="admin-users-row-actions">
+                        <button type="button" title="编辑用户" onClick={() => handleOpenModal(user)}>
+                          <Edit size={15} />
+                        </button>
+                        <button type="button" title="重置密码" onClick={() => handleOpenResetPassword(user)}>
+                          <KeyRound size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="danger"
+                          title="删除用户"
+                          onClick={() => setPendingDeleteUser(user)}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      onPageChange={(pageNum) =>
+        setQuery((current) => ({ ...current, pageNum }))
+      }
+      onPageSizeChange={(pageSize) =>
+        setQuery((current) => ({
+          ...current,
+          pageNum: 1,
+          pageSize,
+        }))
+      }
+    />
+  ) : null;
+
   return (
     <>
-      <TablePageLayout
-        className="gap-4"
-        filters={
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-1 flex-wrap items-center gap-3"
-            >
-              <div className="relative w-full sm:w-56">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.keyword}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, keyword: event.target.value }))
-                  }
-                  placeholder="搜索用户名、昵称或联系方式"
-                  className="h-10 pl-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-36">
-                <Select
-                  value={filters.status}
-                  onValueChange={(value) =>
-                    setFilters((current) => ({ ...current, status: value }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">全部状态</SelectItem>
-                    <SelectItem value="0">正常</SelectItem>
-                    <SelectItem value="1">停用</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-full sm:w-48">
-                <Select
-                  value={filters.roleId}
-                  onValueChange={(value) =>
-                    setFilters((current) => ({ ...current, roleId: value }))
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="全部角色" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">全部角色</SelectItem>
-                    {roles.map((role) => (
-                      <SelectItem key={role.roleId} value={String(role.roleId)}>
-                        {role.roleName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={() => handleOpenModal()}>
-                <Plus size={15} />
-                新增用户
-              </Button>
-            </div>
-          </div>
-        }
-        table={(<TableSurfaceCard fill><>
-            <Table className="min-w-[1080px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>用户</TableHead>
-                  <TableHead>昵称</TableHead>
-                  <TableHead>租户</TableHead>
-                  <TableHead>部门</TableHead>
-                  <TableHead>角色</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableActionHead className="w-28">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableStateRow colSpan={8} title="正在加载用户数据..." loading />
-                ) : error ? (
-                  <TableStateRow colSpan={8} title="用户数据加载失败" description={error} />
-                ) : users.length === 0 ? (
-                  <TableStateRow colSpan={8} title="暂无用户数据" />
-                ) : (
-                  users.map((user) => {
-                    const roleNames = getRoleNames(user);
-                    return (
-                      <TableRow key={user.userId}>
-                        <TableCell className="text-sm text-slate-500 dark:text-slate-400">
-                          {user.userId}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-                              {(user.nickName || user.userName || '?')[0]}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                                {user.userName}
-                              </div>
-                              <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                                {user.email || user.phonenumber || '未补充联系方式'}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                          {user.nickName || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                          <div className="inline-flex items-center gap-2">
-                            <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
-                            <span>{tenantNameById(user.tenantId)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                          {user.deptName || '-'}
-                        </TableCell>
-                        <TableCell>
-                          {roleNames.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {roleNames.slice(0, 2).map((roleName) => (
-                                <span
-                                  key={`${user.userId}-${roleName}`}
-                                  className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
-                                >
-                                  {roleName}
-                                </span>
-                              ))}
-                              {roleNames.length > 2 ? (
-                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
-                                  +{roleNames.length - 2}
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                              getUserStatusBadgeClassName(user.status),
-                            )}
-                          >
-                            {user.status === '0' ? '正常' : '停用'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <TableRowActions
-                            align="end"
-                            overflowLabel="更多"
-                            actions={[
-                              {
-                                label: '编辑用户',
-                                icon: <Edit size={15} />,
-                                onClick: () => handleOpenModal(user),
-                                semantic: 'edit',
-                                isPrimary: true,
-                              },
-                              {
-                                label: '重置密码',
-                                icon: <KeyRound size={15} />,
-                                onClick: () => handleOpenResetPassword(user),
-                                semantic: 'reset',
-                              },
-                              {
-                                label: '删除用户',
-                                icon: <Trash2 size={15} />,
-                                onClick: () => setPendingDeleteUser(user),
-                                semantic: 'delete',
-                                danger: true,
-                              },
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </></TableSurfaceCard>)}
-        pagination={
-          total > 0 ? (
-            <Pagination
-              total={total}
-              page={query.pageNum}
-              pageSize={query.pageSize}
-              onPageChange={(pageNum) =>
-                setQuery((current) => ({ ...current, pageNum }))
-              }
-              onPageSizeChange={(pageSize) =>
-                setQuery((current) => ({
-                  ...current,
-                  pageNum: 1,
-                  pageSize,
-                }))
-              }
-            />
-          ) : null
-        }
-      />
+      <section className="admin-source-page admin-users-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={isModalOpen}
@@ -773,12 +799,11 @@ export const UserList = () => {
           </div>
         }
       >
-        <form id="user-form" onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <label className={fieldLabelClassName}>
+        <form id="user-form" onSubmit={handleSubmit} className="admin-source-form-grid">
+            <label>
+              <span className={fieldLabelClassName}>
                 用户名 {!isEdit ? <span className="text-rose-500">*</span> : null}
-              </label>
+              </span>
               <Input
                 value={formData.userName}
                 disabled={isEdit}
@@ -787,12 +812,12 @@ export const UserList = () => {
                 }
                 placeholder="请输入用户名"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>
+            <label>
+              <span className={fieldLabelClassName}>
                 用户昵称 <span className="text-rose-500">*</span>
-              </label>
+              </span>
               <Input
                 value={formData.nickName}
                 onChange={(event) =>
@@ -800,10 +825,10 @@ export const UserList = () => {
                 }
                 placeholder="请输入用户昵称"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>邮箱</label>
+            <label>
+              <span className={fieldLabelClassName}>邮箱</span>
               <Input
                 value={formData.email}
                 onChange={(event) =>
@@ -811,10 +836,10 @@ export const UserList = () => {
                 }
                 placeholder="请输入邮箱"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>手机号</label>
+            <label>
+              <span className={fieldLabelClassName}>手机号</span>
               <Input
                 value={formData.phonenumber}
                 onChange={(event) =>
@@ -822,14 +847,12 @@ export const UserList = () => {
                 }
                 placeholder="请输入手机号"
               />
-            </div>
-          </div>
+            </label>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <label className={fieldLabelClassName}>
+            <label>
+              <span className={fieldLabelClassName}>
                 {isEdit ? '重置密码' : '登录密码'}
-              </label>
+              </span>
               <Input
                 type="password"
                 value={formData.password}
@@ -838,10 +861,10 @@ export const UserList = () => {
                 }
                 placeholder={isEdit ? '留空则不修改密码' : '留空使用系统初始密码'}
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>性别</label>
+            <label>
+              <span className={fieldLabelClassName}>性别</span>
               <Select
                 value={formData.sex}
                 onValueChange={(value) =>
@@ -857,10 +880,10 @@ export const UserList = () => {
                   <SelectItem value="2">未知</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>状态</label>
+            <label>
+              <span className={fieldLabelClassName}>状态</span>
               <Select
                 value={formData.status}
                 onValueChange={(value) =>
@@ -875,10 +898,10 @@ export const UserList = () => {
                   <SelectItem value="1">停用</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>所属租户</label>
+            <label>
+              <span className={fieldLabelClassName}>所属租户</span>
               <Select
                 value={formData.tenantId ? String(formData.tenantId) : DEFAULT_TENANT_VALUE}
                 onValueChange={(value) =>
@@ -900,12 +923,10 @@ export const UserList = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
+            </label>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className={fieldLabelClassName}>归属部门</label>
+            <label>
+              <span className={fieldLabelClassName}>归属部门</span>
               <Select
                 value={formData.deptId ? String(formData.deptId) : ''}
                 onValueChange={(value) =>
@@ -935,10 +956,10 @@ export const UserList = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>备注</label>
+            <label>
+              <span className={fieldLabelClassName}>备注</span>
               <Textarea
                 rows={4}
                 className="resize-none"
@@ -947,40 +968,38 @@ export const UserList = () => {
                   setFormData((current) => ({ ...current, remark: event.target.value }))
                 }
               />
-            </div>
-          </div>
+            </label>
 
-          <div>
+          <div className="admin-source-form-wide">
             <label className={fieldLabelClassName}>角色分配</label>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="admin-users-group-picker">
               {roles.length > 0 ? (
-                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                <>
                   {roles.map((role) => {
                     const checked = selectedRoleIds.includes(role.roleId);
                     return (
-                      <label
+                      <button
                         key={role.roleId}
-                        className={cn(
-                          'flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition',
-                          checked
-                            ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
-                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-700',
-                        )}
+                        type="button"
+                        className={cn(checked && 'active')}
+                        aria-pressed={checked}
+                        onClick={() => toggleRole(role.roleId)}
                       >
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleRole(role.roleId)}
+                          onClick={(event) => event.stopPropagation()}
                           className={checkboxClassName}
                         />
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">{role.roleName}</div>
                           <div className="truncate text-xs opacity-80">{role.roleKey}</div>
                         </div>
-                      </label>
+                      </button>
                     );
                   })}
-                </div>
+                </>
               ) : (
                 <div className="px-2 py-4 text-center text-sm text-slate-400 dark:text-slate-500">
                   暂无角色数据
@@ -1012,8 +1031,8 @@ export const UserList = () => {
           </div>
         }
       >
-        <form id="reset-user-password-form" onSubmit={handleResetPassword} className="space-y-4">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+        <form id="reset-user-password-form" onSubmit={handleResetPassword} className="admin-dialog-stack">
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
             重置后原密码立即失效，用户下次登录需使用新密码。
           </div>
           <div>

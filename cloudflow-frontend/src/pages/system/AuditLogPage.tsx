@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { ArrowLeftRight, Eye, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, Eye, FileClock, RefreshCw, RotateCcw, Search, Trash2, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -12,24 +12,16 @@ import {
   SysAuditLog,
 } from '@/services/api/log';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
   Input,
   LoadingSpinner,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@/components/common';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const checkboxClassName =
-  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-[#0d95b5] text-[#0d95b5] focus:ring-2 focus:ring-[#0d95b5]/30 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 type AuditLogFilters = {
   auditName: string;
@@ -44,8 +36,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent dark:hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -55,8 +47,8 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 const AuditDetailDialog: React.FC<{ log: SysAuditLog | null; onClose: () => void }> = ({
@@ -70,30 +62,30 @@ const AuditDetailDialog: React.FC<{ log: SysAuditLog | null; onClose: () => void
     maxWidthClassName="max-w-4xl"
     headerAside={
       log ? (
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
           变更字段：{log.auditField || '-'}
         </span>
       ) : null
     }
   >
     {log ? (
-      <div className="space-y-4">
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+      <div className="admin-dialog-stack">
+        <div className="card overflow-hidden">
           {[
             { label: '业务名称', value: log.auditName || '-' },
             { label: '操作人', value: log.createBy || '-' },
             { label: '操作时间', value: log.createTime || '-' },
           ].map((item) => (
-            <div key={item.label} className="border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
-              <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">{item.label}</div>
+            <div key={item.label} className="border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800">
+              <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{item.label}</div>
               <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">{item.value}</div>
             </div>
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="card overflow-hidden">
           <div className="grid grid-cols-[minmax(0,1fr)_56px_minmax(0,1fr)]">
-            <div className="bg-slate-50/70 dark:bg-slate-900/40">
+            <div className="bg-[var(--cf-surface-muted)] dark:bg-slate-900/40">
               <div className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
                 变更前
               </div>
@@ -102,11 +94,11 @@ const AuditDetailDialog: React.FC<{ log: SysAuditLog | null; onClose: () => void
               </div>
             </div>
 
-            <div className="flex items-center justify-center border-x border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="flex items-center justify-center border-x border-slate-200 bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-900/70">
               <ArrowLeftRight size={18} className="text-slate-400 dark:text-slate-500" />
             </div>
 
-            <div className="bg-slate-50/70 dark:bg-slate-900/40">
+            <div className="bg-[var(--cf-surface-muted)] dark:bg-slate-900/40">
               <div className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
                 变更后
               </div>
@@ -240,188 +232,234 @@ export const AuditLogPage: React.FC = () => {
 
   const hasActiveFilters = Boolean(query.auditName || query.createBy || query.startTime || query.endTime);
 
+  const stats = useMemo(
+    () => [
+      {
+        label: '审计总数',
+        value: String(total),
+        meta: `当前页 ${records.length}`,
+        icon: <FileClock size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '变更字段',
+        value: String(records.filter((item) => item.auditField).length),
+        meta: '本页记录',
+        icon: <ArrowLeftRight size={18} />,
+        tone: 'violet',
+      },
+      {
+        label: '操作人',
+        value: String(new Set(records.map((item) => item.createBy).filter(Boolean)).size),
+        meta: '本页去重',
+        icon: <UserRound size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '已选中',
+        value: String(selectedIds.length),
+        meta: '待批量删除',
+        icon: <Trash2 size={18} />,
+        tone: 'amber',
+      },
+    ],
+    [records, selectedIds.length, total],
+  );
+
   return (
     <>
-      <TablePageLayout
-        className="gap-3"
-        filters={(
-          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-56">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.auditName}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, auditName: event.target.value }))
-                  }
-                  placeholder="按业务名称搜索"
-                  className="h-10 pl-10"
-                />
-              </div>
+      <section className="admin-source-page admin-audit-log-page">
+        <TablePageLayout
+          actions={(
+            <div className="grid gap-5">
+              <header className="admin-source-header">
+                <div>
+                  <p className="admin-source-kicker">AUDIT LOGS</p>
+                  <h2>审计日志</h2>
+                  <span>追踪业务字段变更、操作人和变更前后内容</span>
+                </div>
+                <div className="admin-source-controls">
+                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    刷新
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBatchDelete}
+                    disabled={!selectedIds.length}
+                  >
+                    <Trash2 size={16} />
+                    删除选中
+                  </Button>
+                </div>
+              </header>
 
-              <div className="w-full sm:w-44">
-                <Input
-                  value={filters.createBy}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, createBy: event.target.value }))
-                  }
-                  placeholder="按操作人搜索"
-                  className="h-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-40">
-                <DatePicker
-                  type="date"
-                  value={filters.startTime}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, startTime: event.target.value }))
-                  }
-                  className="h-10"
-                />
-              </div>
-
-              <div className="w-full sm:w-40">
-                <DatePicker
-                  type="date"
-                  value={filters.endTime}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, endTime: event.target.value }))
-                  }
-                  className="h-10"
-                />
-              </div>
-
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  <RotateCcw size={14} />
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-                刷新
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBatchDelete}
-                disabled={!selectedIds.length}
-              >
-                <Trash2 size={15} />
-                删除选中
-              </Button>
+              <section className="admin-source-stat-grid">
+                {stats.map((stat) => (
+                  <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+                    <div className="admin-source-stat-icon">{stat.icon}</div>
+                    <div>
+                      <p>{stat.label}</p>
+                      <strong>{stat.value}</strong>
+                      <span>{stat.meta}</span>
+                    </div>
+                  </article>
+                ))}
+              </section>
             </div>
-          </div>
-        )}
-        table={(<TableSurfaceCard fill>
-          <>
-            <div className="overflow-x-auto">
-              <Table className="min-w-[1080px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        onChange={toggleAll}
-                        className={checkboxClassName}
-                      />
-                    </TableHead>
-                    <TableHead>业务名称</TableHead>
-                    <TableHead>变更字段</TableHead>
-                    <TableHead>变更前</TableHead>
-                    <TableHead>变更后</TableHead>
-                    <TableHead>操作人</TableHead>
-                    <TableHead>操作时间</TableHead>
-                    <TableActionHead className="w-24">操作</TableActionHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableStateRow colSpan={8} title="正在加载审计日志..." loading />
-                  ) : error ? (
-                    <TableStateRow colSpan={8} title="审计日志加载失败" description={error} />
-                  ) : records.length === 0 ? (
-                    <TableStateRow colSpan={8} title="暂无审计日志" />
-                  ) : (
-                    records.map((item) => (
-                      <TableRow key={item.auditId}>
-                        <TableCell className="py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(item.auditId)}
-                            onChange={() => toggleOne(item.auditId)}
-                            className={checkboxClassName}
-                          />
-                        </TableCell>
-                        <TableCell className="py-4 font-medium text-slate-900 dark:text-slate-100">
-                          {item.auditName || '-'}
-                        </TableCell>
-                        <TableCell className="py-4 text-slate-600 dark:text-slate-300">
-                          {item.auditField || '-'}
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <div
-                            className="max-w-[220px] truncate text-slate-500 dark:text-slate-400"
-                            title={item.beforeVal || ''}
-                          >
-                            {item.beforeVal || '（空）'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <div
-                            className="max-w-[220px] truncate text-slate-500 dark:text-slate-400"
-                            title={item.afterVal || ''}
-                          >
-                            {item.afterVal || '（空）'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-4 text-slate-600 dark:text-slate-300">
-                          {item.createBy || '-'}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-4 text-slate-500 dark:text-slate-400">
-                          {item.createTime || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <TableRowActions
-                            align="end"
-                            actions={[
-                              {
-                                label: '查看详情',
-                                icon: <Eye size={15} />,
-                                onClick: () => void handleViewDetail(item.auditId),
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '删除日志',
-                                icon: <Trash2 size={15} />,
-                                onClick: () => setPendingDeleteIds([item.auditId]),
-                                tone: 'danger',
-                              },
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        </TableSurfaceCard>)}
-        pagination={(
-          total > 0 ? (
+          )}
+          filters={(
+            <section className="card admin-users-toolbar">
+              <form onSubmit={handleSearch} className="admin-audit-log-filter-grid">
+                <label className="admin-source-search">
+                  <span className="input-label">业务名称</span>
+                  <div className="admin-source-search-field">
+                    <Search size={16} />
+                    <Input
+                      value={filters.auditName}
+                      onChange={(event) =>
+                        setFilters((current) => ({ ...current, auditName: event.target.value }))
+                      }
+                      placeholder="按业务名称搜索"
+                      type="search"
+                    />
+                  </div>
+                </label>
+
+                <label>
+                  <span className="input-label">操作人</span>
+                  <Input
+                    value={filters.createBy}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, createBy: event.target.value }))
+                    }
+                    placeholder="按操作人搜索"
+                  />
+                </label>
+
+                <label>
+                  <span className="input-label">开始日期</span>
+                  <DatePicker
+                    type="date"
+                    value={filters.startTime}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, startTime: event.target.value }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span className="input-label">结束日期</span>
+                  <DatePicker
+                    type="date"
+                    value={filters.endTime}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, endTime: event.target.value }))
+                    }
+                  />
+                </label>
+
+                <div className="admin-users-toolbar-actions">
+                  <span className="admin-users-filter-count">当前 {total} 项</span>
+                  <Button type="submit" size="sm">
+                    查询
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReset}
+                    disabled={!hasActiveFilters}
+                  >
+                    <RotateCcw size={14} />
+                    重置
+                  </Button>
+                </div>
+              </form>
+            </section>
+          )}
+          table={(
+            <InnerTableSurface className="admin-audit-log-table-panel">
+              <table className="unity-data-table admin-source-table admin-audit-log-table min-w-[1080px]">
+                  <thead>
+                    <tr>
+                      <th className="w-10">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleAll}
+                          className={checkboxClassName}
+                        />
+                      </th>
+                      <th>业务名称</th>
+                      <th>变更字段</th>
+                      <th>变更前</th>
+                      <th>变更后</th>
+                      <th>操作人</th>
+                      <th>操作时间</th>
+                      <th className="text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <TableStateRow colSpan={8} title="正在加载审计日志..." loading />
+                    ) : error ? (
+                      <TableStateRow colSpan={8} title="审计日志加载失败" description={error} />
+                    ) : records.length === 0 ? (
+                      <TableStateRow colSpan={8} title="暂无审计日志" />
+                    ) : (
+                      records.map((item) => (
+                        <tr key={item.auditId}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(item.auditId)}
+                              onChange={() => toggleOne(item.auditId)}
+                              className={checkboxClassName}
+                            />
+                          </td>
+                          <td>
+                            <strong className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {item.auditName || '-'}
+                            </strong>
+                          </td>
+                          <td>{item.auditField || '-'}</td>
+                          <td>
+                            <div className="max-w-[220px] truncate text-slate-500 dark:text-slate-400" title={item.beforeVal || ''}>
+                              {item.beforeVal || '（空）'}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="max-w-[220px] truncate text-slate-500 dark:text-slate-400" title={item.afterVal || ''}>
+                              {item.afterVal || '（空）'}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap">{item.createBy || '-'}</td>
+                          <td className="whitespace-nowrap">{item.createTime || '-'}</td>
+                          <td>
+                            <div className="admin-users-row-actions">
+                              <button type="button" title="查看详情" onClick={() => void handleViewDetail(item.auditId)}>
+                                <Eye size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="danger"
+                                title="删除日志"
+                                onClick={() => setPendingDeleteIds([item.auditId])}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+              </table>
+            </InnerTableSurface>
+          )}
+          pagination={total > 0 ? (
             <Pagination
               total={total}
               page={query.pageNum || 1}
@@ -435,9 +473,9 @@ export const AuditLogPage: React.FC = () => {
                 }))
               }
             />
-          ) : null
-        )}
-      />
+          ) : null}
+        />
+      </section>
 
       <AuditDetailDialog log={detailLog} onClose={() => setDetailLog(null)} />
 

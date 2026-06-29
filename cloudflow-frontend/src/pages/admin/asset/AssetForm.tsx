@@ -77,8 +77,8 @@ const AssetForm: React.FC<AssetFormProps> = ({
   };
 
   return (
-    <form id={formId} onSubmit={handleSubmit} className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-2">
+    <form id={formId} onSubmit={handleSubmit} className="admin-asset-form">
+      <div className="admin-source-form-grid">
         <div className="grid gap-2">
           <Label htmlFor="name">资产名称 <span className="text-red-500">*</span></Label>
           <Input
@@ -100,9 +100,7 @@ const AssetForm: React.FC<AssetFormProps> = ({
             className="h-11"
           />
         </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="category">分类</Label>
           <Input
@@ -121,9 +119,7 @@ const AssetForm: React.FC<AssetFormProps> = ({
             className="h-11"
           />
         </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="status">状态</Label>
           <Select
@@ -153,9 +149,7 @@ const AssetForm: React.FC<AssetFormProps> = ({
             className="h-11"
           />
         </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="location">存放位置</Label>
           <Input
@@ -174,16 +168,16 @@ const AssetForm: React.FC<AssetFormProps> = ({
             className="h-11"
           />
         </div>
-      </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="remark">备注</Label>
-        <Textarea
-          id="remark"
-          value={formData.remark || ''}
-          onChange={(e) => handleChange('remark', e.target.value)}
-          rows={3}
-        />
+        <div className="grid gap-2 admin-source-form-wide">
+          <Label htmlFor="remark">备注</Label>
+          <Textarea
+            id="remark"
+            value={formData.remark || ''}
+            onChange={(e) => handleChange('remark', e.target.value)}
+            rows={3}
+          />
+        </div>
       </div>
     </form>
   );

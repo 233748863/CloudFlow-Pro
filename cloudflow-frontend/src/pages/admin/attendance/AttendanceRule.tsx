@@ -2,9 +2,10 @@ import React, { useMemo, useState } from 'react';
 import {
   CalendarClock,
   CalendarDays,
-  CheckCircle2,
+  Clock3,
   MapPin,
   Plus,
+  RefreshCw,
   Save,
   Trash2,
   Users,
@@ -50,6 +51,7 @@ import {
   Textarea,
 } from '@/components/common';
 import { useDict } from '@/hooks/useDict';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const WEEKDAYS = [
   { value: 1, label: '周一' },
@@ -60,6 +62,8 @@ const WEEKDAYS = [
   { value: 6, label: '周六' },
   { value: 7, label: '周日' },
 ];
+
+const NEW_RULE_VALUE = '__new_rule__';
 
 const defaultConfig = (shiftId?: number): AttendanceRuleConfig => ({
   shiftId,
@@ -98,19 +102,21 @@ const addDays = (days: number) => {
 };
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="space-y-2">
+  <div className="admin-attendance-field">
     <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300">{label}</Label>
     {children}
   </div>
 );
 
 const Panel = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
-  <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-      <div className="text-slate-500 dark:text-slate-400">{icon}</div>
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+  <section className="admin-attendance-surface">
+    <div className="admin-attendance-surface-head">
+      <div className="flex items-center gap-2">
+        <div className="text-slate-500 dark:text-slate-400">{icon}</div>
+        <strong>{title}</strong>
+      </div>
     </div>
-    <div className="p-4">{children}</div>
+    <div className="admin-attendance-surface-body">{children}</div>
   </section>
 );
 
@@ -199,6 +205,25 @@ const AttendanceRulePage: React.FC = () => {
       void loadAssignments(rule.id);
     } else {
       listHrScheduleRuleAssignments(rule.id).then(setAssignments).catch(() => setAssignments([]));
+    }
+  };
+
+  const startNewRule = () => {
+    setSelectedId(null);
+    setDraft(createDraftRule(shifts[0]?.id));
+    setConfig(defaultConfig(shifts[0]?.id));
+    setAssignments([]);
+  };
+
+  const handleRuleSelect = (value: string) => {
+    if (value === NEW_RULE_VALUE) {
+      startNewRule();
+      return;
+    }
+
+    const rule = rules.find((item) => String(item.id) === value);
+    if (rule) {
+      selectRule(rule);
     }
   };
 
@@ -324,101 +349,115 @@ const AttendanceRulePage: React.FC = () => {
 
   const locationPoint = config.locationPoints?.[0] || {};
   const wifiText = (config.wifiConfigs || []).map((item) => item.ssid).filter(Boolean).join('\n');
+  const metrics = [
+    { label: '规则总数', value: String(rules.length), meta: draft?.ruleName || '当前规则', icon: <CalendarClock size={18} />, tone: 'blue' },
+    { label: '班次数量', value: String(shifts.length), meta: selectedShift?.shiftName || '未绑定班次', icon: <Clock3 size={18} />, tone: 'green' },
+    { label: '适用范围', value: String(assignments.length), meta: activeRuleId ? '当前规则' : '未保存规则', icon: <Users size={18} />, tone: 'amber' },
+    { label: '企业日历', value: String(calendarDays.length), meta: '近21天维护', icon: <CalendarDays size={18} />, tone: 'violet' },
+  ];
 
-  return (
-    <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <CalendarClock className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Attendance Rules
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">ATTENDANCE RULES</p>
+          <h2>考勤规则</h2>
+          <span>维护班次、打卡方式、适用范围和企业日历</span>
         </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">考勤规则</h1>
-      </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={() => void loadAll()} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            刷新
+          </Button>
+          <Button
+            size="sm"
+            onClick={startNewRule}
+          >
+            <Plus size={16} />
+            新增规则
+          </Button>
+        </div>
+      </header>
 
-      <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">规则组</div>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => {
-                setSelectedId(null);
-                setDraft(createDraftRule(shifts[0]?.id));
-                setConfig(defaultConfig(shifts[0]?.id));
-                setAssignments([]);
-              }}
-              title="新增规则"
-            >
-              <Plus size={15} />
-            </Button>
-          </div>
-          <div className="space-y-2 p-3">
-            {loading ? (
-              <div className="rounded-lg border border-slate-200 px-3 py-8 text-center text-sm text-slate-500 dark:border-slate-800">加载中</div>
-            ) : null}
-            {rules.map((rule) => {
-              const itemConfig = parseConfig(rule.ruleConfig);
-              const shift = shifts.find((item) => item.id === Number(itemConfig.shiftId));
-              const active = selectedId === rule.id;
-              return (
-                <button
-                  key={rule.id}
-                  type="button"
-                  onClick={() => selectRule(rule)}
-                  className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${
-                    active
-                      ? 'border-cyan-200 bg-cyan-50 text-cyan-900 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-100'
-                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-semibold">{rule.ruleName}</span>
-                    {rule.status === 1 ? <CheckCircle2 size={14} className="text-emerald-500" /> : null}
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{ruleTypeDict.getLabel(rule.ruleType || '') || rule.ruleType}</span>
-                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{shift?.shiftName || '未绑定班次'}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
-        <main className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              规则 {draft?.ruleName || '未命名'}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              班次 {selectedShift ? `${normalizeTime(selectedShift.startTime)}-${normalizeTime(selectedShift.endTime)}` : '未选择'}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              适用范围 {assignments.length} 项
-            </span>
-            <div className="ml-auto flex flex-wrap gap-2">
-              {draft?.id ? (
-                <Button variant="outline" size="sm" onClick={handleDeleteRule}>
-                  <Trash2 size={14} className="mr-1.5" />
-                  删除
-                </Button>
-              ) : null}
-              <Button size="sm" onClick={handleSave} disabled={saving || !draft}>
-                <Save size={14} className="mr-1.5" />
-                {saving ? '保存中...' : '保存规则'}
-              </Button>
+      <section className="admin-source-stat-grid">
+        {metrics.map((metric) => (
+          <article key={metric.label} className={`card admin-source-stat admin-source-tone-${metric.tone}`}>
+            <div className="admin-source-stat-icon">{metric.icon}</div>
+            <div>
+              <p>{metric.label}</p>
+              <strong>{metric.value}</strong>
+              <span>{metric.meta}</span>
             </div>
-          </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
 
-          <Tabs defaultValue="rule">
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="grid items-end gap-3 xl:grid-cols-[minmax(18rem,1fr)_180px_160px_auto]">
+        <label className="grid gap-1.5">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">当前规则</span>
+          <Select value={selectedId ? String(selectedId) : NEW_RULE_VALUE} onValueChange={handleRuleSelect}>
+            <SelectTrigger className="cf-control">
+              <SelectValue placeholder="选择考勤规则" />
+            </SelectTrigger>
+            <SelectContent>
+              {rules.map((rule) => {
+                const itemConfig = parseConfig(rule.ruleConfig);
+                const shift = shifts.find((item) => item.id === Number(itemConfig.shiftId));
+                return (
+                  <SelectItem key={rule.id} value={String(rule.id)}>
+                    {rule.ruleName} / {shift?.shiftName || '未绑定班次'}
+                  </SelectItem>
+                );
+              })}
+              <SelectItem value={NEW_RULE_VALUE}>新考勤规则</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+        <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          班次<br />
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            {selectedShift ? `${normalizeTime(selectedShift.startTime)}-${normalizeTime(selectedShift.endTime)}` : '未选择'}
+          </span>
+        </div>
+        <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          适用范围<br />
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{assignments.length} 项</span>
+        </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          {draft?.id ? (
+            <Button variant="outline" size="sm" onClick={handleDeleteRule}>
+              <Trash2 size={14} className="mr-1.5" />
+              删除
+            </Button>
+          ) : null}
+          <Button size="sm" onClick={handleSave} disabled={saving || !draft}>
+            <Save size={14} className="mr-1.5" />
+            {saving ? '保存中...' : '保存规则'}
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const pageContent = (
+    <InnerTableSurface
+      className="flex min-h-0 flex-1 flex-col"
+      wrapperClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      <div className="admin-attendance-rule-workspace">
+        <main className="admin-attendance-workbench">
+          <Tabs defaultValue="rule" className="admin-source-content admin-attendance-tabs">
             <TabsList>
               <TabsTrigger value="rule">规则配置</TabsTrigger>
               <TabsTrigger value="assignment">适用范围</TabsTrigger>
               <TabsTrigger value="calendar">企业日历</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="rule" className="space-y-4">
+            <TabsContent value="rule" className="admin-source-content-grid admin-attendance-tab">
               <Panel title="基础与班次" icon={<CalendarClock size={16} />}>
                 <div className="grid gap-4 lg:grid-cols-3">
                   <Field label="规则名称">
@@ -445,7 +484,7 @@ const AttendanceRulePage: React.FC = () => {
                     </Select>
                   </Field>
                   <Field label="启用规则">
-                    <div className="flex h-11 items-center rounded-xl border border-slate-200 px-4 dark:border-slate-800">
+                    <div className="admin-attendance-control-shell">
                       <Switch checked={(draft?.status ?? 1) === 1} onCheckedChange={(checked) => setDraft((prev) => (prev ? { ...prev, status: checked ? 1 : 0 } : prev))} />
                     </div>
                   </Field>
@@ -511,12 +550,12 @@ const AttendanceRulePage: React.FC = () => {
                       <Input type="number" value={config.overtimeMinMinutes || 0} onChange={(event) => updateConfig('overtimeMinMinutes', Number(event.target.value || 0))} />
                     </Field>
                     <Field label="允许加班">
-                      <div className="flex h-11 items-center rounded-xl border border-slate-200 px-4 dark:border-slate-800">
+                      <div className="admin-attendance-control-shell">
                         <Switch checked={config.overtimeEnabled !== false} onCheckedChange={(checked) => updateConfig('overtimeEnabled', checked)} />
                       </div>
                     </Field>
                     <Field label="拍照/人脸增强">
-                      <div className="flex h-11 items-center rounded-xl border border-slate-200 px-4 dark:border-slate-800">
+                      <div className="admin-attendance-control-shell">
                         <Switch checked={Boolean(config.photoRequired)} onCheckedChange={(checked) => updateConfig('photoRequired', checked)} />
                       </div>
                     </Field>
@@ -525,7 +564,7 @@ const AttendanceRulePage: React.FC = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="assignment" className="space-y-4">
+            <TabsContent value="assignment" className="admin-source-content-grid admin-attendance-tab">
               <Panel title="适用范围" icon={<Users size={16} />}>
                 <div className="grid gap-3 lg:grid-cols-[160px_1fr_180px_auto]">
                   <Select value={assignmentDraft.targetType} onValueChange={(value) => setAssignmentDraft((prev) => ({ ...prev, targetType: value as 'DEPT' | 'POST' | 'EMPLOYEE' }))}>
@@ -542,12 +581,12 @@ const AttendanceRulePage: React.FC = () => {
                   </Button>
                 </div>
 
-                <div className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+                <div className="admin-attendance-list-panel mt-4">
                   {assignments.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-sm text-slate-500">暂无适用范围</div>
+                    <div className="admin-attendance-empty">暂无适用范围</div>
                   ) : assignments.map((item) => (
-                    <div key={item.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">{targetTypeDict.getLabel(item.targetType || '') || item.targetType}</span>
+                    <div key={item.id} className="admin-attendance-list-row">
+                      <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{targetTypeDict.getLabel(item.targetType || '') || item.targetType}</span>
                       <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.targetName || item.targetId}</span>
                       <span className="text-xs text-slate-500">{item.effectiveStart} 起</span>
                       <Button className="ml-auto" variant="ghost" size="icon" onClick={() => handleDeleteAssignment(item.id)}>
@@ -559,7 +598,7 @@ const AttendanceRulePage: React.FC = () => {
               </Panel>
             </TabsContent>
 
-            <TabsContent value="calendar" className="space-y-4">
+            <TabsContent value="calendar" className="admin-source-content-grid admin-attendance-tab">
               <Panel title="企业日历" icon={<CalendarDays size={16} />}>
                 <div className="grid gap-3 lg:grid-cols-[180px_180px_1fr_auto]">
                   <DatePicker type="date" value={calendarDraft.calendarDate} onChange={(event) => setCalendarDraft((prev) => ({ ...prev, calendarDate: event.target.value }))} />
@@ -578,12 +617,12 @@ const AttendanceRulePage: React.FC = () => {
 
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {calendarDays.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800">
+                    <div key={item.id} className="admin-attendance-list-row">
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.calendarDate}</div>
                         <div className="mt-1 text-xs text-slate-500">{item.dayName || dayTypeDict.getLabel(item.dayType || '') || item.dayType}</div>
                       </div>
-                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">{dayTypeDict.getLabel(item.dayType || '') || item.dayType}</span>
+                      <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{dayTypeDict.getLabel(item.dayType || '') || item.dayType}</span>
                       <Button variant="ghost" size="icon" onClick={() => handleDeleteCalendar(item.id)}>
                         <Trash2 size={15} />
                       </Button>
@@ -595,7 +634,17 @@ const AttendanceRulePage: React.FC = () => {
           </Tabs>
         </main>
       </div>
-    </div>
+    </InnerTableSurface>
+  );
+
+  return (
+    <section className="admin-source-page admin-attendance-rule-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageContent}
+      />
+    </section>
   );
 };
 

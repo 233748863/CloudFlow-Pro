@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -27,14 +26,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableActionHead,
-  TableRowActions,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/common';
 import {
@@ -50,6 +41,7 @@ import {
   type TenantStatisticsItem,
 } from '../../services/api/tenant';
 import { cn } from '@/utils/cn';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 interface TenantView extends SysTenant, TenantStatistics {
   tenantId: number;
@@ -79,7 +71,7 @@ type TenantQuery = TenantFilters & {
   pageSize: number;
 };
 
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+const fieldLabelClassName = 'input-label';
 
 const DEFAULT_TENANT_STATS: TenantStatistics = {
   expired: false,
@@ -162,7 +154,7 @@ const getExpireHint = (expireTime?: string) => {
     return {
       text: '未设置',
       toneClassName:
-        'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300',
+        'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300',
     };
   }
 
@@ -213,7 +205,7 @@ const getUsageBadgeClassName = (percent: number, high: number, medium: number) =
     return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
   }
 
-  return 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
+  return 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
 };
 
 const TableStateRow: React.FC<{
@@ -222,8 +214,8 @@ const TableStateRow: React.FC<{
   description?: string;
   loading?: boolean;
 }> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
+  <tr className="hover:bg-transparent dark:hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -233,8 +225,8 @@ const TableStateRow: React.FC<{
           </div>
         ) : null}
       </div>
-    </TableCell>
-  </TableRow>
+    </td>
+  </tr>
 );
 
 export const TenantList: React.FC = () => {
@@ -476,267 +468,330 @@ export const TenantList: React.FC = () => {
 
   const hasActiveFilters = Boolean(query.keyword);
   const isEdit = Boolean(editingTenant);
+  const stats = useMemo(
+    () => [
+      {
+        label: '总租户',
+        value: String(summary.total),
+        meta: `当前页 ${pagedTenants.length}`,
+        icon: <Building2 size={18} />,
+        tone: 'blue',
+      },
+      {
+        label: '有效租户',
+        value: String(summary.active),
+        meta: '可正常使用',
+        icon: <Power size={18} />,
+        tone: 'green',
+      },
+      {
+        label: '即将到期',
+        value: String(summary.expiringSoon),
+        meta: '30 天内',
+        icon: <Calendar size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '风险租户',
+        value: String(summary.warning),
+        meta: '配额或有效期异常',
+        icon: <HardDrive size={18} />,
+        tone: 'violet',
+      },
+    ],
+    [pagedTenants.length, summary.active, summary.expiringSoon, summary.total, summary.warning],
+  );
 
-  return (
-    <>
-      <TablePageLayout
-        className="gap-4"
-        filters={
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-1 flex-wrap items-center gap-3"
-            >
-              <div className="relative w-full sm:w-60">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                />
-                <Input
-                  value={filters.keyword}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, keyword: event.target.value }))
-                  }
-                  placeholder="按租户名称搜索"
-                  className="h-10 pl-10"
-                />
-              </div>
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">TENANT MANAGEMENT</p>
+          <h2>租户管理</h2>
+          <span>管理租户信息、配额容量、到期状态和启停操作</span>
+        </div>
+        <div className="admin-source-controls">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
+            刷新
+          </Button>
+          <Button size="sm" onClick={() => handleOpenModal()}>
+            <Plus size={16} />
+            新增租户
+          </Button>
+        </div>
+      </header>
 
-              <Button type="submit" size="sm">
-                查询
-              </Button>
-
-              {hasActiveFilters ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
-                  重置
-                </Button>
-              ) : null}
-            </form>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={() => handleOpenModal()}>
-                <Plus size={15} />
-                新增租户
-              </Button>
+      <section className="admin-source-stat-grid">
+        {stats.map((stat) => (
+          <article key={stat.label} className={cn('card admin-source-stat', `admin-source-tone-${stat.tone}`)}>
+            <div className="admin-source-stat-icon">{stat.icon}</div>
+            <div>
+              <p>{stat.label}</p>
+              <strong>{stat.value}</strong>
+              <span>{stat.meta}</span>
             </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <form
+        onSubmit={handleSearch}
+        className="admin-users-filter-grid admin-tenants-filter-grid"
+      >
+        <label className="admin-source-search">
+          <span className={fieldLabelClassName}>搜索租户</span>
+          <div className="admin-source-search-field">
+            <Search size={16} />
+            <Input
+              value={filters.keyword}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, keyword: event.target.value }))
+              }
+              placeholder="租户名称、编码或域名"
+              type="search"
+            />
           </div>
-        }
-        table={(<TableSurfaceCard fill><>
-            <Table className="min-w-[1180px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>租户信息</TableHead>
-                  <TableHead>联系方式</TableHead>
-                  <TableHead>配额与容量</TableHead>
-                  <TableHead>到期情况</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableActionHead className="w-40">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableStateRow colSpan={6} title="正在加载租户列表..." loading />
-                ) : error ? (
-                  <TableStateRow colSpan={6} title="租户列表加载失败" description={error} />
-                ) : pagedTenants.length === 0 ? (
-                  <TableStateRow colSpan={6} title="暂无租户数据" />
-                ) : (
-                  pagedTenants.map((tenant) => {
-                    const userPercent = calcPercent(tenant.userCount, tenant.userLimit);
-                    const storagePercent = calcPercent(tenant.storageUsed, tenant.storageLimit);
-                    const expireHint = getExpireHint(tenant.expireTime);
-                    const hasRisk = tenant.expired || tenant.userLimitReached || storagePercent >= 80;
+        </label>
 
-                    return (
-                      <TableRow key={tenant.tenantId}>
-                        <TableCell className="py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200">
-                              <Building2 size={18} />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {tenant.tenantName}
-                              </div>
-                              <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                {tenant.tenantCode ? (
-                                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                                    {tenant.tenantCode}
-                                  </span>
-                                ) : null}
-                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                                  ID {tenant.tenantId}
-                                </span>
-                                {tenant.domain ? (
-                                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                                    {tenant.domain}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">当前 {summary.total} 项</span>
+          <Button type="submit" size="sm">
+            查询
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={!hasActiveFilters}
+          >
+            重置
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
 
-                        <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                          <div>{tenant.contactName || '-'}</div>
-                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            {tenant.contactPhone || '-'}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                            {tenant.contactEmail || '-'}
-                          </div>
-                        </TableCell>
+  const pageTable = (
+    <InnerTableSurface className="admin-tenants-table-panel">
+      <table className="unity-data-table admin-source-table admin-tenants-table">
+          <thead>
+            <tr>
+              <th>租户信息</th>
+              <th>联系方式</th>
+              <th>配额与容量</th>
+              <th>到期情况</th>
+              <th>状态</th>
+              <th className="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <TableStateRow colSpan={6} title="正在加载租户列表..." loading />
+            ) : error ? (
+              <TableStateRow colSpan={6} title="租户列表加载失败" description={error} />
+            ) : pagedTenants.length === 0 ? (
+              <TableStateRow colSpan={6} title="暂无租户数据" />
+            ) : (
+              pagedTenants.map((tenant) => {
+                const userPercent = calcPercent(tenant.userCount, tenant.userLimit);
+                const storagePercent = calcPercent(tenant.storageUsed, tenant.storageLimit);
+                const expireHint = getExpireHint(tenant.expireTime);
+                const hasRisk = tenant.expired || tenant.userLimitReached || storagePercent >= 80;
 
-                        <TableCell className="py-4">
-                          <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-200">
-                                <Users size={14} />
-                                {tenant.userCount} / {tenant.userLimit || 0} 用户
+                return (
+                  <tr key={tenant.tenantId}>
+                    <td>
+                      <div className="admin-tenants-identity">
+                        <div className="admin-tenants-icon">
+                          <Building2 size={18} />
+                        </div>
+                        <div>
+                          <strong>{tenant.tenantName}</strong>
+                          <div className="admin-tenants-chip-row">
+                            {tenant.tenantCode ? (
+                              <span className="admin-source-chip">
+                                {tenant.tenantCode}
                               </span>
-                              <span
-                                className={cn(
-                                  'rounded-full px-2.5 py-1 text-xs font-medium',
-                                  getUsageBadgeClassName(userPercent, 100, 80),
-                                )}
-                              >
-                                {userPercent.toFixed(0)}%
-                              </span>
-                              {tenant.userLimitReached ? (
-                                <span className="text-xs text-rose-600 dark:text-rose-300">
-                                  已达到上限
-                                </span>
-                              ) : null}
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-200">
-                                <HardDrive size={14} />
-                                {formatStorage(tenant.storageUsed)} / {formatStorage(tenant.storageLimit)}
-                              </span>
-                              <span
-                                className={cn(
-                                  'rounded-full px-2.5 py-1 text-xs font-medium',
-                                  getUsageBadgeClassName(storagePercent, 90, 70),
-                                )}
-                              >
-                                {storagePercent.toFixed(0)}%
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                          <div className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-200">
-                            <Calendar size={14} />
-                            {formatDate(tenant.expireTime)}
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <span
-                              className={cn(
-                                'rounded-full px-2.5 py-1 text-xs font-medium',
-                                expireHint.toneClassName,
-                              )}
-                            >
-                              {expireHint.text}
+                            ) : null}
+                            <span className="admin-source-chip">
+                              ID {tenant.tenantId}
                             </span>
-                            {hasRisk ? (
-                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
-                                需关注
+                            {tenant.domain ? (
+                              <span className="admin-source-chip">
+                                {tenant.domain}
                               </span>
                             ) : null}
                           </div>
-                        </TableCell>
+                        </div>
+                      </div>
+                    </td>
 
-                        <TableCell className="py-4">
-                          <div className="flex flex-wrap gap-2">
-                            <span
-                              className={cn(
-                                'rounded-full px-2.5 py-1 text-xs font-medium',
-                                getStatusClassName(tenant.status),
-                              )}
-                            >
-                              {tenant.status === '0' ? '正常' : '停用'}
-                            </span>
-                            <span
-                              className={cn(
-                                'rounded-full px-2.5 py-1 text-xs font-medium',
-                                tenant.expired
-                                  ? 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200'
-                                  : 'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300',
-                              )}
-                            >
-                              {tenant.expired ? '已过期' : '未过期'}
-                            </span>
-                          </div>
-                        </TableCell>
+                    <td>
+                      <div className="admin-tenants-contact">
+                        <strong>{tenant.contactName || '-'}</strong>
+                        <span>{tenant.contactPhone || '-'}</span>
+                        <small>{tenant.contactEmail || '-'}</small>
+                      </div>
+                    </td>
 
-                        <TableCell>
-                          <TableRowActions
-                            align="end"
-                            actions={[
-                              {
-                                label: '编辑租户',
-                                icon: <Edit size={15} />,
-                                onClick: () => handleOpenModal(tenant),
-                                tone: 'neutral',
-                              },
-                              {
-                                label: tenant.status === '0' ? '停用租户' : '启用租户',
-                                icon: tenant.status === '0' ? <PowerOff size={15} /> : <Power size={15} />,
-                                onClick: () => void handleToggleStatus(tenant),
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '刷新存储',
-                                icon: (
-                                  <RefreshCw
-                                    size={15}
-                                    className={cn(refreshingTenantId === tenant.tenantId && 'animate-spin')}
-                                  />
-                                ),
-                                onClick: () => void handleRefreshStorage(tenant.tenantId),
-                                disabled: refreshingTenantId === tenant.tenantId,
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '删除租户',
-                                icon: <Trash2 size={15} />,
-                                onClick: () => setPendingDeleteTenant(tenant),
-                                tone: 'danger',
-                              },
-                            ]}
+                    <td>
+                      <div className="admin-tenants-quota">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>
+                            <Users size={14} />
+                            {tenant.userCount} / {tenant.userLimit || 0} 用户
+                          </span>
+                          <span
+                            className={cn(
+                              'rounded-md px-2.5 py-1 text-xs font-medium',
+                              getUsageBadgeClassName(userPercent, 100, 80),
+                            )}
+                          >
+                            {userPercent.toFixed(0)}%
+                          </span>
+                          {tenant.userLimitReached ? (
+                            <span className="text-xs text-rose-600 dark:text-rose-300">
+                              已达到上限
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>
+                            <HardDrive size={14} />
+                            {formatStorage(tenant.storageUsed)} / {formatStorage(tenant.storageLimit)}
+                          </span>
+                          <span
+                            className={cn(
+                              'rounded-md px-2.5 py-1 text-xs font-medium',
+                              getUsageBadgeClassName(storagePercent, 90, 70),
+                            )}
+                          >
+                            {storagePercent.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td>
+                      <div className="admin-tenants-expire">
+                        <Calendar size={14} />
+                        {formatDate(tenant.expireTime)}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span
+                          className={cn(
+                            'rounded-md px-2.5 py-1 text-xs font-medium',
+                            expireHint.toneClassName,
+                          )}
+                        >
+                          {expireHint.text}
+                        </span>
+                        {hasRisk ? (
+                          <span className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                            需关注
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+
+                    <td>
+                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className={cn(
+                            'rounded-md px-2.5 py-1 text-xs font-medium',
+                            getStatusClassName(tenant.status),
+                          )}
+                        >
+                          {tenant.status === '0' ? '正常' : '停用'}
+                        </span>
+                        <span
+                          className={cn(
+                            'rounded-md px-2.5 py-1 text-xs font-medium',
+                            tenant.expired
+                              ? 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200'
+                              : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300',
+                          )}
+                        >
+                          {tenant.expired ? '已过期' : '未过期'}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="text-right">
+                      <div className="admin-users-row-actions">
+                        <button type="button" title="编辑租户" onClick={() => handleOpenModal(tenant)}>
+                          <Edit size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          title={tenant.status === '0' ? '停用租户' : '启用租户'}
+                          onClick={() => void handleToggleStatus(tenant)}
+                        >
+                          {tenant.status === '0' ? <PowerOff size={15} /> : <Power size={15} />}
+                        </button>
+                        <button
+                          type="button"
+                          title="刷新存储"
+                          onClick={() => void handleRefreshStorage(tenant.tenantId)}
+                          disabled={refreshingTenantId === tenant.tenantId}
+                        >
+                          <RefreshCw
+                            size={15}
+                            className={cn(refreshingTenantId === tenant.tenantId && 'animate-spin')}
                           />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </></TableSurfaceCard>)}
-        pagination={
-          summary.total > 0 ? (
-            <Pagination
-              total={summary.total}
-              page={query.pageNum}
-              pageSize={query.pageSize}
-              onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
-              onPageSizeChange={(pageSize) =>
-                setQuery((current) => ({
-                  ...current,
-                  pageNum: 1,
-                  pageSize,
-                }))
-              }
-            />
-          ) : null
-        }
-      />
+                        </button>
+                        <button
+                          type="button"
+                          className="danger"
+                          title="删除租户"
+                          onClick={() => setPendingDeleteTenant(tenant)}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+      </table>
+    </InnerTableSurface>
+  );
+
+  const pagePagination = summary.total > 0 ? (
+    <Pagination
+      total={summary.total}
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
+      onPageSizeChange={(pageSize) =>
+        setQuery((current) => ({
+          ...current,
+          pageNum: 1,
+          pageSize,
+        }))
+      }
+    />
+  ) : null;
+
+  return (
+    <>
+      <section className="admin-source-page admin-tenants-page">
+        <TablePageLayout
+          actions={pageActions}
+          filters={pageFilters}
+          table={pageTable}
+          pagination={pagePagination}
+        />
+      </section>
 
       <BaseDialog
         open={isModalOpen}
@@ -754,12 +809,11 @@ export const TenantList: React.FC = () => {
           </div>
         }
       >
-        <form id="tenant-form" onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className={fieldLabelClassName}>
+        <form id="tenant-form" onSubmit={handleSubmit} className="admin-source-form-grid">
+            <label>
+              <span className={fieldLabelClassName}>
                 租户编码 <span className="text-red-500">*</span>
-              </label>
+              </span>
               <Input
                 value={formData.tenantCode}
                 onChange={(event) =>
@@ -767,42 +821,42 @@ export const TenantList: React.FC = () => {
                 }
                 placeholder="xinyuan"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>
+            <label>
+              <span className={fieldLabelClassName}>
                 租户名称 <span className="text-red-500">*</span>
-              </label>
+              </span>
               <Input
                 value={formData.tenantName}
                 onChange={(event) =>
                   setFormData((current) => ({ ...current, tenantName: event.target.value }))
                 }
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>联系人</label>
+            <label>
+              <span className={fieldLabelClassName}>联系人</span>
               <Input
                 value={formData.contactName}
                 onChange={(event) =>
                   setFormData((current) => ({ ...current, contactName: event.target.value }))
                 }
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>联系电话</label>
+            <label>
+              <span className={fieldLabelClassName}>联系电话</span>
               <Input
                 value={formData.contactPhone}
                 onChange={(event) =>
                   setFormData((current) => ({ ...current, contactPhone: event.target.value }))
                 }
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>联系邮箱</label>
+            <label>
+              <span className={fieldLabelClassName}>联系邮箱</span>
               <Input
                 type="email"
                 value={formData.contactEmail}
@@ -810,10 +864,10 @@ export const TenantList: React.FC = () => {
                   setFormData((current) => ({ ...current, contactEmail: event.target.value }))
                 }
               />
-            </div>
+            </label>
 
-            <div className="md:col-span-2">
-              <label className={fieldLabelClassName}>域名</label>
+            <label>
+              <span className={fieldLabelClassName}>域名</span>
               <Input
                 value={formData.domain}
                 onChange={(event) =>
@@ -821,12 +875,10 @@ export const TenantList: React.FC = () => {
                 }
                 placeholder="example.com"
               />
-            </div>
-          </div>
+            </label>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className={fieldLabelClassName}>用户数量限制</label>
+            <label>
+              <span className={fieldLabelClassName}>用户数量限制</span>
               <Input
                 type="number"
                 min="1"
@@ -838,10 +890,10 @@ export const TenantList: React.FC = () => {
                   }))
                 }
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>存储空间限制 (MB)</label>
+            <label>
+              <span className={fieldLabelClassName}>存储空间限制 (MB)</span>
               <Input
                 type="number"
                 min="1"
@@ -853,10 +905,10 @@ export const TenantList: React.FC = () => {
                   }))
                 }
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>到期时间</label>
+            <label>
+              <span className={fieldLabelClassName}>到期时间</span>
               <DatePicker
                 type="date"
                 value={formData.expireTime}
@@ -865,10 +917,10 @@ export const TenantList: React.FC = () => {
                 }
                 placeholder="选择到期日期"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className={fieldLabelClassName}>状态</label>
+            <label>
+              <span className={fieldLabelClassName}>状态</span>
               <Select
                 value={formData.status}
                 onValueChange={(value) =>
@@ -883,11 +935,10 @@ export const TenantList: React.FC = () => {
                   <SelectItem value="1">停用</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          </div>
+            </label>
 
-          <div>
-            <label className={fieldLabelClassName}>备注</label>
+          <div className="admin-source-form-wide">
+            <span className={fieldLabelClassName}>备注</span>
             <Textarea
               rows={4}
               className="resize-none"
@@ -919,4 +970,3 @@ export const TenantList: React.FC = () => {
 };
 
 export default TenantList;
-

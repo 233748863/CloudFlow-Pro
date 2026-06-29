@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
+  CheckCircle2,
+  Clock3,
+  FileText,
   Kanban,
   LayoutList,
   RefreshCw,
@@ -24,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/common';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { usePolling } from '../hooks/usePolling';
@@ -122,7 +125,7 @@ const buildProcessOptions = (source: any[]): ProcessOption[] => {
 };
 
 const TaskFilterBadge = ({ children }: { children: React.ReactNode }) => (
-  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+  <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
     {children}
   </span>
 );
@@ -146,7 +149,7 @@ const TaskCompactWorkCard = ({
       type="button"
       onClick={() => onOpen(task)}
       className={cn(
-        'w-full px-4 py-4 text-left transition-colors hover:bg-slate-50',
+        'w-full px-4 py-4 text-left transition-colors hover:bg-[var(--cf-surface-muted)]',
         isOverdue
           ? 'text-rose-600 dark:text-rose-300'
           : 'text-slate-500 dark:text-slate-400',
@@ -167,7 +170,7 @@ const TaskCompactWorkCard = ({
           </div>
         </div>
 
-        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-100 lg:pl-6 dark:lg:border-slate-800">
+        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
           <div>状态</div>
           <div
             className={cn(
@@ -183,7 +186,7 @@ const TaskCompactWorkCard = ({
           </div>
         </div>
 
-        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-100 lg:pl-6 dark:lg:border-slate-800">
+        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
           <div>优先级</div>
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
             {task.priority === 2 ? '高' : task.priority === 1 ? '中' : '低'}
@@ -663,6 +666,12 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
     centerMode === 'pending' ? '审批待办' : centerMode === 'done' ? '我的已办' : '我的申请';
   const resultTitle =
     centerMode === 'pending' ? '当前待办内容' : centerMode === 'done' ? '当前已办记录' : '当前申请记录';
+  const pageStats = [
+    { label: '当前记录', value: String(centerMode === 'pending' ? visibleTotalCount : total), meta: resultTitle, icon: FileText, tone: 'blue' },
+    { label: '流程审批', value: String(visibleProcessTasks.length), meta: currentPendingProcessLabel, icon: Clock3, tone: 'violet' },
+    { label: '协作待办', value: String(visibleWorkTasks.length), meta: currentTypeLabel, icon: Kanban, tone: 'amber' },
+    { label: '筛选条件', value: String(activeFilterBadges.length), meta: currentViewLabel, icon: CheckCircle2, tone: 'green' },
+  ];
 
   if (!user) {
     return null;
@@ -679,8 +688,8 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
 
   if (error) {
     return (
-      <div className="px-4 py-4 md:px-6">
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+      <section className="admin-source-page">
+        <div className="card px-6 py-10 text-center">
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
             {pageTitle}加载失败
           </div>
@@ -693,353 +702,312 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
             </Button>
           </div>
         </div>
-      </div>
+      </section>
     );
   }
 
-  return (
-    <div className="px-4 py-4 md:px-6">
-      <TablePageLayout
-        filters={(
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+  const pageActions = (
+    <div className="grid gap-5">
+      <header className="admin-source-header">
+        <div>
+          <p className="admin-source-kicker">TASK CENTER</p>
+          <h2>{pageTitle}</h2>
+          <span>同步审批、已办、申请和协作待办</span>
+        </div>
+        <div className="admin-source-controls">
+          <button className="btn btn-secondary" type="button" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw size={16} className={cn(refreshing && 'animate-spin')} />
+            刷新
+          </button>
+        </div>
+      </header>
+
+      <section className="admin-source-stat-grid">
+        {pageStats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
+              <div className="admin-source-stat-icon"><Icon size={18} /></div>
+              <div><p>{stat.label}</p><strong>{stat.value}</strong><span>{stat.meta}</span></div>
+            </article>
+          );
+        })}
+      </section>
+    </div>
+  );
+
+  const pageFilters = (
+    <section className="card admin-users-toolbar">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <SegmentedControl className="min-h-10 flex-wrap">
+              {centerModeTabs.map((tab) => (
+                <SegmentedControlItem
+                  key={tab.key}
+                  size="sm"
+                  active={centerMode === tab.key}
+                  onClick={() => {
+                    setCenterMode(tab.key);
+                    setPageNum(1);
+                  }}
+                >
+                  {tab.label}
+                </SegmentedControlItem>
+              ))}
+            </SegmentedControl>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {centerMode === 'pending' ? (
                 <SegmentedControl className="min-h-10 flex-wrap">
-                  {centerModeTabs.map((tab) => (
-                    <SegmentedControlItem
-                      key={tab.key}
-                      size="sm"
-                      active={centerMode === tab.key}
-                      onClick={() => {
-                        setCenterMode(tab.key);
-                        setPageNum(1);
-                      }}
-                    >
+                  {filterTypeTabs.map((tab) => (
+                    <SegmentedControlItem key={tab.key} size="sm" active={filterType === tab.key} onClick={() => setFilterType(tab.key)}>
                       {tab.label}
                     </SegmentedControlItem>
                   ))}
                 </SegmentedControl>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {centerMode === 'pending' ? (
-                    <SegmentedControl className="min-h-10 flex-wrap">
-                      {filterTypeTabs.map((tab) => (
-                        <SegmentedControlItem
-                          key={tab.key}
-                          size="sm"
-                          active={filterType === tab.key}
-                          onClick={() => setFilterType(tab.key)}
-                        >
-                          {tab.label}
-                        </SegmentedControlItem>
-                      ))}
-                    </SegmentedControl>
-                  ) : null}
-                  {centerMode === 'applications' ? (
-                    <SegmentedControl className="min-h-10 flex-wrap">
-                      {statusTabs.map((tab) => (
-                        <SegmentedControlItem
-                          key={tab.key}
-                          size="sm"
-                          active={statusFilter === tab.key}
-                          onClick={() => handleStatusChange(tab.key)}
-                        >
-                          {tab.label}
-                        </SegmentedControlItem>
-                      ))}
-                    </SegmentedControl>
-                  ) : null}
-                  {centerMode === 'pending' ? (
-                    <SegmentedControl className="min-h-10">
-                      <SegmentedControlItem size="sm" active={viewMode === 'list'} onClick={() => setViewMode('list')}>
-                        <LayoutList size={16} />
-                        列表
-                      </SegmentedControlItem>
-                      <SegmentedControlItem size="sm" active={viewMode === 'board'} onClick={() => setViewMode('board')}>
-                        <Kanban size={16} />
-                        看板
-                      </SegmentedControlItem>
-                    </SegmentedControl>
-                  ) : null}
-                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-                    <RefreshCw size={16} className={cn(refreshing && 'animate-spin')} />
-                    刷新
-                  </Button>
-                </div>
-              </div>
-
-              {centerMode !== 'applications' ? (
-                <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(0,1.05fr)]">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <Input
-                      type="text"
-                      placeholder="搜索流程标题或编号"
-                      value={todoSearchInput}
-                      onChange={(event) => setTodoSearchInput(event.target.value)}
-                      onKeyDown={handleTodoSearchKeyDown}
-                      className="pl-10"
-                    />
-                  </div>
-
-                  <Select value={todoProcessDefKey || 'ALL_TYPES'} onValueChange={handleTodoProcessDefKeyChange}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="全部流程类型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
-                      {todoProcessDefOptions.map((option) => (
-                        <SelectItem key={option.key} value={String(option.key)}>
-                          {option.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <div className="relative">
-                    <UserRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <Input
-                      type="text"
-                      placeholder="申请人姓名"
-                      value={todoStartUserName}
-                      onChange={(event) => setTodoStartUserName(event.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <DatePicker
-                      type="date"
-                      value={todoStartTimeFrom}
-                      onChange={(event) => setTodoStartTimeFrom(event.target.value)}
-                      placeholder="开始日期"
-                      className="h-10"
-                    />
-                    <DatePicker
-                      type="date"
-                      value={todoStartTimeTo}
-                      onChange={(event) => setTodoStartTimeTo(event.target.value)}
-                      placeholder="结束日期"
-                      className="h-10"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(220px,1fr)_minmax(150px,0.8fr)_minmax(0,1.1fr)]">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <Input
-                      type="text"
-                      placeholder="搜索流程标题、编号或摘要"
-                      value={searchInput}
-                      onChange={(event) => setSearchInput(event.target.value)}
-                      onKeyDown={handleSearchKeyDown}
-                      className="pl-10"
-                    />
-                  </div>
-
-                  <Select value={processDefKey || 'ALL_TYPES'} onValueChange={handleProcessDefKeyChange}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="全部流程类型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
-                      {processDefOptions.map((option) => (
-                        <SelectItem key={option.key} value={String(option.key)}>
-                          {option.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={priorityFilter || 'ALL_PRIORITIES'} onValueChange={handlePriorityChange}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="全部优先级" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL_PRIORITIES">全部优先级</SelectItem>
-                      <SelectItem value="URGENT">紧急</SelectItem>
-                      <SelectItem value="HIGH">高</SelectItem>
-                      <SelectItem value="NORMAL">普通</SelectItem>
-                      <SelectItem value="LOW">低</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <DatePicker
-                      type="date"
-                      value={startTimeFrom}
-                      onChange={(event) => handleTimeRangeChange(event.target.value, startTimeTo)}
-                      placeholder="开始日期"
-                      className="h-10"
-                    />
-                    <DatePicker
-                      type="date"
-                      value={startTimeTo}
-                      onChange={(event) => handleTimeRangeChange(startTimeFrom, event.target.value)}
-                      placeholder="结束日期"
-                      className="h-10"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2 border-t border-slate-200 pt-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap gap-2">
-                  {activeFilterBadges.map((badge) => (
-                    <TaskFilterBadge key={badge}>{badge}</TaskFilterBadge>
+              ) : null}
+              {centerMode === 'applications' ? (
+                <SegmentedControl className="min-h-10 flex-wrap">
+                  {statusTabs.map((tab) => (
+                    <SegmentedControlItem key={tab.key} size="sm" active={statusFilter === tab.key} onClick={() => handleStatusChange(tab.key)}>
+                      {tab.label}
+                    </SegmentedControlItem>
                   ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" onClick={centerMode !== 'applications' ? handleTodoSearch : handleSearch}>
-                    <Search size={16} />
-                    应用筛选
-                  </Button>
-                  {(centerMode !== 'applications' ? hasTodoActiveFilters : hasActiveFilters) ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={centerMode !== 'applications' ? handleClearTodoFilters : handleClearFilters}
-                    >
-                      <X size={16} />
-                      清空
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
+                </SegmentedControl>
+              ) : null}
+              {centerMode === 'pending' ? (
+                <SegmentedControl className="min-h-10">
+                  <SegmentedControlItem size="sm" active={viewMode === 'list'} onClick={() => setViewMode('list')}>
+                    <LayoutList size={16} />
+                    列表
+                  </SegmentedControlItem>
+                  <SegmentedControlItem size="sm" active={viewMode === 'board'} onClick={() => setViewMode('board')}>
+                    <Kanban size={16} />
+                    看板
+                  </SegmentedControlItem>
+                </SegmentedControl>
+              ) : null}
             </div>
           </div>
-        )}
-        table={(<TableSurfaceCard>
-          <div className="flex flex-col">
-            <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
-                  {resultTitle}
-                </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {centerMode === 'pending' ? `共 ${visibleTotalCount} 条` : `共 ${total} 条`}
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <TaskFilterBadge>
-                  {centerMode === 'pending'
-                    ? currentTypeLabel
-                    : centerMode === 'done'
-                      ? currentPendingProcessLabel
-                      : currentStatusLabel}
-                </TaskFilterBadge>
-                {centerMode === 'pending' ? <TaskFilterBadge>{currentViewLabel}</TaskFilterBadge> : null}
-                {centerMode === 'applications' && processDefKey ? (
-                  <TaskFilterBadge>{currentApplicationProcessLabel}</TaskFilterBadge>
-                ) : null}
-              </div>
-            </div>
 
-            <div className="px-4 py-4">
-              {viewMode === 'board' && centerMode === 'pending' ? (
-                filteredUnifiedTasks.length > 0 ? (
-                  <TaskBoard
-                    tasks={filteredUnifiedTasks}
-                    onTaskMove={handleTaskMove}
-                    onTaskClick={(task) => {
-                      if (task.type === 'PROCESS') {
-                        setSelectedTask(task.sourceData as Task);
-                        setIsModalOpen(true);
-                        return;
-                      }
-
-                      logTask.debug('Open work task card from board', task);
-                    }}
+          {centerMode !== 'applications' ? (
+            <div className="admin-users-filter-grid">
+              <label className="admin-source-search">
+                <span className="input-label">搜索任务</span>
+                <div className="admin-source-search-field">
+                  <Search size={16} />
+                  <Input
+                    type="text"
+                    placeholder="流程标题或编号"
+                    value={todoSearchInput}
+                    onChange={(event) => setTodoSearchInput(event.target.value)}
+                    onKeyDown={handleTodoSearchKeyDown}
                   />
-                ) : (
-                  <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
-                    当前筛选条件下暂无待办任务
-                  </div>
-                )
-              ) : visibleTotalCount === 0 ? (
-                <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
-                  {centerMode === 'pending'
-                    ? '当前筛选条件下暂无待处理任务'
-                    : centerMode === 'done'
-                      ? '当前筛选条件下暂无已办记录'
-                      : '当前筛选条件下暂无申请记录'}
                 </div>
-              ) : (
-                <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {visibleProcessTasks.length > 0 ? (
-                    <section className="space-y-3 py-5 first:pt-0 last:pb-0">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            流程审批
-                          </div>
-                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            {centerMode !== 'pending'
-                              ? `当前页 ${visibleProcessTasks.length} 条，总计 ${total} 条`
-                              : `当前筛选下 ${visibleProcessTasks.length} 条流程待办`}
-                          </div>
-                        </div>
-                        <TaskFilterBadge>
-                          {centerMode === 'applications' ? currentStatusLabel : currentPendingProcessLabel}
-                        </TaskFilterBadge>
-                      </div>
-
-                      <TaskList
-                        tasks={visibleProcessTasks}
-                        onTaskClick={(task) => {
-                          setSelectedTask(task);
-                          setIsModalOpen(true);
-                        }}
-                        showRecallButton={centerMode === 'applications'}
-                        primaryActionLabel={centerMode === 'pending' ? '处理' : '详情'}
-                        onRecallSuccess={() => void fetchTasks(false)}
-                      />
-                    </section>
-                  ) : null}
-
-                  {visibleWorkTasks.length > 0 ? (
-                    <section className="space-y-3 py-5 first:pt-0 last:pb-0">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            协作待办
-                          </div>
-                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            当前筛选下 {visibleWorkTasks.length} 条协作待办
-                          </div>
-                        </div>
-                        <TaskFilterBadge>协作待办</TaskFilterBadge>
-                      </div>
-
-                      <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {visibleWorkTasks.map((task) => (
-                          <TaskCompactWorkCard
-                            key={task.id}
-                            task={task}
-                            onOpen={(openedTask) => logTask.debug('Open work task card', openedTask)}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                  ) : null}
+              </label>
+              <label>
+                <span className="input-label">流程类型</span>
+                <Select value={todoProcessDefKey || 'ALL_TYPES'} onValueChange={handleTodoProcessDefKeyChange}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="全部流程类型" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
+                    {todoProcessDefOptions.map((option) => <SelectItem key={option.key} value={String(option.key)}>{option.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="admin-source-search">
+                <span className="input-label">申请人</span>
+                <div className="admin-source-search-field">
+                  <UserRound size={16} />
+                  <Input type="text" placeholder="申请人姓名" value={todoStartUserName} onChange={(event) => setTodoStartUserName(event.target.value)} />
                 </div>
-              )}
+              </label>
+              <label>
+                <span className="input-label">开始日期</span>
+                <DatePicker type="date" value={todoStartTimeFrom} onChange={(event) => setTodoStartTimeFrom(event.target.value)} />
+              </label>
+              <label>
+                <span className="input-label">结束日期</span>
+                <DatePicker type="date" value={todoStartTimeTo} onChange={(event) => setTodoStartTimeTo(event.target.value)} />
+              </label>
+            </div>
+          ) : (
+            <div className="admin-users-filter-grid">
+              <label className="admin-source-search">
+                <span className="input-label">搜索申请</span>
+                <div className="admin-source-search-field">
+                  <Search size={16} />
+                  <Input
+                    type="text"
+                    placeholder="流程标题、编号或摘要"
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    onKeyDown={handleSearchKeyDown}
+                  />
+                </div>
+              </label>
+              <label>
+                <span className="input-label">流程类型</span>
+                <Select value={processDefKey || 'ALL_TYPES'} onValueChange={handleProcessDefKeyChange}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="全部流程类型" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
+                    {processDefOptions.map((option) => <SelectItem key={option.key} value={String(option.key)}>{option.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label>
+                <span className="input-label">优先级</span>
+                <Select value={priorityFilter || 'ALL_PRIORITIES'} onValueChange={handlePriorityChange}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="全部优先级" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_PRIORITIES">全部优先级</SelectItem>
+                    <SelectItem value="URGENT">紧急</SelectItem>
+                    <SelectItem value="HIGH">高</SelectItem>
+                    <SelectItem value="NORMAL">普通</SelectItem>
+                    <SelectItem value="LOW">低</SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+              <label>
+                <span className="input-label">开始日期</span>
+                <DatePicker type="date" value={startTimeFrom} onChange={(event) => handleTimeRangeChange(event.target.value, startTimeTo)} />
+              </label>
+              <label>
+                <span className="input-label">结束日期</span>
+                <DatePicker type="date" value={startTimeTo} onChange={(event) => handleTimeRangeChange(startTimeFrom, event.target.value)} />
+              </label>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 border-t border-slate-200 pt-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {activeFilterBadges.map((badge) => <TaskFilterBadge key={badge}>{badge}</TaskFilterBadge>)}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" onClick={centerMode !== 'applications' ? handleTodoSearch : handleSearch}>
+                <Search size={16} />
+                应用筛选
+              </Button>
+              {(centerMode !== 'applications' ? hasTodoActiveFilters : hasActiveFilters) ? (
+                <Button variant="outline" size="sm" onClick={centerMode !== 'applications' ? handleClearTodoFilters : handleClearFilters}>
+                  <X size={16} />
+                  清空
+                </Button>
+              ) : null}
             </div>
           </div>
-        </TableSurfaceCard>)}
-        pagination={
-          centerMode !== 'pending' && total > PAGE_SIZE ? (
-            <Pagination
-              total={total}
-              page={pageNum}
-              pageSize={PAGE_SIZE}
-              showPageSizeSelector={false}
-              onPageChange={setPageNum}
-              onPageSizeChange={() => undefined}
-            />
-          ) : null
-        }
+        </div>
+      </section>
+  );
+
+  const pageTable = (
+    <InnerTableSurface
+      className="flex min-h-0 flex-1 flex-col"
+      wrapperClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+        <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between dark:border-slate-800">
+          <div>
+            <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">{resultTitle}</div>
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {centerMode === 'pending' ? `共 ${visibleTotalCount} 条` : `共 ${total} 条`}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <TaskFilterBadge>{centerMode === 'pending' ? currentTypeLabel : centerMode === 'done' ? currentPendingProcessLabel : currentStatusLabel}</TaskFilterBadge>
+            {centerMode === 'pending' ? <TaskFilterBadge>{currentViewLabel}</TaskFilterBadge> : null}
+            {centerMode === 'applications' && processDefKey ? <TaskFilterBadge>{currentApplicationProcessLabel}</TaskFilterBadge> : null}
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          {viewMode === 'board' && centerMode === 'pending' ? (
+            filteredUnifiedTasks.length > 0 ? (
+              <TaskBoard
+                tasks={filteredUnifiedTasks}
+                onTaskMove={handleTaskMove}
+                onTaskClick={(task) => {
+                  if (task.type === 'PROCESS') {
+                    setSelectedTask(task.sourceData as Task);
+                    setIsModalOpen(true);
+                    return;
+                  }
+                  logTask.debug('Open work task card from board', task);
+                }}
+              />
+            ) : (
+              <div className="flex min-h-[320px] items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                当前筛选条件下暂无待办任务
+              </div>
+            )
+          ) : visibleTotalCount === 0 ? (
+            <div className="flex min-h-[320px] items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+              {centerMode === 'pending' ? '当前筛选条件下暂无待处理任务' : centerMode === 'done' ? '当前筛选条件下暂无已办记录' : '当前筛选条件下暂无申请记录'}
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-200 dark:divide-slate-800">
+              {visibleProcessTasks.length > 0 ? (
+                <section className="grid gap-3 py-5 first:pt-0 last:pb-0">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">流程审批</div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {centerMode !== 'pending' ? `当前页 ${visibleProcessTasks.length} 条，总计 ${total} 条` : `当前筛选下 ${visibleProcessTasks.length} 条流程待办`}
+                      </div>
+                    </div>
+                    <TaskFilterBadge>{centerMode === 'applications' ? currentStatusLabel : currentPendingProcessLabel}</TaskFilterBadge>
+                  </div>
+                  <TaskList
+                    tasks={visibleProcessTasks}
+                    onTaskClick={(task) => {
+                      setSelectedTask(task);
+                      setIsModalOpen(true);
+                    }}
+                    showRecallButton={centerMode === 'applications'}
+                    primaryActionLabel={centerMode === 'pending' ? '处理' : '详情'}
+                    onRecallSuccess={() => void fetchTasks(false)}
+                  />
+                </section>
+              ) : null}
+
+              {visibleWorkTasks.length > 0 ? (
+                <section className="grid gap-3 py-5 first:pt-0 last:pb-0">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">协作待办</div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">当前筛选下 {visibleWorkTasks.length} 条协作待办</div>
+                    </div>
+                    <TaskFilterBadge>协作待办</TaskFilterBadge>
+                  </div>
+                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {visibleWorkTasks.map((task) => <TaskCompactWorkCard key={task.id} task={task} onOpen={(openedTask) => logTask.debug('Open work task card', openedTask)} />)}
+                  </div>
+                </section>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </InnerTableSurface>
+  );
+
+  const pagePagination = centerMode !== 'pending' && total > PAGE_SIZE ? (
+    <Pagination
+      total={total}
+      page={pageNum}
+      pageSize={PAGE_SIZE}
+      showPageSizeSelector={false}
+      onPageChange={setPageNum}
+      onPageSizeChange={() => undefined}
+    />
+  ) : null;
+
+  return (
+    <section className="admin-source-page">
+      <TablePageLayout
+        actions={pageActions}
+        filters={pageFilters}
+        table={pageTable}
+        pagination={pagePagination}
       />
       <TaskHandleModal
         isOpen={isModalOpen}
@@ -1050,7 +1018,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
         onComplete={handleTaskUpdate}
         viewOnly={centerMode !== 'pending'}
       />
-    </div>
+    </section>
   );
 };
 
