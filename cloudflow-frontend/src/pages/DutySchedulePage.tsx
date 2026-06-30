@@ -249,7 +249,9 @@ export const DutySchedulePage: React.FC = () => {
   const completedCount = list.filter((item) => item.status === 'COMPLETED').length;
   const currentStatusLabel = searchParams.status ? statusDict.getLabel(searchParams.status) || searchParams.status : '全部状态';
   const currentTypeLabel = searchParams.scheduleType ? typeDict.getLabel(searchParams.scheduleType) || searchParams.scheduleType : '全部类型';
+  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部排班';
+  const toolbarSummary = `第 ${searchParams.pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const metrics = [
     { label: '排班记录', value: String(total), meta: `当前页 ${list.length}`, icon: <Calendar size={18} />, tone: 'blue' },
     { label: '待签到', value: String(scheduledCount), meta: '已排班', icon: <LogIn size={18} />, tone: 'amber' },
@@ -336,6 +338,7 @@ export const DutySchedulePage: React.FC = () => {
         </label>
 
         <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">{toolbarSummary}</span>
           <Button variant="outline" size="sm" onClick={handleApplyFilters}>
             <Search size={14} />
             搜索

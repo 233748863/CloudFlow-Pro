@@ -104,14 +104,9 @@ const CertificateList: React.FC<{ mine: boolean }> = ({ mine }) => {
     <div className="admin-source-content-grid">
       <section className="card admin-users-toolbar">
         <div className="admin-users-filter-grid">
-          <div>
-            <span className="input-label">当前证书</span>
-            <div className="admin-source-search-field">
-              <Input className="h-[42px]" value={`共 ${rows.length} 张`} readOnly aria-label="当前证书数量" />
-            </div>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{`共 ${rows.length} 张`}</span>
           </div>
-        </div>
-        <div className="admin-users-toolbar-actions">
           <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
           </Button>

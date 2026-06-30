@@ -49,14 +49,11 @@ const relationshipOptions = ['配偶', '父亲', '母亲', '子女', '兄弟姐�
 const renderCountToolbar = (count: number, unit: string, action: React.ReactNode) => (
   <section className="card admin-users-toolbar">
     <div className="admin-users-filter-grid">
-      <div>
-        <span className="input-label">当前记录</span>
-        <div className="admin-source-search-field">
-          <Input className="h-[42px]" value={`共 ${count} ${unit}`} readOnly aria-label="当前记录数" />
-        </div>
+      <div className="admin-users-toolbar-actions">
+        <span className="admin-users-filter-count">{`共 ${count} ${unit}`}</span>
+        {action}
       </div>
     </div>
-    <div className="admin-users-toolbar-actions">{action}</div>
   </section>
 );
 

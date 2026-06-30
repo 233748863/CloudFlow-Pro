@@ -189,6 +189,7 @@ export const HrWorkInjuryPage: React.FC = () => {
           </Select>
         </label>
         <div className="admin-users-toolbar-actions justify-end">
+          <span className="admin-users-filter-count">{`共 ${rows.length} 条`}</span>
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
           </Button>

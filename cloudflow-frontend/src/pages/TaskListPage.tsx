@@ -630,6 +630,10 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
     Boolean(todoStartUserName);
   const currentViewLabel =
     centerMode === 'pending' ? (viewMode === 'list' ? '列表视图' : '看板视图') : '列表视图';
+  const toolbarSummary =
+    centerMode === 'pending'
+      ? `共 ${visibleTotalCount} 条`
+      : `第 ${pageNum} / ${Math.max(1, Math.ceil(total / PAGE_SIZE))} 页 · 共 ${total} 条`;
   const currentTypeLabel =
     filterType === 'process' ? '流程审批' : filterType === 'work' ? '协作待办' : '全部任务';
   const currentStatusLabel =
@@ -885,6 +889,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
               {activeFilterBadges.map((badge) => <TaskFilterBadge key={badge}>{badge}</TaskFilterBadge>)}
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <span className="admin-users-filter-count">{toolbarSummary}</span>
               <Button size="sm" onClick={centerMode !== 'applications' ? handleTodoSearch : handleSearch}>
                 <Search size={16} />
                 应用筛选

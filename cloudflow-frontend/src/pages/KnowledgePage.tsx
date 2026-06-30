@@ -5,6 +5,7 @@ import {
   Eye,
   FileText,
   Inbox,
+  ListFilter,
   LoaderCircle,
   Pencil,
   Plus,
@@ -257,6 +258,10 @@ const KnowledgePage: React.FC = () => {
     ? (unreadOnly ? '仅未读' : '全部阅读')
     : (statusDict.getLabel(status) || '全部状态');
   const totalPages = viewMode === 'library' ? 1 : Math.max(1, Math.ceil(total / pageSize));
+  const resultSummary = viewMode === 'library'
+    ? `共 ${tableTotal} 条 / 未读 ${unreadCount}`
+    : `第 ${pageNum} / ${totalPages} 页 / 共 ${tableTotal} 条`;
+  const viewSummary = hasActiveFilters ? `${currentCategoryLabel} / ${currentStatusLabel}` : '全部文档';
   const deptNameMap = useMemo(() => {
     const map = new Map<string, string>();
     flattenDeptTree(deptTree).forEach((dept) => {
@@ -588,16 +593,14 @@ const KnowledgePage: React.FC = () => {
             </SegmentedControlItem>
           ) : null}
         </SegmentedControl>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-          <span>{hasActiveFilters ? `${currentCategoryLabel} / ${currentStatusLabel}` : '全部'}</span>
-          <span>第 {pageNum} / {totalPages} 页</span>
-          <span>共 {tableTotal} 条</span>
-          {viewMode === 'library' ? <span>未读 {unreadCount}</span> : <span>已发布 {publishedCount}</span>}
+        <div className="admin-knowledge-toolbar-meta">
+          <span>{viewSummary}</span>
+          <span>{resultSummary}</span>
         </div>
       </div>
 
-      <div className="admin-toolbar-filter-grid [--admin-toolbar-filter-count:2]">
-        <label className="min-w-0">
+      <div className="admin-knowledge-filter-row">
+        <label className="admin-knowledge-search">
           <span className="input-label">搜索文档</span>
           <div className="admin-source-search-field">
             <Search size={16} />
@@ -616,7 +619,7 @@ const KnowledgePage: React.FC = () => {
           </div>
         </label>
 
-        <label className="min-w-0">
+        <label className="admin-knowledge-filter-field">
           <span className="input-label">分类</span>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="w-full">
@@ -630,7 +633,7 @@ const KnowledgePage: React.FC = () => {
         </label>
 
         {viewMode !== 'library' ? (
-          <label className="min-w-0">
+          <label className="admin-knowledge-filter-field">
             <span className="input-label">状态</span>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="w-full">
@@ -647,7 +650,7 @@ const KnowledgePage: React.FC = () => {
         ) : (
           <div className="admin-knowledge-filter-toggle">
             <span className="input-label">阅读</span>
-            <Button variant={unreadOnly ? 'default' : 'outline'} size="sm" onClick={() => setUnreadOnly((value) => !value)}>
+            <Button className="admin-knowledge-read-button" variant={unreadOnly ? 'default' : 'outline'} size="sm" onClick={() => setUnreadOnly((value) => !value)}>
               <CheckCheck className="h-4 w-4" />
               仅未读
             </Button>
@@ -656,6 +659,7 @@ const KnowledgePage: React.FC = () => {
 
         <div className="admin-users-toolbar-actions admin-knowledge-filter-actions">
           <Button variant="outline" size="sm" onClick={applyFilters}>
+            <ListFilter size={14} className="mr-1.5" />
             应用
           </Button>
           <Button variant="outline" size="sm" onClick={resetFilters}>

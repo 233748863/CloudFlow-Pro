@@ -225,6 +225,8 @@ export const PaymentRequestPage: React.FC = () => {
     ? getPaymentTypeLabel(searchParams.paymentType)
     : '全部类型';
   const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部付款';
+  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
+  const toolbarSummary = `第 ${searchParams.pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const metrics = [
     { label: '付款申请', value: String(total), meta: `当前页 ${payments.length}`, icon: <DollarSign size={18} />, tone: 'blue' },
     { label: '审批中', value: String(pendingCount), meta: '待审批流转', icon: <Clock3 size={18} />, tone: 'amber' },
@@ -493,6 +495,7 @@ export const PaymentRequestPage: React.FC = () => {
           </Select>
         </label>
         <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">{toolbarSummary}</span>
           <Button size="sm" onClick={handleApplyFilters}><Search size={14} />查询</Button>
           <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={!hasActiveFilters && !paymentTypeDraft}><RotateCcw size={14} />重置</Button>
         </div>

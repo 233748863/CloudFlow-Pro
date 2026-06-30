@@ -34,6 +34,7 @@ export default function CrmCustomerPoolPage() {
   const [logs, setLogs] = useState<CrmCustomerPoolLog[]>([]);
   const [logLoading, setLogLoading] = useState(false);
   const totalPages = Math.max(1, Math.ceil(total / 10));
+  const toolbarSummary = `第 ${pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const stats = useMemo(
     () => [
       { label: '公海客户', value: String(total), meta: `当前第 ${pageNum} 页`, icon: <Anchor size={18} />, tone: 'blue' },
@@ -187,7 +188,7 @@ export default function CrmCustomerPoolPage() {
               <Input value={levelCode} onChange={(e) => { setPageNum(1); setLevelCode(e.target.value); }} placeholder="客户等级" />
             </label>
             <div className="admin-users-toolbar-actions">
-              <span className="admin-users-filter-count">第 {pageNum} / {totalPages} 页</span>
+              <span className="admin-users-filter-count">{toolbarSummary}</span>
             </div>
           </div>
         </section>

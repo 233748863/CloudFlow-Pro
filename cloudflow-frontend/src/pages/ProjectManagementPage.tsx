@@ -624,7 +624,9 @@ export default function ProjectManagementPage() {
             </SelectContent>
           </Select>
         </label>
-        <div className="flex min-w-[12rem] items-end text-xs text-slate-500 dark:text-slate-400">第 {pageNum} / {totalPages} 页，共 {total} 条</div>
+        <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">第 {pageNum} / {totalPages} 页 · 共 {total} 条</span>
+        </div>
       </div>
     </section>
   );

@@ -1487,10 +1487,13 @@ export const HrPerformancePage: React.FC = () => {
                 </SelectContent>
               </Select>
             </label>
-            <Button type="submit">
-              <Search className="h-4 w-4" />
-              查询
-            </Button>
+            <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">{`目标 ${objectives.length} 个`}</span>
+              <Button type="submit">
+                <Search className="h-4 w-4" />
+                查询
+              </Button>
+            </div>
           </form>
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
               <Tabs className="w-full min-w-0 lg:w-auto" value={activeTab} onValueChange={(value) => setActiveTab(value as PerformanceTab)}>

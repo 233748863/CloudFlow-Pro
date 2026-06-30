@@ -452,6 +452,7 @@ export const HrDashboardPage: React.FC = () => {
             </div>
           </label>
           <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{`共 ${loading ? '--' : totalModuleCount} 个入口`}</span>
             <span className="badge badge-gray">入口 {loading ? '--' : totalModuleCount}</span>
             <span className="badge badge-gray">候选人 {loading ? '--' : summary.interviewingCount}</span>
             <span className="badge badge-gray">试用期 {loading ? '--' : summary.probationCount}</span>

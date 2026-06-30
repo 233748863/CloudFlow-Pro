@@ -139,6 +139,7 @@ export const HrTalentArchivePage: React.FC = () => {
               </label>
             </div>
             <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">{mode === 'mine' ? '本人档案' : `员工 #${employeeId}`}</span>
               <Button size="sm" onClick={() => void handleSearch()}>查询</Button>
               {keyword ? (
                 <Button variant="outline" size="sm" onClick={() => { setKeyword(''); void loadMine(); }}>

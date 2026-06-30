@@ -79,17 +79,11 @@ const QuestionBankTab: React.FC = () => {
     <div className="admin-source-content-grid">
       <section className="card admin-users-toolbar">
         <div className="admin-users-filter-grid">
-          <div>
-            <span className="input-label">题目数量</span>
-            <div className="admin-source-search-field">
-              <FileQuestion size={16} />
-              <Input className="h-[42px]" value={`共 ${rows.length} 题`} readOnly aria-label="题目数量" />
-            </div>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{`共 ${rows.length} 题`}</span>
+            <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>
+            <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新增题目</Button>
           </div>
-        </div>
-        <div className="admin-users-toolbar-actions">
-          <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>
-          <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新增题目</Button>
         </div>
       </section>
       <InnerTableSurface>
@@ -192,17 +186,11 @@ const PaperTab: React.FC = () => {
     <div className="admin-source-content-grid">
       <section className="card admin-users-toolbar">
         <div className="admin-users-filter-grid">
-          <div>
-            <span className="input-label">试卷数量</span>
-            <div className="admin-source-search-field">
-              <FileText size={16} />
-              <Input className="h-[42px]" value={`共 ${rows.length} 套`} readOnly aria-label="试卷数量" />
-            </div>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{`共 ${rows.length} 套`}</span>
+            <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>
+            <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新建试卷</Button>
           </div>
-        </div>
-        <div className="admin-users-toolbar-actions">
-          <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>
-          <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新建试卷</Button>
         </div>
       </section>
       <InnerTableSurface>
@@ -317,16 +305,10 @@ const AttemptTab: React.FC<{ mine: boolean }> = ({ mine }) => {
     <div className="admin-source-content-grid">
       <section className="card admin-users-toolbar">
         <div className="admin-users-filter-grid">
-          <div>
-            <span className="input-label">答卷数量</span>
-            <div className="admin-source-search-field">
-              <ClipboardList size={16} />
-              <Input className="h-[42px]" value={`共 ${rows.length} 份`} readOnly aria-label="答卷数量" />
-            </div>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{`共 ${rows.length} 份`}</span>
+            <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>
           </div>
-        </div>
-        <div className="admin-users-toolbar-actions">
-          <Button size="sm" variant="outline" onClick={() => void load()}><RefreshCcw className="mr-1.5 h-4 w-4" />刷新</Button>
         </div>
       </section>
       <InnerTableSurface>

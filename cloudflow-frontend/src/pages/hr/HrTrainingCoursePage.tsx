@@ -102,15 +102,9 @@ const CoursesTab: React.FC<{
     <div className="admin-source-content-grid">
       <section className="card admin-users-toolbar">
         <div className="admin-users-filter-grid">
-          <div>
-            <span className="input-label">课程数量</span>
-            <div className="admin-source-search-field">
-              <BookOpen size={16} />
-              <Input className="h-[42px]" value={`共 ${rows.length} 门`} readOnly aria-label="课程数量" />
-            </div>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{`共 ${rows.length} 门`}</span>
           </div>
-        </div>
-        <div className="admin-users-toolbar-actions">
           <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCcw className="mr-1.5 h-4 w-4" />刷新
           </Button>
@@ -268,9 +262,10 @@ const CategoryTab: React.FC<{ reload: () => void; categories: HrTrainingCategory
             <span className="input-label">新分类名称</span>
             <Input placeholder="输入分类名称" value={name} onChange={(e) => setName(e.target.value)} />
           </label>
-        </div>
-        <div className="admin-users-toolbar-actions">
-          <Button size="sm" onClick={() => void handleAdd()}><Plus className="mr-1 h-3 w-3" />添加分类</Button>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{`共 ${categories.length} 类`}</span>
+            <Button size="sm" onClick={() => void handleAdd()}><Plus className="mr-1 h-3 w-3" />添加分类</Button>
+          </div>
         </div>
       </section>
       <InnerTableSurface>
@@ -348,16 +343,10 @@ const InstructorTab: React.FC<{ reload: () => void; instructors: HrTrainingInstr
     <div className="admin-source-content-grid">
       <section className="card admin-users-toolbar">
         <div className="admin-users-filter-grid">
-          <div>
-            <span className="input-label">讲师数量</span>
-            <div className="admin-source-search-field">
-              <UserRound size={16} />
-              <Input className="h-[42px]" value={`共 ${instructors.length} 人`} readOnly aria-label="讲师数量" />
-            </div>
+          <div className="admin-users-toolbar-actions">
+            <span className="admin-users-filter-count">{`共 ${instructors.length} 人`}</span>
+            <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新增讲师</Button>
           </div>
-        </div>
-        <div className="admin-users-toolbar-actions">
-          <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" />新增讲师</Button>
         </div>
       </section>
       <InnerTableSurface>

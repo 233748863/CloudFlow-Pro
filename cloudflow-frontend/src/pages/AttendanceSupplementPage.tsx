@@ -207,7 +207,9 @@ export const AttendanceSupplementPage: React.FC = () => {
     ? (checkTypeDict.getLabel(searchParams.checkType) || searchParams.checkType)
     : '全部类型';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.checkType);
+  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部补录';
+  const toolbarSummary = `第 ${searchParams.pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const metrics = [
     { label: '补录申请', value: String(total), meta: `当前页 ${list.length}`, icon: <ClipboardCheck size={18} />, tone: 'blue' },
     { label: '草稿', value: String(draftCount), meta: '待提交', icon: <Edit size={18} />, tone: 'amber' },
@@ -443,6 +445,7 @@ export const AttendanceSupplementPage: React.FC = () => {
           </Select>
         </label>
         <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">{toolbarSummary}</span>
           <Button variant="outline" size="sm" onClick={() => setSearchParams({ status: '', checkType: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })} disabled={!hasActiveFilters}>
             <RotateCcw size={14} />重置
           </Button>

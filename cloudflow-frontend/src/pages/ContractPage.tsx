@@ -448,7 +448,9 @@ export const ContractPage: React.FC = () => {
           <Input className="h-[42px]" value={query.contractNo} onChange={(event) => setQuery((prev) => ({ ...prev, pageNum: 1, contractNo: event.target.value }))} placeholder="合同编号" />
         </label>
         <div className="admin-users-toolbar-actions">
-          <span className="admin-users-filter-count">{hasActiveFilters ? `${currentStatusLabel} / ${currentRiskLabel}` : `第 ${query.pageNum} / ${totalPages} 页`}</span>
+          <span className="admin-users-filter-count">
+            {hasActiveFilters ? `${currentStatusLabel} / ${currentRiskLabel}` : `第 ${query.pageNum} / ${totalPages} 页 · 共 ${total} 条`}
+          </span>
           <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), status: '', contractName: '', contractNo: '', riskLevel: '' })} disabled={!hasActiveFilters}>
             <RotateCcw size={14} />
             重置

@@ -396,6 +396,7 @@ const MeetingMinutesPage: React.FC = () => {
           </Select>
         </label>
         <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">共 {rows.length} 条</span>
           <Button variant="outline" size="sm" onClick={() => setQuery({ keyword: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })}>
             <RefreshCw size={14} className="mr-1.5" />清空条件
           </Button>

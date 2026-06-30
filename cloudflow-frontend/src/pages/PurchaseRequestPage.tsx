@@ -415,6 +415,8 @@ export const PurchaseRequestPage: React.FC = () => {
     ? suppliers.find((supplier) => supplier.supplierId === searchParams.supplierId)?.supplierName || '指定供应商'
     : '全部供应商';
   const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentSupplierLabel}` : '全部采购';
+  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
+  const toolbarSummary = `第 ${searchParams.pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const receiptTotal = useMemo(
     () => Object.values(receiptQuantities).reduce((sum, quantity) => sum + Number(quantity || 0), 0),
     [receiptQuantities],
@@ -505,6 +507,7 @@ export const PurchaseRequestPage: React.FC = () => {
               </Select>
             </label>
             <div className="admin-users-toolbar-actions">
+              <span className="admin-users-filter-count">{toolbarSummary}</span>
               <Button variant="outline" size="sm" onClick={resetFilters} disabled={!hasActiveFilters}>
                 <RotateCcw size={14} />
                 重置

@@ -1158,6 +1158,12 @@ export const MeetingRoomPage = () => {
     : '0.0';
   const availableRoomCount = rooms.filter((room) => getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []) === 'available').length;
   const inUseRoomCount = rooms.filter((room) => getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []) === 'in-use').length;
+  const visibleRoomCount = filteredRooms.length;
+  const meetingRoomSummary = activeTab === 'rooms'
+    ? `共 ${visibleRoomCount} 间 · ${availableRoomCount} 间空闲`
+    : activeTab === 'my-bookings'
+      ? `共 ${myBookings.length} 条 · ${bookingsFilter === 'all' ? '全部预订' : bookingsFilter === 'upcoming' ? '待开始' : '已结束'}`
+      : `共 ${stats.length} 条统计 · ${totalStatBookings} 次预订`;
   const tabItems: Array<{ value: TabType; label: string; icon: React.ReactNode }> = [
     { value: 'rooms', label: '会议室列表', icon: <Monitor size={16} /> },
     { value: 'my-bookings', label: '我的预订', icon: <CalendarDays size={16} /> },
@@ -1560,6 +1566,7 @@ export const MeetingRoomPage = () => {
   const pageFilters = (
         <section className="admin-source-inline-toolbar admin-meeting-room-toolbar">
           <div className="admin-meeting-room-tabs">
+            <span className="input-label">视图</span>
             <SegmentedControl className="min-h-9">
               {tabItems.map((item) => (
                 <SegmentedControlItem key={item.value} size="sm" active={item.value === activeTab} onClick={() => setActiveTab(item.value)}>
@@ -1589,17 +1596,20 @@ export const MeetingRoomPage = () => {
                 <label>
                   <span className="input-label">状态</span>
                   <Select value={statusFilter} onValueChange={v => setStatusFilter(v as 'all' | RoomRealtimeStatus)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">全部状态</SelectItem>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">全部状态</SelectItem>
                       <SelectItem value="available">空闲</SelectItem>
                       <SelectItem value="in-use">使用中</SelectItem>
                       <SelectItem value="maintenance">维护中</SelectItem>
                     </SelectContent>
                   </Select>
                 </label>
+                <div className="admin-users-toolbar-actions">
+                  <span className="admin-users-filter-count">{meetingRoomSummary}</span>
+                </div>
               </>
             ) : null}
 
@@ -1617,6 +1627,12 @@ export const MeetingRoomPage = () => {
                   </SelectContent>
                 </Select>
               </label>
+            ) : null}
+
+            {activeTab !== 'rooms' ? (
+              <div className="admin-users-toolbar-actions">
+                <span className="admin-users-filter-count">{meetingRoomSummary}</span>
+              </div>
             ) : null}
           </div>
         </section>

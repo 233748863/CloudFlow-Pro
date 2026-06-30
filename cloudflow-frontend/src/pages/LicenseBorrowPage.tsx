@@ -106,6 +106,7 @@ export const LicenseBorrowPage: React.FC = () => {
   const approvedCount = useMemo(() => rows.filter((item) => item.status === 'APPROVED').length, [rows]);
   const activeFilterCount = useMemo(() => [query.status, query.licenseName].filter(Boolean).length, [query.licenseName, query.status]);
   const resultSummary = activeFilterCount > 0 ? `筛选 ${activeFilterCount} 项` : '全部证照借用';
+  const toolbarSummary = `第 ${query.pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const stats = useMemo(() => [
     { label: '借用申请', value: String(total), meta: `当前页 ${rows.length}`, icon: <BadgeCheck size={18} />, tone: 'blue' },
     { label: '草稿', value: String(draftCount), meta: '待提交', icon: <Edit size={18} />, tone: 'amber' },
@@ -253,6 +254,7 @@ export const LicenseBorrowPage: React.FC = () => {
           </Select>
         </label>
         <div className="admin-users-toolbar-actions">
+          <span className="admin-users-filter-count">{toolbarSummary}</span>
           <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), status: '', licenseName: '' })} disabled={activeFilterCount === 0}>
             <RotateCcw size={14} className="mr-1.5" />
             重置
