@@ -79,9 +79,20 @@ export function useHistory<T>(initialPresent: T) {
     });
   }, []);
 
+  const replace = useCallback((newPresent: T) => {
+    setState(currentState => {
+      if (newPresent === currentState.present) return currentState;
+      return {
+        ...currentState,
+        present: newPresent
+      };
+    });
+  }, []);
+
   return { 
     state: state.present, 
     set, 
+    replace,
     reset,
     undo, 
     redo, 

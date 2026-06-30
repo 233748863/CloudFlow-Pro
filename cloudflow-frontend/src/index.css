@@ -4065,6 +4065,64 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     align-items: flex-start;
   }
 
+  .admin-workflow-design-page .admin-workflow-design-layout {
+    min-height: calc(100dvh - 5.5rem);
+  }
+
+  .admin-workflow-design-page .admin-workflow-design-header {
+    padding-block: 0.875rem;
+  }
+
+  .admin-workflow-design-page .admin-workflow-design-header h2 {
+    font-size: 1.125rem;
+    line-height: 1.35;
+  }
+
+  .admin-workflow-design-page .layout-section-scrollable,
+  .admin-workflow-design-page .admin-workflow-design-table-surface,
+  .admin-workflow-design-page .admin-workflow-designer-surface,
+  .admin-workflow-design-page .admin-workflow-designer-wrapper {
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .admin-workflow-design-page .admin-workflow-designer-surface {
+    height: calc(100dvh - 12rem);
+    min-height: 42rem;
+    overflow: hidden;
+  }
+
+  .admin-workflow-design-page .admin-workflow-designer-wrapper {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .workflow-flow-canvas .react-flow__renderer {
+    cursor: grab;
+  }
+
+  .workflow-flow-canvas .react-flow__renderer:active {
+    cursor: grabbing;
+  }
+
+  .workflow-flow-canvas .react-flow__node {
+    border-radius: 0.375rem;
+  }
+
+  .workflow-flow-canvas .react-flow__node.selected {
+    box-shadow: none;
+  }
+
+  .workflow-flow-edge {
+    stroke: rgb(148 163 184 / 0.92);
+  }
+
+  .workflow-flow-minimap {
+    border: 1px solid rgb(226 232 240 / 0.92);
+    border-radius: 0.5rem;
+    background: var(--cf-surface-strong);
+  }
+
   .workflow-create-page {
     gap: 0;
   }

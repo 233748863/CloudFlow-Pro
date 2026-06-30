@@ -684,6 +684,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                 outgoingCount.put(source, outgoingCount.getOrDefault(source, 0) + 1);
             }
 
+            validateLayoutModel(graphRoot.path("layout"), nodeMap.keySet());
+
             // P0-3: PARALLEL 节点会签模式与分支互斥校验（图模型：分支 = 多条外连线）
             for (Map.Entry<String, JsonNode> entry : nodeMap.entrySet()) {
                 JsonNode node = entry.getValue();
@@ -707,6 +709,59 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         } catch (Exception e) {
             throw WorkflowException.validationError("流程模型解析失败: " + e.getMessage());
         }
+    }
+
+    private void validateLayoutModel(JsonNode layoutNode, Set<String> nodeIds) {
+        if (layoutNode == null || layoutNode.isMissingNode() || layoutNode.isNull()) {
+            return;
+        }
+        if (!layoutNode.isObject()) {
+            throw WorkflowException.validationError("流程图 layout 必须是对象");
+        }
+
+        JsonNode layoutNodes = layoutNode.path("nodes");
+        if (!layoutNodes.isObject()) {
+            throw WorkflowException.validationError("流程图 layout.nodes 必须是对象");
+        }
+        Iterator<Map.Entry<String, JsonNode>> fields = layoutNodes.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            String nodeId = entry.getKey();
+            if (!nodeIds.contains(nodeId)) {
+                throw WorkflowException.validationError("流程图 layout 引用了不存在的节点: " + nodeId);
+            }
+            JsonNode position = entry.getValue();
+            if (!position.isObject()) {
+                throw WorkflowException.validationError("流程图节点布局必须是对象: " + nodeId);
+            }
+            validateFiniteNumber(position.path("x"), "流程图节点布局 x 无效: " + nodeId);
+            validateFiniteNumber(position.path("y"), "流程图节点布局 y 无效: " + nodeId);
+        }
+
+        JsonNode viewport = layoutNode.path("viewport");
+        if (viewport.isMissingNode() || viewport.isNull()) {
+            return;
+        }
+        if (!viewport.isObject()) {
+            throw WorkflowException.validationError("流程图 layout.viewport 必须是对象");
+        }
+        validateFiniteNumber(viewport.path("x"), "流程图视口 x 无效");
+        validateFiniteNumber(viewport.path("y"), "流程图视口 y 无效");
+        double zoom = validateFiniteNumber(viewport.path("zoom"), "流程图视口 zoom 无效");
+        if (zoom < 0.2D || zoom > 3D) {
+            throw WorkflowException.validationError("流程图视口 zoom 必须在 0.2 到 3 之间");
+        }
+    }
+
+    private double validateFiniteNumber(JsonNode node, String message) {
+        if (node == null || !node.isNumber()) {
+            throw WorkflowException.validationError(message);
+        }
+        double value = node.asDouble();
+        if (!Double.isFinite(value)) {
+            throw WorkflowException.validationError(message);
+        }
+        return value;
     }
 
     private void validateNodeModel(JsonNode node) {

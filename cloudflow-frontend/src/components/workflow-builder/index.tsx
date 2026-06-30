@@ -5,7 +5,6 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { ZoomIn, ZoomOut, Maximize2, Move } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -49,7 +48,10 @@ import {
   insertWorkflowGraphNodeBeforeMergeEnd,
   insertWorkflowGraphSubgraphAfter,
   moveWorkflowGraphNode,
+  normalizeWorkflowGraphLayout,
   parseWorkflowGraphDefinition,
+  patchWorkflowGraphNodeLayout,
+  patchWorkflowGraphViewport,
   removeWorkflowGraphBranch,
   removeWorkflowGraphNode,
   replaceWorkflowGraphNextNode,
@@ -60,7 +62,7 @@ import type { WorkflowBuilderProps } from "./types";
 import { WorkflowToolbar } from "./WorkflowToolbar";
 import { GlobalPropertyPanel } from "./GlobalPropertyPanel";
 import { PropertyPanel } from "./PropertyPanel";
-import { FlowNode } from "./FlowNode";
+import { WorkflowCanvas } from "./WorkflowCanvas";
 import {
   FlowNodeReadContext,
   FlowNodeActionsContext,
@@ -107,22 +109,23 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   }, [availableUsers]);
 
   const defaultGraphModel = useMemo<WorkflowGraphDefinition>(
-    () => ({
-      nodes: [
-        { id: "node_start", type: NodeType.START, title: "发起申请" },
-        {
-          id: "node_1",
-          type: NodeType.APPROVAL,
-          title: "部门经理审批",
-          approverType: "DEPT_MANAGER",
-        },
-        { id: "node_end", type: NodeType.END, title: "流程结束" },
-      ],
-      edges: [
-        { id: "node_start->node_1", source: "node_start", target: "node_1" },
-        { id: "node_1->node_end", source: "node_1", target: "node_end" },
-      ],
-    }),
+    () =>
+      normalizeWorkflowGraphLayout({
+        nodes: [
+          { id: "node_start", type: NodeType.START, title: "发起申请" },
+          {
+            id: "node_1",
+            type: NodeType.APPROVAL,
+            title: "部门经理审批",
+            approverType: "DEPT_MANAGER",
+          },
+          { id: "node_end", type: NodeType.END, title: "流程结束" },
+        ],
+        edges: [
+          { id: "node_start->node_1", source: "node_start", target: "node_1" },
+          { id: "node_1->node_end", source: "node_1", target: "node_end" },
+        ],
+      }),
     [],
   );
 
@@ -137,6 +140,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const {
     state: graphModel,
     set: setGraphModel,
+    replace: replaceGraphModel,
     reset: resetGraphModel,
     undo: rawUndo,
     redo: rawRedo,
@@ -144,30 +148,24 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     canRedo: rawCanRedo,
   } = useHistory<WorkflowGraphDefinition>(resolveGraphModel(workflow?.graph));
 
-  const rootNodeId = useMemo(() => {
-    const resolveStartNodeId = (currentGraph: WorkflowGraphDefinition) =>
-      currentGraph.nodes.find(
-        (node) => String(node.type || "").toUpperCase() === NodeType.START,
-      )?.id ||
-      currentGraph.nodes[0]?.id ||
-      null;
-
-    return (
-      resolveStartNodeId(graphModel) ?? resolveStartNodeId(defaultGraphModel)
-    );
-  }, [defaultGraphModel, graphModel]);
-
   const graphModelRef = useRef(graphModel);
   graphModelRef.current = graphModel;
   const replaceGraphState = useCallback(
     (
       nextGraph: WorkflowGraphDefinition,
-      options?: { resetHistory?: boolean; fallbackToDefault?: boolean },
+      options?: {
+        resetHistory?: boolean;
+        fallbackToDefault?: boolean;
+        recordHistory?: boolean;
+      },
     ) => {
-      let nextStateGraph = nextGraph;
+      let nextStateGraph = normalizeWorkflowGraphLayout(
+        nextGraph,
+        graphModelRef.current,
+      );
 
       try {
-        assertWorkflowGraphIntegrity(nextGraph);
+        assertWorkflowGraphIntegrity(nextStateGraph);
       } catch (error) {
         if (!options?.fallbackToDefault) {
           throw error;
@@ -176,18 +174,20 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           "[WorkflowBuilder] failed to apply graph state, fallback to default workflow",
           error,
         );
-        nextStateGraph = defaultGraphModel;
+        nextStateGraph = normalizeWorkflowGraphLayout(defaultGraphModel);
       }
 
       graphModelRef.current = nextStateGraph;
 
       if (options?.resetHistory) {
         resetGraphModel(nextStateGraph);
+      } else if (options?.recordHistory === false) {
+        replaceGraphModel(nextStateGraph);
       } else {
         setGraphModel(nextStateGraph);
       }
     },
-    [defaultGraphModel, resetGraphModel, setGraphModel],
+    [defaultGraphModel, replaceGraphModel, resetGraphModel, setGraphModel],
   );
 
   const workflowRef = useRef(workflow);
@@ -218,10 +218,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const [workflowKey, setWorkflowKey] = useState(
     workflow?.key || "new_process",
   );
-  const [zoom, setZoom] = useState(1);
-  const [panOrigin, setPanOrigin] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
   const [isDraggingGlobal, setDraggingGlobal] = useState(false);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
@@ -255,7 +251,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     message: string;
     onConfirm: () => void;
   }>({ open: false, message: "", onConfirm: () => {} });
-  const canvasRef = useRef<HTMLDivElement>(null);
 
   const parseTagsToArray = useCallback((raw?: string) => {
     if (!raw || !raw.trim()) return [] as string[];
@@ -397,74 +392,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     buildWorkflowSnapshot,
   ]);
 
-  const handleZoomIn = useCallback(
-    () => setZoom((z) => Math.min(z + 0.1, 2)),
-    [],
-  );
-  const handleZoomOut = useCallback(
-    () => setZoom((z) => Math.max(z - 0.1, 0.3)),
-    [],
-  );
-  const handleZoomReset = useCallback(() => setZoom(1), []);
-
-  // P2-2: 双击画布空白处 → 适配视口（按所有节点 bbox 计算缩放比，并复位平移）。
-  const handleFitToViewport = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const nodeEls = canvas.querySelectorAll<HTMLElement>("[data-node-id]");
-    if (nodeEls.length === 0) {
-      setZoom(1);
-      setPanOrigin({ x: 0, y: 0 });
-      return;
-    }
-    const canvasRect = canvas.getBoundingClientRect();
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    nodeEls.forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (r.left < minX) minX = r.left;
-      if (r.top < minY) minY = r.top;
-      if (r.right > maxX) maxX = r.right;
-      if (r.bottom > maxY) maxY = r.bottom;
-    });
-    const padding = 48;
-    const scaledW = maxX - minX;
-    const scaledH = maxY - minY;
-    if (scaledW <= 0 || scaledH <= 0 || zoom <= 0) return;
-    const contentW = scaledW / zoom;
-    const contentH = scaledH / zoom;
-    const fitZoom = Math.min(
-      (canvasRect.width - 2 * padding) / contentW,
-      (canvasRect.height - 2 * padding) / contentH,
-    );
-    const newZoom = Math.min(Math.max(fitZoom, 0.3), 2);
-    setZoom(newZoom);
-    setPanOrigin({ x: 0, y: 0 });
-  }, [zoom]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const delta = e.deltaY;
-      setZoom((prev) => {
-        const step = e.ctrlKey || e.metaKey ? 0.1 : 0.05;
-        const newZoom = delta < 0 ? prev + step : prev - step;
-        return Math.min(Math.max(newZoom, 0.3), 2);
-      });
-    };
-
-    canvas.addEventListener("wheel", handleWheel, { passive: false });
-
-    return () => {
-      canvas.removeEventListener("wheel", handleWheel);
-    };
-  }, []);
-
   // P1-1 + P1-2: 撤销/重做包装 —
   // ① saving 中冻结防止 in-flight 请求与本地状态分叉；
   // ② 撤销/重做后用 findWorkflowGraphNode 校验 selectedNodeId，丢失节点则清空选中。
@@ -514,6 +441,29 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       }
 
       return true;
+    },
+    [replaceGraphState],
+  );
+
+  const handleNodePositionChange = useCallback(
+    (nodeId: string, position: { x: number; y: number }) => {
+      const nextGraph = patchWorkflowGraphNodeLayout(
+        graphModelRef.current,
+        nodeId,
+        position,
+      );
+      replaceGraphState(nextGraph);
+    },
+    [replaceGraphState],
+  );
+
+  const handleViewportChange = useCallback(
+    (viewport: { x: number; y: number; zoom: number }) => {
+      const nextGraph = patchWorkflowGraphViewport(
+        graphModelRef.current,
+        viewport,
+      );
+      replaceGraphState(nextGraph, { recordHistory: false });
     },
     [replaceGraphState],
   );
@@ -1246,96 +1196,18 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
               saving={saving}
             />
 
-            <div
-              ref={canvasRef}
-            className={`workflow-studio-canvas relative flex flex-1 justify-center overflow-hidden bg-[var(--cf-bg)] p-4 transition-all duration-300 ease-out dark:bg-slate-950 ${isPanning ? "cursor-grabbing" : "cursor-default"} ${selectedGraphNode ? "mr-[24rem]" : ""}`}
-              onPointerDown={(e) => {
-                if (
-                  (e.button === 0 && e.target === canvasRef.current) ||
-                  e.button === 1
-                ) {
-                  e.preventDefault();
-                  setIsPanning(true);
-                  setPanStart({
-                    x: e.clientX - panOrigin.x,
-                    y: e.clientY - panOrigin.y,
-                  });
-                }
-              }}
-              onPointerMove={(e) => {
-                if (isPanning) {
-                  setPanOrigin({
-                    x: e.clientX - panStart.x,
-                    y: e.clientY - panStart.y,
-                  });
-                }
-              }}
-              onPointerUp={() => setIsPanning(false)}
-              onPointerLeave={() => setIsPanning(false)}
-              onClick={() => {
-                setActiveQuickAddId(null);
-                setSelectedNodeId(null);
-              }}
-              onDoubleClick={(e) => {
-                if (e.target === canvasRef.current) handleFitToViewport();
-              }}
-            >
-              <div className="absolute inset-0 pointer-events-none workflow-studio-grid bg-transparent" />
-
-              <div className="workflow-studio-zoom absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1 dark:border-slate-800 dark:bg-slate-950">
-                <button
-                  onClick={handleZoomOut}
-                  className="rounded p-1.5 text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:text-slate-300 dark:hover:bg-slate-900"
-                  title="缩小"
-                >
-                  <ZoomOut size={16} />
-                </button>
-                <span className="min-w-[40px] text-center font-mono text-xs text-slate-500 dark:text-slate-400">
-                  {Math.round(zoom * 100)}%
-                </span>
-                <button
-                  onClick={handleZoomIn}
-                  className="rounded p-1.5 text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:text-slate-300 dark:hover:bg-slate-900"
-                  title="放大"
-                >
-                  <ZoomIn size={16} />
-                </button>
-                <div className="mx-0.5 h-4 w-px bg-slate-200 dark:bg-slate-800" />
-                <button
-                  onClick={handleZoomReset}
-                  className="rounded p-1.5 text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:text-slate-300 dark:hover:bg-slate-900"
-                  title="重置缩放"
-                >
-                  <Maximize2 size={16} />
-                </button>
-              </div>
-
-              {isDraggingGlobal && (
-                <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                  <Move size={14} /> 拖拽节点到连接线上的"拖到这里"区域即可移动
-                </div>
-              )}
-
-              <div
-                className="min-w-[800px] flex justify-center pb-40 transition-transform origin-top z-10"
-                style={{
-                  transform: `translate(${panOrigin.x}px, ${panOrigin.y}px) scale(${zoom})`,
-                }}
-              >
-                {rootNodeId && (
-                  <FlowNode
-                    nodeId={rootNodeId}
-                    invalidNodes={invalidNodeIds}
-                    selectedNodeId={selectedNodeId}
-                    isDraggingGlobal={isDraggingGlobal}
-                    draggingNodeId={draggingNodeId}
-                    activeQuickAddId={activeQuickAddId}
-                    hoveredNodeId={hoveredNodeId}
-                    isInsideBranch={false}
-                  />
-                )}
-              </div>
-            </div>
+            <WorkflowCanvas
+              graph={graphModel}
+              invalidNodeIds={invalidNodeIds}
+              selectedNodeId={selectedNodeId}
+              activeQuickAddId={activeQuickAddId}
+              hoveredNodeId={hoveredNodeId}
+              draggingNodeId={draggingNodeId}
+              isDraggingGlobal={isDraggingGlobal}
+              hasSelectedNode={Boolean(selectedGraphNode)}
+              onNodePositionChange={handleNodePositionChange}
+              onViewportChange={handleViewportChange}
+            />
 
             {selectedEditorNode && (
               <PropertyPanel

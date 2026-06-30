@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, FileText, GitMerge, Loader2, RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { AlertTriangle, GitMerge, Loader2, RefreshCw } from 'lucide-react';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, FormDefinition, User } from '../types';
 import { Button } from '@/components/common';
@@ -536,30 +536,14 @@ export const WorkflowDesign = () => {
 
   const isNewWorkflow = workflow.id.startsWith('new_');
   const studioTitle = isNewWorkflow ? '新建流程设计' : workflow.name || '流程设计';
-  const designMetrics = [
-    { label: '流程标识', value: workflow.key || '--', meta: isNewWorkflow ? '空白流程' : `版本 ${workflow.version || 1}`, icon: <GitMerge size={18} />, tone: 'blue' },
-    { label: '可用表单', value: String(savedForms.length), meta: '表单库', icon: <FileText size={18} />, tone: 'green' },
-    { label: '审批角色', value: String(availableRoles.length), meta: '角色候选', icon: <ShieldCheck size={18} />, tone: 'amber' },
-    { label: '审批用户', value: String(availableUsers.length), meta: '用户候选', icon: <Users size={18} />, tone: 'violet' },
-  ];
 
   const pageActions = (
-    <div className="grid gap-5">
-      <header className="admin-source-header">
+    <div className="grid gap-3">
+      <header className="admin-source-header admin-workflow-design-header">
         <div>
           <p className="admin-source-kicker">WORKFLOW DESIGNER</p>
           <h2>{studioTitle}</h2>
           <span>{isNewWorkflow ? '空白流程' : workflow.key ? `流程 KEY · ${workflow.key}` : '流程设计'}</span>
-          <div className="admin-source-context-row">
-            {designMetrics.map((metric) => (
-              <div key={metric.label} className={`admin-source-context-chip admin-source-tone-${metric.tone}`}>
-                <span className="admin-source-context-icon">{metric.icon}</span>
-                <strong>{metric.label}</strong>
-                <em>{metric.value}</em>
-                <small>{metric.meta}</small>
-              </div>
-            ))}
-          </div>
         </div>
         <div className="admin-source-controls">
           <Button variant="outline" onClick={loadData}>
@@ -575,7 +559,7 @@ export const WorkflowDesign = () => {
   );
 
   const pageContent = (
-      <InnerTableSurface className="flex min-h-0 flex-1 flex-col" wrapperClassName="flex min-h-0 flex-1 flex-col">
+      <InnerTableSurface className="admin-workflow-designer-surface" wrapperClassName="admin-workflow-designer-wrapper">
         <WorkflowBuilder
           workflow={workflow}
           onChange={handleWorkflowChange}
@@ -590,6 +574,8 @@ export const WorkflowDesign = () => {
   return (
     <section className="admin-source-page admin-workflow-design-page">
       <TablePageLayout
+        className="admin-workflow-design-layout"
+        tableSurfaceClassName="admin-workflow-design-table-surface"
         actions={pageActions}
         table={pageContent}
       />

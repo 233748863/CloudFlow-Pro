@@ -120,9 +120,26 @@ export interface WorkflowGraphEdge {
   [key: string]: unknown;
 }
 
+export interface WorkflowGraphNodeLayout {
+  x: number;
+  y: number;
+}
+
+export interface WorkflowGraphViewport {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+export interface WorkflowGraphLayout {
+  nodes: Record<string, WorkflowGraphNodeLayout>;
+  viewport?: WorkflowGraphViewport;
+}
+
 export interface WorkflowGraphDefinition {
   nodes: WorkflowGraphNode[];
   edges: WorkflowGraphEdge[];
+  layout?: WorkflowGraphLayout;
 }
 
 export interface WorkflowDefinition {

@@ -3,7 +3,10 @@ import {
   PARALLEL_SIGN_MODES,
   WorkflowGraphDefinition,
   WorkflowGraphEdge,
+  WorkflowGraphLayout,
   WorkflowGraphNode,
+  WorkflowGraphNodeLayout,
+  WorkflowGraphViewport,
 } from '../types';
 
 /**
@@ -15,6 +18,168 @@ export const isWorkflowGraphDefinition = (value: unknown): value is WorkflowGrap
   return Array.isArray(candidate.nodes) && Array.isArray(candidate.edges);
 };
 
+const DEFAULT_WORKFLOW_VIEWPORT: WorkflowGraphViewport = { x: 0, y: 0, zoom: 1 };
+const WORKFLOW_LAYOUT_X_STEP = 300;
+const WORKFLOW_LAYOUT_Y_STEP = 150;
+const WORKFLOW_LAYOUT_ORIGIN_X = 80;
+const WORKFLOW_LAYOUT_ORIGIN_Y = 80;
+
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const normalizeNodeLayout = (value: unknown): WorkflowGraphNodeLayout | null => {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  if (!isFiniteNumber(candidate.x) || !isFiniteNumber(candidate.y)) return null;
+  return { x: candidate.x, y: candidate.y };
+};
+
+const normalizeViewport = (value: unknown): WorkflowGraphViewport | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const candidate = value as Record<string, unknown>;
+  if (
+    !isFiniteNumber(candidate.x) ||
+    !isFiniteNumber(candidate.y) ||
+    !isFiniteNumber(candidate.zoom)
+  ) {
+    return undefined;
+  }
+  return {
+    x: candidate.x,
+    y: candidate.y,
+    zoom: Math.min(Math.max(candidate.zoom, 0.2), 3),
+  };
+};
+
+const buildFallbackNodeLayouts = (
+  graph: WorkflowGraphDefinition,
+): Record<string, WorkflowGraphNodeLayout> => {
+  const nodeIndex = new Map(graph.nodes.map((node, index) => [node.id, index] as const));
+  const outgoing = new Map<string, string[]>();
+  const incomingCount = new Map<string, number>();
+  graph.nodes.forEach((node) => incomingCount.set(node.id, 0));
+
+  graph.edges.forEach((edge) => {
+    if (!nodeIndex.has(edge.source) || !nodeIndex.has(edge.target)) return;
+    const targets = outgoing.get(edge.source) ?? [];
+    targets.push(edge.target);
+    targets.sort((a, b) => (nodeIndex.get(a) ?? 0) - (nodeIndex.get(b) ?? 0));
+    outgoing.set(edge.source, targets);
+    incomingCount.set(edge.target, (incomingCount.get(edge.target) ?? 0) + 1);
+  });
+
+  const startNode =
+    graph.nodes.find((node) => String(node.type || '').toUpperCase() === NodeType.START) ??
+    graph.nodes[0];
+  const levels = new Map<string, number>();
+  const queue: string[] = startNode ? [startNode.id] : [];
+  if (startNode) levels.set(startNode.id, 0);
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    const currentLevel = levels.get(currentId) ?? 0;
+    (outgoing.get(currentId) ?? []).forEach((targetId) => {
+      const nextLevel = currentLevel + 1;
+      const previous = levels.get(targetId);
+      if (previous !== undefined && previous >= nextLevel) return;
+      levels.set(targetId, nextLevel);
+      queue.push(targetId);
+    });
+  }
+
+  let orphanLevel = Math.max(0, ...Array.from(levels.values())) + 1;
+  graph.nodes.forEach((node) => {
+    if (!levels.has(node.id)) {
+      levels.set(node.id, orphanLevel);
+      orphanLevel += 1;
+    }
+  });
+
+  const grouped = new Map<number, string[]>();
+  graph.nodes.forEach((node) => {
+    const level = levels.get(node.id) ?? 0;
+    const ids = grouped.get(level) ?? [];
+    ids.push(node.id);
+    grouped.set(level, ids);
+  });
+
+  const layouts: Record<string, WorkflowGraphNodeLayout> = {};
+  grouped.forEach((ids, level) => {
+    ids.forEach((id, index) => {
+      layouts[id] = {
+        x: WORKFLOW_LAYOUT_ORIGIN_X + level * WORKFLOW_LAYOUT_X_STEP,
+        y: WORKFLOW_LAYOUT_ORIGIN_Y + index * WORKFLOW_LAYOUT_Y_STEP,
+      };
+    });
+  });
+  return layouts;
+};
+
+export const normalizeWorkflowGraphLayout = (
+  graph: WorkflowGraphDefinition,
+  baseGraph?: WorkflowGraphDefinition,
+): WorkflowGraphDefinition => {
+  const fallbackLayouts = buildFallbackNodeLayouts(graph);
+  const graphLayout = graph.layout as WorkflowGraphLayout | undefined;
+  const baseLayout = baseGraph?.layout as WorkflowGraphLayout | undefined;
+  const nodes: Record<string, WorkflowGraphNodeLayout> = {};
+
+  graph.nodes.forEach((node) => {
+    const graphNodeLayout = normalizeNodeLayout(graphLayout?.nodes?.[node.id]);
+    const baseNodeLayout = normalizeNodeLayout(baseLayout?.nodes?.[node.id]);
+    nodes[node.id] = graphNodeLayout ?? baseNodeLayout ?? fallbackLayouts[node.id];
+  });
+
+  const viewport =
+    normalizeViewport(graphLayout?.viewport) ??
+    normalizeViewport(baseLayout?.viewport) ??
+    DEFAULT_WORKFLOW_VIEWPORT;
+
+  return {
+    ...graph,
+    nodes: [...graph.nodes],
+    edges: [...graph.edges],
+    layout: { nodes, viewport },
+  };
+};
+
+export const patchWorkflowGraphNodeLayout = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+  position: WorkflowGraphNodeLayout,
+): WorkflowGraphDefinition => {
+  if (!graph.nodes.some((node) => node.id === nodeId)) return graph;
+  return normalizeWorkflowGraphLayout(
+    {
+      ...graph,
+      layout: {
+        ...(graph.layout ?? { nodes: {} }),
+        nodes: {
+          ...(graph.layout?.nodes ?? {}),
+          [nodeId]: position,
+        },
+      },
+    },
+    graph,
+  );
+};
+
+export const patchWorkflowGraphViewport = (
+  graph: WorkflowGraphDefinition,
+  viewport: WorkflowGraphViewport,
+): WorkflowGraphDefinition =>
+  normalizeWorkflowGraphLayout(
+    {
+      ...graph,
+      layout: {
+        ...(graph.layout ?? { nodes: {} }),
+        nodes: graph.layout?.nodes ?? {},
+        viewport,
+      },
+    },
+    graph,
+  );
+
 /**
  * 统一解析图模型，支持对象与 JSON 字符串。
  */
@@ -22,13 +187,13 @@ export const parseWorkflowGraphDefinition = (raw: unknown): WorkflowGraphDefinit
   if (!raw) return null;
 
   if (typeof raw === 'object') {
-    return isWorkflowGraphDefinition(raw) ? raw : null;
+    return isWorkflowGraphDefinition(raw) ? normalizeWorkflowGraphLayout(raw) : null;
   }
 
   if (typeof raw === 'string' && raw.trim()) {
     try {
       const parsed = JSON.parse(raw);
-      return isWorkflowGraphDefinition(parsed) ? parsed : null;
+      return isWorkflowGraphDefinition(parsed) ? normalizeWorkflowGraphLayout(parsed) : null;
     } catch {
       return null;
     }
@@ -43,6 +208,16 @@ export const createDefaultWorkflowGraph = (): WorkflowGraphDefinition => ({
     { id: 'end', type: NodeType.END, title: '流程结束' },
   ],
   edges: [{ id: 'start->end', source: 'start', target: 'end' }],
+  layout: {
+    nodes: {
+      start: { x: WORKFLOW_LAYOUT_ORIGIN_X, y: WORKFLOW_LAYOUT_ORIGIN_Y },
+      end: {
+        x: WORKFLOW_LAYOUT_ORIGIN_X + WORKFLOW_LAYOUT_X_STEP,
+        y: WORKFLOW_LAYOUT_ORIGIN_Y,
+      },
+    },
+    viewport: DEFAULT_WORKFLOW_VIEWPORT,
+  },
 });
 
 const isDefaultEdge = (edge: WorkflowGraphEdge): boolean => {
