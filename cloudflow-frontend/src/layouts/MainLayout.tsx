@@ -383,7 +383,7 @@ export const MainLayout = () => {
       const active = activeMenuIds.has(item.id);
       const expanded = expandedMenuIds.has(item.id);
       const title = groupLabel ? `${groupLabel} / ${item.label}` : item.label;
-      const paddingLeft = `${1.0625 + depth * 0.875}rem`;
+      const paddingLeft = `${0.875 + depth * 0.75}rem`;
 
       if (hasChildren) {
         return (
@@ -399,10 +399,10 @@ export const MainLayout = () => {
               )}
               style={{ paddingLeft }}
             >
-              <Icon size={18} className="shrink-0" />
+              <Icon size={16} className="shrink-0" />
               <span className="sidebar-label">{item.label}</span>
               <ChevronDown
-                size={15}
+                size={14}
                 className={cn('sidebar-chevron ml-auto shrink-0', expanded && 'sidebar-chevron-open')}
               />
             </button>
@@ -427,7 +427,7 @@ export const MainLayout = () => {
           )}
           style={{ paddingLeft }}
         >
-          <Icon size={18} className="shrink-0" />
+          <Icon size={16} className="shrink-0" />
           <span className="sidebar-label">{item.label}</span>
         </button>
       );
@@ -462,17 +462,17 @@ export const MainLayout = () => {
         className={cn(
           'sidebar cf-app-sidebar',
           mobileSidebarOpen && 'cf-mobile-sidebar-open',
-          sidebarCompact ? 'sidebar-collapsed w-[72px]' : 'w-64',
+          sidebarCompact ? 'sidebar-collapsed w-[56px]' : 'w-[210px]',
         )}
       >
         <div
           className={cn(
-            'sidebar-header flex h-16 items-center border-b border-slate-200 px-4 dark:border-slate-800',
-            sidebarCompact ? 'justify-center' : 'gap-3',
+            'sidebar-header flex h-[50px] items-center border-b border-slate-200 px-3 dark:border-slate-800',
+            sidebarCompact ? 'justify-center' : 'gap-2.5',
           )}
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900">
-            <img src="/icon.svg" alt="CloudFlow Pro" className="h-8 w-8 object-contain" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900">
+            <img src="/icon.svg" alt="CloudFlow Pro" className="h-7 w-7 object-contain" />
           </div>
 
           {sidebarCompact ? null : (
@@ -484,7 +484,7 @@ export const MainLayout = () => {
           )}
         </div>
 
-        <nav className="sidebar-nav hide-scrollbar flex-1 overflow-y-auto px-3 py-4">
+        <nav className="sidebar-nav hide-scrollbar flex-1 overflow-y-auto px-2 py-3">
           {sidebarCompact ? (
             <div className="space-y-1">
               {flatItems.map((item) => {
@@ -496,11 +496,11 @@ export const MainLayout = () => {
                     title={`${item.groupLabel} / ${item.label}`}
                     onClick={() => navigateToItem(item)}
                     className={cn(
-                      'sidebar-link sidebar-link-collapsed cf-side-link h-10 w-10 justify-center gap-0 px-0 transition-all duration-300',
+                      'sidebar-link sidebar-link-collapsed cf-side-link h-8 w-8 justify-center gap-0 px-0 transition-all duration-300',
                       active && 'cf-side-link-active',
                     )}
                   >
-                    <item.icon size={18} />
+                    <item.icon size={16} />
                   </button>
                 );
               })}
@@ -520,13 +520,13 @@ export const MainLayout = () => {
               title={sidebarCompact ? (resolvedTheme === 'dark' ? '浅色模式' : '深色模式') : undefined}
               className={cn(
                 'sidebar-link cf-side-link overflow-hidden',
-                sidebarCompact ? 'sidebar-link-collapsed h-10 w-10 justify-center gap-0 px-0' : '',
+                sidebarCompact ? 'sidebar-link-collapsed h-8 w-8 justify-center gap-0 px-0' : '',
               )}
             >
               {resolvedTheme === 'dark' ? (
-                <SunMedium size={18} className="shrink-0 text-amber-500" />
+                <SunMedium size={16} className="shrink-0 text-amber-500" />
               ) : (
-                <MoonStar size={18} className="shrink-0" />
+                <MoonStar size={16} className="shrink-0" />
               )}
               {sidebarCompact ? null : <span>{resolvedTheme === 'dark' ? '浅色模式' : '深色模式'}</span>}
             </button>
@@ -537,10 +537,10 @@ export const MainLayout = () => {
               title={sidebarCompact ? '展开侧栏' : '收起侧栏'}
               className={cn(
                 'sidebar-link cf-side-link overflow-hidden',
-                sidebarCompact ? 'sidebar-link-collapsed h-10 w-10 justify-center gap-0 px-0' : '',
+                sidebarCompact ? 'sidebar-link-collapsed h-8 w-8 justify-center gap-0 px-0' : '',
               )}
             >
-              {sidebarCompact ? <ChevronsRight size={18} className="shrink-0" /> : <ChevronsLeft size={18} className="shrink-0" />}
+              {sidebarCompact ? <ChevronsRight size={16} className="shrink-0" /> : <ChevronsLeft size={16} className="shrink-0" />}
               {sidebarCompact ? null : <span>收起侧栏</span>}
             </button>
           </div>
@@ -561,7 +561,7 @@ export const MainLayout = () => {
         className={cn(
           'cf-app-main',
           'unity-app-main',
-          sidebarCompact ? 'lg:ml-[72px]' : 'lg:ml-64',
+          sidebarCompact ? 'lg:ml-[56px]' : 'lg:ml-[210px]',
         )}
       >
         <header className="app-header cf-app-header">

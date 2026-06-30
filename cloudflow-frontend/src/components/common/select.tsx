@@ -280,7 +280,7 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
       aria-expanded={open}
       aria-haspopup="listbox"
       className={cn(
-        'select-trigger cf-control flex h-10 min-h-10 items-center justify-between rounded-md px-3.5 py-2.5 text-left text-sm',
+        'select-trigger cf-control flex h-9 min-h-9 items-center justify-between rounded-md px-3 py-1.5 text-left text-[13px]',
         !hasExplicitWidth && 'w-full',
         open && 'select-trigger-open cf-control-active',
         disabled && 'select-trigger-disabled',
@@ -301,7 +301,7 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
       {children}
       <span className="select-icon ml-2 shrink-0">
         <ChevronDown
-          size={18}
+          size={16}
           className={cn(
             'transition-transform duration-200',
             open && 'rotate-180 text-[color:var(--cf-primary-600)] dark:text-[color:rgb(204_251_241)]',
@@ -507,7 +507,7 @@ export const SelectItem: SelectItemComponent = ({ children, value, label, classN
       role="option"
       aria-selected={isSelected}
       className={cn(
-        'select-option relative flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-2.5 text-sm transition-colors',
+        'select-option relative flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[13px] transition-colors',
         disabled && 'select-option-disabled cursor-not-allowed opacity-40',
         isSelected
           ? 'select-option-selected cf-option-active'
