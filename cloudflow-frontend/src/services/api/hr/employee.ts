@@ -33,7 +33,9 @@ export const listEmployeesForSelect = async (
       employeeNo: e.employeeNo,
       deptId: e.deptId ?? undefined,
       deptName: e.deptName ?? undefined,
+      postId: e.postId ?? undefined,
       postName: e.postName ?? undefined,
+      positionId: e.positionId ?? undefined,
       positionName: e.positionName ?? undefined,
       employeeStatus: e.employeeStatus,
     }));

@@ -27,7 +27,23 @@ export interface User {
 }
 
 // --- 动态表单类型 ---
-export type FormFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'TEXTAREA';
+export type FormFieldType =
+  | 'TEXT'
+  | 'NUMBER'
+  | 'DATE'
+  | 'SELECT'
+  | 'TEXTAREA'
+  | 'EMPLOYEE'
+  | 'DEPT'
+  | 'POST'
+  | 'POSITION';
+
+export interface FormFieldFillMapping {
+  targetFieldId: string;
+  source: string;
+  fallbackSource?: string;
+  clearWhenEmpty?: boolean;
+}
 
 export interface FormField {
   id: string;
@@ -36,6 +52,11 @@ export interface FormField {
   required: boolean;
   options?: string[]; // 用于 SELECT 类型
   placeholder?: string;
+  readonly?: boolean;
+  displayFieldId?: string;
+  fillMappings?: FormFieldFillMapping[];
+  filterByDeptFieldId?: string;
+  onlyActive?: boolean;
   // 新增验证字段
   regex?: string;
   errorMsg?: string;

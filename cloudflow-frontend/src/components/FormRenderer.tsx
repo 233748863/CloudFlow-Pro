@@ -1,10 +1,25 @@
 import React, { useState } from 'react';
 import { AlertTriangle, FileText, Send } from 'lucide-react';
 import type { FormDefinition, FormField } from '../types';
-import { BaseDialog, Button, DatePicker, Input, Textarea } from '@/components/common';
+import {
+  BaseDialog,
+  Button,
+  DatePicker,
+  DeptSelector,
+  EmployeeSelector,
+  Input,
+  PositionSelector,
+  PostSelector,
+  Textarea,
+} from '@/components/common';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './common/select';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import { cn } from '@/utils/cn';
+import {
+  applyFieldFillMappings,
+  getFieldDisplayValue,
+  supportsMasterDataSelect,
+} from '@/utils/formFieldRuntime';
 
 const SELECT_NONE_VALUE = '__NONE__';
 
@@ -102,13 +117,22 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
   const getValue = (field: FormField): any =>
     isControlled ? readFieldValue(field, data) : internalData[field.id];
 
-  const handleChange = (field: FormField, value: any) => {
+  const getRuntimeData = () => (isControlled ? data || {} : internalData);
+
+  const handleChange = (field: FormField, value: any, extraUpdates: Record<string, any> = {}) => {
     if (isControlled) {
       onChange?.(field.id, value);
+      Object.entries(extraUpdates).forEach(([id, nextValue]) => onChange?.(id, nextValue));
     } else {
-      setInternalData((prev) => ({ ...prev, [field.id]: value }));
+      setInternalData((prev) => ({ ...prev, [field.id]: value, ...extraUpdates }));
       if (errors[field.id]) {
-        setErrors((prev) => ({ ...prev, [field.id]: '' }));
+        setErrors((prev) => {
+          const next = { ...prev, [field.id]: '' };
+          Object.keys(extraUpdates).forEach((id) => {
+            if (next[id]) next[id] = '';
+          });
+          return next;
+        });
       }
     }
   };
@@ -161,8 +185,9 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
 
   const renderReadOnlyValue = (field: FormField) => {
     const rawValue = getValue(field);
-    const displayValue = formatFieldValue(field, rawValue);
-    const isEmpty = !hasValue(rawValue);
+    const displayRawValue = getFieldDisplayValue(field, getRuntimeData(), rawValue);
+    const displayValue = formatFieldValue(field, displayRawValue);
+    const isEmpty = !hasValue(displayRawValue);
     return (
       <div className="min-h-[44px] bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-slate-800 dark:bg-slate-900/70 dark:text-slate-100">
         {isEmpty ? (
@@ -175,7 +200,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
   };
 
   const renderFieldControl = (field: FormField) => {
-    if (readonly) return renderReadOnlyValue(field);
+    if (readonly || field.readonly) return renderReadOnlyValue(field);
 
     const hasError = Boolean(errors[field.id]);
     const controlClassName = cn(
@@ -183,6 +208,67 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
       hasError && 'border-red-300 bg-red-50 focus-visible:ring-red-200',
     );
     const rawValue = getValue(field);
+
+    if (field.type === 'EMPLOYEE') {
+      return (
+        <EmployeeSelector
+          single
+          value={rawValue ?? null}
+          onlyActive={field.onlyActive !== false}
+          placeholder={field.placeholder || '选择员工'}
+          allowClear
+          onChange={(id, picked) =>
+            handleChange(field, id ?? '', applyFieldFillMappings(field, picked))
+          }
+        />
+      );
+    }
+
+    if (field.type === 'DEPT') {
+      return (
+        <DeptSelector
+          single
+          value={rawValue ?? null}
+          placeholder={field.placeholder || '选择部门'}
+          allowClear
+          onChange={(id, picked) =>
+            handleChange(field, id ?? '', applyFieldFillMappings(field, picked))
+          }
+        />
+      );
+    }
+
+    if (field.type === 'POST') {
+      return (
+        <PostSelector
+          single
+          value={rawValue ?? null}
+          placeholder={field.placeholder || '选择岗位'}
+          allowClear
+          onChange={(id, picked) =>
+            handleChange(field, id ?? '', applyFieldFillMappings(field, picked))
+          }
+        />
+      );
+    }
+
+    if (field.type === 'POSITION') {
+      const deptFilterValue = field.filterByDeptFieldId
+        ? Number(getRuntimeData()[field.filterByDeptFieldId])
+        : null;
+      return (
+        <PositionSelector
+          single
+          value={rawValue ?? null}
+          deptId={Number.isFinite(deptFilterValue) ? deptFilterValue : null}
+          placeholder={field.placeholder || '选择职位'}
+          allowClear
+          onChange={(id, picked) =>
+            handleChange(field, id ?? '', applyFieldFillMappings(field, picked))
+          }
+        />
+      );
+    }
 
     if (field.type === 'TEXTAREA') {
       return (
@@ -232,10 +318,14 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
       );
     }
 
+    const inputValue = supportsMasterDataSelect(field)
+      ? getFieldDisplayValue(field, getRuntimeData(), rawValue)
+      : rawValue;
+
     return (
       <Input
         type={field.type === 'NUMBER' ? 'number' : 'text'}
-        value={rawValue ?? ''}
+        value={inputValue ?? ''}
         placeholder={field.placeholder}
         onChange={(event) =>
           handleChange(field, normalizeFieldValue(field.type, event.target.value))

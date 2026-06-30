@@ -9,6 +9,10 @@ import {
   Calendar,
   List,
   AlignLeft,
+  Users,
+  Building2,
+  Briefcase,
+  GitBranch,
   Save,
   AlertCircle,
   Code,
@@ -41,6 +45,7 @@ import { Textarea } from './common/textarea';
 import { Button } from './common/button';
 import { DatePicker } from './common/date-picker';
 import { cn } from '@/utils/cn';
+import { FormRenderer } from './FormRenderer';
 
 interface Props {
   onSave: (form: FormDefinition) => Promise<void> | void;
@@ -53,6 +58,10 @@ const FIELD_TYPES: Array<{ type: FormFieldType; label: string; icon: React.Eleme
   { type: 'NUMBER', label: '数字金额', icon: Hash },
   { type: 'DATE', label: '日期时间', icon: Calendar },
   { type: 'SELECT', label: '下拉选项', icon: List },
+  { type: 'EMPLOYEE', label: '员工选择', icon: Users },
+  { type: 'DEPT', label: '部门选择', icon: Building2 },
+  { type: 'POST', label: '岗位选择', icon: Briefcase },
+  { type: 'POSITION', label: '职位选择', icon: GitBranch },
 ];
 
 const FIELD_TYPE_STYLES: Record<FormFieldType, string> = {
@@ -61,9 +70,120 @@ const FIELD_TYPE_STYLES: Record<FormFieldType, string> = {
   NUMBER: 'border-amber-200 bg-[var(--cf-surface-strong)] text-amber-700 dark:border-amber-900 dark:bg-slate-950 dark:text-amber-200',
   DATE: 'border-sky-200 bg-[var(--cf-surface-strong)] text-sky-700 dark:border-sky-900 dark:bg-slate-950 dark:text-sky-200',
   SELECT: 'border-emerald-200 bg-[var(--cf-surface-strong)] text-emerald-700 dark:border-emerald-900 dark:bg-slate-950 dark:text-emerald-200',
+  EMPLOYEE: 'border-violet-200 bg-[var(--cf-surface-strong)] text-violet-700 dark:border-violet-900 dark:bg-slate-950 dark:text-violet-200',
+  DEPT: 'border-indigo-200 bg-[var(--cf-surface-strong)] text-indigo-700 dark:border-indigo-900 dark:bg-slate-950 dark:text-indigo-200',
+  POST: 'border-teal-200 bg-[var(--cf-surface-strong)] text-teal-700 dark:border-teal-900 dark:bg-slate-950 dark:text-teal-200',
+  POSITION: 'border-fuchsia-200 bg-[var(--cf-surface-strong)] text-fuchsia-700 dark:border-fuchsia-900 dark:bg-slate-950 dark:text-fuchsia-200',
+};
+
+const MASTER_DATA_TYPES = new Set<FormFieldType>(['EMPLOYEE', 'DEPT', 'POST', 'POSITION']);
+
+const DEFAULT_FIELD_IDS: Record<FormFieldType, string> = {
+  TEXT: 'textField',
+  TEXTAREA: 'description',
+  NUMBER: 'amount',
+  DATE: 'date',
+  SELECT: 'selectField',
+  EMPLOYEE: 'employeeId',
+  DEPT: 'deptId',
+  POST: 'postId',
+  POSITION: 'positionId',
+};
+
+const DEFAULT_FIELD_LABELS: Record<FormFieldType, string> = {
+  TEXT: '单行文本',
+  TEXTAREA: '说明',
+  NUMBER: '金额',
+  DATE: '日期',
+  SELECT: '选项',
+  EMPLOYEE: '员工',
+  DEPT: '部门',
+  POST: '岗位',
+  POSITION: '职位',
+};
+
+const getUniqueFieldId = (baseId: string, fields: FormField[]) => {
+  if (!fields.some((field) => field.id === baseId)) return baseId;
+  let index = 2;
+  while (fields.some((field) => field.id === `${baseId}${index}`)) {
+    index += 1;
+  }
+  return `${baseId}${index}`;
+};
+
+const buildDefaultField = (type: FormFieldType, id: string): FormField => {
+  const base: FormField = {
+    id,
+    type,
+    label: DEFAULT_FIELD_LABELS[type],
+    required: false,
+    options: type === 'SELECT' ? ['选项A', '选项B'] : undefined,
+  };
+
+  if (type === 'EMPLOYEE') {
+    return {
+      ...base,
+      displayFieldId: 'employeeName',
+      fillMappings: [
+        { targetFieldId: 'employeeName', source: 'name' },
+        { targetFieldId: 'employeeNo', source: 'employeeNo' },
+        { targetFieldId: 'deptId', source: 'deptId' },
+        { targetFieldId: 'deptName', source: 'deptName' },
+        { targetFieldId: 'postId', source: 'postId' },
+        { targetFieldId: 'postName', source: 'postName' },
+        { targetFieldId: 'positionId', source: 'positionId' },
+        { targetFieldId: 'positionName', source: 'positionName' },
+      ],
+    };
+  }
+
+  if (type === 'DEPT') {
+    return {
+      ...base,
+      displayFieldId: 'deptName',
+      fillMappings: [{ targetFieldId: 'deptName', source: 'deptName' }],
+    };
+  }
+
+  if (type === 'POST') {
+    return {
+      ...base,
+      displayFieldId: 'postName',
+      fillMappings: [{ targetFieldId: 'postName', source: 'postName' }],
+    };
+  }
+
+  if (type === 'POSITION') {
+    return {
+      ...base,
+      displayFieldId: 'positionName',
+      fillMappings: [
+        { targetFieldId: 'positionName', source: 'positionName' },
+        { targetFieldId: 'positionCode', source: 'positionCode' },
+        { targetFieldId: 'postId', source: 'postId' },
+        { targetFieldId: 'postName', source: 'postName' },
+      ],
+    };
+  }
+
+  return base;
 };
 
 const PreviewControl: React.FC<{ field: FormField }> = ({ field }) => {
+  if (MASTER_DATA_TYPES.has(field.type)) {
+    const placeholderMap: Record<string, string> = {
+      EMPLOYEE: '搜索并选择员工',
+      DEPT: '搜索并选择部门',
+      POST: '搜索并选择岗位',
+      POSITION: '搜索并选择职位',
+    };
+    return (
+      <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-500">
+        {placeholderMap[field.type] || '请选择'}
+      </div>
+    );
+  }
+
   if (field.type === 'TEXTAREA') {
     return <Textarea rows={2} disabled placeholder="多行文本输入" className="pointer-events-none resize-none" />;
   }
@@ -222,6 +342,96 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
             </div>
           ) : null}
 
+          {MASTER_DATA_TYPES.has(field.type) ? (
+            <div className="grid gap-3 border-t border-slate-200 pt-3 dark:border-slate-800">
+              <div className="grid gap-2 md:grid-cols-2">
+                <div>
+                  <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">显示名称字段</div>
+                  <Input
+                    value={field.displayFieldId || ''}
+                    onChange={(e) => onUpdate(field.id, { displayFieldId: e.target.value.trim() || undefined })}
+                    className="h-8 text-xs font-mono"
+                    placeholder="例如 employeeName"
+                  />
+                </div>
+                {field.type === 'POSITION' ? (
+                  <div>
+                    <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">按部门字段筛选</div>
+                    <Input
+                      value={field.filterByDeptFieldId || ''}
+                      onChange={(e) => onUpdate(field.id, { filterByDeptFieldId: e.target.value.trim() || undefined })}
+                      className="h-8 text-xs font-mono"
+                      placeholder="例如 toDeptId"
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">选中后自动填充</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      onUpdate(field.id, {
+                        fillMappings: [
+                          ...(field.fillMappings || []),
+                          { targetFieldId: '', source: '', clearWhenEmpty: true },
+                        ],
+                      })
+                    }
+                    className="!h-6 !gap-1 !rounded-md !px-2 !py-0 text-xs text-cyan-600 shadow-none hover:bg-[var(--cf-surface-muted)] hover:text-cyan-700 dark:text-cyan-300 dark:hover:bg-slate-900 dark:hover:text-cyan-200"
+                  >
+                    <Plus size={12} />
+                    新增
+                  </Button>
+                </div>
+                <div className="grid gap-1.5">
+                  {(field.fillMappings || []).map((mapping, idx) => (
+                    <div key={idx} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                      <Input
+                        value={mapping.targetFieldId}
+                        onChange={(e) => {
+                          const next = [...(field.fillMappings || [])];
+                          next[idx] = { ...mapping, targetFieldId: e.target.value.trim() };
+                          onUpdate(field.id, { fillMappings: next });
+                        }}
+                        className="h-8 text-xs font-mono"
+                        placeholder="目标字段ID"
+                      />
+                      <Input
+                        value={mapping.source}
+                        onChange={(e) => {
+                          const next = [...(field.fillMappings || [])];
+                          next[idx] = { ...mapping, source: e.target.value.trim() };
+                          onUpdate(field.id, { fillMappings: next });
+                        }}
+                        className="h-8 text-xs font-mono"
+                        placeholder="来源属性"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          const next = (field.fillMappings || []).filter((_, i) => i !== idx);
+                          onUpdate(field.id, { fillMappings: next });
+                        }}
+                        className="!h-7 !w-7 !rounded-md !p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
+                        aria-label="删除填充规则"
+                        title="删除填充规则"
+                      >
+                        <X size={14} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {(field.type === 'TEXT' || field.type === 'NUMBER') ? (
             <div className="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800 md:grid-cols-2">
               <div>
@@ -255,6 +465,11 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
             <span className="text-xs text-slate-500 dark:text-slate-400">必填项</span>
             <Switch checked={field.required} onCheckedChange={(checked) => onUpdate(field.id, { required: checked })} />
           </div>
+
+          <div className="flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
+            <span className="text-xs text-slate-500 dark:text-slate-400">只读展示</span>
+            <Switch checked={Boolean(field.readonly)} onCheckedChange={(checked) => onUpdate(field.id, { readonly: checked || undefined })} />
+          </div>
         </div>
       </div>
     </div>
@@ -281,7 +496,7 @@ const FormPreview: React.FC<{
 
     fields.forEach((field) => {
       const val = formData[field.id];
-      if (field.required && (!val || String(val).trim() === '')) {
+      if (field.required && (val === null || val === undefined || String(val).trim() === '')) {
         newErrors[field.id] = '此项必填';
         isValid = false;
       } else if (val && field.regex) {
@@ -324,62 +539,17 @@ const FormPreview: React.FC<{
       </div>
 
       <div className="grid max-h-[60vh] gap-4 overflow-y-auto px-4 py-4">
-        {fields.map((field) => (
-          <div key={field.id} className="admin-dialog-field">
-            <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              {field.label}
-              {field.required ? <span className="ml-1 text-rose-500">*</span> : null}
-            </label>
-
-            {field.type === 'TEXTAREA' ? (
-              <Textarea
-                rows={3}
-                value={formData[field.id] || ''}
-                onChange={(e) => handleChange(field.id, e.target.value)}
-                placeholder={`请输入${field.label}`}
-                className={cn(
-                  errors[field.id] ? 'border-rose-300 bg-rose-50 dark:border-rose-900/70 dark:bg-rose-950/30' : '',
-                )}
-              />
-            ) : field.type === 'SELECT' ? (
-              <Select value={formData[field.id] || ''} onValueChange={(v) => handleChange(field.id, v)}>
-                <SelectTrigger className={errors[field.id] ? 'border-rose-300 dark:border-rose-900/70' : ''}>
-                  <SelectValue placeholder="请选择" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(field.options || []).map((opt, idx) => (
-                    <SelectItem key={idx} value={String(opt)}>
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : field.type === 'DATE' ? (
-              <DatePicker
-                type="date"
-                value={formData[field.id] || ''}
-                onChange={(e) => handleChange(field.id, e.target.value)}
-                placeholder={`请选择${field.label}`}
-                className={errors[field.id] ? 'border-rose-300 bg-rose-50 dark:border-rose-900/70 dark:bg-rose-950/30' : ''}
-              />
-            ) : (
-              <Input
-                type={field.type === 'NUMBER' ? 'number' : 'text'}
-                value={formData[field.id] || ''}
-                onChange={(e) => handleChange(field.id, e.target.value)}
-                placeholder={`请输入${field.label}`}
-                className={errors[field.id] ? 'border-rose-300 bg-rose-50 dark:border-rose-900/70 dark:bg-rose-950/30' : ''}
-              />
-            )}
-
-            {errors[field.id] ? (
-              <p className="flex items-center gap-1 text-xs text-rose-500 dark:text-rose-300">
-                <AlertCircle size={10} />
-                {errors[field.id]}
-              </p>
-            ) : null}
+        <FormRenderer
+          formDef={{ id: 'preview', name: formName, fields }}
+          hideActions
+          data={formData}
+          onChange={handleChange}
+        />
+        {Object.keys(errors).length > 0 ? (
+          <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-300">
+            请补充必填项后再模拟提交。
           </div>
-        ))}
+        ) : null}
       </div>
 
       <div className="flex justify-end gap-3 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
@@ -434,19 +604,8 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
 
   const addField = (type: FormFieldType) => {
     setFields((prev) => {
-      let newId = crypto.randomUUID();
-      while (prev.some((f) => f.id === newId)) {
-        newId = crypto.randomUUID();
-      }
-
-      const newField: FormField = {
-        id: newId,
-        type,
-        label: type === 'TEXT' ? '请输入内容' : '新字段',
-        required: false,
-        options: type === 'SELECT' ? ['选项A', '选项B'] : undefined,
-      };
-      return [...prev, newField];
+      const newId = getUniqueFieldId(DEFAULT_FIELD_IDS[type], prev);
+      return [...prev, buildDefaultField(type, newId)];
     });
   };
 
@@ -475,6 +634,13 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
       if (field.type === 'SELECT' && (!field.options || field.options.length === 0)) {
         toast.error(`字段“${field.label}”至少需要一个选项`);
         return;
+      }
+
+      for (const mapping of field.fillMappings || []) {
+        if (!mapping.targetFieldId || !mapping.source) {
+          toast.error(`字段“${field.label}”的自动填充规则不完整`);
+          return;
+        }
       }
     }
 

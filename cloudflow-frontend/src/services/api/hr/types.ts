@@ -75,7 +75,9 @@ export interface EmployeeBrief {
   employeeNo?: string;
   deptId?: number | null;
   deptName?: string | null;
+  postId?: number | null;
   postName?: string | null;
+  positionId?: number | null;
   positionName?: string | null;
   employeeStatus?: string | null;
 }

@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { FormDefinition, FormField } from '../../types';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
+import {
+  DatePicker,
+  DeptSelector,
+  EmployeeSelector,
+  PositionSelector,
+  PostSelector,
+} from '../common';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../common/select';
-import { DatePicker } from '../common/date-picker';
+import { applyFieldFillMappings, getFieldDisplayValue } from '@/utils/formFieldRuntime';
 
 interface MobileFormRendererProps {
   formDef: FormDefinition;
@@ -28,8 +35,12 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
   const [formData, setFormData] = useState<Record<string, any>>(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (fieldId: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [fieldId]: value }));
+  const handleChange = (
+    fieldId: string,
+    value: any,
+    extraUpdates: Record<string, any> = {},
+  ) => {
+    setFormData((prev) => ({ ...prev, [fieldId]: value, ...extraUpdates }));
     // 清除该字段的错误
     if (errors[fieldId]) {
       setErrors((prev) => {
@@ -100,12 +111,34 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
     const val = formData[field.id];
     const error = errors[field.id];
     const hasError = !!error;
+    const isReadonlyField = readOnly || field.readonly;
+    const displayValue = getFieldDisplayValue(field, formData, val);
 
     const inputClassName = `w-full px-3 py-2.5 text-base border rounded-lg focus:outline-none transition-colors ${
       hasError
         ? 'border-red-300 bg-red-50 focus:border-red-500 dark:border-red-900 dark:bg-red-950/30'
         : 'border-slate-200 bg-[var(--cf-surface-strong)] focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15 dark:border-slate-700'
     } ${readOnly ? 'bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-300' : 'text-[var(--cf-text)]'}`;
+
+    if (isReadonlyField) {
+      return (
+        <div key={field.id} id={`mobile-field-${field.id}`} className="mb-4">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+            {field.label}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          <div className="min-h-[44px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-base text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            {displayValue || <span className="text-slate-400">未填写</span>}
+          </div>
+          {hasError && (
+            <div className="flex items-center gap-1 mt-1.5 text-red-500 text-xs">
+              <AlertCircle size={12} />
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div key={field.id} id={`mobile-field-${field.id}`} className="mb-4">
@@ -114,13 +147,67 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
           {field.required && <span className="text-red-500 ml-1">*</span>}
         </label>
 
+        {field.type === 'EMPLOYEE' && (
+          <EmployeeSelector
+            single
+            value={val ?? null}
+            onlyActive={field.onlyActive !== false}
+            placeholder={field.placeholder || '选择员工'}
+            allowClear
+            onChange={(id, picked) =>
+              handleChange(field.id, id ?? '', applyFieldFillMappings(field, picked))
+            }
+          />
+        )}
+
+        {field.type === 'DEPT' && (
+          <DeptSelector
+            single
+            value={val ?? null}
+            placeholder={field.placeholder || '选择部门'}
+            allowClear
+            onChange={(id, picked) =>
+              handleChange(field.id, id ?? '', applyFieldFillMappings(field, picked))
+            }
+          />
+        )}
+
+        {field.type === 'POST' && (
+          <PostSelector
+            single
+            value={val ?? null}
+            placeholder={field.placeholder || '选择岗位'}
+            allowClear
+            onChange={(id, picked) =>
+              handleChange(field.id, id ?? '', applyFieldFillMappings(field, picked))
+            }
+          />
+        )}
+
+        {field.type === 'POSITION' && (
+          <PositionSelector
+            single
+            value={val ?? null}
+            deptId={
+              field.filterByDeptFieldId && Number.isFinite(Number(formData[field.filterByDeptFieldId]))
+                ? Number(formData[field.filterByDeptFieldId])
+                : null
+            }
+            placeholder={field.placeholder || '选择职位'}
+            allowClear
+            onChange={(id, picked) =>
+              handleChange(field.id, id ?? '', applyFieldFillMappings(field, picked))
+            }
+          />
+        )}
+
         {field.type === 'TEXT' && (
           <input
             type="text"
             value={val || ''}
             onChange={(e) => handleChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            disabled={readOnly}
+            disabled={isReadonlyField}
             className={inputClassName}
           />
         )}
@@ -131,7 +218,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
             value={val || ''}
             onChange={(e) => handleChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            disabled={readOnly}
+            disabled={isReadonlyField}
             className={inputClassName}
           />
         )}
@@ -141,7 +228,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
             type="date"
             value={val || ''}
             onChange={(e) => handleChange(field.id, e.target.value)}
-            disabled={readOnly}
+            disabled={isReadonlyField}
             className="w-full"
           />
         )}
@@ -165,7 +252,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
             value={val || ''}
             onChange={(e) => handleChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            disabled={readOnly}
+            disabled={isReadonlyField}
             rows={4}
             className={`${inputClassName} resize-none`}
           />
