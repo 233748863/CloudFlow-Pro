@@ -472,15 +472,15 @@ export const CopyListPage: React.FC = () => {
       <div className="admin-oa-filter-grid">
         <label>
           <span className="input-label">流程标题</span>
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="admin-source-search-field">
+            <Search size={16} />
             <Input
               type="search"
               placeholder="搜索流程标题"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              className="h-[42px] pl-10"
+              className="h-[42px]"
             />
           </div>
         </label>

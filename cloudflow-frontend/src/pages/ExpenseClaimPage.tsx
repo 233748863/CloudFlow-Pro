@@ -908,7 +908,9 @@ export const ExpenseClaimPage: React.FC = () => {
         onClose={closeDetailDialog}
         width="wide"
         headerAside={detailClaim && !detailLoading ? getStatusBadge(detailClaim.status) : null}
-        bodyClassName="admin-dialog-stack"
+        panelClassName="admin-expense-detail-dialog"
+        bodyClassName="admin-dialog-stack admin-expense-detail-dialog-body"
+        footerClassName="admin-expense-detail-dialog-footer"
         footer={(
           <Button variant="outline" onClick={closeDetailDialog}>
             关闭
@@ -957,7 +959,7 @@ export const ExpenseClaimPage: React.FC = () => {
             <ExpensePanel title="报销明细" meta={`${detailClaim.items?.length || 0} 条费用记录`}>
               {detailClaim.items?.length ? (
                 <InnerTableSurface>
-                  <table className="unity-data-table admin-source-table min-w-[820px]">
+                  <table className="unity-data-table admin-source-table admin-expense-detail-table min-w-[820px]">
                     <thead>
                       <tr>
                         <th>费用类型</th>

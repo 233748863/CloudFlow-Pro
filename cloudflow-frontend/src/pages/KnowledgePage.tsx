@@ -596,11 +596,11 @@ const KnowledgePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="admin-knowledge-filter-grid">
-        <label className="admin-source-search">
+      <div className="admin-toolbar-filter-grid [--admin-toolbar-filter-count:2]">
+        <label className="min-w-0">
           <span className="input-label">搜索文档</span>
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="admin-source-search-field">
+            <Search size={16} />
             <Input
               type="search"
               value={keyword}
@@ -611,12 +611,12 @@ const KnowledgePage: React.FC = () => {
                 }
               }}
               placeholder="标题、摘要或正文"
-              className="h-[42px] pl-10"
+              className="h-[42px]"
             />
           </div>
         </label>
 
-        <label>
+        <label className="min-w-0">
           <span className="input-label">分类</span>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="w-full">
@@ -630,7 +630,7 @@ const KnowledgePage: React.FC = () => {
         </label>
 
         {viewMode !== 'library' ? (
-          <label>
+          <label className="min-w-0">
             <span className="input-label">状态</span>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="w-full">

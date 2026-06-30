@@ -1354,20 +1354,27 @@ const PerformanceStatsPage: React.FC = () => {
             ))}
           </SegmentedControl>
 
-          <DatePicker
-            className="cf-control admin-performance-date-control"
-            type="date"
-            value={dateRange.startDate}
-            onChange={(event) => handleStartDateChange(event.target.value)}
-          />
-          <DatePicker
-            className="cf-control admin-performance-date-control"
-            type="date"
-            value={dateRange.endDate}
-            onChange={(event) => handleEndDateChange(event.target.value)}
-          />
+          <label>
+            <span className="input-label">开始日期</span>
+            <DatePicker
+              className="cf-control admin-performance-date-control"
+              type="date"
+              value={dateRange.startDate}
+              onChange={(event) => handleStartDateChange(event.target.value)}
+            />
+          </label>
+          <label>
+            <span className="input-label">结束日期</span>
+            <DatePicker
+              className="cf-control admin-performance-date-control"
+              type="date"
+              value={dateRange.endDate}
+              onChange={(event) => handleEndDateChange(event.target.value)}
+            />
+          </label>
 
-          <div className="admin-performance-process-control">
+          <label className="admin-performance-process-control">
+            <span className="input-label">流程</span>
             <Select
               value={selectedProcess || 'all'}
               onValueChange={(value) => setSelectedProcess(value === 'all' ? '' : value)}
@@ -1384,7 +1391,7 @@ const PerformanceStatsPage: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </label>
         </div>
 
         <div className="admin-performance-context-strip">

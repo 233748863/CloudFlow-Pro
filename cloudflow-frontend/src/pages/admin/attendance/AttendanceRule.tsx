@@ -396,7 +396,7 @@ const AttendanceRulePage: React.FC = () => {
 
   const pageFilters = (
     <section className="card admin-users-toolbar">
-      <div className="grid items-end gap-3 xl:grid-cols-[minmax(18rem,1fr)_180px_160px_auto]">
+      <div className="admin-toolbar-filter-grid [--admin-toolbar-filter-count:2]">
         <label className="grid gap-1.5">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">当前规则</span>
           <Select value={selectedId ? String(selectedId) : NEW_RULE_VALUE} onValueChange={handleRuleSelect}>

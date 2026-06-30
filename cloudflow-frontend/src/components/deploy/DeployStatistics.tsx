@@ -176,8 +176,9 @@ export const DeployStatistics: React.FC = () => {
   return (
     <div className="admin-source-content-grid">
       <section className="card admin-users-toolbar">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="w-full sm:w-72">
+        <div className="admin-toolbar-filter-grid admin-deploy-toolbar-grid [--admin-toolbar-filter-count:1]">
+          <label className="min-w-0">
+            <span className="input-label">流程</span>
             <Select value={selectedProcess} onValueChange={setSelectedProcess}>
               <SelectTrigger>
                 <SelectValue placeholder="请选择流程" />
@@ -190,16 +191,16 @@ export const DeployStatistics: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </label>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="admin-toolbar-field admin-deploy-toolbar-metrics">
             <span className="badge badge-gray">{selectedProcessMeta?.processName || selectedProcessMeta?.processKey || '未选择流程'}</span>
             <span className="badge badge-gray">发布 {derived.totalDeploys}</span>
             <span className="badge badge-gray">成功率 {derived.successRate.toFixed(1)}%</span>
             <span className="badge badge-gray">回滚率 {derived.rollbackRate.toFixed(1)}%</span>
           </div>
 
-          <div className="admin-users-toolbar-actions ml-auto">
+          <div className="admin-users-toolbar-actions">
             <Button variant="outline" size="sm" onClick={() => void loadStatistics()} disabled={!selectedProcess}>
               <RefreshCw className="h-4 w-4" />
               刷新

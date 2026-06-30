@@ -1458,7 +1458,7 @@ export const HrPerformancePage: React.FC = () => {
           filters={
             <section className="card admin-users-toolbar min-w-0">
           <form
-            className="grid w-full min-w-0 grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(20rem,1fr)_minmax(10rem,12rem)_auto]"
+            className="admin-toolbar-filter-grid"
             onSubmit={(event) => {
               event.preventDefault();
               void loadList();
@@ -1466,13 +1466,12 @@ export const HrPerformancePage: React.FC = () => {
           >
             <label className="min-w-0">
               <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">关键词</span>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <div className="admin-source-search-field">
+                <Search className="h-4 w-4" />
                 <Input
                   value={keyword}
                   onChange={(event) => setKeyword(event.target.value)}
                   placeholder="搜索目标编号、周期或名称"
-                  className="pl-9"
                 />
               </div>
             </label>

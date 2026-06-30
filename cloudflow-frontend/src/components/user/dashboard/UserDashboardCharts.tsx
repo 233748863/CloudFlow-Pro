@@ -570,7 +570,7 @@ export const UserDashboardCharts: React.FC<UserDashboardChartsProps> = ({
               <DatePicker
                 id="dashboard-start-date"
                 type="date"
-                className="date-range-input h-10"
+                className="date-range-input"
                 value={startDate}
                 onChange={(event) => onStartDateChange(event.target.value)}
               />
@@ -578,7 +578,7 @@ export const UserDashboardCharts: React.FC<UserDashboardChartsProps> = ({
               <DatePicker
                 id="dashboard-end-date"
                 type="date"
-                className="date-range-input h-10"
+                className="date-range-input"
                 value={endDate}
                 onChange={(event) => onEndDateChange(event.target.value)}
               />
@@ -593,12 +593,12 @@ export const UserDashboardCharts: React.FC<UserDashboardChartsProps> = ({
 
         <div className="dashboard-filter dashboard-granularity-filter">
           <span>粒度</span>
-          <div className="w-28">
+          <div className="dashboard-granularity-control">
             <Select
               value={granularity}
               onValueChange={(value) => onGranularityChange(value as 'day' | 'hour')}
             >
-              <SelectTrigger className="h-10">
+              <SelectTrigger>
                 <SelectValue placeholder="选择粒度" />
               </SelectTrigger>
               <SelectContent>

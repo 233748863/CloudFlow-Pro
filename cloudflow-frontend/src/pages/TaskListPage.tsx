@@ -740,7 +740,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
     <section className="card admin-users-toolbar">
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <SegmentedControl className="min-h-10 flex-wrap">
+            <SegmentedControl className="min-h-[42px] flex-wrap">
               {centerModeTabs.map((tab) => (
                 <SegmentedControlItem
                   key={tab.key}
@@ -758,7 +758,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
 
             <div className="flex flex-wrap items-center gap-2">
               {centerMode === 'pending' ? (
-                <SegmentedControl className="min-h-10 flex-wrap">
+                <SegmentedControl className="min-h-[42px] flex-wrap">
                   {filterTypeTabs.map((tab) => (
                     <SegmentedControlItem key={tab.key} size="sm" active={filterType === tab.key} onClick={() => setFilterType(tab.key)}>
                       {tab.label}
@@ -767,7 +767,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
                 </SegmentedControl>
               ) : null}
               {centerMode === 'applications' ? (
-                <SegmentedControl className="min-h-10 flex-wrap">
+                <SegmentedControl className="min-h-[42px] flex-wrap">
                   {statusTabs.map((tab) => (
                     <SegmentedControlItem key={tab.key} size="sm" active={statusFilter === tab.key} onClick={() => handleStatusChange(tab.key)}>
                       {tab.label}
@@ -776,7 +776,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
                 </SegmentedControl>
               ) : null}
               {centerMode === 'pending' ? (
-                <SegmentedControl className="min-h-10">
+                <SegmentedControl className="min-h-[42px]">
                   <SegmentedControlItem size="sm" active={viewMode === 'list'} onClick={() => setViewMode('list')}>
                     <LayoutList size={16} />
                     列表
@@ -808,7 +808,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
               <label>
                 <span className="input-label">流程类型</span>
                 <Select value={todoProcessDefKey || 'ALL_TYPES'} onValueChange={handleTodoProcessDefKeyChange}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="全部流程类型" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="全部流程类型" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
                     {todoProcessDefOptions.map((option) => <SelectItem key={option.key} value={String(option.key)}>{option.name}</SelectItem>)}
@@ -849,7 +849,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
               <label>
                 <span className="input-label">流程类型</span>
                 <Select value={processDefKey || 'ALL_TYPES'} onValueChange={handleProcessDefKeyChange}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="全部流程类型" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="全部流程类型" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
                     {processDefOptions.map((option) => <SelectItem key={option.key} value={String(option.key)}>{option.name}</SelectItem>)}
@@ -859,7 +859,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
               <label>
                 <span className="input-label">优先级</span>
                 <Select value={priorityFilter || 'ALL_PRIORITIES'} onValueChange={handlePriorityChange}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="全部优先级" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="全部优先级" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL_PRIORITIES">全部优先级</SelectItem>
                     <SelectItem value="URGENT">紧急</SelectItem>

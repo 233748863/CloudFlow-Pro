@@ -214,13 +214,13 @@ export const HrMallPage: React.FC = () => {
             </label>
             <label>
               <span>分类</span>
-              <div className="flex min-h-10 flex-wrap items-center gap-2">
+              <div className="flex min-h-[42px] flex-wrap items-center gap-2">
                 {categories.map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setCategory(c)}
-                    className={`rounded-md border px-3 py-2 text-xs font-medium transition ${
+                    className={`min-h-[42px] rounded-md border px-3 py-2 text-xs font-medium transition ${
                       category === c
                         ? 'border-cyan-500 bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40'
                         : 'border-slate-200 text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:border-slate-700 dark:text-slate-300'

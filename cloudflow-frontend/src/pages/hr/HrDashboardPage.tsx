@@ -439,20 +439,19 @@ export const HrDashboardPage: React.FC = () => {
 
   const pageFilters = (
       <section className="card admin-users-toolbar">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <label className="admin-dialog-field w-full xl:w-80">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">模块搜索</span>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+        <div className="admin-toolbar-filter-grid">
+          <label className="admin-source-search">
+            <span className="input-label">模块搜索</span>
+            <div className="admin-source-search-field">
+              <Search size={16} />
               <Input
-                className="cf-control pl-10"
                 placeholder="搜索 HR 模块、入口或事项"
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
               />
             </div>
           </label>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="admin-users-toolbar-actions">
             <span className="badge badge-gray">入口 {loading ? '--' : totalModuleCount}</span>
             <span className="badge badge-gray">候选人 {loading ? '--' : summary.interviewingCount}</span>
             <span className="badge badge-gray">试用期 {loading ? '--' : summary.probationCount}</span>

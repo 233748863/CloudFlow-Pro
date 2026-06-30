@@ -321,58 +321,63 @@ export const VersionRollbackManagement: React.FC = () => {
   return (
     <div className="admin-source-content-grid">
       <div className="card admin-users-toolbar">
-        <div className="w-full sm:w-72">
-          <Select value={selectedProcess} onValueChange={setSelectedProcess}>
-            <SelectTrigger>
-              <SelectValue placeholder="请选择流程" />
-            </SelectTrigger>
-            <SelectContent>
-              {processes.map((item) => (
-                <SelectItem key={String(item.definitionId)} value={String(item.definitionId)}>
-                  {item.processName || item.processKey || String(item.definitionId)}
-                </SelectItem>
+        <div className="admin-toolbar-filter-grid admin-deploy-toolbar-grid [--admin-toolbar-filter-count:1]">
+          <label className="min-w-0">
+            <span className="input-label">流程</span>
+            <Select value={selectedProcess} onValueChange={setSelectedProcess}>
+              <SelectTrigger>
+                <SelectValue placeholder="请选择流程" />
+              </SelectTrigger>
+              <SelectContent>
+                {processes.map((item) => (
+                  <SelectItem key={String(item.definitionId)} value={String(item.definitionId)}>
+                    {item.processName || item.processKey || String(item.definitionId)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+
+          <div className="admin-toolbar-field admin-deploy-toolbar-switch">
+            <SegmentedControl className="min-h-9">
+              {[
+                { key: 'versions', label: '版本列表' },
+                { key: 'history', label: '回滚历史' },
+              ].map((item) => (
+                <SegmentedControlItem
+                  key={item.key}
+                  size="sm"
+                  active={activeView === item.key}
+                  onClick={() => setActiveView(item.key as 'versions' | 'history')}
+                >
+                  {item.label}
+                </SegmentedControlItem>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
+            </SegmentedControl>
+          </div>
 
-        <SegmentedControl className="min-h-9">
-          {[
-            { key: 'versions', label: '版本列表' },
-            { key: 'history', label: '回滚历史' },
-          ].map((item) => (
-            <SegmentedControlItem
-              key={item.key}
+          <div className="admin-users-toolbar-actions">
+            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              流程 {summary.processCount}
+            </span>
+            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              快照 {summary.versionCount}
+            </span>
+            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              历史 {summary.historyCount}
+            </span>
+            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              最新 {summary.latestVersion > 0 ? `v${summary.latestVersion}` : '暂无'}
+            </span>
+            <Button
+              variant="outline"
               size="sm"
-              active={activeView === item.key}
-              onClick={() => setActiveView(item.key as 'versions' | 'history')}
+              onClick={() => void (activeView === 'versions' ? loadVersions() : loadHistory())}
             >
-              {item.label}
-            </SegmentedControlItem>
-          ))}
-        </SegmentedControl>
-
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-            流程 {summary.processCount}
-          </span>
-          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-            快照 {summary.versionCount}
-          </span>
-          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-            历史 {summary.historyCount}
-          </span>
-          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-            最新 {summary.latestVersion > 0 ? `v${summary.latestVersion}` : '暂无'}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void (activeView === 'versions' ? loadVersions() : loadHistory())}
-          >
-            <RefreshCw className="h-4 w-4" />
-            刷新
-          </Button>
+              <RefreshCw className="h-4 w-4" />
+              刷新
+            </Button>
+          </div>
         </div>
       </div>
 

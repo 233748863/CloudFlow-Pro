@@ -303,7 +303,7 @@ export const DutySchedulePage: React.FC = () => {
               setFilterDraft((prev) => ({ ...prev, status: value === 'ALL' ? '' : value }))
             }
           >
-            <SelectTrigger className="h-10">
+            <SelectTrigger>
               <SelectValue placeholder="全部状态" />
             </SelectTrigger>
             <SelectContent>
@@ -323,7 +323,7 @@ export const DutySchedulePage: React.FC = () => {
               setFilterDraft((prev) => ({ ...prev, scheduleType: value === 'ALL' ? '' : value }))
             }
           >
-            <SelectTrigger className="h-10">
+            <SelectTrigger>
               <SelectValue placeholder="全部类型" />
             </SelectTrigger>
             <SelectContent>

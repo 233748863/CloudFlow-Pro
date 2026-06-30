@@ -191,7 +191,7 @@ export const HrLaborDisputePage: React.FC = () => {
 
   const pageFilters = (
     <section className="card admin-users-toolbar">
-      <div className="grid items-end gap-3 lg:grid-cols-[minmax(16rem,28rem)_auto]">
+      <div className="admin-toolbar-filter-grid [--admin-toolbar-filter-count:1]">
         <label className="min-w-0">
           <span className="input-label">状态</span>
           <Select value={statusFilter} onValueChange={setStatusFilter}>

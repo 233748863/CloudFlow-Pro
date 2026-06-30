@@ -451,7 +451,7 @@ export const Workplace = () => {
 
   const pageFilters = (
       <section className="card admin-users-toolbar">
-        <div className="grid items-end gap-3 xl:grid-cols-[minmax(18rem,1fr)_220px_auto]">
+        <div className="admin-toolbar-filter-grid">
           <label className="min-w-0">
             <span className="input-label">流程搜索</span>
             <div className="admin-source-search-field">

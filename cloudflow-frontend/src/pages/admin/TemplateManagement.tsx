@@ -635,7 +635,7 @@ export const TemplateManagement: React.FC = () => {
 
   const pageFilters = (
     <section className="card admin-users-toolbar">
-      <div className="grid items-end gap-3 xl:grid-cols-[minmax(18rem,1fr)_220px_180px_auto]">
+      <div className="admin-toolbar-filter-grid [--admin-toolbar-filter-count:2]">
         <label className="min-w-0">
           <span className="input-label">搜索模板</span>
           <div className="admin-source-search-field">

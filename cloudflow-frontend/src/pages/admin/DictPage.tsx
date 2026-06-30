@@ -574,7 +574,7 @@ export const DictPage: React.FC = () => {
 
   const pageFilters = (
     <section className="card admin-users-toolbar">
-      <form onSubmit={handleSearch} className="grid items-end gap-3 xl:grid-cols-[minmax(18rem,1fr)_180px_260px_auto]">
+      <form onSubmit={handleSearch} className="admin-toolbar-filter-grid [--admin-toolbar-filter-count:2]">
         <label className="min-w-0">
           <span className="input-label">关键词</span>
           <div className="admin-source-search-field">

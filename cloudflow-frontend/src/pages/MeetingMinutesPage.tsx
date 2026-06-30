@@ -369,8 +369,8 @@ const MeetingMinutesPage: React.FC = () => {
 
   const filters = (
     <section className="card admin-users-toolbar">
-      <div className="admin-oa-filter-grid">
-        <label className="admin-source-search">
+      <div className="admin-toolbar-filter-grid">
+        <label className="min-w-0">
           <span className="input-label">搜索纪要</span>
           <div className="admin-source-search-field">
             <Search size={16} />
@@ -383,7 +383,7 @@ const MeetingMinutesPage: React.FC = () => {
             />
           </div>
         </label>
-        <label>
+        <label className="min-w-0">
           <span className="input-label">状态</span>
           <Select value={query.status || 'ALL'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === 'ALL' ? '' : v }))}>
             <SelectTrigger className="h-[42px] w-full"><SelectValue placeholder="全部状态" /></SelectTrigger>
@@ -395,16 +395,16 @@ const MeetingMinutesPage: React.FC = () => {
             </SelectContent>
           </Select>
         </label>
-      <div className="admin-source-controls">
-        <Button variant="outline" size="sm" onClick={() => setQuery({ keyword: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })}>
-          <RefreshCw size={14} className="mr-1.5" />清空条件
-        </Button>
-        {canEdit ? (
-          <Button size="sm" onClick={openCreate}>
-            <Plus size={14} className="mr-1.5" />新建会议纪要
+        <div className="admin-users-toolbar-actions">
+          <Button variant="outline" size="sm" onClick={() => setQuery({ keyword: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })}>
+            <RefreshCw size={14} className="mr-1.5" />清空条件
           </Button>
-        ) : null}
-      </div>
+          {canEdit ? (
+            <Button size="sm" onClick={openCreate}>
+              <Plus size={14} className="mr-1.5" />新建会议纪要
+            </Button>
+          ) : null}
+        </div>
       </div>
     </section>
   );

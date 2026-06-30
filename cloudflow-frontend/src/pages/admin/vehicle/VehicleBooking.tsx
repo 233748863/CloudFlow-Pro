@@ -360,41 +360,40 @@ export const VehicleBooking: React.FC = () => {
             <>
               {step === 0 ? (
                 <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-1 flex-wrap items-center gap-3">
-                      <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
-                        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <div className="admin-vehicle-booking-filter-grid">
+                    <label className="admin-source-search">
+                      <span className="input-label">车辆搜索</span>
+                      <div className="admin-source-search-field">
+                        <Search size={16} />
                         <Input
                           placeholder="搜索车牌号、品牌、型号"
                           value={searchText}
                           onChange={(e) => setSearchText(e.target.value)}
-                          className="h-11 pl-9"
                         />
                       </div>
-                      <div className="w-full sm:w-36">
-                        <Select value={capacityFilter} onValueChange={setCapacityFilter}>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="座位数" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">全部</SelectItem>
-                            <SelectItem value="small">5座及以下</SelectItem>
-                            <SelectItem value="medium">6-7座</SelectItem>
-                            <SelectItem value="large">7座以上</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                    </label>
+                    <label>
+                      <span className="input-label">座位数</span>
+                      <Select value={capacityFilter} onValueChange={setCapacityFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="座位数" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部</SelectItem>
+                          <SelectItem value="small">5座及以下</SelectItem>
+                          <SelectItem value="medium">6-7座</SelectItem>
+                          <SelectItem value="large">7座以上</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <div className="admin-users-toolbar-actions">
+                      <span className="admin-users-filter-count">
                         {searchText || capacityFilter !== 'all'
                           ? `已筛出 ${filteredVehicles.length} / ${vehicles.length} 辆`
                           : `可预约 ${vehicles.length} 辆`}
-                      </div>
+                      </span>
+                      {selectedVehicle ? <span className="admin-users-filter-count">已选 {selectedVehicle.licensePlate}</span> : null}
                     </div>
-                    {selectedVehicle ? (
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        已选 {selectedVehicle.licensePlate}
-                      </div>
-                    ) : null}
                   </div>
 
                   {filteredVehicles.length === 0 ? (

@@ -273,12 +273,12 @@ const HrAttendanceAppealPage: React.FC = () => {
               >
                 <label>
                   <span>员工</span>
-                  <div className="relative">
-                    <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                  <div className="admin-source-search-field">
+                    <Search size={16} />
                     <Input
                       value={query.employeeName}
                       onChange={(event) => setQuery((q) => ({ ...q, employeeName: event.target.value }))}
-                      className="cf-control pl-10"
+                      className="cf-control"
                       placeholder="搜索员工姓名"
                     />
                   </div>

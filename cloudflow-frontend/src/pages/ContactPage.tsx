@@ -243,13 +243,13 @@ export const ContactPage: React.FC = () => {
 
   const pageFilters = (
     <section className="card admin-users-toolbar">
-      <div className="grid items-end gap-3 xl:grid-cols-[minmax(18rem,1fr)_240px_auto]">
+      <div className="admin-toolbar-filter-grid">
         <label className="min-w-0">
           <span className="input-label">联系人搜索</span>
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="admin-source-search-field">
+            <Search size={16} />
             <Input
-              className="h-[42px] pl-10"
+              className="h-[42px]"
               type="search"
               value={keywordDraft}
               onChange={event => setKeywordDraft(event.target.value)}

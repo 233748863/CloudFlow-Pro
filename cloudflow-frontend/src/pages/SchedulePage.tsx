@@ -946,7 +946,7 @@ export const SchedulePage = () => {
                   setTablePageNum(1);
                 }}
               >
-                <SelectTrigger className="h-10"><SelectValue placeholder="时间范围" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="时间范围" /></SelectTrigger>
                 <SelectContent>
                   {TABLE_FILTER_SCOPE_OPTIONS.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                 </SelectContent>
@@ -956,7 +956,7 @@ export const SchedulePage = () => {
             <label>
               <span className="input-label">日程类型</span>
               <Select value={tableFilters.type} onValueChange={handleTableTypeChange}>
-                <SelectTrigger className="h-10"><SelectValue placeholder="日程类型" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="日程类型" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">全部类型</SelectItem>
                   <SelectItem value="MEETING">会议</SelectItem>

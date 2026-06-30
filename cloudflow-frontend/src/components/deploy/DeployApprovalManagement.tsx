@@ -197,31 +197,35 @@ export const DeployApprovalManagement: React.FC = () => {
   return (
     <div className="admin-source-content-grid">
       <section className="card admin-users-toolbar">
-        <SegmentedControl className="min-h-9">
-          {[
-            { key: 'pending', label: '待我审批', count: pendingApprovals.length },
-            { key: 'submitted', label: '我的提交', count: submittedApprovals.length },
-          ].map((item) => (
-            <SegmentedControlItem
-              key={item.key}
-              size="sm"
-              active={activeView === item.key}
-              count={item.count}
-              onClick={() => setActiveView(item.key as 'pending' | 'submitted')}
-            >
-              {item.label}
-            </SegmentedControlItem>
-          ))}
-        </SegmentedControl>
+        <div className="admin-toolbar-filter-grid admin-deploy-toolbar-grid [--admin-toolbar-filter-count:1]">
+          <div className="admin-toolbar-field admin-deploy-toolbar-switch">
+            <SegmentedControl className="min-h-9">
+              {[
+                { key: 'pending', label: '待我审批', count: pendingApprovals.length },
+                { key: 'submitted', label: '我的提交', count: submittedApprovals.length },
+              ].map((item) => (
+                <SegmentedControlItem
+                  key={item.key}
+                  size="sm"
+                  active={activeView === item.key}
+                  count={item.count}
+                  onClick={() => setActiveView(item.key as 'pending' | 'submitted')}
+                >
+                  {item.label}
+                </SegmentedControlItem>
+              ))}
+            </SegmentedControl>
+          </div>
 
-        <div className="admin-users-toolbar-actions ml-auto">
-          <span className="badge badge-gray">待我审批 {summary.pendingCount}</span>
-          <span className="badge badge-gray">我的提交 {summary.submittedCount}</span>
-          <span className="badge badge-gray">已通过 {summary.completedCount}</span>
-          <Button variant="outline" size="sm" onClick={() => void loadData()}>
-            <RefreshCw className="h-4 w-4" />
-            刷新
-          </Button>
+          <div className="admin-users-toolbar-actions">
+            <span className="badge badge-gray">待我审批 {summary.pendingCount}</span>
+            <span className="badge badge-gray">我的提交 {summary.submittedCount}</span>
+            <span className="badge badge-gray">已通过 {summary.completedCount}</span>
+            <Button variant="outline" size="sm" onClick={() => void loadData()}>
+              <RefreshCw className="h-4 w-4" />
+              刷新
+            </Button>
+          </div>
         </div>
       </section>
 
