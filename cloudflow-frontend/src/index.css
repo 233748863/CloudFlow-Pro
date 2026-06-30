@@ -17222,6 +17222,17 @@ html.dark .template-market-search-field input {
   }
 }
 
+.admin-users-toolbar [class*="filter-grid"] > .admin-users-toolbar-actions > .admin-users-filter-count,
+.admin-users-toolbar .admin-toolbar-filter-grid > .admin-users-toolbar-actions > .admin-users-filter-count,
+.admin-users-toolbar [class*="toolbar-grid"] > .admin-users-toolbar-actions > .admin-users-filter-count,
+.admin-users-toolbar .admin-announcements-toolbar > .admin-users-toolbar-actions > .admin-users-filter-count,
+.admin-source-inline-toolbar [class*="filter-grid"] > .admin-users-toolbar-actions > .admin-users-filter-count,
+.cf-filter-bar [class*="filter-grid"] > .admin-users-toolbar-actions > .admin-users-filter-count,
+.admin-cache-search > .admin-users-toolbar-actions > .admin-users-filter-count,
+.admin-users-toolbar-actions > .admin-users-filter-count {
+  display: none;
+}
+
 html,
 body,
 #root {

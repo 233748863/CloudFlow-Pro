@@ -353,7 +353,6 @@ export const BorrowManagementPage: React.FC = () => {
           </Select>
         </label>
         <div className="admin-users-toolbar-actions">
-          <span className="admin-users-filter-count">第 {query.pageNum} / {totalPages} 页 · 共 {total} 条</span>
           <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), kind: 'ALL', status: 'APPROVED' })} disabled={activeFilterCount === 0}>
             <RotateCcw size={14} />
             重置

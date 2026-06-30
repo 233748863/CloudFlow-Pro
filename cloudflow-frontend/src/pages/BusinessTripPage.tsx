@@ -236,7 +236,6 @@ export const BusinessTripPage: React.FC = () => {
   const currentDestinationLabel = searchParams.destination || '全部目的地';
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentDestinationLabel}` : '全部出差';
-  const toolbarSummary = `第 ${searchParams.pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const formTripDays = calculateTripDays(formData.startDate, formData.endDate);
 
   const handleApplyFilters = () => {
@@ -534,7 +533,6 @@ export const BusinessTripPage: React.FC = () => {
               </Select>
             </label>
             <div className="admin-users-toolbar-actions">
-              <span className="admin-users-filter-count">{toolbarSummary}</span>
               <Button variant="outline" size="sm" onClick={handleApplyFilters}>
                 <Search size={14} />
                 应用

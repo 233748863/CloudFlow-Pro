@@ -283,7 +283,6 @@ export const LeaveApplicationPage: React.FC = () => {
   const hasActiveFilters = Boolean(searchParams.status || searchParams.leaveTypeId);
   const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部请假';
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
-  const toolbarSummary = `第 ${searchParams.pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const selfServiceLocked = loadingTypes || eligibilityLoading || !canStartSelfService;
   const metrics = [
     { label: '请假申请', value: String(total), meta: `当前页 ${list.length}`, icon: <ClipboardList size={18} />, tone: 'blue' },
@@ -630,7 +629,6 @@ export const LeaveApplicationPage: React.FC = () => {
           </Select>
         </label>
         <div className="admin-users-toolbar-actions">
-          <span className="admin-users-filter-count">{toolbarSummary}</span>
           <Button variant="outline" size="sm" onClick={() => setSearchParams({ status: '', leaveTypeId: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })} disabled={!hasActiveFilters}>
             <RotateCcw size={14} />重置
           </Button>

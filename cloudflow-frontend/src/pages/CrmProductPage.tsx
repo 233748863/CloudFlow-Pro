@@ -46,7 +46,6 @@ export default function CrmProductPage() {
   const [editing, setEditing] = useState<CrmProduct | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CrmProduct | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / 10));
-  const toolbarSummary = `第 ${pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const stats = useMemo(
     () => [
       { label: '产品总数', value: String(total), meta: `当前第 ${pageNum} 页`, icon: <Boxes size={18} />, tone: 'blue' },
@@ -165,7 +164,6 @@ export default function CrmProductPage() {
                 </SelectContent>
               </Select>
             </label>
-            <div className="admin-users-toolbar-actions"><span className="admin-users-filter-count">{toolbarSummary}</span></div>
           </div>
         </section>
   );

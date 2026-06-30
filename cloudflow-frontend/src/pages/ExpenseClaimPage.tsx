@@ -279,7 +279,6 @@ export const ExpenseClaimPage: React.FC = () => {
     : '全部类别';
   const totalPages = Math.max(1, Math.ceil(remoteTotal / searchParams.pageSize));
   const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentCategoryLabel}` : '全部报销';
-  const toolbarSummary = `第 ${searchParams.pageNum} / ${totalPages} 页 · 共 ${remoteTotal} 条`;
   const formTotalAmount = formData.items?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0;
   const metrics = [
     { label: '报销申请', value: String(remoteTotal), meta: `当前页 ${claims.length}`, icon: <Receipt size={18} />, tone: 'blue' },
@@ -583,7 +582,6 @@ export const ExpenseClaimPage: React.FC = () => {
           </Select>
         </label>
         <div className="admin-users-toolbar-actions">
-          <span className="admin-users-filter-count">{toolbarSummary}</span>
           <Button size="sm" onClick={handleApplyFilters}><Search size={14} />查询</Button>
           <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={!hasActiveFilters && !categoryDraft}><RotateCcw size={14} />重置</Button>
         </div>

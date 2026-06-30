@@ -832,7 +832,6 @@ export const SchedulePage = () => {
   );
   const tablePageStart = tableTotal === 0 ? 0 : (tablePageNum - 1) * TABLE_PAGE_SIZE + 1;
   const tablePageEnd = tableTotal === 0 ? 0 : Math.min(tableTotal, tablePageNum * TABLE_PAGE_SIZE);
-  const tableToolbarSummary = `第 ${tablePageNum} / ${tableTotalPages} 页 · 共 ${tableTotal} 条`;
   const tableHasActiveFilters = Boolean(
     tableFilters.keyword || tableFilters.scope !== 'ALL' || tableFilters.type !== 'ALL',
   );
@@ -984,7 +983,6 @@ export const SchedulePage = () => {
             </label>
 
             <div className="admin-users-toolbar-actions">
-              <span className="admin-users-filter-count">{tableToolbarSummary}</span>
               {tableHasActiveFilters ? (
                 <Button variant="outline" size="sm" onClick={handleResetTableFilters}>
                   <RotateCcw size={14} className="mr-1.5" />

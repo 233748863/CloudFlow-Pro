@@ -64,7 +64,6 @@ export default function CrmSalesTargetPage() {
   const [editing, setEditing] = useState<CrmSalesTarget | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CrmSalesTarget | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / 10));
-  const toolbarSummary = `第 ${pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const stats = useMemo(
     () => [
       { label: '目标总数', value: String(total), meta: `当前第 ${pageNum} 页`, icon: <Goal size={18} />, tone: 'blue' },
@@ -195,7 +194,6 @@ export default function CrmSalesTargetPage() {
               <Input value={targetYear} onChange={(e) => { setPageNum(1); setTargetYear(e.target.value); }} placeholder="年份" />
             </label>
             <div className="admin-users-toolbar-actions">
-              <span className="admin-users-filter-count">{toolbarSummary}</span>
             </div>
           </div>
         </section>

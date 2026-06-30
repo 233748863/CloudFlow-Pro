@@ -208,7 +208,6 @@ export const OvertimeApplicationPage: React.FC = () => {
   const hasActiveFilters = Boolean(searchParams.status || searchParams.overtimeType);
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部加班';
-  const toolbarSummary = `第 ${searchParams.pageNum} / ${totalPages} 页 · 共 ${total} 条`;
   const metrics = [
     { label: '加班申请', value: String(total), meta: `当前页 ${list.length}`, icon: <Timer size={18} />, tone: 'blue' },
     { label: '草稿', value: String(draftCount), meta: '待提交', icon: <Edit size={18} />, tone: 'amber' },
@@ -474,7 +473,6 @@ export const OvertimeApplicationPage: React.FC = () => {
           </Select>
         </label>
         <div className="admin-users-toolbar-actions">
-          <span className="admin-users-filter-count">{toolbarSummary}</span>
           <Button variant="outline" size="sm" onClick={() => setSearchParams({ status: '', overtimeType: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })} disabled={!hasActiveFilters}>
             <RotateCcw size={14} />重置
           </Button>
