@@ -195,6 +195,18 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     background: var(--cf-window-bg);
   }
 
+  .cf-desktop-shell:has(.cf-auth-page) {
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .cf-desktop-content:has(.cf-auth-page) {
+    height: calc(100vh - 32px);
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .cf-app-shell {
     position: relative;
     min-height: 100vh;

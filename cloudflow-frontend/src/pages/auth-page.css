@@ -36,6 +36,7 @@
 }
 
 .cf-desktop-content .cf-auth-page {
+  --auth-desktop-panel-scale: 1;
   height: 100%;
   max-height: 100%;
   min-height: 0;
@@ -205,11 +206,17 @@
   width: min(1120px, calc(100vw - 64px));
   grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
   gap: clamp(32px, 5vw, 64px);
-  overflow: hidden;
+  overflow: visible;
   padding: clamp(72px, 11vh, 104px) 0 clamp(12px, 3vh, 32px);
 }
 
-.cf-desktop-content .cf-auth-panel-section,
+.cf-desktop-content .cf-auth-panel-section {
+  max-height: 100%;
+  min-height: 0;
+  overflow: visible;
+  zoom: var(--auth-desktop-panel-scale);
+}
+
 .cf-desktop-content .cf-auth-panel {
   max-height: 100%;
   min-height: 0;
@@ -1305,6 +1312,71 @@
   }
 }
 
+@media (min-width: 821px) and (max-height: 820px) {
+  .cf-desktop-content .cf-auth-page {
+    --auth-desktop-panel-scale: 0.96;
+  }
+
+  .cf-desktop-content .cf-auth-main {
+    padding-top: 48px;
+    padding-bottom: 8px;
+  }
+
+  .cf-desktop-content .cf-auth-nav {
+    height: 48px;
+  }
+
+  .cf-desktop-content .cf-auth-intro h1 {
+    font-size: 42px;
+  }
+
+  .cf-desktop-content .cf-auth-intro p {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .cf-desktop-content .cf-auth-proof-list {
+    margin-top: 14px;
+  }
+
+  .cf-desktop-content .cf-auth-form {
+    gap: 10px;
+    padding: 16px 20px;
+  }
+
+  .cf-desktop-content .cf-auth-form-head h2 {
+    font-size: 24px;
+  }
+
+  .cf-desktop-content .cf-auth-form-head p {
+    margin-top: 3px;
+    font-size: 12px;
+  }
+
+  .cf-desktop-content .cf-auth-history {
+    gap: 6px;
+    padding-bottom: 8px;
+  }
+
+  .cf-desktop-content .cf-auth-input,
+  .cf-desktop-content .cf-auth-select-trigger {
+    min-height: 36px !important;
+  }
+
+  .cf-desktop-content .cf-auth-submit {
+    min-height: 38px !important;
+  }
+
+  .cf-desktop-content .cf-auth-mode-footer {
+    margin-top: 6px;
+  }
+
+  .cf-desktop-content .cf-auth-agreement-inline span,
+  .cf-desktop-content .cf-auth-copyright {
+    display: block;
+  }
+}
+
 @media (min-width: 821px) and (max-height: 760px) {
   .cf-auth-main {
     padding-top: 62px;
@@ -2006,6 +2078,154 @@
 
   .cf-desktop-content .cf-auth-agreement-panel {
     zoom: 0.9;
+  }
+}
+
+@media (max-height: 660px) {
+  .cf-desktop-content .cf-auth-page {
+    --auth-desktop-panel-scale: 0.9;
+  }
+
+  .cf-desktop-content .cf-auth-panel-section {
+    zoom: var(--auth-desktop-panel-scale);
+  }
+
+  .cf-desktop-content .cf-auth-main {
+    padding-top: 38px;
+    padding-bottom: 4px;
+  }
+
+  .cf-desktop-content .cf-auth-nav {
+    height: 40px;
+  }
+
+  .cf-desktop-content .cf-auth-proof-list {
+    display: flex;
+    margin-top: 10px;
+  }
+
+  .cf-desktop-content .cf-auth-form-head p,
+  .cf-desktop-content .cf-auth-history,
+  .cf-desktop-content .cf-auth-hint,
+  .cf-desktop-content .cf-auth-agreement-inline span,
+  .cf-desktop-content .cf-auth-copyright {
+    display: block;
+  }
+
+  .cf-desktop-content .cf-auth-history {
+    display: grid;
+  }
+
+  .cf-desktop-content .cf-auth-copyright {
+    margin-top: 4px;
+  }
+}
+
+@media (max-height: 620px) {
+  .cf-desktop-content .cf-auth-page {
+    --auth-desktop-panel-scale: 0.82;
+  }
+
+  .cf-desktop-content .cf-auth-panel-section {
+    zoom: var(--auth-desktop-panel-scale);
+  }
+
+  .cf-desktop-content .cf-auth-main {
+    width: min(1040px, calc(100vw - 44px));
+    grid-template-columns: minmax(0, 0.9fr) minmax(360px, 430px);
+    gap: 24px;
+    padding-top: 30px;
+    padding-bottom: 2px;
+  }
+
+  .cf-desktop-content .cf-auth-intro {
+    display: block;
+  }
+
+  .cf-desktop-content .cf-auth-intro h1 {
+    font-size: 32px;
+  }
+
+  .cf-desktop-content .cf-auth-intro p {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .cf-desktop-content .cf-auth-agreement-inline span {
+    display: block;
+  }
+}
+
+@media (max-height: 540px) {
+  .cf-desktop-content .cf-auth-page {
+    --auth-desktop-panel-scale: 0.74;
+  }
+
+  .cf-desktop-content .cf-auth-panel-section {
+    zoom: var(--auth-desktop-panel-scale);
+  }
+
+  .cf-desktop-content .cf-auth-header {
+    display: block;
+  }
+
+  .cf-desktop-content .cf-auth-main {
+    width: min(980px, calc(100vw - 32px));
+    grid-template-columns: minmax(0, 0.78fr) minmax(340px, 410px);
+    padding: 22px 0 2px;
+  }
+
+  .cf-desktop-content .cf-auth-form-head {
+    display: flex;
+  }
+
+  .cf-desktop-content .cf-auth-page.is-register .cf-auth-label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  .cf-desktop-content .cf-auth-remember,
+  .cf-desktop-content .cf-auth-public-agreement,
+  .cf-desktop-content .cf-auth-forgot-row,
+  .cf-desktop-content .cf-auth-agreement-inline {
+    display: flex;
+  }
+
+  .cf-desktop-content .cf-auth-agreement-inline span {
+    display: block;
+  }
+}
+
+@media (max-height: 480px) {
+  .cf-desktop-content .cf-auth-page {
+    --auth-desktop-panel-scale: 0.66;
+  }
+
+  .cf-desktop-content .cf-auth-panel-section {
+    zoom: var(--auth-desktop-panel-scale);
+  }
+
+  .cf-desktop-content .cf-auth-main {
+    width: min(920px, calc(100vw - 24px));
+    grid-template-columns: minmax(0, 0.68fr) minmax(330px, 400px);
+    padding: 16px 0 0;
+  }
+
+  .cf-desktop-content .cf-auth-mode-footer,
+  .cf-desktop-content .cf-auth-agreement-inline {
+    display: block;
+  }
+
+  .cf-desktop-content .cf-auth-agreement-inline {
+    display: flex;
+  }
+
+  .cf-desktop-content .cf-auth-agreement-inline span {
+    display: block;
   }
 }
 
