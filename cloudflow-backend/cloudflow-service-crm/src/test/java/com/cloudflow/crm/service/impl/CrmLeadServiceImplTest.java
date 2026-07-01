@@ -1,5 +1,6 @@
 package com.cloudflow.crm.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
@@ -127,7 +128,9 @@ class CrmLeadServiceImplTest {
         persistedCustomer.setCustomerType("ENTERPRISE");
         persistedCustomer.setOwnerId(2001L);
         persistedCustomer.setOwnerName("tester");
-        when(customerMapper.selectOne(any())).thenReturn(persistedCustomer);
+        Page<CrmCustomer> customerPage = new Page<>(1, 1, false);
+        customerPage.setRecords(Collections.singletonList(persistedCustomer));
+        when(customerMapper.selectPage(any(Page.class), any())).thenReturn(customerPage);
 
         CrmLeadConvertDTO request = new CrmLeadConvertDTO();
         request.setLeadId(5101L);

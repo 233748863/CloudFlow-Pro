@@ -3,6 +3,7 @@ package com.cloudflow.crm.service.impl;
 import com.cloudflow.common.core.event.SystemNoticeDispatchEvent;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.redis.config.RuntimeSysConfigService;
 import com.cloudflow.common.tenant.support.TenantIterator;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
@@ -19,7 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +27,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,11 +57,16 @@ class CrmNotificationServiceImplTest {
     @Mock
     private OutboxPublisher outboxPublisher;
 
+    @Mock
+    private RuntimeSysConfigService runtimeSysConfigService;
+
     private ObjectMapper objectMapper;
     private CrmNotificationServiceImpl service;
 
     @BeforeEach
     void setUp() {
+        when(runtimeSysConfigService.getInt(anyString(), anyInt()))
+                .thenAnswer(invocation -> invocation.getArgument(1));
         objectMapper = new ObjectMapper();
         service = new CrmNotificationServiceImpl(
                 customerMapper,
@@ -69,10 +76,9 @@ class CrmNotificationServiceImplTest {
                 crmCustomerService,
                 tenantIterator,
                 outboxPublisher,
-                objectMapper
+                objectMapper,
+                runtimeSysConfigService
         );
-        ReflectionTestUtils.setField(service, "followUpInactiveDays", 14);
-        ReflectionTestUtils.setField(service, "ticketSlaReminderHours", 2);
     }
 
     @Test

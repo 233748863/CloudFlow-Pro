@@ -25,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -152,45 +154,80 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         event.setRenewalId(renewalId);
         event.setSubmittedAt(now());
         publishRenewalSubmittedEvent(renewal, event);
+        startRenewalWorkflowAfterCommit(renewalId);
         crmCustomerService.refreshHealth(renewal.getCustomerId());
         return true;
     }
 
     public void startRenewalWorkflow(CrmRenewal renewal) {
+        CrmRenewal current = baseMapper.selectById(renewal.getRenewalId());
+        if (current == null) {
+            throw new IllegalStateException("CRM续约不存在: " + renewal.getRenewalId());
+        }
+        if (StringUtils.hasText(current.getInstanceId())) {
+            log.info("CRM 续约流程已存在，跳过启动: renewalId={}, instanceId={}",
+                    current.getRenewalId(), current.getInstanceId());
+            return;
+        }
         InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
         dto.setProcessDefKey("customer_renewal_review");
-        dto.setBusinessKey("CRM_RENEWAL:" + renewal.getRenewalId());
-        dto.setStartUserId(renewal.getOwnerId());
-        dto.setStartUserName(renewal.getOwnerName());
+        dto.setBusinessKey("CRM_RENEWAL:" + current.getRenewalId());
+        dto.setStartUserId(current.getOwnerId());
+        dto.setStartUserName(current.getOwnerName());
         Map<String, Object> variables = new HashMap<>();
-        variables.put("renewalId", renewal.getRenewalId());
-        variables.put("renewalNo", renewal.getRenewalNo());
-        variables.put("renewalName", renewal.getRenewalName());
-        variables.put("customerId", renewal.getCustomerId());
-        variables.put("customerName", renewal.getCustomerName());
-        variables.put("renewalAmount", renewal.getRenewalAmount());
-        variables.put("currentExpireDate", renewal.getCurrentExpireDate());
+        variables.put("renewalId", current.getRenewalId());
+        variables.put("renewalNo", current.getRenewalNo());
+        variables.put("renewalName", current.getRenewalName());
+        variables.put("customerId", current.getCustomerId());
+        variables.put("customerName", current.getCustomerName());
+        variables.put("renewalAmount", current.getRenewalAmount());
+        variables.put("currentExpireDate", current.getCurrentExpireDate());
         WorkflowCallbackConstants.applyCallbackMetadata(
                 variables,
                 CrmBusinessTypes.CRM_RENEWAL,
-                renewal.getRenewalId(),
-                renewal.getRenewalNo(),
+                current.getRenewalId(),
+                current.getRenewalNo(),
                 "workflow:stream:approval-callback:crm"
         );
         dto.setVariables(variables);
 
-        try {
-            R<?> result = remoteWorkflowService.startProcessInternal(dto);
-            if (result != null && result.isSuccess() && result.getData() != null) {
-                CrmRenewal update = new CrmRenewal();
-                update.setRenewalId(renewal.getRenewalId());
-                update.setInstanceId(extractInstanceId(result.getData()));
-                update.setUpdateBy(StringUtils.hasText(renewal.getOwnerName()) ? renewal.getOwnerName() : "event-consumer");
-                update.setUpdateTime(now());
-                updateById(update);
+        R<?> result = remoteWorkflowService.startProcessInternal(dto);
+        if (result == null || !result.isSuccess() || result.getData() == null) {
+            throw new IllegalStateException("启动 CRM 续约流程失败: renewalId=" + current.getRenewalId()
+                    + ", msg=" + (result == null ? "null" : result.getMsg()));
+        }
+        String instanceId = extractInstanceId(result.getData());
+        if (!StringUtils.hasText(instanceId)) {
+            throw new IllegalStateException("启动 CRM 续约流程未返回实例ID: renewalId=" + current.getRenewalId());
+        }
+        CrmRenewal update = new CrmRenewal();
+        update.setRenewalId(current.getRenewalId());
+        update.setInstanceId(instanceId);
+        update.setUpdateBy(StringUtils.hasText(current.getOwnerName()) ? current.getOwnerName() : "event-consumer");
+        update.setUpdateTime(now());
+        updateById(update);
+    }
+
+    private void startRenewalWorkflowAfterCommit(Long renewalId) {
+        Runnable task = () -> {
+            try {
+                CrmRenewal renewal = baseMapper.selectById(renewalId);
+                if (renewal != null) {
+                    startRenewalWorkflow(renewal);
+                }
+            } catch (Exception ex) {
+                log.warn("提交后即时启动 CRM 续约流程失败，等待 Outbox 重试: renewalId={}", renewalId, ex);
             }
-        } catch (Exception e) {
-            log.warn("启动 CRM 续约流程失败: renewalId={}", renewal.getRenewalId(), e);
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
+        } else {
+            task.run();
         }
     }
 

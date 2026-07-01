@@ -263,12 +263,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         }
 
         metricConfig.put("assignmentMeta", assignmentMeta);
-        objectiveMapper.update(null,
-                new LambdaUpdateWrapper<HrPerformanceObjective>()
-                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
-                        .eq(HrPerformanceObjective::getId, objectiveId)
-                        .set(HrPerformanceObjective::getMetricConfig, objectMapper.valueToTree(metricConfig))
-                        .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
+        updateObjectiveMetricConfig(objectiveId, metricConfig);
         writeAuditLog("hr_performance_objective", objectiveId, "CREATE", Map.of(), loadObjective(objectiveId));
         return objectiveId;
     }
@@ -349,12 +344,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         }
 
         metricConfig.put("assignmentMeta", assignmentMeta);
-        objectiveMapper.update(null,
-                new LambdaUpdateWrapper<HrPerformanceObjective>()
-                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
-                        .eq(HrPerformanceObjective::getId, objectiveId)
-                        .set(HrPerformanceObjective::getMetricConfig, objectMapper.valueToTree(metricConfig))
-                        .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
+        updateObjectiveMetricConfig(objectiveId, metricConfig);
         writeAuditLog("hr_performance_assignment", parentId, "UPSERT_CHILDREN",
                 Map.of("children", beforeAssignments),
                 Map.of("children", loadAssignmentsByParent(parentId)));
@@ -386,12 +376,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         meta.put("actualAmount", actualAmount);
         assignmentMeta.put(String.valueOf(assignmentId), meta);
         metricConfig.put("assignmentMeta", assignmentMeta);
-        objectiveMapper.update(null,
-                new LambdaUpdateWrapper<HrPerformanceObjective>()
-                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
-                        .eq(HrPerformanceObjective::getId, objectiveId)
-                        .set(HrPerformanceObjective::getMetricConfig, objectMapper.valueToTree(metricConfig))
-                        .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
+        updateObjectiveMetricConfig(objectiveId, metricConfig);
         writeAuditLog("hr_performance_assignment", assignmentId, "UPDATE_RESULT", before, getAssignment(assignmentId));
     }
 
@@ -660,6 +645,17 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
                         .eq(HrPerformanceObjective::getDeleted, 0))
                 .getRecords().stream().findFirst().orElse(null);
         return entity == null ? Map.of() : toMap(entity);
+    }
+
+    private void updateObjectiveMetricConfig(Long objectiveId, Map<String, Object> metricConfig) {
+        int updated = objectiveMapper.updateMetricConfig(
+                TENANT_ID,
+                objectiveId,
+                objectMapper.valueToTree(metricConfig),
+                LocalDateTime.now());
+        if (updated <= 0) {
+            throw new IllegalStateException("绩效目标指标配置更新失败: objectiveId=" + objectiveId);
+        }
     }
 
     private Map<String, Object> getAssignment(Long id) {

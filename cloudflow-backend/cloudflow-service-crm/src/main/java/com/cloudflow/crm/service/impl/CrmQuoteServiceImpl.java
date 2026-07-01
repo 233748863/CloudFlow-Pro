@@ -30,6 +30,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -163,43 +165,78 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         event.setQuoteId(quoteId);
         event.setSubmittedAt(now());
         publishQuoteSubmittedEvent(quote, event);
+        startQuoteWorkflowAfterCommit(quoteId);
         return true;
     }
 
     public void startQuoteWorkflow(CrmQuote quote) {
+        CrmQuote current = baseMapper.selectById(quote.getQuoteId());
+        if (current == null) {
+            throw new IllegalStateException("CRM报价不存在: " + quote.getQuoteId());
+        }
+        if (StringUtils.hasText(current.getInstanceId())) {
+            log.info("CRM 报价流程已存在，跳过启动: quoteId={}, instanceId={}",
+                    current.getQuoteId(), current.getInstanceId());
+            return;
+        }
         InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
         dto.setProcessDefKey("quote_approval");
-        dto.setBusinessKey("CRM_QUOTE:" + quote.getQuoteId());
-        dto.setStartUserId(quote.getOwnerId());
-        dto.setStartUserName(quote.getOwnerName());
+        dto.setBusinessKey("CRM_QUOTE:" + current.getQuoteId());
+        dto.setStartUserId(current.getOwnerId());
+        dto.setStartUserName(current.getOwnerName());
         Map<String, Object> variables = new HashMap<>();
-        variables.put("quoteId", quote.getQuoteId());
-        variables.put("quoteNo", quote.getQuoteNo());
-        variables.put("quoteName", quote.getQuoteName());
-        variables.put("customerId", quote.getCustomerId());
-        variables.put("customerName", quote.getCustomerName());
-        variables.put("totalAmount", quote.getTotalAmount());
+        variables.put("quoteId", current.getQuoteId());
+        variables.put("quoteNo", current.getQuoteNo());
+        variables.put("quoteName", current.getQuoteName());
+        variables.put("customerId", current.getCustomerId());
+        variables.put("customerName", current.getCustomerName());
+        variables.put("totalAmount", current.getTotalAmount());
         WorkflowCallbackConstants.applyCallbackMetadata(
                 variables,
                 CrmBusinessTypes.CRM_QUOTE,
-                quote.getQuoteId(),
-                quote.getQuoteNo(),
+                current.getQuoteId(),
+                current.getQuoteNo(),
                 "workflow:stream:approval-callback:crm"
         );
         dto.setVariables(variables);
 
-        try {
-            R<?> result = remoteWorkflowService.startProcessInternal(dto);
-            if (result != null && result.isSuccess() && result.getData() != null) {
-                CrmQuote update = new CrmQuote();
-                update.setQuoteId(quote.getQuoteId());
-                update.setInstanceId(extractInstanceId(result.getData()));
-                update.setUpdateBy(StringUtils.hasText(quote.getOwnerName()) ? quote.getOwnerName() : "event-consumer");
-                update.setUpdateTime(now());
-                updateById(update);
+        R<?> result = remoteWorkflowService.startProcessInternal(dto);
+        if (result == null || !result.isSuccess() || result.getData() == null) {
+            throw new IllegalStateException("启动 CRM 报价流程失败: quoteId=" + current.getQuoteId()
+                    + ", msg=" + (result == null ? "null" : result.getMsg()));
+        }
+        String instanceId = extractInstanceId(result.getData());
+        if (!StringUtils.hasText(instanceId)) {
+            throw new IllegalStateException("启动 CRM 报价流程未返回实例ID: quoteId=" + current.getQuoteId());
+        }
+        CrmQuote update = new CrmQuote();
+        update.setQuoteId(current.getQuoteId());
+        update.setInstanceId(instanceId);
+        update.setUpdateBy(StringUtils.hasText(current.getOwnerName()) ? current.getOwnerName() : "event-consumer");
+        update.setUpdateTime(now());
+        updateById(update);
+    }
+
+    private void startQuoteWorkflowAfterCommit(Long quoteId) {
+        Runnable task = () -> {
+            try {
+                CrmQuote quote = baseMapper.selectById(quoteId);
+                if (quote != null) {
+                    startQuoteWorkflow(quote);
+                }
+            } catch (Exception ex) {
+                log.warn("提交后即时启动 CRM 报价流程失败，等待 Outbox 重试: quoteId={}", quoteId, ex);
             }
-        } catch (Exception e) {
-            log.warn("启动 CRM 报价流程失败: quoteId={}", quote.getQuoteId(), e);
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
+        } else {
+            task.run();
         }
     }
 

@@ -26,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -68,6 +70,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 payload,
                 remark);
         publishApprovalSubmittedEvent(approval, "customer_claim_review");
+        startWorkflowAfterCommit(approval.getApprovalId(), "customer_claim_review");
         return approval.getApprovalId();
     }
 
@@ -93,6 +96,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 payload,
                 remark);
         publishApprovalSubmittedEvent(approval, "customer_level_change");
+        startWorkflowAfterCommit(approval.getApprovalId(), "customer_level_change");
         return approval.getApprovalId();
     }
 
@@ -119,6 +123,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 payload,
                 lostReason);
         publishApprovalSubmittedEvent(approval, "opportunity_downgrade_review");
+        startWorkflowAfterCommit(approval.getApprovalId(), "opportunity_downgrade_review");
         return approval.getApprovalId();
     }
 
@@ -155,6 +160,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                 payload,
                 reason);
         publishApprovalSubmittedEvent(approval, "crm_refund_review");
+        startWorkflowAfterCommit(approval.getApprovalId(), "crm_refund_review");
         return approval.getApprovalId();
     }
 
@@ -194,35 +200,72 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
     }
 
     public void startWorkflow(CrmApproval approval, String processDefKey) {
+        CrmApproval current = approvalMapper.selectById(approval.getApprovalId());
+        if (current == null) {
+            throw new IllegalStateException("CRM审批记录不存在: " + approval.getApprovalId());
+        }
+        if (StringUtils.hasText(current.getInstanceId())) {
+            log.info("CRM 审批流程已存在，跳过启动: approvalId={}, instanceId={}",
+                    current.getApprovalId(), current.getInstanceId());
+            return;
+        }
         InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
         dto.setProcessDefKey(processDefKey);
-        dto.setBusinessKey(approval.getBusinessType() + ":" + approval.getApprovalId());
-        dto.setStartUserId(approval.getApplicantId());
-        dto.setStartUserName(approval.getApplicantName());
+        dto.setBusinessKey(current.getBusinessType() + ":" + current.getApprovalId());
+        dto.setStartUserId(current.getApplicantId());
+        dto.setStartUserName(current.getApplicantName());
         Map<String, Object> variables = new HashMap<>();
-        variables.put("approvalId", approval.getApprovalId());
-        variables.put("approvalNo", approval.getApprovalNo());
-        variables.put("businessRefType", approval.getBusinessRefType());
-        variables.put("businessRefId", approval.getBusinessRefId());
-        variables.put("businessRefName", approval.getBusinessRefName());
-        variables.put("actionType", approval.getActionType());
+        variables.put("approvalId", current.getApprovalId());
+        variables.put("approvalNo", current.getApprovalNo());
+        variables.put("businessRefType", current.getBusinessRefType());
+        variables.put("businessRefId", current.getBusinessRefId());
+        variables.put("businessRefName", current.getBusinessRefName());
+        variables.put("actionType", current.getActionType());
         WorkflowCallbackConstants.applyCallbackMetadata(
-                variables, approval.getBusinessType(), approval.getApprovalId(), approval.getApprovalNo(),
+                variables, current.getBusinessType(), current.getApprovalId(), current.getApprovalNo(),
                 "workflow:stream:approval-callback:crm");
         dto.setVariables(variables);
-        try {
-            R<?> result = remoteWorkflowService.startProcessInternal(dto);
-            if (result != null && result.isSuccess() && result.getData() != null) {
-                CrmApproval update = new CrmApproval();
-                update.setApprovalId(approval.getApprovalId());
-                update.setInstanceId(extractInstanceId(result.getData()));
-                update.setUpdateBy(approval.getApplicantName());
-                update.setUpdateTime(LocalDateTime.now());
-                approvalMapper.updateById(update);
+
+        R<?> result = remoteWorkflowService.startProcessInternal(dto);
+        if (result == null || !result.isSuccess() || result.getData() == null) {
+            throw new IllegalStateException("启动 CRM 审批流程失败: approvalId=" + current.getApprovalId()
+                    + ", processDefKey=" + processDefKey
+                    + ", msg=" + (result == null ? "null" : result.getMsg()));
+        }
+        String instanceId = extractInstanceId(result.getData());
+        if (!StringUtils.hasText(instanceId)) {
+            throw new IllegalStateException("启动 CRM 审批流程未返回实例ID: approvalId=" + current.getApprovalId()
+                    + ", processDefKey=" + processDefKey);
+        }
+        CrmApproval update = new CrmApproval();
+        update.setApprovalId(current.getApprovalId());
+        update.setInstanceId(instanceId);
+        update.setUpdateBy(current.getApplicantName());
+        update.setUpdateTime(LocalDateTime.now());
+        approvalMapper.updateById(update);
+    }
+
+    private void startWorkflowAfterCommit(Long approvalId, String processDefKey) {
+        Runnable task = () -> {
+            try {
+                CrmApproval approval = approvalMapper.selectById(approvalId);
+                if (approval != null) {
+                    startWorkflow(approval, processDefKey);
+                }
+            } catch (Exception ex) {
+                log.warn("提交后即时启动 CRM 审批流程失败，等待 Outbox 重试: approvalId={}, processDefKey={}",
+                        approvalId, processDefKey, ex);
             }
-        } catch (Exception ex) {
-            log.warn("启动 CRM 审批流程失败: approvalId={}, processDefKey={}",
-                    approval.getApprovalId(), processDefKey, ex);
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
+        } else {
+            task.run();
         }
     }
 

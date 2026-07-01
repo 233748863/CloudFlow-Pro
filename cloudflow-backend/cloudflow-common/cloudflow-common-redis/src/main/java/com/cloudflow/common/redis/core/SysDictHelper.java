@@ -1,4 +1,6 @@
 package com.cloudflow.common.redis.core;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -151,6 +153,7 @@ public class SysDictHelper {
     /**
      * 字典项 POJO，避免耦合 cloudflow-auth 的 SysDictData 实体
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class DictItem {
         private Integer sort;
         private String label;
@@ -182,6 +185,7 @@ public class SysDictHelper {
         public void setCssClass(String cssClass) { this.cssClass = cssClass; }
 
         /** 把 dict_value 解析为 BigDecimal，失败返回 null */
+        @JsonIgnore
         public BigDecimal getValueAsDecimal() {
             if (value == null || value.isEmpty()) {
                 return null;
@@ -194,6 +198,7 @@ public class SysDictHelper {
         }
 
         /** 把 list_class 解析为 BigDecimal（用于税率等） */
+        @JsonIgnore
         public BigDecimal getListClassAsDecimal() {
             if (listClass == null || listClass.isEmpty()) {
                 return null;
@@ -206,6 +211,7 @@ public class SysDictHelper {
         }
 
         /** 把 css_class 解析为 BigDecimal（用于速算扣除数等） */
+        @JsonIgnore
         public BigDecimal getCssClassAsDecimal() {
             if (cssClass == null || cssClass.isEmpty()) {
                 return null;
