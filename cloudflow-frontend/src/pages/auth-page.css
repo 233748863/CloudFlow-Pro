@@ -18,10 +18,10 @@
   --auth-indigo-mark: rgba(79, 70, 229, 0.22);
   position: relative;
   width: 100%;
-  height: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   background: #ffffff;
   color: var(--auth-foreground);
   font-family:
@@ -67,7 +67,7 @@
 .cf-auth-nav {
   display: flex;
   width: min(1184px, calc(100vw - 96px));
-  height: 80px;
+  height: clamp(58px, 7.4dvh, 76px);
   align-items: center;
   justify-content: flex-start;
   margin: 0 auto;
@@ -189,12 +189,13 @@
   z-index: 1;
   display: grid;
   width: min(1184px, calc(100vw - 96px));
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
   grid-template-columns: minmax(0, 1fr) minmax(420px, 480px);
   align-items: center;
-  gap: 72px;
+  gap: clamp(40px, 5.4vw, 72px);
   margin: 0 auto;
-  padding: 120px 0 64px;
+  padding: clamp(72px, 8.6dvh, 92px) 0 clamp(16px, 2.8dvh, 32px);
 }
 
 .cf-desktop-content .cf-auth-main {
@@ -255,7 +256,7 @@
 }
 
 .cf-auth-kicker {
-  margin: 0 0 18px;
+  margin: 0 0 clamp(10px, 1.8dvh, 18px);
   color: var(--auth-muted);
   font-size: 12px;
   font-weight: 600;
@@ -265,9 +266,9 @@
 
 .cf-auth-intro h1 {
   max-width: 700px;
-  margin: 0 0 16px;
+  margin: 0 0 clamp(10px, 1.6dvh, 16px);
   color: #0a0f1a;
-  font-size: 54px;
+  font-size: clamp(44px, 4.4vw, 54px);
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1.1;
@@ -277,15 +278,15 @@
   max-width: 610px;
   margin: 0;
   color: var(--auth-muted);
-  font-size: 17px;
-  line-height: 1.58;
+  font-size: clamp(15px, 1.36vw, 17px);
+  line-height: 1.52;
 }
 
 .cf-auth-proof-list {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 36px;
+  margin-top: clamp(18px, 3.4dvh, 34px);
 }
 
 .cf-auth-proof-list span {
@@ -344,8 +345,8 @@
 
 .cf-auth-form {
   display: grid;
-  gap: 20px;
-  padding: 28px;
+  gap: clamp(14px, 1.8dvh, 20px);
+  padding: clamp(20px, 2.8dvh, 28px);
 }
 
 .cf-auth-form-head {
@@ -358,13 +359,13 @@
 .cf-auth-form-head h2 {
   margin: 0;
   color: #0f172a;
-  font-size: 28px;
+  font-size: clamp(24px, 2.35vw, 28px);
   font-weight: 400;
   line-height: 1.2;
 }
 
 .cf-auth-form-head p {
-  margin: 10px 0 0;
+  margin: clamp(5px, 0.9dvh, 10px) 0 0;
   color: var(--auth-muted);
   font-size: 14px;
 }
@@ -401,7 +402,7 @@
   display: flex;
   gap: 22px;
   border-bottom: 1px solid #eef2f7;
-  padding-bottom: 11px;
+  padding-bottom: clamp(8px, 1.1dvh, 11px);
 }
 
 .cf-auth-mode-tabs button {
@@ -569,7 +570,7 @@
 
 .cf-auth-source-form {
   display: grid;
-  gap: 16px;
+  gap: clamp(10px, 1.45dvh, 16px);
 }
 
 .cf-auth-field-block {
@@ -617,7 +618,7 @@
 
 .cf-auth-input {
   width: 100%;
-  min-height: 42px;
+  min-height: clamp(36px, 4.8dvh, 42px);
   border: 1px solid #dbe2ea;
   border-radius: 8px;
   background: #fff;
@@ -656,7 +657,7 @@
 }
 
 .cf-auth-select-trigger {
-  min-height: 42px !important;
+  min-height: clamp(36px, 4.8dvh, 42px) !important;
   border-color: #dbe2ea !important;
   border-radius: 8px !important;
   background: #fff !important;
@@ -852,7 +853,7 @@
   border-radius: 8px;
   background: rgba(13, 149, 181, 0.07);
   color: #0b7894;
-  padding: 12px;
+  padding: clamp(8px, 1.25dvh, 12px);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -905,7 +906,7 @@
 .cf-auth-submit {
   display: inline-flex !important;
   width: 100% !important;
-  min-height: 44px !important;
+  min-height: clamp(38px, 5dvh, 44px) !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 8px !important;
@@ -952,14 +953,14 @@
 
 .cf-auth-mode-footer,
 .cf-auth-copyright {
-  margin-top: 22px;
+  margin-top: clamp(10px, 2dvh, 22px);
   color: var(--auth-muted);
   font-size: 12px;
   text-align: center;
 }
 
 .cf-auth-copyright {
-  margin-top: 14px;
+  margin-top: clamp(6px, 1.2dvh, 14px);
 }
 
 .cf-auth-mode-footer p,
@@ -1225,7 +1226,135 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+@media (min-width: 821px) and (max-height: 960px) {
+  .cf-auth-main {
+    grid-template-columns: minmax(0, 0.96fr) minmax(400px, 480px);
+    padding-top: clamp(58px, 6.8dvh, 72px);
+    padding-bottom: 12px;
+  }
+
+  .cf-auth-nav {
+    height: 56px;
+  }
+
+  .cf-auth-intro h1 {
+    font-size: clamp(40px, 4vw, 48px);
+  }
+
+  .cf-auth-proof-list {
+    margin-top: 18px;
+  }
+
+  .cf-auth-form {
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .cf-auth-form-head h2 {
+    font-size: 24px;
+  }
+
+  .cf-auth-form-head p {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+
+  .cf-auth-mode-tabs {
+    padding-bottom: 8px;
+  }
+
+  .cf-auth-mode-tabs button {
+    padding-bottom: 7px;
+    font-size: 14px;
+  }
+
+  .cf-auth-mode-tabs button.active::after {
+    bottom: -9px;
+  }
+
+  .cf-auth-history {
+    gap: 6px;
+    padding-bottom: 10px;
+  }
+
+  .cf-auth-history-title,
+  .cf-auth-label,
+  .cf-auth-remember,
+  .cf-auth-public-agreement,
+  .cf-auth-forgot-row,
+  .cf-auth-hint {
+    font-size: 12px;
+  }
+
+  .cf-auth-field-block {
+    gap: 5px;
+  }
+
+  .cf-auth-agreement-inline {
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .cf-auth-agreement-inline span,
+  .cf-auth-copyright {
+    display: none;
+  }
+
+  .cf-auth-mode-footer {
+    margin-top: 8px;
+  }
+}
+
 @media (min-width: 821px) and (max-height: 760px) {
+  .cf-auth-main {
+    padding-top: 62px;
+    padding-bottom: 8px;
+  }
+
+  .cf-auth-nav {
+    height: 56px;
+  }
+
+  .cf-auth-intro h1 {
+    margin-bottom: 10px;
+    font-size: 44px;
+    line-height: 1.04;
+  }
+
+  .cf-auth-intro p {
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  .cf-auth-kicker {
+    margin-bottom: 10px;
+  }
+
+  .cf-auth-proof-list {
+    margin-top: 18px;
+  }
+
+  .cf-auth-form-head h2 {
+    font-size: 25px;
+  }
+
+  .cf-auth-form-head p {
+    margin-top: 5px;
+    font-size: 13px;
+  }
+
+  .cf-auth-label,
+  .cf-auth-remember,
+  .cf-auth-public-agreement,
+  .cf-auth-forgot-row {
+    font-size: 12px;
+  }
+
+  .cf-auth-hint {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
   .cf-desktop-content .cf-auth-main {
     padding-top: 62px;
     padding-bottom: 8px;
@@ -1294,6 +1423,75 @@
 }
 
 @media (min-width: 821px) and (max-height: 660px) {
+  .cf-auth-main {
+    grid-template-columns: minmax(0, 0.85fr) minmax(360px, 430px);
+    gap: 28px;
+    padding-top: 48px;
+    padding-bottom: 4px;
+  }
+
+  .cf-auth-nav {
+    height: 44px;
+  }
+
+  .cf-auth-brand-link {
+    font-size: 14px;
+  }
+
+  .cf-auth-brand-mark {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+  }
+
+  .cf-auth-brand-mark img {
+    width: 17px;
+    height: 17px;
+  }
+
+  .cf-auth-intro h1 {
+    font-size: 36px;
+  }
+
+  .cf-auth-intro p {
+    font-size: 14px;
+    line-height: 1.38;
+  }
+
+  .cf-auth-proof-list {
+    display: none;
+  }
+
+  .cf-auth-form {
+    gap: 10px;
+    padding: 16px;
+  }
+
+  .cf-auth-form-head p {
+    display: none;
+  }
+
+  .cf-auth-source-form {
+    gap: 8px;
+  }
+
+  .cf-auth-input,
+  .cf-auth-select-trigger {
+    min-height: 34px !important;
+  }
+
+  .cf-auth-submit {
+    min-height: 36px !important;
+  }
+
+  .cf-auth-mode-footer {
+    margin-top: 8px;
+  }
+
+  .cf-auth-copyright {
+    display: none;
+  }
+
   .cf-desktop-content .cf-auth-main {
     grid-template-columns: minmax(0, 0.85fr) minmax(360px, 430px);
     gap: 28px;
@@ -1376,6 +1574,12 @@
 }
 
 @media (max-width: 820px) {
+  .cf-auth-page {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
   .cf-auth-nav,
   .cf-auth-main {
     width: min(100vw - 48px, 720px);
