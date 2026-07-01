@@ -767,11 +767,39 @@ public class WfTaskServiceImpl implements IWfTaskService {
             return Collections.emptyMap();
         }
 
-        if (!Boolean.TRUE.equals(task.getAllowEdit())) {
+        if (!isTaskNodeAllowEdit(task)) {
             throw WorkflowException.validationError("当前节点不允许修改表单数据");
         }
 
         return editableVariables;
+    }
+
+    /**
+     * WfTask.allowEdit 是列表展示用的非持久字段，处理任务时需从实例锁定的流程定义回读节点配置。
+     */
+    private boolean isTaskNodeAllowEdit(WfTask task) {
+        if (task == null || !StringUtils.hasText(task.getInstanceId()) || !StringUtils.hasText(task.getNodeKey())) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(task.getAllowEdit())) {
+            return true;
+        }
+
+        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+        WfProcessDefinition def = resolveDefinitionByInstance(instance);
+        if (def == null || !StringUtils.hasText(def.getModelJson())) {
+            return false;
+        }
+
+        try {
+            WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
+            WfNodeConfig node = nodeExecutionService.findNode(root, task.getNodeKey());
+            return node != null && Boolean.TRUE.equals(node.getAllowEdit());
+        } catch (Exception e) {
+            log.warn("[isTaskNodeAllowEdit] 解析节点编辑权限失败, taskId={}, nodeKey={}: {}",
+                    task.getTaskId(), task.getNodeKey(), e.getMessage());
+            return false;
+        }
     }
 
     /**
