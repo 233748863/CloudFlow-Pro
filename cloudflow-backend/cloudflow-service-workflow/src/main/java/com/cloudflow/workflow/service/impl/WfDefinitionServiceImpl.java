@@ -253,8 +253,10 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         // 更新状态
         def.setStatus("PUBLISHED");
-        def.setVersionLock(def.getVersionLock() != null ? def.getVersionLock() + 1 : 1);
-        processDefinitionMapper.updateById(def);
+        int updatedRows = processDefinitionMapper.updateById(def);
+        if (updatedRows <= 0) {
+            throw WorkflowException.invalidState("流程定义发布失败，请刷新后重试");
+        }
 
         // 旧版本归档
         LambdaUpdateWrapper<WfProcessDefinition> archiveOldVersions = new LambdaUpdateWrapper<WfProcessDefinition>()
@@ -609,7 +611,6 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         target.setTemplateId(source.getTemplateId());
         target.setUpdateTime(now);
         target.setUpdateBy(currentUserId);
-        target.setVersionLock(Optional.ofNullable(target.getVersionLock()).orElse(0) + 1);
         target.setIsLatest(1);
         target.setStatus("DRAFT");
     }
@@ -693,9 +694,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                     continue;
                 }
                 String signType = jsonText(node, "signType");
-                boolean hasSignType = StringUtils.hasText(signType)
-                    && ("ALL".equals(signType) || "ANY".equals(signType)
-                    || "PERCENT".equals(signType) || "SEQUENTIAL".equals(signType));
+                boolean hasSignType = isParallelSignMode(signType);
                 int branchCount = outgoingCount.getOrDefault(entry.getKey(), 0);
                 if (hasSignType && branchCount > 1) {
                     throw WorkflowException.validationError(
@@ -782,7 +781,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             boolean hasApproverType = StringUtils.hasText(approverType);
             boolean requiresApproverValue = hasApproverType
                     && !"DIRECT_LEADER".equals(approverType)
-                    && !"DEPT_MANAGER".equals(approverType);
+                    && !"DEPT_MANAGER".equals(approverType)
+                    && !"INITIATOR".equals(approverType);
             boolean hasApproverValue = StringUtils.hasText(approverValue);
 
             boolean validByApprover = hasApproverType && (!requiresApproverValue || hasApproverValue);
@@ -801,6 +801,66 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                 throw WorkflowException.validationError("通知节点 [" + nodeTitle + "] 未配置通知标题或内容");
             }
         }
+
+        if ("PARALLEL".equalsIgnoreCase(nodeType) && isParallelSignMode(jsonText(node, "signType"))) {
+            if (!StringUtils.hasText(approverType)) {
+                throw WorkflowException.validationError("会签节点 [" + nodeTitle + "] 未配置审批人");
+            }
+            String signType = jsonText(node, "signType").trim().toUpperCase(Locale.ROOT);
+            if ("PERCENT".equals(signType)) {
+                JsonNode passPercentNode = node.path("passPercent");
+                int passPercent = passPercentNode.isNumber() ? passPercentNode.asInt() : 0;
+                if (passPercent <= 0 || passPercent > 100) {
+                    throw WorkflowException.validationError("会签节点 [" + nodeTitle + "] 比例签通过比例必须在 1-100 之间");
+                }
+            }
+        }
+
+        if ("SCRIPT".equalsIgnoreCase(nodeType)) {
+            JsonNode propsNode = node.path("props");
+            String scriptType = firstNotBlank(jsonText(propsNode, "scriptType"), "API");
+            if ("JAVASCRIPT".equals(scriptType)) {
+                throw WorkflowException.validationError("脚本节点 [" + nodeTitle + "] 当前不支持 JavaScript");
+            }
+            if ("API".equals(scriptType) && !StringUtils.hasText(jsonText(propsNode, "apiUrl"))) {
+                throw WorkflowException.validationError("脚本节点 [" + nodeTitle + "] 未配置 API URL");
+            }
+            if (("GROOVY".equals(scriptType) || "JAVASCRIPT".equals(scriptType))
+                    && !StringUtils.hasText(jsonText(propsNode, "scriptContent"))) {
+                throw WorkflowException.validationError("脚本节点 [" + nodeTitle + "] 未填写脚本内容");
+            }
+        }
+
+        if ("TIMER".equalsIgnoreCase(nodeType)) {
+            JsonNode propsNode = node.path("props");
+            String timerType = firstNotBlank(jsonText(propsNode, "timerType"), "DELAY");
+            if ("DELAY".equals(timerType)) {
+                JsonNode delayNode = propsNode.path("delayMinutes");
+                int delayMinutes = delayNode.isNumber() ? delayNode.asInt() : 0;
+                if (delayMinutes <= 0) {
+                    throw WorkflowException.validationError("定时节点 [" + nodeTitle + "] 未设置有效的延迟时间");
+                }
+            }
+            if ("SCHEDULE".equals(timerType) && !StringUtils.hasText(jsonText(propsNode, "scheduleTime"))) {
+                throw WorkflowException.validationError("定时节点 [" + nodeTitle + "] 未设置定时时间");
+            }
+        }
+
+        if ("SUBPROCESS".equalsIgnoreCase(nodeType)
+                && !StringUtils.hasText(jsonText(node.path("props"), "subprocessId"))) {
+            throw WorkflowException.validationError("子流程节点 [" + nodeTitle + "] 未配置子流程 ID");
+        }
+    }
+
+    private boolean isParallelSignMode(String signType) {
+        if (!StringUtils.hasText(signType)) {
+            return false;
+        }
+        String normalized = signType.trim().toUpperCase(Locale.ROOT);
+        return "ALL".equals(normalized)
+                || "ANY".equals(normalized)
+                || "PERCENT".equals(normalized)
+                || "SEQUENTIAL".equals(normalized);
     }
 
     private String jsonText(JsonNode node, String field) {

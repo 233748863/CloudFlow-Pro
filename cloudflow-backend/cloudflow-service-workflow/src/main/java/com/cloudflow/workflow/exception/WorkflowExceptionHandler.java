@@ -1,10 +1,11 @@
 package com.cloudflow.workflow.exception;
 
-import com.cloudflow.common.core.exception.SafeErrorResponse;
 import com.cloudflow.workflow.domain.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * @author CloudFlow
  */
 @RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class WorkflowExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(WorkflowExceptionHandler.class);
@@ -90,19 +92,6 @@ public class WorkflowExceptionHandler {
                         .message(e.getMessage())
                         .path(request.getRequestURI())
                         .build());
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleUnhandledException(Exception e, HttpServletRequest request) {
-        log.error("工作流未处理异常, uri={}", request.getRequestURI(), e);
-        return buildResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "WORKFLOW_INTERNAL_ERROR",
-                SafeErrorResponse.withTraceId("工作流服务异常，请联系管理员"),
-                null,
-                null,
-                request
-        );
     }
 
     private ResponseEntity<ErrorResponse> buildResponse(
