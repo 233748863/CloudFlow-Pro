@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   BaseEdge,
@@ -10,6 +10,7 @@ import {
   ReactFlowProvider,
   applyNodeChanges,
   getSmoothStepPath,
+  useReactFlow,
   type Edge,
   type EdgeProps,
   type Node,
@@ -368,6 +369,8 @@ const WorkflowCanvasInner = ({
 }: WorkflowCanvasProps) => {
   const actions = useFlowNodeActions();
   const ui = useFlowNodeUi();
+  const { setViewport } = useReactFlow();
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const canvasNodes = useMemo<WorkflowCanvasNode[]>(
     () =>
       graph.nodes.map((node) => ({
@@ -409,6 +412,34 @@ const WorkflowCanvasInner = ({
 
   const defaultViewport = graph.layout?.viewport ?? { x: 0, y: 0, zoom: 1 };
 
+  useEffect(() => {
+    const canvasElement = canvasRef.current;
+    if (!canvasElement) {
+      return;
+    }
+
+    let frameId = 0;
+    const syncViewport = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        const { width, height } = canvasElement.getBoundingClientRect();
+        if (width <= 0 || height <= 0) {
+          return;
+        }
+        setViewport(defaultViewport, { duration: 0 });
+      });
+    };
+
+    syncViewport();
+    const resizeObserver = new ResizeObserver(syncViewport);
+    resizeObserver.observe(canvasElement);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      resizeObserver.disconnect();
+    };
+  }, [defaultViewport.x, defaultViewport.y, defaultViewport.zoom, setViewport]);
+
   const handleNodesChange = (changes: NodeChange<WorkflowCanvasNode>[]) => {
     setNodes((current) => applyNodeChanges(changes, current));
   };
@@ -419,7 +450,8 @@ const WorkflowCanvasInner = ({
 
   return (
     <div
-      className={`workflow-studio-canvas workflow-flow-canvas relative flex-1 overflow-hidden bg-[var(--cf-bg)] dark:bg-slate-950 ${
+      ref={canvasRef}
+      className={`workflow-studio-canvas workflow-flow-canvas relative h-full min-h-0 flex-1 basis-0 overflow-hidden bg-[var(--cf-bg)] dark:bg-slate-950 ${
         hasSelectedNode ? "mr-[24rem]" : ""
       }`}
       onClick={() => {

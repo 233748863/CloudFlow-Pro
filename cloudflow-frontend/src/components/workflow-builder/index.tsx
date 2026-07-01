@@ -1172,7 +1172,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     <FlowNodeReadContext.Provider value={flowNodeReadValue}>
       <FlowNodeActionsContext.Provider value={flowNodeActionsValue}>
         <FlowNodeUiContext.Provider value={flowNodeUiValue}>
-          <div className="relative flex h-full flex-col overflow-hidden bg-[var(--cf-bg)] dark:bg-slate-950">
+          <div className="workflow-studio-shell relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[var(--cf-bg)] dark:bg-slate-950">
             <WorkflowToolbar
               workflowName={workflowName}
               workflowKey={workflowKey}
