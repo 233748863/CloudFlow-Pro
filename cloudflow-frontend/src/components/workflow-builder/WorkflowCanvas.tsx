@@ -4,8 +4,10 @@ import {
   BaseEdge,
   Controls,
   EdgeLabelRenderer,
+  Handle,
   MarkerType,
   MiniMap,
+  Position,
   ReactFlow,
   ReactFlowProvider,
   applyNodeChanges,
@@ -41,7 +43,6 @@ type WorkflowCanvasNodeData = {
   invalidNodes: string[];
   selectedNodeId: string | null;
   activeQuickAddId: string | null;
-  hoveredNodeId: string | null;
 };
 
 type WorkflowCanvasEdgeData = {
@@ -87,7 +88,6 @@ const WorkflowCanvasNodeView = memo(
     const NIcon = visual.icon;
     const canStructureDrag =
       displayNode.type !== NodeType.START && displayNode.type !== NodeType.END;
-    const canShowHover = !data.activeQuickAddId || data.activeQuickAddId === id;
     const canAddBranch =
       displayNode.type !== NodeType.PARALLEL ||
       (displayNode.signType &&
@@ -105,9 +105,21 @@ const WorkflowCanvasNodeView = memo(
       <div
         className="workflow-flow-node relative group"
         data-node-id={id}
-        onMouseEnter={() => canShowHover && ui.setHoveredNodeId(id)}
-        onMouseLeave={() => canShowHover && ui.setHoveredNodeId(null)}
       >
+        {displayNode.type !== NodeType.START && (
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="workflow-flow-handle"
+          />
+        )}
+        {displayNode.type !== NodeType.END && (
+          <Handle
+            type="source"
+            position={Position.Right}
+            className="workflow-flow-handle"
+          />
+        )}
         <div
           className={`relative z-10 w-[13rem] cursor-grab rounded-md border transition-colors duration-150 ${visual.bg} ${
             isInvalid
@@ -195,7 +207,9 @@ const WorkflowCanvasNodeView = memo(
         >
           <div
             className={`relative transition-opacity duration-200 ${
-              data.hoveredNodeId === id || showQuickAdd ? "opacity-100" : "opacity-0"
+              showQuickAdd
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
             }`}
           >
             <button
@@ -360,7 +374,6 @@ const WorkflowCanvasInner = ({
   invalidNodeIds,
   selectedNodeId,
   activeQuickAddId,
-  hoveredNodeId,
   draggingNodeId,
   isDraggingGlobal,
   hasSelectedNode,
@@ -371,6 +384,7 @@ const WorkflowCanvasInner = ({
   const ui = useFlowNodeUi();
   const { setViewport } = useReactFlow();
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const [canvasReady, setCanvasReady] = useState(false);
   const canvasNodes = useMemo<WorkflowCanvasNode[]>(
     () =>
       graph.nodes.map((node) => ({
@@ -381,10 +395,9 @@ const WorkflowCanvasInner = ({
           invalidNodes: invalidNodeIds,
           selectedNodeId,
           activeQuickAddId,
-          hoveredNodeId,
         },
       })),
-    [activeQuickAddId, graph.layout?.nodes, graph.nodes, hoveredNodeId, invalidNodeIds, selectedNodeId],
+    [activeQuickAddId, graph.layout?.nodes, graph.nodes, invalidNodeIds, selectedNodeId],
   );
   const canvasEdges = useMemo<WorkflowCanvasEdge[]>(
     () =>
@@ -426,6 +439,7 @@ const WorkflowCanvasInner = ({
         if (width <= 0 || height <= 0) {
           return;
         }
+        setCanvasReady(true);
         setViewport(defaultViewport, { duration: 0 });
       });
     };
@@ -459,34 +473,36 @@ const WorkflowCanvasInner = ({
         ui.setActiveQuickAddId(null);
       }}
     >
-      <ReactFlow
-        nodes={nodes}
-        edges={canvasEdges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={handleNodesChange}
-        onNodeDragStop={(_event, node) =>
-          onNodePositionChange(node.id, node.position)
-        }
-        onMoveEnd={handleMoveEnd}
-        defaultViewport={defaultViewport}
-        minZoom={0.2}
-        maxZoom={2}
-        fitView={false}
-        nodesConnectable={false}
-        elementsSelectable={false}
-        deleteKeyCode={null}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background gap={18} size={1} color="rgba(148, 163, 184, 0.32)" />
-        <MiniMap
-          pannable
-          zoomable
-          nodeStrokeWidth={2}
-          className="workflow-flow-minimap"
-        />
-        <Controls position="bottom-right" showInteractive={false} />
-      </ReactFlow>
+      {canvasReady && (
+        <ReactFlow
+          nodes={nodes}
+          edges={canvasEdges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={handleNodesChange}
+          onNodeDragStop={(_event, node) =>
+            onNodePositionChange(node.id, node.position)
+          }
+          onMoveEnd={handleMoveEnd}
+          defaultViewport={defaultViewport}
+          minZoom={0.2}
+          maxZoom={2}
+          fitView={false}
+          nodesConnectable={false}
+          elementsSelectable={false}
+          deleteKeyCode={null}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background gap={18} size={1} color="rgba(148, 163, 184, 0.32)" />
+          <MiniMap
+            pannable
+            zoomable
+            nodeStrokeWidth={2}
+            className="workflow-flow-minimap"
+          />
+          <Controls position="bottom-right" showInteractive={false} />
+        </ReactFlow>
+      )}
     </div>
   );
 };
