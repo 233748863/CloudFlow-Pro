@@ -4,10 +4,10 @@
 
     <select id="selectLowStockList" resultType="com.cloudflow.oa.domain.SysConsumable">
         SELECT *
-        FROM sys_consumable
+        FROM oa_consumable
         WHERE quantity &lt;= low_stock_threshold
           AND warn_enabled = 1
-          AND deleted = '0'
+          AND deleted = 0
         ORDER BY quantity ASC
     </select>
 

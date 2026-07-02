@@ -639,19 +639,23 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     public void startBudgetWorkflow(OaBudgetPlan budget) {
         try {
+            Long startUserId = resolveBudgetWorkflowStartUserId(budget);
+            String startUserName = resolveBudgetWorkflowStartUserName(budget, null, startUserId);
+            if (startUserId == null) {
+                throw new IllegalArgumentException("预算审批发起人不能为空");
+            }
             InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
             dto.setProcessDefKey("budget_plan_approval");
             dto.setBusinessKey("BUDGET_PLAN:" + budget.getBudgetId());
-            dto.setStartUserId(budget.getOwnerId());
-            dto.setStartUserName(budget.getOwnerName());
-            Map<String, Object> payload = new HashMap<>(Map.of(
-                    "budgetId", budget.getBudgetId(),
-                    "budgetNo", budget.getBudgetNo(),
-                    "budgetName", budget.getBudgetName(),
-                    "targetType", budget.getTargetType(),
-                    "targetName", budget.getTargetName(),
-                    "totalAmount", budget.getTotalAmount()
-            ));
+            dto.setStartUserId(startUserId);
+            dto.setStartUserName(startUserName);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("budgetId", budget.getBudgetId());
+            payload.put("budgetNo", budget.getBudgetNo());
+            payload.put("budgetName", budget.getBudgetName());
+            payload.put("targetType", budget.getTargetType());
+            payload.put("targetName", budget.getTargetName());
+            payload.put("totalAmount", budget.getTotalAmount());
             WorkflowCallbackConstants.applyCallbackMetadata(payload, OaBusinessTypes.BUDGET_PLAN, budget.getBudgetId(), budget.getBudgetNo(),
                     "workflow:stream:approval-callback:oa");
             dto.setVariables(payload);
@@ -674,21 +678,29 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
             log.error("预算 {} 启动工作流失败", budget.getBudgetNo(), e);
             workflowFailureHelper.handleWorkflowStartFailure(
                     OaBusinessTypes.BUDGET_PLAN, budget.getBudgetId(), budget.getBudgetNo(),
-                    resolveUserName(), null, e);
+                    resolveUserName(), resolveBudgetWorkflowStartUserId(budget), e);
         }
     }
 
     public void startAdjustmentWorkflow(OaBudgetAdjustment adjustment) {
         try {
+            OaBudgetPlan budget = adjustment.getBudgetId() == null ? null : getById(adjustment.getBudgetId());
+            Long startUserId = resolveBudgetWorkflowStartUserId(budget);
+            String startUserName = resolveBudgetWorkflowStartUserName(budget, adjustment.getCreateBy(), startUserId);
+            if (startUserId == null) {
+                throw new IllegalArgumentException("预算调整发起人不能为空");
+            }
             InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
             dto.setProcessDefKey("budget_adjustment_approval");
             dto.setBusinessKey("BUDGET_ADJUSTMENT:" + adjustment.getAdjustmentId());
-            dto.setStartUserName(resolveUserName());
+            dto.setStartUserId(startUserId);
+            dto.setStartUserName(startUserName);
             Map<String, Object> variables = new HashMap<>();
             variables.put("adjustmentId", adjustment.getAdjustmentId());
             variables.put("adjustmentNo", adjustment.getAdjustmentNo());
             variables.put("budgetId", adjustment.getBudgetId());
             variables.put("budgetNo", adjustment.getBudgetNo());
+            variables.put("budgetName", budget == null ? null : budget.getBudgetName());
             variables.put("changeAmount", adjustment.getChangeAmount());
             variables.put("subjectCode", adjustment.getSubjectCode());
             variables.put("subjectName", adjustment.getSubjectName());
@@ -721,6 +733,26 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
                     OaBusinessTypes.BUDGET_ADJUSTMENT, adjustment.getAdjustmentId(), adjustment.getAdjustmentNo(),
                     resolveUserName(), null, e);
         }
+    }
+
+    private Long resolveBudgetWorkflowStartUserId(OaBudgetPlan budget) {
+        if (UserContext.getUserId() != null) {
+            return UserContext.getUserId();
+        }
+        return budget == null ? null : budget.getOwnerId();
+    }
+
+    private String resolveBudgetWorkflowStartUserName(OaBudgetPlan budget, String fallbackName, Long startUserId) {
+        if (StringUtils.hasText(UserContext.getUserName())) {
+            return UserContext.getUserName();
+        }
+        if (budget != null && StringUtils.hasText(budget.getOwnerName())) {
+            return budget.getOwnerName();
+        }
+        if (StringUtils.hasText(fallbackName)) {
+            return fallbackName;
+        }
+        return startUserId == null ? "system" : String.valueOf(startUserId);
     }
 
     private OaBudgetSubject findSubjectByCode(String subjectCode) {

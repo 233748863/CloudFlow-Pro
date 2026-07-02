@@ -20,6 +20,7 @@ import java.util.Map;
  */
 @FeignClient(
     name = "cloudflow-service-workflow",
+    url = "${cloudflow.remote.workflow.url:}",
     contextId = "oaRemoteWorkflowService",
     fallbackFactory = RemoteWorkflowFallbackFactory.class
 )

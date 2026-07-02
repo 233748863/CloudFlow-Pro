@@ -124,6 +124,102 @@
         WHERE ta.id = #{id}
     </select>
 
+    <!-- 查询未解决告警 -->
+    <select id="selectUnresolved" resultMap="TimeoutAlertResult">
+        SELECT
+            ta.id,
+            ta.tenant_id,
+            ta.alert_type,
+            ta.target_id,
+            ta.target_name,
+            ta.timeout_level,
+            ta.timeout_duration,
+            ta.threshold,
+            ta.assignee_id,
+            ta.assignee_name,
+            ta.alert_time,
+            ta.notification_sent,
+            ta.escalated,
+            ta.escalated_to_id,
+            ta.escalated_to_name,
+            ta.escalated_time,
+            ta.resolved,
+            ta.resolved_by_id,
+            ta.resolved_by_name,
+            ta.resolve_note,
+            ta.resolve_time,
+            ta.create_time,
+            ta.update_time
+        FROM wf_timeout_alert ta
+        WHERE ta.tenant_id = #{tenantId}
+          AND (ta.resolved = 'N' OR ta.resolved IS NULL)
+        ORDER BY ta.alert_time DESC
+    </select>
+
+    <!-- 按级别查询告警 -->
+    <select id="selectByLevel" resultMap="TimeoutAlertResult">
+        SELECT
+            ta.id,
+            ta.tenant_id,
+            ta.alert_type,
+            ta.target_id,
+            ta.target_name,
+            ta.timeout_level,
+            ta.timeout_duration,
+            ta.threshold,
+            ta.assignee_id,
+            ta.assignee_name,
+            ta.alert_time,
+            ta.notification_sent,
+            ta.escalated,
+            ta.escalated_to_id,
+            ta.escalated_to_name,
+            ta.escalated_time,
+            ta.resolved,
+            ta.resolved_by_id,
+            ta.resolved_by_name,
+            ta.resolve_note,
+            ta.resolve_time,
+            ta.create_time,
+            ta.update_time
+        FROM wf_timeout_alert ta
+        WHERE ta.tenant_id = #{tenantId}
+          AND ta.timeout_level = #{level}
+        ORDER BY ta.alert_time DESC
+    </select>
+
+    <!-- 按处理人查询告警 -->
+    <select id="selectByAssignee" resultMap="TimeoutAlertResult">
+        SELECT
+            ta.id,
+            ta.tenant_id,
+            ta.alert_type,
+            ta.target_id,
+            ta.target_name,
+            ta.timeout_level,
+            ta.timeout_duration,
+            ta.threshold,
+            ta.assignee_id,
+            ta.assignee_name,
+            ta.alert_time,
+            ta.notification_sent,
+            ta.escalated,
+            ta.escalated_to_id,
+            ta.escalated_to_name,
+            ta.escalated_time,
+            ta.resolved,
+            ta.resolved_by_id,
+            ta.resolved_by_name,
+            ta.resolve_note,
+            ta.resolve_time,
+            ta.create_time,
+            ta.update_time
+        FROM wf_timeout_alert ta
+        WHERE ta.tenant_id = #{tenantId}
+          AND ta.assignee_id = #{assigneeId}
+        ORDER BY ta.alert_time DESC
+    </select>
+
     <select id="selectTimeoutLevelBreakdown" resultType="com.cloudflow.workflow.domain.monitor.PerformanceTimeoutLevelBreakdownItem">
         SELECT
             x.timeout_level AS level,
