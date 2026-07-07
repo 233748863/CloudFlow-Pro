@@ -49,6 +49,7 @@ function AppInner() {
       'invoice_status',
       'salary_slip_status',
       'crm_lead_status',
+      'sys_currency',
       // P1 - 运营配置（风险等级/公告/工作流）
       'severity_level',
       'announcement_status',

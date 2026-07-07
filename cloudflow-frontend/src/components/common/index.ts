@@ -45,6 +45,7 @@ export { ModalOverlay } from './ModalOverlay';
 export { ConfirmDialog } from './ConfirmDialog';
 export * from './ConflictResolutionDialog';
 export * from './date-picker';
+export * from './DictSelect';
 export * from './EmptyState';
 export * from './ErrorBoundary';
 export { FilterChip } from './filter-chip';

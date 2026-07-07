@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import {
   Button,
   DatePicker,
+  DictSelect,
   Input,
   Label,
   LoadingSpinner,
@@ -15,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  UserSelector,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -26,6 +28,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
 
 const statusOptions = ['ACTIVE', 'INACTIVE'];
+const CURRENCY_DICT_TYPE = 'sys_currency';
 
 const emptyPriceBook: CrmPriceBook = {
   priceBookName: '',
@@ -84,11 +87,17 @@ export default function CrmPriceBookPage() {
 
   const savePriceBook = async () => {
     try {
+      const payload: CrmPriceBook = {
+        ...form,
+        currency: form.currency || 'CNY',
+        ownerId: form.ownerId,
+        ownerName: form.ownerId ? form.ownerName : '',
+      };
       if (editing?.priceBookId) {
-        await crmApi.editPriceBook({ ...form, priceBookId: editing.priceBookId });
+        await crmApi.editPriceBook({ ...payload, priceBookId: editing.priceBookId });
         toast.success('价目表已更新');
       } else {
-        await crmApi.addPriceBook(form);
+        await crmApi.addPriceBook(payload);
         toast.success('价目表已创建');
       }
       setDialogOpen(false);
@@ -231,11 +240,26 @@ export default function CrmPriceBookPage() {
           </div>
           <div>
             <Label>币种</Label>
-            <Input value={form.currency || 'CNY'} onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value }))} placeholder="CNY" />
+            <DictSelect
+              dictType={CURRENCY_DICT_TYPE}
+              value={form.currency || 'CNY'}
+              onChange={(value) => setForm((prev) => ({ ...prev, currency: value }))}
+              placeholder="选择币种"
+            />
           </div>
           <div>
             <Label>负责人</Label>
-            <Input value={form.ownerName || ''} onChange={(e) => setForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="价目表负责人" />
+            <UserSelector
+              single
+              allowClear
+              value={form.ownerId ? String(form.ownerId) : null}
+              onChange={(id, picked) => setForm((prev) => ({
+                ...prev,
+                ownerId: id ? Number(id) : undefined,
+                ownerName: picked?.name || '',
+              }))}
+              placeholder="选择价目表负责人"
+            />
           </div>
           <div>
             <Label>开始日期</Label>
