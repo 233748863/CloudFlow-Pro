@@ -19,6 +19,29 @@ interface TemplateLibraryPreviewDialogProps {
   onUseTemplate: (templateId: string) => void;
 }
 
+const TemplatePreviewImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const [loadFailed, setLoadFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    setLoadFailed(false);
+  }, [src]);
+
+  if (loadFailed) {
+    return null;
+  }
+
+  return (
+    <InnerTableSurface wrapperClassName="p-0">
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-[220px] w-full object-cover"
+        onError={() => setLoadFailed(true)}
+      />
+    </InnerTableSurface>
+  );
+};
+
 const PreviewSection: React.FC<{
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -101,13 +124,10 @@ export const TemplateLibraryPreviewDialog: React.FC<TemplateLibraryPreviewDialog
       <div className="grid gap-4">
         <div className="flex flex-col gap-4">
           {template.previewImage ? (
-            <InnerTableSurface wrapperClassName="p-0">
-              <img
-                src={template.previewImage}
-                alt={`${template.name} preview`}
-                className="max-h-[220px] w-full object-cover"
-              />
-            </InnerTableSurface>
+            <TemplatePreviewImage
+              src={template.previewImage}
+              alt={`${template.name} preview`}
+            />
           ) : null}
 
           <PreviewSection title={TEXT.previewOverview}>

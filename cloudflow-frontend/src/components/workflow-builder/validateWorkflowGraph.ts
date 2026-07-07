@@ -67,6 +67,26 @@ export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
   const nodeMap = new Map<string, WorkflowGraphNode>();
   const incoming = new Map<string, WorkflowGraphEdge[]>();
 
+  graph.nodes.forEach((node) => {
+    const nodeId = typeof node.id === "string" ? node.id : "";
+    if (nodeId && !nodeMap.has(nodeId)) {
+      nodeMap.set(nodeId, node);
+    }
+  });
+
+  graph.edges.forEach((edge) => {
+    const target = typeof edge.target === "string" ? edge.target : "";
+    if (!target) {
+      return;
+    }
+    const edgesOfTarget = incoming.get(target);
+    if (edgesOfTarget) {
+      edgesOfTarget.push(edge);
+    } else {
+      incoming.set(target, [edge]);
+    }
+  });
+
   const validateApprover = (
     node: WorkflowGraphNode,
     nodeId: string,

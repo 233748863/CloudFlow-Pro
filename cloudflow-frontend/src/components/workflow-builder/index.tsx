@@ -52,6 +52,7 @@ import {
   parseWorkflowGraphDefinition,
   patchWorkflowGraphNodeLayout,
   patchWorkflowGraphViewport,
+  autoLayoutWorkflowGraph,
   removeWorkflowGraphBranch,
   removeWorkflowGraphNode,
   replaceWorkflowGraphNextNode,
@@ -72,6 +73,25 @@ import {
   type FlowNodeUiContextValue,
 } from "./FlowNodeActionsContext";
 import { validateWorkflowGraph } from "./validateWorkflowGraph";
+
+// B18: 严格解析保存接口返回的 definitionId，杜绝对象被 String() 成 "[object Object]" 后调用发布接口
+const resolveDefinitionIdFromSaveResult = (
+  saveRes: unknown,
+): string | undefined => {
+  if (typeof saveRes === "string" && saveRes.trim()) {
+    return saveRes;
+  }
+  if (saveRes && typeof saveRes === "object") {
+    const id = (saveRes as { id?: unknown }).id;
+    if (typeof id === "string" && id.trim()) {
+      return id;
+    }
+    if (typeof id === "number") {
+      return String(id);
+    }
+  }
+  return undefined;
+};
 
 export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   workflow,
@@ -193,6 +213,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const workflowRef = useRef(workflow);
   workflowRef.current = workflow;
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // B17: 切换流程时递增，作为 WorkflowCanvas 的 key 强制重挂载画布（重置本地节点/视口恢复状态）
+  const [canvasEpoch, setCanvasEpoch] = useState(0);
+  // 一键整理后递增，通知画布把视图重新适配到全部节点
+  const [fitViewSignal, setFitViewSignal] = useState(0);
   const selectedGraphNode = useMemo(
     () =>
       selectedNodeId ? findWorkflowGraphNode(graphModel, selectedNodeId) : null,
@@ -329,11 +353,31 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     };
   }, [graphModel, workflowName, workflowKey, buildSettingsState]);
 
-  const initializedRef = useRef(false);
+  // B15: 记录已初始化的流程 id 与最近一次看到的 graph 引用。
+  // - id 未变化（含 onChange 快照回写）→ 不重新初始化
+  // - id 变化但 graph 引用未变（父级 {...prev, id} 的保存回写升级）→ 仅更新记录，保留编辑状态与撤销栈
+  // - id 变化且 graph 引用变化（URL 切换到另一流程，父级全新加载）→ 重新初始化图模型
+  const initializedWorkflowIdRef = useRef<string | null>(null);
+  const lastSeenGraphRef = useRef<WorkflowDefinition["graph"] | null>(null);
 
   useEffect(() => {
-    if (!workflow || initializedRef.current) return;
-    initializedRef.current = true;
+    if (!workflow) return;
+    const currentId = workflow.id || "";
+    const graphUnchanged = workflow.graph === lastSeenGraphRef.current;
+    lastSeenGraphRef.current = workflow.graph;
+
+    if (initializedWorkflowIdRef.current === currentId) return;
+    if (initializedWorkflowIdRef.current !== null && graphUnchanged) {
+      // 保存成功后 id 升级（new_ → 持久 id），数据未变，不重置画布
+      initializedWorkflowIdRef.current = currentId;
+      return;
+    }
+    const isWorkflowSwitch = initializedWorkflowIdRef.current !== null;
+    initializedWorkflowIdRef.current = currentId;
+    if (isWorkflowSwitch) {
+      // 切换到另一流程：重挂载画布，重置视口恢复与本地节点状态
+      setCanvasEpoch((epoch) => epoch + 1);
+    }
 
     const nextGraph = resolveGraphModel(workflow.graph);
     replaceGraphState(nextGraph, {
@@ -467,6 +511,13 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     },
     [replaceGraphState],
   );
+
+  const handleAutoLayout = useCallback(() => {
+    const nextGraph = autoLayoutWorkflowGraph(graphModelRef.current);
+    replaceGraphState(nextGraph);
+    setFitViewSignal((value) => value + 1);
+    toast.success("已重新整理画布布局");
+  }, [replaceGraphState]);
 
   const handleCopyNode = useCallback(
     (nodeId: string) => {
@@ -959,21 +1010,38 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
     try {
       setSaving(true);
-      const definition = buildDefinitionPayload();
-      const saveRes = await saveProcessDefinition(definition);
-      const definitionId = (saveRes as any)?.id || saveRes;
+      // N2: 有父级保存协调时必须走 onSave（同步自动保存签名与 id），
+      // 避免发布后 3 秒自动保存判定"内容有变"再落一个冗余版本
+      let definitionId: string | undefined;
+      if (onSave && workflow) {
+        const snapshot = buildWorkflowSnapshot();
+        if (!snapshot) {
+          toast.error("发布失败：无法构建流程快照");
+          return;
+        }
+        const saved = await onSave(snapshot);
+        definitionId = resolveDefinitionIdFromSaveResult(saved);
+        if (!definitionId) {
+          const currentId = workflowRef.current?.id;
+          definitionId =
+            currentId && !currentId.startsWith("new_") ? currentId : undefined;
+        }
+      } else {
+        const definition = buildDefinitionPayload();
+        const saveRes = await saveProcessDefinition(definition);
+        definitionId = resolveDefinitionIdFromSaveResult(saveRes);
+      }
       if (!definitionId) {
         toast.error("发布失败：无法获取流程ID");
         return;
       }
-      const normalizedDefinitionId = String(definitionId);
       if (onChange) {
         const snapshot = buildWorkflowSnapshot();
-        if (snapshot && snapshot.id !== normalizedDefinitionId) {
-          onChange({ ...snapshot, id: normalizedDefinitionId });
+        if (snapshot && snapshot.id !== definitionId) {
+          onChange({ ...snapshot, id: definitionId });
         }
       }
-      await deployProcessDefinition(normalizedDefinitionId);
+      await deployProcessDefinition(definitionId);
       toast.success("流程已发布并上线！");
     } catch (e) {
       console.error(e);
@@ -1043,6 +1111,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const silentSaveCurrentGraph = useCallback(async (): Promise<{
     ok: boolean;
     reason?: string;
+    savedId?: string;
   }> => {
     const { errors } = validateWorkflowGraph(graphModel);
     if (errors.length > 0) {
@@ -1056,16 +1125,19 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     }
     setSaving(true);
     try {
+      let savedId: string | undefined;
       if (onSave && workflow) {
         const snapshot = buildWorkflowSnapshot();
         if (snapshot) {
-          await onSave(snapshot);
+          const saved = await onSave(snapshot);
+          savedId = resolveDefinitionIdFromSaveResult(saved);
         }
       } else {
         const definition = buildDefinitionPayload();
-        await saveProcessDefinition(definition);
+        const saveRes = await saveProcessDefinition(definition);
+        savedId = resolveDefinitionIdFromSaveResult(saveRes);
       }
-      return { ok: true };
+      return { ok: true, savedId };
     } catch (error) {
       console.error("[WorkflowBuilder] 静默保存失败:", error);
       return { ok: false, reason: "request" };
@@ -1086,8 +1158,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     if (!currentWorkflowId || currentWorkflowId.startsWith("new_")) {
       return;
     }
-    await silentSaveCurrentGraph();
-    navigate(`/workflow/versions/${currentWorkflowId}`);
+    // B19: 静默保存可能产生新版本 id，跳转/导出必须用保存后的最新 id
+    const saveResult = await silentSaveCurrentGraph();
+    const targetId = saveResult.savedId || currentWorkflowId;
+    navigate(`/workflow/versions/${targetId}`);
   };
 
   const handleExport = async () => {
@@ -1096,10 +1170,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       return;
     }
 
-    await silentSaveCurrentGraph();
+    const saveResult = await silentSaveCurrentGraph();
+    const exportId = saveResult.savedId || workflow.id;
 
     try {
-      const blob = await exportWorkflow(workflow.id, false);
+      const blob = await exportWorkflow(exportId, false);
       const fileName = downloadBlob(
         blob,
         `workflow_${workflowName}_${workflow.version || "1.0.0"}_${new Date().toISOString().split("T")[0]}.json`,
@@ -1185,6 +1260,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
               onRedo={redo}
               canUndo={canUndo}
               canRedo={canRedo}
+              onAutoLayout={handleAutoLayout}
               onOpenSettings={() => setShowSettingsModal(true)}
               onOpenGlobalConfig={() => {
                 setShowGlobalConfig(true);
@@ -1197,6 +1273,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             />
 
             <WorkflowCanvas
+              key={canvasEpoch}
               graph={graphModel}
               invalidNodeIds={invalidNodeIds}
               selectedNodeId={selectedNodeId}
@@ -1205,6 +1282,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
               draggingNodeId={draggingNodeId}
               isDraggingGlobal={isDraggingGlobal}
               hasSelectedNode={Boolean(selectedGraphNode)}
+              fitViewSignal={fitViewSignal}
               onNodePositionChange={handleNodePositionChange}
               onViewportChange={handleViewportChange}
             />

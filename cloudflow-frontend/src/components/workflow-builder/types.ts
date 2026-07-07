@@ -9,7 +9,7 @@ import {
 
 export type EditableWorkflowNode = WorkflowGraphNode & {
   title: string;
-  branchStrategy?: "PARALLEL" | "RACE" | "EXCLUSIVE";
+  branchStrategy?: "PARALLEL" | "EXCLUSIVE";
   condition?: string;
   inputs?: Record<string, string>;
   outputs?: Record<string, string>;

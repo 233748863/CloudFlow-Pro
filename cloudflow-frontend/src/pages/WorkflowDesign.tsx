@@ -57,17 +57,17 @@ const loadWorkflowDesignContext = async (): Promise<WorkflowDesignContextPayload
 
   workflowDesignCache.contextPromise = Promise.all([
     getFormDefinitions().catch((err) => {
-      logWorkflow.warn('鍔犺浇琛ㄥ崟鍒楄〃澶辫触:', err);
+      logWorkflow.warn('加载表单列表失败:', err);
       toast.warning('表单列表加载失败，暂时无法绑定表单');
       return [];
     }),
     getRoleOptions().catch((err) => {
-      logWorkflow.warn('鍔犺浇瑙掕壊鍒楄〃澶辫触:', err);
+      logWorkflow.warn('加载角色列表失败:', err);
       toast.warning('角色列表加载失败，部分审批人配置不可用');
       return [];
     }),
     getUserList().catch((err) => {
-      logWorkflow.warn('鍔犺浇鐢ㄦ埛鍒楄〃澶辫触:', err);
+      logWorkflow.warn('加载用户列表失败:', err);
       toast.warning('用户列表加载失败，部分审批人配置不可用');
       return [];
     }),
@@ -101,7 +101,7 @@ const loadProcessDefinitionById = async (definitionId: string): Promise<any | nu
 
   const requestPromise = getProcessDefinition(normalizedId)
     .catch((err) => {
-      logWorkflow.warn('鎸?ID 鍔犺浇娴佺▼澶辫触锛屽皾璇曞垪琛ㄥ厹搴?', err);
+      logWorkflow.warn('按 ID 加载流程失败，尝试列表兜底:', err);
       return null;
     })
     .finally(() => {
@@ -119,7 +119,7 @@ const loadProcessDefinitionsList = async (): Promise<any[]> => {
 
   workflowDesignCache.processDefinitionsListPromise = getProcessDefinitions()
     .catch((err) => {
-      logWorkflow.warn('鍔犺浇娴佺▼瀹氫箟鍒楄〃澶辫触:', err);
+      logWorkflow.warn('加载流程定义列表失败:', err);
       return [];
     })
     .finally(() => {
@@ -149,7 +149,8 @@ const parseWorkflowGraph = (raw: unknown, workflowName: string) => {
 };
 
 /**
- * 缁熶竴鏄犲皠鍚庣娴佺▼鏁版嵁锛岀‘淇濊璁″櫒浣跨敤绋冲畾鐨?definitionId銆? */
+ * 统一映射后端流程数据，确保设计器使用稳定的 definitionId。
+ */
 const resolveDefinitionId = (w: any): string => {
   const rawId = w?.definitionId;
   if (rawId === undefined || rawId === null) {
@@ -159,7 +160,9 @@ const resolveDefinitionId = (w: any): string => {
 };
 
 /**
- * 瑙ｆ瀽淇濆瓨鎺ュ彛杩斿洖鐨?definitionId銆? * nodes+edges 閲嶆瀯鍚庝粎鎺ュ彈瀵硅薄缁撴瀯锛歿 id: string }銆? */
+ * 解析保存接口返回的 definitionId。
+ * nodes+edges 重构后仅接受对象结构：{ id: string }。
+ */
 const resolveSavedDefinitionId = (result: unknown): string | undefined => {
   if (result && typeof result === 'object') {
     const rawId = (result as { id?: unknown }).id;
@@ -203,7 +206,8 @@ const buildWorkflowSavePayload = (wf: WorkflowDefinition) => ({
 });
 
 /**
- * 鑷姩淇濆瓨绛惧悕锛氬拷鐣?definitionId锛屼粎鍏虫敞娴佺▼鍐呭鏄惁鐪熸鍙樺寲銆? */
+ * 自动保存签名：忽略 definitionId，仅关注流程内容是否真正变化。
+ */
 const buildWorkflowContentSignature = (wf: WorkflowDefinition | null | undefined): string => {
   if (!wf) return '';
   return JSON.stringify({
@@ -405,7 +409,7 @@ export const WorkflowDesign = () => {
     syncWorkflowIdToUrl(workflow.id);
   }, [workflow?.id, syncWorkflowIdToUrl]);
 
-  const handleSaveWorkflow = async (wf: WorkflowDefinition) => {
+  const handleSaveWorkflow = async (wf: WorkflowDefinition): Promise<{ id?: string } | void> => {
     try {
       if (!wf.key || wf.key === 'new_process') {
         throw new Error('流程Key不能为空或使用默认值，请设置有效的流程Key');
@@ -421,6 +425,9 @@ export const WorkflowDesign = () => {
         setWorkflow((prev) => (prev ? { ...prev, id: nextId } : prev));
         workflowIdRef.current = nextId;
       }
+      // 回传保存后的 definitionId，供设计器发布/导出等后续动作使用最新版本 id
+      const effectiveId = nextId || (wf.id && !wf.id.startsWith('new_') ? wf.id : undefined);
+      return effectiveId ? { id: effectiveId } : undefined;
     } catch (err) {
       logWorkflow.error('保存流程失败:', err);
       toast.error(err instanceof Error ? err.message : '流程保存失败');

@@ -123,8 +123,6 @@ export enum BranchStrategy {
   EXCLUSIVE = 'EXCLUSIVE',
   /** 并行网关（全部） */
   PARALLEL = 'PARALLEL',
-  /** 竞争网关（最快） */
-  RACE = 'RACE',
 }
 
 // ============================================================

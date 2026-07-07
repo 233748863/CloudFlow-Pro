@@ -41,7 +41,6 @@ export const APPROVER_TYPE_LABELS: Record<string, string> = {
 export const BRANCH_STRATEGY_LABELS: Record<string, string> = {
   EXCLUSIVE: "单选分支",
   PARALLEL: "并行处理",
-  RACE: "竞争模式",
 };
 
 const neutralNodeVisual = {

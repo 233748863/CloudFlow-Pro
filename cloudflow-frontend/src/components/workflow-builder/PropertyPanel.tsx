@@ -77,10 +77,11 @@ export const PropertyPanel = ({
   onDelete,
 }: PropertyPanelProps) => {
   const [formData, setFormData] = useState(node);
-  // 当节点 ID 变化或节点内容（分支、props）变化时同步 formData
+  // B16: 图模型为不可变更新，node 引用变化即内容变化（含撤销/重做回滚），
+  // 依赖必须是整个 node——按字段列举会漏 title/condition/approverValue 等，导致面板显示旧值并在 blur 时把旧值写回图
   useEffect(() => {
     setFormData(node);
-  }, [node.id, branchCount, node.branchStrategy, node.props]);
+  }, [node]);
 
   // P2-1: Esc 关闭属性面板，与右上角 X 按钮等价。
   useEffect(() => {
@@ -123,7 +124,7 @@ export const PropertyPanel = ({
   const branchStrategyOptions =
     node.type === NodeType.PARALLEL
       ? (Object.entries(BRANCH_STRATEGY_LABELS).filter(([key]) =>
-          ["PARALLEL", "RACE"].includes(key),
+          ["PARALLEL"].includes(key),
         ) as Array<[string, string]>)
       : (Object.entries(BRANCH_STRATEGY_LABELS).filter(
           ([key]) => key === "EXCLUSIVE",

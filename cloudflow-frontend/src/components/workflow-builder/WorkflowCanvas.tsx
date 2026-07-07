@@ -64,6 +64,7 @@ interface WorkflowCanvasProps {
   draggingNodeId: string | null;
   isDraggingGlobal: boolean;
   hasSelectedNode: boolean;
+  fitViewSignal?: number;
   onNodePositionChange: (nodeId: string, position: { x: number; y: number }) => void;
   onViewportChange: (viewport: { x: number; y: number; zoom: number }) => void;
 }
@@ -377,12 +378,13 @@ const WorkflowCanvasInner = ({
   draggingNodeId,
   isDraggingGlobal,
   hasSelectedNode,
+  fitViewSignal,
   onNodePositionChange,
   onViewportChange,
 }: WorkflowCanvasProps) => {
   const actions = useFlowNodeActions();
   const ui = useFlowNodeUi();
-  const { setViewport } = useReactFlow();
+  const { setViewport, fitView } = useReactFlow();
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [canvasReady, setCanvasReady] = useState(false);
   const canvasNodes = useMemo<WorkflowCanvasNode[]>(
@@ -425,6 +427,12 @@ const WorkflowCanvasInner = ({
 
   const defaultViewport = graph.layout?.viewport ?? { x: 0, y: 0, zoom: 1 };
 
+  // B17: 持久化视口仅在画布首次获得尺寸时恢复一次；此后属性面板开合等容器尺寸变化
+  // 不再把用户当前的平移/缩放重置回旧值（切换流程时组件经 key 重挂载后重新恢复）
+  const viewportRestoredRef = useRef(false);
+  const defaultViewportRef = useRef(defaultViewport);
+  defaultViewportRef.current = defaultViewport;
+
   useEffect(() => {
     const canvasElement = canvasRef.current;
     if (!canvasElement) {
@@ -440,19 +448,24 @@ const WorkflowCanvasInner = ({
           return;
         }
         setCanvasReady(true);
-        setViewport(defaultViewport, { duration: 0 });
+        if (!viewportRestoredRef.current) {
+          viewportRestoredRef.current = true;
+          setViewport(defaultViewportRef.current, { duration: 0 });
+        }
+        // 视口已恢复，后续尺寸变化交给 React Flow 自身处理，不再重置
+        resizeObserver.disconnect();
       });
     };
+    const resizeObserver = new ResizeObserver(syncViewport);
 
     syncViewport();
-    const resizeObserver = new ResizeObserver(syncViewport);
     resizeObserver.observe(canvasElement);
 
     return () => {
       window.cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
     };
-  }, [defaultViewport.x, defaultViewport.y, defaultViewport.zoom, setViewport]);
+  }, [setViewport]);
 
   const handleNodesChange = (changes: NodeChange<WorkflowCanvasNode>[]) => {
     setNodes((current) => applyNodeChanges(changes, current));
@@ -461,6 +474,21 @@ const WorkflowCanvasInner = ({
   const handleMoveEnd: OnMoveEnd = (_event, viewport) => {
     onViewportChange(viewport);
   };
+
+  // 一键整理后重排了全部节点坐标，将视图重新适配到全部节点（信号首次为空时不触发，
+  // 避免与持久化视口的首帧恢复相互冲突）
+  const fitViewSignalRef = useRef(fitViewSignal);
+  useEffect(() => {
+    if (fitViewSignal === undefined || fitViewSignal === fitViewSignalRef.current) {
+      fitViewSignalRef.current = fitViewSignal;
+      return;
+    }
+    fitViewSignalRef.current = fitViewSignal;
+    const frameId = window.requestAnimationFrame(() => {
+      fitView({ duration: 400, padding: 0.2 });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [fitView, fitViewSignal]);
 
   return (
     <div

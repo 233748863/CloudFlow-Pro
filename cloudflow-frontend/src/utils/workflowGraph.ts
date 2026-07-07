@@ -80,6 +80,9 @@ const buildFallbackNodeLayouts = (
     const currentLevel = levels.get(currentId) ?? 0;
     (outgoing.get(currentId) ?? []).forEach((targetId) => {
       const nextLevel = currentLevel + 1;
+      // G1: 无环图最大层级为节点数-1；带环的畸形输入(未经完整性校验的外部 JSON)
+      // 会让层级无限抬升导致死循环，这里以节点数为层级上限兜底
+      if (nextLevel >= graph.nodes.length) return;
       const previous = levels.get(targetId);
       if (previous !== undefined && previous >= nextLevel) return;
       levels.set(targetId, nextLevel);
@@ -114,6 +117,23 @@ const buildFallbackNodeLayouts = (
   });
   return layouts;
 };
+
+/**
+ * 一键整理：忽略节点当前坐标，按分层 BFS 重新计算全部节点位置。
+ * 与 buildFallbackNodeLayouts 共用同一套分层算法，保证与新增节点时的落点风格一致；
+ * 视口保持不变（是否重新适配由画布层负责）。
+ */
+export const autoLayoutWorkflowGraph = (
+  graph: WorkflowGraphDefinition,
+): WorkflowGraphDefinition => ({
+  ...graph,
+  nodes: [...graph.nodes],
+  edges: [...graph.edges],
+  layout: {
+    nodes: buildFallbackNodeLayouts(graph),
+    viewport: graph.layout?.viewport ?? DEFAULT_WORKFLOW_VIEWPORT,
+  },
+});
 
 export const normalizeWorkflowGraphLayout = (
   graph: WorkflowGraphDefinition,
@@ -1040,8 +1060,10 @@ export const cloneWorkflowGraphSubgraph = (
       const clonedId = createNodeId(resolveWorkflowGraphNodeIdPrefix(node));
       idMap.set(node.id, clonedId);
 
+      // B20: 深拷贝节点，克隆体与原节点不共享 props/retry/inputs 等嵌套对象引用，
+      // 防止任一侧的就地修改污染另一侧与撤销历史快照
       const clonedNode: WorkflowGraphNode = {
-        ...node,
+        ...structuredClone(node),
         id: clonedId,
       };
 
@@ -1066,7 +1088,9 @@ export const cloneWorkflowGraphSubgraph = (
 
     result.push({
       ...edge,
-      id: `${clonedSource}->${clonedTarget}`,
+      // G2: 同对 source/target 存在多条边时直接拼接会产生重复 edge id，
+      // 导致克隆结果被完整性校验拒绝，改用去重生成器兜底
+      id: generateUniqueEdgeId(result, clonedSource, clonedTarget),
       source: clonedSource,
       target: clonedTarget,
     });

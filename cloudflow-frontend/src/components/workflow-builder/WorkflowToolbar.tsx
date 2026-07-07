@@ -1,4 +1,4 @@
-import { Undo2, Redo2 } from "lucide-react";
+import { Undo2, Redo2, LayoutGrid } from "lucide-react";
 import { Input } from "../common/input";
 import { Button } from "../common/button";
 
@@ -14,6 +14,7 @@ interface WorkflowToolbarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  onAutoLayout: () => void;
   onOpenGlobalConfig: () => void;
   onOpenSettings: () => void;
   onViewVersionHistory?: () => void;
@@ -34,6 +35,7 @@ export const WorkflowToolbar = ({
   onRedo,
   canUndo,
   canRedo,
+  onAutoLayout,
   onOpenGlobalConfig,
   onOpenSettings,
   onViewVersionHistory,
@@ -76,6 +78,16 @@ export const WorkflowToolbar = ({
         >
           全局属性
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onAutoLayout}
+          className="shrink-0 gap-1.5 whitespace-nowrap"
+          title="按流程结构重新排布节点"
+        >
+          <LayoutGrid size={14} />
+          一键整理
+        </Button>
         {workflowId &&
           !workflowId.startsWith("new_") &&
           onViewVersionHistory && (
@@ -111,28 +123,28 @@ export const WorkflowToolbar = ({
             模拟测试
           </Button>
         )}
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-1 dark:border-slate-800 dark:bg-slate-950">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onUndo}
-            disabled={!canUndo}
-            className={`h-7 w-7 rounded-md p-0 ${!canUndo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`}
-            title="撤销 (Ctrl+Z)"
-          >
-            <Undo2 size={16} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onRedo}
-            disabled={!canRedo}
-            className={`h-7 w-7 rounded-md p-0 ${!canRedo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`}
-            title="重做 (Ctrl+Y)"
-          >
-            <Redo2 size={16} />
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onUndo}
+          disabled={!canUndo}
+          className="shrink-0 gap-1.5 whitespace-nowrap"
+          title="撤销 (Ctrl+Z)"
+        >
+          <Undo2 size={14} />
+          撤销
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRedo}
+          disabled={!canRedo}
+          className="shrink-0 gap-1.5 whitespace-nowrap"
+          title="重做 (Ctrl+Y)"
+        >
+          <Redo2 size={14} />
+          重做
+        </Button>
         <Button
           variant="outline"
           size="sm"
