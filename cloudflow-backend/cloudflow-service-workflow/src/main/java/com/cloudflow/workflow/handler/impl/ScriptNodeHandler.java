@@ -72,7 +72,9 @@ public class ScriptNodeHandler implements INodeHandler {
         } catch (Exception e) {
             log.error("[ScriptNodeHandler] 脚本节点执行失败, nodeKey={}: {}", node.getId(), e.getMessage(), e);
             Map<String, Object> props = node.getProps();
-            Boolean continueOnError = props != null ? (Boolean) props.getOrDefault("continueOnError", true) : true;
+            // G4: continueOnError 默认必须为 false——脚本失败默认抛异常交由引擎挂起流程(A3 拍板语义)，
+            // 且与前端属性面板"失败继续"开关的默认显示(false)对齐；仅显式勾选时才放行
+            Boolean continueOnError = props != null ? (Boolean) props.getOrDefault("continueOnError", false) : false;
             if (!continueOnError) {
                 throw new WorkflowException("SCRIPT_EXECUTION_FAILED", "脚本节点执行失败: " + e.getMessage(), e);
             }
@@ -113,7 +115,8 @@ public class ScriptNodeHandler implements INodeHandler {
         }
 
         if (!response.isSuccess()) {
-            Boolean continueOnError = (Boolean) props.getOrDefault("continueOnError", true);
+            // G4: 默认 false——API 非 2xx 默认抛异常挂起流程,与前端开关默认显示一致
+            Boolean continueOnError = (Boolean) props.getOrDefault("continueOnError", false);
             if (!continueOnError) {
                 throw new WorkflowException("API_CALL_FAILED", "API 调用失败: HTTP " + response.getStatusCode());
             }

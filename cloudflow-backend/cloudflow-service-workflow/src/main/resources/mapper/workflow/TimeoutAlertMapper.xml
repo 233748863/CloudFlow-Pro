@@ -221,13 +221,14 @@
     </select>
 
     <select id="selectTimeoutLevelBreakdown" resultType="com.cloudflow.workflow.domain.monitor.PerformanceTimeoutLevelBreakdownItem">
+        <!-- C4修复: 日期过滤下推到 UNION 内层并改为范围比较(半开区间),
+             避免派生表全量物化后再逐行 DATE() 函数过滤,内层可走 alert_time 索引 -->
         SELECT
             x.timeout_level AS level,
             COUNT(*) AS count
         FROM (
             SELECT
                 ta.timeout_level,
-                ta.alert_time,
                 pm.process_def_key
             FROM wf_timeout_alert ta
             JOIN wf_process_monitor pm
@@ -235,10 +236,11 @@
              AND pm.tenant_id = ta.tenant_id
              AND pm.instance_id = ta.target_id
             WHERE ta.tenant_id = #{tenantId}
+              AND ta.alert_time <![CDATA[>=]]> #{startDate}
+              AND ta.alert_time <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
             UNION ALL
             SELECT
                 ta.timeout_level,
-                ta.alert_time,
                 pm.process_def_key
             FROM wf_timeout_alert ta
             JOIN wf_task_monitor tm
@@ -249,12 +251,14 @@
               ON pm.tenant_id = tm.tenant_id
              AND pm.instance_id = tm.instance_id
             WHERE ta.tenant_id = #{tenantId}
+              AND ta.alert_time <![CDATA[>=]]> #{startDate}
+              AND ta.alert_time <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
         ) x
-        WHERE DATE(x.alert_time) <![CDATA[>=]]> #{startDate}
-          AND DATE(x.alert_time) <![CDATA[<=]]> #{endDate}
-          <if test="processDefKey != null and processDefKey != ''">
-            AND x.process_def_key = #{processDefKey}
-          </if>
+        <where>
+            <if test="processDefKey != null and processDefKey != ''">
+                x.process_def_key = #{processDefKey}
+            </if>
+        </where>
         GROUP BY x.timeout_level
         ORDER BY FIELD(x.timeout_level, 'REMIND', 'WARNING', 'CRITICAL')
     </select>

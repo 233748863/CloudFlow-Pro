@@ -19,7 +19,6 @@ import com.cloudflow.workflow.mapper.WfDeployRecordMapper;
 import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
-import com.cloudflow.workflow.mapper.WfProcessVersionSnapshotMapper;
 import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.IVersionService;
@@ -62,8 +61,6 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     private WfDeployRecordMapper deployRecordMapper;
     @Autowired
     private WfFormDefinitionMapper formDefinitionMapper;
-    @Autowired
-    private WfProcessVersionSnapshotMapper versionSnapshotMapper;
     @Autowired
     private WorkflowPermissionService permissionService;
     @Autowired
@@ -281,21 +278,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         deployRecord.setCanRollback(true);
         deployRecordMapper.insert(deployRecord);
 
-        // 创建版本快照
-        try {
-            com.cloudflow.workflow.domain.WfProcessVersionSnapshot snapshot = new com.cloudflow.workflow.domain.WfProcessVersionSnapshot();
-            snapshot.setProcessDefId(definitionId);
-            snapshot.setProcessKey(def.getProcessKey());
-            snapshot.setVersion(def.getVersion() != null ? def.getVersion() : 1);
-            snapshot.setDeployId(deployRecord.getId());
-            snapshot.setSnapshotData(def.getModelJson());
-            snapshot.setFormConfig(def.getFormId());
-            snapshot.setCreatedBy(userId != null ? userId : 1L);
-            snapshot.setCreatedTime(java.time.LocalDateTime.now());
-            versionSnapshotMapper.insert(snapshot);
-        } catch (Exception e) {
-            log.error("[deployProcessDefinition] 创建版本快照失败: {}", e.getMessage(), e);
-        }
+        // C6: 版本体系统一后不再单独写发布快照——definition 版本行自身即完整快照，
+        // 回滚直接引用历史版本行（见 VersionServiceImpl.rollbackToVersion）
 
         log.info("[deployProcessDefinition] 流程定义发布成功, definitionId={}", definitionId);
         auditService.log(WorkflowAuditService.AuditAction.DEFINITION_DEPLOY, definitionId,
@@ -304,6 +288,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     @Audit(name = "删除流程定义", diff = true, highRisk = true)
     public R<?> deleteProcessDefinition(String definitionId) {
         log.info("[deleteProcessDefinition] 开始删除流程定义, definitionId={}", definitionId);
@@ -316,33 +301,35 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
         ensureDefinitionTenantAccess(def.getTenantId(), "删除");
 
-        // 检查运行中的实例
-        LambdaQueryWrapper<WfProcessInstance> runningQuery = new LambdaQueryWrapper<WfProcessInstance>()
-            .eq(WfProcessInstance::getProcessDefKey, def.getProcessKey())
-            .eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode());
-        if (def.getTenantId() != null) {
-            runningQuery.eq(WfProcessInstance::getTenantId, def.getTenantId());
+        // 在线版本不允许从删除入口下线，否则会绕过发布状态机（同 key 唯一在线版本约束被破坏）
+        if ("PUBLISHED".equals(def.getStatus())) {
+            throw WorkflowException.invalidState("已发布的流程定义不能直接删除，请先发布新版本替代或另行下线后再删除");
         }
-        Long runningCount = processInstanceMapper.selectCount(runningQuery);
+
+        // 检查运行中的实例（严格按本版本 definitionId，避免误伤同 key 其他版本的判断）
+        Long runningCount = processInstanceMapper.selectCount(
+            new LambdaQueryWrapper<WfProcessInstance>()
+                .eq(WfProcessInstance::getDefinitionId, definitionId)
+                .eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode()));
         if (runningCount != null && runningCount > 0) {
             throw WorkflowException.invalidState("该流程定义有 " + runningCount + " 个运行中的实例，无法删除");
         }
 
-        // 检查历史实例
-        LambdaQueryWrapper<WfProcessInstance> totalQuery = new LambdaQueryWrapper<WfProcessInstance>()
-            .eq(WfProcessInstance::getProcessDefKey, def.getProcessKey());
-        if (def.getTenantId() != null) {
-            totalQuery.eq(WfProcessInstance::getTenantId, def.getTenantId());
-        }
-        Long totalCount = processInstanceMapper.selectCount(totalQuery);
+        // 检查历史实例（按本版本 definitionId）
+        Long totalCount = processInstanceMapper.selectCount(
+            new LambdaQueryWrapper<WfProcessInstance>()
+                .eq(WfProcessInstance::getDefinitionId, definitionId));
         if (totalCount != null && totalCount > 0) {
             def.setStatus("ARCHIVED");
-            processDefinitionMapper.updateById(def);
+            if (processDefinitionMapper.updateById(def) <= 0) {
+                throw WorkflowException.invalidState("流程定义归档失败，请刷新后重试");
+            }
+            auditService.log(WorkflowAuditService.AuditAction.DEFINITION_DELETE, definitionId, "ARCHIVED");
             return R.ok("流程定义已归档（存在历史实例，无法物理删除）");
         }
 
         processDefinitionMapper.deleteById(definitionId);
-        auditService.log(WorkflowAuditService.AuditAction.DEFINITION_CREATE, definitionId, "DELETE");
+        auditService.log(WorkflowAuditService.AuditAction.DEFINITION_DELETE, definitionId, "DELETE");
         return R.ok();
     }
 
@@ -516,8 +503,9 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             JsonNode sanitized = sanitizeJsonNode(root);
             return objectMapper.writeValueAsString(sanitized);
         } catch (Exception e) {
-            log.warn("[sanitizeModelJson] XSS过滤失败，保留原始JSON: {}", e.getMessage());
-            return modelJson;
+            // XSS 过滤失败说明 modelJson 本身不可解析，拒绝保存而非放行原文
+            log.warn("[sanitizeModelJson] XSS过滤失败: {}", e.getMessage());
+            throw WorkflowException.validationError("流程模型 JSON 解析失败，无法完成安全过滤，请检查模型内容");
         }
     }
 
@@ -673,6 +661,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                 validateNodeModel(node);
             }
 
+            Map<String, Boolean> incomingHasCondition = new HashMap<>();
             for (JsonNode edge : edgesNode) {
                 String source = firstNotBlank(jsonText(edge, "source"), jsonText(edge, "from"));
                 String target = firstNotBlank(jsonText(edge, "target"), jsonText(edge, "to"));
@@ -683,6 +672,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                     throw WorkflowException.validationError("流程图连线引用了不存在的节点: " + source + " -> " + target);
                 }
                 outgoingCount.put(source, outgoingCount.getOrDefault(source, 0) + 1);
+                incomingHasCondition.merge(target, StringUtils.hasText(jsonText(edge, "condition")), Boolean::logicalOr);
             }
 
             validateLayoutModel(graphRoot.path("layout"), nodeMap.keySet());
@@ -690,6 +680,15 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             // P0-3: PARALLEL 节点会签模式与分支互斥校验（图模型：分支 = 多条外连线）
             for (Map.Entry<String, JsonNode> entry : nodeMap.entrySet()) {
                 JsonNode node = entry.getValue();
+                // B21: CONDITION 节点必须配置触发条件（节点自身 condition 或任一入边 condition），与前端校验对齐；
+                // 空条件在运行时恒为 false 只能走默认分支，属无效配置
+                if ("CONDITION".equalsIgnoreCase(jsonText(node, "type"))
+                        && !StringUtils.hasText(jsonText(node, "condition"))
+                        && !Boolean.TRUE.equals(incomingHasCondition.get(entry.getKey()))) {
+                    throw WorkflowException.validationError(
+                        "条件分支 [" + firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), entry.getKey())
+                        + "] 未配置触发条件");
+                }
                 if (!"PARALLEL".equalsIgnoreCase(jsonText(node, "type"))) {
                     continue;
                 }
@@ -763,6 +762,17 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         return value;
     }
 
+    /**
+     * B21: 该审批方式是否需要配置具体审批人（与前端 validateApprover 规则对齐）。
+     * DIRECT_LEADER/DEPT_MANAGER/INITIATOR 按身份在运行时推导，无需 approverValue。
+     */
+    private boolean requiresConcreteApprover(String approverType) {
+        return StringUtils.hasText(approverType)
+                && !"DIRECT_LEADER".equals(approverType)
+                && !"DEPT_MANAGER".equals(approverType)
+                && !"INITIATOR".equals(approverType);
+    }
+
     private void validateNodeModel(JsonNode node) {
         String nodeType = jsonText(node, "type");
         String nodeTitle = firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), jsonText(node, "id"), "未命名节点");
@@ -772,8 +782,17 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if ("APPROVAL".equalsIgnoreCase(nodeType) && !StringUtils.hasText(approverType)) {
             throw WorkflowException.validationError("审批节点 [" + nodeTitle + "] 未配置审批人");
         }
+        // B21: 与前端校验对齐——非"按身份推导"类审批方式必须配置具体审批人
+        if ("APPROVAL".equalsIgnoreCase(nodeType) && requiresConcreteApprover(approverType)
+                && !StringUtils.hasText(approverValue)) {
+            throw WorkflowException.validationError("审批节点 [" + nodeTitle + "] 未配置具体的审批人");
+        }
         if ("MANUAL".equalsIgnoreCase(nodeType) && !StringUtils.hasText(approverType)) {
             throw WorkflowException.validationError("人工任务节点 [" + nodeTitle + "] 未配置处理人");
+        }
+        if ("MANUAL".equalsIgnoreCase(nodeType) && requiresConcreteApprover(approverType)
+                && !StringUtils.hasText(approverValue)) {
+            throw WorkflowException.validationError("人工任务节点 [" + nodeTitle + "] 未配置具体的处理人");
         }
 
         // P1-5: COPY（抄送）节点校验 — 必须配置抄送人
@@ -805,6 +824,10 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if ("PARALLEL".equalsIgnoreCase(nodeType) && isParallelSignMode(jsonText(node, "signType"))) {
             if (!StringUtils.hasText(approverType)) {
                 throw WorkflowException.validationError("会签节点 [" + nodeTitle + "] 未配置审批人");
+            }
+            // B21: 与前端校验对齐——非"按身份推导"类审批方式必须配置具体审批人
+            if (requiresConcreteApprover(approverType) && !StringUtils.hasText(approverValue)) {
+                throw WorkflowException.validationError("会签节点 [" + nodeTitle + "] 未配置具体的审批人");
             }
             String signType = jsonText(node, "signType").trim().toUpperCase(Locale.ROOT);
             if ("PERCENT".equals(signType)) {

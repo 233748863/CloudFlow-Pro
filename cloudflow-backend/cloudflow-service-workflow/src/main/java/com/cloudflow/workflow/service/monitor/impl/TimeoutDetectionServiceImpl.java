@@ -83,6 +83,8 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final RuntimeSysConfigService runtimeSysConfigService;
+    private final com.cloudflow.common.redis.core.RedisCache redisCache;
+    private final com.cloudflow.workflow.job.TaskReminderJob taskReminderJob;
 
     /**
      * 定时检测超时任务，每 5 分钟执行一次。
@@ -250,6 +252,11 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
             task.setAssigneeName(target.userName());
             task.setIsTimeout(1);
             wfTaskMapper.updateById(task);
+
+            // G3: 改派后移除 SLA 自动通过注册并取消旧提醒——任务已升级转人工跟进，
+            // 否则 SLA 超时通道稍后会把刚改派的任务直接自动通过，改派失去意义
+            redisCache.removeCacheZSet("sys:task:timeouts", task.getTaskId());
+            taskReminderJob.cancelReminders(task.getTaskId());
 
             monitor.setAssigneeId(target.userId());
             monitor.setAssigneeName(target.userName());
