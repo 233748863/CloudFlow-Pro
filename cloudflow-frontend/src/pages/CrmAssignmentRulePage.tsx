@@ -7,6 +7,7 @@ import {
   Button,
   DatePicker,
   DeptSelector,
+  DictSelect,
   Input,
   Label,
   LoadingSpinner,
@@ -30,6 +31,7 @@ import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
 
 const ruleTypeOptions: CrmAssignmentRule['ruleType'][] = ['AUTO_RELEASE', 'CLAIM_LIMIT', 'ASSIGN'];
 const statusOptions = ['ACTIVE', 'INACTIVE'];
+const CUSTOMER_LEVEL_DICT_TYPE = 'crm_customer_level';
 
 const emptyRule: CrmAssignmentRule = {
   ruleName: '',
@@ -41,6 +43,7 @@ const emptyRule: CrmAssignmentRule = {
 
 export default function CrmAssignmentRulePage() {
   const ruleTypeDict = useDict('crm_assignment_rule_type');
+  const customerLevelDict = useDict(CUSTOMER_LEVEL_DICT_TYPE);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<CrmAssignmentRule[]>([]);
   const [pageNum, setPageNum] = useState(1);
@@ -213,7 +216,7 @@ export default function CrmAssignmentRulePage() {
                       <td className="font-mono text-xs">{row.priority ?? 100}</td>
                       <td><strong>{row.ruleName}</strong><small>{row.remark || '-'}</small></td>
                       <td>{ruleTypeDict.getLabel(row.ruleType || '') || row.ruleType}</td>
-                      <td><strong>部门：{row.deptName || '全部'}</strong><small>等级：{row.customerLevel || '全部'}；标签：{row.customerTags || '全部'}</small></td>
+                      <td><strong>部门：{row.deptName || '全部'}</strong><small>等级：{row.customerLevel ? customerLevelDict.getLabel(row.customerLevel) : '全部'}；标签：{row.customerTags || '全部'}</small></td>
                       <td>
                         {row.ruleType === 'AUTO_RELEASE' ? `${row.inactiveDays || '-'} 天未跟进` : null}
                         {row.ruleType === 'CLAIM_LIMIT' ? `单人持有上限 ${row.maxPerOwner || '-'}` : null}
@@ -299,7 +302,13 @@ export default function CrmAssignmentRulePage() {
           </div>
           <div>
             <Label>客户等级</Label>
-            <Input value={form.customerLevel || ''} onChange={(e) => setForm((prev) => ({ ...prev, customerLevel: e.target.value }))} placeholder="例如 VIP / NORMAL" />
+            <DictSelect
+              dictType={CUSTOMER_LEVEL_DICT_TYPE}
+              value={form.customerLevel || ''}
+              onChange={(value) => setForm((prev) => ({ ...prev, customerLevel: value || undefined }))}
+              placeholder="留空表示全部"
+              allowClear
+            />
           </div>
           <div>
             <Label>客户标签</Label>

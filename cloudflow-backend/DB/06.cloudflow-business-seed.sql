@@ -2774,7 +2774,7 @@ DELETE FROM cloud_flow_db.sys_dict_data WHERE dict_type IN (
   'hr_ess_benefit_status','hr_contract_sign_status','hr_contract_signer_type','hr_contract_sign_method',
   'hr_employment_contract_status','oa_meeting_minutes_status','oa_meeting_attend_status','oa_knowledge_status',
   'oa_knowledge_scope','oa_schedule_event_type','crm_pool_action','oa_project_status',
-  'oa_project_source_type','crm_customer_health','crm_stage','crm_sales_target_dimension',
+  'oa_project_source_type','crm_customer_health','crm_customer_level','crm_stage','crm_sales_target_dimension',
   'crm_period_type','crm_assignment_rule_type','oa_seal_application_status','oa_seal_scene',
   'oa_purchase_request_status','oa_payment_status','oa_payment_type','oa_payment_request_status',
   'oa_expense_status','oa_expense_category','oa_expense_item_type','oa_contract_status',
@@ -2813,7 +2813,7 @@ DELETE FROM cloud_flow_db.sys_dict_type WHERE dict_type IN (
   'hr_ess_benefit_status','hr_contract_sign_status','hr_contract_signer_type','hr_contract_sign_method',
   'hr_employment_contract_status','oa_meeting_minutes_status','oa_meeting_attend_status','oa_knowledge_status',
   'oa_knowledge_scope','oa_schedule_event_type','crm_pool_action','oa_project_status',
-  'oa_project_source_type','crm_customer_health','crm_stage','crm_sales_target_dimension',
+  'oa_project_source_type','crm_customer_health','crm_customer_level','crm_stage','crm_sales_target_dimension',
   'crm_period_type','crm_assignment_rule_type','oa_seal_application_status','oa_seal_scene',
   'oa_purchase_request_status','oa_payment_status','oa_payment_type','oa_payment_request_status',
   'oa_expense_status','oa_expense_category','oa_expense_item_type','oa_contract_status',
@@ -2913,6 +2913,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remar
 ('OA项目状态', 'oa_project_status', '项目全流程状态'),
 ('OA项目来源', 'oa_project_source_type', '手工/商机/报价/合同'),
 ('CRM客户健康度', 'crm_customer_health', '健康/关注/高风险'),
+('CRM客户等级', 'crm_customer_level', '普通/重点/VIP客户'),
 ('CRM销售阶段', 'crm_stage', '线索到赢单/输单'),
 ('CRM销售目标维度', 'crm_sales_target_dimension', '个人/部门'),
 ('CRM周期类型', 'crm_period_type', '月度/季度/年度'),
@@ -3418,6 +3419,10 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (1, '健康', 'GREEN', 'crm_customer_health', 'success'),
 (2, '关注', 'YELLOW', 'crm_customer_health', 'warning'),
 (3, '高风险', 'RED', 'crm_customer_health', 'danger');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '普通客户', 'NORMAL', 'crm_customer_level', 'default'),
+(2, '重点客户', 'KEY', 'crm_customer_level', 'info'),
+(3, 'VIP客户', 'VIP', 'crm_customer_level', 'success');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '线索', 'LEAD', 'crm_stage', 'info'),
 (2, '已确认', 'QUALIFIED', 'crm_stage', 'info'),
