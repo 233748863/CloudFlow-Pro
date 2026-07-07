@@ -5,10 +5,11 @@ import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
@@ -51,19 +52,19 @@ public class HrWorkflowEventListener {
                 "HR_TRAINING_ENROLLMENT:", "status", "WITHDRAWN", null);
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessRevoked(ProcessRevokedEvent event) {
         syncByInstance(event.getProcessDefKey(), event.getInstanceId(), "流程撤回");
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessInvalidated(ProcessInvalidatedEvent event) {
         syncByInstance(event.getProcessDefKey(), event.getInstanceId(), "流程作废");
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessTerminated(ProcessTerminatedEvent event) {
         syncByInstance(event.getProcessDefKey(), event.getInstanceId(), "流程终止");

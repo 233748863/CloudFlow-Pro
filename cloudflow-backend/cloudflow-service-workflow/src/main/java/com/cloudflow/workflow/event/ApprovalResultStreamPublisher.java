@@ -9,9 +9,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -33,13 +34,13 @@ public class ApprovalResultStreamPublisher {
     private final NotificationWebSocketHandler notificationWebSocketHandler;
 
     @Async("workflowEventExecutor")
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onProcessCompleted(ProcessCompletedEvent event) {
         publish(event.getInstanceId(), "APPROVED", null, event.getOperatorId(), event.getOperatorName());
     }
 
     @Async("workflowEventExecutor")
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onProcessRejected(ProcessRejectedEvent event) {
         publish(event.getInstanceId(), "REJECTED", event.getComment(), event.getOperatorId(), event.getOperatorName());
     }

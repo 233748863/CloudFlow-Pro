@@ -8,7 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
@@ -43,25 +44,25 @@ public class OaWorkflowEventListener {
         register("vehicle_approval", "oa_vehicle_usage", "usage_id", "process_instance_id", null, "1", "2", "5");
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessStarted(ProcessStartedEvent event) {
         syncByBusinessKey(event.getProcessDefKey(), event.getBusinessKey(), event.getInstanceId(), null, "流程启动");
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessRevoked(ProcessRevokedEvent event) {
         syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.CANCELLED, "流程撤回");
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessInvalidated(ProcessInvalidatedEvent event) {
         syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.CANCELLED, "流程作废");
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessTerminated(ProcessTerminatedEvent event) {
         syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.CANCELLED, "流程终止");
@@ -105,8 +106,15 @@ public class OaWorkflowEventListener {
         } else {
             affectedRows = jdbcTemplate.update(
                     binding.updateInstanceAndStatusSql,
-                    instanceId, binding.resolveStatus(action), WORKFLOW_UPDATE_BY, businessId
+                    instanceId, binding.resolveStatus(action), WORKFLOW_UPDATE_BY, businessId,
+                    instanceId, binding.approvedStatus, binding.rejectedStatus, binding.cancelledStatus
             );
+        }
+
+        if (affectedRows == 0) {
+            log.warn("[OA回写] {} 未命中任何行（单据可能已绑定其他流程实例或已处于终态，跳过回写）: "
+                            + "processDefKey={}, businessKey={}, table={}, businessId={}, instanceId={}",
+                    trigger, binding.processDefKey, businessKey, binding.tableName, businessId, instanceId);
         }
 
         log.info("[OA回写] {}: processDefKey={}, businessKey={}, instanceId={}, table={}, businessId={}, status={}, affectedRows={}",
@@ -177,13 +185,17 @@ public class OaWorkflowEventListener {
             validateIdentifier(tableName);
             validateIdentifier(idColumn);
             validateIdentifier(instanceColumn);
+            // 启动回写：仅当业务单尚未绑定实例时写入，避免覆盖已绑定的（可能更新的）流程实例
             this.updateInstanceSql = String.format(
-                    "UPDATE %s SET %s = ?, update_by = ?, update_time = NOW() WHERE %s = ?",
-                    tableName, instanceColumn, idColumn
+                    "UPDATE %s SET %s = ?, update_by = ?, update_time = NOW() WHERE %s = ? AND (%s IS NULL OR %s = '')",
+                    tableName, instanceColumn, idColumn, instanceColumn, instanceColumn
             );
+            // 取消同步：仅当业务单绑定的就是当前实例（或尚未绑定）且未处于终态时才允许改写，
+            // 防止撤销旧流程把已走新流程/已终态的单据改成 CANCELLED
             this.updateInstanceAndStatusSql = String.format(
-                    "UPDATE %s SET %s = ?, status = ?, update_by = ?, update_time = NOW() WHERE %s = ?",
-                    tableName, instanceColumn, idColumn
+                    "UPDATE %s SET %s = ?, status = ?, update_by = ?, update_time = NOW() "
+                            + "WHERE %s = ? AND (%s = ? OR %s IS NULL OR %s = '') AND status NOT IN (?, ?, ?)",
+                    tableName, instanceColumn, idColumn, instanceColumn, instanceColumn, instanceColumn
             );
         }
 

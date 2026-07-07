@@ -90,6 +90,19 @@ public interface IWfInstanceService {
     void continueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables);
 
     /**
+     * 处理子流程结束（在实例锁 + 事务保护下执行，按 childInstanceId 幂等）：
+     * - 子流程 COMPLETED → 父流程从子流程节点的 next 继续流转
+     * - 其余终态（驳回/撤回/作废/终止）→ 父流程挂起（SUSPENDED）+ 通知，人工处理后可恢复重跑子流程节点
+     * 父流程定义严格按实例锁定的 definitionId 解析，缺失时挂起父流程而非回退最新版本。
+     *
+     * @param parentInstanceId 父流程实例ID
+     * @param parentNodeKey    父流程中触发子流程的节点Key
+     * @param childInstanceId  子流程实例ID
+     * @param childStatus      子流程终态（WfProcessStatus code）
+     */
+    void handleSubprocessFinished(String parentInstanceId, String parentNodeKey, String childInstanceId, String childStatus);
+
+    /**
      * P1-6: 获取流程图渲染数据
      * 返回节点列表（含坐标、运行时状态）和连线列表，供前端流程图组件渲染
      *

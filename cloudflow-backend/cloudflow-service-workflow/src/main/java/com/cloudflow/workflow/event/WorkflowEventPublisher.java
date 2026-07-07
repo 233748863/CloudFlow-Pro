@@ -138,17 +138,36 @@ public class WorkflowEventPublisher {
     }
 
     /**
-     * 发布子流程完成事件
-     * 当子流程执行完毕后，通知父流程继续流转
+     * 发布子流程结束事件
+     * 当子流程进入任意终态后，通知父流程按终态决策（完成则继续流转，异常终态则挂起父流程）
      *
      * @param parentInstanceId  父流程实例ID
      * @param parentNodeKey     父流程中触发子流程的节点Key
      * @param childInstanceId   子流程实例ID
+     * @param childStatus       子流程终态（WfProcessStatus code）
      */
-    public void publishSubprocessCompleted(String parentInstanceId, String parentNodeKey, String childInstanceId) {
-        log.info("[WorkflowEventPublisher] 发布子流程完成事件: parentInstanceId={}, parentNodeKey={}, childInstanceId={}",
-                parentInstanceId, parentNodeKey, childInstanceId);
-        publish(new SubprocessCompletedEvent(this, parentInstanceId, parentNodeKey, childInstanceId));
+    public void publishSubprocessCompleted(String parentInstanceId, String parentNodeKey,
+                                           String childInstanceId, String childStatus) {
+        log.info("[WorkflowEventPublisher] 发布子流程结束事件: parentInstanceId={}, parentNodeKey={}, childInstanceId={}, childStatus={}",
+                parentInstanceId, parentNodeKey, childInstanceId, childStatus);
+        publish(new SubprocessCompletedEvent(this, parentInstanceId, parentNodeKey, childInstanceId, childStatus));
+    }
+
+    /**
+     * 若实例是子流程（挂有父实例引用），发布子流程结束事件通知父流程。
+     * 供实例进入终态的所有路径（完成/驳回/撤回/作废/终止）统一调用，非子流程实例静默跳过。
+     *
+     * @param child  刚进入终态的实例
+     * @param status 终态（WfProcessStatus code）
+     */
+    public void publishSubprocessFinishedIfChild(WfProcessInstance child, String status) {
+        if (child == null
+                || !org.springframework.util.StringUtils.hasText(child.getParentInstanceId())
+                || !org.springframework.util.StringUtils.hasText(child.getParentNodeKey())) {
+            return;
+        }
+        publishSubprocessCompleted(child.getParentInstanceId(), child.getParentNodeKey(),
+                child.getInstanceId(), status);
     }
 
     // ==================== 节点级事件 ====================

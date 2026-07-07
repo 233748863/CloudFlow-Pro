@@ -177,6 +177,14 @@ public class WfProcessInstance implements Serializable {
         this.variables = variables;
     }
 
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
+    }
+
     public String getFormId() {
         return formId;
     }

@@ -80,15 +80,15 @@ public class SubprocessNodeHandler implements INodeHandler {
 
         Map<String, Object> props = node.getProps();
         if (props == null) {
-            log.warn("[SubprocessNodeHandler] 子流程节点未配置属性, nodeKey={}, 将直接跳过", node.getId());
-            return true;
+            throw WorkflowException.validationError(
+                    "子流程节点[" + node.getTitle() + "]未配置属性，无法启动子流程");
         }
 
         // 读取子流程 processKey
         String subprocessId = (String) props.get("subprocessId");
         if (!StringUtils.hasText(subprocessId)) {
-            log.warn("[SubprocessNodeHandler] 子流程节点未配置 subprocessId, nodeKey={}, 将直接跳过", node.getId());
-            return true;
+            throw WorkflowException.validationError(
+                    "子流程节点[" + node.getTitle() + "]未配置 subprocessId，无法启动子流程");
         }
 
         // 是否等待子流程完成
@@ -109,21 +109,17 @@ public class SubprocessNodeHandler implements INodeHandler {
                 .getRecords().stream().findFirst().orElse(null);
 
         if (subDef == null) {
-            log.error("[SubprocessNodeHandler] 未找到已发布的子流程定义, subprocessId={}, nodeKey={}",
-                    subprocessId, node.getId());
-            // 子流程不存在时直接继续，避免父流程永久阻塞
-            return true;
+            throw WorkflowException.processNotFound(subprocessId);
         }
 
         if (!StringUtils.hasText(subDef.getModelJson())) {
-            log.error("[SubprocessNodeHandler] 子流程定义模型为空, subprocessId={}", subprocessId);
-            return true;
+            throw WorkflowException.validationError(
+                    "子流程[" + subprocessId + "]定义模型为空，无法启动子流程");
         }
-        // 子流程绑定表单被删除时，直接跳过子流程节点，避免后续任务阶段出现不可恢复错误
+        // 子流程绑定表单被删除时无法继续，交由失败挂起机制处理
         if (StringUtils.hasText(subDef.getFormId()) && formDefinitionMapper.selectById(subDef.getFormId()) == null) {
-            log.error("[SubprocessNodeHandler] 子流程绑定表单不存在, subprocessId={}, formId={}",
-                    subprocessId, subDef.getFormId());
-            return true;
+            throw WorkflowException.validationError(
+                    "子流程[" + subprocessId + "]绑定的表单不存在(formId=" + subDef.getFormId() + ")，无法启动子流程");
         }
 
         // 构建子流程变量：先继承父流程变量，再应用变量映射
@@ -156,9 +152,10 @@ public class SubprocessNodeHandler implements INodeHandler {
             }
         }
 
+        String subInstanceId = UUID.randomUUID().toString();
+        boolean subInstanceInserted = false;
         try {
             // 创建子流程实例
-            String subInstanceId = UUID.randomUUID().toString();
             WfProcessInstance subInstance = new WfProcessInstance();
             subInstance.setInstanceId(subInstanceId);
             subInstance.setProcessDefId(subDef.getDefinitionId());
@@ -183,6 +180,7 @@ public class SubprocessNodeHandler implements INodeHandler {
             }
 
             processInstanceMapper.insert(subInstance);
+            subInstanceInserted = true;
 
             // 解析子流程模型并启动执行
             WfNodeConfig subRoot = workflowGraphModelResolver.parseRuntimeRoot(subDef.getModelJson());
@@ -204,8 +202,26 @@ public class SubprocessNodeHandler implements INodeHandler {
         } catch (Exception e) {
             log.error("[SubprocessNodeHandler] 启动子流程失败, nodeKey={}, subprocessId={}: {}",
                     node.getId(), subprocessId, e.getMessage(), e);
-            // 启动失败时直接继续父流程，避免永久阻塞
-            return true;
+            // 清理半启动的子实例，避免重试时残留 RUNNING 状态的孤儿实例
+            if (subInstanceInserted) {
+                try {
+                    WfProcessInstance orphan = processInstanceMapper.selectById(subInstanceId);
+                    if (orphan != null && WfProcessStatus.RUNNING.getCode().equals(orphan.getStatus())) {
+                        orphan.setStatus(WfProcessStatus.INVALIDATED.getCode());
+                        orphan.setEndTime(LocalDateTime.now());
+                        processInstanceMapper.updateById(orphan);
+                    }
+                } catch (Exception cleanupEx) {
+                    log.error("[SubprocessNodeHandler] 清理失败子实例异常, subInstanceId={}: {}",
+                            subInstanceId, cleanupEx.getMessage());
+                }
+            }
+            // 抛出异常，交由 executeWithRetry 统一重试；重试耗尽后挂起父流程
+            if (e instanceof WorkflowException) {
+                throw (WorkflowException) e;
+            }
+            throw new WorkflowException("SUBPROCESS_START_FAILED",
+                    "子流程[" + subprocessId + "]启动失败: " + e.getMessage(), e);
         }
 
         // waitForCompletion=true 时阻塞父流程，等待子流程完成后由回调触发继续

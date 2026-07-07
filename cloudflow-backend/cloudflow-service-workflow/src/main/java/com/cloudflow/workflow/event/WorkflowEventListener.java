@@ -13,9 +13,10 @@ import com.cloudflow.workflow.service.monitor.IProcessMonitorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -66,7 +67,7 @@ public class WorkflowEventListener {
     /**
      * 流程启动 — 记录日志
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessStarted(ProcessStartedEvent event) {
         try {
@@ -81,7 +82,7 @@ public class WorkflowEventListener {
     /**
      * 流程完成 — 关闭所有 RUNNING 节点记录
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessCompleted(ProcessCompletedEvent event) {
         try {
@@ -96,7 +97,7 @@ public class WorkflowEventListener {
     /**
      * 流程拒绝 — 关闭所有 RUNNING 节点记录
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessRejected(ProcessRejectedEvent event) {
         try {
@@ -112,7 +113,7 @@ public class WorkflowEventListener {
     /**
      * 流程撤回 — 关闭所有 RUNNING 节点记录
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessRevoked(ProcessRevokedEvent event) {
         try {
@@ -127,7 +128,7 @@ public class WorkflowEventListener {
     /**
      * 流程作废 — 关闭所有 RUNNING 节点记录
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onProcessInvalidated(ProcessInvalidatedEvent event) {
         try {
@@ -144,7 +145,7 @@ public class WorkflowEventListener {
     /**
      * 节点开始 — 创建 RUNNING 状态的节点记录
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onNodeStarted(NodeStartedEvent event) {
         try {
@@ -171,7 +172,7 @@ public class WorkflowEventListener {
     /**
      * 节点完成 — 更新节点记录为 COMPLETED，计算执行耗时
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onNodeCompleted(NodeCompletedEvent event) {
         try {
@@ -227,7 +228,7 @@ public class WorkflowEventListener {
     /**
      * 任务分配 — 创建节点记录（RUNNING），记录被分配人
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onTaskAssigned(TaskAssignedEvent event) {
         try {
@@ -266,7 +267,7 @@ public class WorkflowEventListener {
     /**
      * 任务完成 — 更新节点记录为 COMPLETED，记录操作人和审批意见
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async("workflowEventExecutor")
     public void onTaskCompleted(TaskCompletedEvent event) {
         try {
