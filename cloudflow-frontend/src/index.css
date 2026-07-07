@@ -7930,6 +7930,85 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     color: #94a3b8;
   }
 
+  .profile-perm-super {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    border: 1px solid rgba(13, 149, 181, 0.25);
+    border-radius: 8px;
+    background: rgba(13, 149, 181, 0.08);
+    padding: 0.875rem 1rem;
+    color: #0d95b5;
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .profile-perm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.875rem;
+  }
+
+  .profile-perm-card {
+    display: grid;
+    gap: 0.625rem;
+    min-width: 0;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 8px;
+    background: rgba(248, 250, 252, 0.82);
+    padding: 0.875rem 1rem;
+    align-content: start;
+  }
+
+  .profile-perm-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .profile-perm-module {
+    font-size: 0.8125rem;
+    font-weight: 650;
+    color: #111827;
+  }
+
+  .profile-perm-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    background: rgba(13, 149, 181, 0.12);
+    color: #0d95b5;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .profile-perm-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .profile-perm-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.1875rem 0.5rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    color: #475569;
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .profile-2fa-main {
     display: flex;
     min-width: 0;
@@ -8065,6 +8144,27 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
   html.dark .profile-notify-pending-row {
     border-color: rgba(245, 158, 11, 0.34);
     background: rgba(120, 53, 15, 0.18);
+  }
+
+  html.dark .profile-perm-card {
+    border-color: #334155;
+    background: rgba(30, 41, 59, 0.58);
+  }
+
+  html.dark .profile-perm-module {
+    color: #e2e8f0;
+  }
+
+  html.dark .profile-perm-chip {
+    border-color: #334155;
+    background: rgba(15, 23, 42, 0.55);
+    color: #cbd5e1;
+  }
+
+  html.dark .profile-perm-super {
+    border-color: rgba(13, 149, 181, 0.35);
+    background: rgba(13, 149, 181, 0.12);
+    color: #67e8f9;
   }
 
   html.dark .profile-binding-content p,
