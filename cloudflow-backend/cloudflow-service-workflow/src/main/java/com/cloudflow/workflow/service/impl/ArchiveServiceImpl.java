@@ -9,8 +9,6 @@ import com.cloudflow.workflow.domain.WfDeployApprovalStep;
 import com.cloudflow.workflow.domain.WfDeployImpact;
 import com.cloudflow.workflow.domain.WfDeployNotification;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
-import com.cloudflow.workflow.domain.WfProcessVersionSnapshot;
-import com.cloudflow.workflow.domain.WorkflowVersion;
 import com.cloudflow.workflow.domain.dto.ArchivedWorkflowDTO;
 import com.cloudflow.workflow.domain.dto.BatchOperationResultDTO;
 import com.cloudflow.workflow.domain.dto.OperationDetailDTO;
@@ -27,8 +25,6 @@ import com.cloudflow.workflow.mapper.WfDeployImpactMapper;
 import com.cloudflow.workflow.mapper.WfDeployNotificationMapper;
 import com.cloudflow.workflow.mapper.WfDeployRecordMapper;
 import com.cloudflow.workflow.mapper.WfDeployRollbackHistoryMapper;
-import com.cloudflow.workflow.mapper.WfProcessVersionSnapshotMapper;
-import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.service.IArchiveService;
 import com.cloudflow.workflow.service.IAuditLogService;
@@ -65,12 +61,6 @@ public class ArchiveServiceImpl implements IArchiveService {
 
     @Autowired
     private WfProcessArchiveMapper archiveMapper;
-
-    @Autowired
-    private WorkflowVersionMapper versionMapper;
-
-    @Autowired
-    private WfProcessVersionSnapshotMapper versionSnapshotMapper;
 
     @Autowired
     private WfDeployRecordMapper deployRecordMapper;
@@ -574,21 +564,8 @@ public class ArchiveServiceImpl implements IArchiveService {
 
             String workflowName = definition.getProcessName();
 
-            // 2. 删除版本历史
-            LambdaQueryWrapper<WorkflowVersion> versionQuery = new LambdaQueryWrapper<>();
-            versionQuery.eq(WorkflowVersion::getWorkflowId, workflowId);
-            List<String> versionIds = versionMapper.selectList(versionQuery).stream()
-                .map(WorkflowVersion::getId)
-                .filter(StringUtils::hasText)
-                .collect(Collectors.toList());
-            int versionCount = versionMapper.delete(versionQuery);
-            log.debug("删除版本历史: workflowId={}, count={}", workflowId, versionCount);
-
-            // 3. 删除版本快照
-            LambdaQueryWrapper<WfProcessVersionSnapshot> snapshotQuery = new LambdaQueryWrapper<>();
-            snapshotQuery.eq(WfProcessVersionSnapshot::getProcessDefId, workflowId);
-            int snapshotCount = versionSnapshotMapper.delete(snapshotQuery);
-            log.debug("删除版本快照: workflowId={}, count={}", workflowId, snapshotCount);
+            // 2/3. C6: 版本历史与版本快照表已下线(版本事实源为 wf_process_definition 多版本行,
+            //         定义行本身的删除已覆盖版本清理,无需单独清理)
 
             // 4. 删除发布记录及其关联数据
             LambdaQueryWrapper<com.cloudflow.workflow.domain.WfDeployRecord> deployRecordQuery = new LambdaQueryWrapper<>();

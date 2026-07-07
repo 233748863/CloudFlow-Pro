@@ -41,6 +41,11 @@ CREATE TABLE wf_process_definition (
   deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   template_id       VARCHAR(64)     DEFAULT NULL COMMENT '模板ID',
   current_version   VARCHAR(20)     DEFAULT '1.0.0' COMMENT '当前版本号',
+  change_log        VARCHAR(500)    DEFAULT NULL COMMENT '版本变更说明(C6:版本体系统一后由本行承载)',
+  change_type       VARCHAR(20)     DEFAULT NULL COMMENT '版本变更类型(major/minor/patch)',
+  checksum          VARCHAR(64)     DEFAULT NULL COMMENT '模型内容SHA-256校验和',
+  is_rollback       TINYINT(1)      DEFAULT 0 COMMENT '是否回滚产生的版本',
+  rollback_from_version VARCHAR(20) DEFAULT NULL COMMENT '回滚源版本号',
   is_archived       TINYINT(1)      DEFAULT 0 COMMENT '是否归档',
   PRIMARY KEY (definition_id),
   KEY idx_process_key (process_key),
@@ -141,7 +146,8 @@ CREATE TABLE wf_process_instance (
   KEY idx_dept_id (dept_id),
   KEY idx_create_by (create_by),
   KEY idx_deleted (deleted),
-  KEY idx_parent_instance (parent_instance_id)
+  KEY idx_parent_instance (parent_instance_id),
+  UNIQUE KEY uk_tenant_process_no (tenant_id, process_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程实例表';
 
 --
@@ -185,7 +191,7 @@ CREATE TABLE wf_task_history (
   operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
   operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '操作人姓名',
   action            VARCHAR(64)     DEFAULT NULL COMMENT '操作动作',
-  comment           VARCHAR(500)    DEFAULT NULL COMMENT '处理意见',
+  comment           VARCHAR(1000)   DEFAULT NULL COMMENT '处理意见(预留系统拼接前缀余量)',
   duration_seconds  INT             DEFAULT NULL COMMENT '处理耗时秒数',
   variables_changed TEXT COMMENT '变量变更内容',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
@@ -349,10 +355,10 @@ CREATE TABLE wf_countersign_vote (
   voter_id          BIGINT(20)      NOT NULL COMMENT '投票人ID',
   voter_name        VARCHAR(64)     DEFAULT NULL COMMENT '投票人姓名',
   vote_result       VARCHAR(20)     NOT NULL COMMENT '投票结果',
-  comment           VARCHAR(500)    DEFAULT NULL COMMENT '处理意见',
+  comment           VARCHAR(1000)   DEFAULT NULL COMMENT '处理意见(预留系统拼接前缀余量)',
   vote_time         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '投票时间',
   PRIMARY KEY (vote_id),
-  KEY idx_countersign_id (countersign_id),
+  UNIQUE KEY uk_countersign_voter (countersign_id, voter_id),
   KEY idx_voter_id (voter_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会签投票表';
 
@@ -564,26 +570,7 @@ CREATE TABLE wf_deploy_notification (
   KEY idx_tenant_id (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布通知表';
 
---
-DROP TABLE IF EXISTS wf_process_version_snapshot;
-CREATE TABLE wf_process_version_snapshot (
-  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  process_def_id    VARCHAR(64)     NOT NULL COMMENT '流程定义ID',
-  process_key       VARCHAR(64)     NOT NULL COMMENT '流程Key',
-  version           INT             NOT NULL COMMENT '版本号',
-  snapshot_data     LONGTEXT        NOT NULL COMMENT '快照数据',
-  bpmn_xml          LONGTEXT        DEFAULT NULL COMMENT 'BPMN XML',
-  form_config       TEXT            DEFAULT NULL COMMENT '表单配置',
-  node_config       TEXT            DEFAULT NULL COMMENT '节点配置',
-  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  PRIMARY KEY (id),
-  KEY idx_process_def_id (process_def_id),
-  KEY idx_process_key (process_key),
-  KEY idx_process_version (process_def_id, version),
-  KEY idx_process_key_version (process_key, version),
-  KEY idx_tenant_id (tenant_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程版本快照表';
+-- C6: wf_process_version_snapshot 已下线(版本体系统一到 wf_process_definition 多版本行,回滚直接引用历史版本行)
 
 -- =========================================================
 --
@@ -802,29 +789,7 @@ CREATE TABLE wf_template_category (
     INDEX idx_parent_order (parent_id, order_num) COMMENT '父级排序索引'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板分类表';
 
---
-DROP TABLE IF EXISTS wf_template_version;
-CREATE TABLE wf_template_version (
-    id VARCHAR(64) PRIMARY KEY COMMENT '主键ID',
-    workflow_id VARCHAR(64) NOT NULL COMMENT '工作流ID',
-    version_number VARCHAR(20) NOT NULL COMMENT '版本号',
-    definition JSON NOT NULL COMMENT '定义内容',
-    change_log TEXT COMMENT '变更日志',
-    change_type VARCHAR(20) NOT NULL COMMENT '变更类型',
-    created_by VARCHAR(64) NOT NULL COMMENT '创建人',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    is_rollback TINYINT(1) DEFAULT 0 COMMENT '是否回滚版本',
-    rollback_from_version VARCHAR(20) COMMENT '回滚来源版本',
-    checksum VARCHAR(64) NOT NULL COMMENT '校验和',
-    tenant_id BIGINT(20) DEFAULT 100000 COMMENT '租户ID',
-    INDEX idx_workflow (workflow_id),
-    INDEX idx_version (workflow_id, version_number),
-    INDEX idx_created_at (created_at),
-    INDEX idx_tenant (tenant_id),
-    INDEX idx_workflow_created (workflow_id, created_at DESC) COMMENT '工作流创建时间索引',
-    INDEX idx_wf_template_version_number (workflow_id, version_number) COMMENT '工作流版本号索引',
-    UNIQUE KEY uk_wf_template_version (workflow_id, version_number)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流版本表';
+-- C6: wf_template_version 已下线(版本体系统一到 wf_process_definition 多版本行,语义化版本等元数据在 definition 行新列)
 
 --
 DROP TABLE IF EXISTS wf_template_archive;
@@ -1153,3 +1118,18 @@ CREATE TABLE wf_reconcile_alert (
   KEY idx_detected_at (detected_at),
   KEY idx_resolved_at (resolved_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程业务状态对账告警';
+
+-- B1修复: 并行网关汇聚到达记录（替代 Redis increment 计数）
+-- 到达记录与审批/流转同事务写入，事务回滚自动撤销，杜绝“计数不回滚导致汇聚提前放行”；
+-- 唯一键防同一分支重复计数；汇聚放行后同事务清理。
+DROP TABLE IF EXISTS wf_parallel_join;
+CREATE TABLE wf_parallel_join (
+  id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id           BIGINT DEFAULT NULL COMMENT '租户ID',
+  instance_id         VARCHAR(64) NOT NULL COMMENT '流程实例ID',
+  gateway_id          VARCHAR(64) NOT NULL COMMENT '并行网关节点ID',
+  branch_key          VARCHAR(64) NOT NULL COMMENT '到达汇聚点的分支标识(汇聚点直接前驱节点ID)',
+  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '到达时间',
+  UNIQUE KEY uk_join_arrival (instance_id, gateway_id, branch_key),
+  KEY idx_join_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='并行网关汇聚到达记录';

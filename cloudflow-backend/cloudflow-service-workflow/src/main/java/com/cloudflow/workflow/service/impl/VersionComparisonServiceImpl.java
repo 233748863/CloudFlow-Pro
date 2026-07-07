@@ -2,11 +2,9 @@ package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
-import com.cloudflow.workflow.domain.WorkflowVersion;
 import com.cloudflow.workflow.domain.dto.VersionComparisonDTO;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
-import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
 import com.cloudflow.workflow.service.IVersionComparisonService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,16 +27,13 @@ import java.util.*;
 public class VersionComparisonServiceImpl implements IVersionComparisonService {
 
     @Autowired
-    private WorkflowVersionMapper versionMapper;
-
-    @Autowired
     private WfProcessDefinitionMapper definitionMapper;
 
     @Autowired
     private ObjectMapper objectMapper;
 
     /**
-     * 对比两个版本的差异
+     * 对比两个版本的差异（C6: 版本 id 即版本行 definitionId）
      * 使用 Redis 缓存对比结果（1小时过期）
      */
     @Override
@@ -46,9 +41,9 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
     public VersionComparisonDTO compareVersions(String fromVersionId, String toVersionId) {
         log.info("开始对比版本, fromVersionId={}, toVersionId={}", fromVersionId, toVersionId);
 
-        // 查询两个版本
-        WorkflowVersion fromVersion = versionMapper.selectById(fromVersionId);
-        WorkflowVersion toVersion = versionMapper.selectById(toVersionId);
+        // 查询两个版本行
+        WfProcessDefinition fromVersion = definitionMapper.selectById(fromVersionId);
+        WfProcessDefinition toVersion = definitionMapper.selectById(toVersionId);
 
         if (fromVersion == null) {
             throw new WorkflowException("源版本不存在: " + fromVersionId);
@@ -56,20 +51,20 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
         if (toVersion == null) {
             throw new WorkflowException("目标版本不存在: " + toVersionId);
         }
-        if (!Objects.equals(fromVersion.getWorkflowId(), toVersion.getWorkflowId())) {
+        if (!Objects.equals(fromVersion.getProcessKey(), toVersion.getProcessKey())) {
             throw WorkflowException.validationError("仅支持同一流程版本对比");
         }
-        assertWorkflowTenantAccess(fromVersion.getWorkflowId(), "版本对比");
+        assertWorkflowTenantAccess(fromVersion.getDefinitionId(), "版本对比");
 
         // 对比定义
         VersionComparisonDTO result = compareDefinitions(
-            fromVersion.getDefinition(), 
-            toVersion.getDefinition()
+            fromVersion.getModelJson(),
+            toVersion.getModelJson()
         );
 
         // 设置版本号
-        result.setFromVersion(fromVersion.getVersionNumber());
-        result.setToVersion(toVersion.getVersionNumber());
+        result.setFromVersion(fromVersion.getCurrentVersion());
+        result.setToVersion(toVersion.getCurrentVersion());
 
         log.info("版本对比完成, 新增节点: {}, 删除节点: {}, 修改节点: {}", 
             result.getAddedNodes().size(), 

@@ -69,6 +69,21 @@ public class WfProcessDefinition implements Serializable {
     /** 当前版本号（语义化版本） */
     private String currentVersion;
 
+    /** C6: 版本变更说明（版本体系统一后由 definition 行自身承载版本元数据） */
+    private String changeLog;
+
+    /** C6: 版本变更类型 (major/minor/patch) */
+    private String changeType;
+
+    /** C6: 模型内容 SHA-256 校验和 */
+    private String checksum;
+
+    /** C6: 是否回滚产生的版本 (0-否, 1-是) */
+    private Integer isRollback;
+
+    /** C6: 回滚源版本号（语义化版本） */
+    private String rollbackFromVersion;
+
     /** 是否已归档 (0-否, 1-是) */
     private Integer isArchived;
 
@@ -230,6 +245,46 @@ public class WfProcessDefinition implements Serializable {
 
     public void setCurrentVersion(String currentVersion) {
         this.currentVersion = currentVersion;
+    }
+
+    public String getChangeLog() {
+        return changeLog;
+    }
+
+    public void setChangeLog(String changeLog) {
+        this.changeLog = changeLog;
+    }
+
+    public String getChangeType() {
+        return changeType;
+    }
+
+    public void setChangeType(String changeType) {
+        this.changeType = changeType;
+    }
+
+    public String getChecksum() {
+        return checksum;
+    }
+
+    public void setChecksum(String checksum) {
+        this.checksum = checksum;
+    }
+
+    public Integer getIsRollback() {
+        return isRollback;
+    }
+
+    public void setIsRollback(Integer isRollback) {
+        this.isRollback = isRollback;
+    }
+
+    public String getRollbackFromVersion() {
+        return rollbackFromVersion;
+    }
+
+    public void setRollbackFromVersion(String rollbackFromVersion) {
+        this.rollbackFromVersion = rollbackFromVersion;
     }
 
     public Integer getIsArchived() {

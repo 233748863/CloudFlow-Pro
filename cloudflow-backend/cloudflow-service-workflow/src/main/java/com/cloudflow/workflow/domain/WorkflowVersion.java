@@ -1,20 +1,19 @@
 package com.cloudflow.workflow.domain;
 
-import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 流程版本实体类
- * 用于记录流程的历史版本信息
+ * 流程版本视图对象（C6: 版本体系统一后不再映射独立版本表，
+ * 版本事实源为 wf_process_definition 多版本行，本类仅作为 API 兼容的值对象）
+ *
+ * id/workflowId 均为版本行的 definitionId。
  */
-@TableName("wf_template_version")
 public class WorkflowVersion implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /** 版本ID */
-    @TableId
+    /** 版本ID（即该版本行的 definitionId） */
     private String id;
 
     /** 流程ID */

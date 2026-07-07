@@ -13,7 +13,6 @@ import com.cloudflow.workflow.domain.vo.WorkflowErrorVO;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
-import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
 import com.cloudflow.workflow.service.IVersionComparisonService;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
@@ -55,9 +54,6 @@ public class VersionController {
     private WfProcessDefinitionMapper definitionMapper;
 
     @Autowired
-    private WorkflowVersionMapper workflowVersionMapper;
-
-    @Autowired
     private WorkflowPermissionService permissionService;
 
     @GetMapping("/workflow/{workflowId}")
@@ -75,11 +71,12 @@ public class VersionController {
     public R<VersionDetailDTO> getVersionDetail(@PathVariable String versionId) {
         log.info("查询版本详情, versionId={}", versionId);
 
-        WorkflowVersion version = workflowVersionMapper.selectById(versionId);
-        if (version == null) {
+        // C6: 版本 id 即版本行 definitionId
+        WfProcessDefinition versionRow = definitionMapper.selectById(versionId);
+        if (versionRow == null) {
             throw new WorkflowException("版本不存在: " + versionId);
         }
-        ensureWorkflowOwnerOrAdmin(version.getWorkflowId());
+        ensureWorkflowOwnerOrAdmin(versionRow.getDefinitionId());
 
         VersionDetailDTO detail = versionService.getVersionDetail(versionId);
         return R.ok(detail);
@@ -92,19 +89,20 @@ public class VersionController {
             @RequestParam String toVersionId) {
         log.info("对比流程版本, fromVersionId={}, toVersionId={}", fromVersionId, toVersionId);
 
-        WorkflowVersion fromVersion = workflowVersionMapper.selectById(fromVersionId);
-        WorkflowVersion toVersion = workflowVersionMapper.selectById(toVersionId);
+        // C6: 版本 id 即版本行 definitionId，同一流程 = 同 processKey
+        WfProcessDefinition fromVersion = definitionMapper.selectById(fromVersionId);
+        WfProcessDefinition toVersion = definitionMapper.selectById(toVersionId);
         if (fromVersion == null) {
             throw new WorkflowException("版本不存在: " + fromVersionId);
         }
         if (toVersion == null) {
             throw new WorkflowException("版本不存在: " + toVersionId);
         }
-        if (!Objects.equals(fromVersion.getWorkflowId(), toVersion.getWorkflowId())) {
+        if (!Objects.equals(fromVersion.getProcessKey(), toVersion.getProcessKey())) {
             throw WorkflowException.validationError("只能对比同一流程的版本");
         }
 
-        ensureWorkflowOwnerOrAdmin(fromVersion.getWorkflowId());
+        ensureWorkflowOwnerOrAdmin(fromVersion.getDefinitionId());
         VersionComparisonDTO comparison = versionComparisonService.compareVersions(fromVersionId, toVersionId);
         return R.ok(comparison);
     }
