@@ -95,7 +95,7 @@ export const getHotUpdateStatusMeta = (status: HotUpdateStatus) => {
       };
     default:
       return {
-        label: status,
+        label: '未知状态',
         icon: <Clock3 size={14} />,
         className:
           'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
@@ -107,7 +107,7 @@ export const getHotUpdateRecordSummary = (record: HotUpdateRecord) => {
   const modeMeta = hotUpdateModeMap[(record.migrationMode as MigrationMode) || 'COMPATIBLE'];
   return {
     title: `V${record.fromVersion} -> V${record.toVersion}`,
-    modeLabel: modeMeta?.label || record.migrationMode,
+    modeLabel: modeMeta?.label || '未知模式',
     executedAt: formatDateTimeDisplay(record.executedAt),
   };
 };

@@ -1,5 +1,4 @@
 import request from '@/services/api/request';
-import { statusDescMap } from './internals';
 import type {
   HrRecord,
   LifecycleApplication,
@@ -20,7 +19,7 @@ const normalizeLifecycleApplication = <T extends Record<string, any>>(item: T): 
   expectedDate: item.expectedDate || item.onboardDate || item.effectiveDate,
   onboardDate: item.onboardDate || item.expectedDate || item.effectiveDate,
   effectiveDate: item.effectiveDate || item.expectedDate || item.onboardDate || item.actualDate,
-  statusDesc: item.statusDesc || statusDescMap[String(item.status || '')] || item.status,
+  statusDesc: item.statusDesc,
 });
 
 const createLifecycle = (type: string, data: HrRecord) =>

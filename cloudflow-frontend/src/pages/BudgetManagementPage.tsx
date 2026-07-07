@@ -312,7 +312,7 @@ export default function BudgetManagementPage() {
   };
 
   const thresholdBadge = (status?: string) => (
-    <DictBadge dictType="oa_budget_threshold" value={String(status || 'NORMAL')} fallback="正常" />
+    <DictBadge dictType="oa_budget_threshold" value={String(status || 'NORMAL')} />
   );
   const totalBudgetAmount = plans.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
   const pendingAdjustments = adjustments.filter((item) => item.status === 'DRAFT' || item.status === 'REJECTED').length;
@@ -390,8 +390,8 @@ export default function BudgetManagementPage() {
                 <tr key={item.budgetId}>
                   <td>
                     <strong>{item.budgetName}</strong>
-                    <div className="text-xs text-slate-500">{item.budgetNo || '-'} / {targetTypeDict.getLabel(item.targetType || 'DEPT') || item.targetType || '-'}</div>
-                    <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || item.status || '-'}</div>
+                    <div className="text-xs text-slate-500">{item.budgetNo || '-'} / {targetTypeDict.getLabel(item.targetType || 'DEPT') || '-'}</div>
+                    <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || '-'}</div>
                   </td>
                   <td>
                     <div>{formatMoney(item.totalAmount)}</div>
@@ -447,7 +447,7 @@ export default function BudgetManagementPage() {
                   <td>
                     <strong>{item.adjustmentNo}</strong>
                     <div className="text-xs text-slate-500">{item.subjectName || item.subjectCode || '-'}</div>
-                    <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || item.status || '-'}</div>
+                    <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || '-'}</div>
                   </td>
                   <td>{formatMoney(item.changeAmount)}</td>
                   <td>
@@ -494,7 +494,7 @@ export default function BudgetManagementPage() {
               <BudgetPanel title="预算主表">
                 <div className="admin-budget-detail-list">
                   <div><span>预算编号</span><strong>{planDetail.budgetNo || '-'}</strong></div>
-                  <div><span>目标对象</span><strong>{targetTypeDict.getLabel(planDetail.targetType || 'DEPT') || planDetail.targetType} / {planDetail.targetName || planDetail.projectName || planDetail.deptName || '-'}</strong></div>
+                  <div><span>目标对象</span><strong>{targetTypeDict.getLabel(planDetail.targetType || 'DEPT') || '-'} / {planDetail.targetName || planDetail.projectName || planDetail.deptName || '-'}</strong></div>
                   <div><span>负责人</span><strong>{planDetail.ownerName || '-'}</strong></div>
                   <div><span>可用余额</span><strong>{formatMoney(planSummary.availableAmount)}</strong></div>
                 </div>
@@ -535,7 +535,7 @@ export default function BudgetManagementPage() {
                           <div className="text-xs text-slate-500">{item.businessNo || item.businessId || '-'}</div>
                         </td>
                         <td>{item.subjectName || item.subjectCode || '-'}</td>
-                        <td>{operationTypeDict.getLabel(item.operationType || '') || item.operationType || '-'}</td>
+                        <td>{operationTypeDict.getLabel(item.operationType || '') || '-'}</td>
                         <td>{formatMoney(item.amount)}</td>
                         <td>{formatMoney(item.availableAfter)}</td>
                         <td>{item.remark || '-'}</td>

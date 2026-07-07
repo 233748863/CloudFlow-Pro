@@ -88,7 +88,7 @@ export interface UseDictResult {
   /**
    * 根据 value 获取 label
    * @param value 字典值
-   * @returns 字典标签，未找到时返回原值
+   * @returns 字典标签，未找到时返回空字符串
    */
   getLabel: (value: string) => string;
 

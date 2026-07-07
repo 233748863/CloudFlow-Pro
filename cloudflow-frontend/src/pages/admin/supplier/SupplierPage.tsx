@@ -33,7 +33,7 @@ const createDefaultForm = (): Supplier => ({
 });
 
 const statusBadge = (status?: string) => (
-  <DictBadge dictType="oa_supplier_status" value={String(status || 'ACTIVE')} fallback="启用" />
+  <DictBadge dictType="oa_supplier_status" value={String(status || 'ACTIVE')} />
 );
 
 const SupplierPage: React.FC = () => {
@@ -75,7 +75,7 @@ const SupplierPage: React.FC = () => {
   const activeCount = useMemo(() => suppliers.filter((item) => item.status !== 'DISABLED').length, [suppliers]);
   const disabledCount = useMemo(() => suppliers.filter((item) => item.status === 'DISABLED').length, [suppliers]);
   const hasActiveFilters = Boolean(searchParams.supplierName || searchParams.status);
-  const currentStatusLabel = searchParams.status ? statusDict.getLabel(searchParams.status) || searchParams.status : '全部状态';
+  const currentStatusLabel = searchParams.status ? statusDict.getLabel(searchParams.status) || '未配置状态' : '全部状态';
   const metrics = [
     { label: '供应商', value: String(total), meta: `当前页 ${suppliers.length}`, icon: <Plus size={18} />, tone: 'blue' },
     { label: '启用', value: String(activeCount), meta: '当前页可用', icon: <Edit size={18} />, tone: 'green' },

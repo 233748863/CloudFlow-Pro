@@ -83,6 +83,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
     sortedEmployeeSalaryHistory,
     salaryArchiveStatusClass,
     salaryArchiveStatusLabel,
+    deductionTypeLabel,
     openInsuranceDialog,
     openTaxDeductionDialog,
     loadEmployeeCompensationProfile,
@@ -135,7 +136,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
   } = viewModel;
 
   const employeeDetailTotalSalary = employeeSalaryDetail?.totalSalary || currentEmployeeRecord?.totalSalary;
-  const employeeDetailStatusLabel = employeeSalaryDetail?.statusDesc || currentEmployeeRecord?.statusDesc || currentEmployeeRecord?.status || '-';
+  const employeeDetailStatusLabel = employeeSalaryDetail?.statusDesc || currentEmployeeRecord?.statusDesc || '-';
   const employeeDetailDuplicateCount = employeeSalaryDuplicateEffectiveDates[0]?.[1] || 1;
   const employeeDetailDuplicateDate = employeeSalaryDuplicateEffectiveDates[0]?.[0] || '-';
   const employeeDetailAdjustmentHint = latestEmployeeAdjustment
@@ -510,7 +511,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                           </span>
                         )}
                         <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
-                          {item.statusDesc || item.status}
+                          {salaryArchiveStatusLabel(item.status, item.statusDesc) || '-'}
                         </span>
                       </div>
                   </div>
@@ -906,7 +907,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                           <tr key={item.id}>
                             <td>
                               <div className="font-medium text-slate-900 dark:text-slate-100">
-                                {item.deductionTypeName || item.deductionType}
+                                {deductionTypeLabel?.(item.deductionType) || '-'}
                               </div>
                               <div className="mt-1 text-xs text-slate-400">{compactTaxDeductionRemark(item.remark)}</div>
                             </td>

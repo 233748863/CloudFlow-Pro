@@ -305,7 +305,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                             : 'bg-[var(--cf-surface-muted)] text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
                         )}
                       >
-                        {SOURCE_OPTIONS.find((opt) => opt.value === row.evaluatorSource)?.label || row.evaluatorSource}
+                        {SOURCE_OPTIONS.find((opt) => opt.value === row.evaluatorSource)?.label || '-'}
                       </span>
                     </td>
                     <td className="tabular-nums">{row.weight}</td>

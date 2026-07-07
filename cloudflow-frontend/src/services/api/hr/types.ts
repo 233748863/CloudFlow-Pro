@@ -4,6 +4,8 @@ export type HrPagedResult<T> = {
   total: number;
   rows?: T[];
   records?: T[];
+  pageNum?: number;
+  pageSize?: number;
   current?: number;
   size?: number;
   pages?: number;

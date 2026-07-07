@@ -40,13 +40,13 @@ const EXPIRY_REMINDER_WINDOW_DAYS = 30;
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
 const getStatusBadge = (status?: string) => (
-  <DictBadge dictType="oa_license_status" value={String(status || 'AVAILABLE')} fallback="可用" />
+  <DictBadge dictType="oa_license_status" value={String(status || 'AVAILABLE')} />
 );
 
 const isBorrowLocked = (item: Pick<OaSeal, 'status'>) => item.status === 'BORROWED';
 
 const getRenewalStatusBadge = (status?: string) => (
-  <DictBadge dictType="oa_renewal_status" value={String(status || 'DRAFT')} fallback="草稿" />
+  <DictBadge dictType="oa_renewal_status" value={String(status || 'DRAFT')} />
 );
 
 const getDaysUntil = (date?: string) => {
@@ -444,7 +444,7 @@ export const SealListPage: React.FC = () => {
                 <td>{item.sealCode}</td>
                 <td>
                   <div className="font-medium text-slate-900 dark:text-slate-100">{item.sealName}</div>
-                  <div className="mt-1 text-xs text-slate-400">{typeDict.getLabel(item.sealType) || item.sealType}</div>
+                  <div className="mt-1 text-xs text-slate-400">{typeDict.getLabel(item.sealType) || '-'}</div>
                 </td>
                 <td>
                   <div>{item.sealNo || '-'}</div>
@@ -638,7 +638,7 @@ export const SealListPage: React.FC = () => {
           <div className="admin-dialog-stack">
             <DialogPanel title="印章主信息" bodyClassName="admin-seal-detail-grid">
               <DetailField label="印章编码" value={detailSeal.sealCode} />
-              <DetailField label="印章类型" value={typeDict.getLabel(detailSeal.sealType) || detailSeal.sealType} />
+              <DetailField label="印章类型" value={typeDict.getLabel(detailSeal.sealType) || '-'} />
               <DetailField label="印章编号" value={detailSeal.sealNo} />
               <DetailField label="签发机构" value={detailSeal.issuer} />
               <DetailField label="签发日期" value={detailSeal.issueDate} />

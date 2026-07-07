@@ -208,7 +208,7 @@ export const LeaveApplicationPage: React.FC = () => {
   const statusDict = useDict('hr_leave_status');
   const unitDict = useDict('hr_leave_unit');
   const formatDuration = (item: LeaveApplication) =>
-    `${item.duration}${unitDict.getLabel(item.unit || '') || item.unit || ''}`;
+    `${item.duration}${unitDict.getLabel(item.unit || '') || ''}`;
   const [list, setList] = useState<LeaveApplication[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<HrLeaveTypeOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -275,7 +275,7 @@ export const LeaveApplicationPage: React.FC = () => {
   const pendingCount = list.filter((item) => item.status === 'APPROVING').length;
   const approvedCount = list.filter((item) => item.status === 'APPROVED').length;
   const currentStatusLabel = searchParams.status
-    ? (statusDict.getLabel(searchParams.status) || searchParams.status)
+    ? (statusDict.getLabel(searchParams.status) || '未配置状态')
     : '全部状态';
   const currentTypeLabel = searchParams.leaveTypeId
     ? (leaveTypes.find((item) => String(item.id) === searchParams.leaveTypeId)?.leaveName || '指定类型')
@@ -556,7 +556,7 @@ export const LeaveApplicationPage: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => (
-    <DictBadge dictType="hr_leave_status" value={String(status || 'DRAFT')} fallback="草稿" />
+    <DictBadge dictType="hr_leave_status" value={String(status || 'DRAFT')} />
   );
 
   const pageActions = (
@@ -816,7 +816,7 @@ export const LeaveApplicationPage: React.FC = () => {
               <DetailField label="开始时间" value={formatDateTimeDisplay(detailRecord.startTime)} />
               <DetailField label="结束时间" value={formatDateTimeDisplay(detailRecord.endTime)} />
               <DetailField label="请假时长" value={formatDuration(detailRecord)} />
-              <DetailField label="状态" value={statusDict.getLabel(detailRecord.status || 'DRAFT') || detailRecord.status || '-'} />
+              <DetailField label="状态" value={statusDict.getLabel(detailRecord.status || 'DRAFT') || '-'} />
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
               <DetailField label="更新时间" value={formatDateTimeDisplay(detailRecord.updateTime)} />
             </div>

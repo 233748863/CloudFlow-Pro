@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
+import { Button, DatePicker, DictSelect, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
 import { cn } from '@/utils/cn';
 
 type DialogComponents = {
@@ -356,13 +356,12 @@ export const SalaryGradeDialog: React.FC<DialogProps> = ({ components, viewModel
         </div>
         <div>
           <Label>币种</Label>
-          <Select value={gradeForm.currency || 'CNY'} onValueChange={value => setGradeForm((prev: any) => ({ ...prev, currency: value }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="CNY">人民币</SelectItem>
-              <SelectItem value="USD">美元</SelectItem>
-            </SelectContent>
-          </Select>
+          <DictSelect
+            dictType="sys_currency"
+            value={gradeForm.currency || 'CNY'}
+            onChange={value => setGradeForm((prev: any) => ({ ...prev, currency: value }))}
+            placeholder="选择币种"
+          />
         </div>
       </div>
 

@@ -206,8 +206,8 @@ export const ContractThresholdPage: React.FC = () => {
 
   const activeCount = rows.filter((row) => row.status === 'ACTIVE').length;
   const inactiveCount = rows.filter((row) => row.status === 'INACTIVE').length;
-  const currentTierLabel = query.amountTier ? tierDict.getLabel(query.amountTier) || query.amountTier : '全部档位';
-  const currentStatusLabel = query.status ? statusDict.getLabel(query.status) || query.status : '全部状态';
+  const currentTierLabel = query.amountTier ? tierDict.getLabel(query.amountTier) || '未配置档位' : '全部档位';
+  const currentStatusLabel = query.status ? statusDict.getLabel(query.status) || '未配置状态' : '全部状态';
   const hasActiveFilters = Boolean(query.keyword || query.businessUnit || query.amountTier || query.status);
   const statCards = [
     { label: '阈值规则', value: String(total), detail: '审批路由', icon: FileSpreadsheet, tone: 'blue' },

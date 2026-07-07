@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Award, BookOpen, Clock, GraduationCap, RefreshCcw, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Input } from '@/components/common';
+import { DictLabel } from '@/components/common/DictLabel';
 import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -10,7 +11,6 @@ import {
   getEmployeeTrainingArchive,
 } from '@/services/api/hr';
 import { formatDateValue } from './hrShared';
-import { getTrainingEnrollmentStatusLabel } from '@/utils/enumLabels';
 
 export const HrTrainingArchivePage: React.FC = () => {
   const [archive, setArchive] = useState<HrTrainingArchive | null>(null);
@@ -138,8 +138,8 @@ export const HrTrainingArchivePage: React.FC = () => {
                         <tr key={String(row.id)}>
                           <td className="text-sm">{String(row.sessionNo || `#${row.sessionId}`)}</td>
                           <td className="text-sm">{String(row.courseName || `#${row.courseId}`)}</td>
-                          <td className="text-sm">{getTrainingEnrollmentStatusLabel(row.status as string)}</td>
-                          <td className="text-sm">{getTrainingEnrollmentStatusLabel(row.completionStatus as string) || '-'}</td>
+                          <td className="text-sm"><DictLabel dictType="hr_enroll_status" value={String(row.status ?? '')} fallback="-" /></td>
+                          <td className="text-sm"><DictLabel dictType="hr_enroll_completion" value={String(row.completionStatus ?? '')} fallback="-" /></td>
                           <td className="text-sm">{(row.score as React.ReactNode) ?? '-'}</td>
                           <td className="text-xs">{formatDateValue(row.checkInTime)}</td>
                         </tr>
@@ -169,7 +169,7 @@ export const HrTrainingArchivePage: React.FC = () => {
                           <td className="font-mono text-xs">{row.certNo}</td>
                           <td className="text-sm">{`#${row.courseId}`}</td>
                           <td className="text-xs">{formatDateValue(row.issueDate)}</td>
-                          <td className="text-sm">{row.status === 'VALID' ? '有效' : '已撤销'}</td>
+                          <td className="text-sm"><DictLabel dictType="hr_training_certificate_status" value={String(row.status ?? '')} fallback="-" /></td>
                         </tr>
                       )) : (
                         <tr><td colSpan={4} className="admin-settings-empty">暂无证书</td></tr>

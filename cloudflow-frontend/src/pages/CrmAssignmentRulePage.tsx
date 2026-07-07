@@ -215,7 +215,7 @@ export default function CrmAssignmentRulePage() {
                     <tr key={row.ruleId}>
                       <td className="font-mono text-xs">{row.priority ?? 100}</td>
                       <td><strong>{row.ruleName}</strong><small>{row.remark || '-'}</small></td>
-                      <td>{ruleTypeDict.getLabel(row.ruleType || '') || row.ruleType}</td>
+                      <td>{ruleTypeDict.getLabel(row.ruleType || '') || '-'}</td>
                       <td><strong>部门：{row.deptName || '全部'}</strong><small>等级：{row.customerLevel ? customerLevelDict.getLabel(row.customerLevel) : '全部'}；标签：{row.customerTags || '全部'}</small></td>
                       <td>
                         {row.ruleType === 'AUTO_RELEASE' ? `${row.inactiveDays || '-'} 天未跟进` : null}

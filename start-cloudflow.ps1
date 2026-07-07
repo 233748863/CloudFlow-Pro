@@ -1,6 +1,6 @@
 ﻿param(
 [int]$TimeoutSeconds = 180,
-[string]$BackendBuildThreads = "1C",
+[string]$BackendBuildThreads = "auto",
 [switch]$All,
 [switch]$Backend,
 [Alias("React")]
@@ -211,6 +211,17 @@ function Get-ConfiguredEnvValue {
     }
 
     return $value
+}
+
+function Resolve-BackendBuildThreads {
+    param([AllowNull()][string]$Value)
+
+    $normalized = if ($null -eq $Value) { "" } else { $Value.Trim() }
+    if ([string]::IsNullOrWhiteSpace($normalized) -or $normalized -in @("auto", "dynamic", "local")) {
+        return [string]([Math]::Max(1, [Environment]::ProcessorCount))
+    }
+
+    return $normalized
 }
 
 function Set-ProcessEnvDefault {
@@ -753,10 +764,11 @@ function Install-BackendDependencies {
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
     $outLog = Join-Path $LogRoot "backend-install-$stamp.out.log"
     $errLog = Join-Path $LogRoot "backend-install-$stamp.err.log"
+    $resolvedBackendBuildThreads = Resolve-BackendBuildThreads -Value $BackendBuildThreads
     $mvnArgs = @(
         "clean",
         "-T",
-        $BackendBuildThreads,
+        $resolvedBackendBuildThreads,
         "-pl",
         "cloudflow-gateway,cloudflow-auth,cloudflow-service-workflow,cloudflow-service-oa,cloudflow-service-crm,cloudflow-service-hr",
         "-am",
@@ -766,7 +778,7 @@ function Install-BackendDependencies {
         "install"
     )
 
-    Write-Host ("backend    并行编译并安装内部依赖，线程 {0}..." -f $BackendBuildThreads)
+    Write-Host ("backend    并行编译并安装内部依赖，线程 {0}..." -f $resolvedBackendBuildThreads)
     $process = Start-Process `
         -FilePath "mvn.cmd" `
         -ArgumentList $mvnArgs `

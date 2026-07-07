@@ -201,10 +201,10 @@ export const AttendanceSupplementPage: React.FC = () => {
   const pendingCount = list.filter((item) => item.status === 'APPROVING').length;
   const approvedCount = list.filter((item) => item.status === 'SUPPLEMENT').length;
   const currentStatusLabel = searchParams.status
-    ? (statusDict.getLabel(searchParams.status) || searchParams.status)
+    ? (statusDict.getLabel(searchParams.status) || '未配置状态')
     : '全部状态';
   const currentTypeLabel = searchParams.checkType
-    ? (checkTypeDict.getLabel(searchParams.checkType) || searchParams.checkType)
+    ? (checkTypeDict.getLabel(searchParams.checkType) || '未配置类型')
     : '全部类型';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.checkType);
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
@@ -371,7 +371,7 @@ export const AttendanceSupplementPage: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => (
-    <DictBadge dictType="hr_attendance_supplement_status" value={String(status || 'MISSING')} fallback="草稿" />
+    <DictBadge dictType="hr_attendance_supplement_status" value={String(status || 'MISSING')} />
   );
 
   const pageActions = (
@@ -476,7 +476,7 @@ export const AttendanceSupplementPage: React.FC = () => {
                 <tr key={item.id}>
                   <td><strong>{item.supplementNo || '-'}</strong></td>
                   <td>{item.attendanceDate || '-'}</td>
-                  <td>{checkTypeDict.getLabel(item.checkType || '') || item.checkType}</td>
+                  <td>{checkTypeDict.getLabel(item.checkType || '') || '-'}</td>
                   <td>{toTimeValue(item.checkTime) || '-'}</td>
                   <td><div className="max-w-xs truncate">{item.reason || '-'}</div></td>
                   <td>{getStatusBadge(item.status || 'MISSING')}</td>
@@ -609,7 +609,7 @@ export const AttendanceSupplementPage: React.FC = () => {
               <DetailField label="补录单号" value={renderDetailValue(detailRecord.supplementNo)} />
               <DetailField label="申请人" value={renderDetailValue(detailRecord.employeeName)} />
               <DetailField label="补录日期" value={renderDetailValue(detailRecord.attendanceDate)} />
-              <DetailField label="打卡类型" value={checkTypeDict.getLabel(detailRecord.checkType || '') || detailRecord.checkType} />
+              <DetailField label="打卡类型" value={checkTypeDict.getLabel(detailRecord.checkType || '') || '-'} />
               <DetailField label="补录时间" value={renderDetailValue(detailRecord.checkTime)} />
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
             </div>

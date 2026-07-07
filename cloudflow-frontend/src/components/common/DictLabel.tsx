@@ -14,7 +14,7 @@ export interface DictLabelProps {
   /** 字典值 */
   value: string;
 
-  /** 未找到时的回退文本（默认显示原值） */
+  /** 未找到时的回退文本（默认显示 "-"） */
   fallback?: string;
 
   /** 额外的 CSS 类名 */
@@ -40,7 +40,7 @@ export const DictLabel: React.FC<DictLabelProps> = ({ dictType, value, fallback,
     return <span className={className}>...</span>;
   }
 
-  const displayText = getLabel(value) || fallback || value;
+  const displayText = getLabel(value) || fallback || '-';
 
   return <span className={className}>{displayText}</span>;
 };

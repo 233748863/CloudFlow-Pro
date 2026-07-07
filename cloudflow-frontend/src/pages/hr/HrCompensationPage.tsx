@@ -160,6 +160,7 @@ const HrCompensationPage: React.FC = () => {
   const componentCategoryDict = useDict('hr_comp_component_category');
   const changeTypeDict = useDict('hr_comp_change_type');
   const deductionTypeDict = useDict('hr_tax_deduction_type');
+  const currencyDict = useDict('sys_currency');
 
   const loadData = async () => {
     setLoading(true);
@@ -223,7 +224,6 @@ const HrCompensationPage: React.FC = () => {
     () => jobLevels.map((item) => ({ label: item.levelName || item.levelCode || String(item.id), value: item.id })),
     [jobLevels],
   );
-
   const employeeLabel = (row: HrRecord) =>
     String(row.employeeName || optionOrIdLabel('员工', employeeOptions, row.employeeId));
 
@@ -408,7 +408,7 @@ const HrCompensationPage: React.FC = () => {
                 { key: 'minSalary', label: '下限', type: 'number' },
                 { key: 'midSalary', label: '中位', type: 'number' },
                 { key: 'maxSalary', label: '上限', type: 'number' },
-                { key: 'currency', label: '币种', type: 'select', options: [{ label: '人民币', value: 'CNY' }, { label: '美元', value: 'USD' }] },
+                { key: 'currency', label: '币种', type: 'select', options: currencyDict.getOptions() },
                 { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
               ]}
               onCreate={(form) => submitAndReload(() => setSalaryGrade(form), '薪级已保存')}
@@ -579,7 +579,7 @@ const HrCompensationPage: React.FC = () => {
               resetForm={taxDeductionDefault}
               formFields={[
                 { key: 'employeeId', label: '员工', type: 'employee' },
-                { key: 'deductionType', label: '扣除类型', type: 'select', options: [{ label: '子女教育', value: 'CHILD_EDUCATION' }, { label: '继续教育', value: 'CONTINUING_EDU' }, { label: '住房贷款利息', value: 'HOUSING_LOAN' }, { label: '住房租金', value: 'HOUSING_RENT' }, { label: '赡养老人', value: 'ELDERLY_CARE' }, { label: '婴幼儿照护', value: 'INFANT_CARE' }] },
+                { key: 'deductionType', label: '扣除类型', type: 'select', options: deductionTypeDict.getOptions() },
                 { key: 'amount', label: '金额', type: 'number' },
                 { key: 'startDate', label: '开始日期', type: 'date' },
                 { key: 'endDate', label: '结束日期', type: 'date' },

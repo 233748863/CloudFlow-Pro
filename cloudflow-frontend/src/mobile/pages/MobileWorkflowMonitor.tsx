@@ -364,7 +364,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
             <div className="space-y-2">
               {Object.entries(m.actionCounters).slice(0, 5).map(([action, count]) => (
                 <div key={action} className="flex justify-between items-center text-xs">
-                  <span className="text-gray-600">{actionDict.getLabel(action) || action}</span>
+                  <span className="text-gray-600">{actionDict.getLabel(action) || '-'}</span>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-800">{count}</span>
                     <span className="px-1.5 py-0.5 bg-[#effbfe] text-[#0b7894] rounded text-xs">

@@ -840,11 +840,11 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
     { label: '职位', value: textValue(displayEmployee?.positionName) },
     {
       label: '状态',
-      value: employeeStatusDict.getLabel(displayEmployee?.employeeStatus || '') || textValue(displayEmployee?.employeeStatus),
+      value: employeeStatusDict.getLabel(displayEmployee?.employeeStatus || '') || '-',
     },
     {
       label: '类型',
-      value: employeeTypeDict.getLabel(displayEmployee?.employeeType || '') || textValue(displayEmployee?.employeeType),
+      value: employeeTypeDict.getLabel(displayEmployee?.employeeType || '') || '-',
     },
     { label: '电话', value: textValue(displayEmployee?.phone) },
     { label: '邮箱', value: textValue(displayEmployee?.email) },
@@ -858,7 +858,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
     { label: '合同档案', value: `${contracts.length}`, meta: contractsLoading ? '同步中' : '员工合同', icon: <FileText size={18} />, tone: 'blue' },
     { label: '证件档案', value: `${documents.length}`, meta: documentsLoading ? '同步中' : '员工证件', icon: <ShieldCheck size={18} />, tone: 'green' },
     { label: '紧急联系人', value: `${contacts.length}`, meta: contactsLoading ? '同步中' : '员工联系人', icon: <Phone size={18} />, tone: 'amber' },
-    { label: '员工状态', value: employeeStatusDict.getLabel(displayEmployee?.employeeStatus || '') || textValue(displayEmployee?.employeeStatus), meta: employeeTypeDict.getLabel(displayEmployee?.employeeType || '') || textValue(displayEmployee?.employeeType), icon: <Users size={18} />, tone: 'violet' },
+    { label: '员工状态', value: employeeStatusDict.getLabel(displayEmployee?.employeeStatus || '') || '-', meta: employeeTypeDict.getLabel(displayEmployee?.employeeType || '') || '-', icon: <Users size={18} />, tone: 'violet' },
   ];
 
   return (
@@ -981,7 +981,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="inline-flex rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-slate-800 dark:text-slate-100">
-                                  {item.contractTypeName || contractTypeDict.getLabel(String(item.contractType ?? '')) || item.contractType}
+                                  {contractTypeDict.getLabel(String(item.contractType ?? '')) || '-'}
                                 </span>
                                 <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
                                   {item.contractNo}
@@ -994,7 +994,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                     contractStatusTone(item.status),
                                   ].join(' ')}
                                 >
-                                  {item.statusName || contractStatusDict.getLabel(String(item.status ?? '')) || textValue(item.status)}
+                                  {contractStatusDict.getLabel(String(item.status ?? '')) || '-'}
                                 </span>
                                 <span
                                   className={[
@@ -1113,7 +1113,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="inline-flex rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-slate-800 dark:text-slate-100">
-                                    {item.documentTypeName || documentTypeDict.getLabel(String(item.documentType ?? '')) || item.documentType}
+                                    {documentTypeDict.getLabel(String(item.documentType ?? '')) || '-'}
                                   </span>
                                   <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
                                     {item.documentNo}
@@ -1226,7 +1226,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="inline-flex rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-slate-800 dark:text-slate-100">
-                                  {item.relationshipName || relationshipDict.getLabel(String(item.relationship ?? '')) || item.relationship}
+                                  {relationshipDict.getLabel(String(item.relationship ?? '')) || '-'}
                                 </span>
                                 <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
                                   {item.contactName}
@@ -1266,7 +1266,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                           />
                           <ArchiveCardField
                             label="关系"
-                            value={item.relationshipName || relationshipDict.getLabel(String(item.relationship ?? '')) || item.relationship}
+                            value={relationshipDict.getLabel(String(item.relationship ?? '')) || '-'}
                             icon={<Users className="h-3.5 w-3.5" />}
                           />
                           <ArchiveCardField

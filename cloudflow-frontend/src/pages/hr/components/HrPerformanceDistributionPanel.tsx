@@ -41,6 +41,16 @@ const MODE_TONE: Record<string, string> = {
   WARN: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50',
 };
 
+const MODE_LABEL: Record<string, string> = {
+  BLOCK: '强制拦截',
+  WARN: '仅预警',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  ACTIVE: '启用',
+  INACTIVE: '停用',
+};
+
 interface Props {
   open: boolean;
   objectiveId?: number;
@@ -264,12 +274,12 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
                           MODE_TONE[mode] || MODE_TONE.WARN,
                         )}
                       >
-                        {mode || row.enforceMode}
+                        {MODE_LABEL[mode] || '-'}
                       </span>
                     </td>
                     <td>
                       <span className="inline-flex items-center rounded-md bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        {row.status}
+                        {STATUS_LABEL[String(row.status || '').toUpperCase()] || '-'}
                       </span>
                     </td>
                     <td>

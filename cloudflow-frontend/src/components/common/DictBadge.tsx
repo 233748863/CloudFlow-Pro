@@ -15,7 +15,7 @@ export interface DictBadgeProps {
   /** 字典值 */
   value: string;
 
-  /** 未找到时的回退文本（默认显示原值） */
+  /** 未找到时的回退文本（默认显示 "-"） */
   fallback?: string;
 
   /** 额外的 CSS 类名 */
@@ -53,7 +53,7 @@ export const DictBadge: React.FC<DictBadgeProps> = ({
   }
 
   const item = getItem(value);
-  const displayText = item?.label ?? fallback ?? value;
+  const displayText = item?.label || fallback || '-';
 
   // 根据 variant 选择样式类
   const variantClass =

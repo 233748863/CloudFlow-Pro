@@ -481,7 +481,7 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
             <div>
               <Label>扣除类型</Label>
               {editingTaxDeductionId ? (
-                <Input value={deductionTypeLabel(taxDeductionForm.deductionType)} disabled />
+                <Input value={deductionTypeLabel(taxDeductionForm.deductionType) || '-'} disabled />
               ) : (
                 <Select
                   value={taxDeductionForm.deductionType || EMPTY_VALUE}
@@ -786,7 +786,7 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                   return (
                     <tr key={item.id}>
                       <td>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.deductionTypeName || deductionTypeLabel(item.deductionType)}</div>
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{deductionTypeLabel(item.deductionType) || '-'}</div>
                         <div className="mt-1 text-xs text-slate-400">{compactTaxDeductionRemark(item.remark)}</div>
                       </td>
                       <td>{formatCurrency(item.amount)}</td>

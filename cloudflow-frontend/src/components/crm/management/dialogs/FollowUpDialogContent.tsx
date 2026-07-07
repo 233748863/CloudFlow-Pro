@@ -1,5 +1,5 @@
 import React from 'react';
-import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, UserSelector } from '@/components/common';
 import { useCrmManagement } from '../store';
 
 export const FollowUpDialogContent: React.FC = () => {
@@ -22,7 +22,13 @@ export const FollowUpDialogContent: React.FC = () => {
         </Select>
       </div>
       <Textarea className="md:col-span-2" value={followUpForm.content || ''} onChange={(e) => setFollowUpForm((prev) => ({ ...prev, content: e.target.value }))} placeholder="跟进内容，例如：客户已确认报价范围，待内部审批。" />
-      <Input value={followUpForm.ownerName || ''} onChange={(e) => setFollowUpForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="跟进人" />
+      <UserSelector
+        single
+        allowClear
+        value={followUpForm.ownerId ? String(followUpForm.ownerId) : null}
+        onChange={(id, picked) => setFollowUpForm((prev) => ({ ...prev, ownerId: id ? Number(id) : undefined, ownerName: picked?.name || '' }))}
+        placeholder="选择跟进人"
+      />
       <DatePicker
         className="h-11"
         type="datetime-local"

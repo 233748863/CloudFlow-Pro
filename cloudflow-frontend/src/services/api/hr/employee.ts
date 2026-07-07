@@ -7,24 +7,41 @@ import type {
   EmployeeBrief,
   HrEmployee,
   HrEmployeePayload,
+  HrPagedResult,
   HrPageQuery,
 } from './types';
 
-export const listEmployees = async (params?: HrPageQuery) =>
-  withList(await request.get<HrEmployee[]>('/hr/employees', { params }));
+export const pageEmployees = (params?: HrPageQuery) =>
+  request.get<HrPagedResult<HrEmployee>>('/hr/employees', { params });
+
+export const listEmployees = async (params?: HrPageQuery) => {
+  const hasExplicitPage = params?.pageNum != null || params?.pageSize != null;
+  const firstPage = await pageEmployees({ pageNum: 1, pageSize: 500, ...params });
+  const firstRows = withList(firstPage);
+
+  if (hasExplicitPage || firstRows.length >= (firstPage.total || 0)) {
+    return firstRows;
+  }
+
+  const pageSize = firstPage.pageSize || firstPage.size || 500;
+  const totalPages = Math.ceil((firstPage.total || 0) / pageSize);
+  const restPages = await Promise.all(
+    Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) =>
+      pageEmployees({ ...params, pageNum: index + 2, pageSize }),
+    ),
+  );
+  return firstRows.concat(restPages.flatMap((page) => withList(page)));
+};
 
 /**
- * 选择器专用：拉取员工精简列表（默认拉一页 size=999 客户端搜索）
+ * 选择器专用：拉取员工精简列表（默认按后端单页上限拉一页）
  * 仅返回 id/name/employeeNo/dept/post/position/status 等用于展示与筛选的字段
  */
 export const listEmployeesForSelect = async (
   params?: { onlyActive?: boolean } & HrPageQuery,
 ): Promise<EmployeeBrief[]> => {
   const { onlyActive = true, ...rest } = params || {};
-  const list = await request.get<HrEmployee[]>('/hr/employees', {
-    params: { pageNum: 1, pageSize: 999, ...rest },
-  });
-  const arr = withList(list);
+  const arr = await listEmployees({ pageNum: 1, pageSize: 500, ...rest });
   return arr
     .filter((e) => !onlyActive || (e.employeeStatus ?? '') !== 'RESIGNED')
     .map((e) => ({

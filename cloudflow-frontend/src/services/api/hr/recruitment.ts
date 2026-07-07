@@ -1,6 +1,6 @@
 import request from '@/services/api/request';
 import { getAttachmentRawValue, normalizeAttachmentUrls } from '@/utils/attachment';
-import { normalizeJsonArray, normalizeStringArray, parseMaybeJson, statusDescMap, withList } from './internals';
+import { normalizeJsonArray, normalizeStringArray, parseMaybeJson, withList } from './internals';
 import type {
   Candidate,
   CandidatePayload,
@@ -14,25 +14,6 @@ import type {
   RecruitmentRequestPayload,
 } from './types';
 
-const sourceDescMap: Record<string, string> = {
-  WEBSITE: '招聘网站',
-  REFERRAL: '内部推荐',
-  HEADHUNTER: '猎头',
-  CAMPUS: '校园招聘',
-};
-
-const interviewRoundNameMap: Record<string, string> = {
-  FIRST: '初试',
-  SECOND: '复试',
-  FINAL: '终试',
-};
-
-const interviewTypeNameMap: Record<string, string> = {
-  VIDEO: '视频面试',
-  PHONE: '电话面试',
-  ONSITE: '现场面试',
-};
-
 const normalizeRecruitmentRequest = (item: RecruitmentRequest): RecruitmentRequest => ({
   ...item,
   requestNo: item.requestNo || item.requisitionNo,
@@ -41,7 +22,7 @@ const normalizeRecruitmentRequest = (item: RecruitmentRequest): RecruitmentReque
   expectedArrivalDate: item.expectedArrivalDate || item.expectedDate,
   jobRequirements: item.jobRequirements || item.requirements,
   requirements: item.requirements || item.jobRequirements,
-  statusDesc: item.statusDesc || statusDescMap[String(item.status || '')] || item.status,
+  statusDesc: item.statusDesc,
 });
 
 const normalizeCandidate = (item: Candidate): Candidate => ({
@@ -49,18 +30,18 @@ const normalizeCandidate = (item: Candidate): Candidate => ({
   requestId: item.requestId || item.requisitionId,
   requisitionId: item.requisitionId || item.requestId,
   resumeAttachmentUrls: normalizeAttachmentUrls(item.resumeAttachmentUrls),
-  statusDesc: item.statusDesc || statusDescMap[String(item.status || '')] || item.status,
-  sourceDesc: item.sourceDesc || sourceDescMap[String(item.source || '')] || item.source,
+  statusDesc: item.statusDesc,
+  sourceDesc: item.sourceDesc,
 });
 
 const normalizeInterview = (item: Interview): Interview => ({
   ...item,
   interviewerIds: parseMaybeJson<number[]>(item.interviewerIds, []),
   interviewerNames: parseMaybeJson<string[]>(item.interviewerNames, []),
-  interviewRoundName: item.interviewRoundName || interviewRoundNameMap[String(item.interviewRound || '')] || item.interviewRound,
-  interviewTypeName: item.interviewTypeName || interviewTypeNameMap[String(item.interviewType || '')] || item.interviewType,
+  interviewRoundName: item.interviewRoundName,
+  interviewTypeName: item.interviewTypeName,
   meetingRoomName: item.meetingRoomName || item.location,
-  statusName: item.statusName || item.statusDesc || statusDescMap[String(item.status || '')] || item.status,
+  statusName: item.statusName || item.statusDesc,
 });
 
 const normalizeOffer = (item: Offer): Offer => ({
@@ -69,7 +50,7 @@ const normalizeOffer = (item: Offer): Offer => ({
   expectedArrivalDate: item.expectedArrivalDate || item.expectedDate,
   expiryDate: item.expiryDate || item.expireDate,
   expireDate: item.expireDate || item.expiryDate,
-  statusDesc: item.statusDesc || statusDescMap[String(item.status || '')] || item.status,
+  statusDesc: item.statusDesc,
 });
 
 const toRecruitmentPayload = (data: RecruitmentRequestPayload) => ({

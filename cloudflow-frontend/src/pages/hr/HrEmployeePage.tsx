@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   Eye,
   Pencil,
@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { getConfigIntSync } from '@/hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '@/constants/sysConfig';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import {
   Button,
@@ -16,6 +18,7 @@ import {
   DeptSelector,
   Input,
   Label,
+  Pagination,
   PositionSelector,
   PostSelector,
   Select,
@@ -39,7 +42,7 @@ import {
   getEmployeeDetail,
   getPositionOptions,
   getPostOptions,
-  listEmployees,
+  pageEmployees,
   updateEmployee,
 } from '@/services/api/hr';
 import { flattenDeptTree, normalizeRows, toDateInputValue } from './hrShared';
@@ -115,27 +118,55 @@ export const HrEmployeePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState('ALL');
+  const [total, setTotal] = useState(0);
+  const [pageNum, setPageNum] = useState(1);
+  const [pageSize, setPageSize] = useState(getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10));
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<HrEmployeePayload>(defaultForm);
 
   const employeeStatusDict = useDict('employee_status');
 
-  const deferredKeyword = useDeferredValue(keyword.trim().toLowerCase());
+  const deferredKeyword = useDeferredValue(keyword.trim());
 
-  const loadData = async (preferredEmployeeId?: number) => {
-    setLoading(true);
+  const loadOptions = useCallback(async () => {
     try {
-      const [employeeRes, deptRes, postRes, positionRes] = await Promise.all([
-        listEmployees(),
+      const [deptRes, postRes, positionRes] = await Promise.all([
         getDeptTreeOptions(),
         getPostOptions(),
         getPositionOptions(),
       ]);
-      const nextEmployees = normalizeRows<HrEmployee>(employeeRes);
+      setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
+      setPostOptions(normalizeRows<PostOption>(postRes));
+      setPositionOptions(normalizeRows<PositionOption>(positionRes));
+    } catch (error) {
+      console.error(error);
+      toast.error(getErrorMessage(error, '员工基础选项加载失败'));
+    }
+  }, []);
+
+  const loadEmployees = useCallback(async (
+    preferredEmployeeId?: number,
+    overrides?: Partial<{ pageNum: number; pageSize: number; keyword: string; status: string }>,
+  ) => {
+    setLoading(true);
+    try {
+      const nextPageNum = overrides?.pageNum ?? pageNum;
+      const nextPageSize = overrides?.pageSize ?? pageSize;
+      const nextKeyword = overrides?.keyword ?? deferredKeyword;
+      const nextStatus = overrides?.status ?? status;
+      const employeePage = await pageEmployees({
+        pageNum: nextPageNum,
+        pageSize: nextPageSize,
+        keyword: nextKeyword || undefined,
+        employeeStatus: nextStatus === 'ALL' ? undefined : nextStatus,
+      });
+      const nextEmployees = normalizeRows<HrEmployee>(employeePage.rows || employeePage.records || []);
       setEmployees(nextEmployees);
+      setTotal(employeePage.total || 0);
       setSelectedEmployeeId((prev) => {
         const targetId = preferredEmployeeId ?? prev;
         if (targetId && nextEmployees.some((item) => item.id === targetId)) {
@@ -143,53 +174,21 @@ export const HrEmployeePage: React.FC = () => {
         }
         return nextEmployees[0]?.id ?? null;
       });
-      setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
-      setPostOptions(normalizeRows<PostOption>(postRes));
-      setPositionOptions(normalizeRows<PositionOption>(positionRes));
     } catch (error) {
       console.error(error);
       toast.error(getErrorMessage(error, '员工数据加载失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [deferredKeyword, pageNum, pageSize, status]);
 
   useEffect(() => {
-    void loadData();
-  }, []);
-
-  const filteredEmployees = useMemo(
-    () =>
-      employees.filter((item) => {
-        const matchedKeyword =
-          !deferredKeyword
-          || [
-            item.name,
-            item.employeeNo,
-            item.deptName,
-            item.postName,
-            item.positionName,
-            item.phone,
-            item.email,
-          ]
-            .filter(Boolean)
-            .some((value) => String(value).toLowerCase().includes(deferredKeyword));
-        const matchedStatus = status === 'ALL' || item.employeeStatus === status;
-        return matchedKeyword && matchedStatus;
-      }),
-    [deferredKeyword, employees, status],
-  );
+    void loadOptions();
+  }, [loadOptions]);
 
   useEffect(() => {
-    if (!filteredEmployees.length) {
-      setSelectedEmployeeId(null);
-      return;
-    }
-
-    if (!selectedEmployeeId || !filteredEmployees.some((item) => item.id === selectedEmployeeId)) {
-      setSelectedEmployeeId(filteredEmployees[0].id);
-    }
-  }, [filteredEmployees, selectedEmployeeId]);
+    void loadEmployees();
+  }, [loadEmployees]);
 
   const summary = useMemo(() => {
     const probationCount = employees.filter((item) => item.employeeStatus === 'PROBATION').length;
@@ -197,13 +196,13 @@ export const HrEmployeePage: React.FC = () => {
     const resignedCount = employees.filter((item) => item.employeeStatus === 'RESIGNED').length;
 
     return {
-      total: employees.length,
-      filtered: filteredEmployees.length,
+      total,
+      pageCount: employees.length,
       probationCount,
       regularCount,
       resignedCount,
     };
-  }, [employees, filteredEmployees.length]);
+  }, [employees, total]);
 
   const hasActiveFilters = status !== 'ALL' || keyword.trim().length > 0;
 
@@ -245,6 +244,20 @@ export const HrEmployeePage: React.FC = () => {
       console.error(error);
       toast.error(getErrorMessage(error, '员工详情获取失败'));
     }
+  };
+
+  const handleViewDetail = (id: number) => {
+    setSelectedEmployeeId(id);
+    setDetailDialogOpen(true);
+  };
+
+  const handleEditFromDetail = (id: number) => {
+    setDetailDialogOpen(false);
+    void handleEdit(id);
+  };
+
+  const closeDetailDialog = () => {
+    setDetailDialogOpen(false);
   };
 
   const validateForm = () => {
@@ -297,11 +310,13 @@ export const HrEmployeePage: React.FC = () => {
         const { employeeNo, ...updatePayload } = payload;
         await updateEmployee(editingId, updatePayload);
         toast.success('员工档案已更新');
-        await loadData(editingId);
+        setPageNum(1);
+        await loadEmployees(editingId, { pageNum: 1 });
       } else {
         const createdId = await createEmployee(payload);
         toast.success('员工档案已创建');
-        await loadData(createdId);
+        setPageNum(1);
+        await loadEmployees(createdId, { pageNum: 1 });
       }
       resetForm();
     } catch (error: any) {
@@ -325,7 +340,7 @@ export const HrEmployeePage: React.FC = () => {
               <span>维护员工基础资料、组织岗位和在职状态</span>
             </div>
             <div className="admin-source-controls">
-              <Button variant="outline" size="sm" onClick={() => void loadData(selectedEmployeeId ?? undefined)}>
+              <Button variant="outline" size="sm" onClick={() => void loadEmployees(selectedEmployeeId ?? undefined)}>
                 <RefreshCcw size={14} className={cn('mr-1.5', loading && 'animate-spin')} />
                 刷新
               </Button>
@@ -339,19 +354,19 @@ export const HrEmployeePage: React.FC = () => {
               <section className="admin-source-stat-grid">
             <article className="card admin-source-stat admin-source-tone-blue">
               <div className="admin-source-stat-icon"><Users size={18} /></div>
-              <div><p>员工总数</p><strong>{summary.total}</strong><span>当前筛选 {summary.filtered}</span></div>
+              <div><p>员工总数</p><strong>{summary.total}</strong><span>当前查询结果</span></div>
             </article>
             <article className="card admin-source-stat admin-source-tone-green">
               <div className="admin-source-stat-icon"><Users size={18} /></div>
-              <div><p>正式员工</p><strong>{summary.regularCount}</strong><span>状态为正式</span></div>
+              <div><p>正式员工</p><strong>{summary.regularCount}</strong><span>当前页</span></div>
             </article>
             <article className="card admin-source-stat admin-source-tone-amber">
               <div className="admin-source-stat-icon"><Users size={18} /></div>
-              <div><p>试用员工</p><strong>{summary.probationCount}</strong><span>状态为试用</span></div>
+              <div><p>试用员工</p><strong>{summary.probationCount}</strong><span>当前页</span></div>
             </article>
             <article className="card admin-source-stat admin-source-tone-violet">
               <div className="admin-source-stat-icon"><Users size={18} /></div>
-              <div><p>离职员工</p><strong>{summary.resignedCount}</strong><span>状态为离职</span></div>
+              <div><p>离职员工</p><strong>{summary.resignedCount}</strong><span>当前页</span></div>
             </article>
               </section>
             </>
@@ -368,14 +383,23 @@ export const HrEmployeePage: React.FC = () => {
                     className="h-[42px]"
                     type="search"
                     value={keyword}
-                    onChange={(event) => setKeyword(event.target.value)}
+                    onChange={(event) => {
+                      setKeyword(event.target.value);
+                      setPageNum(1);
+                    }}
                     placeholder="姓名、工号、部门、岗位"
                   />
                 </div>
               </label>
               <label>
                 <span className="input-label">员工状态</span>
-                <Select value={status} onValueChange={setStatus}>
+                <Select
+                  value={status}
+                  onValueChange={(value) => {
+                    setStatus(value);
+                    setPageNum(1);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="员工状态" />
                   </SelectTrigger>
@@ -398,12 +422,13 @@ export const HrEmployeePage: React.FC = () => {
                   onClick={() => {
                     setKeyword('');
                     setStatus('ALL');
+                    setPageNum(1);
                   }}
                 >
                   重置
                 </Button>
               ) : null}
-              <span className="admin-users-filter-count">共 {summary.filtered} 人</span>
+              <span className="admin-users-filter-count">共 {summary.total} 人</span>
             </div>
             </section>
           }
@@ -415,7 +440,7 @@ export const HrEmployeePage: React.FC = () => {
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      共 {summary.total} 人，当前筛选 {summary.filtered} 人
+                      共 {summary.total} 人，当前页 {summary.pageCount} 人
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
@@ -442,24 +467,16 @@ export const HrEmployeePage: React.FC = () => {
                       <tbody>
                         {loading ? (
                           <TableStateRow colSpan={6} title="正在加载员工档案..." loading />
-                        ) : filteredEmployees.length === 0 ? (
+                        ) : employees.length === 0 ? (
                           <TableStateRow colSpan={6} title="暂无符合条件的员工数据" />
                         ) : (
-                          filteredEmployees.map((item) => {
-                            const active = selectedEmployeeId === item.id;
+                          employees.map((item) => {
                             const employeeMeta = [item.phone, item.email].filter(Boolean).join(' / ') || '暂无联系方式';
                             const organizationMeta = item.deptName || '未分配部门';
                             const positionMeta = [item.postName, item.positionName].filter(Boolean).join(' / ') || '未配置岗位';
         
                             return (
-                              <tr
-                                key={item.id}
-                                className={cn(
-                                  'cursor-pointer',
-                                  active && 'bg-cyan-50/70 dark:bg-cyan-950/20',
-                                )}
-                                onClick={() => setSelectedEmployeeId(item.id)}
-                              >
+                              <tr key={item.id}>
                                 <td className="font-medium text-slate-900 dark:text-slate-100">
                                   {item.employeeNo}
                                 </td>
@@ -497,7 +514,7 @@ export const HrEmployeePage: React.FC = () => {
                                 <td>
                                   <div onClick={(event) => event.stopPropagation()}>
                                     <div className="admin-users-row-actions">
-                                      <button type="button" title="详情" onClick={() => setSelectedEmployeeId(item.id)}>
+                                      <button type="button" title="详情" onClick={() => void handleViewDetail(item.id)}>
                                         <Eye size={15} />
                                       </button>
                                       <button type="button" title="编辑" onClick={() => void handleEdit(item.id)}>
@@ -515,14 +532,20 @@ export const HrEmployeePage: React.FC = () => {
                 </div>
               </div>
         
-              <div className="min-h-0 min-w-0 border-t border-slate-200 dark:border-slate-800">
-                <HrEmployeeWorkspace
-                  employees={employees}
-                  selectedEmployeeId={selectedEmployeeId}
-                  loading={loading}
-                  onEditEmployee={handleEdit}
-                />
-              </div>
+              {total > 0 ? (
+                <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+                  <Pagination
+                    total={total}
+                    page={pageNum}
+                    pageSize={pageSize}
+                    onPageChange={setPageNum}
+                    onPageSizeChange={(nextPageSize) => {
+                      setPageSize(nextPageSize);
+                      setPageNum(1);
+                    }}
+                  />
+                </div>
+              ) : null}
             </InnerTableSurface>
           }
         />
@@ -705,6 +728,22 @@ export const HrEmployeePage: React.FC = () => {
             </div>
           </DialogSection>
         </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={detailDialogOpen}
+        title="员工详情"
+        onClose={closeDetailDialog}
+        width="full"
+        bodyClassName="!p-0 !overflow-y-auto"
+        panelClassName="max-h-[92vh]"
+      >
+        <HrEmployeeWorkspace
+          employees={employees}
+          selectedEmployeeId={selectedEmployeeId}
+          loading={loading}
+          onEditEmployee={handleEditFromDetail}
+        />
       </BaseDialog>
     </>
   );

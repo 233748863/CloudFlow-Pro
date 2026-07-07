@@ -191,7 +191,7 @@ export default function CrmLeadPage() {
                 <SelectTrigger className="h-[42px]"><SelectValue placeholder="状态" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">全部状态</SelectItem>
-                  {statusOptions.map((item) => <SelectItem key={item} value={item}>{leadStatusDict.getLabel(item) || item}</SelectItem>)}
+                  {statusOptions.map((item) => <SelectItem key={item} value={item}>{leadStatusDict.getLabel(item) || '-'}</SelectItem>)}
                 </SelectContent>
               </Select>
             </label>
@@ -307,7 +307,7 @@ export default function CrmLeadPage() {
             <Select value={form.status || 'NEW'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger>
               <SelectContent>
-                {statusOptions.map((item) => <SelectItem key={item} value={item}>{leadStatusDict.getLabel(item) || item}</SelectItem>)}
+                {statusOptions.map((item) => <SelectItem key={item} value={item}>{leadStatusDict.getLabel(item) || '-'}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

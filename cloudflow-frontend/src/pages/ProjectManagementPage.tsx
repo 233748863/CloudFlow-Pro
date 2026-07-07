@@ -543,7 +543,7 @@ export default function ProjectManagementPage() {
   const linkageCards = useMemo(() => {
     if (!detail?.linkSummary) return [];
     return [
-      { label: '来源对象', value: detail.linkSummary.sourceName || `${sourceTypeDict.getLabel(detail.linkSummary.sourceType || '') || detail.linkSummary.sourceType || '-'} / ${detail.linkSummary.sourceId || '-'}` },
+      { label: '来源对象', value: detail.linkSummary.sourceName || `${sourceTypeDict.getLabel(detail.linkSummary.sourceType || '') || '-'} / ${detail.linkSummary.sourceId || '-'}` },
       { label: '合同联动', value: detail.linkSummary.contractNo || '-' },
       { label: '预算摘要', value: detail.linkSummary.budgetSummary || '-' },
       { label: '发票摘要', value: detail.linkSummary.invoiceSummary || '-' },
@@ -620,7 +620,7 @@ export default function ProjectManagementPage() {
             <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">全部状态</SelectItem>
-              {STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{statusDict.getLabel(item)}</SelectItem>)}
+              {STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{statusDict.getLabel(item) || '-'}</SelectItem>)}
             </SelectContent>
           </Select>
         </label>
@@ -669,7 +669,7 @@ export default function ProjectManagementPage() {
                 <td><div>{row.ownerName || '-'}</div><div className="text-xs text-slate-500 dark:text-slate-400">{row.deptName || '-'}</div></td>
                 <td><div>{formatMoney(row.budgetAmount)}</div><div className="text-xs text-slate-500 dark:text-slate-400">成本 {formatMoney(row.actualCostAmount)}</div></td>
                 <td><div>{row.progress || 0}%</div><div className="text-xs text-slate-500 dark:text-slate-400">{severityDict.getLabel(row.riskLevel || '') || '-'}</div></td>
-                <td><div>{row.sourceName || sourceTypeDict.getLabel(row.sourceType || 'MANUAL') || row.sourceType || '-'}</div><div className="text-xs text-slate-500 dark:text-slate-400">基线 {row.baselineVersion || 0}</div></td>
+                <td><div>{row.sourceName || sourceTypeDict.getLabel(row.sourceType || 'MANUAL') || '-'}</div><div className="text-xs text-slate-500 dark:text-slate-400">基线 {row.baselineVersion || 0}</div></td>
                 <td>
                   <TableRowActions
                     iconOnly
@@ -843,7 +843,7 @@ export default function ProjectManagementPage() {
             </div>
             <div>
               <Label className={fieldLabelClassName}>来源类型</Label>
-              <Input value={sourceTypeDict.getLabel(form.sourceType || 'MANUAL') || form.sourceType || '手工创建'} disabled />
+              <Input value={sourceTypeDict.getLabel(form.sourceType || 'MANUAL') || '手工创建'} disabled />
             </div>
             <div>
               <Label className={fieldLabelClassName}>来源名称</Label>
@@ -886,7 +886,7 @@ export default function ProjectManagementPage() {
                   <ProjectDetailPanel title="来源与 KPI" contentClassName="admin-project-detail-stack text-sm">
                       <div>客户：{detail.project.customerName || '-'}</div>
                       <div>合同：{detail.project.contractNo || '-'}</div>
-                      <div>来源：{detail.project.sourceName || sourceTypeDict.getLabel(detail.project.sourceType || 'MANUAL') || detail.project.sourceType || '-'} / {detail.project.sourceId || '-'}</div>
+                      <div>来源：{detail.project.sourceName || sourceTypeDict.getLabel(detail.project.sourceType || 'MANUAL') || '-'} / {detail.project.sourceId || '-'}</div>
                       <div>逾期里程碑：{detail.kpi?.overdueMilestoneCount || 0}</div>
                       <div>逾期任务：{detail.kpi?.overdueTaskCount || 0}</div>
                       <div>开放风险：{detail.kpi?.openRiskCount || 0}</div>
@@ -1108,7 +1108,7 @@ export default function ProjectManagementPage() {
                         <div key={`${item.riskId || item.riskCode || index}`} className="admin-project-detail-row text-sm">
                           <div>
                             <div>{item.riskName || '-'}</div>
-                            <div className="text-xs text-slate-500">{severityDict.getLabel(item.riskLevel || '') || '-'} / {item.triggerSource || '-'} / {item.status || '-'}</div>
+                            <div className="text-xs text-slate-500">{severityDict.getLabel(item.riskLevel || '') || '-'} / {item.triggerSource ? '已触发' : '-'} / {item.status ? '已记录' : '-'}</div>
                           </div>
                           {item.riskId && hasPermission('oa:project:edit') ? (
                             <div className="admin-users-row-actions">
@@ -1251,7 +1251,7 @@ export default function ProjectManagementPage() {
               <Select value={riskForm.riskLevel || 'MEDIUM'} onValueChange={(value) => setRiskForm((prev) => ({ ...prev, riskLevel: value }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {RISK_LEVELS.map((value) => <SelectItem key={value} value={value}>{severityDict.getLabel(value)}</SelectItem>)}
+                  {RISK_LEVELS.map((value) => <SelectItem key={value} value={value}>{severityDict.getLabel(value) || '-'}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

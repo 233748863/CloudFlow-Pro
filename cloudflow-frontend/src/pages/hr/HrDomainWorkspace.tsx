@@ -153,7 +153,7 @@ export const statusLabel = (status?: string | number | null) => {
     '0': '停用',
     '1': '启用',
   };
-  return labels[normalized] || (status == null || status === '' ? '-' : String(status));
+  return labels[normalized] || '-';
 };
 
 const actionSemanticIconMap: Partial<Record<NonNullable<TableRowActionItem['semantic']>, React.ReactNode>> = {

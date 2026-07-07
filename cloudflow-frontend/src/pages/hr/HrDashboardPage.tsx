@@ -22,13 +22,13 @@ import {
   Offer,
   OnboardingApplication,
   RecruitmentRequest,
-  getHrEmployeeStatusLabel,
   listCandidates,
   listEmployees,
   listOffers,
   listOnboardingApplications,
   listRecruitmentRequests,
 } from '@/services/api/hr';
+import { useDict } from '@/hooks/useDict';
 
 const normalizeRows = <T,>(data: unknown): T[] => {
   if (!data) return [];
@@ -186,6 +186,8 @@ const ActivityRow = ({
 
 export const HrDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const employeeStatusDict = useDict('employee_status');
+  const recruitRequestStatusDict = useDict('hr_recruit_request_status');
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [requests, setRequests] = useState<RecruitmentRequest[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -519,7 +521,7 @@ export const HrDashboardPage: React.FC = () => {
                       key={item.id}
                       title={`${item.name} · ${item.employeeNo}`}
                       secondary={`${item.deptName || '未分配部门'} · ${formatDateLabel(item.hireDate || item.updateTime || item.createTime)}`}
-                      aside={statusPill(getHrEmployeeStatusLabel(item.employeeStatus), 'blue')}
+                      aside={statusPill(employeeStatusDict.getLabel(item.employeeStatus || ''), 'blue')}
                       onOpen={() => navigate('/hr/employees')}
                     />
                   ))}
@@ -543,7 +545,7 @@ export const HrDashboardPage: React.FC = () => {
                       key={item.id}
                       title={`${item.requestNo || item.requisitionNo || item.id} · ${item.positionName || item.title || '未配置岗位'}`}
                       secondary={`需求 ${item.headcount || 0} 人 · ${formatDateLabel(item.expectedDate || item.updateTime || item.createTime)}`}
-                      aside={statusPill(item.statusDesc || item.status, 'green')}
+                      aside={statusPill(recruitRequestStatusDict.getLabel(String(item.status ?? '')), 'green')}
                       onOpen={() => navigate('/hr/recruitment')}
                     />
                   ))}

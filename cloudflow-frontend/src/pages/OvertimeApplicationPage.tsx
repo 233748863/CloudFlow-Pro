@@ -200,10 +200,10 @@ export const OvertimeApplicationPage: React.FC = () => {
   const approvedCount = list.filter((item) => item.status === 'APPROVED').length;
   const totalHours = list.reduce((sum, item) => sum + Number(item.duration || 0), 0);
   const currentStatusLabel = searchParams.status
-    ? (statusDict.getLabel(searchParams.status) || searchParams.status)
+    ? (statusDict.getLabel(searchParams.status) || '未配置状态')
     : '全部状态';
   const currentTypeLabel = searchParams.overtimeType
-    ? (typeDict.getLabel(searchParams.overtimeType) || searchParams.overtimeType)
+    ? (typeDict.getLabel(searchParams.overtimeType) || '未配置类型')
     : '全部类型';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.overtimeType);
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
@@ -400,7 +400,7 @@ export const OvertimeApplicationPage: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => (
-    <DictBadge dictType="hr_overtime_status" value={String(status || 'DRAFT')} fallback="草稿" />
+    <DictBadge dictType="hr_overtime_status" value={String(status || 'DRAFT')} />
   );
 
   const pageActions = (
@@ -504,13 +504,13 @@ export const OvertimeApplicationPage: React.FC = () => {
               list.map((item) => (
                 <tr key={item.id}>
                   <td><strong>{item.applicationNo || '-'}</strong></td>
-                  <td>{typeDict.getLabel(item.overtimeType || '') || item.overtimeType}</td>
+                  <td>{typeDict.getLabel(item.overtimeType || '') || '-'}</td>
                   <td>
                     <div>{formatDateTimeDisplay(item.startTime)}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDateTimeDisplay(item.endTime)}</div>
                   </td>
                   <td>{item.duration ? `${item.duration} 小时` : '-'}</td>
-                  <td>{compensationDict.getLabel(item.compensationType || '') || item.compensationType}</td>
+                  <td>{compensationDict.getLabel(item.compensationType || '') || '-'}</td>
                   <td>{getStatusBadge(item.status || 'DRAFT')}</td>
                   <td>
                     <div className="admin-users-row-actions">
@@ -668,12 +668,12 @@ export const OvertimeApplicationPage: React.FC = () => {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <DetailField label="申请单号" value={renderDetailValue(detailRecord.applicationNo)} />
               <DetailField label="申请人" value={renderDetailValue(detailRecord.employeeName)} />
-              <DetailField label="加班类型" value={typeDict.getLabel(detailRecord.overtimeType || '') || detailRecord.overtimeType} />
-              <DetailField label="补偿方式" value={compensationDict.getLabel(detailRecord.compensationType || '') || detailRecord.compensationType} />
+              <DetailField label="加班类型" value={typeDict.getLabel(detailRecord.overtimeType || '') || '-'} />
+              <DetailField label="补偿方式" value={compensationDict.getLabel(detailRecord.compensationType || '') || '-'} />
               <DetailField label="开始时间" value={formatDateTimeDisplay(detailRecord.startTime)} />
               <DetailField label="结束时间" value={formatDateTimeDisplay(detailRecord.endTime)} />
               <DetailField label="加班时长" value={detailRecord.duration ? `${detailRecord.duration} 小时` : '-'} />
-              <DetailField label="状态" value={statusDict.getLabel(detailRecord.status || 'DRAFT') || detailRecord.status || '-'} />
+              <DetailField label="状态" value={statusDict.getLabel(detailRecord.status || 'DRAFT') || '-'} />
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
             </div>
 

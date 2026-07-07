@@ -35,20 +35,3 @@ export const parseMaybeJson = <T = unknown>(value: unknown, fallback: T): T => {
     return fallback;
   }
 };
-
-export const statusDescMap: Record<string, string> = {
-  DRAFT: '草稿',
-  APPROVING: '审批中',
-  APPROVED: '已审批',
-  RECRUITING: '招聘中',
-  SCREENING: '筛选中',
-  INTERVIEW: '面试中',
-  OFFER: 'Offer阶段',
-  SCHEDULED: '已排期',
-  COMPLETED: '已完成',
-  EFFECTIVE: '已生效',
-  SENT: '已发送',
-  ACCEPTED: '已接受',
-  REJECTED: '已拒绝',
-  CANCELLED: '已取消',
-};

@@ -114,8 +114,14 @@ export const HrEssPortalPage: React.FC = () => {
       id: `contract-${contract.id}`,
       category: '待签合同',
       subject: contract.contractNo || `合同 #${contract.id}`,
-      detail: `${contract.contractType ? `${contract.contractType} · ` : ''}${formatDateValue(contract.startDate)} - ${formatDateValue(contract.endDate)}`,
-      status: contract.statusDesc || contract.status || '待签署',
+      detail: (
+        <>
+          <DictLabel dictType="hr_contract_type" value={String(contract.contractType ?? '')} fallback="-" />
+          {' · '}
+          {formatDateValue(contract.startDate)} - {formatDateValue(contract.endDate)}
+        </>
+      ),
+      status: <DictLabel dictType="contract_status" value={String(contract.status ?? '')} fallback="-" />,
       time: formatDateTimeValue(contract.createTime),
       action: null as React.ReactNode,
     }));

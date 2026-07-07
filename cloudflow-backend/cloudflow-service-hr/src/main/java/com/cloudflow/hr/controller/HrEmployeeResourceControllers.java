@@ -2,6 +2,7 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
@@ -55,9 +56,9 @@ class HrEmployeeController {
 
     @GetMapping
     @SaCheckPermission("hr:employees:list")
-    public R<List<HrEmployeeVO>> listEmployees(@Validated @ModelAttribute HrEmployeeCommonQueryDTO query) {
-        return R.ok(MapConverters.toVOList(
-                crudService.list(HrEmployee.class, MapConverters.toServiceQuery(query, objectMapper)),
+    public R<PageResult<HrEmployeeVO>> listEmployees(@Validated @ModelAttribute HrEmployeeCommonQueryDTO query) {
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrEmployee.class, MapConverters.toServiceQuery(query, objectMapper)),
                 HrEmployeeVO.class, objectMapper));
     }
 

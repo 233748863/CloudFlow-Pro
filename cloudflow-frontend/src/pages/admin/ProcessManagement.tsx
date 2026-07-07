@@ -981,7 +981,7 @@ export const ProcessManagement = () => {
                 ) : (
                   pagedWorkflows.map((workflow) => {
                     const selected = selectedIds.includes(workflow.id);
-                    const statusLabel = workflowDefStatusDict.getLabel(workflow.status || '') || workflow.status || '-';
+                    const statusLabel = workflowDefStatusDict.getLabel(workflow.status || '') || '-';
                     const canExportCurrent = canExportSingleWorkflow(workflow);
 
                     return (

@@ -405,7 +405,7 @@ const VehicleList: React.FC = () => {
 
   const allSelected = vehicles.length > 0 && selectedIds.length === vehicles.length;
   const hasActiveFilters = Boolean(query.licensePlate || query.status);
-  const statusLabel = query.status ? (vehicleStatusDict.getLabel(query.status) || '全部状态') : '全部状态';
+  const statusLabel = query.status ? (vehicleStatusDict.getLabel(query.status) || '未配置状态') : '全部状态';
   const runtimeInUse = vehicles.filter((item) => (item.runtimeStatus || item.status) === '3').length;
   const runtimeBooked = vehicles.filter((item) => (item.runtimeStatus || item.status) === '2').length;
   const metrics = [

@@ -6996,6 +6996,54 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     line-height: 1.6;
   }
 
+  .admin-recruitment-candidate-table .admin-recruitment-progress-cell {
+    width: 16.5rem;
+    min-width: 16.5rem;
+    text-align: right;
+  }
+
+  .admin-recruitment-progress-actions {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .admin-recruitment-progress-button {
+    display: inline-grid;
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #64748b;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  }
+
+  .admin-recruitment-progress-button:hover {
+    border-color: #b8e7f1;
+    background: #effbfe;
+    color: #0d95b5;
+  }
+
+  .admin-recruitment-progress-select {
+    width: 9.25rem;
+    min-width: 9.25rem;
+  }
+
+  .admin-recruitment-progress-note {
+    width: 11.25rem;
+    min-width: 11.25rem;
+    color: #64748b;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    text-align: right;
+  }
+
   .admin-announcements-toolbar {
     display: grid;
     align-items: end;
@@ -10272,6 +10320,22 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     border-color: rgba(245, 158, 11, 0.34);
     background: rgba(120, 53, 15, 0.22);
     color: #fde68a;
+  }
+
+  html.dark .admin-recruitment-progress-button {
+    border-color: #334155;
+    background: #1e293b;
+    color: #f8fafc;
+  }
+
+  html.dark .admin-recruitment-progress-button:hover {
+    border-color: #155e75;
+    background: #083344;
+    color: #67e8f9;
+  }
+
+  html.dark .admin-recruitment-progress-note {
+    color: #94a3b8;
   }
 
   html.dark .admin-attendance-surface,

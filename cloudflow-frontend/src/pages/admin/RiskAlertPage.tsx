@@ -82,11 +82,11 @@ const formatVehicleOption = (item: SysVehicle): BusinessOption | null => {
 };
 
 const getLevelBadge = (level?: string) => (
-  <DictBadge dictType="severity_level" value={String(level || 'MEDIUM')} fallback="中" />
+  <DictBadge dictType="severity_level" value={String(level || 'MEDIUM')} />
 );
 
 const getStatusBadge = (status?: string) => (
-  <DictBadge dictType="oa_risk_alert_status" value={String(status || 'OPEN')} fallback="未处理" />
+  <DictBadge dictType="oa_risk_alert_status" value={String(status || 'OPEN')} />
 );
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading = false }) => (
@@ -323,9 +323,9 @@ export const RiskAlertPage: React.FC = () => {
   };
 
   const hasActiveFilters = Boolean(query.riskStatus || query.riskLevel || query.riskSource || query.riskName);
-  const currentStatusLabel = query.riskStatus ? statusDict.getLabel(query.riskStatus) || query.riskStatus : '全部状态';
-  const currentLevelLabel = query.riskLevel ? levelDict.getLabel(query.riskLevel) || query.riskLevel : '全部等级';
-  const currentSourceLabel = query.riskSource ? sourceDict.getLabel(query.riskSource) || query.riskSource : '全部来源';
+  const currentStatusLabel = query.riskStatus ? statusDict.getLabel(query.riskStatus) || '未配置状态' : '全部状态';
+  const currentLevelLabel = query.riskLevel ? levelDict.getLabel(query.riskLevel) || '未配置等级' : '全部等级';
+  const currentSourceLabel = query.riskSource ? sourceDict.getLabel(query.riskSource) || '未配置来源' : '全部来源';
   const currentNameLabel = query.riskName || '全部风险';
   const statCards = [
     { label: '待处理风险', value: String(unresolvedCount), detail: unresolvedCount > 0 ? '需要跟进' : '当前清零', icon: ShieldAlert, tone: unresolvedCount > 0 ? 'amber' : 'blue' },
@@ -391,7 +391,7 @@ export const RiskAlertPage: React.FC = () => {
             <SelectTrigger className="h-[42px]"><SelectValue placeholder="等级" /></SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_FILTER_VALUE}>全部等级</SelectItem>
-              {RISK_LEVELS.map((value) => <SelectItem key={value} value={value}>{levelDict.getLabel(value)}</SelectItem>)}
+              {RISK_LEVELS.map((value) => <SelectItem key={value} value={value}>{levelDict.getLabel(value) || '-'}</SelectItem>)}
             </SelectContent>
           </Select>
         </label>
@@ -460,12 +460,12 @@ export const RiskAlertPage: React.FC = () => {
                   <div className="mt-1 text-xs text-slate-400">{item.riskCode || '-'}</div>
                 </td>
                 <td>
-                  <div>{businessTypeDict.getLabel(item.businessType || '') || item.businessType || '-'}</div>
+                  <div>{businessTypeDict.getLabel(item.businessType || '') || '-'}</div>
                   <div className="mt-1 text-xs text-slate-400">ID {item.businessId}</div>
                 </td>
                 <td>{getLevelBadge(item.riskLevel)}</td>
                 <td>{getStatusBadge(item.riskStatus)}</td>
-                <td>{sourceDict.getLabel(item.riskSource || '') || item.riskSource || '-'}</td>
+                <td>{sourceDict.getLabel(item.riskSource || '') || '-'}</td>
                 <td>{item.ownerName || item.ownerId || '-'}</td>
                 <td>
                   <div>{formatDateTimeDisplay(item.detectedTime)}</div>

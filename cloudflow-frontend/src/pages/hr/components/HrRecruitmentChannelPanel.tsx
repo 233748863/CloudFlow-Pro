@@ -176,7 +176,7 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
                   <td>{channel.channelCode}</td>
                   <td>{channel.channelName}</td>
                   <td>
-                    {channelTypeDict.getLabel(String(channel.channelType ?? '')) || channel.channelType}
+                    {channelTypeDict.getLabel(String(channel.channelType ?? '')) || '-'}
                   </td>
                   <td>{channel.costAmount?.toLocaleString?.() ?? '-'}</td>
                   <td>{stat?.totalCandidates ?? 0}</td>

@@ -50,7 +50,7 @@ export const UserDashboardRiskPanel: React.FC<UserDashboardRiskPanelProps> = ({
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="badge bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200">{item.sourceLabel || '联动风险'}</span>
-                    {item.level ? <span className="text-xs text-slate-500 dark:text-slate-400">{severityDict.getLabel(item.level) || item.level}</span> : null}
+                    {item.level ? <span className="text-xs text-slate-500 dark:text-slate-400">{severityDict.getLabel(item.level) || '-'}</span> : null}
                   </div>
                   <p className="mt-2 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{item.title}</p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.description || '需要尽快处理'}</p>

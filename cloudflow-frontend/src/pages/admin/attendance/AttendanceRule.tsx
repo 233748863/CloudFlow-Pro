@@ -587,7 +587,7 @@ const AttendanceRulePage: React.FC = () => {
                     <div className="admin-attendance-empty">暂无适用范围</div>
                   ) : assignments.map((item) => (
                     <div key={item.id} className="admin-attendance-list-row">
-                      <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{targetTypeDict.getLabel(item.targetType || '') || item.targetType}</span>
+                      <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{targetTypeDict.getLabel(item.targetType || '') || '-'}</span>
                       <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.targetName || item.targetId}</span>
                       <span className="text-xs text-slate-500">{item.effectiveStart} 起</span>
                       <Button className="ml-auto" variant="ghost" size="icon" onClick={() => handleDeleteAssignment(item.id)}>
@@ -621,9 +621,9 @@ const AttendanceRulePage: React.FC = () => {
                     <div key={item.id} className="admin-attendance-list-row">
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.calendarDate}</div>
-                        <div className="mt-1 text-xs text-slate-500">{item.dayName || dayTypeDict.getLabel(item.dayType || '') || item.dayType}</div>
+                        <div className="mt-1 text-xs text-slate-500">{item.dayName || dayTypeDict.getLabel(item.dayType || '') || '-'}</div>
                       </div>
-                      <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{dayTypeDict.getLabel(item.dayType || '') || item.dayType}</span>
+                      <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{dayTypeDict.getLabel(item.dayType || '') || '-'}</span>
                       <Button variant="ghost" size="icon" onClick={() => handleDeleteCalendar(item.id)}>
                         <Trash2 size={15} />
                       </Button>

@@ -39,13 +39,13 @@ const EXPIRY_REMINDER_WINDOW_DAYS = 30;
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
 const getStatusBadge = (status?: string) => (
-  <DictBadge dictType="oa_license_status" value={String(status || 'AVAILABLE')} fallback="可用" />
+  <DictBadge dictType="oa_license_status" value={String(status || 'AVAILABLE')} />
 );
 
 const isBorrowLocked = (item: Pick<OaLicense, 'status'>) => item.status === 'BORROWED';
 
 const getRenewalStatusBadge = (status?: string) => (
-  <DictBadge dictType="oa_renewal_status" value={String(status || 'DRAFT')} fallback="草稿" />
+  <DictBadge dictType="oa_renewal_status" value={String(status || 'DRAFT')} />
 );
 
 const getDaysUntil = (date?: string) => {
@@ -443,7 +443,7 @@ export const LicenseListPage: React.FC = () => {
                 <td>{item.licenseCode}</td>
                 <td>
                   <div className="font-medium text-slate-900 dark:text-slate-100">{item.licenseName}</div>
-                  <div className="mt-1 text-xs text-slate-400">{typeDict.getLabel(item.licenseType) || item.licenseType}</div>
+                  <div className="mt-1 text-xs text-slate-400">{typeDict.getLabel(item.licenseType) || '-'}</div>
                 </td>
                 <td>
                   <div>{item.licenseNo || '-'}</div>
@@ -630,7 +630,7 @@ export const LicenseListPage: React.FC = () => {
           <div className="admin-dialog-stack">
             <DialogPanel title="证照主信息" bodyClassName="admin-license-detail-grid">
               <DetailField label="证照编码" value={detailLicense.licenseCode} />
-              <DetailField label="证照类型" value={typeDict.getLabel(detailLicense.licenseType) || detailLicense.licenseType} />
+              <DetailField label="证照类型" value={typeDict.getLabel(detailLicense.licenseType) || '-'} />
               <DetailField label="证照编号" value={detailLicense.licenseNo} />
               <DetailField label="签发机构" value={detailLicense.issuer} />
               <DetailField label="签发日期" value={detailLicense.issueDate} />

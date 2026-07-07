@@ -2612,11 +2612,12 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (1, '在职', 'ACTIVE',      'employee_status', 'success', '员工在职状态'),
 (2, '在职', 'REGULAR',     'employee_status', 'success', '员工在职状态（兼容旧状态码）'),
 (3, '试用', 'PROBATION',   'employee_status', 'warning', '员工试用期状态'),
-(4, '休假', 'ON_LEAVE',    'employee_status', 'warning', '员工休假状态'),
-(5, '停职', 'SUSPENDED',   'employee_status', 'warning', '员工停职状态'),
-(6, '调岗', 'TRANSFERRED', 'employee_status', 'info',    '员工调岗状态'),
-(7, '离职', 'RESIGNED',    'employee_status', 'default', '员工离职状态'),
-(8, '解雇', 'TERMINATED',  'employee_status', 'danger',  '员工解雇状态');
+(4, '实习', 'INTERN',      'employee_status', 'info',    '员工实习状态'),
+(5, '休假', 'ON_LEAVE',    'employee_status', 'warning', '员工休假状态'),
+(6, '停职', 'SUSPENDED',   'employee_status', 'warning', '员工停职状态'),
+(7, '调岗', 'TRANSFERRED', 'employee_status', 'info',    '员工调岗状态'),
+(8, '离职', 'RESIGNED',    'employee_status', 'default', '员工离职状态'),
+(9, '解雇', 'TERMINATED',  'employee_status', 'danger',  '员工解雇状态');
 
 -- HR 员工类型（FULL_TIME/PART_TIME/INTERN/CONTRACTOR）
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
@@ -2755,7 +2756,7 @@ WHERE dict_type IN (
 -- >>> BIZ_ENUM_DICT_BEGIN
 DELETE FROM cloud_flow_db.sys_dict_data WHERE dict_type IN (
   'hr_performance_metric_type','hr_performance_status','hr_contract_type','hr_document_type',
-  'hr_family_relationship','hr_certificate_status','hr_certificate_type','hr_exam_question_type',
+  'hr_family_relationship','hr_certificate_status','hr_training_certificate_status','hr_certificate_type','hr_exam_question_type',
   'hr_exam_attempt_status','hr_enroll_status','hr_enroll_completion','hr_training_mode',
   'hr_training_session_status','hr_training_plan_type','hr_publish_status','hr_recruit_request_status',
   'hr_candidate_status','hr_interview_round','hr_interview_type','hr_interview_status',
@@ -2794,7 +2795,7 @@ DELETE FROM cloud_flow_db.sys_dict_data WHERE dict_type IN (
 
 DELETE FROM cloud_flow_db.sys_dict_type WHERE dict_type IN (
   'hr_performance_metric_type','hr_performance_status','hr_contract_type','hr_document_type',
-  'hr_family_relationship','hr_certificate_status','hr_certificate_type','hr_exam_question_type',
+  'hr_family_relationship','hr_certificate_status','hr_training_certificate_status','hr_certificate_type','hr_exam_question_type',
   'hr_exam_attempt_status','hr_enroll_status','hr_enroll_completion','hr_training_mode',
   'hr_training_session_status','hr_training_plan_type','hr_publish_status','hr_recruit_request_status',
   'hr_candidate_status','hr_interview_round','hr_interview_type','hr_interview_status',
@@ -2838,6 +2839,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remar
 ('HR证件类型', 'hr_document_type', '身份证/护照/学历学位'),
 ('HR家庭关系', 'hr_family_relationship', '配偶/父母/子女等'),
 ('HR证明状态', 'hr_certificate_status', '员工证明开具流程状态'),
+('HR培训证书状态', 'hr_training_certificate_status', '培训证书有效/撤销状态'),
 ('HR证明类型', 'hr_certificate_type', '在职/收入/社保等证明'),
 ('HR试题类型', 'hr_exam_question_type', '单选/多选/判断/填空/问答'),
 ('HR作答状态', 'hr_exam_attempt_status', '答题中/已提交/已批改'),
@@ -3013,6 +3015,9 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (5, '已驳回', 'REJECTED', 'hr_certificate_status', 'danger'),
 (6, '已开具', 'ISSUED', 'hr_certificate_status', 'success'),
 (7, '已取消', 'CANCELLED', 'hr_certificate_status', 'default');
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '有效', 'VALID', 'hr_training_certificate_status', 'success'),
+(2, '已撤销', 'REVOKED', 'hr_training_certificate_status', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '在职证明', 'EMPLOYMENT', 'hr_certificate_type', 'default'),
 (2, '收入证明', 'INCOME', 'hr_certificate_type', 'default'),
@@ -11233,6 +11238,14 @@ WHERE tenant_id = 100000;
 DELETE FROM cloud_flow_db.hr_tax_deduction
 WHERE tenant_id = 100000;
 
+UPDATE cloud_flow_db.hr_tax_deduction
+SET deduction_type = CASE deduction_type
+  WHEN 'CHILDREN_EDU' THEN 'CHILD_EDUCATION'
+  WHEN 'MORTGAGE' THEN 'HOUSING_LOAN'
+  ELSE deduction_type
+END
+WHERE deduction_type IN ('CHILDREN_EDU', 'MORTGAGE');
+
 DELETE FROM cloud_flow_db.hr_tax_profile
 WHERE tenant_id = 100000;
 
@@ -11578,9 +11591,9 @@ INSERT IGNORE INTO cloud_flow_db.hr_tax_profile (tenant_id, employee_id, tax_res
 INSERT IGNORE INTO cloud_flow_db.hr_tax_deduction (tenant_id, employee_id, deduction_type, amount, start_date, end_date, status, remark, create_by, update_by) VALUES
 (100000, 1002, 'HOUSING_RENT', 1500, '2026-02-01', NULL, 'ACTIVE', '住房租金专项扣除', 'admin', 'admin'),
 (100000, 1003, 'CONTINUING_EDU', 400, '2026-01-01', NULL, 'ACTIVE', '继续教育专项扣除', 'admin', 'admin'),
-(100000, 1006, 'CHILDREN_EDU', 1000, '2026-01-01', NULL, 'ACTIVE', '子女教育专项扣除', 'admin', 'admin'),
+(100000, 1006, 'CHILD_EDUCATION', 1000, '2026-01-01', NULL, 'ACTIVE', '子女教育专项扣除', 'admin', 'admin'),
 (100000, 1007, 'HOUSING_RENT', 1500, '2026-01-01', NULL, 'ACTIVE', '住房租金专项扣除', 'admin', 'admin'),
-(100000, 1008, 'MORTGAGE', 1000, '2026-01-01', NULL, 'ACTIVE', '住房贷款利息专项扣除', 'admin', 'admin');
+(100000, 1008, 'HOUSING_LOAN', 1000, '2026-01-01', NULL, 'ACTIVE', '住房贷款利息专项扣除', 'admin', 'admin');
 
 INSERT IGNORE INTO cloud_flow_db.hr_performance_objective (id, tenant_id, objective_no, cycle_name, cycle_start_date, cycle_end_date, objective_name, owner_employee_id, metric_config, status, create_by, update_by) VALUES
 (9001, 100000, 'HRPF2026Q2001', '2026 Q2', '2026-04-01', '2026-06-30', '财务结算准确率提升', 1004,
@@ -13568,4 +13581,3 @@ VALUES
   (1, 100000, NULL,         0.00,        100000.00, 'T1', 'DEPT_MGR', 'ACTIVE', '小额合同 — 部门经理审批',         0, 'admin', NOW(), 'admin', NOW()),
   (2, 100000, NULL,    100000.00,       1000000.00, 'T2', 'VP',       'ACTIVE', '中额合同 — 副总裁审批',            0, 'admin', NOW(), 'admin', NOW()),
   (3, 100000, NULL,   1000000.00,             NULL, 'T3', 'CEO',      'ACTIVE', '大额合同 — CEO 特批',              0, 'admin', NOW(), 'admin', NOW());
-

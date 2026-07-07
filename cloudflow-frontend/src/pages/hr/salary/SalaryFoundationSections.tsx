@@ -11,6 +11,7 @@ import {
 import { cn } from '@/utils/cn';
 import { toDateInputValue } from '../hrShared';
 import { InnerTableSurface } from '@/components/layout/TablePageLayout';
+import { DictLabel } from '@/components/common/DictLabel';
 
 type SectionComponents = {
   WorkspaceSectionCard: React.ComponentType<any>;
@@ -106,8 +107,8 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
                   </td>
                   <td className="min-w-[180px]">{item.itemCode}</td>
                   <td className="min-w-[140px]">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.itemTypeDesc || itemTypeLabel(item.itemType)}</div>
-                    <div className="mt-1 text-xs text-slate-400">{item.categoryDesc || itemCategoryLabel(item.category)}</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{itemTypeLabel(item.itemType) || '-'}</div>
+                    <div className="mt-1 text-xs text-slate-400">{itemCategoryLabel(item.category) || '-'}</div>
                   </td>
                   <td className="min-w-[180px]">
                     <div className="font-medium text-slate-900 dark:text-slate-100">
@@ -441,9 +442,9 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                             <div className="font-medium text-slate-900 dark:text-slate-100">{item.itemName}</div>
                             <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.itemCode}</div>
                           </td>
-                          <td className="min-w-[120px]">{item.categoryDesc || itemCategoryLabel(item.category)}</td>
+                          <td className="min-w-[120px]">{itemCategoryLabel(item.category) || '-'}</td>
                           <td className="min-w-[140px]">
-                            <div>{item.itemTypeDesc || itemTypeLabel(item.itemType)}</div>
+                            <div>{itemTypeLabel(item.itemType) || '-'}</div>
                             <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                               {item.formula && String(item.formula).trim() ? '已配公式' : '手工录入'}
                             </div>
@@ -679,7 +680,7 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
                   <td>{formatCurrency(item.minSalary)}</td>
                   <td>{formatCurrency(item.midSalary)}</td>
                   <td>{formatCurrency(item.maxSalary)}</td>
-                  <td>{item.currencyDesc || item.currency || '-'}</td>
+                  <td><DictLabel dictType="sys_currency" value={String(item.currency ?? '')} fallback="-" /></td>
                   <td>
                     {rowIssues.length > 0 ? (
                       <div className="flex flex-wrap gap-2">

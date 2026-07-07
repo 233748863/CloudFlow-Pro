@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { Button, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
+import { Button, DatePicker, DictSelect, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, UserSelector } from '@/components/common';
 import { useCrmManagement } from '../store';
 import { emptyQuoteLine } from '../constants';
 
@@ -51,8 +51,19 @@ export const QuoteDialogContent: React.FC = () => {
         </Select>
       </div>
       <Input value={quoteForm.quoteName || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, quoteName: e.target.value }))} placeholder="报价名称" />
-      <Input value={quoteForm.ownerName || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="负责人" />
-      <Input value={quoteForm.currency || 'CNY'} onChange={(e) => setQuoteForm((prev) => ({ ...prev, currency: e.target.value }))} placeholder="币种" />
+      <UserSelector
+        single
+        allowClear
+        value={quoteForm.ownerId ? String(quoteForm.ownerId) : null}
+        onChange={(id, picked) => setQuoteForm((prev) => ({ ...prev, ownerId: id ? Number(id) : undefined, ownerName: picked?.name || '' }))}
+        placeholder="选择负责人"
+      />
+      <DictSelect
+        dictType="sys_currency"
+        value={quoteForm.currency || 'CNY'}
+        onChange={(value) => setQuoteForm((prev) => ({ ...prev, currency: value }))}
+        placeholder="选择币种"
+      />
       <DatePicker className="h-11" type="date" value={quoteForm.validUntil || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, validUntil: e.target.value }))} placeholder="有效期至" />
       <div className="p-4 md:col-span-2 border border-slate-200 dark:border-slate-800">
         <div className="mb-3 flex items-center justify-between">

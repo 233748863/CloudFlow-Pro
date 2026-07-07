@@ -751,7 +751,6 @@ export const HrRecruitmentPage: React.FC = () => {
                   <strong>招聘需求</strong>
                   <span>创建、提交、审批和关闭招聘需求都在这一组主表里推进。</span>
                 </div>
-                <span className="admin-users-filter-count">{loading ? '同步中' : `${filteredRequests.length} 条`}</span>
               </div>
           
               <div className="admin-horizontal-scroll">
@@ -788,7 +787,7 @@ export const HrRecruitmentPage: React.FC = () => {
                           <td>{item.headcount}</td>
                           <td>{item.hiredCount}</td>
                           <td>
-                            <DictBadge dictType="hr_recruit_request_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
+                            <DictBadge dictType="hr_recruit_request_status" value={String(item.status ?? '')} />
                           </td>
                           <td>
                             <div className="admin-users-row-actions">
@@ -843,11 +842,10 @@ export const HrRecruitmentPage: React.FC = () => {
                   <strong>候选人</strong>
                   <span>候选人只在招聘链路内推进，到 Offer 或入职阶段后转由后续模块继续处理。</span>
                 </div>
-                <span className="admin-users-filter-count">{loading ? '同步中' : `${filteredCandidates.length} 条`}</span>
               </div>
           
               <div className="admin-horizontal-scroll">
-                <table className="unity-data-table admin-source-table min-w-[960px]">
+                <table className="unity-data-table admin-source-table admin-recruitment-candidate-table min-w-[1040px]">
                   <thead>
                     <tr>
                       <th>候选人</th>
@@ -855,7 +853,7 @@ export const HrRecruitmentPage: React.FC = () => {
                       <th>来源</th>
                       <th>岗位</th>
                       <th>状态</th>
-                      <th className="text-right">推进</th>
+                      <th className="admin-recruitment-progress-cell">推进</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -882,22 +880,23 @@ export const HrRecruitmentPage: React.FC = () => {
                             </div>
                           </td>
                           <td>{item.phone}</td>
-                          <td>{item.sourceDesc || sourceDict.getLabel(String(item.source ?? ''))}</td>
+                          <td>{sourceDict.getLabel(String(item.source ?? '')) || '-'}</td>
                           <td>{item.positionName || '-'}</td>
                           <td>
-                            <DictBadge dictType="hr_candidate_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
+                            <DictBadge dictType="hr_candidate_status" value={String(item.status ?? '')} />
                           </td>
-                          <td>
-                            <div className="admin-users-row-actions">
+                          <td className="admin-recruitment-progress-cell">
+                            <div className="admin-recruitment-progress-actions">
                               <button
                                 type="button"
+                                className="admin-recruitment-progress-button"
                                 title="简历解析"
                                 onClick={() => setResumePanel({ open: true, candidate: item })}
                               >
                                 <FileSearch size={15} />
                               </button>
                               {['OFFER', 'HIRED'].includes(item.status) ? (
-                                <div className="w-[180px] text-right text-xs text-slate-500 dark:text-slate-400">
+                                <div className="admin-recruitment-progress-note">
                                   请在 Offer 或员工异动中继续推进
                                 </div>
                               ) : (
@@ -905,13 +904,13 @@ export const HrRecruitmentPage: React.FC = () => {
                                   value={item.status}
                                   onValueChange={(value) => handleCandidateStatusChange(item.id, value)}
                                 >
-                                  <SelectTrigger className="w-[148px]">
+                                  <SelectTrigger className="admin-recruitment-progress-select">
                                     <SelectValue placeholder="更新状态" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {editableCandidateStatuses.map((status) => (
                                       <SelectItem key={status} value={status}>
-                                        {candidateStatusDict.getLabel(status)}
+                                        {candidateStatusDict.getLabel(status) || '-'}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -935,7 +934,6 @@ export const HrRecruitmentPage: React.FC = () => {
                   <strong>面试安排</strong>
                   <span>所有已排期面试统一在这里复核时间、地点和当前状态。</span>
                 </div>
-                <span className="admin-users-filter-count">{loading ? '同步中' : `${interviews.length} 条`}</span>
               </div>
           
               <div className="admin-horizontal-scroll">
@@ -966,8 +964,8 @@ export const HrRecruitmentPage: React.FC = () => {
                       interviews.map((item) => (
                         <tr key={item.id}>
                           <td><strong>{item.candidateName || '-'}</strong></td>
-                          <td>{item.interviewRoundName || interviewRoundDict.getLabel(String(item.interviewRound ?? ''))}</td>
-                          <td>{item.interviewTypeName || interviewTypeDict.getLabel(String(item.interviewType ?? ''))}</td>
+                          <td>{interviewRoundDict.getLabel(String(item.interviewRound ?? '')) || '-'}</td>
+                          <td>{interviewTypeDict.getLabel(String(item.interviewType ?? '')) || '-'}</td>
                           <td>
                             <div>{formatDateTimeValue(item.interviewTime)}</div>
                             {item.interviewEndTime ? (
@@ -978,7 +976,7 @@ export const HrRecruitmentPage: React.FC = () => {
                           </td>
                           <td>{item.meetingRoomName || item.location || '-'}</td>
                           <td>
-                            <DictBadge dictType="hr_interview_status" value={String(item.status ?? '')} fallback={item.statusName || item.statusDesc || '-'} />
+                            <DictBadge dictType="hr_interview_status" value={String(item.status ?? '')} />
                           </td>
                         </tr>
                       ))
@@ -993,7 +991,6 @@ export const HrRecruitmentPage: React.FC = () => {
             <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
               <div className="admin-recruitment-table-head">
                 <div><strong>Offer</strong></div>
-                <span className="admin-users-filter-count">{loading ? '同步中' : `${filteredOffers.length} 条`}</span>
               </div>
           
               <div className="admin-horizontal-scroll">
@@ -1025,7 +1022,7 @@ export const HrRecruitmentPage: React.FC = () => {
                             <td>{formatMoneyValue(item.salary)}</td>
                             <td>{formatDateValue(item.expectedArrivalDate || item.expectedDate)}</td>
                             <td>
-                              <DictBadge dictType="hr_offer_status" value={String(item.status ?? '')} fallback={item.statusDesc || '-'} />
+                              <DictBadge dictType="hr_offer_status" value={String(item.status ?? '')} />
                             </td>
                             <td>
                               <div className="admin-users-row-actions">

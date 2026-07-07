@@ -15,6 +15,7 @@ import {
   Button,
   ConfirmDialog,
   DatePicker,
+  DictSelect,
   Input,
   Label,
   Select,
@@ -23,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  UserSelector,
 } from '@/components/common';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
@@ -87,6 +89,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
   const milestoneTypeDict = useDict('oa_milestone_type');
   const milestoneStatusDict = useDict('oa_milestone_status');
   const paymentStatusDict = useDict('oa_milestone_payment_status');
+  const currencyDict = useDict('sys_currency');
   const [milestones, setMilestones] = useState<OaContractMilestone[]>([]);
   const [payments, setPayments] = useState<OaContractPaymentSchedule[]>([]);
   const [loading, setLoading] = useState(false);
@@ -383,7 +386,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
                       <span>计划: {p.planDate}</span>
                       {p.actualDate ? <span>实际: {p.actualDate}</span> : null}
-                      <span>金额: {p.currency || 'CNY'} {Number(p.amount).toLocaleString()}</span>
+                      <span>金额: {currencyDict.getLabel(p.currency || 'CNY')} {Number(p.amount).toLocaleString()}</span>
                       {p.payeeName ? <span>收款方: {p.payeeName}</span> : null}
                     </div>
                   </li>
@@ -483,11 +486,21 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
           </div>
           <div className="space-y-1">
             <Label>负责人</Label>
-            <Input
-              value={milestoneDialog.form.ownerName || ''}
-              onChange={(e) =>
-                setMilestoneDialog((c) => ({ ...c, form: { ...c.form, ownerName: e.target.value } }))
+            <UserSelector
+              single
+              allowClear
+              value={milestoneDialog.form.ownerId ? String(milestoneDialog.form.ownerId) : null}
+              onChange={(id, picked) =>
+                setMilestoneDialog((c) => ({
+                  ...c,
+                  form: {
+                    ...c.form,
+                    ownerId: id ? Number(id) : undefined,
+                    ownerName: picked?.name || '',
+                  },
+                }))
               }
+              placeholder="选择负责人"
             />
           </div>
           <div className="space-y-1 sm:col-span-2">
@@ -539,11 +552,13 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
           </div>
           <div className="space-y-1">
             <Label>币种</Label>
-            <Input
+            <DictSelect
+              dictType="sys_currency"
               value={paymentDialog.form.currency || 'CNY'}
-              onChange={(e) =>
-                setPaymentDialog((c) => ({ ...c, form: { ...c.form, currency: e.target.value } }))
+              onChange={(value) =>
+                setPaymentDialog((c) => ({ ...c, form: { ...c.form, currency: value } }))
               }
+              placeholder="选择币种"
             />
           </div>
           <div className="space-y-1">

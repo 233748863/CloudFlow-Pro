@@ -264,7 +264,7 @@ export const VisitorPage: React.FC = () => {
   };
 
   const currentStatusLabel = searchParams.status
-    ? statusDict.getLabel(searchParams.status) || searchParams.status
+    ? statusDict.getLabel(searchParams.status) || '未配置状态'
     : '全部状态';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.visitorName || searchParams.visitDate);
   const pendingCount = list.filter((item) => item.status === 'PENDING').length;
@@ -427,7 +427,7 @@ export const VisitorPage: React.FC = () => {
                       <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
                     )}
                   </td>
-                  <td><DictBadge dictType="oa_visitor_status" value={String(item.status || 'PENDING')} fallback="待确认" /></td>
+                  <td><DictBadge dictType="oa_visitor_status" value={String(item.status || 'PENDING')} /></td>
                   <td>
                     <div className="admin-users-row-actions">
                       {item.status === 'PENDING' && hasPermission('oa:visitor:confirm') ? (

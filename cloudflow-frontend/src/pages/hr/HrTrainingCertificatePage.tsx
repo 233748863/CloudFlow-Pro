@@ -14,6 +14,7 @@ import {
   TabsTrigger,
   Textarea,
 } from '@/components/common';
+import { DictBadge } from '@/components/common/DictBadge';
 import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -144,7 +145,7 @@ const CertificateList: React.FC<{ mine: boolean }> = ({ mine }) => {
                   <td>{row.sessionId ? `#${row.sessionId}` : '-'}</td>
                   <td>{formatDateValue(row.issueDate)}</td>
                   <td>{formatDateValue(row.expireDate)}</td>
-                  <td><span className={row.status === 'VALID' ? 'badge badge-success' : 'badge badge-gray'}>{row.status === 'VALID' ? '有效' : '已撤销'}</span></td>
+                  <td><DictBadge dictType="hr_training_certificate_status" value={String(row.status || '')} /></td>
                   <td>
                     <div className="admin-users-row-actions">
                       {row.pdfFileId ? (

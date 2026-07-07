@@ -225,8 +225,8 @@ export default function CrmSalesTargetPage() {
                   <tr key={row.salesTargetId}>
                     <td className="font-mono text-xs">{row.targetNo || '-'}</td>
                     <td><strong>{row.targetName}</strong><small>{getCrmGenericStatusLabel(row.status)}</small></td>
-                    <td><strong>{dimensionDict.getLabel(row.dimensionType || '') || row.dimensionType || '-'}</strong><small>{row.ownerName || row.deptName || '-'}</small></td>
-                    <td><strong>{periodTypeDict.getLabel(row.periodType || '') || row.periodType || '-'}</strong><small>{row.periodLabel || '-'}</small></td>
+                    <td><strong>{dimensionDict.getLabel(row.dimensionType || '') || '-'}</strong><small>{row.ownerName || row.deptName || '-'}</small></td>
+                    <td><strong>{periodTypeDict.getLabel(row.periodType || '') || '-'}</strong><small>{row.periodLabel || '-'}</small></td>
                     <td className="text-right tabular-nums">{formatCurrency(row.targetAmount)}</td>
                     <td className="text-right tabular-nums">{formatCurrency(row.achievedAmount)}</td>
                     <td className="text-right tabular-nums">{Number(row.completionRate || 0).toFixed(2)}%</td>

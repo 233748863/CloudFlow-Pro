@@ -216,7 +216,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\start-cloudflow.ps1
 ```
 
 脚本会并行编译并安装后端内部依赖，随后并行拉起网关、认证、工作流、OA、CRM、HR 和前端；运行日志写入 `.cloudflow-runtime/logs/`，后端以 actuator 健康检查 `UP` 作为就绪判定。
-可选参数：`-TimeoutSeconds 240` 调整整体验收超时，`-BackendBuildThreads 1C` 调整 Maven 并行编译线程。
+可选参数：`-TimeoutSeconds 240` 调整整体验收超时，`-BackendBuildThreads auto` 按本机逻辑核心数调整 Maven 并行编译线程，也可传入固定数字手动覆盖。
 
 ### 🌐 6. 访问入口
 

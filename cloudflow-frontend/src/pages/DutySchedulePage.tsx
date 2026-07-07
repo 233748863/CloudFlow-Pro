@@ -247,8 +247,8 @@ export const DutySchedulePage: React.FC = () => {
   const scheduledCount = list.filter((item) => item.status === 'SCHEDULED').length;
   const checkedInCount = list.filter((item) => item.status === 'CHECKED_IN').length;
   const completedCount = list.filter((item) => item.status === 'COMPLETED').length;
-  const currentStatusLabel = searchParams.status ? statusDict.getLabel(searchParams.status) || searchParams.status : '全部状态';
-  const currentTypeLabel = searchParams.scheduleType ? typeDict.getLabel(searchParams.scheduleType) || searchParams.scheduleType : '全部类型';
+  const currentStatusLabel = searchParams.status ? statusDict.getLabel(searchParams.status) || '未配置状态' : '全部状态';
+  const currentTypeLabel = searchParams.scheduleType ? typeDict.getLabel(searchParams.scheduleType) || '未配置类型' : '全部类型';
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const resultSummary = hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部排班';
   const metrics = [
@@ -376,7 +376,7 @@ export const DutySchedulePage: React.FC = () => {
               list.map((item) => (
                 <tr key={item.scheduleId}>
                   <td>{item.title}</td>
-                  <td>{typeDict.getLabel(item.scheduleType || '') || item.scheduleType}</td>
+                  <td>{typeDict.getLabel(item.scheduleType || '') || '-'}</td>
                   <td>{item.dutyDate}</td>
                   <td>{shiftDict.getLabel(item.shiftType || '') || '-'}</td>
                   <td>
@@ -393,7 +393,7 @@ export const DutySchedulePage: React.FC = () => {
                     <div className="mt-1">{item.checkOutTime ? `退: ${item.checkOutTime}` : '退: -'}</div>
                   </td>
                   <td>
-                    <DictBadge dictType="hr_duty_status" value={String(item.status || 'SCHEDULED')} fallback="已排班" />
+                    <DictBadge dictType="hr_duty_status" value={String(item.status || 'SCHEDULED')} />
                   </td>
                   <td>
                     <div className="admin-users-row-actions">

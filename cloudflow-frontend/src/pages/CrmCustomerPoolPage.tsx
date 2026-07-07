@@ -5,6 +5,7 @@ import { Anchor, Gavel, HandCoins, RefreshCcw, Waves, History, Search } from 'lu
 import { toast } from 'sonner';
 import {
   Button,
+  DictSelect,
   Input,
   Label,
   LoadingSpinner,
@@ -21,6 +22,7 @@ import { useDict } from '@/hooks/useDict';
 
 export default function CrmCustomerPoolPage() {
   const actionDict = useDict('crm_pool_action');
+  const customerLevelDict = useDict('crm_customer_level');
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<CrmCustomer[]>([]);
   const [pageNum, setPageNum] = useState(1);
@@ -184,7 +186,13 @@ export default function CrmCustomerPoolPage() {
             </label>
             <label>
               <span className="input-label">客户等级</span>
-              <Input value={levelCode} onChange={(e) => { setPageNum(1); setLevelCode(e.target.value); }} placeholder="客户等级" />
+              <DictSelect
+                dictType="crm_customer_level"
+                value={levelCode}
+                onChange={(value) => { setPageNum(1); setLevelCode(value); }}
+                placeholder="客户等级"
+                allowClear
+              />
             </label>
             <div className="admin-users-toolbar-actions">
             </div>
@@ -215,7 +223,7 @@ export default function CrmCustomerPoolPage() {
                   rows.map((row) => (
                     <tr key={row.customerId}>
                       <td><strong>{row.customerName}</strong><small>{row.customerCode || '-'}</small></td>
-                      <td><strong>{row.industry || '-'}</strong><small>{row.levelCode || '-'}</small></td>
+                      <td><strong>{row.industry || '-'}</strong><small>{row.levelCode ? customerLevelDict.getLabel(row.levelCode) : '-'}</small></td>
                       <td>{row.originalOwnerName || '-'}</td>
                       <td>{formatDateTimeDisplay(row.pooledTime) || '-'}</td>
                       <td>{formatDateTimeDisplay(row.lastFollowUpTime) || '-'}</td>
@@ -299,7 +307,7 @@ export default function CrmCustomerPoolPage() {
               {logs.map((log) => (
                 <tr key={log.logId}>
                   <td className="px-2 py-2">{formatDateTimeDisplay(log.createTime) || '-'}</td>
-                  <td className="px-2 py-2">{actionDict.getLabel(log.actionType || '') || log.actionType || '-'}</td>
+                  <td className="px-2 py-2">{actionDict.getLabel(log.actionType || '') || '-'}</td>
                   <td className="px-2 py-2">{log.fromOwnerName || '-'}</td>
                   <td className="px-2 py-2">{log.toOwnerName || '-'}</td>
                   <td className="px-2 py-2 text-xs text-slate-500 dark:text-slate-400">{log.reason || '-'}</td>

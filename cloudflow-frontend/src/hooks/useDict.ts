@@ -51,13 +51,13 @@ export function useDict(dictType: string, options: UseDictOptions = {}): UseDict
 
   /**
    * 根据 value 获取 label
-   * 未找到时返回原值（fallback）
+   * 未找到时返回空字符串，由调用方决定占位展示。
    */
   const getLabel = useCallback(
     (value: string) => {
-      if (!query.data) return value;
+      if (!value || !query.data) return '';
       const item = query.data.find((d) => d.value === value);
-      return item?.label ?? value;
+      return item?.label ?? '';
     },
     [query.data],
   );

@@ -66,7 +66,7 @@ const statusLabelMap: Record<string, string> = {
 
 const renderHealthBadge = (level?: string) => (
   <span className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${healthToneMap[level || 'GREEN'] || healthToneMap.GREEN}`}>
-    {healthLabelMap[level || 'GREEN'] || level || '健康'}
+    {healthLabelMap[level || 'GREEN'] || '健康'}
   </span>
 );
 
@@ -120,8 +120,8 @@ const ActionListButton = ({
   </button>
 );
 
-const renderStatus = (status?: string) => statusLabelMap[status || ''] || status || '-';
-const renderHealthLabel = (level?: string) => healthLabelMap[level || ''] || level || '-';
+const renderStatus = (status?: string) => statusLabelMap[status || ''] || '-';
+const renderHealthLabel = (level?: string) => healthLabelMap[level || ''] || '-';
 
 const renderProjectCard = (
   item: CrmRemoteProjectLink,
@@ -133,7 +133,7 @@ const renderProjectCard = (
     <td>{renderStatus(item.status)}</td>
     <td>{severityLabel(item.riskLevel)}</td>
     <td>{item.budgetAmount || 0} / {item.actualCostAmount || 0}</td>
-    <td>{item.sourceName || item.sourceType || '-'}</td>
+    <td>{item.sourceName || '-'}</td>
     <td>
       <div className="admin-users-row-actions">
         {item.projectId ? <button type="button" title="查看项目工作区" onClick={() => onOpen(item.projectId!)}><FolderKanban size={15} /></button> : null}
@@ -161,8 +161,8 @@ export default function CrmCustomerWorkspacePage() {
 
   const invoiceStatusDict = useDict('invoice_status');
   const severityDict = useDict('severity_level');
-  const renderInvoiceStatus = (status?: string) => invoiceStatusDict.getLabel(status || '') || status || '-';
-  const renderSeverity = (severity?: string) => severityDict.getLabel(severity || '') || severity || '-';
+  const renderInvoiceStatus = (status?: string) => invoiceStatusDict.getLabel(status || '') || '-';
+  const renderSeverity = (severity?: string) => severityDict.getLabel(severity || '') || '-';
 
   const load = async () => {
     if (!numericCustomerId) return;
