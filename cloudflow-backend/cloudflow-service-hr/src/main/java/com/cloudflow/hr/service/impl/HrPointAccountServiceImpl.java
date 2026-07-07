@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.web.MapConverters;
@@ -242,9 +243,13 @@ public class HrPointAccountServiceImpl implements IHrPointAccountService {
                 .eq("source_id", sourceId)
                 .eq("direction", direction)
                 .eq("deleted", 0)
-                .last("LIMIT 1");
-        HrPointTransaction existing = transactionMapper.selectOne(qw);
+                .orderByAsc("id");
+        HrPointTransaction existing = firstRecord(transactionMapper.selectPage(new Page<>(1, 1, false), qw));
         return existing == null ? null : existing.getId();
+    }
+
+    private <T> T firstRecord(Page<T> page) {
+        return page.getRecords().isEmpty() ? null : page.getRecords().get(0);
     }
 
     private HrPointAccount selectCurrentTenantAccount(Long accountId) {

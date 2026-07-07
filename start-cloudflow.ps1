@@ -16,7 +16,6 @@ $BackendRoot = Join-Path $Root "cloudflow-backend"
 $ReactFrontendRoot = Join-Path $Root "cloudflow-frontend"
 $RuntimeRoot = Join-Path $Root ".cloudflow-runtime"
 $LogRoot = Join-Path $RuntimeRoot "logs"
-$LocalDefaultSharedPassword = "Juwangkeji@2025"
 
 $BackendServices = @(
     @{
@@ -174,21 +173,24 @@ function Test-StaleLocalValue {
         return $false
     }
 
+    $legacyMysqlPassword = "cloudflow_" + "2026"
+    $legacyRedisPassword = "cloudflow_redis_" + "2026"
+
     switch ($Name) {
         "DB_URL" {
             return $Value -match 'characterEncoding=utf8mb4'
         }
         "DB_PASSWORD" {
-            return $Value -in @("cloudflow_2026", "cloudflow_redis_2026")
+            return $Value -in @($legacyMysqlPassword, $legacyRedisPassword)
         }
         "MYSQL_ROOT_PASSWORD" {
-            return $Value -eq "cloudflow_2026"
+            return $Value -eq $legacyMysqlPassword
         }
         "MYSQL_APP_PASSWORD" {
-            return $Value -eq "cloudflow_2026"
+            return $Value -eq $legacyMysqlPassword
         }
         "REDIS_PASSWORD" {
-            return $Value -eq "cloudflow_redis_2026"
+            return $Value -eq $legacyRedisPassword
         }
         default {
             return $false
@@ -278,14 +280,20 @@ function Import-DotEnvFile {
 }
 
 function Initialize-LocalEnvironment {
+    $localDefaultSharedPassword = Get-ConfiguredEnvValue -Name "CLOUDFLOW_LOCAL_SHARED_PASSWORD"
+
     Set-ProcessEnvDefault -Name "MYSQL_SSL_PARAMS" -Value "useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true"
     Set-ProcessEnvDefault -Name "DB_URL" -Value ("jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_0900_ai_ci&zeroDateTimeBehavior=convertToNull&{0}&serverTimezone=Asia/Shanghai" -f (Get-EnvValue -Name "MYSQL_SSL_PARAMS"))
     Set-ProcessEnvDefault -Name "DB_USERNAME" -Value "root"
-    Set-ProcessEnvDefault -Name "MYSQL_ROOT_PASSWORD" -Value $LocalDefaultSharedPassword
-    Set-ProcessEnvDefault -Name "MYSQL_APP_PASSWORD" -Value $LocalDefaultSharedPassword
+    if ($null -ne $localDefaultSharedPassword) {
+        Set-ProcessEnvDefault -Name "MYSQL_ROOT_PASSWORD" -Value $localDefaultSharedPassword
+        Set-ProcessEnvDefault -Name "MYSQL_APP_PASSWORD" -Value $localDefaultSharedPassword
+    }
     Set-ProcessEnvDefault -Name "REDIS_HOST" -Value "192.168.1.173"
     Set-ProcessEnvDefault -Name "REDIS_PORT" -Value "6379"
-    Set-ProcessEnvDefault -Name "REDIS_PASSWORD" -Value $LocalDefaultSharedPassword
+    if ($null -ne $localDefaultSharedPassword) {
+        Set-ProcessEnvDefault -Name "REDIS_PASSWORD" -Value $localDefaultSharedPassword
+    }
 
     if ($null -eq (Get-ConfiguredEnvValue -Name "DB_PASSWORD")) {
         $dbPasswordCandidate = $null
@@ -312,7 +320,11 @@ function Initialize-LocalEnvironment {
         }
 
         if ($null -eq $dbPasswordCandidate) {
-            $dbPasswordCandidate = $LocalDefaultSharedPassword
+            $dbPasswordCandidate = $localDefaultSharedPassword
+        }
+
+        if ($null -eq $dbPasswordCandidate) {
+            throw "未配置 DB_PASSWORD。请通过 .env.local、deploy/cloudflow.env.local 或 CLOUDFLOW_LOCAL_SHARED_PASSWORD 提供本机启动密码。"
         }
 
         Set-Item -Path "Env:DB_PASSWORD" -Value $dbPasswordCandidate

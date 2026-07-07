@@ -3,6 +3,9 @@ package com.cloudflow.workflow.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.cloudflow.workflow.domain.WfParallelJoin;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 /**
  * 并行网关汇聚到达记录 Mapper
@@ -11,4 +14,6 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface WfParallelJoinMapper extends BaseMapper<WfParallelJoin> {
+
+    List<Long> selectIdsForUpdate(@Param("instanceId") String instanceId, @Param("gatewayId") String gatewayId);
 }

@@ -131,7 +131,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         Object arrivalSourceObj = variables != null ? variables.remove(JOIN_ARRIVAL_SOURCE_VARIABLE) : null;
 
         // 并行汇聚检查：到达记录写 DB（与本次流转同事务，回滚自动撤销），Redis 锁仅做并发互斥。
-        // 计数使用 FOR UPDATE 当前读：并发分支的未提交到达行会阻塞本次计数直到对方提交，保证不漏数。
+        // 读取到达行使用 FOR UPDATE 当前读：并发分支的未提交到达行会阻塞本次读取直到对方提交，保证不漏数。
         if (rootNode != null) {
             WfNodeConfig gateway = findParentGateway(rootNode, node.getId());
             if (gateway != null) {
@@ -158,13 +158,9 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                             log.warn("[runNode] 并行分支重复到达汇聚点，忽略: instanceId={}, gatewayId={}, branchKey={}",
                                     instance.getInstanceId(), gateway.getId(), branchKey);
                         }
-                        Long arrived = parallelJoinMapper.selectCount(
-                                new LambdaQueryWrapper<WfParallelJoin>()
-                                        .eq(WfParallelJoin::getInstanceId, instance.getInstanceId())
-                                        .eq(WfParallelJoin::getGatewayId, gateway.getId())
-                                        .last("FOR UPDATE"));
+                        int arrived = parallelJoinMapper.selectIdsForUpdate(instance.getInstanceId(), gateway.getId()).size();
                         int totalBranches = resolveBranchRouting(gateway, rootNode).branches().size();
-                        if (arrived == null || arrived < totalBranches) {
+                        if (arrived < totalBranches) {
                             log.info("[runNode] 并行汇聚等待其他分支: instanceId={}, gatewayId={}, arrived={}/{}",
                                     instance.getInstanceId(), gateway.getId(), arrived, totalBranches);
                             return; // 等待其他分支（本分支到达记录随本事务提交）

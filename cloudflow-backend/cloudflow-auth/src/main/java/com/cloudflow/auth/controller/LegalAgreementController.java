@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaIgnore;
 import com.cloudflow.auth.domain.SysLegalRelease;
 import com.cloudflow.auth.domain.vo.LegalDocumentDetailVO;
 import com.cloudflow.auth.domain.vo.LegalReleaseVO;
@@ -20,11 +21,13 @@ public class LegalAgreementController {
     private final ILegalAgreementService legalAgreementService;
 
     @GetMapping("/legal/public/active")
+    @SaIgnore
     public R<LegalReleaseVO> active(@RequestParam(required = false) String tenantCode) {
         return R.ok(legalAgreementService.getActiveRelease(tenantCode));
     }
 
     @GetMapping("/legal/public/document")
+    @SaIgnore
     public R<LegalDocumentDetailVO> document(
             @RequestParam(required = false) String tenantCode,
             @RequestParam String releaseCode,

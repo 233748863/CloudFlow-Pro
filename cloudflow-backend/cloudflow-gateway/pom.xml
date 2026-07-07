@@ -49,6 +49,14 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-security</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-redis</artifactId>
+        </dependency>
 
         <!-- 配置敏感信息密文化（yaml 中 ENC(...) 占位的启动期解密） -->
         <dependency>
@@ -60,6 +68,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
         </dependency>
 
         <!-- Gateway 过滤器和异常处理里直接使用了响应式 API -->

@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.IpUtils;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.config.properties.OaProperties;
 import com.cloudflow.oa.domain.FrontendErrorLog;
 import com.cloudflow.oa.service.IFrontendErrorLogService;
@@ -43,6 +44,7 @@ public class ErrorReportController {
      * @return 固定返回成功，避免前端因上报失败产生额外错误
      */
     @PostMapping
+    @RepeatSubmit(interval = 1000, includeArgs = false, message = "错误上报过于频繁，请稍后再试")
     @SaCheckPermission("oa:error-report:create")
     public R report(@RequestBody FrontendErrorLog errorLog, HttpServletRequest request) {
         try {

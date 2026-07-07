@@ -1,6 +1,7 @@
 package com.cloudflow.auth.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.auth.domain.SysLegalConsent;
 import com.cloudflow.auth.domain.SysLegalDocument;
@@ -58,12 +59,13 @@ public class LegalAgreementServiceImpl extends ServiceImpl<SysLegalReleaseMapper
         if (release == null) {
             throw new ServiceException("条款版本不存在或未发布");
         }
-        SysLegalDocument document = TenantBroker.applyWithoutTenant(ignored -> legalDocumentMapper.selectOne(
-                new LambdaQueryWrapper<SysLegalDocument>()
-                        .eq(SysLegalDocument::getReleaseId, release.getReleaseId())
-                        .eq(SysLegalDocument::getDocType, docType)
-                        .eq(SysLegalDocument::getStatus, DOCUMENT_STATUS_ACTIVE)
-                        .last("LIMIT 1")
+        SysLegalDocument document = TenantBroker.applyWithoutTenant(ignored -> firstRecord(
+                legalDocumentMapper.selectPage(new Page<>(1, 1, false),
+                        new LambdaQueryWrapper<SysLegalDocument>()
+                                .eq(SysLegalDocument::getReleaseId, release.getReleaseId())
+                                .eq(SysLegalDocument::getDocType, docType)
+                                .eq(SysLegalDocument::getStatus, DOCUMENT_STATUS_ACTIVE)
+                                .orderByAsc(SysLegalDocument::getDocumentId))
         ));
         if (document == null) {
             throw new ServiceException("条款文档不存在或未发布");
@@ -121,11 +123,12 @@ public class LegalAgreementServiceImpl extends ServiceImpl<SysLegalReleaseMapper
         if (!StringUtils.hasText(tenantCode)) {
             return null;
         }
-        return TenantBroker.applyWithoutTenant(ignored -> sysTenantMapper.selectOne(
-                new LambdaQueryWrapper<SysTenant>()
-                        .eq(SysTenant::getTenantCode, tenantCode.trim())
-                        .eq(SysTenant::getStatus, "0")
-                        .last("LIMIT 1")
+        return TenantBroker.applyWithoutTenant(ignored -> firstRecord(
+                sysTenantMapper.selectPage(new Page<>(1, 1, false),
+                        new LambdaQueryWrapper<SysTenant>()
+                                .eq(SysTenant::getTenantCode, tenantCode.trim())
+                                .eq(SysTenant::getStatus, "0")
+                                .orderByAsc(SysTenant::getTenantId))
         ));
     }
 
@@ -146,13 +149,13 @@ public class LegalAgreementServiceImpl extends ServiceImpl<SysLegalReleaseMapper
         if (tenantId == null) {
             return null;
         }
-        return TenantBroker.applyWithoutTenant(ignored -> this.getOne(
-                new LambdaQueryWrapper<SysLegalRelease>()
-                        .eq(SysLegalRelease::getTenantId, tenantId)
-                        .eq(SysLegalRelease::getStatus, STATUS_PUBLISHED)
-                        .orderByDesc(SysLegalRelease::getEffectiveDate)
-                        .orderByDesc(SysLegalRelease::getReleaseId)
-                        .last("LIMIT 1")
+        return TenantBroker.applyWithoutTenant(ignored -> firstRecord(
+                this.page(new Page<>(1, 1, false),
+                        new LambdaQueryWrapper<SysLegalRelease>()
+                                .eq(SysLegalRelease::getTenantId, tenantId)
+                                .eq(SysLegalRelease::getStatus, STATUS_PUBLISHED)
+                                .orderByDesc(SysLegalRelease::getEffectiveDate)
+                                .orderByDesc(SysLegalRelease::getReleaseId))
         ));
     }
 
@@ -160,12 +163,13 @@ public class LegalAgreementServiceImpl extends ServiceImpl<SysLegalReleaseMapper
         if (tenantId == null) {
             return null;
         }
-        return TenantBroker.applyWithoutTenant(ignored -> this.getOne(
-                new LambdaQueryWrapper<SysLegalRelease>()
-                        .eq(SysLegalRelease::getTenantId, tenantId)
-                        .eq(SysLegalRelease::getReleaseCode, releaseCode)
-                        .eq(SysLegalRelease::getStatus, STATUS_PUBLISHED)
-                        .last("LIMIT 1")
+        return TenantBroker.applyWithoutTenant(ignored -> firstRecord(
+                this.page(new Page<>(1, 1, false),
+                        new LambdaQueryWrapper<SysLegalRelease>()
+                                .eq(SysLegalRelease::getTenantId, tenantId)
+                                .eq(SysLegalRelease::getReleaseCode, releaseCode)
+                                .eq(SysLegalRelease::getStatus, STATUS_PUBLISHED)
+                                .orderByDesc(SysLegalRelease::getReleaseId))
         ));
     }
 
@@ -177,6 +181,10 @@ public class LegalAgreementServiceImpl extends ServiceImpl<SysLegalReleaseMapper
                         .orderByAsc(SysLegalDocument::getSortOrder)
                         .orderByAsc(SysLegalDocument::getDocumentId)
         ));
+    }
+
+    private <T> T firstRecord(Page<T> page) {
+        return page.getRecords().isEmpty() ? null : page.getRecords().get(0);
     }
 
     private LegalReleaseVO toReleaseVO(SysLegalRelease release, List<SysLegalDocument> documents) {

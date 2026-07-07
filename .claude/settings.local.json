@@ -58,7 +58,7 @@
       "Bash(mysql -h127.0.0.1 -uroot -N -e 'SELECT table_name FROM information_schema.tables WHERE table_schema='\\\\''__TRACKED_VAR__'\\\\'' AND table_name IN \\('\\\\''wf_template_version'\\\\'','\\\\''wf_process_version_snapshot'\\\\''\\)')",
       "Bash(mysql -h127.0.0.1 -uroot -N -e 'SELECT column_name FROM information_schema.columns WHERE table_schema='\\\\''__TRACKED_VAR__'\\\\'' AND table_name='\\\\''wf_process_definition'\\\\'' AND column_name IN \\('\\\\''change_log'\\\\'','\\\\''change_type'\\\\'','\\\\''checksum'\\\\'','\\\\''is_rollback'\\\\'','\\\\''rollback_from_version'\\\\''\\)')",
       "Bash(mysql -h127.0.0.1 -uroot -N -e 'SELECT index_name FROM information_schema.statistics WHERE table_schema='\\\\''__TRACKED_VAR__'\\\\'' AND table_name='\\\\''wf_countersign_vote'\\\\'' AND index_name='\\\\''uk_countersign_voter'\\\\'' LIMIT 1')",
-      "Bash(export MYSQL_PWD='Juwangkeji@2025')",
+      "Bash(export MYSQL_PWD='__LOCAL_MYSQL_PASSWORD__')",
       "Bash(mysql -h192.168.1.173 -uroot -N -e \"SELECT tenant_id,company_name FROM cloud_flow_db.sys_tenant LIMIT 5\")",
       "Bash(powershell -ExecutionPolicy Bypass -File start-cloudflow.ps1 -Backend)",
       "Bash(echo \"EXIT=$?\")",
