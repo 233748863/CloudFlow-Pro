@@ -65,7 +65,7 @@ public class CrmApprovalController {
         try {
             return R.ok(crmApprovalService.submitOpportunityDowngrade(dto.getOpportunityId(), dto.getAction(),
                     dto.getTargetStage(), dto.getLostReason()));
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException | IllegalStateException ex) {
             return R.fail(ex.getMessage());
         }
     }

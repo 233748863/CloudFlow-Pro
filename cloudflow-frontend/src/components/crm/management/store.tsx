@@ -589,7 +589,9 @@ export const CrmManagementProvider: React.FC<{ children: React.ReactNode }> = ({
             ? (opportunity.lostReason || '拖拽至输单列')
             : `拖拽申请降级至 ${stage}`,
         });
-        toast.success(String(stage).toUpperCase() === 'LOST' ? '已提交输单审批' : '已提交商机降级审批');
+        toast.info(String(stage).toUpperCase() === 'LOST'
+          ? '已提交输单审批，审批通过后卡片才会移动'
+          : '已提交商机降级审批，审批通过后卡片才会移动');
         await load();
         return;
       }

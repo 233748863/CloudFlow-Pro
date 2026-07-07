@@ -1,5 +1,6 @@
 package com.cloudflow.crm.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
@@ -108,6 +109,9 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
         if ("DOWNGRADE".equals(normalized) && !StringUtils.hasText(targetStage)) {
             throw new IllegalArgumentException("降级目标阶段不能为空");
         }
+        if (hasPendingDowngradeApproval(opportunityId)) {
+            throw new IllegalStateException("该商机已有待处理的降级/输单审批，请勿重复提交");
+        }
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("opportunityId", opportunityId);
         payload.put("currentStage", opportunity.getStage());
@@ -125,6 +129,21 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
         publishApprovalSubmittedEvent(approval, "opportunity_downgrade_review");
         startWorkflowAfterCommit(approval.getApprovalId(), "opportunity_downgrade_review");
         return approval.getApprovalId();
+    }
+
+    /**
+     * 业务级幂等校验：同一商机已存在待处理（PENDING）的降级/输单审批时不允许重复提交，
+     * 避免 @RepeatSubmit 时间窗过后重复拖拽产生多条审批单与工作流实例。
+     */
+    private boolean hasPendingDowngradeApproval(Long opportunityId) {
+        LambdaQueryWrapper<CrmApproval> wrapper = new LambdaQueryWrapper<CrmApproval>()
+                .eq(CrmApproval::getBusinessType, CrmBusinessTypes.CRM_OPPORTUNITY_DOWNGRADE)
+                .eq(CrmApproval::getBusinessRefType, "CRM_OPPORTUNITY")
+                .eq(CrmApproval::getBusinessRefId, opportunityId)
+                .eq(CrmApproval::getStatus, CrmConstants.QuoteStatus.PENDING)
+                .eq(CrmApproval::getDeleted, CrmConstants.DelFlag.NORMAL);
+        Long pending = approvalMapper.selectCount(wrapper);
+        return pending != null && pending > 0;
     }
 
     @Override

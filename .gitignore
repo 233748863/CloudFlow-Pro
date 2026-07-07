@@ -60,3 +60,8 @@ vite-*.err.log
 
 # Claude temporary worktrees
 .claude/worktrees/
+
+# 本地回归测试与审计产物
+.regression_state*.json
+.regression_token.txt
+工作流模块审计报告.md

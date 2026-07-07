@@ -1034,11 +1034,71 @@ export default function ProjectManagementPage() {
               </TabsContent>
 
               <TabsContent value="cost" className="admin-source-content-grid admin-project-detail-tab">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <ProjectDetailMetric label="报销成本" value={formatMoney(detail.costSummary?.expenseAmount)} />
-                  <ProjectDetailMetric label="采购成本" value={formatMoney(detail.costSummary?.purchaseAmount)} />
-                  <ProjectDetailMetric label="付款成本" value={formatMoney(detail.costSummary?.paymentAmount)} />
-                </div>
+                {(() => {
+                  const expense = Number(detail.costSummary?.expenseAmount || 0);
+                  const purchase = Number(detail.costSummary?.purchaseAmount || 0);
+                  const payment = Number(detail.costSummary?.paymentAmount || 0);
+                  const total = Number(detail.costSummary?.totalAmount || (expense + purchase + payment));
+                  const budget = Number(detail.project.budgetAmount || 0);
+                  const execRate = budget > 0 ? (total / budget) * 100 : Number(detail.kpi?.costExecutionRate || 0);
+                  const pct = (value: number) => (total > 0 ? (value / total) * 100 : 0);
+                  const composition = [
+                    { label: '报销成本', value: expense, color: '#0d95b5' },
+                    { label: '采购成本', value: purchase, color: '#059669' },
+                    { label: '付款成本', value: payment, color: '#d97706' },
+                  ];
+                  return (
+                    <>
+                      <div className="admin-source-stat-grid">
+                        <ProjectDetailMetric label="总成本" value={formatMoney(total)} />
+                        <ProjectDetailMetric label="报销成本" value={formatMoney(expense)} />
+                        <ProjectDetailMetric label="采购成本" value={formatMoney(purchase)} />
+                        <ProjectDetailMetric label="付款成本" value={formatMoney(payment)} />
+                      </div>
+
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        <ProjectDetailPanel title="预算执行" contentClassName="admin-project-detail-stack text-sm">
+                          <div>预算合计：{formatMoney(budget)}</div>
+                          <div>已用成本：{formatMoney(total)}</div>
+                          <div>成本执行率：{execRate.toFixed(1)}%</div>
+                          <div className="admin-project-cost-track" role="img" aria-label={`成本执行率 ${execRate.toFixed(1)}%`}>
+                            <span
+                              className={cn('admin-project-cost-track-fill', execRate > 100 && 'is-over')}
+                              style={{ width: `${Math.min(execRate, 100)}%` }}
+                            />
+                          </div>
+                        </ProjectDetailPanel>
+
+                        <ProjectDetailPanel title="成本构成" contentClassName="admin-project-detail-stack text-sm">
+                          {total > 0 ? (
+                            <>
+                              <div className="admin-project-cost-bar" role="img" aria-label="成本构成占比">
+                                {composition.map((item) => item.value > 0 && (
+                                  <span
+                                    key={item.label}
+                                    style={{ width: `${pct(item.value)}%`, background: item.color }}
+                                    title={`${item.label} ${formatMoney(item.value)}`}
+                                  />
+                                ))}
+                              </div>
+                              {composition.map((item) => (
+                                <div key={item.label} className="admin-project-detail-row">
+                                  <span className="inline-flex items-center gap-2">
+                                    <span className="admin-project-cost-dot" style={{ background: item.color }} />
+                                    {item.label}
+                                  </span>
+                                  <span>{formatMoney(item.value)} · {pct(item.value).toFixed(1)}%</span>
+                                </div>
+                              ))}
+                            </>
+                          ) : (
+                            <div className="text-sm text-slate-500">暂无成本数据</div>
+                          )}
+                        </ProjectDetailPanel>
+                      </div>
+                    </>
+                  );
+                })()}
               </TabsContent>
 
               <TabsContent value="risk" className="admin-source-content-grid admin-project-detail-tab">
