@@ -1,20 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BookOpen,
-  ChartNoAxesCombined,
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
-  ClipboardCopy,
   Globe2,
   Menu,
   MoonStar,
   SunMedium,
-  UsersRound,
   Wallet,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { AnnouncementHub } from '@/components/common';
 import { HeaderAnnouncementBell } from '@/components/header/HeaderAnnouncementBell';
 import { HeaderUserMenu } from '@/components/header/HeaderUserMenu';
@@ -82,8 +77,6 @@ export const MainLayout = () => {
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readStoredSidebarState());
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [copiedMyId, setCopiedMyId] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [expandedMenuIds, setExpandedMenuIds] = useState<Set<string>>(() => new Set());
   const { data: backendMenus = [], isLoading: menuLoading, isError: menuLoadFailed, error: menuLoadError } = useBackendMenus(Boolean(user));
@@ -362,20 +355,6 @@ export const MainLayout = () => {
     setThemeMode(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
-  const copyMyId = async () => {
-    try {
-      await navigator.clipboard.writeText(`来自 CloudFlow Pro，我的 ID 是 ${user?.id || '-'}`);
-      setCopiedMyId(true);
-      toast.success('ID 已复制');
-      window.setTimeout(() => setCopiedMyId(false), 1200);
-    } catch {
-      toast.error('复制失败');
-    }
-  };
-
-  const supportQrUrl =
-    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='white'/%3E%3Cg fill='%23111827'%3E%3Cpath d='M16 16h48v48H16zM28 28v24h24V28zM128 16h48v48h-48zM140 28v24h24V28zM16 128h48v48H16zM28 140v24h24v-24zM80 20h12v12H80zM104 20h12v24h-12zM80 44h24v12H80zM116 56h12v12h-12zM80 80h12v12H80zM104 80h36v12h-36zM152 80h24v12h-24zM80 104h24v12H80zM128 104h12v12h-12zM164 104h12v12h-12zM92 128h12v12H92zM116 128h36v12h-36zM164 128h12v36h-12zM80 152h24v24H80zM116 152h12v24h-12zM140 152h12v12h-12zM128 176h48v-12h-48z'/%3E%3C/g%3E%3C/svg%3E";
-
   const renderMenuNodes = (items: MenuTreeItem[], groupLabel: string, depth = 0): React.ReactNode => (
     items.map((item) => {
       const Icon = item.icon;
@@ -590,55 +569,8 @@ export const MainLayout = () => {
             </div>
 
             <div className="app-header-actions ml-4 flex shrink-0 items-center gap-2.5 md:gap-3">
-              <button
-                type="button"
-                className="app-header-action hidden text-red-500 md:inline-flex animate-breathing"
-                title={copiedMyId ? 'ID 已复制' : '复制我的 ID'}
-                onClick={() => void copyMyId()}
-              >
-                <ClipboardCopy size={16} />
-                <span className="hidden xl:inline">{copiedMyId ? 'ID 已复制' : '复制我的ID'}</span>
-                <span className="xl:hidden">复制ID</span>
-              </button>
-
-              <div
-                className="relative hidden md:block"
-                onMouseEnter={() => setSupportOpen(true)}
-                onMouseLeave={() => setSupportOpen(false)}
-              >
-                <button className="app-header-action" type="button">
-                  <UsersRound size={16} />
-                  <span className="hidden xl:inline">客服群</span>
-                </button>
-                {supportOpen ? (
-                  <div className="support-qr-popover absolute left-1/2 top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-950">
-                    <img src={supportQrUrl} alt="客服群二维码" className="h-48 w-48 object-contain" />
-                    <p>扫码加入客服群</p>
-                  </div>
-                ) : null}
-              </div>
-
-              <a
-                className="app-header-action hidden md:inline-flex"
-                href="/status"
-                title="系统可用性监测"
-                onClick={(event) => event.preventDefault()}
-              >
-                <ChartNoAxesCombined size={16} />
-                <span className="hidden xl:inline">系统可用性监测</span>
-              </a>
-
               <TenantSwitcher />
               <HeaderAnnouncementBell />
-
-              <a
-                className="app-header-action hidden md:inline-flex"
-                href="/docs"
-                onClick={(event) => event.preventDefault()}
-              >
-                <BookOpen size={16} />
-                <span className="hidden xl:inline">使用教程</span>
-              </a>
 
               <div className="relative hidden sm:block">
                 <button
@@ -662,11 +594,6 @@ export const MainLayout = () => {
                     </button>
                   </div>
                 ) : null}
-              </div>
-
-              <div className="subscription-progress-mini hidden xl:flex">
-                <div className="subscription-progress-ring" aria-hidden="true" />
-                <span>订阅</span>
               </div>
 
               <div className="app-balance-pill">
