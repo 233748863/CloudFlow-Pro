@@ -200,73 +200,50 @@ export const TenantSwitcher: React.FC = () => {
       </button>
 
       <div
-        className={`dropdown right-0 mt-2 w-56 overflow-hidden transition-all duration-150 ${
+        className={`dropdown tenant-dropdown transition-all duration-150 ${
           isOpen
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
         }`}
       >
         {loading ? (
-          <div className="flex items-center justify-center gap-2 px-4 py-4 text-sm text-slate-500 dark:text-slate-400">
+          <div className="tenant-dropdown-state">
             <Loader2 size={14} className="animate-spin" />
             <span>正在加载</span>
           </div>
         ) : tenants.length === 0 ? (
-          <div className="px-4 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
-            暂无租户
-          </div>
+          <div className="tenant-dropdown-state">暂无租户</div>
         ) : (
-          <div className="py-1.5">
-            {tenants.map((tenant) => {
-              const active = tenant.tenantId === user.tenantId;
-              const tenantName = getTenantName(tenant.tenantName, tenant.tenantId);
-              const tenantIdText = getTenantIdText(tenant.tenantId);
+          <>
+            <div className="tenant-dropdown-label">切换租户</div>
+            <div className="pb-1.5">
+              {tenants.map((tenant) => {
+                const active = tenant.tenantId === user.tenantId;
+                const tenantName = getTenantName(tenant.tenantName, tenant.tenantId);
+                const tenantIdText = getTenantIdText(tenant.tenantId);
 
-              return (
-                <button
-                  key={tenant.tenantId}
-                  type="button"
-                  onClick={() => void handleSwitchTenant(tenant.tenantId)}
-                  disabled={switching}
-                  title={`${tenantName} ${tenantIdText}`}
-                  className={`dropdown-item gap-3 px-3 py-2.5 ${
-                    active ? 'bg-cyan-50 dark:bg-cyan-950/30' : ''
-                  } ${switching ? 'cursor-not-allowed opacity-70' : ''}`}
-                >
-                  <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${
-                      active
-                        ? 'border-cyan-200 bg-cyan-100 text-cyan-600 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-300'
-                        : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500'
-                    }`}
+                return (
+                  <button
+                    key={tenant.tenantId}
+                    type="button"
+                    onClick={() => void handleSwitchTenant(tenant.tenantId)}
+                    disabled={switching}
+                    title={`${tenantName} ${tenantIdText}`}
+                    className={`tenant-option ${active ? 'is-active' : ''}`}
                   >
-                    <Building2 size={15} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div
-                      className={`truncate text-sm font-medium ${
-                        active
-                          ? 'text-cyan-700 dark:text-cyan-200'
-                          : 'text-slate-700 dark:text-slate-200'
-                      }`}
-                    >
-                      {tenantName}
+                    <div className="tenant-option-icon">
+                      <Building2 size={15} />
                     </div>
-                    <div
-                      className={`mt-0.5 truncate text-[11px] ${
-                        active
-                          ? 'text-cyan-600/80 dark:text-cyan-300/80'
-                          : 'text-slate-500 dark:text-slate-400'
-                      }`}
-                    >
-                      {tenantIdText}
+                    <div className="tenant-option-body">
+                      <div className="tenant-option-name">{tenantName}</div>
+                      <div className="tenant-option-id">{tenantIdText}</div>
                     </div>
-                  </div>
-                  {active ? <Check size={14} className="shrink-0 text-cyan-500 dark:text-cyan-300" /> : null}
-                </button>
-              );
-            })}
-          </div>
+                    {active ? <Check size={15} className="tenant-option-check" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, ChevronDown, LogOut, Mail, Phone, User } from 'lucide-react';
+import { ChevronDown, LogOut, Mail, Phone, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 
@@ -130,15 +130,6 @@ export const HeaderUserMenu: React.FC = () => {
           >
             <User size={16} />
             个人资料
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleNavigate('/office/announcement')}
-            className="dropdown-item"
-          >
-            <Bell size={16} />
-            公告中心
           </button>
         </div>
 

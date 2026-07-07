@@ -11389,6 +11389,133 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     color: #0d95b5;
   }
 
+  /* 租户切换下拉：统一走设计令牌，收敛为紧凑列表风格 */
+  .tenant-dropdown {
+    right: 0;
+    margin-top: 0.5rem;
+    width: 15rem;
+    overflow: hidden;
+  }
+
+  .tenant-dropdown-label {
+    padding: 0.625rem 0.875rem 0.375rem;
+    color: var(--cf-text-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .tenant-dropdown-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    color: var(--cf-text-muted);
+    font-size: 0.8125rem;
+  }
+
+  .tenant-option {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.625rem;
+    border: 0;
+    background: transparent;
+    padding: 0.5rem 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .tenant-option:hover {
+    background: var(--cf-surface-muted);
+  }
+
+  html.dark .tenant-option:hover {
+    background: rgba(148, 163, 184, 0.1);
+  }
+
+  .tenant-option.is-active {
+    background: var(--cf-primary-50);
+  }
+
+  html.dark .tenant-option.is-active {
+    background: rgba(13, 149, 181, 0.14);
+  }
+
+  .tenant-option:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  .tenant-option-icon {
+    display: flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    border: 1px solid var(--cf-border);
+    background: var(--cf-surface-strong);
+    color: var(--cf-text-muted);
+  }
+
+  .tenant-option.is-active .tenant-option-icon {
+    border-color: color-mix(in srgb, var(--cf-primary) 45%, transparent);
+    background: var(--cf-primary-50);
+    color: var(--cf-primary);
+  }
+
+  html.dark .tenant-option.is-active .tenant-option-icon {
+    background: rgba(13, 149, 181, 0.18);
+    color: var(--cf-primary-300);
+  }
+
+  .tenant-option-body {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .tenant-option-name {
+    overflow: hidden;
+    color: var(--cf-text);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tenant-option.is-active .tenant-option-name {
+    color: var(--cf-primary);
+  }
+
+  html.dark .tenant-option.is-active .tenant-option-name {
+    color: var(--cf-primary-300);
+  }
+
+  .tenant-option-id {
+    margin-top: 0.0625rem;
+    overflow: hidden;
+    color: var(--cf-text-muted);
+    font-size: 0.6875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tenant-option-check {
+    flex-shrink: 0;
+    color: var(--cf-primary);
+  }
+
+  html.dark .tenant-option-check {
+    color: var(--cf-primary-300);
+  }
+
   .app-balance-pill {
     display: none;
     flex: 0 0 auto;
