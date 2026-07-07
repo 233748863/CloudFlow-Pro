@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, Check } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -64,6 +64,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [positioned, setPositioned] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
@@ -76,12 +77,18 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
     } else {
       setDropdownPos({ top: rect.bottom, left: rect.left, width: rect.width });
     }
+    setPositioned(true);
   }, [dropdownPlacement]);
+
+  // 先于绘制测量位置，避免下拉在左上角闪现后再归位
+  useLayoutEffect(() => {
+    if (isOpen) updateDropdownPos();
+    else setPositioned(false);
+  }, [isOpen, updateDropdownPos]);
 
   useEffect(() => {
     if (isOpen) {
       const t = setTimeout(() => inputRef.current?.focus(), 0);
-      updateDropdownPos();
       const onScroll = () => updateDropdownPos();
       const onResize = () => updateDropdownPos();
       window.addEventListener('scroll', onScroll, true);
@@ -130,19 +137,20 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
       <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
-          'cf-control min-h-[44px] w-full max-w-full overflow-hidden rounded-md px-3.5 py-2.5',
+          'cf-control flex w-full max-w-full items-center overflow-hidden rounded-md px-3 py-1.5 text-[13px]',
+          multiple ? 'min-h-9' : 'h-9 min-h-9',
           disabled ? 'cursor-not-allowed bg-[var(--cf-surface-muted)] dark:bg-slate-900' : 'cursor-pointer',
           isOpen && 'cf-control-active',
         )}
       >
         {selectedOptions.length === 0 ? (
-          <span className="text-sm text-slate-400">{placeholder}</span>
+          <span className="text-[13px] text-slate-400">{placeholder}</span>
         ) : multiple ? (
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex w-full flex-wrap items-center gap-1">
             {selectedOptions.map((opt) => (
               <span
                 key={opt.id}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
               >
                 {opt.label}
                 {!disabled && (
@@ -161,9 +169,9 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
             ))}
           </div>
         ) : (
-          <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="flex w-full min-w-0 items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-              <span className="min-w-0 truncate text-sm text-slate-800 dark:text-slate-100">{selectedOptions[0].label}</span>
+              <span className="min-w-0 truncate text-[13px] text-slate-800 dark:text-slate-100">{selectedOptions[0].label}</span>
               {selectedOptions[0].subLabel && (
                 <span className="min-w-0 flex-1 truncate text-xs text-slate-400">{selectedOptions[0].subLabel}</span>
               )}
@@ -182,7 +190,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
         )}
       </div>
 
-      {isOpen && !disabled && createPortal(
+      {isOpen && !disabled && positioned && createPortal(
         <>
           <div
             className="fixed inset-0 z-[79]"
@@ -190,13 +198,15 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
           />
           <div
             className={cn(
-              'fixed z-[80] overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] shadow-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none',
+              'fixed z-[80] overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950',
             )}
             style={{
               top: dropdownPlacement === 'top' ? dropdownPos.top - 6 : dropdownPos.top + 6,
               left: dropdownPos.left,
               width: dropdownPos.width,
               transform: dropdownPlacement === 'top' ? 'translateY(-100%)' : undefined,
+              // 显式阴影：本项目 Tailwind shadow-* 不生效，浮层一律用 CSS box-shadow（与 .select-dropdown-portal 一致）
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
             }}
           >
           <div className="border-b border-slate-200 p-2 dark:border-slate-800">

@@ -122,15 +122,20 @@ export const UserSelector: React.FC<UserSelectorProps> = (props) => {
     [find, isSingle, props],
   );
 
+  const explicitMultiple = (props as MultipleProps).multiple;
+  const shellMultiple = isSingle ? false : explicitMultiple !== false;
+  // 是否单选行为：single 语法 或 multiple={false} 旧写法都算单选，点击应替换而非追加
+  const selectSingle = !shellMultiple;
+
   const handleToggle = useCallback(
     (id: string) => {
-      if (isSingle) {
+      if (selectSingle) {
         emitChange(valueArray[0] === id ? [] : [id]);
       } else {
         emitChange(valueArray.includes(id) ? valueArray.filter((v) => v !== id) : [...valueArray, id]);
       }
     },
-    [emitChange, isSingle, valueArray],
+    [emitChange, selectSingle, valueArray],
   );
 
   const handleRemove = useCallback(
@@ -139,9 +144,6 @@ export const UserSelector: React.FC<UserSelectorProps> = (props) => {
     },
     [emitChange, valueArray],
   );
-
-  const explicitMultiple = (props as MultipleProps).multiple;
-  const shellMultiple = isSingle ? false : explicitMultiple !== false;
 
   return (
     <SelectorShell

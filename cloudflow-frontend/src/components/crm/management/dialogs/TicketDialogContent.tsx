@@ -15,22 +15,13 @@ export const TicketDialogContent: React.FC = () => {
       <Input value={ticketForm.ticketTitle || ''} onChange={(e) => setTicketForm((prev) => ({ ...prev, ticketTitle: e.target.value }))} placeholder="工单标题" />
       <div className="admin-dialog-field">
         <UserSelector
-          value={ticketForm.ownerId ? [String(ticketForm.ownerId)] : []}
-          onChange={(userIds) => setTicketForm((prev) => ({
+          single
+          value={ticketForm.ownerId ? String(ticketForm.ownerId) : null}
+          onChange={(userId, user) => setTicketForm((prev) => ({
             ...prev,
-            ownerId: userIds[0] ? Number(userIds[0]) : undefined,
-            ownerName: userIds[0] ? prev.ownerName : '',
+            ownerId: userId ? Number(userId) : undefined,
+            ownerName: user?.name || '',
           }))}
-          onUsersChange={(users) => {
-            const user = users[0];
-            if (!user) return;
-            setTicketForm((prev) => ({
-              ...prev,
-              ownerId: Number(user.id),
-              ownerName: user.name,
-            }));
-          }}
-          multiple={false}
           placeholder="搜索姓名、邮箱或部门选择负责人"
         />
       </div>
