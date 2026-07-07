@@ -8,6 +8,7 @@ import com.cloudflow.auth.mapper.SysDictOrphanAlertMapper;
 import com.cloudflow.auth.mapper.SysDictTypeMapper;
 import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.service.impl.DictReferenceRegistry;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.tenant.TenantBroker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class SysDictOrphanAlertScanJob {
     private final SysTenantMapper sysTenantMapper;
 
     @Scheduled(cron = "${cloudflow.auth.dict-orphan-scan-cron:0 0 2 * * ?}")
+    @DistributedJob(name = "auth-dict-orphan-alert-scan-job", lockTime = 1800, waitTime = 5)
     public void scan() {
         List<DictReferenceRegistry.ImplicitDictReferenceAlert> implicitAlerts = dictReferenceRegistry.implicitOnlyBindings();
         List<Long> tenantIds = loadActiveTenantIds();

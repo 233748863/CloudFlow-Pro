@@ -148,6 +148,7 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
         }
         UpdateWrapper<HrWorkInjury> uw = new UpdateWrapper<>();
         uw.eq("id", injury.getId()).eq("tenant_id", currentTenantId())
+                .and(item -> item.isNull("process_instance_id").or().eq("process_instance_id", ""))
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         injuryMapper.update(null, uw);

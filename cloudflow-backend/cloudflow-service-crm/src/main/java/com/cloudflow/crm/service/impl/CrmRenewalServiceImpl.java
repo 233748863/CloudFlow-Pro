@@ -1,5 +1,6 @@
 package com.cloudflow.crm.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
@@ -200,12 +201,13 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         if (!StringUtils.hasText(instanceId)) {
             throw new IllegalStateException("启动 CRM 续约流程未返回实例ID: renewalId=" + current.getRenewalId());
         }
-        CrmRenewal update = new CrmRenewal();
-        update.setRenewalId(current.getRenewalId());
-        update.setInstanceId(instanceId);
-        update.setUpdateBy(StringUtils.hasText(current.getOwnerName()) ? current.getOwnerName() : "event-consumer");
-        update.setUpdateTime(now());
-        updateById(update);
+        LambdaUpdateWrapper<CrmRenewal> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(CrmRenewal::getRenewalId, current.getRenewalId())
+                .and(w -> w.isNull(CrmRenewal::getInstanceId).or().eq(CrmRenewal::getInstanceId, ""))
+                .set(CrmRenewal::getInstanceId, instanceId)
+                .set(CrmRenewal::getUpdateBy, StringUtils.hasText(current.getOwnerName()) ? current.getOwnerName() : "event-consumer")
+                .set(CrmRenewal::getUpdateTime, now());
+        update(null, wrapper);
     }
 
     private void startRenewalWorkflowAfterCommit(Long renewalId) {

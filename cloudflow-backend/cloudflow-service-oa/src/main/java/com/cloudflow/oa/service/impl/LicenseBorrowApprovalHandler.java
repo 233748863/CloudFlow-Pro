@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseBorrow;
@@ -36,8 +37,9 @@ public class LicenseBorrowApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public void handleApproved(ApprovalResultDTO dto) {
-        updateStatus(dto, OaBorrowConstants.STATUS_APPROVED);
-        notifyKeeper(dto);
+        if (updateStatus(dto, OaBorrowConstants.STATUS_APPROVED)) {
+            notifyKeeper(dto);
+        }
     }
 
     @Override
@@ -45,20 +47,29 @@ public class LicenseBorrowApprovalHandler implements ApprovalResultHandler {
         updateStatus(dto, OaBorrowConstants.STATUS_REJECTED);
     }
 
-    private void updateStatus(ApprovalResultDTO dto, String status) {
+    private boolean updateStatus(ApprovalResultDTO dto, String status) {
         LambdaUpdateWrapper<OaLicenseBorrow> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(OaLicenseBorrow::getId, dto.getBusinessId())
-                .set(OaLicenseBorrow::getInstanceId, dto.getProcessInstanceId())
+                .eq(OaLicenseBorrow::getInstanceId, dto.getProcessInstanceId())
                 .set(OaLicenseBorrow::getStatus, status)
                 .set(OaLicenseBorrow::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(OaLicenseBorrow::getUpdateTime, LocalDateTime.now());
 
         int updated = licenseBorrowMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到证照借用记录，businessId=" + dto.getBusinessId());
+            OaLicenseBorrow borrow = licenseBorrowMapper.selectById(dto.getBusinessId());
+            if (borrow == null) {
+                throw new IllegalStateException("未找到证照借用记录，businessId=" + dto.getBusinessId());
+            }
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "证照借用", dto.getBusinessId(), borrow.getInstanceId(), dto.getProcessInstanceId())) {
+                return false;
+            }
+            throw new IllegalStateException("证照借用审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         log.info("证照借用审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+        return true;
     }
 
     private void notifyKeeper(ApprovalResultDTO dto) {

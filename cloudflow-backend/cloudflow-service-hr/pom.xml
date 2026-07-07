@@ -83,6 +83,10 @@
         </dependency>
         <dependency>
             <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-job</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-excel</artifactId>
         </dependency>
         <dependency>

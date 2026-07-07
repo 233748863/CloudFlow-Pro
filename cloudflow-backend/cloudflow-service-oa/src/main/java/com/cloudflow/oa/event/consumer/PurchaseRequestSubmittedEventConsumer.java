@@ -1,5 +1,6 @@
 package com.cloudflow.oa.event.consumer;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
@@ -81,12 +82,13 @@ public class PurchaseRequestSubmittedEventConsumer implements BusinessEventConsu
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (instanceId != null) {
-                    BizPurchaseRequest update = new BizPurchaseRequest();
-                    update.setId(purchase.getId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateBy(UserContext.getUserName() != null ? UserContext.getUserName() : "event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    purchaseRequestService.updateById(update);
+                    LambdaUpdateWrapper<BizPurchaseRequest> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(BizPurchaseRequest::getId, purchase.getId())
+                            .and(w -> w.isNull(BizPurchaseRequest::getInstanceId).or().eq(BizPurchaseRequest::getInstanceId, ""))
+                            .set(BizPurchaseRequest::getInstanceId, instanceId)
+                            .set(BizPurchaseRequest::getUpdateBy, UserContext.getUserName() != null ? UserContext.getUserName() : "event-consumer")
+                            .set(BizPurchaseRequest::getUpdateTime, LocalDateTime.now());
+                    purchaseRequestService.update(null, wrapper);
                 }
                 log.info("采购申请 {} 工作流启动成功，流程实例ID: {}", event.getPurchaseNo(), instanceId);
                 return;

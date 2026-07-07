@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaProject;
 import com.cloudflow.oa.mapper.OaProjectMapper;
@@ -28,8 +29,9 @@ public class ProjectApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public void handleApproved(ApprovalResultDTO dto) {
-        updateStatus(dto, "APPROVED");
-        projectExecutionStateService.syncProjectStatus(dto.getBusinessId(), WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
+        if (updateStatus(dto, "APPROVED")) {
+            projectExecutionStateService.syncProjectStatus(dto.getBusinessId(), WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
+        }
     }
 
     @Override
@@ -37,18 +39,27 @@ public class ProjectApprovalHandler implements ApprovalResultHandler {
         updateStatus(dto, "REJECTED");
     }
 
-    private void updateStatus(ApprovalResultDTO dto, String status) {
+    private boolean updateStatus(ApprovalResultDTO dto, String status) {
         LambdaUpdateWrapper<OaProject> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(OaProject::getProjectId, dto.getBusinessId())
-                .set(OaProject::getInstanceId, dto.getProcessInstanceId())
+                .eq(OaProject::getInstanceId, dto.getProcessInstanceId())
                 .set(OaProject::getStatus, status)
                 .set(OaProject::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(OaProject::getUpdateTime, LocalDateTime.now());
         int updated = projectMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到项目记录，businessId=" + dto.getBusinessId());
+            OaProject project = projectMapper.selectById(dto.getBusinessId());
+            if (project == null) {
+                throw new IllegalStateException("未找到项目记录，businessId=" + dto.getBusinessId());
+            }
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "项目", dto.getBusinessId(), project.getInstanceId(), dto.getProcessInstanceId())) {
+                return false;
+            }
+            throw new IllegalStateException("项目审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         log.info("项目立项审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+        return true;
     }
 }

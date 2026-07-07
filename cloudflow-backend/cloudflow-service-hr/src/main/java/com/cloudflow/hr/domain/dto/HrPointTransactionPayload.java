@@ -17,6 +17,7 @@ public class HrPointTransactionPayload {
 
     private Long tenantId;
     private Long accountId;
+    private Long employeeId;
     private String txnNo;
     private String direction;
     private String sourceType;

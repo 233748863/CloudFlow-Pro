@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
@@ -34,30 +35,42 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public void handleApproved(ApprovalResultDTO dto) {
-        updateStatus(dto, "APPROVED");
+        if (updateStatus(dto, "APPROVED")) {
+            purchaseRequestService.updatePaymentStatus(dto.getBusinessId(), "APPROVED");
+        }
     }
 
     @Override
     public void handleRejected(ApprovalResultDTO dto) {
-        updateStatus(dto, "REJECTED");
-        releaseBudget(dto.getBusinessId());
+        if (updateStatus(dto, "REJECTED")) {
+            purchaseRequestService.updatePaymentStatus(dto.getBusinessId(), "REJECTED");
+            releaseBudget(dto.getBusinessId());
+        }
     }
 
-    private void updateStatus(ApprovalResultDTO dto, String status) {
+    private boolean updateStatus(ApprovalResultDTO dto, String status) {
         LambdaUpdateWrapper<BizPaymentRequest> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizPaymentRequest::getId, dto.getBusinessId())
-                .set(BizPaymentRequest::getInstanceId, dto.getProcessInstanceId())
+                .eq(BizPaymentRequest::getInstanceId, dto.getProcessInstanceId())
                 .set(BizPaymentRequest::getStatus, status)
                 .set(BizPaymentRequest::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(BizPaymentRequest::getUpdateTime, LocalDateTime.now());
 
         int updated = paymentRequestMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到付款申请记录，businessId=" + dto.getBusinessId());
+            BizPaymentRequest payment = paymentRequestMapper.selectById(dto.getBusinessId());
+            if (payment == null) {
+                throw new IllegalStateException("未找到付款申请记录，businessId=" + dto.getBusinessId());
+            }
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "付款申请", dto.getBusinessId(), payment.getInstanceId(), dto.getProcessInstanceId())) {
+                return false;
+            }
+            throw new IllegalStateException("付款申请审批结果回写失败，businessId=" + dto.getBusinessId());
         }
-        purchaseRequestService.updatePaymentStatus(dto.getBusinessId(), status);
         log.info("付款申请审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+        return true;
     }
 
     private void releaseBudget(Long paymentId) {

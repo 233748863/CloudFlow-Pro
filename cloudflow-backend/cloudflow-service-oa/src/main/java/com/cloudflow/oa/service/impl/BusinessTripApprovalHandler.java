@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BusinessTrip;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
@@ -41,14 +42,22 @@ public class BusinessTripApprovalHandler implements ApprovalResultHandler {
     private void updateStatus(ApprovalResultDTO dto, String status) {
         LambdaUpdateWrapper<BusinessTrip> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BusinessTrip::getId, dto.getBusinessId())
-                .set(BusinessTrip::getInstanceId, dto.getProcessInstanceId())
+                .eq(BusinessTrip::getInstanceId, dto.getProcessInstanceId())
                 .set(BusinessTrip::getStatus, status)
                 .set(BusinessTrip::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(BusinessTrip::getUpdateTime, LocalDateTime.now());
 
         int updated = businessTripMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到出差申请记录，businessId=" + dto.getBusinessId());
+            BusinessTrip trip = businessTripMapper.selectById(dto.getBusinessId());
+            if (trip == null) {
+                throw new IllegalStateException("未找到出差申请记录，businessId=" + dto.getBusinessId());
+            }
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "出差申请", dto.getBusinessId(), trip.getInstanceId(), dto.getProcessInstanceId())) {
+                return;
+            }
+            throw new IllegalStateException("出差申请审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         log.info("出差申请审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());

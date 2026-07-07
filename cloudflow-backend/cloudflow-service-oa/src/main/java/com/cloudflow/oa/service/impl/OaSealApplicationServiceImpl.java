@@ -258,12 +258,13 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (StringUtils.hasText(instanceId)) {
-                    OaSealApplication update = new OaSealApplication();
-                    update.setId(application.getId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateBy("event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    updateById(update);
+                    LambdaUpdateWrapper<OaSealApplication> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(OaSealApplication::getId, application.getId())
+                            .and(w -> w.isNull(OaSealApplication::getInstanceId).or().eq(OaSealApplication::getInstanceId, ""))
+                            .set(OaSealApplication::getInstanceId, instanceId)
+                            .set(OaSealApplication::getUpdateBy, "event-consumer")
+                            .set(OaSealApplication::getUpdateTime, LocalDateTime.now());
+                    update(null, wrapper);
                 }
             } else {
                 log.warn("用印申请 {} 工作流启动返回异常: {}", application.getApplicationNo(), result != null ? result.getMsg() : "null");

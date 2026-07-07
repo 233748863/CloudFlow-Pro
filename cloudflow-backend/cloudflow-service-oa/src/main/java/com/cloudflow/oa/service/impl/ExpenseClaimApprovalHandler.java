@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
@@ -39,24 +40,34 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public void handleRejected(ApprovalResultDTO dto) {
-        updateStatus(dto, "REJECTED");
-        releaseBudget(dto.getBusinessId());
+        if (updateStatus(dto, "REJECTED")) {
+            releaseBudget(dto.getBusinessId());
+        }
     }
 
-    private void updateStatus(ApprovalResultDTO dto, String status) {
+    private boolean updateStatus(ApprovalResultDTO dto, String status) {
         LambdaUpdateWrapper<BizExpenseClaim> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizExpenseClaim::getId, dto.getBusinessId())
-                .set(BizExpenseClaim::getInstanceId, dto.getProcessInstanceId())
+                .eq(BizExpenseClaim::getInstanceId, dto.getProcessInstanceId())
                 .set(BizExpenseClaim::getStatus, status)
                 .set(BizExpenseClaim::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(BizExpenseClaim::getUpdateTime, LocalDateTime.now());
 
         int updated = expenseClaimMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到报销申请记录，businessId=" + dto.getBusinessId());
+            BizExpenseClaim claim = expenseClaimMapper.selectById(dto.getBusinessId());
+            if (claim == null) {
+                throw new IllegalStateException("未找到报销申请记录，businessId=" + dto.getBusinessId());
+            }
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "报销申请", dto.getBusinessId(), claim.getInstanceId(), dto.getProcessInstanceId())) {
+                return false;
+            }
+            throw new IllegalStateException("报销申请审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         log.info("报销申请审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+        return true;
     }
 
     private void releaseBudget(Long claimId) {

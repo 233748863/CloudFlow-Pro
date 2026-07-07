@@ -1539,6 +1539,7 @@ CREATE TABLE hr_point_transaction (
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
   PRIMARY KEY (id),
   UNIQUE KEY uk_hr_point_txn_no (tenant_id, txn_no),
+  UNIQUE KEY uk_hr_point_source_direction (tenant_id, source_type, source_id, direction),
   KEY idx_hr_point_txn_account (tenant_id, account_id, effective_date),
   KEY idx_hr_point_txn_emp (tenant_id, employee_id, create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR 积分流水';

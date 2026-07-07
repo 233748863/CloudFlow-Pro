@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.web.MapConverters;
@@ -19,6 +20,7 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -97,11 +99,16 @@ public class HrPointAccountServiceImpl implements IHrPointAccountService {
         if (points == null || points <= 0) {
             throw new HrBusinessException("INVALID_POINTS", "积分必须为正数");
         }
+        TransactionClaim claim = claimTransaction(accountId, points, "IN", sourceType, sourceId, remark);
+        if (claim.existing()) {
+            return claim.transactionId();
+        }
         int rows = accountMapper.credit(accountId, currentTenantId(), points);
         if (rows == 0) {
             throw new HrBusinessException("ACCOUNT_NOT_FOUND", "积分账户不存在：" + accountId);
         }
-        return writeTransaction(accountId, points, "IN", sourceType, sourceId, remark);
+        completeTransaction(accountId, claim.transactionId());
+        return claim.transactionId();
     }
 
     @Override
@@ -110,11 +117,16 @@ public class HrPointAccountServiceImpl implements IHrPointAccountService {
         if (points == null || points <= 0) {
             throw new HrBusinessException("INVALID_POINTS", "积分必须为正数");
         }
+        TransactionClaim claim = claimTransaction(accountId, points, "OUT", sourceType, sourceId, remark);
+        if (claim.existing()) {
+            return claim.transactionId();
+        }
         int rows = accountMapper.debit(accountId, currentTenantId(), points);
         if (rows == 0) {
             throw new HrBusinessException("INSUFFICIENT_POINTS", "积分余额不足或账户不存在");
         }
-        return writeTransaction(accountId, points, "OUT", sourceType, sourceId, remark);
+        completeTransaction(accountId, claim.transactionId());
+        return claim.transactionId();
     }
 
     @Override
@@ -123,11 +135,16 @@ public class HrPointAccountServiceImpl implements IHrPointAccountService {
         if (points == null || points <= 0) {
             throw new HrBusinessException("INVALID_POINTS", "积分必须为正数");
         }
+        TransactionClaim claim = claimTransaction(accountId, points, "FROZEN", sourceType, sourceId, remark);
+        if (claim.existing()) {
+            return claim.transactionId();
+        }
         int rows = accountMapper.freeze(accountId, currentTenantId(), points);
         if (rows == 0) {
             throw new HrBusinessException("INSUFFICIENT_POINTS", "积分余额不足无法冻结");
         }
-        return writeTransaction(accountId, points, "FROZEN", sourceType, sourceId, remark);
+        completeTransaction(accountId, claim.transactionId());
+        return claim.transactionId();
     }
 
     @Override
@@ -136,11 +153,16 @@ public class HrPointAccountServiceImpl implements IHrPointAccountService {
         if (points == null || points <= 0) {
             throw new HrBusinessException("INVALID_POINTS", "积分必须为正数");
         }
+        TransactionClaim claim = claimTransaction(accountId, points, "UNFROZEN", sourceType, sourceId, remark);
+        if (claim.existing()) {
+            return claim.transactionId();
+        }
         int rows = accountMapper.unfreeze(accountId, currentTenantId(), points);
         if (rows == 0) {
             throw new HrBusinessException("INSUFFICIENT_FROZEN_POINTS", "冻结积分不足无法解冻");
         }
-        return writeTransaction(accountId, points, "UNFROZEN", sourceType, sourceId, remark);
+        completeTransaction(accountId, claim.transactionId());
+        return claim.transactionId();
     }
 
     @Override
@@ -156,28 +178,84 @@ public class HrPointAccountServiceImpl implements IHrPointAccountService {
         throw new HrBusinessException("INVALID_DIRECTION", "方向必须为 IN 或 OUT");
     }
 
-    private Long writeTransaction(Long accountId,
-                                  Integer points,
-                                  String direction,
-                                  String sourceType,
-                                  Long sourceId,
-                                  String remark) {
-        HrPointAccount latest = accountMapper.selectById(accountId);
+    private TransactionClaim claimTransaction(Long accountId,
+                                              Integer points,
+                                              String direction,
+                                              String sourceType,
+                                              Long sourceId,
+                                              String remark) {
+        Long existingId = findExistingTransactionId(sourceType, sourceId, direction);
+        if (existingId != null) {
+            return new TransactionClaim(existingId, true);
+        }
+        HrPointAccount latest = selectCurrentTenantAccount(accountId);
+        if (latest == null) {
+            throw new HrBusinessException("ACCOUNT_NOT_FOUND", "积分账户不存在：" + accountId);
+        }
         HrPointTransaction txn = new HrPointTransaction();
         txn.setTenantId(currentTenantId());
         txn.setAccountId(accountId);
-        txn.setTxnNo("PT-" + System.currentTimeMillis() + "-" + accountId);
+        txn.setEmployeeId(latest.getEmployeeId());
+        txn.setTxnNo("PT-" + System.currentTimeMillis() + "-" + accountId + "-" + System.nanoTime());
         txn.setDirection(direction);
         txn.setSourceType(sourceType);
         txn.setSourceId(sourceId);
         txn.setPoints(points);
-        txn.setBalanceAfter(latest == null ? null : latest.getAvailablePoints());
+        txn.setBalanceAfter(latest.getAvailablePoints());
         txn.setRemark(remark);
         txn.setDeleted(0);
         txn.setCreateBy(currentUserName());
         txn.setUpdateBy(currentUserName());
-        transactionMapper.insert(txn);
-        return txn.getId();
+        try {
+            transactionMapper.insert(txn);
+            return new TransactionClaim(txn.getId(), false);
+        } catch (DuplicateKeyException ex) {
+            existingId = findExistingTransactionId(sourceType, sourceId, direction);
+            if (existingId != null) {
+                return new TransactionClaim(existingId, true);
+            }
+            throw ex;
+        }
+    }
+
+    private void completeTransaction(Long accountId, Long transactionId) {
+        HrPointAccount latest = selectCurrentTenantAccount(accountId);
+        if (latest == null) {
+            throw new HrBusinessException("ACCOUNT_NOT_FOUND", "积分账户不存在：" + accountId);
+        }
+        UpdateWrapper<HrPointTransaction> uw = new UpdateWrapper<>();
+        uw.eq("id", transactionId)
+                .eq("tenant_id", currentTenantId())
+                .set("balance_after", latest.getAvailablePoints())
+                .set("update_by", currentUserName())
+                .set("update_time", LocalDateTime.now());
+        transactionMapper.update(null, uw);
+    }
+
+    private Long findExistingTransactionId(String sourceType, Long sourceId, String direction) {
+        if (!StringUtils.hasText(sourceType) || sourceId == null || !StringUtils.hasText(direction)) {
+            return null;
+        }
+        QueryWrapper<HrPointTransaction> qw = new QueryWrapper<>();
+        qw.eq("tenant_id", currentTenantId())
+                .eq("source_type", sourceType)
+                .eq("source_id", sourceId)
+                .eq("direction", direction)
+                .eq("deleted", 0)
+                .last("LIMIT 1");
+        HrPointTransaction existing = transactionMapper.selectOne(qw);
+        return existing == null ? null : existing.getId();
+    }
+
+    private HrPointAccount selectCurrentTenantAccount(Long accountId) {
+        QueryWrapper<HrPointAccount> qw = new QueryWrapper<>();
+        qw.eq("id", accountId)
+                .eq("tenant_id", currentTenantId())
+                .eq("deleted", 0);
+        return accountMapper.selectOne(qw);
+    }
+
+    private record TransactionClaim(Long transactionId, boolean existing) {
     }
 
     private long currentTenantId() {

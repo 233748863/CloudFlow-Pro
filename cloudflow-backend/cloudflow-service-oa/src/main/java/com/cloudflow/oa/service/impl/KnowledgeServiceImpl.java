@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -259,12 +260,13 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
 
         R<?> result = remoteWorkflowService.startProcessInternal(req);
         String instanceId = requireWorkflowInstanceId(document, result);
-        KnowledgeDocument update = new KnowledgeDocument();
-        update.setDocumentId(document.getDocumentId());
-        update.setInstanceId(instanceId);
-        update.setUpdateBy("event-consumer");
-        update.setUpdateTime(LocalDateTime.now());
-        updateById(update);
+        LambdaUpdateWrapper<KnowledgeDocument> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(KnowledgeDocument::getDocumentId, document.getDocumentId())
+                .and(w -> w.isNull(KnowledgeDocument::getInstanceId).or().eq(KnowledgeDocument::getInstanceId, ""))
+                .set(KnowledgeDocument::getInstanceId, instanceId)
+                .set(KnowledgeDocument::getUpdateBy, "event-consumer")
+                .set(KnowledgeDocument::getUpdateTime, LocalDateTime.now());
+        update(null, wrapper);
     }
 
     @Transactional(rollbackFor = Exception.class)

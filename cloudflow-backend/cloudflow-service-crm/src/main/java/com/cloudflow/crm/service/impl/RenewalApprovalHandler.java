@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.domain.CrmRenewal;
 import com.cloudflow.crm.mapper.CrmRenewalMapper;
@@ -37,7 +38,7 @@ public class RenewalApprovalHandler implements ApprovalResultHandler {
         updateStatus(dto, "LOST");
     }
 
-    private void updateStatus(ApprovalResultDTO dto, String status) {
+    private boolean updateStatus(ApprovalResultDTO dto, String status) {
         CrmRenewal renewal = renewalMapper.selectById(dto.getBusinessId());
         if (renewal == null) {
             throw new IllegalStateException("未找到续约记录，businessId=" + dto.getBusinessId());
@@ -45,16 +46,21 @@ public class RenewalApprovalHandler implements ApprovalResultHandler {
 
         LambdaUpdateWrapper<CrmRenewal> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(CrmRenewal::getRenewalId, dto.getBusinessId())
-                .set(CrmRenewal::getInstanceId, dto.getProcessInstanceId())
+                .eq(CrmRenewal::getInstanceId, dto.getProcessInstanceId())
                 .set(CrmRenewal::getStatus, status)
                 .set(CrmRenewal::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(CrmRenewal::getUpdateTime, LocalDateTime.now());
         int updated = renewalMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到续约记录，businessId=" + dto.getBusinessId());
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "CRM续约", dto.getBusinessId(), renewal.getInstanceId(), dto.getProcessInstanceId())) {
+                return false;
+            }
+            throw new IllegalStateException("CRM续约审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         crmCustomerService.refreshHealth(renewal.getCustomerId());
         log.info("CRM 续约审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+        return true;
     }
 }

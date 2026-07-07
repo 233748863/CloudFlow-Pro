@@ -1,5 +1,6 @@
 package com.cloudflow.oa.event.consumer;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
@@ -85,12 +86,13 @@ public class ExpenseClaimSubmittedEventConsumer implements BusinessEventConsumer
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (instanceId != null) {
-                    BizExpenseClaim update = new BizExpenseClaim();
-                    update.setId(claim.getId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateTime(LocalDateTime.now());
-                    update.setUpdateBy(UserContext.getUserName() != null ? UserContext.getUserName() : "event-consumer");
-                    expenseClaimService.updateById(update);
+                    LambdaUpdateWrapper<BizExpenseClaim> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(BizExpenseClaim::getId, claim.getId())
+                            .and(w -> w.isNull(BizExpenseClaim::getInstanceId).or().eq(BizExpenseClaim::getInstanceId, ""))
+                            .set(BizExpenseClaim::getInstanceId, instanceId)
+                            .set(BizExpenseClaim::getUpdateTime, LocalDateTime.now())
+                            .set(BizExpenseClaim::getUpdateBy, UserContext.getUserName() != null ? UserContext.getUserName() : "event-consumer");
+                    expenseClaimService.update(null, wrapper);
                 }
                 log.info("报销申请 {} 工作流启动成功，流程实例ID: {}", event.getClaimNo(), instanceId);
                 return;

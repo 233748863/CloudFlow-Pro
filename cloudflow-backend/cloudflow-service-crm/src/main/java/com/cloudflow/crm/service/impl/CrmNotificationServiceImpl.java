@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.event.SystemNoticeDispatchEvent;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.redis.config.RuntimeSysConfigService;
 import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.tenant.support.TenantIterator;
@@ -66,6 +67,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
 
     /** 每天 09:00 触发跟进逾期 / 回款到期 / 商机停滞通知。 */
     @Scheduled(cron = "0 0 9 * * ?")
+    @DistributedJob(name = "crm-notification-dispatch-job", lockTime = 1800, waitTime = 5)
     public void scheduledDispatch() {
         log.info("CRM notification scheduled dispatch start");
         java.util.concurrent.atomic.AtomicInteger total = new java.util.concurrent.atomic.AtomicInteger();
@@ -81,6 +83,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
 
     /** 每小时扫描一次即将到期 / 已超时工单，避免日级任务错过 SLA 窗口。 */
     @Scheduled(cron = "${cloudflow.crm.notification.ticket-sla-cron:0 0 * * * ?}")
+    @DistributedJob(name = "crm-ticket-sla-notification-job", lockTime = 1800, waitTime = 5)
     public void scheduledTicketSlaDispatch() {
         log.info("CRM ticket SLA notification dispatch start");
         java.util.concurrent.atomic.AtomicInteger total = new java.util.concurrent.atomic.AtomicInteger();

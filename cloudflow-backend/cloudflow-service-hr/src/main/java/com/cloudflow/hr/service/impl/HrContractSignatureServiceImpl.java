@@ -204,6 +204,7 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
         UpdateWrapper<HrContractSignature> wrapper = new UpdateWrapper<>();
         wrapper.eq("id", signature.getId())
                 .eq("tenant_id", signature.getTenantId())
+                .and(item -> item.isNull("process_instance_id").or().eq("process_instance_id", ""))
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         contractSignatureMapper.update(null, wrapper);

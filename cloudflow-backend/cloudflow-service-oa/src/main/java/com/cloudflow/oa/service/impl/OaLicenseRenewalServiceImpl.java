@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
@@ -10,6 +11,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseRenewal;
@@ -216,12 +218,13 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (StringUtils.hasText(instanceId)) {
-                    OaLicenseRenewal update = new OaLicenseRenewal();
-                    update.setId(renewal.getId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateBy("event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    updateById(update);
+                    LambdaUpdateWrapper<OaLicenseRenewal> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(OaLicenseRenewal::getId, renewal.getId())
+                            .and(w -> w.isNull(OaLicenseRenewal::getInstanceId).or().eq(OaLicenseRenewal::getInstanceId, ""))
+                            .set(OaLicenseRenewal::getInstanceId, instanceId)
+                            .set(OaLicenseRenewal::getUpdateBy, "event-consumer")
+                            .set(OaLicenseRenewal::getUpdateTime, LocalDateTime.now());
+                    update(null, wrapper);
                 }
             } else {
                 log.warn("证照续期 {} 工作流启动返回异常: {}", renewal.getRenewalNo(), result != null ? result.getMsg() : "null");
@@ -272,11 +275,20 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
             return;
         }
         LocalDateTime now = LocalDateTime.now();
-        renewal.setInstanceId(processInstanceId);
-        renewal.setStatus(OaBorrowConstants.STATUS_APPROVED);
-        renewal.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
-        renewal.setUpdateTime(now);
-        updateById(renewal);
+        LambdaUpdateWrapper<OaLicenseRenewal> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(OaLicenseRenewal::getId, id)
+                .eq(OaLicenseRenewal::getInstanceId, processInstanceId)
+                .eq(OaLicenseRenewal::getStatus, OaBorrowConstants.STATUS_PENDING)
+                .set(OaLicenseRenewal::getStatus, OaBorrowConstants.STATUS_APPROVED)
+                .set(OaLicenseRenewal::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
+                .set(OaLicenseRenewal::getUpdateTime, now);
+        if (!update(null, wrapper)) {
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "证照续期", id, renewal.getInstanceId(), processInstanceId)) {
+                return;
+            }
+            throw new IllegalStateException("证照续期审批结果回写失败，businessId=" + id);
+        }
 
         OaLicense license = requireLicense(renewal.getLicenseId());
         license.setIssueDate(renewal.getNewIssueDate());
@@ -293,11 +305,19 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
     @Transactional(rollbackFor = Exception.class)
     public void rejectRenewal(Long id, String processInstanceId) {
         OaLicenseRenewal renewal = requireRenewal(id);
-        renewal.setInstanceId(processInstanceId);
-        renewal.setStatus(OaBorrowConstants.STATUS_REJECTED);
-        renewal.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
-        renewal.setUpdateTime(LocalDateTime.now());
-        updateById(renewal);
+        LambdaUpdateWrapper<OaLicenseRenewal> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(OaLicenseRenewal::getId, id)
+                .eq(OaLicenseRenewal::getInstanceId, processInstanceId)
+                .set(OaLicenseRenewal::getStatus, OaBorrowConstants.STATUS_REJECTED)
+                .set(OaLicenseRenewal::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
+                .set(OaLicenseRenewal::getUpdateTime, LocalDateTime.now());
+        if (!update(null, wrapper)) {
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "证照续期", id, renewal.getInstanceId(), processInstanceId)) {
+                return;
+            }
+            throw new IllegalStateException("证照续期审批结果回写失败，businessId=" + id);
+        }
     }
 
     private void normalizeAndValidate(OaLicenseRenewal renewal) {

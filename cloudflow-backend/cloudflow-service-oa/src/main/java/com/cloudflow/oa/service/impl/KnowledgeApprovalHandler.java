@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.KnowledgeDocument;
 import com.cloudflow.oa.mapper.KnowledgeDocumentMapper;
@@ -31,12 +32,14 @@ public class KnowledgeApprovalHandler implements ApprovalResultHandler {
     public void handleApproved(ApprovalResultDTO dto) {
         LambdaUpdateWrapper<KnowledgeDocument> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(KnowledgeDocument::getDocumentId, dto.getBusinessId())
-                .set(KnowledgeDocument::getInstanceId, dto.getProcessInstanceId())
+                .eq(KnowledgeDocument::getInstanceId, dto.getProcessInstanceId())
                 .set(KnowledgeDocument::getStatus, "PUBLISHED")
                 .set(KnowledgeDocument::getPublishTime, LocalDateTime.now())
                 .set(KnowledgeDocument::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(KnowledgeDocument::getUpdateTime, LocalDateTime.now());
-        updateStatus(dto, wrapper, "PUBLISHED");
+        if (!updateStatus(dto, wrapper, "PUBLISHED")) {
+            return;
+        }
 
         // OA-P0-1 发布即生成版本快照
         try {
@@ -54,21 +57,30 @@ public class KnowledgeApprovalHandler implements ApprovalResultHandler {
     public void handleRejected(ApprovalResultDTO dto) {
         LambdaUpdateWrapper<KnowledgeDocument> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(KnowledgeDocument::getDocumentId, dto.getBusinessId())
-                .set(KnowledgeDocument::getInstanceId, dto.getProcessInstanceId())
+                .eq(KnowledgeDocument::getInstanceId, dto.getProcessInstanceId())
                 .set(KnowledgeDocument::getStatus, "REJECTED")
                 .set(KnowledgeDocument::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(KnowledgeDocument::getUpdateTime, LocalDateTime.now());
         updateStatus(dto, wrapper, "REJECTED");
     }
 
-    private void updateStatus(ApprovalResultDTO dto,
-                              LambdaUpdateWrapper<KnowledgeDocument> wrapper,
-                              String status) {
+    private boolean updateStatus(ApprovalResultDTO dto,
+                                 LambdaUpdateWrapper<KnowledgeDocument> wrapper,
+                                 String status) {
         int updated = knowledgeDocumentMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到知识库文档，businessId=" + dto.getBusinessId());
+            KnowledgeDocument document = knowledgeDocumentMapper.selectById(dto.getBusinessId());
+            if (document == null) {
+                throw new IllegalStateException("未找到知识库文档，businessId=" + dto.getBusinessId());
+            }
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "知识库文档", dto.getBusinessId(), document.getInstanceId(), dto.getProcessInstanceId())) {
+                return false;
+            }
+            throw new IllegalStateException("知识库文档审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         log.info("知识库发布审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+        return true;
     }
 }

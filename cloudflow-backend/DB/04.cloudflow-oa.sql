@@ -1029,6 +1029,7 @@ CREATE TABLE oa_budget_ledger (
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (ledger_id),
+  UNIQUE KEY uk_budget_ledger_biz_op (tenant_id, business_type, business_id, operation_type, target_type, target_id, subject_code),
   KEY idx_budget_ledger_budget (budget_id),
   KEY idx_budget_ledger_business (business_type, business_id),
   KEY idx_budget_ledger_tenant (tenant_id)
@@ -1855,4 +1856,3 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- =========================================================
 -- 脚本执行完成
 -- =========================================================
-

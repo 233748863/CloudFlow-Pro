@@ -1,6 +1,7 @@
 package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
@@ -209,12 +210,13 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         if (!StringUtils.hasText(instanceId)) {
             throw new IllegalStateException("启动 CRM 报价流程未返回实例ID: quoteId=" + current.getQuoteId());
         }
-        CrmQuote update = new CrmQuote();
-        update.setQuoteId(current.getQuoteId());
-        update.setInstanceId(instanceId);
-        update.setUpdateBy(StringUtils.hasText(current.getOwnerName()) ? current.getOwnerName() : "event-consumer");
-        update.setUpdateTime(now());
-        updateById(update);
+        LambdaUpdateWrapper<CrmQuote> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(CrmQuote::getQuoteId, current.getQuoteId())
+                .and(w -> w.isNull(CrmQuote::getInstanceId).or().eq(CrmQuote::getInstanceId, ""))
+                .set(CrmQuote::getInstanceId, instanceId)
+                .set(CrmQuote::getUpdateBy, StringUtils.hasText(current.getOwnerName()) ? current.getOwnerName() : "event-consumer")
+                .set(CrmQuote::getUpdateTime, now());
+        update(null, wrapper);
     }
 
     private void startQuoteWorkflowAfterCommit(Long quoteId) {

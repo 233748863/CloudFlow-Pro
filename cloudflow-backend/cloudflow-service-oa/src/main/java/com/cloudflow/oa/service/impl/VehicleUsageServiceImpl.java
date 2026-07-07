@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.domain.PageQuery;
@@ -108,10 +109,11 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
 
         String instanceId = extractInstanceId(wfResult.getData());
         if (instanceId != null) {
-            VehicleUsage update = new VehicleUsage();
-            update.setUsageId(usage.getUsageId());
-            update.setProcessInstanceId(instanceId);
-            this.updateById(update);
+            LambdaUpdateWrapper<VehicleUsage> wrapper = new LambdaUpdateWrapper<>();
+            wrapper.eq(VehicleUsage::getUsageId, usage.getUsageId())
+                    .and(w -> w.isNull(VehicleUsage::getProcessInstanceId).or().eq(VehicleUsage::getProcessInstanceId, ""))
+                    .set(VehicleUsage::getProcessInstanceId, instanceId);
+            this.update(null, wrapper);
         }
     }
 

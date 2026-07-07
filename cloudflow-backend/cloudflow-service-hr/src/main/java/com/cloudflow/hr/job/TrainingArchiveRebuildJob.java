@@ -1,6 +1,7 @@
 package com.cloudflow.hr.job;
 
 import com.cloudflow.common.tenant.support.TenantIterator;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.hr.service.IHrTrainingArchiveService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class TrainingArchiveRebuildJob {
     private final TenantIterator tenantIterator;
 
     @Scheduled(cron = "0 30 2 * * ?")
+    @DistributedJob(name = "hr-training-archive-rebuild-job", lockTime = 1800, waitTime = 5)
     public void run() {
         log.info("HR-P0-1 培训档案凌晨重建任务开始");
         AtomicInteger total = new AtomicInteger();

@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
@@ -233,12 +234,13 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (StringUtils.hasText(instanceId)) {
-                    OaLicenseBorrow update = new OaLicenseBorrow();
-                    update.setId(borrow.getId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateBy("event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    updateById(update);
+                    LambdaUpdateWrapper<OaLicenseBorrow> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(OaLicenseBorrow::getId, borrow.getId())
+                            .and(w -> w.isNull(OaLicenseBorrow::getInstanceId).or().eq(OaLicenseBorrow::getInstanceId, ""))
+                            .set(OaLicenseBorrow::getInstanceId, instanceId)
+                            .set(OaLicenseBorrow::getUpdateBy, "event-consumer")
+                            .set(OaLicenseBorrow::getUpdateTime, LocalDateTime.now());
+                    update(null, wrapper);
                 }
             } else {
                 log.warn("证照借用 {} 工作流启动返回异常: {}", borrow.getBorrowNo(), result != null ? result.getMsg() : "null");

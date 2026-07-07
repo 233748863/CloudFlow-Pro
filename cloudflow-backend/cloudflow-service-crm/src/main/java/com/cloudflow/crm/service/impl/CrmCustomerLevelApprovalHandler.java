@@ -44,7 +44,9 @@ public class CrmCustomerLevelApprovalHandler extends AbstractCrmApprovalHandler 
     @Transactional(rollbackFor = Exception.class)
     public void handleApproved(ApprovalResultDTO dto) {
         CrmApproval approval = loadApproval(dto);
-        updateApprovalStatus(approval, dto, true);
+        if (!updateApprovalStatus(approval, dto, true)) {
+            return;
+        }
         Map<String, Object> payload = parsePayload(approval);
         Long customerId = toLong(payload.get("customerId"));
         String targetLevel = text(payload.get("targetLevel"));

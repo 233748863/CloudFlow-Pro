@@ -205,23 +205,27 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
     @Transactional(rollbackFor = Exception.class)
     @Audit(name = "取消商城订单", highRisk = true)
     public void cancel(Long orderId, String reason) {
-        HrMallOrder order = orderMapper.selectById(orderId);
-        if (order == null) {
-            throw new HrBusinessException("MALL_ORDER_NOT_FOUND", "订单不存在：" + orderId);
-        }
-        if ("SHIPPED".equals(order.getStatus()) || "COMPLETED".equals(order.getStatus())
-                || "CANCELLED".equals(order.getStatus())) {
-            throw new HrBusinessException("MALL_ORDER_STATUS_INVALID",
-                    "订单状态 " + order.getStatus() + " 不允许取消");
-        }
-        refundAndRestore(order, reason);
         UpdateWrapper<HrMallOrder> uw = new UpdateWrapper<>();
         uw.eq("id", orderId).eq("tenant_id", currentTenantId())
+                .notIn("status", List.of("SHIPPED", "COMPLETED", "CANCELLED"))
                 .set("status", "CANCELLED")
                 .set("remark", reason)
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
-        orderMapper.update(null, uw);
+        int updated = orderMapper.update(null, uw);
+
+        HrMallOrder order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new HrBusinessException("MALL_ORDER_NOT_FOUND", "订单不存在：" + orderId);
+        }
+        if (updated <= 0) {
+            if ("CANCELLED".equals(order.getStatus())) {
+                return;
+            }
+            throw new HrBusinessException("MALL_ORDER_STATUS_INVALID",
+                    "订单状态 " + order.getStatus() + " 不允许取消");
+        }
+        refundAndRestore(order, reason);
     }
 
     @Override
@@ -267,6 +271,7 @@ public class HrMallOrderServiceImpl implements IHrMallOrderService {
         }
         UpdateWrapper<HrMallOrder> uw = new UpdateWrapper<>();
         uw.eq("id", order.getId()).eq("tenant_id", order.getTenantId())
+                .and(wrapper -> wrapper.isNull("process_instance_id").or().eq("process_instance_id", ""))
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         orderMapper.update(null, uw);

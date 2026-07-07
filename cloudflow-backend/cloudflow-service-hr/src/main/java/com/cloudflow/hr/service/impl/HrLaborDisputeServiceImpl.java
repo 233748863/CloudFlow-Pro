@@ -213,6 +213,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
         }
         UpdateWrapper<HrLaborDispute> uw = new UpdateWrapper<>();
         uw.eq("id", dispute.getId()).eq("tenant_id", dispute.getTenantId())
+                .and(item -> item.isNull("process_instance_id").or().eq("process_instance_id", ""))
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         disputeMapper.update(null, uw);

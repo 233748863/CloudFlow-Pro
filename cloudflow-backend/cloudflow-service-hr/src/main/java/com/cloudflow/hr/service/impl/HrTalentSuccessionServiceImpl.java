@@ -182,6 +182,7 @@ public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService
         }
         UpdateWrapper<HrTalentSuccessionPlan> uw = new UpdateWrapper<>();
         uw.eq("id", plan.getId()).eq("tenant_id", plan.getTenantId())
+                .and(item -> item.isNull("process_instance_id").or().eq("process_instance_id", ""))
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         planMapper.update(null, uw);

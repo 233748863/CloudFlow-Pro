@@ -19,6 +19,9 @@
                 LIMIT #{limit}
             ) t
         )
+          AND status IN ('PENDING', 'FAILED')
+          AND next_retry_at &lt;= #{now}
+          AND (locked_until IS NULL OR locked_until &lt;= #{now})
     </update>
 
     <select id="selectClaimedEvents" resultType="com.cloudflow.common.event.outbox.OutboxEvent">

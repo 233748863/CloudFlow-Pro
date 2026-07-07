@@ -46,7 +46,9 @@ public class CrmRefundApprovalHandler extends AbstractCrmApprovalHandler impleme
     @Transactional(rollbackFor = Exception.class)
     public void handleApproved(ApprovalResultDTO dto) {
         CrmApproval approval = loadApproval(dto);
-        updateApprovalStatus(approval, dto, true);
+        if (!updateApprovalStatus(approval, dto, true)) {
+            return;
+        }
         Map<String, Object> payload = parsePayload(approval);
         Long receivableId = toLong(payload.get("receivableId"));
         BigDecimal refundAmount = toDecimal(payload.get("refundAmount"));

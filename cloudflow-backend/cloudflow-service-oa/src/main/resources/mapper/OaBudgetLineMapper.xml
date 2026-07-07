@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaBudgetLineMapper">
+
+    <update id="reserveAmount">
+        UPDATE oa_budget_line
+        SET reserved_amount = IFNULL(reserved_amount, 0) + #{amount},
+            available_amount = IFNULL(available_amount, 0) - #{amount}
+        WHERE line_id = #{lineId}
+          AND IFNULL(available_amount, 0) &gt;= #{amount}
+    </update>
+
+    <update id="releaseAmount">
+        UPDATE oa_budget_line
+        SET available_amount = IFNULL(available_amount, 0) + LEAST(IFNULL(reserved_amount, 0), #{amount}),
+            reserved_amount = IFNULL(reserved_amount, 0) - LEAST(IFNULL(reserved_amount, 0), #{amount})
+        WHERE line_id = #{lineId}
+    </update>
+
+    <update id="writeoffAmount">
+        UPDATE oa_budget_line
+        SET available_amount = IFNULL(available_amount, 0) + LEAST(IFNULL(reserved_amount, 0), #{amount}) - #{amount},
+            actual_amount = IFNULL(actual_amount, 0) + #{amount},
+            reserved_amount = IFNULL(reserved_amount, 0) - LEAST(IFNULL(reserved_amount, 0), #{amount})
+        WHERE line_id = #{lineId}
+          AND IFNULL(available_amount, 0) + LEAST(IFNULL(reserved_amount, 0), #{amount}) &gt;= #{amount}
+    </update>
+
+    <update id="adjustAmount">
+        UPDATE oa_budget_line
+        SET amount = IFNULL(amount, 0) + #{amount},
+            available_amount = IFNULL(available_amount, 0) + #{amount}
+        WHERE line_id = #{lineId}
+          AND IFNULL(amount, 0) + #{amount} &gt;= 0
+          AND IFNULL(available_amount, 0) + #{amount} &gt;= 0
+    </update>
+
+</mapper>

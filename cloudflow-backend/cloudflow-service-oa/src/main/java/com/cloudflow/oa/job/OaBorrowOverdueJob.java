@@ -1,6 +1,7 @@
 package com.cloudflow.oa.job;
 
 import com.cloudflow.common.tenant.support.TenantIterator;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.oa.service.IOaLicenseBorrowService;
 import com.cloudflow.oa.service.IOaLicenseService;
 import com.cloudflow.oa.service.IOaRiskScanService;
@@ -33,6 +34,7 @@ public class OaBorrowOverdueJob {
     private final TenantIterator tenantIterator;
 
     @Scheduled(cron = "${cloudflow.oa.borrow.overdue-cron:0 0 9 * * ?}")
+    @DistributedJob(name = "oa-borrow-overdue-scan-job", lockTime = 1800, waitTime = 5)
     public void scanOverdueBorrows() {
         AtomicInteger sealTotal = new AtomicInteger();
         AtomicInteger licenseTotal = new AtomicInteger();
@@ -46,6 +48,7 @@ public class OaBorrowOverdueJob {
     }
 
     @Scheduled(cron = "${cloudflow.oa.license.expiry-cron:0 30 9 * * ?}")
+    @DistributedJob(name = "oa-license-expiry-scan-job", lockTime = 1800, waitTime = 5)
     public void scanExpiringLicenses() {
         AtomicInteger sealTotal = new AtomicInteger();
         AtomicInteger licenseTotal = new AtomicInteger();
@@ -59,6 +62,7 @@ public class OaBorrowOverdueJob {
     }
 
     @Scheduled(cron = "${cloudflow.oa.contract.risk-cron:0 0 9 * * ?}")
+    @DistributedJob(name = "oa-contract-risk-scan-job", lockTime = 1800, waitTime = 5)
     public void scanContractRisks() {
         AtomicInteger total = new AtomicInteger();
         tenantIterator.forEachActiveTenant(tid -> total.addAndGet(riskScanService.scanContractRisks()));

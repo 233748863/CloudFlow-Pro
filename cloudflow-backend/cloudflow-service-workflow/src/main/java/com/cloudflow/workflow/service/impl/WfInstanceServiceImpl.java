@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.dao.DuplicateKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1083,6 +1084,9 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (!StringUtils.hasText(processDefKey)) {
             throw WorkflowException.validationError("流程定义Key不能为空");
         }
+        if (!StringUtils.hasText(businessKey)) {
+            throw WorkflowException.validationError("业务主键不能为空");
+        }
         if (currentUserId == null) {
             throw WorkflowException.validationError("发起人不能为空");
         }
@@ -1120,6 +1124,14 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             }
         }
 
+        Long effectiveTenantId = currentTenantId != null ? currentTenantId : def.getTenantId();
+        WfProcessInstance existing = findExistingBusinessInstance(effectiveTenantId, businessKey);
+        if (existing != null) {
+            log.info("[startProcess] 流程实例已存在，直接返回, businessKey={}, instanceId={}",
+                    businessKey, existing.getInstanceId());
+            return R.ok(buildStartResult(existing));
+        }
+
         WfProcessInstance instance = new WfProcessInstance();
         instance.setInstanceId(UUID.randomUUID().toString());
         instance.setProcessDefKey(processDefKey);
@@ -1127,7 +1139,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         instance.setBusinessKey(businessKey);
         instance.setStartUserId(currentUserId);
         instance.setStartUserName(StringUtils.hasText(currentUserName) ? currentUserName : String.valueOf(currentUserId));
-        instance.setTenantId(currentTenantId != null ? currentTenantId : def.getTenantId());
+        instance.setTenantId(effectiveTenantId);
         instance.setStatus(WfProcessStatus.RUNNING.getCode());
         instance.setStartTime(LocalDateTime.now());
 
@@ -1148,7 +1160,17 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             }
         }
 
-        processInstanceMapper.insert(instance);
+        try {
+            processInstanceMapper.insert(instance);
+        } catch (DuplicateKeyException e) {
+            WfProcessInstance duplicate = findExistingBusinessInstance(effectiveTenantId, businessKey);
+            if (duplicate != null) {
+                log.info("[startProcess] 并发启动命中唯一键，返回已有实例, businessKey={}, instanceId={}",
+                        businessKey, duplicate.getInstanceId());
+                return R.ok(buildStartResult(duplicate));
+            }
+            throw e;
+        }
 
         try {
             processMonitorService.recordProcessStart(
@@ -1172,10 +1194,27 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                     "processDefKey=" + processDefKey + ", processNo=" + processNo);
         });
 
+        return R.ok(buildStartResult(instance));
+    }
+
+    private WfProcessInstance findExistingBusinessInstance(Long tenantId, String businessKey) {
+        LambdaQueryWrapper<WfProcessInstance> wrapper = new LambdaQueryWrapper<WfProcessInstance>()
+                .eq(WfProcessInstance::getBusinessKey, businessKey)
+                .eq(WfProcessInstance::getDeleted, 0)
+                .orderByDesc(WfProcessInstance::getStartTime);
+        if (tenantId != null) {
+            wrapper.eq(WfProcessInstance::getTenantId, tenantId);
+        }
+        return processInstanceMapper.selectPage(new Page<>(1, 1, false), wrapper)
+                .getRecords().stream().findFirst().orElse(null);
+    }
+
+    private Map<String, String> buildStartResult(WfProcessInstance instance) {
         Map<String, String> result = new HashMap<>();
         result.put("instanceId", instance.getInstanceId());
-        result.put("processNo", processNo);
-        return R.ok(result);
+        result.put("processInstanceId", instance.getInstanceId());
+        result.put("processNo", instance.getProcessNo());
+        return result;
     }
 
     private void runFirstNode(WfProcessDefinition def, WfProcessInstance instance, Map<String, Object> variables) {

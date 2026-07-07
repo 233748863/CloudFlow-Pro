@@ -1,5 +1,6 @@
 package com.cloudflow.oa.event.consumer;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
@@ -86,12 +87,13 @@ public class BusinessTripSubmittedEventConsumer implements BusinessEventConsumer
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (instanceId != null) {
-                    BusinessTrip update = new BusinessTrip();
-                    update.setId(trip.getId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateBy(UserContext.getUserName() != null ? UserContext.getUserName() : "event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    businessTripService.updateById(update);
+                    LambdaUpdateWrapper<BusinessTrip> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(BusinessTrip::getId, trip.getId())
+                            .and(w -> w.isNull(BusinessTrip::getInstanceId).or().eq(BusinessTrip::getInstanceId, ""))
+                            .set(BusinessTrip::getInstanceId, instanceId)
+                            .set(BusinessTrip::getUpdateBy, UserContext.getUserName() != null ? UserContext.getUserName() : "event-consumer")
+                            .set(BusinessTrip::getUpdateTime, LocalDateTime.now());
+                    businessTripService.update(null, wrapper);
                 }
                 log.info("出差申请 {} 工作流启动成功，流程实例ID: {}", event.getTripNo(), instanceId);
                 return;

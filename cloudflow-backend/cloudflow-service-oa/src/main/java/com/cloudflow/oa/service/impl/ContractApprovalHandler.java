@@ -5,6 +5,7 @@ import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.config.CrmEventStreamConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaContract;
@@ -40,13 +41,17 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
     @Override
     public void handleApproved(ApprovalResultDTO dto) {
         OaContract contract = updateStatus(dto, OaContractConstants.CONTRACT_STATUS_APPROVED, "APPROVAL_APPROVED", "合同审批通过");
-        publishCrmEvent(contract, CrmEventStreamConstants.EVENT_CONTRACT_APPROVED, dto);
+        if (contract != null) {
+            publishCrmEvent(contract, CrmEventStreamConstants.EVENT_CONTRACT_APPROVED, dto);
+        }
     }
 
     @Override
     public void handleRejected(ApprovalResultDTO dto) {
         OaContract contract = updateStatus(dto, OaContractConstants.CONTRACT_STATUS_REJECTED, "APPROVAL_REJECTED", "合同审批驳回");
-        publishCrmEvent(contract, CrmEventStreamConstants.EVENT_CONTRACT_REJECTED, dto);
+        if (contract != null) {
+            publishCrmEvent(contract, CrmEventStreamConstants.EVENT_CONTRACT_REJECTED, dto);
+        }
     }
 
     private OaContract updateStatus(ApprovalResultDTO dto, String status, String eventType, String eventTitle) {
@@ -56,12 +61,16 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
         }
         LambdaUpdateWrapper<OaContract> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(OaContract::getContractId, dto.getBusinessId())
-                .set(OaContract::getInstanceId, dto.getProcessInstanceId())
+                .eq(OaContract::getInstanceId, dto.getProcessInstanceId())
                 .set(OaContract::getStatus, status)
                 .set(OaContract::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(OaContract::getUpdateTime, LocalDateTime.now());
         int updated = contractMapper.update(null, wrapper);
         if (updated <= 0) {
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "合同", dto.getBusinessId(), contract.getInstanceId(), dto.getProcessInstanceId())) {
+                return null;
+            }
             throw new IllegalStateException("合同审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),

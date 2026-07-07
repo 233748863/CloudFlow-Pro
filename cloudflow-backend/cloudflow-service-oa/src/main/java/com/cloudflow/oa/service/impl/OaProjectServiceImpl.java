@@ -222,12 +222,13 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             if (result != null && result.isSuccess() && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (StringUtils.hasText(instanceId)) {
-                    OaProject update = new OaProject();
-                    update.setProjectId(project.getProjectId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateBy("event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    updateById(update);
+                    LambdaUpdateWrapper<OaProject> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(OaProject::getProjectId, project.getProjectId())
+                            .and(w -> w.isNull(OaProject::getInstanceId).or().eq(OaProject::getInstanceId, ""))
+                            .set(OaProject::getInstanceId, instanceId)
+                            .set(OaProject::getUpdateBy, "event-consumer")
+                            .set(OaProject::getUpdateTime, LocalDateTime.now());
+                    update(null, wrapper);
                 }
             }
         } catch (Exception e) {

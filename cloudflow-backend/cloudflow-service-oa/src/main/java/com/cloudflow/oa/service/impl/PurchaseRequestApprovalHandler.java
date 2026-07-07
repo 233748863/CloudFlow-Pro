@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
@@ -37,23 +38,33 @@ public class PurchaseRequestApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public void handleRejected(ApprovalResultDTO dto) {
-        updateStatus(dto, "REJECTED");
-        purchaseRequestService.releaseBudgetOnRejected(dto.getBusinessId());
+        if (updateStatus(dto, "REJECTED")) {
+            purchaseRequestService.releaseBudgetOnRejected(dto.getBusinessId());
+        }
     }
 
-    private void updateStatus(ApprovalResultDTO dto, String status) {
+    private boolean updateStatus(ApprovalResultDTO dto, String status) {
         LambdaUpdateWrapper<BizPurchaseRequest> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizPurchaseRequest::getId, dto.getBusinessId())
-                .set(BizPurchaseRequest::getInstanceId, dto.getProcessInstanceId())
+                .eq(BizPurchaseRequest::getInstanceId, dto.getProcessInstanceId())
                 .set(BizPurchaseRequest::getStatus, status)
                 .set(BizPurchaseRequest::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(BizPurchaseRequest::getUpdateTime, LocalDateTime.now());
 
         int updated = purchaseRequestMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到采购申请记录，businessId=" + dto.getBusinessId());
+            BizPurchaseRequest request = purchaseRequestMapper.selectById(dto.getBusinessId());
+            if (request == null) {
+                throw new IllegalStateException("未找到采购申请记录，businessId=" + dto.getBusinessId());
+            }
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "采购申请", dto.getBusinessId(), request.getInstanceId(), dto.getProcessInstanceId())) {
+                return false;
+            }
+            throw new IllegalStateException("采购申请审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         log.info("采购申请审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+        return true;
     }
 }

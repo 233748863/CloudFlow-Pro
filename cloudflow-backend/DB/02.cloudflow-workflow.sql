@@ -137,7 +137,7 @@ CREATE TABLE wf_process_instance (
   parent_node_key   VARCHAR(64)     DEFAULT NULL COMMENT '父节点Key',
   PRIMARY KEY (instance_id),
   KEY idx_start_user (start_user_id),
-  KEY idx_business_key (business_key),
+  UNIQUE KEY uk_tenant_business_key (tenant_id, business_key),
   KEY idx_proc_inst_tenant (tenant_id),
   KEY idx_start_user_status (start_user_id, status),
   KEY idx_start_user_status_left (start_user_id, status, starter_left),

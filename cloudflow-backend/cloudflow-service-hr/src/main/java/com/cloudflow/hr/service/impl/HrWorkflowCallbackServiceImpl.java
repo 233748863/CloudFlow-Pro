@@ -114,10 +114,17 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             try {
                 CallbackTarget target = resolveTarget(dto.getBusinessType());
                 String status = resolveStatus(dto.getBusinessType(), dto.getApprovalResult());
-                crudService.updateProperties(
+                boolean updated = crudService.updatePropertiesIfWorkflowInstanceMatches(
                         target.entityClass(),
                         dto.getBusinessId(),
-                        Map.of(target.statusField(), status));
+                        dto.getProcessInstanceId(),
+                        Map.of(target.statusField(), status),
+                        target.instanceField());
+                if (!updated) {
+                    log.warn("HR审批回调未命中当前流程实例或已处理，跳过副作用: businessType={}, businessId={}, instanceId={}",
+                            dto.getBusinessType(), dto.getBusinessId(), dto.getProcessInstanceId());
+                    return;
+                }
                 applySideEffects(dto, target, status);
                 log.info("审批回调已写入 HR 表，businessType: {}, businessId: {}, entity: {}, statusField: {}, status: {}",
                         dto.getBusinessType(), dto.getBusinessId(),
@@ -135,24 +142,28 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
     private CallbackTarget resolveTarget(String businessType) {
         String normalized = normalizeBusinessType(businessType);
         return switch (normalized) {
-            case "RECRUITMENT_REQUEST" -> new CallbackTarget(HrRecruitmentRequisition.class, "status");
-            case "OFFER" -> new CallbackTarget(HrOffer.class, "status");
+            case "RECRUITMENT_REQUEST" -> new CallbackTarget(HrRecruitmentRequisition.class, "status", null);
+            case "OFFER" -> new CallbackTarget(HrOffer.class, "status", null);
             case "ONBOARDING", "PROBATION", "PROBATION_CONFIRMATION", "TRANSFER", "RESIGNATION" ->
-                    new CallbackTarget(HrLifecycleApplication.class, "status");
-            case "LEAVE", "OVERTIME", "ATTENDANCE_SUPPLEMENT" -> new CallbackTarget(HrTimeRequest.class, "status");
-            case "SALARY_ADJUSTMENT" -> new CallbackTarget(HrCompChange.class, "status");
-            case "PERFORMANCE_PLAN", "PERFORMANCE_RESULT" -> new CallbackTarget(HrPerformanceObjective.class, "status");
-            case "CERTIFICATE_REQUEST" -> new CallbackTarget(HrCertificateRequest.class, "status");
-            case "CONTRACT_SIGN" -> new CallbackTarget(HrContractSignature.class, "signStatus");
-            case "TRAINING_ENROLLMENT" -> new CallbackTarget(HrTrainingEnrollment.class, "status");
-            case "TALENT_REVIEW" -> new CallbackTarget(HrTalentReview.class, "status");
-            case "TALENT_SUCCESSION" -> new CallbackTarget(HrTalentSuccessionPlan.class, "status");
-            case "BENEFIT_REQUEST" -> new CallbackTarget(HrBenefitRequest.class, "status");
-            case "MALL_ORDER" -> new CallbackTarget(HrMallOrder.class, "status");
-            case "WORK_INJURY" -> new CallbackTarget(HrWorkInjury.class, "status");
-            case "LABOR_DISPUTE" -> new CallbackTarget(HrLaborDispute.class, "status");
+                    new CallbackTarget(HrLifecycleApplication.class, "status", null);
+            case "LEAVE", "OVERTIME", "ATTENDANCE_SUPPLEMENT" ->
+                    new CallbackTarget(HrTimeRequest.class, "status", null);
+            case "SALARY_ADJUSTMENT" -> new CallbackTarget(HrCompChange.class, "status", null);
+            case "PERFORMANCE_PLAN" ->
+                    new CallbackTarget(HrPerformanceObjective.class, "status", "planProcessInstanceId");
+            case "PERFORMANCE_RESULT" ->
+                    new CallbackTarget(HrPerformanceObjective.class, "status", "resultProcessInstanceId");
+            case "CERTIFICATE_REQUEST" -> new CallbackTarget(HrCertificateRequest.class, "status", null);
+            case "CONTRACT_SIGN" -> new CallbackTarget(HrContractSignature.class, "signStatus", null);
+            case "TRAINING_ENROLLMENT" -> new CallbackTarget(HrTrainingEnrollment.class, "status", null);
+            case "TALENT_REVIEW" -> new CallbackTarget(HrTalentReview.class, "status", null);
+            case "TALENT_SUCCESSION" -> new CallbackTarget(HrTalentSuccessionPlan.class, "status", null);
+            case "BENEFIT_REQUEST" -> new CallbackTarget(HrBenefitRequest.class, "status", null);
+            case "MALL_ORDER" -> new CallbackTarget(HrMallOrder.class, "status", null);
+            case "WORK_INJURY" -> new CallbackTarget(HrWorkInjury.class, "status", null);
+            case "LABOR_DISPUTE" -> new CallbackTarget(HrLaborDispute.class, "status", null);
             case "ATTENDANCE_APPEAL" -> new CallbackTarget(
-                    com.cloudflow.hr.domain.entity.HrAttendanceAppeal.class, "status");
+                    com.cloudflow.hr.domain.entity.HrAttendanceAppeal.class, "status", "instanceId");
             default -> throw new HrBusinessException("UNSUPPORTED_BUSINESS_TYPE",
                     "不支持的业务类型：" + businessType);
         };
@@ -543,6 +554,6 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
         }
     }
 
-    private record CallbackTarget(Class<?> entityClass, String statusField) {
+    private record CallbackTarget(Class<?> entityClass, String statusField, String instanceField) {
     }
 }

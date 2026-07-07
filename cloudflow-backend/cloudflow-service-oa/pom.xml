@@ -97,6 +97,10 @@
         </dependency>
         <dependency>
             <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-job</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-ratelimiter</artifactId>
         </dependency>
         <dependency>

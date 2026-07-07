@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
@@ -10,6 +11,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaSeal;
 import com.cloudflow.oa.domain.OaSealRenewal;
@@ -217,12 +219,13 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (StringUtils.hasText(instanceId)) {
-                    OaSealRenewal update = new OaSealRenewal();
-                    update.setId(renewal.getId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateBy("event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    updateById(update);
+                    LambdaUpdateWrapper<OaSealRenewal> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(OaSealRenewal::getId, renewal.getId())
+                            .and(w -> w.isNull(OaSealRenewal::getInstanceId).or().eq(OaSealRenewal::getInstanceId, ""))
+                            .set(OaSealRenewal::getInstanceId, instanceId)
+                            .set(OaSealRenewal::getUpdateBy, "event-consumer")
+                            .set(OaSealRenewal::getUpdateTime, LocalDateTime.now());
+                    update(null, wrapper);
                 }
             } else {
                 log.warn("印章续期 {} 工作流启动返回异常: {}", renewal.getRenewalNo(), result != null ? result.getMsg() : "null");
@@ -275,11 +278,20 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
             return;
         }
         LocalDateTime now = LocalDateTime.now();
-        renewal.setInstanceId(processInstanceId);
-        renewal.setStatus(OaBorrowConstants.STATUS_APPROVED);
-        renewal.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
-        renewal.setUpdateTime(now);
-        updateById(renewal);
+        LambdaUpdateWrapper<OaSealRenewal> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(OaSealRenewal::getId, id)
+                .eq(OaSealRenewal::getInstanceId, processInstanceId)
+                .eq(OaSealRenewal::getStatus, OaBorrowConstants.STATUS_PENDING)
+                .set(OaSealRenewal::getStatus, OaBorrowConstants.STATUS_APPROVED)
+                .set(OaSealRenewal::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
+                .set(OaSealRenewal::getUpdateTime, now);
+        if (!update(null, wrapper)) {
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "印章续期", id, renewal.getInstanceId(), processInstanceId)) {
+                return;
+            }
+            throw new IllegalStateException("印章续期审批结果回写失败，businessId=" + id);
+        }
 
         OaSeal seal = requireSeal(renewal.getSealId());
         seal.setIssueDate(renewal.getNewIssueDate());
@@ -296,11 +308,19 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
     @Transactional(rollbackFor = Exception.class)
     public void rejectRenewal(Long id, String processInstanceId) {
         OaSealRenewal renewal = requireRenewal(id);
-        renewal.setInstanceId(processInstanceId);
-        renewal.setStatus(OaBorrowConstants.STATUS_REJECTED);
-        renewal.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
-        renewal.setUpdateTime(LocalDateTime.now());
-        updateById(renewal);
+        LambdaUpdateWrapper<OaSealRenewal> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(OaSealRenewal::getId, id)
+                .eq(OaSealRenewal::getInstanceId, processInstanceId)
+                .set(OaSealRenewal::getStatus, OaBorrowConstants.STATUS_REJECTED)
+                .set(OaSealRenewal::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
+                .set(OaSealRenewal::getUpdateTime, LocalDateTime.now());
+        if (!update(null, wrapper)) {
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "印章续期", id, renewal.getInstanceId(), processInstanceId)) {
+                return;
+            }
+            throw new IllegalStateException("印章续期审批结果回写失败，businessId=" + id);
+        }
     }
 
     private void normalizeAndValidate(OaSealRenewal renewal) {

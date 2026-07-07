@@ -178,6 +178,7 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
         }
         UpdateWrapper<HrBenefitRequest> uw = new UpdateWrapper<>();
         uw.eq("id", request.getId()).eq("tenant_id", currentTenantId())
+                .and(item -> item.isNull("process_instance_id").or().eq("process_instance_id", ""))
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         requestMapper.update(null, uw);

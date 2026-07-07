@@ -320,6 +320,7 @@ public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
         }
         UpdateWrapper<HrTalentReview> uw = new UpdateWrapper<>();
         uw.eq("id", review.getId()).eq("tenant_id", review.getTenantId())
+                .and(item -> item.isNull("process_instance_id").or().eq("process_instance_id", ""))
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         reviewMapper.update(null, uw);

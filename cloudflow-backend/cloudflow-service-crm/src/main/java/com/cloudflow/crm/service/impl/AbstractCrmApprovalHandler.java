@@ -1,7 +1,9 @@
 package com.cloudflow.crm.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmApproval;
 import com.cloudflow.crm.mapper.CrmApprovalMapper;
@@ -33,13 +35,27 @@ abstract class AbstractCrmApprovalHandler {
         return approval;
     }
 
-    protected void updateApprovalStatus(CrmApproval approval, ApprovalResultDTO dto, boolean approved) {
+    protected boolean updateApprovalStatus(CrmApproval approval, ApprovalResultDTO dto, boolean approved) {
+        LambdaUpdateWrapper<CrmApproval> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(CrmApproval::getApprovalId, approval.getApprovalId())
+                .eq(CrmApproval::getInstanceId, dto.getProcessInstanceId())
+                .set(CrmApproval::getStatus, approved ? "APPROVED" : "REJECTED")
+                .set(CrmApproval::getApprovalComment, dto.getApprovalComment())
+                .set(CrmApproval::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
+                .set(CrmApproval::getUpdateTime, LocalDateTime.now());
+        int updated = approvalMapper.update(null, wrapper);
+        if (updated <= 0) {
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "CRM审批流水", approval.getApprovalId(), approval.getInstanceId(), dto.getProcessInstanceId())) {
+                return false;
+            }
+            throw new IllegalStateException("CRM审批流水回写失败: " + approval.getApprovalId());
+        }
         approval.setStatus(approved ? "APPROVED" : "REJECTED");
-        approval.setInstanceId(dto.getProcessInstanceId());
         approval.setApprovalComment(dto.getApprovalComment());
         approval.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
         approval.setUpdateTime(LocalDateTime.now());
-        approvalMapper.updateById(approval);
+        return true;
     }
 
     protected Map<String, Object> parsePayload(CrmApproval approval) {

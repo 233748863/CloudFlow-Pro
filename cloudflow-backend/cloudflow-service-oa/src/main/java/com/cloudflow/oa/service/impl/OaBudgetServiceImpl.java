@@ -36,6 +36,7 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -508,41 +509,63 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
             throw new IllegalArgumentException("未找到可用预算: " + target.targetType + " / " + target.targetName);
         }
         OaBudgetLine line = requireBudgetLine(budget.getBudgetId(), subjectCode);
-        BigDecimal total = defaultDecimal(line.getAmount());
-        BigDecimal reserved = defaultDecimal(line.getReservedAmount());
-        BigDecimal actual = defaultDecimal(line.getActualAmount());
-        BigDecimal warnThreshold = defaultRatio(line.getWarningRatio(), resolveThresholdRule(RULE_WARN, new BigDecimal("0.80")));
-        BigDecimal alertThreshold = defaultRatio(line.getAlertRatio(), resolveThresholdRule(RULE_ALERT, new BigDecimal("0.90")));
-        BigDecimal blockThreshold = defaultRatio(line.getBlockRatio(), resolveThresholdRule(RULE_BLOCK, BigDecimal.ONE));
-
-        BigDecimal nextReserved = reserved;
-        BigDecimal nextActual = actual;
-        if ("RESERVE".equals(operationType)) {
-            nextReserved = reserved.add(amount);
-        } else if ("RELEASE".equals(operationType)) {
-            nextReserved = reserved.subtract(amount).max(BigDecimal.ZERO);
-        } else if ("WRITEOFF".equals(operationType)) {
-            nextReserved = reserved.subtract(amount).max(BigDecimal.ZERO);
-            nextActual = actual.add(amount);
-        }
-        BigDecimal nextAvailable = total.subtract(nextReserved).subtract(nextActual);
-        BigDecimal executionRatio = total.compareTo(BigDecimal.ZERO) > 0
-                ? nextActual.add(nextReserved).divide(total, 4, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        if ("RESERVE".equals(operationType)) {
-            evaluateThreshold(budget, line, businessType, businessId, executionRatio, warnThreshold, alertThreshold, blockThreshold);
+        Long ledgerId = insertBudgetLedgerClaim(budget, line, target, operationType, businessType, businessId,
+                businessNo, subjectCode, subjectName, amount, remark);
+        if (ledgerId == null) {
+            log.info("预算操作已存在，跳过重复处理: operationType={}, businessType={}, businessId={}, targetType={}, targetId={}, subjectCode={}",
+                    operationType, businessType, businessId, target.targetType, target.targetId, subjectCode);
+            return;
         }
 
-        LambdaUpdateWrapper<OaBudgetLine> lineWrapper = new LambdaUpdateWrapper<>();
-        lineWrapper.eq(OaBudgetLine::getLineId, line.getLineId())
-                .set(OaBudgetLine::getReservedAmount, nextReserved)
-                .set(OaBudgetLine::getActualAmount, nextActual)
-                .set(OaBudgetLine::getAvailableAmount, nextAvailable);
-        budgetLineMapper.update(null, lineWrapper);
+        int updated = switch (operationType) {
+            case "RESERVE" -> budgetLineMapper.reserveAmount(line.getLineId(), amount);
+            case "RELEASE" -> budgetLineMapper.releaseAmount(line.getLineId(), amount);
+            case "WRITEOFF" -> budgetLineMapper.writeoffAmount(line.getLineId(), amount);
+            default -> throw new IllegalArgumentException("不支持的预算操作类型: " + operationType);
+        };
+        if (updated <= 0) {
+            throw new IllegalArgumentException("预算额度不足或预算行已变更: " + subjectCode);
+        }
 
+        OaBudgetLine latest = budgetLineMapper.selectById(line.getLineId());
+        if (latest == null) {
+            throw new IllegalArgumentException("预算科目不存在: " + subjectCode);
+        }
+        if ("RESERVE".equals(operationType)) {
+            BigDecimal total = defaultDecimal(latest.getAmount());
+            BigDecimal executionRatio = total.compareTo(BigDecimal.ZERO) > 0
+                    ? defaultDecimal(latest.getActualAmount()).add(defaultDecimal(latest.getReservedAmount()))
+                    .divide(total, 4, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+            evaluateThreshold(budget, latest, businessType, businessId, executionRatio,
+                    defaultRatio(latest.getWarningRatio(), resolveThresholdRule(RULE_WARN, new BigDecimal("0.80"))),
+                    defaultRatio(latest.getAlertRatio(), resolveThresholdRule(RULE_ALERT, new BigDecimal("0.90"))),
+                    defaultRatio(latest.getBlockRatio(), resolveThresholdRule(RULE_BLOCK, BigDecimal.ONE)));
+        }
+        LambdaUpdateWrapper<OaBudgetLedger> ledgerWrapper = new LambdaUpdateWrapper<>();
+        ledgerWrapper.eq(OaBudgetLedger::getLedgerId, ledgerId)
+                .set(OaBudgetLedger::getAvailableAfter, latest.getAvailableAmount());
+        budgetLedgerMapper.update(null, ledgerWrapper);
+
+        refreshBudgetComputedAmounts(budget.getBudgetId());
+    }
+
+    private Long insertBudgetLedgerClaim(OaBudgetPlan budget,
+                                         OaBudgetLine line,
+                                         BudgetTargetContext target,
+                                         String operationType,
+                                         String businessType,
+                                         Long businessId,
+                                         String businessNo,
+                                         String subjectCode,
+                                         String subjectName,
+                                         BigDecimal amount,
+                                         String remark) {
+        if (hasBudgetLedger(budget.getTenantId(), target, operationType, businessType, businessId, subjectCode)) {
+            return null;
+        }
         OaBudgetLedger ledger = new OaBudgetLedger();
-        ledger.setTenantId(resolveTenantId());
+        ledger.setTenantId(budget.getTenantId());
         ledger.setBudgetId(budget.getBudgetId());
         ledger.setLineId(line.getLineId());
         ledger.setTargetType(target.targetType);
@@ -554,14 +577,37 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
         ledger.setSubjectName(StringUtils.hasText(subjectName) ? subjectName : line.getSubjectName());
         ledger.setOperationType(operationType);
         ledger.setAmount(amount);
-        ledger.setAvailableAfter(nextAvailable);
+        ledger.setAvailableAfter(defaultDecimal(line.getAvailableAmount()));
         ledger.setStatus("VALID");
         ledger.setRemark(remark);
         ledger.setCreateBy(resolveUserName());
         ledger.setCreateTime(LocalDateTime.now());
-        budgetLedgerMapper.insert(ledger);
+        try {
+            budgetLedgerMapper.insert(ledger);
+            return ledger.getLedgerId();
+        } catch (DuplicateKeyException ex) {
+            if (hasBudgetLedger(budget.getTenantId(), target, operationType, businessType, businessId, subjectCode)) {
+                return null;
+            }
+            throw ex;
+        }
+    }
 
-        refreshBudgetComputedAmounts(budget.getBudgetId());
+    private boolean hasBudgetLedger(Long tenantId,
+                                    BudgetTargetContext target,
+                                    String operationType,
+                                    String businessType,
+                                    Long businessId,
+                                    String subjectCode) {
+        Long count = budgetLedgerMapper.selectCount(new LambdaQueryWrapper<OaBudgetLedger>()
+                .eq(OaBudgetLedger::getTenantId, tenantId)
+                .eq(OaBudgetLedger::getBusinessType, businessType)
+                .eq(OaBudgetLedger::getBusinessId, businessId)
+                .eq(OaBudgetLedger::getOperationType, operationType)
+                .eq(OaBudgetLedger::getTargetType, target.targetType)
+                .eq(OaBudgetLedger::getTargetId, target.targetId)
+                .eq(OaBudgetLedger::getSubjectCode, subjectCode));
+        return count != null && count > 0;
     }
 
     private void evaluateThreshold(OaBudgetPlan budget, OaBudgetLine line, String businessType, Long businessId,
@@ -666,12 +712,13 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
                     instanceId = resultMap.get("instanceId");
                 }
                 if (instanceId != null) {
-                    OaBudgetPlan update = new OaBudgetPlan();
-                    update.setBudgetId(budget.getBudgetId());
-                    update.setInstanceId(String.valueOf(instanceId));
-                    update.setUpdateBy("event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    updateById(update);
+                    LambdaUpdateWrapper<OaBudgetPlan> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(OaBudgetPlan::getBudgetId, budget.getBudgetId())
+                            .and(w -> w.isNull(OaBudgetPlan::getInstanceId).or().eq(OaBudgetPlan::getInstanceId, ""))
+                            .set(OaBudgetPlan::getInstanceId, String.valueOf(instanceId))
+                            .set(OaBudgetPlan::getUpdateBy, "event-consumer")
+                            .set(OaBudgetPlan::getUpdateTime, LocalDateTime.now());
+                    update(null, wrapper);
                 }
             }
         } catch (Exception e) {
@@ -719,12 +766,13 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
                     instanceId = resultMap.get("instanceId");
                 }
                 if (instanceId != null) {
-                    OaBudgetAdjustment update = new OaBudgetAdjustment();
-                    update.setAdjustmentId(adjustment.getAdjustmentId());
-                    update.setInstanceId(String.valueOf(instanceId));
-                    update.setUpdateBy("event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    budgetAdjustmentMapper.updateById(update);
+                    LambdaUpdateWrapper<OaBudgetAdjustment> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(OaBudgetAdjustment::getAdjustmentId, adjustment.getAdjustmentId())
+                            .and(w -> w.isNull(OaBudgetAdjustment::getInstanceId).or().eq(OaBudgetAdjustment::getInstanceId, ""))
+                            .set(OaBudgetAdjustment::getInstanceId, String.valueOf(instanceId))
+                            .set(OaBudgetAdjustment::getUpdateBy, "event-consumer")
+                            .set(OaBudgetAdjustment::getUpdateTime, LocalDateTime.now());
+                    budgetAdjustmentMapper.update(null, wrapper);
                 }
             }
         } catch (Exception e) {

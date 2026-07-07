@@ -179,6 +179,7 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         UpdateWrapper<HrCertificateRequest> wrapper = new UpdateWrapper<>();
         wrapper.eq("id", request.getId())
                 .eq("tenant_id", request.getTenantId())
+                .and(item -> item.isNull("process_instance_id").or().eq("process_instance_id", ""))
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         certificateRequestMapper.update(null, wrapper);

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaBudgetPlan;
 import com.cloudflow.oa.mapper.OaBudgetPlanMapper;
@@ -38,13 +39,21 @@ public class BudgetPlanApprovalHandler implements ApprovalResultHandler {
     private void updateStatus(ApprovalResultDTO dto, String status) {
         LambdaUpdateWrapper<OaBudgetPlan> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(OaBudgetPlan::getBudgetId, dto.getBusinessId())
-                .set(OaBudgetPlan::getInstanceId, dto.getProcessInstanceId())
+                .eq(OaBudgetPlan::getInstanceId, dto.getProcessInstanceId())
                 .set(OaBudgetPlan::getStatus, status)
                 .set(OaBudgetPlan::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(OaBudgetPlan::getUpdateTime, LocalDateTime.now());
         int updated = budgetPlanMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到预算主表记录，businessId=" + dto.getBusinessId());
+            OaBudgetPlan plan = budgetPlanMapper.selectById(dto.getBusinessId());
+            if (plan == null) {
+                throw new IllegalStateException("未找到预算主表记录，businessId=" + dto.getBusinessId());
+            }
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "预算主表", dto.getBusinessId(), plan.getInstanceId(), dto.getProcessInstanceId())) {
+                return;
+            }
+            throw new IllegalStateException("预算主表审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         log.info("预算主表审批结果已回写: businessId={}, status={}", dto.getBusinessId(), status);
     }

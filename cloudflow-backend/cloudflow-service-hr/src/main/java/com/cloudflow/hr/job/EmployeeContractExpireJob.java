@@ -2,6 +2,7 @@ package com.cloudflow.hr.job;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.tenant.support.TenantIterator;
 import com.cloudflow.hr.domain.entity.HrEmployeeContract;
 import com.cloudflow.hr.domain.entity.HrSelfServiceMessage;
@@ -30,6 +31,7 @@ public class EmployeeContractExpireJob {
     private final HrSelfServiceMessageMapper messageMapper;
 
     @Scheduled(cron = "${cloudflow.hr.contract.expire-cron:0 0 4 * * ?}")
+    @DistributedJob(name = "hr-employee-contract-expire-job", lockTime = 1800, waitTime = 5)
     public void run() {
         LocalDate today = LocalDate.now();
         LocalDate threshold = today.plusDays(30);

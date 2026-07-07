@@ -172,6 +172,17 @@ public class HrTypedCrudService {
         updateInternal(entityClass, id, payload, "UPDATE");
     }
 
+    @Audit(name = "HR工作流回调状态变更",
+            oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
+            newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    public <T> boolean updatePropertiesIfWorkflowInstanceMatches(Class<T> entityClass,
+                                                                 Long id,
+                                                                 String workflowInstanceId,
+                                                                 Map<String, Object> payload,
+                                                                 String... instanceProperties) {
+        return updateInternal(entityClass, id, payload, "UPDATE", workflowInstanceId, instanceProperties);
+    }
+
     @Audit(name = "HR记录删除",
             oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
             newVal = "@hrTypedCrudService.emptySnapshot(#entityClass)",
@@ -245,12 +256,21 @@ public class HrTypedCrudService {
     }
 
     private <T> void updateInternal(Class<T> entityClass, Long id, Object payload, String operationType) {
+        updateInternal(entityClass, id, payload, operationType, null);
+    }
+
+    private <T> boolean updateInternal(Class<T> entityClass,
+                                       Long id,
+                                       Object payload,
+                                       String operationType,
+                                       String workflowInstanceId,
+                                       String... instanceProperties) {
         BaseMapper<T> mapper = mapper(entityClass);
         TableInfo tableInfo = tableInfo(entityClass);
         assertWriteAllowed(tableInfo.getTableName());
         T entity = mapper.selectById(id);
         if (entity == null) {
-            return;
+            return false;
         }
         Map<String, Object> before = toResponseMap(entity);
         if (isImmutableSalarySlip(tableInfo.getTableName(), before)) {
@@ -259,8 +279,9 @@ public class HrTypedCrudService {
         }
         Map<String, Object> payloadMap = toMap(payload);
         if (payloadMap.isEmpty()) {
-            return;
+            return false;
         }
+        String workflowInstanceProperty = resolveWorkflowInstanceProperty(tableInfo, instanceProperties);
         Set<String> nullColumns = new LinkedHashSet<>();
         applyPayload(entityClass, entity, payloadMap, tableInfo, nullColumns);
         setProperty(entity, "updateBy", currentUserName());
@@ -269,11 +290,68 @@ public class HrTypedCrudService {
         if (hasProperty(tableInfo, "tenantId")) {
             wrapper.eq(columnOf(tableInfo, "tenantId"), currentTenantId());
         }
+        if (StringUtils.hasText(workflowInstanceId)) {
+            if (!StringUtils.hasText(workflowInstanceProperty)) {
+                throw new IllegalStateException("HR表缺少流程实例字段：" + tableInfo.getTableName());
+            }
+            wrapper.eq(columnOf(tableInfo, workflowInstanceProperty), workflowInstanceId);
+        }
         for (String nullColumn : nullColumns) {
             wrapper.set(nullColumn, null);
         }
-        mapper.update(entity, wrapper);
+        int updated = mapper.update(entity, wrapper);
+        if (updated <= 0) {
+            if (StringUtils.hasText(workflowInstanceId)) {
+                T latest = mapper.selectById(id);
+                Object currentInstanceId = latest == null ? null : getProperty(latest, workflowInstanceProperty);
+                if (currentInstanceId == null || !StringUtils.hasText(String.valueOf(currentInstanceId))) {
+                    throw new IllegalStateException("HR流程实例未回填，等待回调重试，businessId=" + id);
+                }
+                if (!Objects.equals(String.valueOf(currentInstanceId), workflowInstanceId)) {
+                    return false;
+                }
+                if (payloadAlreadyApplied(latest, payloadMap, tableInfo)) {
+                    return false;
+                }
+            }
+            throw new IllegalStateException("HR记录更新失败：" + tableInfo.getTableName() + "#" + id);
+        }
         writeAuditLog(tableInfo.getTableName(), id, operationType, before, getAuditRow(entityClass, id));
+        return true;
+    }
+
+    private String resolveWorkflowInstanceProperty(TableInfo tableInfo, String... candidates) {
+        if (candidates != null) {
+            for (String candidate : candidates) {
+                if (StringUtils.hasText(candidate) && hasProperty(tableInfo, candidate)) {
+                    return candidate;
+                }
+            }
+        }
+        for (String candidate : List.of("processInstanceId", "instanceId")) {
+            if (hasProperty(tableInfo, candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private boolean payloadAlreadyApplied(Object latest, Map<String, Object> payloadMap, TableInfo tableInfo) {
+        if (latest == null || payloadMap == null || payloadMap.isEmpty()) {
+            return false;
+        }
+        for (Map.Entry<String, Object> entry : payloadMap.entrySet()) {
+            String property = normalizeProperty(tableInfo, entry.getKey());
+            if (property == null || AUTO_PROPERTIES.contains(property)) {
+                continue;
+            }
+            Object current = getProperty(latest, property);
+            Object expected = entry.getValue();
+            if (!Objects.equals(String.valueOf(current), String.valueOf(expected))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean isImmutableSalarySlip(String tableName, Map<String, Object> row) {

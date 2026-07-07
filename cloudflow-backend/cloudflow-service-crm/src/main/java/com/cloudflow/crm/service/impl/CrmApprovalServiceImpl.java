@@ -1,6 +1,7 @@
 package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
@@ -256,12 +257,13 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
             throw new IllegalStateException("启动 CRM 审批流程未返回实例ID: approvalId=" + current.getApprovalId()
                     + ", processDefKey=" + processDefKey);
         }
-        CrmApproval update = new CrmApproval();
-        update.setApprovalId(current.getApprovalId());
-        update.setInstanceId(instanceId);
-        update.setUpdateBy(current.getApplicantName());
-        update.setUpdateTime(LocalDateTime.now());
-        approvalMapper.updateById(update);
+        LambdaUpdateWrapper<CrmApproval> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(CrmApproval::getApprovalId, current.getApprovalId())
+                .and(w -> w.isNull(CrmApproval::getInstanceId).or().eq(CrmApproval::getInstanceId, ""))
+                .set(CrmApproval::getInstanceId, instanceId)
+                .set(CrmApproval::getUpdateBy, current.getApplicantName())
+                .set(CrmApproval::getUpdateTime, LocalDateTime.now());
+        approvalMapper.update(null, wrapper);
     }
 
     private void startWorkflowAfterCommit(Long approvalId, String processDefKey) {

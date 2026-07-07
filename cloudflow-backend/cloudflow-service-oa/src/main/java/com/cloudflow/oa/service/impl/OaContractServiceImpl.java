@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
@@ -268,12 +269,13 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (StringUtils.hasText(instanceId)) {
-                    OaContract update = new OaContract();
-                    update.setContractId(contract.getContractId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateBy("event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    updateById(update);
+                    LambdaUpdateWrapper<OaContract> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(OaContract::getContractId, contract.getContractId())
+                            .and(w -> w.isNull(OaContract::getInstanceId).or().eq(OaContract::getInstanceId, ""))
+                            .set(OaContract::getInstanceId, instanceId)
+                            .set(OaContract::getUpdateBy, "event-consumer")
+                            .set(OaContract::getUpdateTime, LocalDateTime.now());
+                    update(null, wrapper);
                 }
             } else {
                 log.warn("合同 {} 工作流启动返回异常: {}", contract.getContractNo(), result != null ? result.getMsg() : "null");

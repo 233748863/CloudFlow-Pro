@@ -1,5 +1,6 @@
 package com.cloudflow.oa.event.consumer;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
@@ -82,12 +83,13 @@ public class PaymentRequestSubmittedEventConsumer implements BusinessEventConsum
             if (result != null && result.getCode() == 200 && result.getData() != null) {
                 String instanceId = extractInstanceId(result.getData());
                 if (instanceId != null) {
-                    BizPaymentRequest update = new BizPaymentRequest();
-                    update.setId(payment.getId());
-                    update.setInstanceId(instanceId);
-                    update.setUpdateBy(UserContext.getUserName() != null ? UserContext.getUserName() : "event-consumer");
-                    update.setUpdateTime(LocalDateTime.now());
-                    paymentRequestService.updateById(update);
+                    LambdaUpdateWrapper<BizPaymentRequest> wrapper = new LambdaUpdateWrapper<>();
+                    wrapper.eq(BizPaymentRequest::getId, payment.getId())
+                            .and(w -> w.isNull(BizPaymentRequest::getInstanceId).or().eq(BizPaymentRequest::getInstanceId, ""))
+                            .set(BizPaymentRequest::getInstanceId, instanceId)
+                            .set(BizPaymentRequest::getUpdateBy, UserContext.getUserName() != null ? UserContext.getUserName() : "event-consumer")
+                            .set(BizPaymentRequest::getUpdateTime, LocalDateTime.now());
+                    paymentRequestService.update(null, wrapper);
                 }
                 log.info("付款申请 {} 工作流启动成功，流程实例ID: {}", event.getPaymentNo(), instanceId);
                 return;

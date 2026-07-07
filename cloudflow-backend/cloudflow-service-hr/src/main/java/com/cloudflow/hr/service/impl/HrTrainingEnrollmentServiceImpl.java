@@ -219,6 +219,7 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
         UpdateWrapper<HrTrainingEnrollment> wrapper = new UpdateWrapper<>();
         wrapper.eq("id", enrollment.getId())
                 .eq("tenant_id", enrollment.getTenantId())
+                .and(item -> item.isNull("process_instance_id").or().eq("process_instance_id", ""))
                 .set("process_instance_id", response.getData())
                 .set("update_time", LocalDateTime.now());
         enrollmentMapper.update(null, wrapper);

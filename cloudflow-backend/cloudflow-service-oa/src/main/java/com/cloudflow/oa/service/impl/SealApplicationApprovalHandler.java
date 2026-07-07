@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackInstanceGuard;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaSeal;
 import com.cloudflow.oa.domain.OaSealApplication;
@@ -39,9 +40,10 @@ public class SealApplicationApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public void handleApproved(ApprovalResultDTO dto) {
-        updateStatus(dto, OaBorrowConstants.STATUS_APPROVED);
-        traceApproval(dto, "SEAL_APPROVAL_APPROVED", "用印审批通过");
-        notifyKeeper(dto);
+        if (updateStatus(dto, OaBorrowConstants.STATUS_APPROVED)) {
+            traceApproval(dto, "SEAL_APPROVAL_APPROVED", "用印审批通过");
+            notifyKeeper(dto);
+        }
     }
 
     @Override
@@ -50,20 +52,29 @@ public class SealApplicationApprovalHandler implements ApprovalResultHandler {
         traceApproval(dto, "SEAL_APPROVAL_REJECTED", "用印审批驳回");
     }
 
-    private void updateStatus(ApprovalResultDTO dto, String status) {
+    private boolean updateStatus(ApprovalResultDTO dto, String status) {
         LambdaUpdateWrapper<OaSealApplication> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(OaSealApplication::getId, dto.getBusinessId())
-                .set(OaSealApplication::getInstanceId, dto.getProcessInstanceId())
+                .eq(OaSealApplication::getInstanceId, dto.getProcessInstanceId())
                 .set(OaSealApplication::getStatus, status)
                 .set(OaSealApplication::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(OaSealApplication::getUpdateTime, LocalDateTime.now());
 
         int updated = sealApplicationMapper.update(null, wrapper);
         if (updated <= 0) {
-            throw new IllegalStateException("未找到用印申请记录，businessId=" + dto.getBusinessId());
+            OaSealApplication application = sealApplicationMapper.selectById(dto.getBusinessId());
+            if (application == null) {
+                throw new IllegalStateException("未找到用印申请记录，businessId=" + dto.getBusinessId());
+            }
+            if (WorkflowCallbackInstanceGuard.shouldSkipStaleCallback(
+                    "用印申请", dto.getBusinessId(), application.getInstanceId(), dto.getProcessInstanceId())) {
+                return false;
+            }
+            throw new IllegalStateException("用印申请审批结果回写失败，businessId=" + dto.getBusinessId());
         }
         log.info("用印申请审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+        return true;
     }
 
     private void traceApproval(ApprovalResultDTO dto, String eventType, String title) {
