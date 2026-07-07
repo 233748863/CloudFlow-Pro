@@ -106,6 +106,7 @@ WHERE dict_type IN (
   'sys_user_sex',
   'sys_normal_disable',
   'sys_yes_no',
+  'sys_currency',
   'sys_file_type',
   'wf_notice_type',
   'oa_approval_status',
@@ -134,6 +135,7 @@ WHERE dict_type IN (
   'sys_user_sex',
   'sys_normal_disable',
   'sys_yes_no',
+  'sys_currency',
   'sys_file_type',
   'wf_notice_type',
   'oa_approval_status',
@@ -2504,6 +2506,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remar
 ('用户性别', 'sys_user_sex', '用户性别列表'),
 ('系统状态', 'sys_normal_disable', '系统开关状态'),
 ('是否', 'sys_yes_no', '系统是否列表'),
+('币种', 'sys_currency', '财务与CRM金额字段币种枚举'),
 ('文件类型', 'sys_file_type', '文件管理筛选分类'),
 ('通知类型', 'wf_notice_type', '通知类型列表'),
 ('审批状态', 'oa_approval_status', 'OA审批状态'),
@@ -2541,6 +2544,13 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '是', 'Y', 'sys_yes_no', 'success'),
 (2, '否', 'N', 'sys_yes_no', 'danger');
+
+-- 币种
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '人民币 CNY', 'CNY', 'sys_currency', 'success'),
+(2, '美元 USD', 'USD', 'sys_currency', 'info'),
+(3, '欧元 EUR', 'EUR', 'sys_currency', 'default'),
+(4, '港币 HKD', 'HKD', 'sys_currency', 'default');
 
 -- 文件类型
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
