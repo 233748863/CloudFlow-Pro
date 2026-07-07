@@ -13,7 +13,7 @@ public class WfNodeConfig implements Serializable {
     private String description;
     private String approverType; // 审批人类型：USER, USERS(USER_LIST), ROLE, DEPT, DEPT_MANAGER, DIRECT_LEADER
     private String approverValue;
-    private String branchStrategy; // 分支策略：PARALLEL, RACE, EXCLUSIVE
+    private String branchStrategy; // 分支策略：PARALLEL, EXCLUSIVE
     private String condition;
     private Boolean allowEdit;
     

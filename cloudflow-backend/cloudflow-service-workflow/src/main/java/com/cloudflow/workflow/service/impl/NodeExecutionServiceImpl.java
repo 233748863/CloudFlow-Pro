@@ -56,12 +56,17 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
     private static final Logger log = LoggerFactory.getLogger(NodeExecutionServiceImpl.class);
 
+    /** 流转时传递"到达来源节点"的临时变量名（runNode 入口消费，不落库） */
+    private static final String JOIN_ARRIVAL_SOURCE_VARIABLE = "_joinArrivalFrom";
+
     @Autowired
     private RedissonClient redissonClient;
     @Autowired
     private RedisCache redisCache;
     @Autowired
     private WfProcessInstanceMapper processInstanceMapper;
+    @Autowired
+    private WfParallelJoinMapper parallelJoinMapper;
     @Autowired
     private WfTaskMapper taskMapper;
     @Autowired
@@ -113,7 +118,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         // 深度限制检查
         int maxDepth = workflowProperties.getEngine().getMaxDepth();
         if (depth > maxDepth) {
-            throw new RuntimeException("流程深度超出限制（最大 " + maxDepth + "，可能检测到循环）");
+            throw WorkflowException.validationError("流程深度超出限制（最大 " + maxDepth + "，可能检测到循环）");
         }
 
         if (node == null) {
@@ -122,49 +127,62 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             return;
         }
 
-        // 并行汇聚检查
-        try {
-            if (rootNode != null) {
-                WfNodeConfig gateway = findParentGateway(rootNode, node.getId());
-                if (gateway != null) {
-                    String joinKey = "sys:wf:join:" + instance.getInstanceId() + ":" + gateway.getId();
-                    RLock joinLock = redissonClient.getLock("lock:join:" + instance.getInstanceId() + ":" + gateway.getId());
+        // 消费"到达来源"标识（advanceAfterNode 在流转到下一节点前写入），仅汇聚判定使用
+        Object arrivalSourceObj = variables != null ? variables.remove(JOIN_ARRIVAL_SOURCE_VARIABLE) : null;
+
+        // 并行汇聚检查：到达记录写 DB（与本次流转同事务，回滚自动撤销），Redis 锁仅做并发互斥。
+        // 计数使用 FOR UPDATE 当前读：并发分支的未提交到达行会阻塞本次计数直到对方提交，保证不漏数。
+        if (rootNode != null) {
+            WfNodeConfig gateway = findParentGateway(rootNode, node.getId());
+            if (gateway != null) {
+                String branchKey = arrivalSourceObj instanceof String && StringUtils.hasText((String) arrivalSourceObj)
+                        ? (String) arrivalSourceObj
+                        : "unknown:" + UUID.randomUUID();
+                RLock joinLock = redissonClient.getLock("lock:join:" + instance.getInstanceId() + ":" + gateway.getId());
+                try {
+                    // watchdog 模式（不设 leaseTime，自动续期），避免业务耗时超过租期导致互斥失效
+                    if (!joinLock.tryLock(10, TimeUnit.SECONDS)) {
+                        throw WorkflowException.invalidState("获取并行网关汇聚锁超时，请稍后重试");
+                    }
                     try {
-                        if (joinLock.tryLock(5, 10, TimeUnit.SECONDS)) {
-                            long count = redisCache.increment(joinKey);
-                            if (count == 1) {
-                                // P1-14: 将过期时间从 1 小时延长到 24 小时，防止长时间分支执行导致计数器过期
-                                // 24 小时足以覆盖绝大多数业务场景，超过此时间的流程应通过 SLA 超时机制处理
-                                redisCache.expire(joinKey, 24, TimeUnit.HOURS);
-                            }
-                            int totalBranches = resolveBranchRouting(gateway, rootNode).branches().size();
-                            // P1-14: 防御性检查 - 如果 count 超过 totalBranches，说明计数器可能被重置过
-                            if (count > totalBranches && totalBranches > 0) {
-                                log.warn("[runNode] 并行汇聚计数异常: instanceId={}, gatewayId={}, count={}, totalBranches={}，" +
-                                         "可能是 Redis key 过期后重新计数，强制继续执行",
-                                    instance.getInstanceId(), gateway.getId(), count, totalBranches);
-                                redisCache.deleteObject(joinKey);
-                                // 不 return，继续执行后续节点
-                            } else if (count < totalBranches) {
-                                return; // 等待其他分支
-                            } else {
-                                redisCache.deleteObject(joinKey);
-                            }
-                        } else {
-                            throw new RuntimeException("获取并行网关锁超时");
+                        // 记录本分支到达（唯一键冲突 = 同一分支重复到达，幂等忽略）
+                        try {
+                            WfParallelJoin arrival = new WfParallelJoin();
+                            arrival.setTenantId(instance.getTenantId());
+                            arrival.setInstanceId(instance.getInstanceId());
+                            arrival.setGatewayId(gateway.getId());
+                            arrival.setBranchKey(branchKey);
+                            arrival.setCreateTime(LocalDateTime.now());
+                            parallelJoinMapper.insert(arrival);
+                        } catch (org.springframework.dao.DuplicateKeyException e) {
+                            log.warn("[runNode] 并行分支重复到达汇聚点，忽略: instanceId={}, gatewayId={}, branchKey={}",
+                                    instance.getInstanceId(), gateway.getId(), branchKey);
                         }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException("并行网关处理被中断");
+                        Long arrived = parallelJoinMapper.selectCount(
+                                new LambdaQueryWrapper<WfParallelJoin>()
+                                        .eq(WfParallelJoin::getInstanceId, instance.getInstanceId())
+                                        .eq(WfParallelJoin::getGatewayId, gateway.getId())
+                                        .last("FOR UPDATE"));
+                        int totalBranches = resolveBranchRouting(gateway, rootNode).branches().size();
+                        if (arrived == null || arrived < totalBranches) {
+                            log.info("[runNode] 并行汇聚等待其他分支: instanceId={}, gatewayId={}, arrived={}/{}",
+                                    instance.getInstanceId(), gateway.getId(), arrived, totalBranches);
+                            return; // 等待其他分支（本分支到达记录随本事务提交）
+                        }
+                        // 全部到达：同事务清理到达记录后继续执行汇聚点
+                        parallelJoinMapper.delete(new LambdaQueryWrapper<WfParallelJoin>()
+                                .eq(WfParallelJoin::getInstanceId, instance.getInstanceId())
+                                .eq(WfParallelJoin::getGatewayId, gateway.getId()));
                     } finally {
                         if (joinLock.isHeldByCurrentThread()) {
                             joinLock.unlock();
                         }
                     }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw WorkflowException.invalidState("并行网关汇聚处理被中断");
                 }
             }
-        } catch (Exception e) {
-            log.warn("[runNode] 并行汇聚检查异常: {}", e.getMessage());
         }
 
         // P2-10: inputs 数据流映射 — 节点执行前，从流程变量提取到节点局部作用域
@@ -199,10 +217,17 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         } else if ("END".equals(node.getType())) {
             workflowEventPublisher.publishNodeCompleted(instance, node);
             completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
-        } else {
-            // 未知或开始节点，直接继续
+        } else if ("START".equals(node.getType())) {
+            // 开始节点直接继续
             workflowEventPublisher.publishNodeCompleted(instance, node);
             advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
+        } else {
+            // B21: 未知节点类型不再静默放行——挂起流程等待人工处理，
+            // 防止脏数据/前后端版本不齐导致业务节点被静默跳过
+            log.error("[runNode] 未知节点类型，流程挂起, instanceId={}, nodeId={}, type={}",
+                    instance.getInstanceId(), node.getId(), node.getType());
+            suspendInstanceForNodeFailure(instance, node.getId(), node.getTitle(),
+                    "未知节点类型: " + node.getType());
         }
     }
 
@@ -216,9 +241,13 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             // 会签模式
             List<Long> assigneeIds = resolveMultipleAssignees(node, instance);
             if (assigneeIds == null || assigneeIds.isEmpty()) {
-                assigneeIds = new ArrayList<>();
                 Long singleAssignee = resolveAssignee(node, instance);
-                assigneeIds.add(singleAssignee != null ? singleAssignee : 1L);
+                if (singleAssignee == null) {
+                    throw WorkflowException.validationError(String.format(
+                        "会签节点[%s]无法解析到任何审批人，请检查流程定义的审批人配置", node.getTitle()));
+                }
+                assigneeIds = new ArrayList<>();
+                assigneeIds.add(singleAssignee);
             }
 
             Integer passPercent = node.getPassPercent();
@@ -245,7 +274,11 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         task.setNodeKey(node.getId());
 
         Long assigneeId = resolveAssignee(node, instance);
-        task.setAssignee(assigneeId != null ? assigneeId : 1L);
+        if (assigneeId == null) {
+            throw WorkflowException.validationError(String.format(
+                "审批节点[%s]无法解析到审批人，请检查流程定义的审批人配置", node.getTitle()));
+        }
+        task.setAssignee(assigneeId);
         task.setAssigneeName(resolveUserDisplayName(task.getAssignee()));
         task.setAllowEdit(Boolean.TRUE.equals(node.getAllowEdit()));
         task.setStatus(WfTaskStatus.TODO.getCode());
@@ -518,20 +551,20 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 ? currentNode.getBranchStrategy().trim().toUpperCase(Locale.ROOT)
                 : "EXCLUSIVE";
 
-            if (!"EXCLUSIVE".equals(strategy) && !"PARALLEL".equals(strategy) && !"RACE".equals(strategy)) {
+            if (!"EXCLUSIVE".equals(strategy) && !"PARALLEL".equals(strategy)) {
                 throw WorkflowException.validationError(String.format(
-                    "节点 %s(%s) 的 branchStrategy=%s 非法，仅支持 EXCLUSIVE/PARALLEL/RACE",
+                    "节点 %s(%s) 的 branchStrategy=%s 非法，仅支持 EXCLUSIVE/PARALLEL",
                     currentNode.getTitle(), currentNode.getId(), strategy));
             }
 
-            // 严格模式：仅并行网关允许 PARALLEL/RACE，其他节点配置该策略直接报错
-            if (!"PARALLEL".equals(currentNode.getType()) && ("PARALLEL".equals(strategy) || "RACE".equals(strategy))) {
+            // 严格模式：仅并行网关允许 PARALLEL，其他节点配置该策略直接报错
+            if (!"PARALLEL".equals(currentNode.getType()) && "PARALLEL".equals(strategy)) {
                 throw WorkflowException.validationError(String.format(
                     "节点 %s(%s) 类型为 %s，不允许使用分支策略 %s",
                     currentNode.getTitle(), currentNode.getId(), currentNode.getType(), strategy));
             }
 
-            if ("PARALLEL".equals(strategy) || "RACE".equals(strategy)) {
+            if ("PARALLEL".equals(strategy)) {
                 for (WfNodeConfig branch : branches) {
                     WfNodeConfig branchEntry = resolveParallelBranchEntry(branch, rootNode);
                     if (branchEntry == null) {
@@ -574,10 +607,17 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         WfNodeConfig nextNode = routing.defaultNext();
 
         if (nextNode != null) {
+            // 记录到达来源（若下一节点是并行汇聚点，用于分支到达标识）
+            if (variables != null) {
+                variables.put(JOIN_ARRIVAL_SOURCE_VARIABLE, currentNodeKey);
+            }
             runNode(instance, nextNode, variables, depth + 1, rootNode);
         } else {
             WfNodeConfig parallelJoinNode = findParallelJoinNodeForBranch(rootNode, currentNode.getId());
             if (parallelJoinNode != null) {
+                if (variables != null) {
+                    variables.put(JOIN_ARRIVAL_SOURCE_VARIABLE, currentNodeKey);
+                }
                 runNode(instance, parallelJoinNode, variables, depth + 1, rootNode);
             } else {
                 completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
@@ -623,19 +663,20 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         // P2-9: 全局监听器 — 流程结束回调
         globalListenerDispatcher.fireFinish(instance, null, null);
 
-        // 子流程完成后回调父流程：如果当前实例是子流程，发布事件通知父流程继续流转
-        if (WfProcessStatus.COMPLETED.getCode().equals(status)
-                && StringUtils.hasText(instance.getParentInstanceId())
+        // 子流程结束后回调父流程：任意终态（完成/驳回/终止等）都必须通知父流程，
+        // 否则等待中的父流程会永久卡死；父流程按终态决策（完成→继续流转，异常终态→挂起）
+        if (StringUtils.hasText(instance.getParentInstanceId())
                 && StringUtils.hasText(instance.getParentNodeKey())) {
             try {
                 workflowEventPublisher.publishSubprocessCompleted(
                         instance.getParentInstanceId(),
                         instance.getParentNodeKey(),
-                        instance.getInstanceId());
-                log.info("[completeInstance] 子流程完成事件已发布, parentInstanceId={}, parentNodeKey={}, childInstanceId={}",
-                        instance.getParentInstanceId(), instance.getParentNodeKey(), instance.getInstanceId());
+                        instance.getInstanceId(),
+                        status);
+                log.info("[completeInstance] 子流程结束事件已发布, parentInstanceId={}, parentNodeKey={}, childInstanceId={}, childStatus={}",
+                        instance.getParentInstanceId(), instance.getParentNodeKey(), instance.getInstanceId(), status);
             } catch (Exception e) {
-                log.error("[completeInstance] 发布子流程完成事件失败, parentInstanceId={}, parentNodeKey={}: {}",
+                log.error("[completeInstance] 发布子流程结束事件失败, parentInstanceId={}, parentNodeKey={}: {}",
                         instance.getParentInstanceId(), instance.getParentNodeKey(), e.getMessage(), e);
             }
         }
@@ -1225,7 +1266,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
      * @param node      当前节点配置
      * @param instance  流程实例
      * @param variables 流程变量
-     * @return 节点处理器的返回值（true=继续流转，false=阻塞等待）
+     * @return true=继续流转；false=阻塞等待（含重试耗尽后主干节点失败挂起流程的情形）
      */
     private Boolean executeWithRetry(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables) {
         Map<String, Object> retryConfig = node.getRetry();
@@ -1277,7 +1318,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         }
 
         // 所有重试都失败
-        log.error("[executeWithRetry] 节点 '{}' (id={}) 重试 {} 次后仍然失败, instanceId={}, 将继续流转避免阻塞",
+        log.error("[executeWithRetry] 节点 '{}' (id={}) 重试 {} 次后仍然失败, instanceId={}",
                 node.getTitle(), node.getId(), maxRetries, instance.getInstanceId(), lastException);
 
         // 记录异常告警
@@ -1289,8 +1330,56 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             log.warn("[executeWithRetry] 记录异常告警失败: {}", e.getMessage());
         }
 
-        // 返回 true 继续流转，避免父流程永久阻塞
-        return true;
+        // 旁路节点（通知/抄送）失败不影响业务主干，放行继续流转；
+        // 主干节点（脚本/子流程/定时/人工等）失败则挂起流程，人工处理后通过"恢复流程"从失败节点重跑
+        if (isBypassNodeType(node.getType())) {
+            log.warn("[executeWithRetry] 旁路节点 '{}' (type={}) 失败放行继续流转, instanceId={}",
+                    node.getTitle(), node.getType(), instance.getInstanceId());
+            return true;
+        }
+        suspendInstanceForNodeFailure(instance, node.getId(), node.getTitle(),
+                lastException != null ? lastException.getMessage() : "未知错误");
+        return false;
+    }
+
+    /**
+     * 旁路节点：执行结果不影响业务主干，失败时允许放行继续流转
+     */
+    private boolean isBypassNodeType(String nodeType) {
+        return "NOTIFICATION".equals(nodeType) || "COPY".equals(nodeType);
+    }
+
+    /**
+     * 主干自动节点执行失败：挂起流程实例并通知发起人。
+     * 失败节点记录在流程变量 {@link INodeExecutionService#FAILED_NODE_KEY_VARIABLE} 中，
+     * 恢复流程（resumeProcess）时从该节点重跑。
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public void suspendInstanceForNodeFailure(WfProcessInstance instance, String nodeKey, String nodeTitle, String reason) {
+        try {
+            Map<String, Object> vars = new HashMap<>();
+            if (StringUtils.hasText(instance.getVariables())) {
+                vars = objectMapper.readValue(instance.getVariables(), Map.class);
+            }
+            vars.put(FAILED_NODE_KEY_VARIABLE, nodeKey);
+            instance.setVariables(objectMapper.writeValueAsString(vars));
+        } catch (Exception e) {
+            log.error("[suspendInstanceForNodeFailure] 记录失败节点变量失败, instanceId={}: {}",
+                    instance.getInstanceId(), e.getMessage());
+        }
+        instance.setStatus(WfProcessStatus.SUSPENDED.getCode());
+        processInstanceMapper.updateById(instance);
+        log.error("[suspendInstanceForNodeFailure] 节点执行失败，流程已挂起, instanceId={}, nodeKey={}, 原因: {}",
+                instance.getInstanceId(), nodeKey, reason);
+
+        try {
+            sysNoticeService.sendNotice(instance.getStartUserId(), "流程已挂起",
+                "流程 [" + instance.getTitle() + "] 的节点 [" + nodeTitle + "] 执行失败，流程已挂起，请联系管理员处理后恢复流程",
+                "1", UserContext.getUserId(), UserContext.getUserName());
+        } catch (Exception e) {
+            log.warn("[suspendInstanceForNodeFailure] 发送挂起通知失败: {}", e.getMessage());
+        }
     }
 
     // ==================== P2-10: inputs/outputs 数据流映射 ====================

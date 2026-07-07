@@ -17,6 +17,12 @@ import java.util.Map;
 public interface INodeExecutionService {
 
     /**
+     * 流程变量中记录"执行失败导致挂起"的节点Key的系统变量名。
+     * 主干自动节点（脚本/子流程等）重试耗尽后流程挂起，恢复流程时从该节点重跑。
+     */
+    String FAILED_NODE_KEY_VARIABLE = "_failedNodeKey";
+
+    /**
      * 递归执行流程节点
      * 根据节点类型分发到不同的处理逻辑（审批/通知/脚本/定时/子流程/人工/抄送等）
      *
@@ -49,6 +55,18 @@ public interface INodeExecutionService {
      * @param status   目标状态（COMPLETED/REJECTED 等）
      */
     void completeInstance(WfProcessInstance instance, String status);
+
+    /**
+     * 因节点执行失败挂起流程实例：状态置 SUSPENDED，失败节点写入
+     * {@link #FAILED_NODE_KEY_VARIABLE} 流程变量并通知发起人；
+     * 恢复流程（resumeProcess）时从该节点重跑。
+     *
+     * @param instance  流程实例
+     * @param nodeKey   失败节点Key
+     * @param nodeTitle 失败节点标题（用于通知文案）
+     * @param reason    失败原因（用于日志与通知）
+     */
+    void suspendInstanceForNodeFailure(WfProcessInstance instance, String nodeKey, String nodeTitle, String reason);
 
     /**
      * 在运行时图索引中查找指定 ID 的节点。
