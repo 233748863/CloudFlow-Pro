@@ -125,13 +125,14 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         <div className="absolute z-50 mt-1.5 max-h-64 w-full overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] shadow-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
           <div className="border-b border-slate-200 p-2 dark:border-slate-800">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="搜索角色..."
-                className="cf-control h-10 w-full rounded-md pl-8 pr-3 text-sm"
+                className="cf-control h-10 w-full rounded-md pr-3 text-sm"
+                style={{ paddingLeft: '2.25rem' }}
                 onClick={(e) => e.stopPropagation()}
               />
             </div>

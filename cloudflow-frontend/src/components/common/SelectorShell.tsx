@@ -211,14 +211,15 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
           >
           <div className="border-b border-slate-200 p-2 dark:border-slate-800">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 ref={inputRef}
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="cf-control h-10 w-full rounded-md pl-8 pr-3 text-sm"
+                className="cf-control h-10 w-full rounded-md pr-3 text-sm"
+                style={{ paddingLeft: '2.25rem' }}
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
