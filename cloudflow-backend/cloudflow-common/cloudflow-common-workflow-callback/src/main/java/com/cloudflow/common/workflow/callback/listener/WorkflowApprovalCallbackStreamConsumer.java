@@ -14,8 +14,6 @@ import org.springframework.data.redis.stream.StreamListener;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -27,8 +25,6 @@ public class WorkflowApprovalCallbackStreamConsumer
     private final WorkflowCallbackProperties properties;
     private final CallbackIdempotentStore idempotentStore;
     private final DeadLetterHandler deadLetterHandler;
-
-    private final ConcurrentHashMap<String, AtomicInteger> retryCounters = new ConcurrentHashMap<>();
 
     @Override
     public void onMessage(MapRecord<String, String, String> message) {
@@ -52,17 +48,17 @@ public class WorkflowApprovalCallbackStreamConsumer
             });
             redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
             redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
-            retryCounters.remove(processInstanceId);
             log.info("审批结果消费成功: streamKey={}, msgId={}, businessType={}, businessId={}, result={}",
                     properties.getStreamKey(), msgId, dto.getBusinessType(), dto.getBusinessId(), dto.getApprovalResult());
         } catch (Exception e) {
             idempotentStore.release(processInstanceId);
-            int count = retryCounters.computeIfAbsent(processInstanceId, k -> new AtomicInteger(0))
-                    .incrementAndGet();
-            log.error("消费审批结果失败(第{}次): streamKey={}, msgId={}", count, properties.getStreamKey(), msgId, e);
-            if (count >= properties.getMaxRetry()) {
-                retryCounters.remove(processInstanceId);
-                deadLetterHandler.record(properties.getStreamKey(), processInstanceId, body, count, e.getMessage());
+            // B13: 重试次数取 Redis Stream pending 的 deliveryCount（XPENDING），
+            // 由 Redis 维护，多实例部署、服务重启后依然准确，替代原进程内存计数
+            long deliveryCount = redisStreamUtil.pendingDeliveryCountGlobal(
+                    properties.getStreamKey(), properties.getGroup(), msgId);
+            log.error("消费审批结果失败(第{}次投递): streamKey={}, msgId={}", deliveryCount, properties.getStreamKey(), msgId, e);
+            if (deliveryCount >= properties.getMaxRetry()) {
+                deadLetterHandler.record(properties.getStreamKey(), processInstanceId, body, (int) deliveryCount, e.getMessage());
                 redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
                 redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
             }

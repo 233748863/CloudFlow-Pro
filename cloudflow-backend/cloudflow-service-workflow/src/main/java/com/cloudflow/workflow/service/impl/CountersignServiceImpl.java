@@ -210,10 +210,11 @@ public class CountersignServiceImpl implements ICountersignService {
         RLock lock = redissonClient.getLock(lockKey);
 
         try {
-            // 从配置读取锁等待和持有时间（sys.workflow.lock.countersignWait / countersignLease）
+            // 从配置读取锁等待时间（sys.workflow.lock.countersignWait）；
+            // 不设 leaseTime，走 Redisson watchdog 自动续期，避免计票耗时超过租期导致锁提前失效。
+            // completeTask 外层已持有同一把锁时此处为可重入加锁。
             long waitSeconds = workflowProperties.getLock().getCountersignWait();
-            long leaseSeconds = workflowProperties.getLock().getCountersignLease();
-            if (!lock.tryLock(waitSeconds, leaseSeconds, TimeUnit.SECONDS)) {
+            if (!lock.tryLock(waitSeconds, TimeUnit.SECONDS)) {
                 throw WorkflowException.invalidState("会签投票繁忙，请稍后重试");
             }
 
@@ -244,7 +245,7 @@ public class CountersignServiceImpl implements ICountersignService {
                 throw WorkflowException.invalidState("您已经投过票了，不能重复投票");
             }
 
-            // 7. 记录投票
+            // 7. 记录投票（B6: uk(countersign_id, voter_id) 为锁失效场景的最后防线，冲突即重复投票）
             WfCountersignVote vote = new WfCountersignVote();
             vote.setVoteId(UUID.randomUUID().toString());
             vote.setTenantId(csTask.getTenantId() != null ? csTask.getTenantId() : task.getTenantId());
@@ -255,7 +256,11 @@ public class CountersignServiceImpl implements ICountersignService {
             vote.setVoteResult(voteResult);
             vote.setComment(comment);
             vote.setVoteTime(LocalDateTime.now());
-            countersignVoteMapper.insert(vote);
+            try {
+                countersignVoteMapper.insert(vote);
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                throw WorkflowException.invalidState("您已经投过票了，不能重复投票");
+            }
 
             // 8. 更新会签计数（CAS 语义：基于当前值更新）
             csTask.setVotedCount(csTask.getVotedCount() + 1);

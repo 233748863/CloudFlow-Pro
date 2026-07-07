@@ -379,9 +379,6 @@ WHERE id BETWEEN 98001 AND 98007;
 DELETE FROM cloud_flow_db.wf_deploy_record
 WHERE id BETWEEN 98001 AND 98007;
 
-DELETE FROM cloud_flow_db.wf_template_version
-WHERE id LIKE 'demo_%'
-   OR id LIKE 'seed_%';
 
 DELETE FROM cloud_flow_db.wf_template_archive
 WHERE id LIKE 'demo_%'
@@ -7875,7 +7872,6 @@ DELETE FROM cloud_flow_db.wf_deploy_record WHERE id IN (98001,98002);
 
 DELETE FROM cloud_flow_db.wf_notification_config WHERE config_id IN ('demo_notify_001','demo_notify_002');
 
-DELETE FROM cloud_flow_db.wf_template_version WHERE id IN ('demo_tpl_vehicle_001_v1');
 
 DELETE FROM cloud_flow_db.wf_template_archive WHERE id IN ('demo_archive_001');
 
@@ -8852,14 +8848,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_template (
 ('demo_tpl_vehicle_001', '用车申请简化模板', '适用于短途接待用车的简化流程', 'cat-office',
  '["用车","行政","简化"]',
  '{"nodes":[{"id":"start","type":"START","title":"提交用车"},{"id":"approve","type":"APPROVAL","title":"直属上级审批","approverType":"ROLE","approverValue":"manager"},{"id":"end","type":"END","title":"结束"}],"edges":[{"id":"start->approve","source":"start","target":"approve"},{"id":"approve->end","source":"approve","target":"end"}]}',
- '/demo/workflow/template/vehicle-simple.png', 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 18, 0, 'active', 100000);
+ NULL, 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 18, 0, 'active', 100000);
 
-INSERT IGNORE INTO cloud_flow_db.wf_template_version (
-  id, workflow_id, version_number, definition, change_log, change_type, created_by, created_at, is_rollback, rollback_from_version, checksum, tenant_id
-) VALUES
-('demo_tpl_vehicle_001_v1', 'demo_tpl_vehicle_001', 'v1',
- '{"nodes":[{"id":"start","type":"START","title":"提交用车"},{"id":"approve","type":"APPROVAL","title":"直属上级审批","approverType":"ROLE","approverValue":"manager"},{"id":"end","type":"END","title":"结束"}],"edges":[{"id":"start->approve","source":"start","target":"approve"},{"id":"approve->end","source":"approve","target":"end"}]}',
- '初始版本', 'CREATE', 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY), 0, NULL, '9f86d081884c7d659a2feaa0c55ad015', 100000);
 
 INSERT IGNORE INTO cloud_flow_db.wf_template_archive (
   id, workflow_id, workflow_name, archived_by, archived_at, archive_reason, can_restore, original_data, tenant_id
@@ -10709,13 +10699,6 @@ WHERE id IN (98002);
 DELETE FROM cloud_flow_db.wf_deploy_record
 WHERE id IN (98003,98004,98005,98006);
 
-DELETE FROM cloud_flow_db.wf_template_version
-WHERE id IN (
-  'seed_tpl_delivery_change_001_v1',
-  'seed_tpl_delivery_change_001_v2',
-  'seed_tpl_delivery_change_001_v3',
-  'seed_tpl_customer_renewal_001_v1'
-);
 
 DELETE FROM cloud_flow_db.wf_template_archive
 WHERE id IN ('seed_archive_003');
@@ -10741,31 +10724,12 @@ INSERT IGNORE INTO cloud_flow_db.wf_template (
 ('seed_tpl_delivery_change_001', '交付上线变更审批', '交付申请 → 技术评审 → 测试备注 → 发布窗口审批 → 完成', 'cat-it',
  '["交付","上线","变更","运维"]',
  '{"nodes":[{"id":"start","type":"START","title":"提交变更申请"},{"id":"n1","type":"APPROVAL","title":"技术评审","approverType":"ROLE","approverValue":"admin"},{"id":"n2","type":"MANUAL","title":"记录测试验证备注","approverType":"INITIATOR"},{"id":"n3","type":"APPROVAL","title":"发布窗口审批","approverType":"ROLE","approverValue":"manager"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"start->n1","source":"start","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->n3","source":"n2","target":"n3"},{"id":"n3->end","source":"n3","target":"end"}]}',
- '/demo/workflow/template/delivery-change.png', 'tang_ops', DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), 11, 0, 'active', 100000),
+ NULL, 'tang_ops', DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), 11, 0, 'active', 100000),
 ('seed_tpl_customer_renewal_001', '重点客户续约评审', '客户成功发起 → 销售复核 → 财务确认 → 总经理审批', 'cat-sales',
  '["续约","客户成功","销售","评审"]',
  '{"nodes":[{"id":"start","type":"START","title":"提交续约评审"},{"id":"n1","type":"APPROVAL","title":"销售复核","approverType":"USER","approverValue":"13"},{"id":"n2","type":"APPROVAL","title":"财务确认","approverType":"ROLE","approverValue":"finance"},{"id":"n3","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"manager"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"start->n1","source":"start","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->n3","source":"n2","target":"n3"},{"id":"n3->end","source":"n3","target":"end"}]}',
- '/demo/workflow/template/customer-renewal.png', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), 7, 0, 'active', 100000);
+ NULL, 'zheng_cs', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), 7, 0, 'active', 100000);
 
-INSERT IGNORE INTO cloud_flow_db.wf_template_version (
-  id, workflow_id, version_number, definition, change_log, change_type, created_by, created_at, is_rollback, rollback_from_version, checksum, tenant_id
-) VALUES
-('seed_tpl_delivery_change_001_v1', 'seed_tpl_delivery_change_001', 'v1',
- '{"nodes":[{"id":"start","type":"START","title":"提交变更申请"},{"id":"n1","type":"APPROVAL","title":"技术评审","approverType":"ROLE","approverValue":"admin"},{"id":"n2","type":"APPROVAL","title":"发布窗口审批","approverType":"ROLE","approverValue":"manager"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"start->n1","source":"start","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}',
- '初始版本，覆盖交付上线前审批和发布窗口确认。', 'CREATE', 'tang_ops', DATE_SUB(NOW(), INTERVAL 14 DAY), 0, NULL,
- '7e3a1f90c4b64d0ea3d41c0a5f1800017e3a1f90c4b64d0ea3d41c0a5f180001', 100000),
-('seed_tpl_delivery_change_001_v2', 'seed_tpl_delivery_change_001', 'v2',
- '{"nodes":[{"id":"start","type":"START","title":"提交变更申请"},{"id":"n1","type":"APPROVAL","title":"技术评审","approverType":"ROLE","approverValue":"admin"},{"id":"n2","type":"APPROVAL","title":"测试验证","approverType":"ROLE","approverValue":"admin"},{"id":"n3","type":"APPROVAL","title":"发布窗口审批","approverType":"ROLE","approverValue":"manager"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"start->n1","source":"start","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->n3","source":"n2","target":"n3"},{"id":"n3->end","source":"n3","target":"end"}]}',
- '新增测试验证审批节点，并收紧高风险变更的校验要求。', 'UPDATE', 'tang_ops', DATE_SUB(NOW(), INTERVAL 10 DAY), 0, NULL,
- '8f4b2b10d5e74b2fb4c51d0b6f2800028f4b2b10d5e74b2fb4c51d0b6f280002', 100000),
-('seed_tpl_delivery_change_001_v3', 'seed_tpl_delivery_change_001', 'v3',
- '{"nodes":[{"id":"start","type":"START","title":"提交变更申请"},{"id":"n1","type":"APPROVAL","title":"技术评审","approverType":"ROLE","approverValue":"admin"},{"id":"n2","type":"MANUAL","title":"记录测试验证备注","approverType":"INITIATOR"},{"id":"n3","type":"APPROVAL","title":"发布窗口审批","approverType":"ROLE","approverValue":"manager"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"start->n1","source":"start","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->n3","source":"n2","target":"n3"},{"id":"n3->end","source":"n3","target":"end"}]}',
- '回滚到稳定审批链路，并保留测试验证备注字段。', 'ROLLBACK', 'tang_ops', DATE_SUB(NOW(), INTERVAL 7 DAY), 1, 'v2',
- '9a5c3c20e6f84c30c5d62e1c7f3900039a5c3c20e6f84c30c5d62e1c7f390003', 100000),
-('seed_tpl_customer_renewal_001_v1', 'seed_tpl_customer_renewal_001', 'v1',
- '{"nodes":[{"id":"start","type":"START","title":"提交续约评审"},{"id":"n1","type":"APPROVAL","title":"销售复核","approverType":"USER","approverValue":"13"},{"id":"n2","type":"APPROVAL","title":"财务确认","approverType":"ROLE","approverValue":"finance"},{"id":"n3","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"manager"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"start->n1","source":"start","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->n3","source":"n2","target":"n3"},{"id":"n3->end","source":"n3","target":"end"}]}',
- '重点客户续约评审模板初始版本，统一客户成功、销售、财务和总经理审批链路。', 'CREATE', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 6 DAY), 0, NULL,
- 'ab6d4d30f7a95d41d6e73f2d8a4a0004ab6d4d30f7a95d41d6e73f2d8a4a0004', 100000);
 
 INSERT IGNORE INTO cloud_flow_db.wf_deploy_record (
   id, tenant_id, process_def_id, process_key, version, deploy_status, deploy_by, deployer_name, deploy_time,
@@ -11428,7 +11392,6 @@ DELETE FROM cloud_flow_db.oa_knowledge_read              WHERE id BETWEEN 26000 
 DELETE FROM cloud_flow_db.wf_deploy_notification         WHERE id BETWEEN 26000 AND 29999;
 DELETE FROM cloud_flow_db.wf_deploy_approval_step        WHERE id BETWEEN 26000 AND 29999;
 DELETE FROM cloud_flow_db.wf_deploy_approval             WHERE id BETWEEN 26000 AND 29999;
-DELETE FROM cloud_flow_db.wf_process_version_snapshot    WHERE id BETWEEN 26000 AND 29999;
 DELETE FROM cloud_flow_db.wf_anomaly_alert               WHERE id BETWEEN 26000 AND 29999;
 
 INSERT IGNORE INTO cloud_flow_db.hr_position_family (id, tenant_id, family_code, family_name, description, sort_order, status) VALUES
@@ -13170,51 +13133,6 @@ INSERT IGNORE INTO cloud_flow_db.wf_anomaly_alert
  NULL, 'N', NULL,
  '2026-05-21 16:00:00', NULL, 'Y', '2026-05-21 16:00:00', '2026-05-21 16:00:00');
 
--- ---------- 17.1.2 流程版本快照 wf_process_version_snapshot (26050-26056, 7 行) ----------
-INSERT IGNORE INTO cloud_flow_db.wf_process_version_snapshot
-(id, tenant_id, process_def_id, process_key, version, snapshot_data, bpmn_xml, form_config, node_config, create_time) VALUES
-(26050, 100000, 'wf_reimburse', 'biz_reimburse', 1,
- '{"name":"财务报销流程","version":1,"nodeCount":5,"created":"2024-09-15"}',
- '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="biz_reimburse" name="财务报销流程V1"><!-- V1 流程定义已省略 --></bpmn:process></bpmn:definitions>',
- '{"fields":[{"key":"amount","label":"金额","type":"number","required":true},{"key":"reason","label":"事由","type":"text"}]}',
- '{"nodes":[{"key":"start","name":"开始"},{"key":"apply","name":"申请人填写"},{"key":"manager","name":"部门经理审批"},{"key":"finance","name":"财务审批"},{"key":"end","name":"结束"}]}',
- '2024-09-15 10:00:00'),
-(26051, 100000, 'wf_reimburse', 'biz_reimburse', 2,
- '{"name":"财务报销流程","version":2,"nodeCount":6,"changeLog":"V2 新增预算占用校验节点"}',
- '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="biz_reimburse" name="财务报销流程V2"><!-- V2 增加 budgetCheck 节点 --></bpmn:process></bpmn:definitions>',
- '{"fields":[{"key":"amount","label":"金额","type":"number","required":true},{"key":"reason","label":"事由","type":"text"},{"key":"budgetSubject","label":"预算科目","type":"select"}]}',
- '{"nodes":[{"key":"start","name":"开始"},{"key":"apply","name":"申请人填写"},{"key":"budgetCheck","name":"预算占用校验"},{"key":"manager","name":"部门经理审批"},{"key":"finance","name":"财务审批"},{"key":"end","name":"结束"}]}',
- '2025-01-08 14:30:00'),
-(26052, 100000, 'wf_reimburse', 'biz_reimburse', 3,
- '{"name":"财务报销流程","version":3,"nodeCount":7,"changeLog":"V3 新增金额条件分支与加签节点"}',
- '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="biz_reimburse" name="财务报销流程V3"><!-- V3 增加 amountGateway 与 addSign 节点 --></bpmn:process></bpmn:definitions>',
- '{"fields":[{"key":"amount","label":"金额","type":"number","required":true,"validators":["max:1000000"]},{"key":"reason","label":"事由","type":"text"},{"key":"budgetSubject","label":"预算科目","type":"select"},{"key":"invoice","label":"发票","type":"upload"}]}',
- '{"nodes":[{"key":"start","name":"开始"},{"key":"apply","name":"申请人填写"},{"key":"budgetCheck","name":"预算占用校验"},{"key":"amountGateway","name":"金额条件分支"},{"key":"manager","name":"部门经理审批"},{"key":"director","name":"总监加签"},{"key":"finance","name":"财务审批"},{"key":"end","name":"结束"}]}',
- '2026-05-01 11:00:00'),
-(26053, 100000, 'wf_hr_contract_renew', 'hr_contract_renew', 1,
- '{"name":"HR合同续签","version":1,"nodeCount":4}',
- '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="hr_contract_renew" name="HR合同续签V1"></bpmn:process></bpmn:definitions>',
- '{"fields":[{"key":"contractId","label":"合同ID","type":"reference"},{"key":"newEndDate","label":"新到期日","type":"date"}]}',
- '{"nodes":[{"key":"start","name":"开始"},{"key":"hrReview","name":"人事复核"},{"key":"director","name":"总监审批"},{"key":"end","name":"结束"}]}',
- '2025-03-10 09:00:00'),
-(26054, 100000, 'wf_crm_sales_contract', 'crm_sales_contract', 2,
- '{"name":"CRM销售合同审批","version":2,"nodeCount":5,"changeLog":"V2 新增金额超限风控分支"}',
- '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="crm_sales_contract"></bpmn:process></bpmn:definitions>',
- '{"fields":[{"key":"customerName","label":"客户","type":"reference"},{"key":"amount","label":"合同金额","type":"number"}]}',
- '{"nodes":[{"key":"start","name":"开始"},{"key":"riskCheck","name":"风控扫描"},{"key":"salesDirector","name":"销售总监审批"},{"key":"ceoApprove","name":"CEO审批(>500W)"},{"key":"end","name":"结束"}]}',
- '2026-03-20 16:00:00'),
-(26055, 100000, 'wf_oa_seal_use', 'oa_seal_use', 1,
- '{"name":"用印申请","version":1,"nodeCount":4}',
- '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="oa_seal_use"></bpmn:process></bpmn:definitions>',
- '{"fields":[{"key":"sealId","label":"印章","type":"reference"},{"key":"purpose","label":"用印用途","type":"text"}]}',
- '{"nodes":[{"key":"start","name":"开始"},{"key":"dept","name":"部门经理审批"},{"key":"sealKeeper","name":"印章保管员审批"},{"key":"end","name":"结束"}]}',
- '2024-12-01 10:00:00'),
-(26056, 100000, 'wf_hr_offboarding', 'hr_offboarding', 1,
- '{"name":"HR离职交接","version":1,"nodeCount":6}',
- '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="hr_offboarding"></bpmn:process></bpmn:definitions>',
- '{"fields":[{"key":"employeeId","label":"员工","type":"reference"},{"key":"reason","label":"离职原因","type":"text"}]}',
- '{"nodes":[{"key":"start","name":"开始"},{"key":"directLeader","name":"直接上级审批"},{"key":"hrReview","name":"HR复核"},{"key":"crmHandover","name":"CRM客户交接"},{"key":"financeClear","name":"财务结算"},{"key":"end","name":"结束"}]}',
- '2025-02-18 14:00:00');
 
 -- ---------- 17.1.3 发布审批 wf_deploy_approval (26100-26106, 7 行) ----------
 INSERT IGNORE INTO cloud_flow_db.wf_deploy_approval

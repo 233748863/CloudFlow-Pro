@@ -112,4 +112,26 @@ public class RedisStreamUtil {
     public Long trimGlobal(String key, long count, boolean approximateTrimming) {
         return redisTemplate.opsForStream().trim(getGlobalKey(key), count, approximateTrimming);
     }
+
+    /**
+     * 查询全局 Stream 中指定 pending 消息的投递次数（XPENDING deliveryCount）。
+     * 用于消费失败重试判定：deliveryCount 由 Redis 维护，多实例部署/重启后依然准确，
+     * 替代进程内存计数。消息不在 pending 列表（已 ACK 或不存在）时返回 0。
+     */
+    public long pendingDeliveryCountGlobal(String key, String group, String recordId) {
+        try {
+            org.springframework.data.redis.connection.stream.PendingMessages pending =
+                    redisTemplate.opsForStream().pending(
+                            getGlobalKey(key), group,
+                            org.springframework.data.domain.Range.just(recordId), 1L);
+            if (pending != null) {
+                for (org.springframework.data.redis.connection.stream.PendingMessage pm : pending) {
+                    return pm.getTotalDeliveryCount();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("查询 pending 投递次数失败, key={}, group={}, recordId={}", key, group, recordId, e);
+        }
+        return 0L;
+    }
 }
