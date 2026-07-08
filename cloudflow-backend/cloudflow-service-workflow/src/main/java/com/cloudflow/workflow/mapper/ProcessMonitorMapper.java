@@ -1,6 +1,8 @@
 package com.cloudflow.workflow.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.datascope.DataScope;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
 import com.cloudflow.workflow.domain.monitor.ProcessTrend;
 import org.apache.ibatis.annotations.Mapper;
@@ -63,11 +65,23 @@ public interface ProcessMonitorMapper extends BaseMapper<ProcessMonitor> {
                                                @Param("startTimeTo") String startTimeTo,
                                                @Param("tenantId") Long tenantId);
 
+    Page<ProcessMonitor> selectPageByDataScope(Page<ProcessMonitor> page,
+                                               @Param("processDefKey") String processDefKey,
+                                               @Param("status") String status,
+                                               @Param("startTimeFrom") String startTimeFrom,
+                                               @Param("startTimeTo") String startTimeTo,
+                                               @Param("tenantId") Long tenantId,
+                                               @Param("dataScope") DataScope dataScope);
+
     /**
      * 根据实例ID查询
      */
     ProcessMonitor selectByInstanceId(@Param("instanceId") String instanceId,
                                       @Param("tenantId") Long tenantId);
+
+    ProcessMonitor selectByInstanceIdWithDataScope(@Param("instanceId") String instanceId,
+                                                   @Param("tenantId") Long tenantId,
+                                                   @Param("dataScope") DataScope dataScope);
 
     default ProcessMonitor selectByInstanceId(String instanceId) {
         return selectByInstanceId(instanceId, null);

@@ -1,9 +1,9 @@
 package com.cloudflow.crm.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmSalesTarget;
 import com.cloudflow.crm.domain.vo.CrmPerformanceSummaryVO;
@@ -34,22 +34,8 @@ public class CrmSalesTargetServiceImpl extends CrmServiceSupport<CrmSalesTargetM
 
     @Override
     public PageResult<CrmSalesTarget> queryPage(CrmSalesTarget query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmSalesTarget> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmSalesTarget::getDeleted, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmSalesTarget::getUpdateTime);
-        likeIfPresent(wrapper, CrmSalesTarget::getTargetName, query.getTargetName());
-        likeIfPresent(wrapper, CrmSalesTarget::getTargetNo, query.getTargetNo());
-        eqIfPresent(wrapper, CrmSalesTarget::getDimensionType, query.getDimensionType());
-        eqIfPresent(wrapper, CrmSalesTarget::getPeriodType, query.getPeriodType());
-        eqIfPresent(wrapper, CrmSalesTarget::getTargetYear, query.getTargetYear());
-        eqIfPresent(wrapper, CrmSalesTarget::getTargetPeriod, query.getTargetPeriod());
-        eqIfPresent(wrapper, CrmSalesTarget::getStatus, query.getStatus());
-        if (query.getOwnerId() != null) {
-            wrapper.eq(CrmSalesTarget::getOwnerId, query.getOwnerId());
-        }
-        if (query.getDeptId() != null) {
-            wrapper.eq(CrmSalesTarget::getDeptId, query.getDeptId());
-        }
-        PageResult<CrmSalesTarget> pageResult = pageResult(pageQuery, wrapper);
+        PageResult<CrmSalesTarget> pageResult = PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(), query, DataScopeUtils.listScope("dept_id", "owner_id")));
         attachPerformance(pageResult.getRows());
         return pageResult;
     }

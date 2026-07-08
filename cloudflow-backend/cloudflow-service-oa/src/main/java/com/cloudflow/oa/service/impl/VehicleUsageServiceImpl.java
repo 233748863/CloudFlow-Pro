@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
@@ -36,6 +37,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -52,8 +54,30 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
 
     @Override
     public PageResult<VehicleUsage> queryPage(VehicleUsage usage, PageQuery pageQuery) {
+        applyDataScope(usage);
         Page<VehicleUsage> page = (Page<VehicleUsage>) usageMapper.selectUsagePage(pageQuery.build(), usage);
         return PageResult.build(page);
+    }
+
+    private void applyDataScope(VehicleUsage usage) {
+        Integer dsType = UserContext.getDsType();
+        if (usage == null || dsType == null || dsType == 0 || isAdmin()) {
+            return;
+        }
+        if (dsType == 4) {
+            usage.setApplicantId(UserContext.getUserId());
+            return;
+        }
+        List<Long> deptIds = UserContext.getDsDeptIds();
+        usage.setVisibleDeptIds(deptIds == null ? List.of() : deptIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList());
+    }
+
+    private boolean isAdmin() {
+        return UserContext.getRoles() != null
+                && UserContext.getRoles().stream().anyMatch(role -> "admin".equalsIgnoreCase(role));
     }
 
     @Override

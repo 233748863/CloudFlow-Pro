@@ -8,7 +8,6 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 福利申领创建/修改入参。
@@ -44,5 +43,5 @@ public class HrBenefitRequestDTO {
     private String reason;
 
     @Schema(description = "附件列表")
-    private List<Map<String, Object>> attachments;
+    private List<Object> attachments;
 }

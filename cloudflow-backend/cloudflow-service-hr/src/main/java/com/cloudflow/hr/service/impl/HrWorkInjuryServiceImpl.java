@@ -179,7 +179,7 @@ public class HrWorkInjuryServiceImpl implements IHrWorkInjuryService {
         UpdateWrapper<HrWorkInjury> uw = new UpdateWrapper<>();
         uw.eq("id", injuryId).eq("tenant_id", currentTenantId())
                 .set("status", "CLOSED")
-                .set("remark", reason)
+                .set("close_reason", reason)
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
         injuryMapper.update(null, uw);

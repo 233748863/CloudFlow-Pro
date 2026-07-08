@@ -638,8 +638,10 @@ INSERT IGNORE INTO cloud_flow_db.sys_role (role_id, tenant_id, role_name, role_k
 INSERT IGNORE INTO cloud_flow_db.sys_role_mutex (id, tenant_id, role_id_1, role_id_2, create_by, create_time)
 VALUES (1, 100000, 1, 5, 'admin', NOW());
 
--- 4. 初始化用户数据 (密码统一为: 123456, 存储格式为 BCrypt(SHA256(明文密码)))
+-- 4. 初始化用户数据 (默认密码为: 123456；root 审计账号密码为: 1234567；存储格式为 BCrypt(SHA256(明文密码)))
 INSERT IGNORE INTO cloud_flow_db.sys_user (user_id, tenant_id, dept_id, user_name, nick_name, email, phonenumber, sex, password, status, deleted, pwd_reset_required, login_ip, login_date, create_by, create_time, update_by, update_time, remark, avatar) VALUES(1,  100000, 100, 'admin', 'Admin', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '超级管理员', '');
+
+INSERT IGNORE INTO cloud_flow_db.sys_user (user_id, tenant_id, dept_id, user_name, nick_name, email, phonenumber, sex, password, status, deleted, pwd_reset_required, login_ip, login_date, create_by, create_time, update_by, update_time, remark, avatar) VALUES(41, 100000, 100, 'root',  'Root',  'root@cloudflow.com',  '15888888889', '1', '$2a$10$fUpwL6UMOiOX7rNZhe4uAekAHGAx4moZIzK0cUavpWR37aAe7tMe.', '0', '0', '1', '', null, 'admin', NOW(), '', null, '审计管理员', '');
 
 INSERT IGNORE INTO cloud_flow_db.sys_user (user_id, tenant_id, dept_id, user_name, nick_name, email, phonenumber, sex, password, status, deleted, pwd_reset_required, login_ip, login_date, create_by, create_time, update_by, update_time, remark, avatar) VALUES(2,  100000, 101, 'li', '李经理', 'li@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '研发部经理', '');
 
@@ -659,6 +661,8 @@ INSERT IGNORE INTO cloud_flow_db.sys_user (user_id, tenant_id, dept_id, user_nam
 
 -- 5. 初始化用户角色关联
 INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(1, 1, 100000);
+
+INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(41, 1, 100000);
 
 INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(2, 2, 100000);
 
@@ -2500,6 +2504,53 @@ INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
 SELECT DISTINCT rm.role_id, 277, rm.tenant_id
 FROM cloud_flow_db.sys_role_menu rm
 WHERE rm.menu_id IN (214, 217, 660);
+
+-- P0 audit role coverage: keep role menus aligned with user-visible audit expectations.
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(2, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(2, 277, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(2, 214, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(4, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(4, 277, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(4, 214, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(5, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(5, 277, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(5, 214, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(3, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(3, 203, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(3, 205, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(5, 4, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(5, 401, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(6, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(6, 277, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(6, 217, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(6, 203, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(6, 212, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(7, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(7, 202, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(7, 201, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(7, 210, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(7, 213, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(7, 212, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 202, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(8, 280, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 202, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(9, 280, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 202, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(10, 280, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(11, 2, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(11, 202, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(11, 280, 100000);
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT DISTINCT rm.role_id, parent.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.menu_id = rm.menu_id
+JOIN cloud_flow_db.sys_menu parent ON parent.menu_id = child.parent_id
+WHERE rm.role_id IN (2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+  AND parent.menu_id IN (2, 4, 202, 203, 277);
 
 -- 10. 初始化字典类型数据
 INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
@@ -9751,7 +9802,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(13, 2, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(14, 2, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(15, 5, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(16, 5, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(17, 5, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(17, 11, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(18, 5, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(19, 5, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(20, 5, 100000);

@@ -74,6 +74,10 @@ public class ProcessMonitor {
     
     /** 发起人ID */
     private Long startUserId;
+
+    /** 发起人部门ID，用于审计数据权限返回字段 */
+    @TableField(exist = false)
+    private Long deptId;
     
     /** 发起人用户名 */
     private String startUserName;

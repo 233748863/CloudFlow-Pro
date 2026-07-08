@@ -18,13 +18,17 @@ import com.cloudflow.hr.domain.dto.training.HrTrainingEnrollmentCompleteDTO;
 import com.cloudflow.hr.domain.entity.HrExamAttempt;
 import com.cloudflow.hr.domain.entity.HrExamPaper;
 import com.cloudflow.hr.domain.entity.HrExamQuestionBank;
+import com.cloudflow.hr.domain.entity.HrTrainingCourse;
 import com.cloudflow.hr.domain.entity.HrTrainingEnrollment;
+import com.cloudflow.hr.domain.entity.HrTrainingSession;
 import com.cloudflow.hr.domain.vo.training.HrExamAttemptStartVO;
 import com.cloudflow.hr.domain.vo.training.HrExamAttemptSubmitVO;
 import com.cloudflow.hr.domain.vo.training.HrExamAttemptVO;
 import com.cloudflow.hr.domain.vo.training.HrExamPaperVO;
 import com.cloudflow.hr.domain.vo.training.HrExamQuestionBankVO;
 import com.cloudflow.hr.domain.vo.training.HrTrainingEnrollmentVO;
+import com.cloudflow.hr.mapper.HrTrainingCourseMapper;
+import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.IHrExamService;
 import com.cloudflow.hr.service.IHrTrainingEnrollmentService;
@@ -42,8 +46,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
+import java.util.Objects;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 培训业务流控制器：报名 / 题库 / 试卷 / 作答 / 批改。
@@ -60,23 +69,93 @@ class HrTrainingEnrollmentController {
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
+    private final HrTrainingSessionMapper sessionMapper;
+    private final HrTrainingCourseMapper courseMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:enroll:list")
     public R<PageResult<HrTrainingEnrollmentVO>> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
-        return R.ok(MapConverters.toPageResult(
-                crudService.page(HrTrainingEnrollment.class, MapConverters.toServiceQuery(query, objectMapper)),
-                HrTrainingEnrollmentVO.class, objectMapper));
+        return R.ok(pageEnrollments(query, null));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:enroll:list")
     public R<PageResult<HrTrainingEnrollmentVO>> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(pageEnrollments(query, essSupport.currentEmployeeId()));
+    }
+
+    private PageResult<HrTrainingEnrollmentVO> pageEnrollments(HrTrainingCommonQueryDTO query, Long employeeId) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
-        normalized.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(MapConverters.toPageResult(
-                crudService.page(HrTrainingEnrollment.class, normalized),
-                HrTrainingEnrollmentVO.class, objectMapper));
+        if (employeeId != null) {
+            normalized.put("employeeId", employeeId);
+        }
+        Map<String, Object> rawPage = crudService.page(HrTrainingEnrollment.class, normalized);
+        enrichEnrollmentRows(mapRows(rawPage.get("rows")));
+        return MapConverters.toPageResult(rawPage, HrTrainingEnrollmentVO.class, objectMapper);
+    }
+
+    private void enrichEnrollmentRows(List<Map<String, Object>> rows) {
+        Set<Long> sessionIds = rows.stream()
+                .map(row -> toLong(row.get("sessionId")))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (sessionIds.isEmpty()) {
+            return;
+        }
+        Map<Long, HrTrainingSession> sessions = sessionMapper.selectBatchIds(sessionIds).stream()
+                .collect(Collectors.toMap(HrTrainingSession::getId, Function.identity(), (left, right) -> left));
+        for (Map<String, Object> row : rows) {
+            HrTrainingSession session = sessions.get(toLong(row.get("sessionId")));
+            if (session != null) {
+                row.put("courseId", session.getCourseId());
+                row.put("sessionNo", session.getSessionNo());
+                row.put("sessionStartTime", session.getStartTime());
+                row.put("sessionEndTime", session.getEndTime());
+                row.put("location", session.getLocation());
+            }
+        }
+
+        Set<Long> courseIds = rows.stream()
+                .map(row -> toLong(row.get("courseId")))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (courseIds.isEmpty()) {
+            return;
+        }
+        Map<Long, HrTrainingCourse> courses = courseMapper.selectBatchIds(courseIds).stream()
+                .collect(Collectors.toMap(HrTrainingCourse::getId, Function.identity(), (left, right) -> left));
+        for (Map<String, Object> row : rows) {
+            HrTrainingCourse course = courses.get(toLong(row.get("courseId")));
+            if (course != null) {
+                row.put("courseName", course.getCourseName());
+                row.put("courseCode", course.getCourseCode());
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> mapRows(Object rowsObj) {
+        if (!(rowsObj instanceof List<?> rows)) {
+            return Collections.emptyList();
+        }
+        return rows.stream()
+                .filter(Map.class::isInstance)
+                .map(row -> (Map<String, Object>) row)
+                .toList();
+    }
+
+    private Long toLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     @SysLog("发起HR培训报名")

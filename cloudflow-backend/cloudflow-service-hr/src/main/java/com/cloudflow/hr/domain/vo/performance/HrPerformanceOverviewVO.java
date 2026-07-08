@@ -14,4 +14,7 @@ public class HrPerformanceOverviewVO {
     @Schema(description = "执行中数量") private Integer runningCount;
     @Schema(description = "结果审批中数量") private Integer resultApprovingCount;
     @Schema(description = "已完成数量") private Integer completedCount;
+    @Schema(description = "目标总数") private Integer objectiveCount;
+    @Schema(description = "活跃目标数") private Integer activeObjectiveCount;
+    @Schema(description = "已完成目标数") private Integer completedObjectiveCount;
 }

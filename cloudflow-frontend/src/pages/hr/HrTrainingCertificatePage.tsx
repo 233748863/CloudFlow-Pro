@@ -141,7 +141,7 @@ const CertificateList: React.FC<{ mine: boolean }> = ({ mine }) => {
               ) : rows.map((row) => (
                 <tr key={row.id}>
                   <td className="font-mono">{row.certNo}</td>
-                  <td>{`#${row.courseId}`}</td>
+                  <td>{row.courseName || `#${row.courseId}`}</td>
                   <td>{row.sessionId ? `#${row.sessionId}` : '-'}</td>
                   <td>{formatDateValue(row.issueDate)}</td>
                   <td>{formatDateValue(row.expireDate)}</td>

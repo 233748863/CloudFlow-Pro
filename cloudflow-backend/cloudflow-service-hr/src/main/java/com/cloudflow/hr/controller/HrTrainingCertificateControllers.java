@@ -12,11 +12,13 @@ import com.cloudflow.hr.domain.dto.training.HrTrainingCertificateRevokeDTO;
 import com.cloudflow.hr.domain.dto.training.HrTrainingCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrTrainingCertificate;
 import com.cloudflow.hr.domain.entity.HrTrainingCertificateTemplate;
+import com.cloudflow.hr.domain.entity.HrTrainingCourse;
 import com.cloudflow.hr.domain.vo.training.HrTrainingArchiveVO;
 import com.cloudflow.hr.domain.vo.training.HrTrainingCertificateTemplateVO;
 import com.cloudflow.hr.domain.vo.training.HrTrainingCertificateVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTrainingCertificateMapper;
+import com.cloudflow.hr.mapper.HrTrainingCourseMapper;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrFileStorage;
 import com.cloudflow.hr.service.IHrTrainingArchiveService;
@@ -40,8 +42,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 培训证书 + 培训档案控制器：颁发 / 撤销 / 重新渲染 PDF / 下载，以及按员工聚合档案视图。
@@ -57,30 +64,79 @@ class HrTrainingCertificateController {
     private final HrEssSupport essSupport;
     private final HrFileStorage fileStorage;
     private final ObjectMapper objectMapper;
+    private final HrTrainingCourseMapper courseMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:cert:list")
     public R<PageResult<HrTrainingCertificateVO>> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
-        return R.ok(MapConverters.toPageResult(
-                crudService.page(HrTrainingCertificate.class, MapConverters.toServiceQuery(query, objectMapper)),
-                HrTrainingCertificateVO.class, objectMapper));
+        return R.ok(pageCertificates(query, null));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:cert:view")
     public R<PageResult<HrTrainingCertificateVO>> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(pageCertificates(query, essSupport.currentEmployeeId()));
+    }
+
+    private PageResult<HrTrainingCertificateVO> pageCertificates(HrTrainingCommonQueryDTO query, Long employeeId) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
-        normalized.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(MapConverters.toPageResult(
-                crudService.page(HrTrainingCertificate.class, normalized),
-                HrTrainingCertificateVO.class, objectMapper));
+        if (employeeId != null) {
+            normalized.put("employeeId", employeeId);
+        }
+        Map<String, Object> rawPage = crudService.page(HrTrainingCertificate.class, normalized);
+        enrichCertificateRows(mapRows(rawPage.get("rows")));
+        return MapConverters.toPageResult(rawPage, HrTrainingCertificateVO.class, objectMapper);
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:training:cert:view")
     public R<HrTrainingCertificateVO> get(@PathVariable Long id) {
-        return R.ok(MapConverters.toVO(crudService.get(HrTrainingCertificate.class, id),
-                HrTrainingCertificateVO.class, objectMapper));
+        Map<String, Object> row = crudService.get(HrTrainingCertificate.class, id);
+        enrichCertificateRows(List.of(row));
+        return R.ok(MapConverters.toVO(row, HrTrainingCertificateVO.class, objectMapper));
+    }
+
+    private void enrichCertificateRows(List<Map<String, Object>> rows) {
+        Set<Long> courseIds = rows.stream()
+                .map(row -> toLong(row.get("courseId")))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (courseIds.isEmpty()) {
+            return;
+        }
+        Map<Long, HrTrainingCourse> courses = courseMapper.selectBatchIds(courseIds).stream()
+                .collect(Collectors.toMap(HrTrainingCourse::getId, Function.identity(), (left, right) -> left));
+        for (Map<String, Object> row : rows) {
+            HrTrainingCourse course = courses.get(toLong(row.get("courseId")));
+            if (course != null) {
+                row.put("courseName", course.getCourseName());
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> mapRows(Object rowsObj) {
+        if (!(rowsObj instanceof List<?> rows)) {
+            return Collections.emptyList();
+        }
+        return rows.stream()
+                .filter(Map.class::isInstance)
+                .map(row -> (Map<String, Object>) row)
+                .toList();
+    }
+
+    private Long toLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     @SysLog("颁发HR培训证书")

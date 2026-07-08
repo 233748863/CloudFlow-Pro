@@ -135,7 +135,7 @@ export const HrTrainingArchivePage: React.FC = () => {
                     </thead>
                     <tbody>
                       {archive.enrollments?.length ? archive.enrollments.map((row: Record<string, unknown>) => (
-                        <tr key={String(row.id)}>
+                        <tr key={String(row.enrollmentId ?? row.id)}>
                           <td className="text-sm">{String(row.sessionNo || `#${row.sessionId}`)}</td>
                           <td className="text-sm">{String(row.courseName || `#${row.courseId}`)}</td>
                           <td className="text-sm"><DictLabel dictType="hr_enroll_status" value={String(row.status ?? '')} fallback="-" /></td>
@@ -167,7 +167,7 @@ export const HrTrainingArchivePage: React.FC = () => {
                       {archive.certificates?.length ? archive.certificates.map((row) => (
                         <tr key={row.id}>
                           <td className="font-mono text-xs">{row.certNo}</td>
-                          <td className="text-sm">{`#${row.courseId}`}</td>
+                          <td className="text-sm">{row.courseName || `#${row.courseId}`}</td>
                           <td className="text-xs">{formatDateValue(row.issueDate)}</td>
                           <td className="text-sm"><DictLabel dictType="hr_training_certificate_status" value={String(row.status ?? '')} fallback="-" /></td>
                         </tr>

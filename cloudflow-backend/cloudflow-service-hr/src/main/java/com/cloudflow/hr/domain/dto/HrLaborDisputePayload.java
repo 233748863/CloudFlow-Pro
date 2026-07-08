@@ -1,6 +1,7 @@
 package com.cloudflow.hr.domain.dto;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
@@ -33,6 +34,7 @@ public class HrLaborDisputePayload {
     private String processInstanceId;
     private LocalDate openedAt;
     private LocalDate closedAt;
+    @TableField("close_reason")
     private String remark;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

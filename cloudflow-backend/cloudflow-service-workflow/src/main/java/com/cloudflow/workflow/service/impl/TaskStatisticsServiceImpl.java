@@ -314,7 +314,9 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
             todoCountQuery.eq(WfTask::getTenantId, currentTenantId);
         }
         Long todoCount = taskMapper.selectCount(todoCountQuery);
-        counts.put("todoCount", todoCount != null ? todoCount.intValue() : 0);
+        int pending = todoCount != null ? todoCount.intValue() : 0;
+        counts.put("pending", pending);
+        counts.put("todoCount", pending);
 
         LambdaQueryWrapper<WfTaskHistory> doneCountQuery = new LambdaQueryWrapper<WfTaskHistory>()
             .eq(WfTaskHistory::getOperatorId, userId);
@@ -322,7 +324,9 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
             doneCountQuery.eq(WfTaskHistory::getTenantId, currentTenantId);
         }
         Long doneCount = taskHistoryMapper.selectCount(doneCountQuery);
-        counts.put("doneCount", doneCount != null ? doneCount.intValue() : 0);
+        int completed = doneCount != null ? doneCount.intValue() : 0;
+        counts.put("completed", completed);
+        counts.put("doneCount", completed);
 
         LambdaQueryWrapper<WfProcessInstance> myInstanceQuery = new LambdaQueryWrapper<WfProcessInstance>()
             .eq(WfProcessInstance::getStartUserId, userId);
@@ -330,7 +334,9 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
             myInstanceQuery.eq(WfProcessInstance::getTenantId, currentTenantId);
         }
         Long myInstanceCount = processInstanceMapper.selectCount(myInstanceQuery);
-        counts.put("myInstanceCount", myInstanceCount != null ? myInstanceCount.intValue() : 0);
+        int myApplications = myInstanceCount != null ? myInstanceCount.intValue() : 0;
+        counts.put("myApplications", myApplications);
+        counts.put("myInstanceCount", myApplications);
 
         return counts;
     }

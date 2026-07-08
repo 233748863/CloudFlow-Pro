@@ -1,9 +1,9 @@
 package com.cloudflow.crm.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmPriceBook;
 import com.cloudflow.crm.mapper.CrmPriceBookMapper;
@@ -18,12 +18,8 @@ public class CrmPriceBookServiceImpl extends CrmServiceSupport<CrmPriceBookMappe
 
     @Override
     public PageResult<CrmPriceBook> queryPage(CrmPriceBook query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmPriceBook> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmPriceBook::getDeleted, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmPriceBook::getUpdateTime);
-        likeIfPresent(wrapper, CrmPriceBook::getPriceBookName, query.getPriceBookName());
-        likeIfPresent(wrapper, CrmPriceBook::getPriceBookNo, query.getPriceBookNo());
-        eqIfPresent(wrapper, CrmPriceBook::getStatus, query.getStatus());
-        return pageResult(pageQuery, wrapper);
+        return PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(), query, DataScopeUtils.userOnlyScope("owner_id")));
     }
 
     @Override

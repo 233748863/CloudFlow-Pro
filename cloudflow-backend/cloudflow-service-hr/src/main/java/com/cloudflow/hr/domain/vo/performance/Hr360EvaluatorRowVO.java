@@ -17,6 +17,8 @@ import java.util.Map;
 public class Hr360EvaluatorRowVO {
     @Schema(description = "邀请 ID") private Long id;
     @Schema(description = "目标 ID") private Long objectiveId;
+    @Schema(description = "目标名称") private String objectiveName;
+    @Schema(description = "考核周期名称") private String cycleName;
     @Schema(description = "分解 ID") private Long assignmentId;
     @Schema(description = "被评员工 ID") private Long evaluateeId;
     @Schema(description = "被评员工姓名") private String evaluateeName;

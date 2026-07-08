@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -129,25 +130,9 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
                                              Integer pageNum, Integer pageSize) {
         log.info("获取流程监控列表: processDefKey={}, status={}", processDefKey, status);
         
-        Page<ProcessMonitor> page = new Page<>(pageNum, pageSize);
-        LambdaQueryWrapper<ProcessMonitor> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ProcessMonitor::getTenantId, resolveTenantId());
-        
-        if (StringUtils.hasText(processDefKey)) {
-            wrapper.eq(ProcessMonitor::getProcessDefKey, processDefKey);
-        }
-        if (StringUtils.hasText(status)) {
-            wrapper.eq(ProcessMonitor::getStatus, status);
-        }
-        if (StringUtils.hasText(startTimeFrom)) {
-            wrapper.ge(ProcessMonitor::getStartTime, startTimeFrom);
-        }
-        if (StringUtils.hasText(startTimeTo)) {
-            wrapper.le(ProcessMonitor::getStartTime, startTimeTo);
-        }
-        
-        wrapper.orderByDesc(ProcessMonitor::getStartTime);
-        Page<ProcessMonitor> resultPage = processMonitorMapper.selectPage(page, wrapper);
+        Page<ProcessMonitor> resultPage = processMonitorMapper.selectPageByDataScope(
+                new Page<>(pageNum, pageSize), processDefKey, status, startTimeFrom, startTimeTo,
+                resolveTenantId(), DataScopeUtils.listScope("dept_id", "start_user_id"));
         
         return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(), 
                                resultPage.getCurrent(), resultPage.getSize());
@@ -156,7 +141,8 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
     @Override
     public ProcessMonitor getProcessMonitor(String instanceId) {
         log.info("获取流程监控详情: instanceId={}", instanceId);
-        return processMonitorMapper.selectByInstanceId(instanceId, resolveTenantId());
+        return processMonitorMapper.selectByInstanceIdWithDataScope(
+                instanceId, resolveTenantId(), DataScopeUtils.listScope("dept_id", "start_user_id"));
     }
 
     @Override

@@ -15,8 +15,13 @@ import java.time.LocalDateTime;
 @Schema(name = "HrCompChangeVO", description = "HR 调薪变更 VO")
 public class HrCompChangeVO {
     @Schema(description = "调薪记录 ID") private Long id;
+    @Schema(description = "租户 ID") private Long tenantId;
     @Schema(description = "调薪单号") private String changeNo;
     @Schema(description = "员工 ID") private Long employeeId;
+    @Schema(description = "员工所属用户 ID") private Long userId;
+    @Schema(description = "员工所属部门 ID") private Long deptId;
+    @Schema(description = "员工工号") private String employeeNo;
+    @Schema(description = "员工姓名") private String employeeName;
     @Schema(description = "变更类型") private String changeType;
     @Schema(description = "调薪前总额（按权限掩码）") private BigDecimal beforeTotal;
     @Schema(description = "调薪后总额（按权限掩码）") private BigDecimal afterTotal;

@@ -1,9 +1,9 @@
 package com.cloudflow.crm.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmProduct;
 import com.cloudflow.crm.mapper.CrmProductMapper;
@@ -20,13 +20,8 @@ public class CrmProductServiceImpl extends CrmServiceSupport<CrmProductMapper, C
 
     @Override
     public PageResult<CrmProduct> queryPage(CrmProduct query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmProduct> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmProduct::getDeleted, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmProduct::getUpdateTime);
-        likeIfPresent(wrapper, CrmProduct::getProductName, query.getProductName());
-        likeIfPresent(wrapper, CrmProduct::getProductNo, query.getProductNo());
-        likeIfPresent(wrapper, CrmProduct::getCategory, query.getCategory());
-        eqIfPresent(wrapper, CrmProduct::getStatus, query.getStatus());
-        return pageResult(pageQuery, wrapper);
+        return PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(), query, DataScopeUtils.userOnlyScope("owner_id")));
     }
 
     @Override

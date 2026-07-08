@@ -654,6 +654,8 @@ export interface PerformanceOverview extends HrRecord {
   draftCount?: number;
   planApprovingCount?: number;
   objectiveCount?: number;
+  activeObjectiveCount?: number;
+  completedObjectiveCount?: number;
   runningCount?: number;
   resultApprovingCount?: number;
   completedCount?: number;
@@ -906,11 +908,15 @@ export interface HrEssPortalSummary {
   leaveBalances: Array<{
     leaveTypeId: number;
     leaveTypeName?: string;
+    leaveName?: string;
     leaveCode?: string;
     unit?: string;
     totalQuota?: number | string;
     usedQuota?: number | string;
+    frozenQuota?: number | string;
+    availableQuota?: number | string;
     remainQuota?: number | string;
+    expiryDate?: string;
     year?: number;
   }>;
   latestSlip: HrSalarySlip | Record<string, never>;
@@ -999,6 +1005,13 @@ export type HrTrainingSessionPayload = Omit<HrTrainingSession, 'id'> & { id?: nu
 export interface HrTrainingEnrollment extends HrRecord {
   id: number;
   sessionId: number;
+  courseId?: number;
+  courseName?: string;
+  courseCode?: string;
+  sessionNo?: string;
+  sessionStartTime?: string;
+  sessionEndTime?: string;
+  location?: string;
   employeeId: number;
   enrollType?: 'SELF' | 'ASSIGNED' | string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN' | string;
@@ -1059,6 +1072,7 @@ export interface HrTrainingCertificate extends HrRecord {
   certNo: string;
   employeeId: number;
   courseId: number;
+  courseName?: string;
   sessionId?: number;
   templateId?: number;
   issueDate?: string;
@@ -1083,6 +1097,9 @@ export interface HrTrainingArchive {
   certificateCount: number;
   enrollments: Array<HrRecord>;
   certificates: HrTrainingCertificate[];
+  lastTrainingDate?: string;
+  yearHours?: Record<string, number | string>;
+  yearHoursMap?: Record<string, number | string>;
 }
 
 // ===== 人才盘点（Talent Review）域类型 =====

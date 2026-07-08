@@ -1,6 +1,7 @@
 package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmContact;
 import com.cloudflow.crm.domain.CrmCustomer;
@@ -36,6 +37,7 @@ import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmCustomerWorkspaceService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +53,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -127,9 +130,24 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     @Override
     public CrmDashboardSummaryVO getDashboardSummary() {
         CrmDashboardSummaryVO summary = new CrmDashboardSummaryVO();
+        List<Long> accessibleCustomerIds = accessibleCustomerIds(200);
         summary.setFunnel(buildOpportunityBoard());
+        if (accessibleCustomerIds.isEmpty()) {
+            summary.setPendingQuotes(List.of());
+            summary.setAgingBuckets(buildAgingBuckets());
+            summary.setRenewalWindows(List.of());
+            summary.setHighSeverityTickets(List.of());
+            summary.setStaleFollowCustomers(List.of());
+            summary.setStalledOpportunities(List.of());
+            summary.setCrossModuleTodos(List.of());
+            summary.setCrossModuleRisks(List.of());
+            summary.setBudgetAlerts(List.of());
+            summary.setInvoiceExceptions(List.of());
+            return summary;
+        }
         summary.setPendingQuotes(quoteMapper.selectList(new LambdaQueryWrapper<CrmQuote>()
                         .eq(CrmQuote::getDeleted, CrmConstants.DelFlag.NORMAL)
+                        .in(CrmQuote::getCustomerId, accessibleCustomerIds)
                         .in(CrmQuote::getStatus, List.of(
                                 CrmConstants.QuoteStatus.PENDING,
                                 CrmConstants.QuoteStatus.APPROVED,
@@ -142,6 +160,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
 
         List<CrmRenewal> renewals = renewalMapper.selectList(new LambdaQueryWrapper<CrmRenewal>()
                 .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .in(CrmRenewal::getCustomerId, accessibleCustomerIds)
                 .orderByAsc(CrmRenewal::getCurrentExpireDate));
         renewals.forEach(r -> CrmRenewalRiskEvaluator.enrich(r, sysDictHelper));
         LocalDate today = LocalDate.now();
@@ -153,6 +172,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .toList());
         summary.setHighSeverityTickets(serviceTicketMapper.selectList(new LambdaQueryWrapper<CrmServiceTicket>()
                         .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
+                        .in(CrmServiceTicket::getCustomerId, accessibleCustomerIds)
                         .in(CrmServiceTicket::getSeverity,
                                 CrmConstants.TicketSeverity.HIGH,
                                 CrmConstants.TicketSeverity.CRITICAL)
@@ -165,6 +185,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .toList());
         summary.setStaleFollowCustomers(customerMapper.selectList(new LambdaQueryWrapper<CrmCustomer>()
                         .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
+                        .in(CrmCustomer::getCustomerId, accessibleCustomerIds)
                         .orderByAsc(CrmCustomer::getLastFollowUpTime))
                 .stream()
                 .filter(item -> item.getLastFollowUpTime() == null
@@ -173,6 +194,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .toList());
         summary.setStalledOpportunities(opportunityMapper.selectList(new LambdaQueryWrapper<CrmOpportunity>()
                         .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
+                        .in(CrmOpportunity::getCustomerId, accessibleCustomerIds)
                         .notIn(CrmOpportunity::getStage,
                                 CrmConstants.OpportunityStage.WON,
                                 CrmConstants.OpportunityStage.LOST)
@@ -256,8 +278,13 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     }
 
     private List<CrmOpportunityBoardColumnVO> buildOpportunityBoard() {
+        List<Long> accessibleCustomerIds = accessibleCustomerIds(200);
+        if (accessibleCustomerIds.isEmpty()) {
+            return defaultOpportunityBoardColumns();
+        }
         List<CrmOpportunity> opportunities = opportunityMapper.selectList(new LambdaQueryWrapper<CrmOpportunity>()
                 .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .in(CrmOpportunity::getCustomerId, accessibleCustomerIds)
                 .orderByDesc(CrmOpportunity::getExpectedAmount)
                 .orderByDesc(CrmOpportunity::getUpdateTime));
         Map<String, CrmOpportunityBoardColumnVO> columns = new LinkedHashMap<>();
@@ -292,6 +319,20 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                     item.getExpectedAmount() == null ? BigDecimal.ZERO : item.getExpectedAmount()));
         }
         return new ArrayList<>(columns.values());
+    }
+
+    private List<CrmOpportunityBoardColumnVO> defaultOpportunityBoardColumns() {
+        List<CrmOpportunityBoardColumnVO> columns = new ArrayList<>();
+        for (String stage : List.of(
+                CrmConstants.OpportunityStage.LEAD,
+                CrmConstants.OpportunityStage.QUALIFIED,
+                CrmConstants.OpportunityStage.PROPOSAL,
+                CrmConstants.OpportunityStage.NEGOTIATION,
+                CrmConstants.OpportunityStage.WON,
+                CrmConstants.OpportunityStage.LOST)) {
+            columns.add(createColumn(stage));
+        }
+        return columns;
     }
 
     private CrmOpportunityBoardColumnVO createColumn(String stage) {
@@ -337,9 +378,13 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
         }
 
         LocalDate today = LocalDate.now();
-        List<CrmReceivable> receivables = receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
-                .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL)
-                .orderByAsc(CrmReceivable::getDueDate));
+        List<Long> accessibleCustomerIds = accessibleCustomerIds(200);
+        List<CrmReceivable> receivables = accessibleCustomerIds.isEmpty()
+                ? List.of()
+                : receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
+                        .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL)
+                        .in(CrmReceivable::getCustomerId, accessibleCustomerIds)
+                        .orderByAsc(CrmReceivable::getDueDate));
         Map<String, Set<Long>> customerCounter = new LinkedHashMap<>();
         for (String key : buckets.keySet()) {
             customerCounter.put(key, new HashSet<>());
@@ -603,12 +648,22 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     }
 
     private List<CrmCustomer> topActiveCustomers() {
-        return customerMapper.selectList(new LambdaQueryWrapper<CrmCustomer>()
-                        .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
-                        .orderByDesc(CrmCustomer::getUpdateTime))
-                .stream()
-                .limit(8)
+        return accessibleCustomers(8);
+    }
+
+    private List<Long> accessibleCustomerIds(int limit) {
+        return accessibleCustomers(limit).stream()
+                .map(CrmCustomer::getCustomerId)
+                .filter(Objects::nonNull)
                 .toList();
+    }
+
+    private List<CrmCustomer> accessibleCustomers(int limit) {
+        Page<CrmCustomer> page = customerMapper.selectPageByDataScope(
+                new Page<>(1, Math.max(1, limit), false),
+                new CrmCustomer(),
+                DataScopeUtils.listScope("dept_id", "owner_id"));
+        return page.getRecords() == null ? List.of() : page.getRecords();
     }
 
     private List<CrmWorkspaceActivityItemVO> buildDashboardActivities() {

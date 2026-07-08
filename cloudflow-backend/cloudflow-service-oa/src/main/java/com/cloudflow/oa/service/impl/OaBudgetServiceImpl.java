@@ -8,6 +8,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
@@ -72,18 +73,8 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     @Override
     public PageResult<OaBudgetPlan> queryBudgetPage(OaBudgetPlan query, PageQuery pageQuery) {
-        LambdaQueryWrapper<OaBudgetPlan> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaBudgetPlan::getDeleted, "0").orderByDesc(OaBudgetPlan::getUpdateTime);
-        if (StringUtils.hasText(query.getBudgetName())) {
-            wrapper.like(OaBudgetPlan::getBudgetName, query.getBudgetName());
-        }
-        if (StringUtils.hasText(query.getTargetType())) {
-            wrapper.eq(OaBudgetPlan::getTargetType, query.getTargetType());
-        }
-        if (StringUtils.hasText(query.getStatus())) {
-            wrapper.eq(OaBudgetPlan::getStatus, query.getStatus());
-        }
-        PageResult<OaBudgetPlan> result = PageResult.build(page(pageQuery.build(), wrapper));
+        PageResult<OaBudgetPlan> result = PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(), query, DataScopeUtils.listScope("dept_id", "owner_id")));
         if (result.getRows() != null) {
             result.getRows().forEach(this::fillBudgetComputedFields);
         }
@@ -104,17 +95,8 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     @Override
     public PageResult<OaBudgetAdjustment> queryAdjustmentPage(OaBudgetAdjustment query, PageQuery pageQuery) {
-        LambdaQueryWrapper<OaBudgetAdjustment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaBudgetAdjustment::getDeleted, "0").orderByDesc(OaBudgetAdjustment::getUpdateTime);
-        if (query.getBudgetId() != null) {
-            wrapper.eq(OaBudgetAdjustment::getBudgetId, query.getBudgetId());
-        }
-        if (StringUtils.hasText(query.getStatus())) {
-            wrapper.eq(OaBudgetAdjustment::getStatus, query.getStatus());
-        }
-        Page<OaBudgetAdjustment> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
-        budgetAdjustmentMapper.selectPage(page, wrapper);
-        return PageResult.build(page);
+        return PageResult.build(budgetAdjustmentMapper.selectPageByDataScope(
+                pageQuery.build(), query, DataScopeUtils.listScope("dept_id", "owner_id")));
     }
 
     @Override
@@ -279,23 +261,8 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     @Override
     public PageResult<OaBudgetLedger> queryLedgerPage(OaBudgetLedger query, PageQuery pageQuery) {
-        LambdaQueryWrapper<OaBudgetLedger> wrapper = new LambdaQueryWrapper<>();
-        wrapper.orderByDesc(OaBudgetLedger::getCreateTime);
-        if (query.getBudgetId() != null) {
-            wrapper.eq(OaBudgetLedger::getBudgetId, query.getBudgetId());
-        }
-        if (StringUtils.hasText(query.getSubjectCode())) {
-            wrapper.eq(OaBudgetLedger::getSubjectCode, query.getSubjectCode());
-        }
-        if (StringUtils.hasText(query.getBusinessType())) {
-            wrapper.eq(OaBudgetLedger::getBusinessType, query.getBusinessType());
-        }
-        if (query.getBusinessId() != null) {
-            wrapper.eq(OaBudgetLedger::getBusinessId, query.getBusinessId());
-        }
-        Page<OaBudgetLedger> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
-        budgetLedgerMapper.selectPage(page, wrapper);
-        return PageResult.build(page);
+        return PageResult.build(budgetLedgerMapper.selectPageByDataScope(
+                pageQuery.build(), query, DataScopeUtils.listScope("dept_id", "owner_id")));
     }
 
     @Override
@@ -422,7 +389,8 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     }
 
     private OaBudgetPlan requireBudget(Long budgetId) {
-        OaBudgetPlan budget = getById(budgetId);
+        OaBudgetPlan budget = baseMapper.selectByIdWithDataScope(
+                budgetId, DataScopeUtils.listScope("dept_id", "owner_id"));
         if (budget == null || !Integer.valueOf(0).equals(budget.getDeleted())) {
             throw new IllegalArgumentException("预算不存在");
         }

@@ -11,7 +11,6 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @Data
 @TableName(value = "hr_benefit_request", autoResultMap = true)
@@ -30,7 +29,7 @@ public class HrBenefitRequestPayload {
     private String reason;
 
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<Map<String, Object>> attachments;
+    private List<Object> attachments;
 
     private String status;
     private String processInstanceId;

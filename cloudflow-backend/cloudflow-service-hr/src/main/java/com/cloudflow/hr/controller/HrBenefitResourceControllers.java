@@ -131,13 +131,13 @@ class HrPointAccountController {
     }
 
     @GetMapping("/employees/{employeeId}")
-    @SaCheckPermission("hr:benefit:point:view")
+    @SaCheckPermission("hr:benefit:point:manage")
     public R<HrPointAccountVO> getByEmployee(@PathVariable Long employeeId) {
         return R.ok(hrPointAccountService.getEmployeeAccount(employeeId));
     }
 
     @GetMapping("/{accountId}/transactions")
-    @SaCheckPermission("hr:benefit:point:view")
+    @SaCheckPermission("hr:benefit:point:manage")
     public R<PageResult<HrPointTransactionVO>> transactions(@PathVariable Long accountId,
                                                             @Validated @ModelAttribute HrPointTransactionQueryDTO query) {
         return R.ok(hrPointAccountService.listTransactions(accountId, query));

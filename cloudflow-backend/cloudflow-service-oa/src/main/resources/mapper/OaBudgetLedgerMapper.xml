@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaBudgetLedgerMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.OaBudgetLedger">
+        SELECT l.*,
+               p.dept_id AS dept_id,
+               p.owner_id AS owner_id
+        FROM oa_budget_ledger l
+                 INNER JOIN oa_budget_plan p ON p.budget_id = l.budget_id AND p.deleted = '0'
+        <where>
+            <if test="query != null">
+                <if test="query.budgetId != null">
+                    AND l.budget_id = #{query.budgetId}
+                </if>
+                <if test="query.subjectCode != null and query.subjectCode != ''">
+                    AND l.subject_code = #{query.subjectCode}
+                </if>
+                <if test="query.businessType != null and query.businessType != ''">
+                    AND l.business_type = #{query.businessType}
+                </if>
+                <if test="query.businessId != null">
+                    AND l.business_id = #{query.businessId}
+                </if>
+            </if>
+        </where>
+        ORDER BY l.create_time DESC
+    </select>
+
+</mapper>

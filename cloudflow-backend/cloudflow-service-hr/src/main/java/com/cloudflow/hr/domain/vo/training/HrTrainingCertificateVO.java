@@ -17,6 +17,7 @@ public class HrTrainingCertificateVO {
     @Schema(description = "证书编号") private String certNo;
     @Schema(description = "员工 ID") private Long employeeId;
     @Schema(description = "课程 ID") private Long courseId;
+    @Schema(description = "课程名称") private String courseName;
     @Schema(description = "班次 ID") private Long sessionId;
     @Schema(description = "证书模板 ID") private Long templateId;
     @Schema(description = "颁发日期") private LocalDate issueDate;

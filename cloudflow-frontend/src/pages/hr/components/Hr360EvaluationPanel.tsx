@@ -116,7 +116,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
       await invitePerformance360({
         objectiveId,
         evaluateeId,
-        evaluators: [{ evaluatorId, source: inviteSource, weight: Number(inviteWeight) || 1 }],
+        evaluators: [{ evaluatorId, evaluatorSource: inviteSource, weight: Number(inviteWeight) || 1 }],
       });
       toast.success('已邀请评估人');
       setInviteEvaluatorId(null);
@@ -161,7 +161,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
     try {
       const res = (await aggregatePerformance360(objectiveId, evaluateeId)) as any;
       const data = res?.data || res;
-      toast.success(`聚合完成：总分 ${data?.totalScore ?? '-'} / 等级 ${data?.grade ?? '-'}`);
+      toast.success(`聚合完成：总分 ${data?.score ?? '-'} / 等级 ${data?.grade ?? '-'}`);
     } catch (err) {
       toast.error(getErrorMessage(err, '聚合失败'));
     }
@@ -295,6 +295,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                   <tr key={row.id}>
                     <td className="font-medium text-slate-700 dark:text-slate-200">
                       {isExternal ? `外部客户 #${row.evaluatorId}` : `员工 #${row.evaluatorId}`}
+                      {row.evaluatorName ? ` · ${row.evaluatorName}` : ''}
                     </td>
                     <td>
                       <span

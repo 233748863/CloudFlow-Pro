@@ -129,7 +129,10 @@ const EnrollmentList: React.FC<{ mine: boolean }> = ({ mine }) => {
                 <tr><td colSpan={7} className="admin-settings-empty">加载中...</td></tr>
               ) : rows.length ? rows.map((row) => (
                 <tr key={row.id}>
-                  <td>{`班次#${row.sessionId}`}</td>
+                  <td>
+                    <div>{row.courseName || `课程#${row.courseId ?? '-'}`}</div>
+                    <small className="text-slate-500">{row.sessionNo || `班次#${row.sessionId}`}</small>
+                  </td>
                   <td><span className="badge badge-gray">{row.enrollType === 'SELF' ? '自报' : '指派'}</span></td>
                   <td><DictLabel dictType="hr_enroll_status" value={String(row.status ?? '')} fallback="-" /></td>
                   <td>{formatDateTimeValue(row.checkInTime)}</td>

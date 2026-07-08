@@ -17,7 +17,10 @@ import java.util.Map;
 public class HrEmployeeCompVO {
     @Schema(description = "记录 ID") private Long id;
     @Schema(description = "员工 ID") private Long employeeId;
+    @Schema(description = "员工工号") private String employeeNo;
+    @Schema(description = "员工姓名") private String employeeName;
     @Schema(description = "薪酬结构 ID") private Long structureId;
+    @Schema(description = "薪酬结构名称") private String structureName;
     @Schema(description = "薪级 ID") private Long gradeId;
     @Schema(description = "薪酬项明细（按权限掩码）") private Map<String, Object> componentValues;
     @Schema(description = "总薪资（按权限掩码）") private BigDecimal totalSalary;

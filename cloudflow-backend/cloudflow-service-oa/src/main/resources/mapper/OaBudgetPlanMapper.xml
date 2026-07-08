@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaBudgetPlanMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.OaBudgetPlan">
+        SELECT *
+        FROM oa_budget_plan
+        <where>
+            deleted = '0'
+            <if test="query != null">
+                <if test="query.budgetName != null and query.budgetName != ''">
+                    AND budget_name LIKE CONCAT('%', #{query.budgetName}, '%')
+                </if>
+                <if test="query.targetType != null and query.targetType != ''">
+                    AND target_type = #{query.targetType}
+                </if>
+                <if test="query.status != null and query.status != ''">
+                    AND status = #{query.status}
+                </if>
+            </if>
+        </where>
+        ORDER BY update_time DESC
+    </select>
+
+    <select id="selectByIdWithDataScope" resultType="com.cloudflow.oa.domain.OaBudgetPlan">
+        SELECT *
+        FROM oa_budget_plan
+        WHERE budget_id = #{budgetId}
+          AND deleted = '0'
+    </select>
+
+</mapper>

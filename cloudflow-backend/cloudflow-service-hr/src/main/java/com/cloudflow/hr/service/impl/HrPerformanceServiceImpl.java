@@ -13,6 +13,7 @@ import com.cloudflow.hr.domain.dto.HrPerformanceSalaryAdjustmentRequest;
 import com.cloudflow.hr.domain.dto.HrPerformanceSplitPayload;
 import com.cloudflow.hr.domain.dto.performance.HrPerformanceCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrCompChange;
+import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrEmployeeComp;
 import com.cloudflow.hr.domain.entity.HrPerformanceAssignment;
 import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
@@ -24,6 +25,7 @@ import com.cloudflow.hr.domain.vo.performance.HrPerformanceOverviewVO;
 import com.cloudflow.hr.mapper.HrAuditLogMapper;
 import com.cloudflow.hr.mapper.HrCompChangeMapper;
 import com.cloudflow.hr.mapper.HrEmployeeCompMapper;
+import com.cloudflow.hr.mapper.HrEmployeeMapper;
 import com.cloudflow.hr.mapper.HrPerformanceAssignmentMapper;
 import com.cloudflow.hr.mapper.HrPerformanceObjectiveMapper;
 import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
@@ -67,6 +69,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     private final HrPerformanceResultMapper performanceResultMapper;
     private final HrEmployeeCompMapper employeeCompMapper;
     private final HrCompChangeMapper compChangeMapper;
+    private final HrEmployeeMapper employeeMapper;
     private final HrPerformanceSalaryAdjustmentMapper performanceSalaryAdjustmentMapper;
     private final HrAuditLogMapper auditLogMapper;
 
@@ -89,6 +92,18 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         }
         if (StringUtils.hasText(status)) {
             wrapper.eq(HrPerformanceObjective::getStatus, status.trim());
+        }
+        List<Long> visibleDeptIds = currentVisibleDeptIds();
+        if (visibleDeptIds != null) {
+            if (visibleDeptIds.isEmpty()) {
+                wrapper.apply("1 = 0");
+            } else {
+                wrapper.inSql(HrPerformanceObjective::getOwnerEmployeeId,
+                        "SELECT id FROM hr_employee WHERE tenant_id = " + TENANT_ID
+                                + " AND deleted = 0 AND dept_id IN (" + visibleDeptIds.stream()
+                                .map(String::valueOf)
+                                .collect(Collectors.joining(",")) + ")");
+            }
         }
         wrapper.orderByDesc(HrPerformanceObjective::getUpdateTime).orderByDesc(HrPerformanceObjective::getId);
 
@@ -461,6 +476,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         result.put("categoryDefinitions", asMapList(metricConfig.get("categoryDefinitions")));
         result.put("metrics", normalizeMetrics(asMapList(metricConfig.get("metrics"))));
         result.put("status", normalizeObjectiveStatus(text(result.get("status"))));
+        enrichObjectiveOwnerFields(result);
 
         Long objectiveId = toLong(result.get("id"));
         List<Map<String, Object>> assignments = assignmentMapper.selectList(
@@ -485,6 +501,19 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         result.put("actualAmount", actualAmountOfTree(tree));
         result.putAll(summarizeObjectiveScore(tree, results));
         return result;
+    }
+
+    private void enrichObjectiveOwnerFields(Map<String, Object> result) {
+        Long ownerEmployeeId = toLong(result.get("ownerEmployeeId"));
+        if (ownerEmployeeId == null) {
+            return;
+        }
+        HrEmployee employee = employeeMapper.selectById(ownerEmployeeId);
+        if (employee == null) {
+            return;
+        }
+        result.put("deptId", employee.getDeptId());
+        result.put("ownerUserId", employee.getUserId());
     }
 
     private List<Map<String, Object>> buildAssignmentTree(List<Map<String, Object>> rows,
@@ -715,6 +744,35 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
 
     private Map<String, Object> toMap(Object value) {
         return objectMapper.convertValue(value, MAP_TYPE);
+    }
+
+    private List<Long> currentVisibleDeptIds() {
+        Integer dsType = UserContext.getDsType();
+        if (dsType == null || dsType == 0 || isAdmin()) {
+            return null;
+        }
+        if (dsType == 4) {
+            Long userId = UserContext.getUserId();
+            if (userId == null) {
+                return List.of();
+            }
+            return employeeMapper.selectList(new LambdaQueryWrapper<HrEmployee>()
+                            .eq(HrEmployee::getTenantId, TENANT_ID)
+                            .eq(HrEmployee::getDeleted, 0)
+                            .eq(HrEmployee::getUserId, userId))
+                    .stream()
+                    .map(HrEmployee::getDeptId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .toList();
+        }
+        List<Long> deptIds = UserContext.getDsDeptIds();
+        return deptIds == null ? List.of() : deptIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+    }
+
+    private boolean isAdmin() {
+        return UserContext.getRoles() != null
+                && UserContext.getRoles().stream().anyMatch(role -> "admin".equalsIgnoreCase(role));
     }
 
     private Map<String, Object> parseJsonObject(Object value) {

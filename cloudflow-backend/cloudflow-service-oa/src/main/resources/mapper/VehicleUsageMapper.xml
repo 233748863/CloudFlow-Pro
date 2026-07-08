@@ -5,6 +5,7 @@
     <sql id="usageBaseColumns">
         u.*,
         v.license_plate AS vehicle_plate,
+        app.dept_id AS dept_id,
         COALESCE(app.nick_name, app.user_name) AS applicant_name,
         COALESCE(drv.nick_name, drv.user_name) AS driver_name,
         COALESCE(expense_summary.total_expense_amount, 0) AS total_expense_amount,
@@ -40,6 +41,19 @@
                 </if>
                 <if test="query.status != null and query.status != ''">
                     AND u.status = #{query.status}
+                </if>
+                <if test="query.visibleDeptIds != null">
+                    <choose>
+                        <when test="query.visibleDeptIds.size() > 0">
+                            AND app.dept_id IN
+                            <foreach collection="query.visibleDeptIds" item="deptId" open="(" separator="," close=")">
+                                #{deptId}
+                            </foreach>
+                        </when>
+                        <otherwise>
+                            AND 1 = 0
+                        </otherwise>
+                    </choose>
                 </if>
             </if>
             AND u.deleted = '0'

@@ -281,6 +281,9 @@ function Import-DotEnvFile {
 
 function Initialize-LocalEnvironment {
     $localDefaultSharedPassword = Get-ConfiguredEnvValue -Name "CLOUDFLOW_LOCAL_SHARED_PASSWORD"
+    if ($null -eq $localDefaultSharedPassword) {
+        $localDefaultSharedPassword = "Juwangkeji@2025"
+    }
 
     Set-ProcessEnvDefault -Name "MYSQL_SSL_PARAMS" -Value "useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true"
     Set-ProcessEnvDefault -Name "DB_URL" -Value ("jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_0900_ai_ci&zeroDateTimeBehavior=convertToNull&{0}&serverTimezone=Asia/Shanghai" -f (Get-EnvValue -Name "MYSQL_SSL_PARAMS"))

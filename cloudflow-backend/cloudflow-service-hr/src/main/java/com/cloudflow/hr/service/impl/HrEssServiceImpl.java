@@ -366,6 +366,8 @@ public class HrEssServiceImpl implements IHrEssService {
             row.put("endDate", contract.getEndDate());
             row.put("signStatus", contract.getSignStatus());
             row.put("status", contract.getStatus());
+            row.put("createTime", contract.getCreateTime());
+            row.put("updateTime", contract.getUpdateTime());
             HrContractSignature signature = sigMap.get(contract.getId());
             if (signature != null) {
                 row.put("signatureId", signature.getId());

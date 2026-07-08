@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 用车申请与记录实体
@@ -99,6 +100,12 @@ public class VehicleUsage {
     
     @TableField(exist = false)
     private String applicantName;
+
+    @TableField(exist = false)
+    private Long deptId;
+
+    @TableField(exist = false)
+    private List<Long> visibleDeptIds;
     
     @TableField(exist = false)
     private String driverName;

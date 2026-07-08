@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmPriceBookMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmPriceBook">
+        SELECT *
+        FROM crm_price_book
+        <where>
+            deleted = '0'
+            <if test="query != null">
+                <if test="query.priceBookName != null and query.priceBookName != ''">
+                    AND price_book_name LIKE CONCAT('%', #{query.priceBookName}, '%')
+                </if>
+                <if test="query.priceBookNo != null and query.priceBookNo != ''">
+                    AND price_book_no LIKE CONCAT('%', #{query.priceBookNo}, '%')
+                </if>
+                <if test="query.status != null and query.status != ''">
+                    AND status = #{query.status}
+                </if>
+            </if>
+        </where>
+        ORDER BY update_time DESC
+    </select>
+
+</mapper>

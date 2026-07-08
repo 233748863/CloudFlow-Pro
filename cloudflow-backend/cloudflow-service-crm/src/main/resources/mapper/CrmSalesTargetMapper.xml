@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmSalesTargetMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmSalesTarget">
+        SELECT *
+        FROM crm_sales_target
+        <where>
+            deleted = '0'
+            <if test="query != null">
+                <if test="query.targetName != null and query.targetName != ''">
+                    AND target_name LIKE CONCAT('%', #{query.targetName}, '%')
+                </if>
+                <if test="query.targetNo != null and query.targetNo != ''">
+                    AND target_no LIKE CONCAT('%', #{query.targetNo}, '%')
+                </if>
+                <if test="query.dimensionType != null and query.dimensionType != ''">
+                    AND dimension_type = #{query.dimensionType}
+                </if>
+                <if test="query.periodType != null and query.periodType != ''">
+                    AND period_type = #{query.periodType}
+                </if>
+                <if test="query.targetYear != null">
+                    AND target_year = #{query.targetYear}
+                </if>
+                <if test="query.targetPeriod != null">
+                    AND target_period = #{query.targetPeriod}
+                </if>
+                <if test="query.status != null and query.status != ''">
+                    AND status = #{query.status}
+                </if>
+                <if test="query.ownerId != null">
+                    AND owner_id = #{query.ownerId}
+                </if>
+                <if test="query.deptId != null">
+                    AND dept_id = #{query.deptId}
+                </if>
+            </if>
+        </where>
+        ORDER BY update_time DESC
+    </select>
+
+</mapper>

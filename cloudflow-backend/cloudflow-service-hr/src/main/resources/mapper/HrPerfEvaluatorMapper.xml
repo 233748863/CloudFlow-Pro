@@ -19,10 +19,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                e.status          AS status,
                e.invite_time     AS inviteTime,
                e.remind_count    AS remindCount,
-               r.score           AS responseScore,
-               r.dimension_scores AS responseDimensions,
-               r.comment_text    AS responseComment,
-               r.submit_time     AS responseSubmitTime
+               r.score           AS score,
+               r.dimension_scores AS dimensionScores,
+               r.comment_text    AS commentText,
+               r.submit_time     AS submitTime
         FROM hr_perf_evaluator e
         LEFT JOIN hr_perf_evaluator_response r
                ON r.evaluator_id = e.id AND r.deleted = 0

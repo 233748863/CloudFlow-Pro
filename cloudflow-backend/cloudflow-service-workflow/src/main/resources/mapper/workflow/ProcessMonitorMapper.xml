@@ -16,6 +16,8 @@
         <result property="durationMs" column="duration_ms"/>
         <result property="taskCount" column="task_count"/>
         <result property="completedTaskCount" column="completed_task_count"/>
+        <result property="startUserId" column="start_user_id"/>
+        <result property="deptId" column="dept_id"/>
         <result property="initiator" column="initiator"/>
         <result property="initiatorName" column="initiator_name"/>
         <result property="createTime" column="create_time"/>
@@ -145,6 +147,46 @@
         ORDER BY p.start_time DESC
     </select>
 
+    <select id="selectPageByDataScope" resultMap="ProcessMonitorResult">
+        SELECT
+            p.id,
+            p.tenant_id,
+            p.instance_id,
+            p.process_def_id,
+            p.process_def_key,
+            p.process_def_name as process_name,
+            p.status,
+            p.start_time,
+            p.end_time,
+            COALESCE(p.duration, TIMESTAMPDIFF(SECOND, p.start_time, NOW()) * 1000) as duration_ms,
+            p.task_count,
+            p.task_count as completed_task_count,
+            p.start_user_name as initiator,
+            p.start_user_name as initiator_name,
+            p.create_time,
+            COALESCE(i.dept_id, u.dept_id) AS dept_id,
+            p.start_user_id AS start_user_id
+        FROM wf_process_monitor p
+                 LEFT JOIN wf_process_instance i ON i.instance_id = p.instance_id AND i.tenant_id = p.tenant_id
+                 LEFT JOIN sys_user u ON u.user_id = p.start_user_id AND u.tenant_id = p.tenant_id
+        <where>
+            p.tenant_id = #{tenantId}
+            <if test="processDefKey != null and processDefKey != ''">
+                AND p.process_def_key = #{processDefKey}
+            </if>
+            <if test="status != null and status != ''">
+                AND p.status = #{status}
+            </if>
+            <if test="startTimeFrom != null and startTimeFrom != ''">
+                AND p.start_time >= #{startTimeFrom}
+            </if>
+            <if test="startTimeTo != null and startTimeTo != ''">
+                AND p.start_time &lt;= #{startTimeTo}
+            </if>
+        </where>
+        ORDER BY p.start_time DESC
+    </select>
+
     <!-- 根据实例ID查询 -->
     <select id="selectByInstanceId" resultMap="ProcessMonitorResult">
         SELECT 
@@ -164,6 +206,34 @@
             p.start_user_name as initiator_name,
             p.create_time
         FROM wf_process_monitor p
+        WHERE p.instance_id = #{instanceId}
+        <if test="tenantId != null">
+            AND p.tenant_id = #{tenantId}
+        </if>
+    </select>
+
+    <select id="selectByInstanceIdWithDataScope" resultMap="ProcessMonitorResult">
+        SELECT
+            p.id,
+            p.tenant_id,
+            p.instance_id,
+            p.process_def_id,
+            p.process_def_key,
+            p.process_def_name as process_name,
+            p.status,
+            p.start_time,
+            p.end_time,
+            COALESCE(p.duration, TIMESTAMPDIFF(SECOND, p.start_time, NOW()) * 1000) as duration_ms,
+            p.task_count,
+            p.task_count as completed_task_count,
+            p.start_user_name as initiator,
+            p.start_user_name as initiator_name,
+            p.create_time,
+            COALESCE(i.dept_id, u.dept_id) AS dept_id,
+            p.start_user_id AS start_user_id
+        FROM wf_process_monitor p
+                 LEFT JOIN wf_process_instance i ON i.instance_id = p.instance_id AND i.tenant_id = p.tenant_id
+                 LEFT JOIN sys_user u ON u.user_id = p.start_user_id AND u.tenant_id = p.tenant_id
         WHERE p.instance_id = #{instanceId}
         <if test="tenantId != null">
             AND p.tenant_id = #{tenantId}

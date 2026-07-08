@@ -15,6 +15,13 @@ import java.time.LocalDateTime;
 public class HrTrainingEnrollmentVO {
     @Schema(description = "报名 ID") private Long id;
     @Schema(description = "班次 ID") private Long sessionId;
+    @Schema(description = "课程 ID") private Long courseId;
+    @Schema(description = "课程名称") private String courseName;
+    @Schema(description = "课程编码") private String courseCode;
+    @Schema(description = "班次编号") private String sessionNo;
+    @Schema(description = "班次开始时间") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private LocalDateTime sessionStartTime;
+    @Schema(description = "班次结束时间") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private LocalDateTime sessionEndTime;
+    @Schema(description = "培训地点") private String location;
     @Schema(description = "员工 ID") private Long employeeId;
     @Schema(description = "报名类型") private String enrollType;
     @Schema(description = "状态") private String status;

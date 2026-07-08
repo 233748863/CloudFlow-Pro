@@ -137,7 +137,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
         uw.eq("id", disputeId).eq("tenant_id", currentTenantId())
                 .set("status", "CLOSED")
                 .set("closed_at", LocalDate.now())
-                .set("remark", reason)
+                .set("close_reason", reason)
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
         disputeMapper.update(null, uw);

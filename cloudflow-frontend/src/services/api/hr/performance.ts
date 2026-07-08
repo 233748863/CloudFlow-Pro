@@ -103,12 +103,23 @@ export const createPerformanceSalaryAdjustment = (id: number, data: HrRecord) =>
 export interface PerformanceEvaluator extends HrRecord {
   id?: number;
   objectiveId?: number;
+  objectiveName?: string;
+  cycleName?: string;
   assignmentId?: number;
+  resultId?: number;
   evaluateeId?: number;
+  evaluateeName?: string;
   evaluatorId?: number;
+  evaluatorName?: string;
   evaluatorSource?: 'SELF' | 'MANAGER' | 'PEER' | 'SUBORDINATE' | 'CUSTOMER' | string;
   weight?: number;
   status?: string;
+  inviteTime?: string;
+  submitTime?: string;
+  remindCount?: number;
+  score?: number;
+  dimensionScores?: HrRecord[];
+  commentText?: string;
 }
 
 export interface PerformanceEvaluatorResponsePayload {
@@ -124,7 +135,7 @@ export interface PerformanceInvitePayload {
   evaluateeId: number;
   evaluators: Array<{
     evaluatorId: number;
-    source: string;
+    evaluatorSource: string;
     weight?: number;
   }>;
 }

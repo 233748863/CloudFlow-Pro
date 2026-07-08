@@ -41,16 +41,8 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
 
     @Override
     public PageResult<CrmLead> queryPage(CrmLead query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmLead> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmLead::getDeleted, CrmConstants.DelFlag.NORMAL)
-                .orderByDesc(CrmLead::getUpdateTime);
-        likeIfPresent(wrapper, CrmLead::getLeadName, query.getLeadName());
-        likeIfPresent(wrapper, CrmLead::getCompanyName, query.getCompanyName());
-        likeIfPresent(wrapper, CrmLead::getContactName, query.getContactName());
-        likeIfPresent(wrapper, CrmLead::getMobile, query.getMobile());
-        eqIfPresent(wrapper, CrmLead::getStatus, query.getStatus());
-        eqIfPresent(wrapper, CrmLead::getOwnerId, query.getOwnerId());
-        return pageResult(pageQuery, wrapper);
+        return PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(), query, DataScopeUtils.listScope("dept_id", "owner_id")));
     }
 
     @Override

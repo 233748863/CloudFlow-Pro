@@ -71,7 +71,7 @@ export const HrEssPortalPage: React.FC = () => {
 
   const remainingLeave = useMemo(() => {
     if (!summary?.leaveBalances?.length) return '0';
-    const total = summary.leaveBalances.reduce((acc, item) => acc + Number(item.remainQuota || 0), 0);
+    const total = summary.leaveBalances.reduce((acc, item) => acc + Number(item.availableQuota ?? item.remainQuota ?? 0), 0);
     return total.toFixed(1);
   }, [summary]);
 
@@ -79,8 +79,8 @@ export const HrEssPortalPage: React.FC = () => {
     const leaveRows = (summary?.leaveBalances ?? []).map((item) => ({
       id: `leave-${item.leaveTypeId}-${item.year ?? ''}`,
       category: '假期余额',
-      subject: item.leaveTypeName || item.leaveCode || `类型 #${item.leaveTypeId}`,
-      detail: `剩余 ${Number(item.remainQuota || 0).toFixed(1)} / 共 ${Number(item.totalQuota || 0).toFixed(1)} ${item.unit || '天'}`,
+      subject: item.leaveName || item.leaveTypeName || item.leaveCode || `类型 #${item.leaveTypeId}`,
+      detail: `剩余 ${Number(item.availableQuota ?? item.remainQuota ?? 0).toFixed(1)} / 共 ${Number(item.totalQuota || 0).toFixed(1)} ${item.unit || '天'}`,
       status: item.year ? String(item.year) : '当前',
       time: '-',
       action: null as React.ReactNode,
@@ -111,9 +111,9 @@ export const HrEssPortalPage: React.FC = () => {
     }));
 
     const contractRows = (summary?.pendingContracts ?? []).map((contract: any) => ({
-      id: `contract-${contract.id}`,
+      id: `contract-${contract.contractId ?? contract.id}`,
       category: '待签合同',
-      subject: contract.contractNo || `合同 #${contract.id}`,
+      subject: contract.contractNo || `合同 #${contract.contractId ?? contract.id}`,
       detail: (
         <>
           <DictLabel dictType="hr_contract_type" value={String(contract.contractType ?? '')} fallback="-" />
