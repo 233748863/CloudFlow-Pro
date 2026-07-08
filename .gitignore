@@ -65,3 +65,7 @@ vite-*.err.log
 .regression_state*.json
 .regression_token.txt
 工作流模块审计报告.md
+reports/
+scripts/audit-page-seed-role-data.ps1
+scripts/check-api-contracts.ps1
+scripts/smoke-api-contracts.ps1
