@@ -1096,6 +1096,22 @@ CREATE TABLE wf_callback_dead_letter (
   KEY idx_dlq_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调死信队列';
 
+-- 工作流回调业务副作用幂等表
+-- 用于防止 DLQ 重放、Stream 重复投递导致培训人数、站内信、业务副作用重复执行。
+DROP TABLE IF EXISTS wf_callback_side_effect;
+CREATE TABLE wf_callback_side_effect (
+  id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id           BIGINT NOT NULL COMMENT '租户ID',
+  business_type       VARCHAR(64) NOT NULL COMMENT '业务类型',
+  business_id         BIGINT NOT NULL COMMENT '业务主键ID',
+  process_instance_id VARCHAR(64) NOT NULL COMMENT '流程实例ID',
+  effect_key          VARCHAR(64) NOT NULL COMMENT '副作用类型',
+  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  UNIQUE KEY uk_wf_callback_side_effect (tenant_id, business_type, business_id, process_instance_id, effect_key),
+  KEY idx_wf_callback_side_effect_biz (tenant_id, business_type, business_id),
+  KEY idx_wf_callback_side_effect_inst (process_instance_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流回调业务副作用幂等表';
+
 -- P0-3: 流程-业务状态对账告警
 -- tenant_id 由对账 Job 跨租户扫描后从业务行的 tenant_id 回写；本表纳入 cloudflow.tenant.ignore-tables，
 -- MP 不会自动追加 WHERE 条件，平台运维侧可直接看到所有租户告警。

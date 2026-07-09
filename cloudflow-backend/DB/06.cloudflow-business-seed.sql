@@ -1617,6 +1617,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 (1008, '任务驳回',       302,  7, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:reject',          '#', 'admin', NOW(), '', NULL, '任务驳回权限'),
 (1009, '任务统计',       100, 10, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:statistics',      '#', 'admin', NOW(), '', NULL, '任务统计权限'),
 (1010, '任务分组',       100, 11, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:groups',          '#', 'admin', NOW(), '', NULL, '任务分组权限'),
+(1012, '管理员任务统计', 100, 12, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:admin-statistics','#', 'admin', NOW(), '', NULL, '管理员任务统计权限'),
 (1011, '流程审计查看',   400,  8, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:audit:list',           '#', 'admin', NOW(), '', NULL, '流程审计查看权限'),
 
 -- HR ESS 按钮级权限
@@ -1720,6 +1721,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 (1100, '任务办理人覆盖', 302, 8, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:override',  '#', 'admin', NOW(), '', NULL, 'admin 跳过办理人归属校验，加签/减签/委派他人任务（P0-2 strictOwner 兜底）');
 
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 7, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 1012, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 720, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 721, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 722, 100000);
