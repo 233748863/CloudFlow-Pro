@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, FileText, LayoutGrid, Search, Tags } from 'lucide-react';
+import { AlertTriangle, ArrowRight, FileText, LayoutGrid, LayoutList, Search, Tags } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { FormDefinition, WorkflowDefinition } from '@/types';
 import { Role } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import {
+  WorkflowCatalogGrid,
   WorkflowLaunchDialog,
   mapWorkflowBackendForm,
   normalizeWorkflowTags,
@@ -28,6 +29,8 @@ import {
   FilterChip,
   Input,
   PageLoading,
+  SegmentedControl,
+  SegmentedControlItem,
   Select,
   SelectContent,
   SelectItem,
@@ -73,6 +76,7 @@ export const Workplace = () => {
   const [boundFormError, setBoundFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [invalidModelCount, setInvalidModelCount] = useState(0);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -310,6 +314,16 @@ export const Workplace = () => {
       );
     }
 
+    if (viewMode === 'grid') {
+      return (
+        <WorkflowCatalogGrid
+          workflows={filteredWorkflows}
+          loading={false}
+          onStart={handleStartClick}
+        />
+      );
+    }
+
     return (
       <Table disableScrollWrapper className="min-w-[1020px]">
         <TableHeader>
@@ -483,6 +497,24 @@ export const Workplace = () => {
           </label>
 
           <div className="admin-users-toolbar-actions">
+            <SegmentedControl className="min-h-9">
+              <SegmentedControlItem
+                size="sm"
+                active={viewMode === 'grid'}
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid size={14} className="mr-1.5" />
+                卡片
+              </SegmentedControlItem>
+              <SegmentedControlItem
+                size="sm"
+                active={viewMode === 'table'}
+                onClick={() => setViewMode('table')}
+              >
+                <LayoutList size={14} className="mr-1.5" />
+                表格
+              </SegmentedControlItem>
+            </SegmentedControl>
             {toolbarSummary ? (
               <span className="admin-users-filter-count">{toolbarSummary}</span>
             ) : null}
@@ -519,11 +551,11 @@ export const Workplace = () => {
           <div>
             <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">可发起流程</div>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {filteredWorkflows.length} 条 · 表格视图
+              {filteredWorkflows.length} 条 · {viewMode === 'grid' ? '卡片视图' : '表格视图'}
             </p>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-auto p-0">
           {renderResultContent()}
         </div>
       </InnerTableSurface>
