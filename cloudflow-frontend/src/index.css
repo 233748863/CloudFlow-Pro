@@ -6324,87 +6324,101 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     line-height: 1;
   }
 
-  .admin-meeting-room-list {
-    min-height: 0;
+  .admin-meeting-room-grid {
     flex: 1 1 0%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.875rem;
+    align-content: start;
     overflow: auto;
+    padding: 0.875rem;
     scrollbar-gutter: stable;
   }
 
-  .admin-meeting-room-row {
-    display: grid;
-    min-width: 0;
-    grid-template-columns: minmax(17rem, 1.15fr) minmax(11rem, 0.72fr) minmax(19rem, 1fr) minmax(10rem, auto);
-    align-items: center;
-    gap: 1rem;
-    border-bottom: 1px solid var(--cf-border);
-    background: var(--cf-surface-strong);
-    padding: 0.875rem 1rem;
-  }
-
-  .admin-meeting-room-row:last-child {
-    border-bottom: 0;
-  }
-
-  .admin-meeting-room-main {
+  .admin-meeting-room-card {
     display: flex;
     min-width: 0;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .admin-meeting-room-icon {
-    display: inline-flex;
-    width: 2.25rem;
-    height: 2.25rem;
-    flex: 0 0 2.25rem;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    gap: 0.875rem;
     border: 1px solid var(--cf-border);
-    border-radius: 0.5rem;
-    background: var(--cf-surface-muted);
-    color: #0d95b5;
+    border-top: 3px solid var(--cf-border);
+    border-radius: 0.75rem;
+    background: var(--cf-surface-strong);
+    padding: 0.875rem 1rem 1rem;
+    transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
   }
 
-  .admin-meeting-room-titleline {
+  .admin-meeting-room-card:hover {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.10);
+    transform: translateY(-1px);
+  }
+
+  .admin-meeting-room-card--available { border-top-color: #10b981; }
+  .admin-meeting-room-card--in-use { border-top-color: #f59e0b; }
+  .admin-meeting-room-card--maintenance { border-top-color: #ef4444; }
+
+  .admin-meeting-room-card-head {
     display: flex;
     min-width: 0;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
     gap: 0.5rem;
   }
 
-  .admin-meeting-room-titleline h3 {
+  .admin-meeting-room-card-title-row {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .admin-meeting-room-card-title {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: #0f172a;
+    font-size: 0.9375rem;
+    font-weight: 750;
+    line-height: 1.25;
   }
 
-  .admin-meeting-room-meta {
+  .admin-meeting-room-card-status {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    line-height: 1;
+  }
+
+  .admin-meeting-room-card-meta {
     display: flex;
     min-width: 0;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+    gap: 0.5rem 0.75rem;
     color: #64748b;
     font-size: 0.75rem;
   }
 
-  .admin-meeting-room-meta span {
+  .admin-meeting-room-card-meta span {
     display: inline-flex;
     min-width: 0;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.3125rem;
   }
 
-  .admin-meeting-room-equipment,
-  .admin-meeting-room-bookings,
-  .admin-meeting-room-actions {
+  .admin-meeting-room-card-equipment,
+  .admin-meeting-room-card-bookings,
+  .admin-meeting-room-card-actions {
     min-width: 0;
   }
 
-  .admin-meeting-room-cell-label {
+  .admin-meeting-room-card-cell-label {
     display: block;
     margin-bottom: 0.375rem;
     color: #94a3b8;
@@ -6437,11 +6451,15 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     color: #94a3b8;
   }
 
-  .admin-meeting-room-actions {
+  .admin-meeting-room-card-bookings {
+    flex: 1 1 auto;
+  }
+
+  .admin-meeting-room-card-actions {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
     gap: 0.5rem;
+    margin-top: auto;
   }
 
   .admin-benefit-mine-toolbar {
@@ -6563,13 +6581,14 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
   }
 
   @media (max-width: 1280px) {
-    .admin-meeting-room-row {
-      grid-template-columns: minmax(17rem, 1fr) minmax(14rem, 0.85fr) minmax(18rem, 1fr);
+    .admin-meeting-room-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
 
-    .admin-meeting-room-actions {
-      grid-column: 1 / -1;
-      justify-content: flex-start;
+  @media (max-width: 768px) {
+    .admin-meeting-room-grid {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
@@ -10178,20 +10197,23 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
   }
 
   html.dark .admin-meeting-room-workbench-head span,
-  html.dark .admin-meeting-room-cell-label,
-  html.dark .admin-meeting-room-meta {
+  html.dark .admin-meeting-room-card-cell-label,
+  html.dark .admin-meeting-room-card-meta {
     color: #94a3b8;
   }
 
   html.dark .admin-meeting-room-summary span,
-  html.dark .admin-meeting-room-icon,
   html.dark .admin-meeting-room-equipment-chip {
     border-color: #334155;
     background: #1e293b;
     color: #cbd5e1;
   }
 
-  html.dark .admin-meeting-room-row {
+  html.dark .admin-meeting-room-card-title {
+    color: #f1f5f9;
+  }
+
+  html.dark .admin-meeting-room-card {
     border-color: #334155;
     background: #0f172a;
   }
@@ -17441,8 +17463,8 @@ html.dark .template-market-search-field input {
   .admin-meeting-room-page .admin-source-inline-toolbar,
   .admin-meeting-room-toolbar,
   .admin-meeting-room-filter-grid,
-  .admin-meeting-room-list,
-  .admin-meeting-room-row {
+  .admin-meeting-room-grid,
+  .admin-meeting-room-card {
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -17474,42 +17496,34 @@ html.dark .template-market-search-field input {
     min-width: 0;
   }
 
-  .admin-meeting-room-list {
+  .admin-meeting-room-grid {
     overflow-x: hidden;
-  }
-
-  .admin-meeting-room-row {
     grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
-    gap: 0.875rem;
-    padding: 0.875rem;
+    gap: 0.75rem;
+    padding: 0.75rem;
   }
 
-  .admin-meeting-room-main {
-    align-items: flex-start;
-  }
-
-  .admin-meeting-room-titleline h3 {
+  .admin-meeting-room-card-title {
     overflow: visible;
     white-space: normal;
   }
 
-  .admin-meeting-room-equipment,
-  .admin-meeting-room-bookings,
+  .admin-meeting-room-card-equipment,
+  .admin-meeting-room-card-bookings,
   .admin-meeting-inline-note {
     width: 100%;
     max-width: 100%;
     min-width: 0;
   }
 
-  .admin-meeting-room-actions {
+  .admin-meeting-room-card-actions {
     display: grid;
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: stretch;
   }
 
-  .admin-meeting-room-actions .btn {
+  .admin-meeting-room-card-actions .btn {
     width: 100%;
     min-width: 0;
     justify-content: center;

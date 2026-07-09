@@ -1254,7 +1254,7 @@ export const MeetingRoomPage = () => {
     }
 
     return (
-      <InnerTableSurface className="admin-meeting-room-workbench" wrapperClassName="flex min-h-0 flex-1 flex-col">
+      <InnerTableSurface className="admin-meeting-room-workbench admin-meeting-room-workbench--cards" wrapperClassName="flex min-h-0 flex-1 flex-col">
         <div className="admin-source-section-head admin-meeting-room-workbench-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <div>
             <strong>会议室资源</strong>
@@ -1266,54 +1266,49 @@ export const MeetingRoomPage = () => {
             <span>{inUseRoomCount} 使用中</span>
           </div>
         </div>
-        <div className="admin-meeting-room-list">
+        <div className="admin-meeting-room-grid">
         {filteredRooms.map((room) => {
           const realtimeStatus = getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []);
           const statusCfg = roomStatusConfig[realtimeStatus];
           const StatusIcon = realtimeStatus === 'available' ? CheckCircle2 : realtimeStatus === 'in-use' ? Clock : XCircle;
           const equipmentList = parseEquipment(room.equipment);
+          const todayCount = roomBookingsMap[room.roomId]?.length || 0;
 
           return (
             <article
               key={room.roomId}
-              className="admin-meeting-room-row"
+              className={cn('admin-meeting-room-card', `admin-meeting-room-card--${realtimeStatus}`)}
             >
-              <div className="admin-meeting-room-main">
-                <div className="admin-meeting-room-icon">
-                  <Monitor size={16} />
+              <header className="admin-meeting-room-card-head">
+                <div className="admin-meeting-room-card-title-row">
+                  <h3 className="admin-meeting-room-card-title">
+                    {room.name}
+                  </h3>
+                  <span className={cn('admin-meeting-room-card-status', statusCfg.bg)}>
+                    <StatusIcon size={12} />
+                    {statusCfg.label}
+                  </span>
                 </div>
-                <div className="min-w-0">
-                  <div className="admin-meeting-room-titleline">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {room.name}
-                    </h3>
-                    <span className={cn('inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium', statusCfg.bg)}>
-                      <StatusIcon size={12} />
-                      {statusCfg.label}
-                    </span>
-                  </div>
-
-                  <div className="admin-meeting-room-meta">
-                    <span>
-                      <MapPin size={12} />
-                      {room.location}
-                    </span>
-                    <span>
-                      <Users size={12} />
-                      容纳 {room.capacity} 人
-                    </span>
-                    <span>
-                      <CalendarDays size={12} />
-                      今日 {roomBookingsMap[room.roomId]?.length || 0} 条
-                    </span>
-                  </div>
+                <div className="admin-meeting-room-card-meta">
+                  <span>
+                    <MapPin size={12} />
+                    {room.location}
+                  </span>
+                  <span>
+                    <Users size={12} />
+                    容纳 {room.capacity} 人
+                  </span>
+                  <span>
+                    <CalendarDays size={12} />
+                    今日 {todayCount} 条
+                  </span>
                 </div>
-              </div>
+              </header>
 
-              <div className="admin-meeting-room-equipment">
-                <span className="admin-meeting-room-cell-label">设备</span>
+              <div className="admin-meeting-room-card-equipment">
+                <span className="admin-meeting-room-card-cell-label">设备</span>
                 <div className="admin-meeting-room-chipline">
-                  {equipmentList.length > 0 ? equipmentList.slice(0, 4).map((eq: string, index: number) => (
+                  {equipmentList.length > 0 ? equipmentList.slice(0, 3).map((eq: string, index: number) => (
                     <span
                       key={`${room.roomId}-${eq}-${index}`}
                       className="admin-meeting-room-equipment-chip"
@@ -1325,13 +1320,13 @@ export const MeetingRoomPage = () => {
                       未录入设备
                     </span>
                   )}
-                  {equipmentList.length > 4 ? (
-                    <span className="admin-meeting-room-equipment-chip">+{equipmentList.length - 4}</span>
+                  {equipmentList.length > 3 ? (
+                    <span className="admin-meeting-room-equipment-chip">+{equipmentList.length - 3}</span>
                   ) : null}
                 </div>
               </div>
 
-              <div className="admin-meeting-room-bookings">
+              <div className="admin-meeting-room-card-bookings">
                 <RoomBookings
                   key={`${room.roomId}-${refreshKey}`}
                   roomId={room.roomId.toString()}
@@ -1339,7 +1334,7 @@ export const MeetingRoomPage = () => {
                 />
               </div>
 
-              <div className="admin-meeting-room-actions">
+              <div className="admin-meeting-room-card-actions">
                   {manageMode ? (
                     <>
                       <Button variant="outline" size="sm" onClick={() => handleEditRoom(room)}>
