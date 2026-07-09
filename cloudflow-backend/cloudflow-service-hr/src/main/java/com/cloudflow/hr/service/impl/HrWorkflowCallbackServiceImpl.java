@@ -32,6 +32,7 @@ import com.cloudflow.hr.domain.entity.HrTalentSuccessor;
 import com.cloudflow.hr.domain.entity.HrTimeRequest;
 import com.cloudflow.hr.domain.entity.HrTrainingEnrollment;
 import com.cloudflow.hr.domain.entity.HrWorkInjury;
+import com.cloudflow.hr.domain.entity.WfCallbackSideEffect;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrCandidateMapper;
 import com.cloudflow.hr.mapper.HrEmployeeMapper;
@@ -45,6 +46,7 @@ import com.cloudflow.hr.mapper.HrTalentSuccessorMapper;
 import com.cloudflow.hr.mapper.HrTrainingEnrollmentMapper;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
+import com.cloudflow.hr.mapper.WfCallbackSideEffectMapper;
 import com.cloudflow.hr.service.IHrCertificateService;
 import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.hr.service.IHrMallOrderService;
@@ -55,6 +57,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -62,6 +65,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * HR 工作流审批回调实现。
@@ -79,6 +83,10 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
+
+    private static final Set<String> CALLBACK_APPROVING_STATUSES = Set.of(
+            "SUBMITTED", "PENDING", "PENDING_APPROVAL", "APPROVING", "IN_PROGRESS", "APPLYING");
+    private static final Set<String> CONTRACT_SIGN_APPROVING_STATUSES = Set.of("PENDING", "SIGNING");
 
     private final HrTypedCrudService crudService;
     private final AuthServiceClient authServiceClient;
@@ -98,6 +106,7 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
     private final HrMallOrderMapper mallOrderMapper;
     private final IHrMallOrderService mallOrderService;
     private final HrWorkInjuryMapper workInjuryMapper;
+    private final WfCallbackSideEffectMapper callbackSideEffectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -110,18 +119,21 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
         // MP TenantLineInnerInterceptor 仅读 TenantContext；HR 历史代码另写 UserContext，
         // 改由 TenantBroker.runAs 包裹保证 finally 恢复，避免 Stream/异步线程跨租户裸跑。
         TenantBroker.runAs(dto.getTenantId(), tid -> {
+            Long previousTenantId = UserContext.getTenantId();
             UserContext.setTenantId(tid);
             try {
                 CallbackTarget target = resolveTarget(dto.getBusinessType());
                 String status = resolveStatus(dto.getBusinessType(), dto.getApprovalResult());
-                boolean updated = crudService.updatePropertiesIfWorkflowInstanceMatches(
+                boolean updated = crudService.updatePropertiesIfWorkflowInstanceMatchesAndCurrentStatusIn(
                         target.entityClass(),
                         dto.getBusinessId(),
                         dto.getProcessInstanceId(),
+                        target.statusField(),
+                        allowedCurrentStatuses(target),
                         Map.of(target.statusField(), status),
                         target.instanceField());
                 if (!updated) {
-                    log.warn("HR审批回调未命中当前流程实例或已处理，跳过副作用: businessType={}, businessId={}, instanceId={}",
+                    log.warn("HR审批回调未命中当前流程实例、当前状态已非审批中或已处理，跳过副作用: businessType={}, businessId={}, instanceId={}",
                             dto.getBusinessType(), dto.getBusinessId(), dto.getProcessInstanceId());
                     return;
                 }
@@ -134,9 +146,16 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
                         dto.getBusinessType(), dto.getBusinessId(), e);
                 throw e;
             } finally {
-                UserContext.setTenantId(null);
+                UserContext.setTenantId(previousTenantId);
             }
         });
+    }
+
+    private Set<String> allowedCurrentStatuses(CallbackTarget target) {
+        if (target != null && target.entityClass() == HrContractSignature.class) {
+            return CONTRACT_SIGN_APPROVING_STATUSES;
+        }
+        return CALLBACK_APPROVING_STATUSES;
     }
 
     private CallbackTarget resolveTarget(String businessType) {
@@ -217,108 +236,134 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             if (enrollment == null || enrollment.getSessionId() == null) {
                 return;
             }
-            trainingSessionMapper.incrementEnrolledCount(enrollment.getSessionId(), dto.getTenantId());
+            runSideEffectOnce(dto, "TRAINING_ENROLLED_COUNT", () ->
+                    trainingSessionMapper.incrementEnrolledCount(enrollment.getSessionId(), dto.getTenantId()));
             return;
         }
         if (target.entityClass() == HrCertificateRequest.class && "APPROVED".equals(status)) {
             // 证明审批通过 → 渲染 PDF 落到 sys_file，再把 status 切为 ISSUED。
-            certificateService.issuePdf(dto.getBusinessId());
+            runSideEffectOnce(dto, "CERTIFICATE_ISSUE_PDF", () -> certificateService.issuePdf(dto.getBusinessId()));
             return;
         }
         if (target.entityClass() == HrOffer.class && "APPROVED".equals(status)) {
-            autoCreateEmployeeFromOffer(dto.getBusinessId(), dto.getTenantId());
+            runSideEffectOnce(dto, "OFFER_CREATE_EMPLOYEE", () ->
+                    autoCreateEmployeeFromOffer(dto.getBusinessId(), dto.getTenantId()));
             return;
         }
         if (target.entityClass() == HrContractSignature.class) {
             if ("SIGNED".equals(status)) {
                 // 合同签署通过 → 写 sign_time，同步 hr_employee_contract.sign_status = SIGNED。
-                contractSignatureService.onSigned(dto.getBusinessId());
+                runSideEffectOnce(dto, "CONTRACT_SIGNED", () -> contractSignatureService.onSigned(dto.getBusinessId()));
             } else {
                 // 驳回等非通过态仍要同步主合同，避免 hr_employee_contract 卡在 PENDING/SIGNING。
-                contractSignatureService.syncContractSignStatus(dto.getBusinessId(), status);
+                runSideEffectOnce(dto, "CONTRACT_SYNC_" + status, () ->
+                        contractSignatureService.syncContractSignStatus(dto.getBusinessId(), status));
             }
             return;
         }
         if (target.entityClass() == HrTalentReview.class && "PUBLISHED".equals(status)) {
-            // 盘点发布通过 → 写 publish_time，并将 grid_cell ∈ {1,4} 的员工自动入 HiPo 默认池。
-            Long reviewId = dto.getBusinessId();
-            Long tenantId = dto.getTenantId();
-            crudService.updateProperties(HrTalentReview.class, reviewId,
-                    Map.of("publishTime", LocalDateTime.now()));
-            List<HrTalentReviewParticipant> hiPos = talentReviewParticipantMapper.selectList(
-                    new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<HrTalentReviewParticipant>()
-                            .eq("review_id", reviewId)
-                            .eq("tenant_id", tenantId)
-                            .eq("deleted", 0)
-                            .in("grid_cell", 1, 4));
-            for (HrTalentReviewParticipant p : hiPos) {
-                talentPoolService.joinDefaultHipoPool(tenantId, p.getEmployeeId(), reviewId);
-            }
-            log.info("人才盘点发布回调完成，reviewId={}, 入 HiPo 池人数={}", reviewId, hiPos.size());
+            runSideEffectOnce(dto, "TALENT_REVIEW_PUBLISH", () -> {
+                Long reviewId = dto.getBusinessId();
+                Long tenantId = dto.getTenantId();
+                crudService.updateProperties(HrTalentReview.class, reviewId,
+                        Map.of("publishTime", LocalDateTime.now()));
+                List<HrTalentReviewParticipant> hiPos = talentReviewParticipantMapper.selectList(
+                        new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<HrTalentReviewParticipant>()
+                                .eq("review_id", reviewId)
+                                .eq("tenant_id", tenantId)
+                                .eq("deleted", 0)
+                                .in("grid_cell", 1, 4));
+                for (HrTalentReviewParticipant p : hiPos) {
+                    talentPoolService.joinDefaultHipoPool(tenantId, p.getEmployeeId(), reviewId);
+                }
+                log.info("人才盘点发布回调完成，reviewId={}, 入 HiPo 池人数={}", reviewId, hiPos.size());
+            });
             return;
         }
         if (target.entityClass() == HrTalentSuccessionPlan.class && "PUBLISHED".equals(status)) {
-            // 继任计划发布通过 → 写 publish_time，并向所有 ACTIVE 继任人发 ESS 站内信。
-            Long planId = dto.getBusinessId();
-            Long tenantId = dto.getTenantId();
-            crudService.updateProperties(HrTalentSuccessionPlan.class, planId,
-                    Map.of("publishTime", LocalDateTime.now()));
-            List<HrTalentSuccessor> successors = talentSuccessorMapper.selectList(
-                    new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<HrTalentSuccessor>()
-                            .eq("plan_id", planId)
-                            .eq("tenant_id", tenantId)
-                            .eq("status", "ACTIVE")
-                            .eq("deleted", 0));
-            for (HrTalentSuccessor s : successors) {
-                com.cloudflow.hr.domain.entity.HrSelfServiceMessage msg =
-                        new com.cloudflow.hr.domain.entity.HrSelfServiceMessage();
-                msg.setTenantId(tenantId);
-                msg.setEmployeeId(s.getEmployeeId());
-                msg.setCategory("TALENT_SUCCESSION");
-                msg.setTitle("您已被提名为关键岗位继任人");
-                msg.setSummary("继任计划已发布，请关注后续发展路径与培养计划。");
-                msg.setRelatedId(planId);
-                msg.setLinkUrl("/hr/talent/archive");
-                msg.setReadFlag(false);
-                selfServiceMessageMapper.insert(msg);
-            }
-            log.info("继任计划发布回调完成，planId={}, 通知继任人数={}", planId, successors.size());
+            runSideEffectOnce(dto, "TALENT_SUCCESSION_NOTIFY", () -> {
+                Long planId = dto.getBusinessId();
+                Long tenantId = dto.getTenantId();
+                crudService.updateProperties(HrTalentSuccessionPlan.class, planId,
+                        Map.of("publishTime", LocalDateTime.now()));
+                List<HrTalentSuccessor> successors = talentSuccessorMapper.selectList(
+                        new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<HrTalentSuccessor>()
+                                .eq("plan_id", planId)
+                                .eq("tenant_id", tenantId)
+                                .eq("status", "ACTIVE")
+                                .eq("deleted", 0));
+                for (HrTalentSuccessor s : successors) {
+                    com.cloudflow.hr.domain.entity.HrSelfServiceMessage msg =
+                            new com.cloudflow.hr.domain.entity.HrSelfServiceMessage();
+                    msg.setTenantId(tenantId);
+                    msg.setEmployeeId(s.getEmployeeId());
+                    msg.setCategory("TALENT_SUCCESSION");
+                    msg.setTitle("您已被提名为关键岗位继任人");
+                    msg.setSummary("继任计划已发布，请关注后续发展路径与培养计划。");
+                    msg.setRelatedId(planId);
+                    msg.setLinkUrl("/hr/talent/archive");
+                    msg.setReadFlag(false);
+                    selfServiceMessageMapper.insert(msg);
+                }
+                log.info("继任计划发布回调完成，planId={}, 通知继任人数={}", planId, successors.size());
+            });
             return;
         }
         if (target.entityClass() == HrBenefitRequest.class && "APPROVED".equals(status)) {
             // 福利申领通过 → 写 paid_at（积分入账/福利发放由下游单独触发，本回调仅打标完成）。
-            crudService.updateProperties(HrBenefitRequest.class, dto.getBusinessId(),
-                    Map.of("paidAt", LocalDateTime.now()));
+            runSideEffectOnce(dto, "BENEFIT_PAID_AT", () ->
+                    crudService.updateProperties(HrBenefitRequest.class, dto.getBusinessId(),
+                            Map.of("paidAt", LocalDateTime.now())));
             return;
         }
         if (target.entityClass() == HrMallOrder.class && "REJECTED".equals(status)) {
             // 积分商城订单驳回 → 退积分 + 还库存（IHrMallOrderService.cancel 中已封装幂等逻辑）。
-            mallOrderService.cancel(dto.getBusinessId(), "工作流驳回");
+            runSideEffectOnce(dto, "MALL_ORDER_CANCEL", () ->
+                    mallOrderService.cancel(dto.getBusinessId(), "工作流驳回"));
             return;
         }
         if (target.entityClass() == HrWorkInjury.class && "DETERMINED".equals(status)) {
-            // 工伤认定通过 → 写 determined_at，并向员工发 ESS 站内信。
-            Long injuryId = dto.getBusinessId();
-            Long tenantId = dto.getTenantId();
-            crudService.updateProperties(HrWorkInjury.class, injuryId,
-                    Map.of("determinedAt", LocalDateTime.now()));
-            HrWorkInjury injury = workInjuryMapper.selectById(injuryId);
-            if (injury != null && injury.getEmployeeId() != null) {
-                com.cloudflow.hr.domain.entity.HrSelfServiceMessage msg =
-                        new com.cloudflow.hr.domain.entity.HrSelfServiceMessage();
-                msg.setTenantId(tenantId);
-                msg.setEmployeeId(injury.getEmployeeId());
-                msg.setCategory("WORK_INJURY");
-                msg.setTitle("工伤认定结果通知");
-                msg.setSummary("您的工伤认定已审批通过，伤残等级："
-                        + (injury.getDeterminedGrade() == null ? "待定" : injury.getDeterminedGrade()));
-                msg.setRelatedId(injuryId);
-                msg.setLinkUrl("/hr/work-injury-list");
-                msg.setReadFlag(false);
-                selfServiceMessageMapper.insert(msg);
-            }
-            log.info("工伤认定回调完成，injuryId={}", injuryId);
+            runSideEffectOnce(dto, "WORK_INJURY_NOTIFY", () -> {
+                Long injuryId = dto.getBusinessId();
+                Long tenantId = dto.getTenantId();
+                crudService.updateProperties(HrWorkInjury.class, injuryId,
+                        Map.of("determinedAt", LocalDateTime.now()));
+                HrWorkInjury injury = workInjuryMapper.selectById(injuryId);
+                if (injury != null && injury.getEmployeeId() != null) {
+                    com.cloudflow.hr.domain.entity.HrSelfServiceMessage msg =
+                            new com.cloudflow.hr.domain.entity.HrSelfServiceMessage();
+                    msg.setTenantId(tenantId);
+                    msg.setEmployeeId(injury.getEmployeeId());
+                    msg.setCategory("WORK_INJURY");
+                    msg.setTitle("工伤认定结果通知");
+                    msg.setSummary("您的工伤认定已审批通过，伤残等级："
+                            + (injury.getDeterminedGrade() == null ? "待定" : injury.getDeterminedGrade()));
+                    msg.setRelatedId(injuryId);
+                    msg.setLinkUrl("/hr/work-injury-list");
+                    msg.setReadFlag(false);
+                    selfServiceMessageMapper.insert(msg);
+                }
+                log.info("工伤认定回调完成，injuryId={}", injuryId);
+            });
         }
+    }
+
+    private void runSideEffectOnce(ApprovalResultDTO dto, String effectKey, Runnable action) {
+        WfCallbackSideEffect marker = new WfCallbackSideEffect();
+        marker.setTenantId(dto.getTenantId());
+        marker.setBusinessType(normalizeBusinessType(dto.getBusinessType()));
+        marker.setBusinessId(dto.getBusinessId());
+        marker.setProcessInstanceId(dto.getProcessInstanceId());
+        marker.setEffectKey(effectKey);
+        marker.setCreateTime(LocalDateTime.now());
+        try {
+            callbackSideEffectMapper.insert(marker);
+        } catch (DuplicateKeyException e) {
+            log.info("工作流回调副作用已执行，跳过重复执行: businessType={}, businessId={}, effectKey={}",
+                    dto.getBusinessType(), dto.getBusinessId(), effectKey);
+            return;
+        }
+        action.run();
     }
 
     private void autoCreateEmployeeFromOffer(Long offerId, Long tenantId) {

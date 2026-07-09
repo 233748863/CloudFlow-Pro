@@ -8,7 +8,13 @@ import lombok.Data;
 @Data
 public class WorkflowInvalidateRequest {
 
-    private String instanceId;
+    private Long tenantId;
+
+    private String processInstanceId;
+
+    private String businessType;
+
+    private Long businessId;
 
     private String reason;
 }

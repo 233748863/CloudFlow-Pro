@@ -54,6 +54,7 @@ public interface WorkflowServiceClient {
         variables.put("callbackStreamKey", "workflow:stream:approval-callback:hr");
 
         WorkflowStartRequest request = new WorkflowStartRequest();
+        request.setTenantId(dto.getTenantId());
         request.setProcessDefKey(dto.getProcessDefinitionKey());
         request.setBusinessKey(dto.getBusinessType() + ":" + dto.getBusinessId());
         request.setStartUserId(dto.getStartUserId());
@@ -91,9 +92,12 @@ public interface WorkflowServiceClient {
     /**
      * 适配 workflow 作废接口
      */
-    default R<Void> cancelProcess(String processInstanceId) {
+    default R<Void> cancelProcess(Long tenantId, String processInstanceId, String businessType, Long businessId) {
         WorkflowInvalidateRequest request = new WorkflowInvalidateRequest();
-        request.setInstanceId(processInstanceId);
+        request.setTenantId(tenantId);
+        request.setProcessInstanceId(processInstanceId);
+        request.setBusinessType(businessType);
+        request.setBusinessId(businessId);
         request.setReason("HR 服务发起撤销");
         R<?> response = invalidateProcess(request);
         if (response != null && response.isSuccess()) {
@@ -102,6 +106,6 @@ public interface WorkflowServiceClient {
         return R.fail(response != null ? response.getMsg() : "Workflow 服务无响应");
     }
 
-    @PostMapping("/enhance/instance/invalidate")
+    @PostMapping("/inner/workflow/process/invalidate-by-business")
     R<?> invalidateProcess(@RequestBody WorkflowInvalidateRequest request);
 }

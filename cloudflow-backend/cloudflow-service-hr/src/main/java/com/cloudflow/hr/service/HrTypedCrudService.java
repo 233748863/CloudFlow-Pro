@@ -183,6 +183,21 @@ public class HrTypedCrudService {
         return updateInternal(entityClass, id, payload, "UPDATE", workflowInstanceId, instanceProperties);
     }
 
+    @Audit(name = "HR工作流回调状态变更",
+            oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
+            newVal = "@hrTypedCrudService.snapshot(#entityClass, #id)")
+    public <T> boolean updatePropertiesIfWorkflowInstanceMatchesAndCurrentStatusIn(
+            Class<T> entityClass,
+            Long id,
+            String workflowInstanceId,
+            String statusProperty,
+            Collection<String> allowedCurrentStatuses,
+            Map<String, Object> payload,
+            String... instanceProperties) {
+        return updateInternal(entityClass, id, payload, "UPDATE", workflowInstanceId,
+                statusProperty, allowedCurrentStatuses, instanceProperties);
+    }
+
     @Audit(name = "HR记录删除",
             oldVal = "@hrTypedCrudService.snapshot(#entityClass, #id)",
             newVal = "@hrTypedCrudService.emptySnapshot(#entityClass)",
@@ -265,6 +280,18 @@ public class HrTypedCrudService {
                                        String operationType,
                                        String workflowInstanceId,
                                        String... instanceProperties) {
+        return updateInternal(entityClass, id, payload, operationType, workflowInstanceId,
+                null, null, instanceProperties);
+    }
+
+    private <T> boolean updateInternal(Class<T> entityClass,
+                                       Long id,
+                                       Object payload,
+                                       String operationType,
+                                       String workflowInstanceId,
+                                       String currentStatusProperty,
+                                       Collection<String> allowedCurrentStatuses,
+                                       String... instanceProperties) {
         BaseMapper<T> mapper = mapper(entityClass);
         TableInfo tableInfo = tableInfo(entityClass);
         assertWriteAllowed(tableInfo.getTableName());
@@ -282,6 +309,8 @@ public class HrTypedCrudService {
             return false;
         }
         String workflowInstanceProperty = resolveWorkflowInstanceProperty(tableInfo, instanceProperties);
+        String normalizedStatusProperty = resolveCurrentStatusProperty(tableInfo, currentStatusProperty, allowedCurrentStatuses);
+        Set<String> normalizedAllowedStatuses = normalizeStatuses(allowedCurrentStatuses);
         Set<String> nullColumns = new LinkedHashSet<>();
         applyPayload(entityClass, entity, payloadMap, tableInfo, nullColumns);
         setProperty(entity, "updateBy", currentUserName());
@@ -295,6 +324,9 @@ public class HrTypedCrudService {
                 throw new IllegalStateException("HR表缺少流程实例字段：" + tableInfo.getTableName());
             }
             wrapper.eq(columnOf(tableInfo, workflowInstanceProperty), workflowInstanceId);
+        }
+        if (StringUtils.hasText(normalizedStatusProperty)) {
+            wrapper.in(columnOf(tableInfo, normalizedStatusProperty), normalizedAllowedStatuses);
         }
         for (String nullColumn : nullColumns) {
             wrapper.set(nullColumn, null);
@@ -310,6 +342,10 @@ public class HrTypedCrudService {
                 if (!Objects.equals(String.valueOf(currentInstanceId), workflowInstanceId)) {
                     return false;
                 }
+                if (StringUtils.hasText(normalizedStatusProperty)
+                        && !statusAllowed(latest, normalizedStatusProperty, normalizedAllowedStatuses)) {
+                    return false;
+                }
                 if (payloadAlreadyApplied(latest, payloadMap, tableInfo)) {
                     return false;
                 }
@@ -318,6 +354,40 @@ public class HrTypedCrudService {
         }
         writeAuditLog(tableInfo.getTableName(), id, operationType, before, getAuditRow(entityClass, id));
         return true;
+    }
+
+    private String resolveCurrentStatusProperty(TableInfo tableInfo,
+                                                String statusProperty,
+                                                Collection<String> allowedCurrentStatuses) {
+        if (!StringUtils.hasText(statusProperty) || allowedCurrentStatuses == null || allowedCurrentStatuses.isEmpty()) {
+            return null;
+        }
+        String normalized = normalizeProperty(tableInfo, statusProperty);
+        if (!StringUtils.hasText(normalized)) {
+            throw new IllegalStateException("HR表缺少状态字段：" + tableInfo.getTableName() + "." + statusProperty);
+        }
+        return normalized;
+    }
+
+    private Set<String> normalizeStatuses(Collection<String> statuses) {
+        if (statuses == null || statuses.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String status : statuses) {
+            if (StringUtils.hasText(status)) {
+                normalized.add(status.trim().toUpperCase(Locale.ROOT));
+            }
+        }
+        return normalized;
+    }
+
+    private boolean statusAllowed(Object entity, String statusProperty, Set<String> allowedStatuses) {
+        if (entity == null || !StringUtils.hasText(statusProperty) || allowedStatuses == null || allowedStatuses.isEmpty()) {
+            return false;
+        }
+        Object current = getProperty(entity, statusProperty);
+        return current != null && allowedStatuses.contains(String.valueOf(current).trim().toUpperCase(Locale.ROOT));
     }
 
     private String resolveWorkflowInstanceProperty(TableInfo tableInfo, String... candidates) {

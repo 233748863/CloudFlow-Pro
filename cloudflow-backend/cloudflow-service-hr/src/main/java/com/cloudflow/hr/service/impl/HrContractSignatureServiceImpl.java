@@ -107,19 +107,19 @@ public class HrContractSignatureServiceImpl implements IHrContractSignatureServi
             throw new HrBusinessException("STATUS_NOT_CANCELABLE",
                     "当前签署状态 " + signature.getSignStatus() + " 不允许撤销");
         }
-        cancelWorkflowIfNeeded(id, signature.getProcessInstanceId());
+        cancelWorkflowIfNeeded(signature, signature.getProcessInstanceId());
         markCancelled(signature);
     }
 
-    private void cancelWorkflowIfNeeded(Long id, String processInstanceId) {
+    private void cancelWorkflowIfNeeded(HrContractSignature signature, String processInstanceId) {
         if (!StringUtils.hasText(processInstanceId)) {
             return;
         }
-        R<Void> cancelResult = workflowServiceClient.cancelProcess(processInstanceId);
+        R<Void> cancelResult = workflowServiceClient.cancelProcess(
+                signature.getTenantId(), processInstanceId, "HR_CONTRACT_SIGN", signature.getId());
         if (cancelResult == null || !cancelResult.isSuccess()) {
             String msg = cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg();
-            log.warn("撤销合同签署流程失败，signatureId: {}, processInstanceId: {}, msg: {}",
-                    id, processInstanceId, msg);
+            throw new HrBusinessException("WORKFLOW_CANCEL_FAILED", "撤销合同签署流程失败：" + msg);
         }
     }
 

@@ -37,4 +37,9 @@ public class WorkflowStartRequest implements Serializable {
      * 发起人姓名
      */
     private String startUserName;
+
+    /**
+     * 租户ID
+     */
+    private Long tenantId;
 }

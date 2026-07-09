@@ -191,11 +191,11 @@ public class HrCertificateServiceImpl implements IHrCertificateService {
         if (!StringUtils.hasText(request.getProcessInstanceId())) {
             return;
         }
-        R<Void> cancelResult = workflowServiceClient.cancelProcess(request.getProcessInstanceId());
+        R<Void> cancelResult = workflowServiceClient.cancelProcess(
+                request.getTenantId(), request.getProcessInstanceId(), "HR_CERTIFICATE_REQUEST", request.getId());
         if (cancelResult == null || !cancelResult.isSuccess()) {
             String msg = cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg();
-            log.warn("撤销流程实例失败，requestNo: {}, processInstanceId: {}, msg: {}",
-                    request.getRequestNo(), request.getProcessInstanceId(), msg);
+            throw new HrBusinessException("WORKFLOW_CANCEL_FAILED", "撤销证明开具流程失败：" + msg);
         }
     }
 

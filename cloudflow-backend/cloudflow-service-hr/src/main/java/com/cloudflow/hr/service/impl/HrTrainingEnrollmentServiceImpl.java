@@ -167,18 +167,19 @@ public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentSer
             throw new HrBusinessException("STATUS_NOT_CANCELABLE",
                     "当前报名状态 " + enrollment.getStatus() + " 不允许撤销");
         }
-        cancelWorkflowIfNeeded(enrollmentId, enrollment.getProcessInstanceId());
+        cancelWorkflowIfNeeded(enrollment, enrollment.getProcessInstanceId());
         markWithdrawn(enrollment);
     }
 
-    private void cancelWorkflowIfNeeded(Long enrollmentId, String processInstanceId) {
+    private void cancelWorkflowIfNeeded(HrTrainingEnrollment enrollment, String processInstanceId) {
         if (!StringUtils.hasText(processInstanceId)) {
             return;
         }
-        R<Void> cancelResult = workflowServiceClient.cancelProcess(processInstanceId);
+        R<Void> cancelResult = workflowServiceClient.cancelProcess(
+                enrollment.getTenantId(), processInstanceId, "HR_TRAINING_ENROLLMENT", enrollment.getId());
         if (cancelResult == null || !cancelResult.isSuccess()) {
-            log.warn("撤销培训报名流程失败，enrollmentId: {}, msg: {}",
-                    enrollmentId, cancelResult == null ? null : cancelResult.getMsg());
+            throw new HrBusinessException("WORKFLOW_CANCEL_FAILED",
+                    "撤销培训报名流程失败：" + (cancelResult == null ? "Workflow 服务无响应" : cancelResult.getMsg()));
         }
     }
 
