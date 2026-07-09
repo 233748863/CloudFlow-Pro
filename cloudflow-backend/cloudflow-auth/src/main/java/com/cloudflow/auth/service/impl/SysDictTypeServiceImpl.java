@@ -1,6 +1,7 @@
 package com.cloudflow.auth.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.auth.constant.AuthBusinessTypes;
@@ -411,12 +412,14 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         }
         com.cloudflow.auth.service.remote.InternalWorkflowStartDTO dto =
                 new com.cloudflow.auth.service.remote.InternalWorkflowStartDTO();
+        dto.setTenantId(approval.getTenantId());
         dto.setProcessDefKey(processDefKey);
         dto.setBusinessKey("DICT_CHANGE:" + approval.getApprovalId());
         dto.setStartUserId(approval.getApplicantId());
         dto.setStartUserName(approval.getApplicantName());
 
         Map<String, Object> variables = new HashMap<>();
+        variables.put("tenantId", approval.getTenantId());
         variables.put("approvalId", approval.getApprovalId());
         variables.put("approvalNo", approval.getApprovalNo());
         variables.put("dictType", approval.getDictType());
@@ -451,13 +454,13 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     @Transactional(rollbackFor = Exception.class)
     public void handleDictChangeApproved(ApprovalResultDTO dto) {
-        SysDictChangeApproval approval = requireDictChangeApproval(dto.getBusinessId());
+        SysDictChangeApproval approval = claimDictChangeApproval(dto, "APPLYING");
         DictChangeApprovalPayload payload = deserializeDictChangePayload(approval.getPayloadJson());
         String originalUserName = UserContext.getUserName();
         try {
             UserContext.setUserName(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
             applyApprovedPayload(payload);
-            updateApprovalStatus(approval.getApprovalId(), "APPROVED",
+            finishClaimedApproval(approval.getApprovalId(), "APPROVED",
                     dto.getProcessInstanceId(), dto.getApprovalComment(), WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
         } finally {
             UserContext.setUserName(originalUserName);
@@ -466,8 +469,8 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     @Transactional(rollbackFor = Exception.class)
     public void handleDictChangeRejected(ApprovalResultDTO dto) {
-        SysDictChangeApproval approval = requireDictChangeApproval(dto.getBusinessId());
-        updateApprovalStatus(approval.getApprovalId(), "REJECTED",
+        SysDictChangeApproval approval = claimDictChangeApproval(dto, "REJECTED");
+        finishClaimedApproval(approval.getApprovalId(), "REJECTED",
                 dto.getProcessInstanceId(), dto.getApprovalComment(), WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
     }
 
@@ -906,6 +909,48 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
             throw new ServiceException("字典审批单不存在", ErrorCodeConstants.BAD_REQUEST);
         }
         return approval;
+    }
+
+    private SysDictChangeApproval claimDictChangeApproval(ApprovalResultDTO dto, String nextStatus) {
+        if (dto == null || dto.getBusinessId() == null || !StringUtils.hasText(dto.getProcessInstanceId())) {
+            throw new ServiceException("字典审批回调缺少业务ID或流程实例ID", ErrorCodeConstants.BAD_REQUEST);
+        }
+        Long tenantId = dto.getTenantId() != null ? dto.getTenantId() : resolveTenantId();
+        if (tenantId == null || !Objects.equals(tenantId, resolveTenantId())) {
+            throw new ServiceException("字典审批回调租户不匹配", ErrorCodeConstants.FORBIDDEN);
+        }
+        UpdateWrapper<SysDictChangeApproval> wrapper = new UpdateWrapper<>();
+        wrapper.eq("approval_id", dto.getBusinessId())
+                .eq("tenant_id", tenantId)
+                .eq("instance_id", dto.getProcessInstanceId())
+                .eq("status", "IN_PROGRESS")
+                .set("status", nextStatus)
+                .set("approval_comment", dto.getApprovalComment())
+                .set("update_by", WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
+                .set("update_time", LocalDateTime.now());
+        if (dictChangeApprovalMapper.update(null, wrapper) <= 0) {
+            throw new ServiceException("字典审批回调实例不匹配或已处理", ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
+        return requireDictChangeApproval(dto.getBusinessId());
+    }
+
+    private void finishClaimedApproval(Long approvalId,
+                                       String status,
+                                       String instanceId,
+                                       String approvalComment,
+                                       String operator) {
+        UpdateWrapper<SysDictChangeApproval> wrapper = new UpdateWrapper<>();
+        wrapper.eq("approval_id", approvalId)
+                .eq("tenant_id", resolveTenantId())
+                .eq("instance_id", instanceId)
+                .in("status", "APPLYING", "REJECTED")
+                .set("status", status)
+                .set("approval_comment", approvalComment)
+                .set("update_by", operator)
+                .set("update_time", LocalDateTime.now());
+        if (dictChangeApprovalMapper.update(null, wrapper) <= 0) {
+            throw new ServiceException("字典审批状态落库失败", ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
     }
 
     private void updateApprovalStatus(Long approvalId,

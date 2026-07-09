@@ -21,6 +21,7 @@ import com.cloudflow.common.config.CloudFlowConfig;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.core.utils.file.FileUploadUtils;
 import com.cloudflow.common.oss.core.OssClient;
 import com.cloudflow.common.oss.enums.AccessPolicyType;
@@ -69,7 +70,7 @@ public class SysFileServiceImpl implements ISysFileService {
             );
 
             long size = validatedFile.file().getSize();
-            Long tenantId = UserContext.getTenantId();
+            Long tenantId = requireCurrentTenantId();
 
             if (tenantId != null && !sysTenantService.hasAvailableStorage(tenantId, size)) {
                 sysTenantService.refreshTenantStorageSummary(tenantId);
@@ -110,17 +111,19 @@ public class SysFileServiceImpl implements ISysFileService {
 
     @Override
     public PageResult<SysFile> selectFileList(SysFile sysFile, PageQuery pageQuery) {
+        Long tenantId = requireCurrentTenantId();
         Page<SysFile> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<SysFile> wrapper = new LambdaQueryWrapper<>();
 
-        if (StrUtil.isNotBlank(sysFile.getFileName())) {
+        if (sysFile != null && StrUtil.isNotBlank(sysFile.getFileName())) {
             wrapper.like(SysFile::getFileName, sysFile.getFileName());
         }
-        if (StrUtil.isNotBlank(sysFile.getFileType())) {
+        if (sysFile != null && StrUtil.isNotBlank(sysFile.getFileType())) {
             applyFileTypeFilter(wrapper, sysFile.getFileType());
         }
 
         wrapper.eq(SysFile::getDeleted, "0");
+        wrapper.eq(SysFile::getTenantId, tenantId);
         wrapper.orderByDesc(SysFile::getCreateTime);
 
         Page<SysFile> result = sysFileMapper.selectPage(page, wrapper);
@@ -195,10 +198,14 @@ public class SysFileServiceImpl implements ISysFileService {
     @Override
     @Audit(name = "删除文件", highRisk = true)
     public void deleteFileByIds(Long[] fileIds) {
+        Long tenantId = requireCurrentTenantId();
         for (Long id : fileIds) {
-            SysFile existingFile = sysFileMapper.selectById(id);
+            SysFile existingFile = sysFileMapper.selectOne(new LambdaQueryWrapper<SysFile>()
+                    .eq(SysFile::getFileId, id)
+                    .eq(SysFile::getTenantId, tenantId)
+                    .eq(SysFile::getDeleted, 0));
             if (existingFile == null || !Integer.valueOf(0).equals(existingFile.getDeleted())) {
-                continue;
+                throw new ServiceException("文件不存在或无权删除", 403);
             }
 
             FileStorageType storageType = storageRegistry.resolveType(existingFile.getStorageType());
@@ -210,10 +217,8 @@ public class SysFileServiceImpl implements ISysFileService {
             updateFile.setDeleted(1);
             sysFileMapper.updateById(updateFile);
 
-            if (existingFile.getTenantId() != null) {
-                sysTenantService.refreshTenantStorageSummary(existingFile.getTenantId());
-                log.info("文件删除后刷新租户存储: tenantId={}, fileId={}, storageType={}", existingFile.getTenantId(), id, storageType.name());
-            }
+            sysTenantService.refreshTenantStorageSummary(tenantId);
+            log.info("文件删除后刷新租户存储: tenantId={}, fileId={}, storageType={}", tenantId, id, storageType.name());
         }
     }
 
@@ -249,30 +254,40 @@ public class SysFileServiceImpl implements ISysFileService {
     }
 
     private SysFile requireAccessibleFile(String reference) {
+        Long currentTenantId = requireCurrentTenantId();
         String normalizedPath = normalizeReference(reference);
         if (StrUtil.isBlank(normalizedPath)) {
             throw new IllegalArgumentException("文件标识不能为空");
         }
         SysFile sysFile = sysFileMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<SysFile>()
                 .eq(SysFile::getDeleted, 0)
+                .eq(SysFile::getTenantId, currentTenantId)
                 .eq(SysFile::getFilePath, normalizedPath))
                 .getRecords().stream().findFirst().orElse(null);
         if (sysFile == null) {
             String normalizedUrl = removeQuery(normalizedPath);
             sysFile = sysFileMapper.selectPage(new Page<>(1, 1, false), new LambdaQueryWrapper<SysFile>()
                     .eq(SysFile::getDeleted, 0)
+                    .eq(SysFile::getTenantId, currentTenantId)
                     .eq(SysFile::getUrl, normalizedUrl))
                     .getRecords().stream().findFirst().orElse(null);
         }
         if (sysFile == null) {
             throw new IllegalArgumentException("文件不存在");
         }
-        Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && sysFile.getTenantId() != null && !currentTenantId.equals(sysFile.getTenantId())) {
+        if (!currentTenantId.equals(sysFile.getTenantId())) {
             throw new IllegalArgumentException("无权访问该文件");
         }
         sysFile.setFilePath(normalizeFileReference(sysFile.getUrl(), sysFile.getFilePath()));
         return sysFile;
+    }
+
+    private Long requireCurrentTenantId() {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("当前用户未绑定租户", 403);
+        }
+        return tenantId;
     }
 
     private void redirectToRemoteFile(SysFile sysFile, HttpServletResponse response) {
