@@ -368,9 +368,11 @@ export const VisitorPage: React.FC = () => {
               清空筛选
             </Button>
           ) : null}
-          <span className="admin-users-filter-count">
-            {hasActiveFilters ? `${currentStatusLabel} / ${searchParams.visitorName || '全部访客'} / ${searchParams.visitDate || '全部日期'}` : `共 ${total} 条`}
-          </span>
+          {hasActiveFilters ? (
+            <span className="admin-users-filter-count">
+              {`${currentStatusLabel} / ${searchParams.visitorName || '全部访客'} / ${searchParams.visitDate || '全部日期'}`}
+            </span>
+          ) : null}
         </div>
       </form>
     </section>

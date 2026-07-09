@@ -709,9 +709,9 @@ export const TemplateManagement: React.FC = () => {
         </label>
 
         <div className="admin-users-toolbar-actions">
-          <span className="admin-users-filter-count">
-            {selectedCategoryNode ? selectedCategoryNode.name : `共 ${total} 项`}
-          </span>
+          {selectedCategoryNode ? (
+            <span className="admin-users-filter-count">{selectedCategoryNode.name}</span>
+          ) : null}
           {selectedCategoryNode ? (
             <>
               <RowActionButton

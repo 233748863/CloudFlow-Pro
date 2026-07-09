@@ -1154,12 +1154,29 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     buildDefinitionPayload,
   ]);
 
+  const getSilentSaveFailureMessage = (reason?: string): string => {
+    if (reason === "validation") {
+      return "当前流程图存在未完成配置，请修正后再继续";
+    }
+    if (reason === "name") {
+      return "请输入流程名称后再继续";
+    }
+    if (reason === "key") {
+      return "流程标识格式不正确，请修正后再继续";
+    }
+    return "保存当前流程失败，已停止后续操作";
+  };
+
   const handleViewVersionHistory = async () => {
     if (!currentWorkflowId || currentWorkflowId.startsWith("new_")) {
       return;
     }
     // B19: 静默保存可能产生新版本 id，跳转/导出必须用保存后的最新 id
     const saveResult = await silentSaveCurrentGraph();
+    if (!saveResult.ok) {
+      toast.error(getSilentSaveFailureMessage(saveResult.reason));
+      return;
+    }
     const targetId = saveResult.savedId || currentWorkflowId;
     navigate(`/workflow/versions/${targetId}`);
   };
@@ -1171,6 +1188,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     }
 
     const saveResult = await silentSaveCurrentGraph();
+    if (!saveResult.ok) {
+      toast.error(getSilentSaveFailureMessage(saveResult.reason));
+      return;
+    }
     const exportId = saveResult.savedId || workflow.id;
 
     try {

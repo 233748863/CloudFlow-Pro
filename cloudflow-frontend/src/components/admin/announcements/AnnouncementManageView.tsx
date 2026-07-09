@@ -343,10 +343,6 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
     : '';
 
   const toolbarSummary = [
-    `共 ${total} 条`,
-    `当前页已发布 ${publishedCount}`,
-    `置顶 ${topCount}`,
-    `高优先级 ${urgentCount}`,
     searchTitle ? `标题 ${searchTitle}` : null,
     currentTypeLabel,
     currentStatusLabel,
@@ -492,7 +488,9 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
           </label>
 
           <div className="admin-users-toolbar-actions">
-            <span className="admin-users-filter-count">{toolbarSummary}</span>
+            {toolbarSummary ? (
+              <span className="admin-users-filter-count">{toolbarSummary}</span>
+            ) : null}
             <Button type="button" size="sm" onClick={handleApplyFilters}>
               搜索
             </Button>

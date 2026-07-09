@@ -210,11 +210,6 @@ export const AnnouncementPage = () => {
             仅看未读
           </button>
         </div>
-        <span className="admin-users-filter-count">
-          {showUnreadOnly
-            ? `未读 ${displayList.length} 条`
-            : `共 ${announcements.length} 条${unreadCount > 0 ? `，未读 ${unreadCount} 条` : ''}`}
-        </span>
       </section>
   );
 

@@ -290,29 +290,29 @@ export const SliderCaptcha = ({
       height: (captchaData.sliderHeight || 52) * scaleY,
       zIndex: 2,
       pointerEvents: 'none',
-      filter: 'drop-shadow(0 8px 16px rgba(15, 23, 42, 0.22))',
-      transition: isDragging ? 'none' : 'left 120ms ease',
+      filter: 'drop-shadow(0 4px 10px rgba(15, 23, 42, 0.18))',
+      transition: isDragging ? 'none' : 'left 160ms cubic-bezier(0.1, 0.9, 0.2, 1)',
       willChange: 'left',
     };
   }, [captchaData, isDragging, scaleX, scaleY, sliderLeft]);
 
   const statusToneClass =
     status === 'success'
-      ? 'text-emerald-600 dark:text-emerald-300'
+      ? 'text-emerald-600 dark:text-emerald-400'
       : status === 'fail'
-        ? 'text-rose-600 dark:text-rose-300'
+        ? 'text-rose-600 dark:text-rose-400'
         : status === 'verifying'
-          ? 'text-slate-700 dark:text-slate-300'
+          ? 'text-[var(--cf-primary-600)] dark:text-[var(--cf-primary-300)]'
           : 'text-slate-500 dark:text-slate-400';
 
   const trackProgressClass =
     status === 'success'
-      ? 'from-emerald-500/18 via-emerald-400/10 to-transparent'
+      ? 'from-emerald-500/22 via-emerald-400/12 to-transparent'
       : status === 'fail'
-        ? 'from-rose-500/18 via-rose-400/10 to-transparent'
+        ? 'from-rose-500/22 via-rose-400/12 to-transparent'
         : status === 'verifying'
-          ? 'from-teal-500/18 via-teal-400/10 to-transparent'
-          : 'from-teal-500/14 via-teal-400/8 to-transparent';
+          ? 'from-[var(--cf-primary-500)]/24 via-[var(--cf-primary-400)]/14 to-transparent'
+          : 'from-[var(--cf-primary-500)]/18 via-[var(--cf-primary-400)]/10 to-transparent';
 
   const handleClass =
     status === 'success'
@@ -320,8 +320,8 @@ export const SliderCaptcha = ({
       : status === 'fail'
         ? 'border-rose-500 bg-rose-500 text-white shadow-sm'
         : isDragging || status === 'verifying'
-          ? 'border-teal-500 bg-teal-500 text-white shadow-sm'
-          : 'border-slate-200 bg-white text-slate-500 shadow-sm hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white';
+          ? 'border-[var(--cf-primary-500)] bg-[var(--cf-primary-500)] text-white shadow-sm'
+          : 'border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:border-[var(--cf-primary-400)] hover:text-[var(--cf-primary-600)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-[var(--cf-primary-400)] dark:hover:text-[var(--cf-primary-300)]';
 
   const trackText = loadError
     ? '加载失败，请先重新加载'
@@ -333,159 +333,175 @@ export const SliderCaptcha = ({
     <div ref={containerRef} className="w-full">
       <div className="w-full" style={{ maxWidth: width }}>
         <div
-          className="relative overflow-hidden rounded-[1.2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
-          style={{ width: renderWidth, height: renderHeight }}
+          className="relative overflow-hidden rounded-[4px] border border-slate-200 bg-white/95 py-0 shadow-[0_10px_28px_rgba(0,0,0,0.09)] backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/95"
         >
-          <button
-            type="button"
-            className="no-min-size absolute right-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-white"
-            onClick={() => {
-              void fetchCaptcha();
-            }}
-            disabled={loading || status === 'verifying'}
-            title="刷新验证码"
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          </button>
-
-          {captchaData ? (
-            <>
-              <img
-                src={captchaData.bgImage}
-                alt="captcha background"
-                className="absolute inset-0 h-full w-full object-fill"
-                draggable={false}
-                onLoad={(event) => {
-                  const image = event.currentTarget;
-                  setBgNaturalSize({
-                    width: image.naturalWidth || BG_ORIGIN_WIDTH,
-                    height: image.naturalHeight || BG_ORIGIN_HEIGHT,
-                  });
-                }}
-              />
-              <img
-                src={captchaData.sliderImage}
-                alt="captcha puzzle piece"
-                style={pieceStyle}
-                draggable={false}
-              />
-            </>
-          ) : null}
-
-          {loading ? (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-white/88 text-sm text-slate-500 backdrop-blur-sm dark:bg-slate-950/88 dark:text-slate-400">
-              <Loader2 size={18} className="animate-spin" />
-              <span>正在加载拼图…</span>
-            </div>
-          ) : null}
-
-          {loadError ? (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/90 p-4 backdrop-blur-sm dark:bg-slate-950/88">
-              <div className="w-full max-w-[16rem] rounded-2xl border border-rose-200 bg-white p-4 text-center shadow-sm dark:border-rose-900/60 dark:bg-slate-900/94">
-                <CircleAlert size={18} className="mx-auto text-rose-500" />
-                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  {loadError}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void fetchCaptcha();
-                  }}
-                  className="btn btn-secondary btn-sm no-min-size mt-4 w-full"
-                >
-                  <RotateCcw size={14} />
-                  重新加载
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-4 rounded-[1.2rem] border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/55">
-          <div className="mb-3 flex items-center justify-between gap-3 px-1">
-            <div className={cn('inline-flex min-w-0 items-center gap-2 text-sm font-medium', statusToneClass)}>
-              {status === 'verifying' ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : status === 'success' ? (
-                <CheckCircle2 size={14} />
-              ) : status === 'fail' ? (
-                <XCircle size={14} />
-              ) : (
-                <span className="h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-500" />
-              )}
-              <span className="truncate">{STATUS_META[status].label}</span>
-            </div>
-            <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
-              {loadError ? '需要重新加载' : STATUS_META[status].assist}
-            </span>
-          </div>
-
+          {/* 拼图区 */}
           <div
-            ref={trackRef}
-            className={cn(
-              'relative h-14 overflow-hidden rounded-xl border bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:bg-slate-900',
-              status === 'success'
-                ? 'border-emerald-200 dark:border-emerald-900/40'
-                : status === 'fail'
-                  ? 'border-rose-200 dark:border-rose-900/40'
-                  : 'border-slate-200 dark:border-slate-700',
-            )}
-            tabIndex={loadError ? -1 : 0}
-            role="slider"
-            aria-valuemin={0}
-            aria-valuemax={maxSliderLeft}
-            aria-valuenow={Math.round(sliderLeft)}
-            aria-valuetext={STATUS_META[status].label}
-            aria-label="拖动滑块完成验证，也可以使用方向键"
-            onKeyDown={handleKeyDown}
+            className="relative w-full overflow-hidden"
+            style={{ width: renderWidth, height: renderHeight }}
           >
-            <div
-              className={cn(
-                'absolute inset-y-0 left-0 bg-gradient-to-r transition-[width] duration-200',
-                trackProgressClass,
-              )}
-              style={{ width: progressWidth }}
-            />
-
-            <div
-              className={cn(
-                'pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-14 text-center text-xs font-medium transition-opacity duration-200',
-                statusToneClass,
-              )}
-              style={{ opacity: sliderLeft > maxSliderLeft * 0.48 ? 0.32 : 1 }}
-            >
-              {trackText}
-            </div>
-
             <button
               type="button"
-              className={cn(
-                'no-min-size absolute bottom-[5px] top-[5px] z-20 inline-flex items-center justify-center rounded-xl border transition',
-                handleClass,
-              )}
-              style={{ left: sliderLeft + HANDLE_INSET, width: HANDLE_VISUAL_WIDTH }}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                handleStart(event.clientX);
+              className="no-min-size absolute right-2 top-2 z-20 inline-flex h-8 w-8 items-center justify-center rounded-[4px] border border-white/60 bg-white/80 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-colors hover:text-[var(--cf-primary-600)] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600/60 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:text-[var(--cf-primary-300)]"
+              onClick={() => {
+                void fetchCaptcha();
               }}
-              onTouchStart={(event) => handleStart(event.touches[0].clientX)}
-              disabled={loading || Boolean(loadError) || status === 'verifying' || status === 'success'}
-              aria-hidden="true"
+              disabled={loading || status === 'verifying'}
+              title="刷新验证码"
             >
-              {status === 'verifying' ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : status === 'success' ? (
-                <CheckCircle2 size={15} />
-              ) : status === 'fail' ? (
-                <XCircle size={15} />
-              ) : (
-                <ChevronsRight size={16} />
-              )}
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             </button>
+
+            {captchaData ? (
+              <>
+                <img
+                  src={captchaData.bgImage}
+                  alt="captcha background"
+                  className="absolute inset-0 h-full w-full object-fill"
+                  draggable={false}
+                  onLoad={(event) => {
+                    const image = event.currentTarget;
+                    setBgNaturalSize({
+                      width: image.naturalWidth || BG_ORIGIN_WIDTH,
+                      height: image.naturalHeight || BG_ORIGIN_HEIGHT,
+                    });
+                  }}
+                />
+                <img
+                  src={captchaData.sliderImage}
+                  alt="captcha puzzle piece"
+                  style={pieceStyle}
+                  draggable={false}
+                />
+              </>
+            ) : null}
+
+            {/* 状态指示:卡顶主色细线 */}
+            <div
+              className={cn(
+                'absolute inset-x-0 top-0 z-30 h-[2px] transition-colors duration-300',
+                status === 'success'
+                  ? 'bg-emerald-500'
+                  : status === 'fail'
+                    ? 'bg-rose-500'
+                    : status === 'verifying'
+                      ? 'bg-[var(--cf-primary-500)]'
+                      : 'bg-transparent',
+              )}
+            />
+
+            {loading ? (
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-white/88 text-sm text-slate-500 backdrop-blur-sm dark:bg-slate-950/88 dark:text-slate-400">
+                <Loader2 size={18} className="animate-spin text-[var(--cf-primary-500)]" />
+                <span>正在加载拼图…</span>
+              </div>
+            ) : null}
+
+            {loadError ? (
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/90 p-4 backdrop-blur-sm dark:bg-slate-950/88">
+                <div className="w-full max-w-[15rem] rounded-[4px] border border-rose-200 bg-white p-4 text-center shadow-[0_10px_28px_rgba(0,0,0,0.09)] dark:border-rose-900/50 dark:bg-slate-900">
+                  <CircleAlert size={18} className="mx-auto text-rose-500" />
+                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    {loadError}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void fetchCaptcha();
+                    }}
+                    className="btn btn-secondary btn-sm no-min-size mt-4 w-full"
+                  >
+                    <RotateCcw size={14} />
+                    重新加载
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
-          <div className="sr-only" aria-live="polite">
-            {loadError || STATUS_META[status].label}
+          {/* 溶合滑道:主色细线分隔 + 内嵌 */}
+          <div className="relative border-t border-slate-200 bg-white/70 px-3 py-3 dark:border-slate-700/70 dark:bg-slate-800/40">
+            <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
+              <div className={cn('inline-flex min-w-0 items-center gap-2 text-[13px] font-medium', statusToneClass)}>
+                {status === 'verifying' ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : status === 'success' ? (
+                  <CheckCircle2 size={13} />
+                ) : status === 'fail' ? (
+                  <XCircle size={13} />
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--cf-primary-500)] animate-pulse" />
+                )}
+                <span className="truncate">{STATUS_META[status].label}</span>
+              </div>
+              <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
+                {loadError ? '需要重新加载' : STATUS_META[status].assist}
+              </span>
+            </div>
+
+            <div
+              ref={trackRef}
+              className={cn(
+                'relative h-10 overflow-hidden rounded-[4px] border bg-white transition-colors focus:outline-none dark:bg-slate-900/80',
+                status === 'success'
+                  ? 'border-emerald-300 dark:border-emerald-800/50'
+                  : status === 'fail'
+                    ? 'border-rose-300 dark:border-rose-800/50'
+                    : 'border-slate-200 focus:border-[var(--cf-primary-500)] focus:shadow-[0_0_0_3px_rgba(13,149,181,0.16)] dark:border-slate-700',
+              )}
+              tabIndex={loadError ? -1 : 0}
+              role="slider"
+              aria-valuemin={0}
+              aria-valuemax={maxSliderLeft}
+              aria-valuenow={Math.round(sliderLeft)}
+              aria-valuetext={STATUS_META[status].label}
+              aria-label="拖动滑块完成验证，也可以使用方向键"
+              onKeyDown={handleKeyDown}
+            >
+              <div
+                className={cn(
+                  'absolute inset-y-0 left-0 bg-gradient-to-r transition-[width] duration-200',
+                  trackProgressClass,
+                )}
+                style={{ width: progressWidth }}
+              />
+
+              <div
+                className={cn(
+                  'pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-10 text-center text-[13px] font-medium transition-opacity duration-200',
+                  statusToneClass,
+                )}
+                style={{ opacity: sliderLeft > maxSliderLeft * 0.48 ? 0.28 : 1 }}
+              >
+                {trackText}
+              </div>
+
+              <button
+                type="button"
+                className={cn(
+                  'no-min-size absolute bottom-[3px] top-[3px] z-20 inline-flex items-center justify-center rounded-[4px] border transition',
+                  handleClass,
+                )}
+                style={{ left: sliderLeft + HANDLE_INSET, width: HANDLE_VISUAL_WIDTH }}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  handleStart(event.clientX);
+                }}
+                onTouchStart={(event) => handleStart(event.touches[0].clientX)}
+                disabled={loading || Boolean(loadError) || status === 'verifying' || status === 'success'}
+                aria-hidden="true"
+              >
+                {status === 'verifying' ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : status === 'success' ? (
+                  <CheckCircle2 size={15} />
+                ) : status === 'fail' ? (
+                  <XCircle size={15} />
+                ) : (
+                  <ChevronsRight size={16} />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

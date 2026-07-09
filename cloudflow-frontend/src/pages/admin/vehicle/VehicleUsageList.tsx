@@ -768,7 +768,6 @@ const VehicleUsageList: React.FC = () => {
               </>
             )}
             <div className="admin-users-toolbar-actions">
-              <span className="admin-users-filter-count">{activeTab === 'usage' ? `${usageTotal} 条` : `${expenseTotal} 条`}</span>
               {activeTab === 'usage' && hasUsageFilters ? <Button variant="outline" size="sm" onClick={resetUsageFilters}><RotateCcw size={14} />重置</Button> : null}
               {activeTab === 'expense' && hasExpenseFilters ? <Button variant="outline" size="sm" onClick={resetExpenseFilters}><RotateCcw size={14} />重置</Button> : null}
             </div>

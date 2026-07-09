@@ -73,7 +73,15 @@
       "Bash(mysql -h192.168.1.173 -uroot -N -e \"SELECT data_id FROM nacos.config_info WHERE data_id LIKE '%auth%'\")",
       "Bash(python -)",
       "Bash(rm -f a3model.json a3start.json a3body.json a3bk.txt a3task.txt a3defid.txt a3.json)",
-      "Bash(rm -f /tmp/a2body.json /tmp/a3body.json /tmp/a3model.json /tmp/a3start.json /tmp/a3bk.txt /tmp/a3defid.txt)"
+      "Bash(rm -f /tmp/a2body.json /tmp/a3body.json /tmp/a3model.json /tmp/a3start.json /tmp/a3bk.txt /tmp/a3defid.txt)",
+      "Read(//d/unity2-dashboard-prototype/**)",
+      "Bash(awk '/\\\\.dark \\\\.unity-auth/{flag=1} flag{print; n++} n>60{exit}' src/styles.css)",
+      "Bash(awk '/\\\\.announcement-panel\\\\{/{f=1} f{print NR\":\"$0; n++} n>10{exit}' src/styles.css)",
+      "Bash(sed -n '$\\(grep -n \"\\\\.announcement-list-panel{\" src/styles.css | head -1 | cut -d: -f1\\),+30p')",
+      "Bash(grep -nA20 \"announcement-list-panel {\" src/styles.css)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies,...p.devDependencies}; console.log\\('sonner:', d.sonner||'NONE'\\); console.log\\('react-hot-toast:', d['react-hot-toast']||'NONE'\\); console.log\\('react-toastify:', d['react-toastify']||'NONE'\\); console.log\\('antd:', d.antd||'NONE'\\);\")",
+      "Bash(grep -nA8 '\"paths\"' tsconfig.json)",
+      "Bash(git commit -m '修复: 加固定时节点续跑与汇聚节点校验 *)"
     ],
     "defaultMode": "auto"
   },

@@ -875,9 +875,9 @@ export const ProcessManagement = () => {
               </Select>
             </label>
             <div className="admin-users-toolbar-actions">
-              <span className="admin-users-filter-count">
-                {hasActiveFilters ? `${filteredWorkflows.length} 条结果` : '全部流程'}
-              </span>
+              {hasActiveFilters ? (
+                <span className="admin-users-filter-count">已筛选</span>
+              ) : null}
               <Button variant="outline" size="sm" onClick={handleClearFilters} disabled={!hasActiveFilters}>
                 <RefreshCw size={14} />
                 重置

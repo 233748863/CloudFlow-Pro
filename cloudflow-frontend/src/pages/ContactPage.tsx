@@ -295,7 +295,9 @@ export const ContactPage: React.FC = () => {
         </label>
 
         <div className="admin-users-toolbar-actions">
-          <span className="admin-users-filter-count">{hasActiveFilters ? `${selectedDept?.dept_name || '全部部门'} / ${keyword || '全部关键字'}` : `共 ${total} 条`}</span>
+          {hasActiveFilters ? (
+            <span className="admin-users-filter-count">{`${selectedDept?.dept_name || '全部部门'} / ${keyword || '全部关键字'}`}</span>
+          ) : null}
           <Button variant="outline" size="sm" onClick={handleApplyFilters}>
             <Search size={14} />
             应用

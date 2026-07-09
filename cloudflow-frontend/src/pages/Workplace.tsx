@@ -243,7 +243,7 @@ export const Workplace = () => {
     ? [selectedCategoryLabel, selectedTags.length > 0 ? `标签 ${selectedTags.join('、')}` : '', searchTerm ? `搜索 ${searchTerm}` : '']
         .filter(Boolean)
         .join(' · ')
-    : `已发布 ${workflows.length} 条流程`;
+    : '';
   const statCards = [
     { label: '已发布流程', value: String(workflows.length), detail: '启动大厅', icon: LayoutGrid, tone: 'blue' },
     { label: '当前符合', value: String(filteredWorkflows.length), detail: selectedCategoryLabel, icon: Search, tone: 'green' },
@@ -483,7 +483,9 @@ export const Workplace = () => {
           </label>
 
           <div className="admin-users-toolbar-actions">
-            <span className="admin-users-filter-count">{toolbarSummary}</span>
+            {toolbarSummary ? (
+              <span className="admin-users-filter-count">{toolbarSummary}</span>
+            ) : null}
             {hasActiveFilters ? (
               <Button variant="outline" size="sm" onClick={clearFilters}>
                 重置过滤

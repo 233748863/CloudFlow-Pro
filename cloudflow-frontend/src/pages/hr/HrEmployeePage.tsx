@@ -428,7 +428,6 @@ export const HrEmployeePage: React.FC = () => {
                   重置
                 </Button>
               ) : null}
-              <span className="admin-users-filter-count">共 {summary.total} 人</span>
             </div>
             </section>
           }

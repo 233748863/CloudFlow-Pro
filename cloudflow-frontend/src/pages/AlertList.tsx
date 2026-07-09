@@ -641,7 +641,9 @@ const AlertList: React.FC = () => {
         </label>
 
         <div className="admin-users-toolbar-actions">
-          <span className="admin-users-filter-count">{hasActiveFilters ? `${currentList.length} 条结果` : '全部告警'}</span>
+          {hasActiveFilters ? (
+            <span className="admin-users-filter-count">已筛选</span>
+          ) : null}
           <Button variant="outline" size="sm" onClick={handleResetFilters} disabled={!hasActiveFilters}>
             <RefreshCw size={14} />
             重置

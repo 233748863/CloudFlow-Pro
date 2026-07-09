@@ -428,7 +428,6 @@ const AttendanceRulePage: React.FC = () => {
           <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{assignments.length} 项</span>
         </div>
         <div className="admin-users-toolbar-actions">
-          <span className="admin-users-filter-count">{`共 ${rules.length} 条规则`}</span>
           {draft?.id ? (
             <Button variant="outline" size="sm" onClick={handleDeleteRule}>
               <Trash2 size={14} className="mr-1.5" />
