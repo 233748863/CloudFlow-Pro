@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowTaskCompleteDTO;
@@ -35,6 +36,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         try {
             if (startUserId != null) {
                 InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+                req.setTenantId(requireCurrentTenantId());
                 req.setProcessDefKey(processDefinitionKey);
                 req.setBusinessKey(businessKey);
                 req.setStartUserId(startUserId);
@@ -47,6 +49,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
             }
 
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            req.setTenantId(requireCurrentTenantId());
             req.setProcessDefKey(processDefinitionKey);
             req.setBusinessKey(businessKey);
             req.setVariables(variables);
@@ -74,6 +77,14 @@ public class WorkflowServiceImpl implements IWorkflowService {
             log.error("任务完成失败，任务ID: {}", taskId, e);
             return R.fail("任务完成失败: " + e.getMessage());
         }
+    }
+
+    private Long requireCurrentTenantId() {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
     }
 
     @Override

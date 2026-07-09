@@ -56,7 +56,7 @@ public class BusinessTripController {
     @GetMapping("/{id}")
     @SaCheckPermission("oa:trip:list")
     public R getInfo(@PathVariable("id") Long id) {
-        BusinessTrip trip = businessTripService.getById(id);
+        BusinessTrip trip = businessTripService.getAccessibleTrip(id);
         return trip != null ? R.ok(trip) : R.fail("出差申请不存在");
     }
 
@@ -78,7 +78,7 @@ public class BusinessTripController {
         if (trip.getId() == null) {
             return R.fail("ID不能为空");
         }
-        return R.result(businessTripService.updateById(trip));
+        return R.result(businessTripService.updateTrip(trip));
     }
 
     /** 删除 */
@@ -86,7 +86,7 @@ public class BusinessTripController {
     @DeleteMapping("/{ids}")
     @SaCheckPermission("oa:trip:remove")
     public R remove(@PathVariable("ids") List<Long> ids) {
-        return R.result(businessTripService.removeBatchByIds(ids));
+        return R.result(businessTripService.deleteTrips(ids));
     }
 
     /** 提交审批 */

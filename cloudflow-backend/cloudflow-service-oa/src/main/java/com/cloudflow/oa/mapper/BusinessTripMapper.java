@@ -21,6 +21,9 @@ public interface BusinessTripMapper extends BaseMapper<BusinessTrip> {
                                               @Param("query") BusinessTrip query,
                                               @Param("dataScope") DataScope dataScope);
 
+    BusinessTrip selectByIdWithDataScope(@Param("id") Long id,
+                                         @Param("dataScope") DataScope dataScope);
+
     /**
      * 获取今日最大出差单号序号
      */

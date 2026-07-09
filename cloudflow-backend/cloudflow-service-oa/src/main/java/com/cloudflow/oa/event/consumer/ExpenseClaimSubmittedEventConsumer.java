@@ -50,12 +50,13 @@ public class ExpenseClaimSubmittedEventConsumer implements BusinessEventConsumer
             log.info("skip expense claim workflow start, instance already exists, claimId={}, instanceId={}", claim.getId(), claim.getInstanceId());
             return;
         }
-        startWorkflow(claim, event);
+        startWorkflow(claim, event, envelope.getTenantId());
     }
 
-    private void startWorkflow(BizExpenseClaim claim, ExpenseClaimSubmittedEvent event) {
+    private void startWorkflow(BizExpenseClaim claim, ExpenseClaimSubmittedEvent event, Long tenantId) {
         try {
             InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+            req.setTenantId(requireTenantId(tenantId));
             req.setProcessDefKey("expense_claim");
             req.setBusinessKey("EXPENSE_CLAIM:" + claim.getId());
             req.setStartUserId(event.getUserId());
@@ -105,6 +106,13 @@ public class ExpenseClaimSubmittedEventConsumer implements BusinessEventConsumer
                     OaBusinessTypes.EXPENSE_CLAIM, event.getClaimId(), event.getClaimNo(),
                     event.getUserName(), event.getUserId(), e);
         }
+    }
+
+    private Long requireTenantId(Long tenantId) {
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
     }
 
     @SuppressWarnings("unchecked")

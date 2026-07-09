@@ -106,13 +106,7 @@ public class ExpenseClaimController {
     @DeleteMapping("/{ids}")
     @SaCheckPermission("oa:expense:remove")
     public R<Void> remove(@PathVariable Long[] ids) {
-        for (Long id : ids) {
-            BizExpenseClaim claim = new BizExpenseClaim();
-            claim.setId(id);
-            claim.setDeleted(1);
-            expenseClaimService.updateById(claim);
-        }
-        return R.ok();
+        return expenseClaimService.deleteClaims(ids) ? R.ok() : R.fail("删除失败");
     }
 
     /**

@@ -10,6 +10,8 @@ import java.util.Map;
 @Data
 public class WorkflowProcessStartDTO {
 
+    private Long tenantId;
+
     private String processDefKey;
 
     private String businessKey;

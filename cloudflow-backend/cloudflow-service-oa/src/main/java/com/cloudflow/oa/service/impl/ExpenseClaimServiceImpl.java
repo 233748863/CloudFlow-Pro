@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -48,10 +49,14 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 报销申请Service实现类
@@ -107,7 +112,14 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
     @Override
     public BizExpenseClaim getClaimWithItems(Long id) {
-        return baseMapper.selectClaimWithItems(id);
+        if (id == null) {
+            throw new IllegalArgumentException("报销申请ID不能为空");
+        }
+        BizExpenseClaim claim = baseMapper.selectClaimWithItems(id, DataScopeUtils.listScope());
+        if (claim == null) {
+            throw new IllegalArgumentException("报销申请不存在或无权访问");
+        }
+        return claim;
     }
 
     @Override
@@ -128,6 +140,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         claim.setUserName(UserContext.getUserName());
         claim.setDeptId(UserContext.getDeptId());
         claim.setDeptName(UserContext.getDeptName());
+        claim.setTenantId(requireTenantId());
         LocalDateTime now = LocalDateTime.now();
         claim.setCreateBy(UserContext.getUserName());
         claim.setCreateTime(now);
@@ -157,9 +170,23 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         normalizeClaimItems(claim);
         // M1-4: 所有权校验
         BizExpenseClaim existing = getById(claim.getId());
-        if (existing != null) {
-            DataScopeUtils.assertOwnership(existing, BizExpenseClaim::getUserId, "报销单");
+        if (existing == null || !Integer.valueOf(0).equals(existing.getDeleted())) {
+            throw new IllegalArgumentException("报销申请不存在");
         }
+        getClaimWithItems(claim.getId());
+        assertStatus(existing, Set.of("DRAFT", "REJECTED"), "当前状态不允许修改");
+        claim.setTenantId(existing.getTenantId());
+        claim.setUserId(existing.getUserId());
+        claim.setUserName(existing.getUserName());
+        claim.setDeptId(existing.getDeptId());
+        claim.setDeptName(existing.getDeptName());
+        claim.setClaimNo(existing.getClaimNo());
+        claim.setStatus(existing.getStatus());
+        claim.setDeleted(existing.getDeleted());
+        claim.setCreateBy(existing.getCreateBy());
+        claim.setCreateTime(existing.getCreateTime());
+        claim.setUpdateBy(UserContext.getUserName());
+        claim.setUpdateTime(LocalDateTime.now());
         // 更新报销申请
         boolean result = updateById(claim);
         
@@ -179,6 +206,31 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         }
         
         return result;
+    }
+
+    @Override
+    @Audit(name = "删除报销申请", spel = "#ids", highRisk = true)
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteClaims(Long[] ids) {
+        if (ids == null || ids.length == 0) {
+            return false;
+        }
+        Long tenantId = requireTenantId();
+        for (Long id : ids) {
+            BizExpenseClaim existing = getClaimWithItems(id);
+            assertStatus(existing, Set.of("DRAFT", "REJECTED", "CANCELLED"), "当前状态不允许删除");
+            boolean updated = update(new LambdaUpdateWrapper<BizExpenseClaim>()
+                    .eq(BizExpenseClaim::getId, id)
+                    .eq(BizExpenseClaim::getTenantId, tenantId)
+                    .eq(BizExpenseClaim::getDeleted, 0)
+                    .set(BizExpenseClaim::getDeleted, 1)
+                    .set(BizExpenseClaim::getUpdateBy, UserContext.getUserName())
+                    .set(BizExpenseClaim::getUpdateTime, LocalDateTime.now()));
+            if (!updated) {
+                throw new IllegalStateException("报销申请删除失败: " + id);
+            }
+        }
+        return true;
     }
 
     @Override
@@ -328,6 +380,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         claim.setUserName(UserContext.getUserName());
         claim.setDeptId(UserContext.getDeptId());
         claim.setDeptName(UserContext.getDeptName());
+        claim.setTenantId(requireTenantId());
         claim.setCategory("TRANSPORT"); // 车辆费用归类为交通类
         claim.setStatus("DRAFT");
         claim.setDescription("车辆费用转报销（共" + vehicleExpenses.size() + "笔）");
@@ -392,12 +445,42 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
     @Override
     public List<DynamicMapVO> getMonthlyExpenseByDept(String month) {
-        return baseMapper.selectMonthlyExpenseByDept(month).stream().map(DynamicMapVO::from).toList();
+        YearMonth targetMonth = YearMonth.parse(month);
+        return listPaidClaimsForMonth(targetMonth).stream()
+                .collect(Collectors.groupingBy(
+                        claim -> StringUtils.hasText(claim.getDeptName()) ? claim.getDeptName() : "未分配部门",
+                        Collectors.collectingAndThen(Collectors.toList(), rows -> {
+                            BigDecimal total = rows.stream()
+                                    .map(BizExpenseClaim::getTotalAmount)
+                                    .filter(amount -> amount != null)
+                                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                            Map<String, Object> item = new HashMap<>();
+                            item.put("dept_name", rows.get(0).getDeptName());
+                            item.put("total_amount", total);
+                            item.put("claim_count", rows.size());
+                            return DynamicMapVO.from(item);
+                        })))
+                .values().stream().toList();
     }
 
     @Override
     public List<DynamicMapVO> getMonthlyExpenseByCategory(String month) {
-        return baseMapper.selectMonthlyExpenseByCategory(month).stream().map(DynamicMapVO::from).toList();
+        YearMonth targetMonth = YearMonth.parse(month);
+        return listPaidClaimsForMonth(targetMonth).stream()
+                .collect(Collectors.groupingBy(
+                        claim -> StringUtils.hasText(claim.getCategory()) ? claim.getCategory() : "OTHER",
+                        Collectors.collectingAndThen(Collectors.toList(), rows -> {
+                            BigDecimal total = rows.stream()
+                                    .map(BizExpenseClaim::getTotalAmount)
+                                    .filter(amount -> amount != null)
+                                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                            Map<String, Object> item = new HashMap<>();
+                            item.put("category", rows.get(0).getCategory());
+                            item.put("total_amount", total);
+                            item.put("claim_count", rows.size());
+                            return DynamicMapVO.from(item);
+                        })))
+                .values().stream().toList();
     }
     
     /**
@@ -433,6 +516,27 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             item.setReceiptUrl(
                     OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(item.getReceiptUrl(), "报销明细凭证附件")
             );
+        }
+    }
+
+    private List<BizExpenseClaim> listPaidClaimsForMonth(YearMonth month) {
+        return listForExport(null, null, null).stream()
+                .filter(claim -> claim.getCreateTime() != null && YearMonth.from(claim.getCreateTime()).equals(month))
+                .filter(claim -> Set.of("APPROVED", "PAID").contains(claim.getStatus()))
+                .toList();
+    }
+
+    private Long requireTenantId() {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
+    }
+
+    private void assertStatus(BizExpenseClaim claim, Set<String> allowedStatuses, String message) {
+        if (claim == null || claim.getStatus() == null || !allowedStatuses.contains(claim.getStatus())) {
+            throw new IllegalArgumentException(message);
         }
     }
 

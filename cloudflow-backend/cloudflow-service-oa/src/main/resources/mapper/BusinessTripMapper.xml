@@ -17,9 +17,16 @@
                     AND destination LIKE CONCAT('%', #{query.destination}, '%')
                 </if>
             </if>
-            AND (deleted IS NULL OR deleted != '2')
+            AND deleted = '0'
         </where>
         ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByIdWithDataScope" resultType="com.cloudflow.oa.domain.BusinessTrip">
+        SELECT *
+        FROM biz_business_trip
+        WHERE id = #{id}
+          AND deleted = '0'
     </select>
 
     <select id="getTodayMaxSeq" resultType="java.lang.Integer">

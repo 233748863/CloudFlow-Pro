@@ -31,7 +31,8 @@ public interface BizExpenseClaimMapper extends BaseMapper<BizExpenseClaim> {
     /**
      * 查询报销申请详情（含明细）
      */
-    BizExpenseClaim selectClaimWithItems(@Param("id") Long id);
+    BizExpenseClaim selectClaimWithItems(@Param("id") Long id,
+                                         @Param("dataScope") DataScope dataScope);
 
     /**
      * 获取今日报销单号最大序号

@@ -228,6 +228,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
     public void startSealApplicationWorkflow(OaSealApplication application) {
         try {
             InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+            req.setTenantId(application.getTenantId());
             req.setProcessDefKey("seal_application");
             req.setBusinessKey("SEAL_APPLICATION:" + application.getId());
             req.setStartUserId(application.getUserId());

@@ -199,6 +199,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     public void startProjectWorkflow(OaProject project) {
         try {
             InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
+            dto.setTenantId(project.getTenantId());
             dto.setProcessDefKey("project_approval");
             dto.setBusinessKey("PROJECT:" + project.getProjectId());
             dto.setStartUserId(project.getOwnerId());

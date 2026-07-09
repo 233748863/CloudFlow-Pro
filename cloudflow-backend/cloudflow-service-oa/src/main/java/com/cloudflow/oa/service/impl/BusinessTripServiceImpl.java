@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -27,6 +28,8 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Set;
 
 /**
  * 出差申请 Service 实现类
@@ -59,6 +62,18 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
     }
 
     @Override
+    public BusinessTrip getAccessibleTrip(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("出差申请ID不能为空");
+        }
+        BusinessTrip trip = baseMapper.selectByIdWithDataScope(id, DataScopeUtils.listScope());
+        if (trip == null) {
+            throw new IllegalArgumentException("出差申请不存在或无权访问");
+        }
+        return trip;
+    }
+
+    @Override
     @Audit(name = "创建出差申请", spel = "#trip")
     @Transactional(rollbackFor = Exception.class)
     public boolean createTrip(BusinessTrip trip) {
@@ -67,10 +82,61 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         trip.setUserName(UserContext.getUserName());
         trip.setDeptId(UserContext.getDeptId());
         trip.setDeptName(UserContext.getDeptName());
+        trip.setTenantId(requireTenantId());
         trip.setCreateBy(UserContext.getUserName());
         trip.setTripNo(generateTripNo());
         trip.setStatus("DRAFT");
         return save(trip);
+    }
+
+    @Override
+    @Audit(name = "修改出差申请", spel = "#trip", oldVal = "@businessTripServiceImpl.getById(#trip.id)")
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateTrip(BusinessTrip trip) {
+        if (trip == null || trip.getId() == null) {
+            throw new IllegalArgumentException("出差申请ID不能为空");
+        }
+        BusinessTrip existing = getAccessibleTrip(trip.getId());
+        assertStatus(existing, Set.of("DRAFT", "REJECTED"), "当前状态不允许修改");
+        trip.setTenantId(existing.getTenantId());
+        trip.setUserId(existing.getUserId());
+        trip.setUserName(existing.getUserName());
+        trip.setDeptId(existing.getDeptId());
+        trip.setDeptName(existing.getDeptName());
+        trip.setTripNo(existing.getTripNo());
+        trip.setStatus(existing.getStatus());
+        trip.setDeleted(existing.getDeleted());
+        trip.setCreateBy(existing.getCreateBy());
+        trip.setCreateTime(existing.getCreateTime());
+        trip.setUpdateBy(UserContext.getUserName());
+        trip.setUpdateTime(LocalDateTime.now());
+        return updateById(trip);
+    }
+
+    @Override
+    @Audit(name = "删除出差申请", spel = "#ids", highRisk = true)
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteTrips(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return false;
+        }
+        Long tenantId = requireTenantId();
+        for (Long id : ids) {
+            BusinessTrip existing = getAccessibleTrip(id);
+            assertStatus(existing, Set.of("DRAFT", "REJECTED", "CANCELLED"), "当前状态不允许删除");
+            BusinessTrip update = new BusinessTrip();
+            update.setDeleted(1);
+            update.setUpdateBy(UserContext.getUserName());
+            update.setUpdateTime(LocalDateTime.now());
+            boolean updated = update(update, new LambdaUpdateWrapper<BusinessTrip>()
+                    .eq(BusinessTrip::getId, id)
+                    .eq(BusinessTrip::getTenantId, tenantId)
+                    .eq(BusinessTrip::getDeleted, 0));
+            if (!updated) {
+                throw new IllegalStateException("出差申请删除失败: " + id);
+            }
+        }
+        return true;
     }
 
     @Override
@@ -157,6 +223,20 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
             outboxPublisher.publish(envelope);
         } catch (Exception e) {
             log.warn("出差申请提交事件发布失败, tripId={}, error={}", trip.getId(), e.getMessage());
+        }
+    }
+
+    private Long requireTenantId() {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
+    }
+
+    private void assertStatus(BusinessTrip trip, Set<String> allowedStatuses, String message) {
+        if (trip == null || trip.getStatus() == null || !allowedStatuses.contains(trip.getStatus())) {
+            throw new IllegalArgumentException(message);
         }
     }
 }

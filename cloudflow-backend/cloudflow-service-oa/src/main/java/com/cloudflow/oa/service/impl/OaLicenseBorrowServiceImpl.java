@@ -209,6 +209,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
     public void startBorrowWorkflow(OaLicenseBorrow borrow) {
         try {
             InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+            req.setTenantId(borrow.getTenantId());
             req.setProcessDefKey("license_borrow");
             req.setBusinessKey("LICENSE_BORROW:" + borrow.getId());
             req.setStartUserId(borrow.getUserId());

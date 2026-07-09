@@ -234,6 +234,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
 
     public void startPublishWorkflow(KnowledgeDocument document) throws Exception {
         InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+        req.setTenantId(document.getTenantId());
         req.setProcessDefKey("knowledge_publish");
         req.setBusinessKey("KNOWLEDGE_DOCUMENT:" + document.getDocumentId());
         req.setStartUserId(document.getSubmitterId());

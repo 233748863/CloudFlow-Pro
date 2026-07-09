@@ -50,12 +50,13 @@ public class BusinessTripSubmittedEventConsumer implements BusinessEventConsumer
             log.info("skip trip workflow start, instance already exists, tripId={}, instanceId={}", trip.getId(), trip.getInstanceId());
             return;
         }
-        startWorkflow(trip, event);
+        startWorkflow(trip, event, envelope.getTenantId());
     }
 
-    private void startWorkflow(BusinessTrip trip, BusinessTripSubmittedEvent event) {
+    private void startWorkflow(BusinessTrip trip, BusinessTripSubmittedEvent event, Long tenantId) {
         try {
             InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+            req.setTenantId(requireTenantId(tenantId));
             req.setProcessDefKey("business_trip");
             req.setBusinessKey("BUSINESS_TRIP:" + trip.getId());
             req.setStartUserId(event.getUserId());
@@ -106,6 +107,13 @@ public class BusinessTripSubmittedEventConsumer implements BusinessEventConsumer
                     OaBusinessTypes.BUSINESS_TRIP, event.getTripId(), event.getTripNo(),
                     event.getUserName(), event.getUserId(), e);
         }
+    }
+
+    private Long requireTenantId(Long tenantId) {
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
     }
 
     @SuppressWarnings("unchecked")

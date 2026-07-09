@@ -1,6 +1,7 @@
 package com.cloudflow.oa.event.consumer;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.workflow.WorkflowFallbackRetryContext;
@@ -49,10 +50,12 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         String businessKey;
         if ("startProcess".equals(operation)) {
             WorkflowProcessStartDTO dto = objectMapper.convertValue(request, WorkflowProcessStartDTO.class);
+            validateTenant(envelope, payload, dto.getTenantId());
             businessKey = dto.getBusinessKey();
             WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcess(dto));
         } else {
             InternalWorkflowStartDTO dto = objectMapper.convertValue(request, InternalWorkflowStartDTO.class);
+            validateTenant(envelope, payload, dto.getTenantId());
             businessKey = dto.getBusinessKey();
             WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcessInternal(dto));
         }
@@ -61,6 +64,31 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         }
         backfillBusinessInstanceId(businessKey, extractInstanceId(result[0].getData()));
         log.info("workflow fallback retry success, module={}, operation={}, eventId={}", SOURCE_MODULE, operation, envelope.getEventId());
+    }
+
+    private void validateTenant(BusinessEventEnvelope envelope, Map<String, Object> payload, Long requestTenantId) {
+        Long payloadTenantId = parseTenantId(payload.get("tenantId"));
+        Long contextTenantId = UserContext.getTenantId();
+        if (requestTenantId == null || envelope.getTenantId() == null || contextTenantId == null
+                || !requestTenantId.equals(envelope.getTenantId())
+                || !requestTenantId.equals(payloadTenantId)
+                || !requestTenantId.equals(contextTenantId)) {
+            throw new IllegalStateException("workflow fallback retry tenantId mismatch");
+        }
+    }
+
+    private Long parseTenantId(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(String.valueOf(value));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void backfillBusinessInstanceId(String businessKey, String instanceId) {

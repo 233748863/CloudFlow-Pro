@@ -192,6 +192,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
     public void startRenewalWorkflow(OaLicenseRenewal renewal) {
         try {
             InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+            req.setTenantId(renewal.getTenantId());
             req.setProcessDefKey("license_renewal");
             req.setBusinessKey("LICENSE_RENEWAL:" + renewal.getId());
             req.setStartUserId(renewal.getApplicantId());

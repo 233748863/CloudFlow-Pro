@@ -43,6 +43,11 @@ public interface IExpenseClaimService extends IService<BizExpenseClaim> {
     boolean updateClaim(BizExpenseClaim claim);
 
     /**
+     * 删除报销申请
+     */
+    boolean deleteClaims(Long[] ids);
+
+    /**
      * 提交报销申请（启动工作流）
      */
     boolean submitClaim(Long id);

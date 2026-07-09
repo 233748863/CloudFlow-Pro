@@ -49,12 +49,13 @@ public class PurchaseRequestSubmittedEventConsumer implements BusinessEventConsu
             log.info("skip purchase workflow start, instance already exists, purchaseId={}, instanceId={}", purchase.getId(), purchase.getInstanceId());
             return;
         }
-        startWorkflow(purchase, event);
+        startWorkflow(purchase, event, envelope.getTenantId());
     }
 
-    private void startWorkflow(BizPurchaseRequest purchase, PurchaseRequestSubmittedEvent event) {
+    private void startWorkflow(BizPurchaseRequest purchase, PurchaseRequestSubmittedEvent event, Long tenantId) {
         try {
             InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+            req.setTenantId(requireTenantId(tenantId));
             req.setProcessDefKey("purchase_request");
             req.setBusinessKey("PURCHASE_REQUEST:" + purchase.getId());
             req.setStartUserId(event.getUserId());
@@ -101,6 +102,13 @@ public class PurchaseRequestSubmittedEventConsumer implements BusinessEventConsu
                     OaBusinessTypes.PURCHASE_REQUEST, event.getPurchaseId(), event.getPurchaseNo(),
                     event.getUserName(), event.getUserId(), e);
         }
+    }
+
+    private Long requireTenantId(Long tenantId) {
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
     }
 
     @SuppressWarnings("unchecked")

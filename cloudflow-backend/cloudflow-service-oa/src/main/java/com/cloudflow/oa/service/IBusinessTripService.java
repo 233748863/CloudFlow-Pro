@@ -15,8 +15,17 @@ public interface IBusinessTripService extends IService<BusinessTrip> {
     /** 生成出差单号 */
     String generateTripNo();
 
+    /** 查询当前用户可访问的出差申请 */
+    BusinessTrip getAccessibleTrip(Long id);
+
     /** 创建出差申请 */
     boolean createTrip(BusinessTrip trip);
+
+    /** 修改出差申请 */
+    boolean updateTrip(BusinessTrip trip);
+
+    /** 删除出差申请 */
+    boolean deleteTrips(java.util.List<Long> ids);
 
     /** 提交出差申请（启动工作流） */
     boolean submitTrip(Long id);

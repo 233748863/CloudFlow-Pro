@@ -193,6 +193,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
     public void startRenewalWorkflow(OaSealRenewal renewal) {
         try {
             InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+            req.setTenantId(renewal.getTenantId());
             req.setProcessDefKey("seal_renewal");
             req.setBusinessKey("SEAL_RENEWAL:" + renewal.getId());
             req.setStartUserId(renewal.getApplicantId());

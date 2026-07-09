@@ -659,6 +659,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
                 throw new IllegalArgumentException("预算审批发起人不能为空");
             }
             InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
+            dto.setTenantId(budget.getTenantId());
             dto.setProcessDefKey("budget_plan_approval");
             dto.setBusinessKey("BUDGET_PLAN:" + budget.getBudgetId());
             dto.setStartUserId(startUserId);
@@ -706,6 +707,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
                 throw new IllegalArgumentException("预算调整发起人不能为空");
             }
             InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
+            dto.setTenantId(adjustment.getTenantId());
             dto.setProcessDefKey("budget_adjustment_approval");
             dto.setBusinessKey("BUDGET_ADJUSTMENT:" + adjustment.getAdjustmentId());
             dto.setStartUserId(startUserId);

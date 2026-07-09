@@ -252,6 +252,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     public void startContractWorkflow(OaContract contract) {
         try {
             InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+            req.setTenantId(contract.getTenantId());
             req.setProcessDefKey("biz_contract");
             req.setBusinessKey("CONTRACT:" + contract.getContractId());
             req.setStartUserId(contract.getOwnerId());

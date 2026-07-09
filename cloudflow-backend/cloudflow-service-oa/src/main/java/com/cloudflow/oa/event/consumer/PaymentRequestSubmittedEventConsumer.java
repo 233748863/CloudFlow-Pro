@@ -49,12 +49,13 @@ public class PaymentRequestSubmittedEventConsumer implements BusinessEventConsum
             log.info("skip payment workflow start, instance already exists, paymentId={}, instanceId={}", payment.getId(), payment.getInstanceId());
             return;
         }
-        startWorkflow(payment, event);
+        startWorkflow(payment, event, envelope.getTenantId());
     }
 
-    private void startWorkflow(BizPaymentRequest payment, PaymentRequestSubmittedEvent event) {
+    private void startWorkflow(BizPaymentRequest payment, PaymentRequestSubmittedEvent event, Long tenantId) {
         try {
             InternalWorkflowStartDTO req = new InternalWorkflowStartDTO();
+            req.setTenantId(requireTenantId(tenantId));
             req.setProcessDefKey("payment_request");
             req.setBusinessKey("PAYMENT_REQUEST:" + payment.getId());
             req.setStartUserId(event.getUserId());
@@ -102,6 +103,13 @@ public class PaymentRequestSubmittedEventConsumer implements BusinessEventConsum
                     OaBusinessTypes.PAYMENT_REQUEST, event.getPaymentId(), event.getPaymentNo(),
                     event.getUserName(), event.getUserId(), e);
         }
+    }
+
+    private Long requireTenantId(Long tenantId) {
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
     }
 
     @SuppressWarnings("unchecked")
