@@ -9,7 +9,7 @@ import { useAnnouncementPriorityMeta, useAnnouncementTypeMeta } from '@/utils/an
 interface AnnouncementListItemProps {
   announcement: Announcement;
   onClick: () => void;
-  variant?: 'compact' | 'page';
+  variant?: 'compact' | 'page' | 'card';
   className?: string;
 }
 
@@ -95,6 +95,86 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
             </div>
 
             <ChevronRight className="mt-1 h-4 w-4 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300" />
+          </div>
+        </div>
+      </button>
+    );
+  }
+
+  if (variant === 'card') {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          'admin-announcement-card group relative flex h-full w-full flex-col overflow-hidden rounded-lg border text-left transition-colors',
+          unread
+            ? 'border-cyan-200 bg-[var(--cf-surface-strong)] hover:border-cyan-300 hover:bg-[var(--cf-surface-muted)] dark:border-cyan-900 dark:bg-slate-950 dark:hover:bg-slate-900'
+            : 'border-slate-200 bg-[var(--cf-surface-strong)] hover:border-slate-300 hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900',
+          className,
+        )}
+      >
+        {unread ? (
+          <div className="absolute left-0 top-0 h-full w-1 bg-cyan-500 dark:bg-cyan-400" />
+        ) : null}
+
+        <div className="flex items-start justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800/80">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold',
+                typeMeta.className,
+              )}
+            >
+              {typeMeta.icon}
+              {typeMeta.label}
+            </span>
+            <span
+              className={cn(
+                'inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold',
+                priorityMeta.className,
+              )}
+            >
+              {priorityMeta.label}
+            </span>
+            {unread ? (
+              <span className="inline-flex rounded-md border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+                未读
+              </span>
+            ) : null}
+          </div>
+          {announcement.isTop === 1 ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              <Pin size={10} />
+              置顶
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex flex-1 flex-col px-4 py-3">
+          <h3
+            className={cn(
+              'line-clamp-2 text-sm font-semibold leading-6',
+              unread ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200',
+            )}
+          >
+            {announcement.title}
+          </h3>
+
+          <p className="mt-2 line-clamp-3 flex-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {excerpt}
+          </p>
+
+          <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-400 dark:text-slate-500">
+            <span className="inline-flex items-center gap-1">
+              {unread ? (
+                <Bell size={12} className="text-cyan-500 dark:text-cyan-400" />
+              ) : (
+                <CheckCircle2 size={12} className="text-slate-400 dark:text-slate-500" />
+              )}
+              {announcement.isRead ? '已读' : '待处理'}
+            </span>
+            <time>{timeText}</time>
           </div>
         </div>
       </button>

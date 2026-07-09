@@ -6462,6 +6462,41 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     margin-top: auto;
   }
 
+  .admin-announcements-grid {
+    flex: 1 1 0%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.875rem;
+    align-content: start;
+    overflow: auto;
+    padding: 0.875rem;
+    scrollbar-gutter: stable;
+  }
+
+  .admin-announcement-card {
+    transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
+  }
+
+  .admin-announcement-card:hover {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.10);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 1280px) {
+    .admin-announcements-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 768px) {
+    .admin-announcements-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.75rem;
+      padding: 0.75rem;
+    }
+  }
+
   .admin-benefit-mine-toolbar {
     justify-content: flex-start;
   }

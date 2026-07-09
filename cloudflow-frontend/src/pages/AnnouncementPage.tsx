@@ -222,15 +222,16 @@ export const AnnouncementPage = () => {
           icon={<Bell className="h-4 w-4" />}
         />
       ) : displayList.length > 0 ? (
-        displayList.map((item, index) => (
-          <AnnouncementListItem
-            key={item.announcementId}
-            announcement={item}
-            variant="compact"
-            onClick={() => void openDetail(item)}
-            className={index === displayList.length - 1 ? 'border-b-0' : undefined}
-          />
-        ))
+        <div className="admin-announcements-grid">
+          {displayList.map((item) => (
+            <AnnouncementListItem
+              key={item.announcementId}
+              announcement={item}
+              variant="card"
+              onClick={() => void openDetail(item)}
+            />
+          ))}
+        </div>
       ) : (
         <InlineState
           title={showUnreadOnly ? '暂无未读公告' : '暂无公告'}
