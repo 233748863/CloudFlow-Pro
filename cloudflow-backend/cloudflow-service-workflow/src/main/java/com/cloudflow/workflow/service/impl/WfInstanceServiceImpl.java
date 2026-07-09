@@ -672,41 +672,49 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void continueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables) {
         log.info("[continueFromTimerNode] 定时节点到期, instanceId={}, nodeKey={}", instanceId, nodeKey);
 
         RLock lock = redissonClient.getLock("lock:timer:" + instanceId + ":" + nodeKey);
         try {
-            if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
-                WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
-                if (instance == null || !WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
-                    log.warn("[continueFromTimerNode] 实例不存在或非运行状态, instanceId={}", instanceId);
-                    return;
-                }
-
-                WfProcessDefinition def = resolveDefinitionByInstance(instance);
-
-                if (def != null && StringUtils.hasText(def.getModelJson())) {
-                    WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
-                    WfNodeConfig timerNode = nodeExecutionService.findNode(root, nodeKey);
-                    if (timerNode != null) {
-                        // 定时节点真正完成的时刻发生在续跑触发时，不能在注册 timer 时提前记 completed。
-                        workflowEventPublisher.publishNodeCompleted(instance, timerNode);
-                        nodeExecutionService.advanceAfterNode(instance, timerNode, nodeKey, variables, 0, root);
-                    }
-                }
+            // watchdog 模式（不设 leaseTime），锁覆盖整个事务生命周期，提交后才释放。
+            if (!lock.tryLock(5, TimeUnit.SECONDS)) {
+                throw WorkflowException.invalidState("定时节点正在处理，请稍后重试: " + instanceId + "/" + nodeKey);
             }
+            transactionTemplate.executeWithoutResult(status ->
+                    doContinueFromTimerNode(instanceId, nodeKey, variables));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.error("[continueFromTimerNode] 被中断", e);
-        } catch (Exception e) {
-            log.error("[continueFromTimerNode] 定时节点流转失败: {}", e.getMessage(), e);
+            throw WorkflowException.invalidState("定时节点处理被中断: " + instanceId + "/" + nodeKey);
         } finally {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
+    }
+
+    private void doContinueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables) {
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null || !WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
+            log.warn("[continueFromTimerNode] 实例不存在或非运行状态, instanceId={}", instanceId);
+            return;
+        }
+
+        WfProcessDefinition def = resolveDefinitionByInstance(instance);
+        if (def == null || !StringUtils.hasText(def.getModelJson())) {
+            throw WorkflowException.processNotFound(instance.getProcessDefKey());
+        }
+
+        WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
+        WfNodeConfig timerNode = nodeExecutionService.findNode(root, nodeKey);
+        if (timerNode == null) {
+            throw WorkflowException.validationError("定时节点不存在: " + nodeKey);
+        }
+
+        // 定时节点真正完成的时刻发生在续跑触发时，不能在注册 timer 时提前记 completed。
+        workflowEventPublisher.publishNodeCompleted(instance, timerNode);
+        nodeExecutionService.advanceAfterNode(instance, timerNode, nodeKey, variables, 0, root);
     }
 
     @Override
@@ -762,7 +770,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             }
         }
         String idempotentKey = SUBPROCESS_DONE_VARIABLE_PREFIX + parentNodeKey;
-        if (childInstanceId != null && childInstanceId.equals(variables.get(idempotentKey))) {
+        String idempotentValue = StringUtils.hasText(childInstanceId) ? childInstanceId : String.valueOf(childStatus);
+        if (idempotentValue.equals(String.valueOf(variables.get(idempotentKey)))) {
             log.info("[handleSubprocessFinished] 子流程结束事件已处理过，跳过, parentInstanceId={}, childInstanceId={}",
                     parentInstanceId, childInstanceId);
             return;
@@ -770,6 +779,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         // 子流程异常终态（驳回/撤回/作废/终止）：挂起父流程，人工处理后可恢复重跑子流程节点
         if (!WfProcessStatus.COMPLETED.getCode().equals(childStatus)) {
+            markSubprocessEventHandled(parentInstance, variables, idempotentKey, idempotentValue);
             nodeExecutionService.suspendInstanceForNodeFailure(parentInstance, parentNodeKey,
                     "子流程", "子流程 " + childInstanceId + " 以状态 " + childStatus + " 结束");
             return;
@@ -797,18 +807,35 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
 
         // 记录幂等标记后继续流转（同事务）
-        variables.put(idempotentKey, childInstanceId);
-        try {
-            parentInstance.setVariables(objectMapper.writeValueAsString(variables));
-            processInstanceMapper.updateById(parentInstance);
-        } catch (Exception e) {
-            log.warn("[handleSubprocessFinished] 记录幂等标记失败: {}", e.getMessage());
-        }
+        markSubprocessEventHandled(parentInstance, variables, idempotentKey, idempotentValue);
 
         // 子流程节点在等待模式下此前未发布 NodeCompleted，真正完成时刻在此补发
         workflowEventPublisher.publishNodeCompleted(parentInstance, subprocessNode);
         nodeExecutionService.advanceAfterNode(parentInstance, subprocessNode, parentNodeKey, variables, 0, rootNode);
         log.info("[handleSubprocessFinished] 父流程恢复流转成功, parentInstanceId={}", parentInstanceId);
+    }
+
+    private void markSubprocessEventHandled(WfProcessInstance parentInstance,
+                                            Map<String, Object> variables,
+                                            String idempotentKey,
+                                            String idempotentValue) {
+        variables.put(idempotentKey, idempotentValue);
+        try {
+            parentInstance.setVariables(objectMapper.writeValueAsString(variables));
+            if (processInstanceMapper.updateById(parentInstance) <= 0) {
+                throw WorkflowException.invalidState("子流程结束幂等标记写入失败，请稍后重试");
+            }
+            WfProcessInstance refreshed = processInstanceMapper.selectById(parentInstance.getInstanceId());
+            if (refreshed == null) {
+                throw WorkflowException.instanceNotFound(parentInstance.getInstanceId());
+            }
+            parentInstance.setVariables(refreshed.getVariables());
+            parentInstance.setVersion(refreshed.getVersion());
+        } catch (WorkflowException e) {
+            throw e;
+        } catch (Exception e) {
+            throw WorkflowException.validationError("子流程结束幂等标记序列化失败: " + e.getMessage());
+        }
     }
 
     // ==================== P1-6: 流程图渲染数据 ====================

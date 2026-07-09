@@ -195,7 +195,8 @@ public class WorkflowGraphModelResolver {
 
         String startId = resolveSingleStartNodeId(nodeMap);
 
-        // 仅 END 允许多入边，用于表达多个排他分支汇入同一个结束节点。
+        // END 始终允许多入边；普通节点仅允许作为同一上游路由的受限汇聚点，
+        // 用于支持设计器"共享 END 前追加公共节点"场景，避免开放任意 DAG 多入边。
         for (Map.Entry<String, Integer> entry : incomingCount.entrySet()) {
             String nodeId = entry.getKey();
             int inDegree = entry.getValue();
@@ -203,7 +204,8 @@ public class WorkflowGraphModelResolver {
                 continue;
             }
             JsonNode targetNode = nodeMap.get(nodeId);
-            if (!"END".equalsIgnoreCase(text(targetNode, "type"))) {
+            if (!"END".equalsIgnoreCase(text(targetNode, "type"))
+                    && !isLegalBranchMergeNode(nodeId, nodeMap, incoming, outgoing)) {
                 throw WorkflowException.validationError("暂不支持多入边汇聚节点，请先拆分节点: " + nodeId);
             }
         }
@@ -446,6 +448,97 @@ public class WorkflowGraphModelResolver {
         }
         String upstreamId = ins.get(0).sourceId();
         return outgoing.getOrDefault(upstreamId, List.of()).size() >= 2;
+    }
+
+    private boolean isLegalBranchMergeNode(String mergeNodeId,
+                                           Map<String, JsonNode> nodeMap,
+                                           Map<String, List<EdgeLink>> incoming,
+                                           Map<String, List<EdgeLink>> outgoing) {
+        if (outgoing.getOrDefault(mergeNodeId, List.of()).size() > 1) {
+            return false;
+        }
+        if (incoming.getOrDefault(mergeNodeId, List.of()).size() <= 1) {
+            return true;
+        }
+
+        for (Map.Entry<String, List<EdgeLink>> entry : outgoing.entrySet()) {
+            String routerId = entry.getKey();
+            if (mergeNodeId.equals(routerId) || entry.getValue().size() < 2) {
+                continue;
+            }
+            if (!nodeMap.containsKey(routerId)) {
+                continue;
+            }
+            JsonNode routerNode = nodeMap.get(routerId);
+            if ("PARALLEL".equalsIgnoreCase(text(routerNode, "type")) && isMultiBranchDecisionNode(routerNode)) {
+                EdgeLink defaultEdge = resolveDefaultEdge(routerId, entry.getValue());
+                if (defaultEdge == null || !mergeNodeId.equals(defaultEdge.targetId())) {
+                    continue;
+                }
+            }
+            boolean allBranchesReachMerge = true;
+            for (EdgeLink edge : entry.getValue()) {
+                if (!isReachableToTarget(edge.targetId(), mergeNodeId, outgoing, new HashSet<>())) {
+                    allBranchesReachMerge = false;
+                    break;
+                }
+            }
+            if (allBranchesReachMerge
+                    && allIncomingSourcesBelongToRouterBranches(mergeNodeId, routerId, entry.getValue(), incoming, outgoing)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean allIncomingSourcesBelongToRouterBranches(String mergeNodeId,
+                                                             String routerId,
+                                                             List<EdgeLink> routerEdges,
+                                                             Map<String, List<EdgeLink>> incoming,
+                                                             Map<String, List<EdgeLink>> outgoing) {
+        Set<String> branchScope = new HashSet<>();
+        branchScope.add(routerId);
+        for (EdgeLink edge : routerEdges) {
+            collectBranchScopeUntilTarget(edge.targetId(), mergeNodeId, outgoing, branchScope, new HashSet<>());
+        }
+        for (EdgeLink incomingEdge : incoming.getOrDefault(mergeNodeId, List.of())) {
+            if (!branchScope.contains(incomingEdge.sourceId())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void collectBranchScopeUntilTarget(String currentId,
+                                               String targetId,
+                                               Map<String, List<EdgeLink>> outgoing,
+                                               Set<String> branchScope,
+                                               Set<String> visited) {
+        if (!StringUtils.hasText(currentId) || currentId.equals(targetId) || !visited.add(currentId)) {
+            return;
+        }
+        branchScope.add(currentId);
+        for (EdgeLink edge : outgoing.getOrDefault(currentId, List.of())) {
+            collectBranchScopeUntilTarget(edge.targetId(), targetId, outgoing, branchScope, visited);
+        }
+    }
+
+    private boolean isReachableToTarget(String currentId,
+                                        String targetId,
+                                        Map<String, List<EdgeLink>> outgoing,
+                                        Set<String> visited) {
+        if (!StringUtils.hasText(currentId) || !visited.add(currentId)) {
+            return false;
+        }
+        if (currentId.equals(targetId)) {
+            return true;
+        }
+        for (EdgeLink edge : outgoing.getOrDefault(currentId, List.of())) {
+            if (isReachableToTarget(edge.targetId(), targetId, outgoing, visited)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isMultiBranchDecisionNode(JsonNode node) {

@@ -1280,12 +1280,11 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             }
         }
 
-        // 无重试配置时直接执行
-        if (maxRetries <= 0) {
-            return nodeHandlerFactory.handle(node, instance, variables);
-        }
+        maxRetries = Math.max(0, maxRetries);
+        delayMs = Math.max(0L, delayMs);
 
-        // 带重试执行
+        // 统一执行路径：即使无重试配置，也必须进入失败分类逻辑，
+        // 保证主干自动节点失败后挂起流程，旁路节点失败后放行并告警。
         Exception lastException = null;
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
             try {

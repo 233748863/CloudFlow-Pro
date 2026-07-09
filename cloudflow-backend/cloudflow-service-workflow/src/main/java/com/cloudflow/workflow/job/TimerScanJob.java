@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
  * 2. 对每个到期任务，从 Redis 读取定时任务数据（instanceId、nodeKey、variables）
  * 3. 设置系统用户上下文，调用 continueFromTimerNode 触发流程引擎流转
  * 4. 流转失败时执行 fallback 逻辑，并发送失败通知
- * 5. 无论成功与否，都从 ZSet 中移除，避免重复处理
+ * 5. 仅成功/放弃/陈旧任务清理 ZSet；已安排重试的任务保留重试入口
  *
  * @author CloudFlow
  */
@@ -68,6 +68,23 @@ public class TimerScanJob {
 
     @Autowired
     private SysConfigHelper sysConfigHelper;
+
+    private enum TimerProcessResult {
+        SUCCESS(true),
+        RETRY_SCHEDULED(false),
+        GIVE_UP(true),
+        STALE(true);
+
+        private final boolean cleanup;
+
+        TimerProcessResult(boolean cleanup) {
+            this.cleanup = cleanup;
+        }
+
+        private boolean shouldCleanup() {
+            return cleanup;
+        }
+    }
 
     private int maxRetryCount() {
         return sysConfigHelper.getConfigInt("sys.workflow.timerMaxRetry", DEFAULT_MAX_RETRY_COUNT);
@@ -107,13 +124,17 @@ public class TimerScanJob {
 
                             for (Object timerKeyObj : expiredTimerKeys) {
                                 String timerKey = normalizeTimerKey(timerKeyObj);
+                                TimerProcessResult result = TimerProcessResult.RETRY_SCHEDULED;
                                 try {
-                                    handleExpiredTimer(timerKey);
+                                    result = handleExpiredTimer(timerKey);
                                 } catch (Exception e) {
                                     log.error("[TimerScanJob] 处理定时任务失败, tenantId={}, timerKey={}, error={}",
                                             tid, timerKey, e.getMessage(), e);
                                 }
-                                redisCache.removeCacheZSet(TIMER_ZSET_KEY, timerKey);
+                                if (result.shouldCleanup()) {
+                                    cleanupTimerData(timerKey);
+                                    redisCache.removeCacheZSet(TIMER_ZSET_KEY, timerKey);
+                                }
                             }
                         });
                     }
@@ -143,19 +164,23 @@ public class TimerScanJob {
      * 3. 设置系统用户上下文（定时任务没有真实用户，使用流程发起人身份）
      * 4. 调用 continueFromTimerNode 触发流转
      * 5. 失败时执行 fallback + 发送通知
-     * 6. 清理 Redis 中的定时任务数据
+     * 6. 返回处理结果，由扫描循环统一决定是否清理 Redis 数据和 ZSet
      */
     @SuppressWarnings("unchecked")
-    private void handleExpiredTimer(String timerKey) {
+    private TimerProcessResult handleExpiredTimer(String timerKey) {
         // 1. 从 Redis 获取定时任务数据
         Map<String, Object> timerData = redisCache.getCacheObject(timerKey);
         if (timerData == null) {
             log.warn("[TimerScanJob] 定时任务数据不存在（可能已被处理或已过期）, timerKey={}", timerKey);
-            return;
+            return TimerProcessResult.STALE;
         }
 
         String instanceId = (String) timerData.get("instanceId");
         String nodeKey = (String) timerData.get("nodeKey");
+        if (instanceId == null || instanceId.trim().isEmpty() || nodeKey == null || nodeKey.trim().isEmpty()) {
+            log.warn("[TimerScanJob] 定时任务数据缺少 instanceId/nodeKey，清理异常任务, timerKey={}", timerKey);
+            return TimerProcessResult.GIVE_UP;
+        }
         Map<String, Object> variables = null;
 
         // 安全地提取变量（Redis 反序列化可能返回 LinkedHashMap）
@@ -171,15 +196,13 @@ public class TimerScanJob {
         WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
         if (instance == null) {
             log.warn("[TimerScanJob] 流程实例不存在, instanceId={}", instanceId);
-            cleanupTimerData(timerKey);
-            return;
+            return TimerProcessResult.STALE;
         }
 
         if (!"RUNNING".equals(instance.getStatus())) {
             log.warn("[TimerScanJob] 流程实例状态非 RUNNING，跳过处理, instanceId={}, status={}",
                 instanceId, instance.getStatus());
-            cleanupTimerData(timerKey);
-            return;
+            return TimerProcessResult.STALE;
         }
 
         // 3. 设置系统用户上下文
@@ -205,19 +228,17 @@ public class TimerScanJob {
 
             // 5. 通知发起人定时节点已触发
             sendTimerTriggeredNotification(instance, nodeKey, timerData);
+            return TimerProcessResult.SUCCESS;
 
         } catch (Exception e) {
             log.error("[TimerScanJob] 调用流程引擎处理定时任务失败, instanceId={}, nodeKey={}, error={}",
                 instanceId, nodeKey, e.getMessage(), e);
 
             // 6. 执行 fallback 逻辑
-            handleTimerFallback(instance, nodeKey, timerData, e);
+            return handleTimerFallback(instance, nodeKey, timerData, e);
 
         } finally {
-            // 7. 清理 Redis 中的定时任务数据
-            cleanupTimerData(timerKey);
-
-            // 8. 清理用户上下文
+            // 7. 清理用户上下文
             UserContext.clear();
         }
     }
@@ -230,8 +251,8 @@ public class TimerScanJob {
      * 2. 如果未超过重试上限，将任务重新放回 ZSet，延迟2分钟后重试
      * 3. 如果已超过重试上限，发送失败通知给管理员和发起人
      */
-    private void handleTimerFallback(WfProcessInstance instance, String nodeKey,
-                                      Map<String, Object> timerData, Exception error) {
+    private TimerProcessResult handleTimerFallback(WfProcessInstance instance, String nodeKey,
+                                                    Map<String, Object> timerData, Exception error) {
         try {
             String retryKey = "sys:wf:timer:retry:" + instance.getInstanceId() + ":" + nodeKey;
             long retryCount = redisCache.increment(retryKey);
@@ -254,6 +275,7 @@ public class TimerScanJob {
                 log.warn("[TimerScanJob] 定时任务处理失败，已安排重试 ({}/{}), instanceId={}, nodeKey={}, retryTime={}",
                     retryCount, maxRetry, instance.getInstanceId(), nodeKey,
                     new java.util.Date(retryTime));
+                return TimerProcessResult.RETRY_SCHEDULED;
             } else {
                 // 超过重试上限，发送失败通知
                 log.error("[TimerScanJob] 定时任务处理失败且已超过重试上限 ({}/{}), instanceId={}, nodeKey={}",
@@ -264,10 +286,12 @@ public class TimerScanJob {
 
                 // 通知管理员
                 sendTimerFailureNotification(instance, nodeKey, error);
+                return TimerProcessResult.GIVE_UP;
             }
         } catch (Exception e) {
             log.error("[TimerScanJob] fallback 逻辑执行失败, instanceId={}, error={}",
                 instance.getInstanceId(), e.getMessage(), e);
+            return TimerProcessResult.RETRY_SCHEDULED;
         }
     }
 
