@@ -370,7 +370,7 @@ function ActionOverflowMenu({ actions, label, compact = false, iconOnly = false 
     ? createPortal(
       <div
         ref={menuRef}
-        className="fixed z-[160] overflow-y-auto rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 shadow-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none"
+        className="cf-floating-panel fixed z-[160] overflow-y-auto rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 shadow-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none"
         style={{
           top: placement.top,
           left: placement.left,

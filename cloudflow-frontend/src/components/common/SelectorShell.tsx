@@ -198,7 +198,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
           />
           <div
             className={cn(
-              'fixed z-[80] overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950',
+              'cf-floating-panel fixed z-[80] overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950',
             )}
             style={{
               top: dropdownPlacement === 'top' ? dropdownPos.top - 6 : dropdownPos.top + 6,

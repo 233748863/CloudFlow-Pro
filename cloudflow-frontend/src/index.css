@@ -23,6 +23,26 @@
     animation: none;
   }
 
+  html.dark :is(.cf-app-shell, .mobile-app-shell, .cf-auth-page, .modal-content, .select-dropdown-portal, .cf-floating-panel, .cf-date-dropdown, .cf-toast) :is(.text-black, .text-slate-950, .text-slate-900, .text-slate-800, .text-gray-950, .text-gray-900, .text-gray-800, .text-zinc-950, .text-zinc-900, .text-zinc-800, .text-neutral-950, .text-neutral-900, .text-neutral-800, .text-stone-950, .text-stone-900, .text-stone-800) {
+    color: #f8fafc;
+  }
+
+  html.dark :is(.cf-app-shell, .mobile-app-shell, .cf-auth-page, .modal-content, .select-dropdown-portal, .cf-floating-panel, .cf-date-dropdown, .cf-toast) :is(.text-slate-700, .text-gray-700, .text-zinc-700, .text-neutral-700, .text-stone-700) {
+    color: #e2e8f0;
+  }
+
+  html.dark :is(.cf-app-shell, .mobile-app-shell, .cf-auth-page, .modal-content, .select-dropdown-portal, .cf-floating-panel, .cf-date-dropdown, .cf-toast) :is(.text-slate-600, .text-gray-600, .text-zinc-600, .text-neutral-600, .text-stone-600) {
+    color: #cbd5e1;
+  }
+
+  html.dark :is(.cf-app-shell, .mobile-app-shell, .cf-auth-page, .modal-content, .select-dropdown-portal, .cf-floating-panel, .cf-date-dropdown, .cf-toast) :is(.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400, .text-zinc-500, .text-zinc-400, .text-neutral-500, .text-neutral-400, .text-stone-500, .text-stone-400) {
+    color: #94a3b8;
+  }
+
+  html.dark :is(.cf-app-shell, .mobile-app-shell, .cf-auth-page, .modal-content, .select-dropdown-portal, .cf-floating-panel, .cf-date-dropdown, .cf-toast) :is(.bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100, .bg-zinc-50, .bg-zinc-100, .bg-neutral-50, .bg-neutral-100, .bg-stone-50, .bg-stone-100) {
+    background-color: var(--cf-surface-strong);
+  }
+
 }
 
 *::-webkit-scrollbar {
@@ -3402,6 +3422,10 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
 
   html.dark .admin-deploy-status-cell::after {
     background: #334155;
+  }
+
+  html.dark .admin-deploy-status-cell {
+    color: #cbd5e1;
   }
 
   html.dark .admin-deploy-status-cell:hover,
@@ -9491,6 +9515,12 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     color: #f8fafc;
   }
 
+  html.dark .admin-project-detail-panel-body,
+  html.dark .admin-project-detail-row,
+  html.dark .admin-project-gantt-row {
+    color: #e2e8f0;
+  }
+
   html.dark .admin-project-detail-note {
     border-color: rgba(13, 149, 181, 0.3);
     background: rgba(13, 149, 181, 0.12);
@@ -10049,6 +10079,10 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     color: #f8fafc;
   }
 
+  html.dark .admin-users-status {
+    color: #cbd5e1;
+  }
+
   html.dark .admin-source-header span,
   html.dark .admin-source-kicker,
   html.dark .admin-source-stat p,
@@ -10257,6 +10291,10 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     border-color: #334155;
     background: #0f172a;
     color: #cbd5e1;
+  }
+
+  html.dark .admin-knowledge-toolbar-meta {
+    color: #94a3b8;
   }
 
   html.dark .cf-pagination {
@@ -10694,6 +10732,12 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
 
   html.dark .admin-profile-surface-head span {
     color: #94a3b8;
+  }
+
+  html.dark .profile-source-list div {
+    border-color: rgba(13, 149, 181, 0.24);
+    background: rgba(15, 23, 42, 0.7);
+    color: #cbd5e1;
   }
 
   html.dark .admin-users-row-actions button:hover {
@@ -13501,6 +13545,12 @@ html.dark .admin-users-identity strong {
   color: #f8fafc;
 }
 
+html.dark .admin-users-identity small,
+html.dark .admin-users-note,
+html.dark .admin-users-muted {
+  color: #94a3b8;
+}
+
 html.dark .admin-users-avatar,
 html.dark .admin-users-identity > span,
 html.dark .admin-users-row-actions button {
@@ -14858,6 +14908,11 @@ html.dark .template-market-card-icon {
 html.dark .template-market-card-icon.is-system {
   background: rgba(16, 185, 129, 0.16);
   color: #6ee7b7;
+}
+
+html.dark .template-market-card-icon.is-custom {
+  background: rgba(100, 116, 139, 0.18);
+  color: #cbd5e1;
 }
 
 html.dark .template-market-search-field > svg {
