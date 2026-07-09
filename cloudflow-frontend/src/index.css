@@ -6497,6 +6497,204 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     }
   }
 
+  .admin-contact-split {
+    display: flex;
+    min-height: 0;
+    width: 100%;
+    gap: 0.875rem;
+  }
+
+  .admin-contact-tree {
+    display: flex;
+    min-width: 0;
+    flex: 0 0 16rem;
+    flex-direction: column;
+    border: 1px solid var(--cf-border);
+    border-radius: 0.75rem;
+    background: var(--cf-surface-strong);
+    overflow: hidden;
+  }
+
+  .admin-contact-tree-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--cf-border);
+    padding: 0.75rem 0.75rem 0.625rem;
+  }
+
+  .admin-contact-tree-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1;
+  }
+
+  .admin-contact-tree-list {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: auto;
+    padding: 0.375rem 0.5rem 0.625rem;
+    scrollbar-gutter: stable;
+  }
+
+  .admin-contact-tree-item,
+  .admin-contact-tree-row {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    cursor: pointer;
+    color: #334155;
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    user-select: none;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+
+  .admin-contact-tree-item:hover,
+  .admin-contact-tree-row:hover {
+    background: var(--cf-surface-muted);
+  }
+
+  .admin-contact-tree-item.is-active,
+  .admin-contact-tree-row.is-active {
+    background: color-mix(in srgb, var(--cf-primary-500, #0d95b5) 14%, transparent);
+    color: #0d95b5;
+    font-weight: 650;
+  }
+
+  .admin-contact-tree-toggle {
+    display: inline-flex;
+    width: 1.125rem;
+    height: 1.125rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+  }
+
+  .admin-contact-tree-toggle-placeholder {
+    display: inline-block;
+    width: 1.125rem;
+    height: 1.125rem;
+    flex: 0 0 auto;
+  }
+
+  .admin-contact-tree-icon {
+    flex: 0 0 auto;
+    color: #94a3b8;
+  }
+
+  .admin-contact-tree-row.is-active .admin-contact-tree-icon,
+  .admin-contact-tree-item.is-active .admin-contact-tree-icon {
+    color: #0d95b5;
+  }
+
+  .admin-contact-tree-label {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-contact-tree-count {
+    flex: 0 0 auto;
+    border: 1px solid var(--cf-border);
+    border-radius: 0.375rem;
+    background: var(--cf-surface-muted);
+    padding: 0.0625rem 0.375rem;
+    color: #94a3b8;
+    font-size: 0.6875rem;
+    line-height: 1.2;
+  }
+
+  .admin-contact-tree-row.is-active .admin-contact-tree-count {
+    border-color: color-mix(in srgb, var(--cf-primary-500, #0d95b5) 36%, transparent);
+    color: #0d95b5;
+  }
+
+  .admin-contact-main {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0%;
+    flex-direction: column;
+    min-height: 0;
+    border: 1px solid var(--cf-border);
+    border-radius: 0.75rem;
+    background: var(--cf-surface-strong);
+    overflow: hidden;
+  }
+
+  .admin-contact-main-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.875rem;
+    border-bottom: 1px solid var(--cf-border);
+    padding: 0.625rem 0.875rem;
+  }
+
+  .admin-contact-grid {
+    flex: 1 1 0%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-content: start;
+    overflow: auto;
+    padding: 0.875rem;
+    scrollbar-gutter: stable;
+  }
+
+  .admin-contact-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 1px solid var(--cf-border);
+    border-radius: 0.625rem;
+    background: var(--cf-surface-strong);
+    padding: 0.75rem 0.875rem 0.875rem;
+    text-align: left;
+    transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
+  }
+
+  .admin-contact-card:hover {
+    border-color: color-mix(in srgb, var(--cf-primary-500, #0d95b5) 40%, var(--cf-border));
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.10);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 1280px) {
+    .admin-contact-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 768px) {
+    .admin-contact-split {
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+
+    .admin-contact-tree {
+      flex: 0 0 auto;
+      max-height: 18rem;
+      width: 100%;
+    }
+
+    .admin-contact-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.625rem;
+      padding: 0.75rem;
+    }
+  }
+
   .admin-benefit-mine-toolbar {
     justify-content: flex-start;
   }
@@ -10255,6 +10453,41 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
 
   html.dark .admin-meeting-room-equipment-chip.is-empty {
     color: #94a3b8;
+  }
+
+  html.dark .admin-contact-tree,
+  html.dark .admin-contact-main,
+  html.dark .admin-contact-card {
+    border-color: #334155;
+    background: #0f172a;
+  }
+
+  html.dark .admin-contact-tree-title {
+    color: #f1f5f9;
+  }
+
+  html.dark .admin-contact-tree-item,
+  html.dark .admin-contact-tree-row {
+    color: #cbd5e1;
+  }
+
+  html.dark .admin-contact-tree-item:hover,
+  html.dark .admin-contact-tree-row:hover {
+    background: #1e293b;
+  }
+
+  html.dark .admin-contact-tree-item.is-active,
+  html.dark .admin-contact-tree-row.is-active {
+    color: var(--cf-primary-500, #0d95b5);
+  }
+
+  html.dark .admin-contact-tree-row.is-active .admin-contact-tree-icon,
+  html.dark .admin-contact-tree-item.is-active .admin-contact-tree-icon {
+    color: var(--cf-primary-500, #0d95b5);
+  }
+
+  html.dark .admin-contact-card:hover {
+    border-color: var(--cf-primary-500, #0d95b5);
   }
 
   html.dark .admin-benefit-mine-counts span,
