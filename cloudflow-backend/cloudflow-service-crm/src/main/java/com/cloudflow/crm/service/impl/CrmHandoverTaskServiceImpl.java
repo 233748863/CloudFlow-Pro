@@ -42,8 +42,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
 
-    private static final Long FALLBACK_TENANT_ID = 100000L;
-
     private final CrmHandoverTaskMapper handoverTaskMapper;
     private final CrmLeadMapper leadMapper;
     private final CrmCustomerMapper customerMapper;
@@ -425,7 +423,7 @@ public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
         if (contextTenantId != null) {
             return contextTenantId;
         }
-        return FALLBACK_TENANT_ID;
+        throw new IllegalArgumentException("tenantId不能为空");
     }
 
     private void publishCustomerOwnerChangedBatch(Long tenantId, List<CrmCustomer> customers,

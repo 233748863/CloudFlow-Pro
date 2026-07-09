@@ -23,8 +23,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CrmEventPublisherImpl implements CrmEventPublisher {
 
-    private static final long DEFAULT_TENANT_ID = 100000L;
-
     private final RedisStreamUtil redisStreamUtil;
 
     @Override
@@ -38,7 +36,7 @@ public class CrmEventPublisherImpl implements CrmEventPublisher {
             resolvedTenant = UserContext.getTenantId();
         }
         if (resolvedTenant == null) {
-            resolvedTenant = DEFAULT_TENANT_ID;
+            throw new IllegalArgumentException("tenantId不能为空");
         }
 
         Map<String, Object> payload = new LinkedHashMap<>();

@@ -43,8 +43,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CrmApprovalServiceImpl implements ICrmApprovalService {
 
-    private static final long DEFAULT_TENANT_ID = 100000L;
-
     private final CrmApprovalMapper approvalMapper;
     private final CrmCustomerMapper customerMapper;
     private final CrmOpportunityMapper opportunityMapper;
@@ -196,7 +194,10 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                                        Map<String, Object> payload, String remark) {
         CrmApproval approval = new CrmApproval();
         Long tenantId = UserContext.getTenantId();
-        approval.setTenantId(tenantId == null ? DEFAULT_TENANT_ID : tenantId);
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        approval.setTenantId(tenantId);
         approval.setApprovalNo(nextApprovalNo(businessType));
         approval.setBusinessType(businessType);
         approval.setActionType(actionType);
@@ -230,6 +231,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
             return;
         }
         InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
+        dto.setTenantId(current.getTenantId());
         dto.setProcessDefKey(processDefKey);
         dto.setBusinessKey(current.getBusinessType() + ":" + current.getApprovalId());
         dto.setStartUserId(current.getApplicantId());

@@ -304,7 +304,7 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
         log.setToOwnerName(toOwnerName);
         log.setRuleId(ruleId);
         log.setReason(reason);
-        Long tenantId = customer.getTenantId() == null ? 100000L : customer.getTenantId();
+        Long tenantId = requireTenantId(customer.getTenantId());
         Localize.fillCommonAudit(log, tenantId, currentUserName(), LocalDateTime.now());
         poolLogMapper.insert(log);
     }
@@ -324,8 +324,15 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
         fields.put("toOwnerId", toOwnerId);
         fields.put("toOwnerName", toOwnerName);
         crmEventPublisher.publish(CrmEventStreamConstants.EVENT_CUSTOMER_OWNER_CHANGED,
-                customer.getTenantId() == null ? 100000L : customer.getTenantId(),
+                requireTenantId(customer.getTenantId()),
                 fields);
+    }
+
+    private Long requireTenantId(Long tenantId) {
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
     }
 
     private String currentUserName() {

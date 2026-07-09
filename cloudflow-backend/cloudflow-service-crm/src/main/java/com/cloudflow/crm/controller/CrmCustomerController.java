@@ -171,12 +171,6 @@ public class CrmCustomerController {
     @DeleteMapping("/{ids}")
     @SaCheckPermission("crm:customer:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
-        for (Long id : ids) {
-            CrmCustomer customer = new CrmCustomer();
-            customer.setCustomerId(id);
-            customer.setDeleted(1);
-            crmCustomerService.updateById(customer);
-        }
-        return R.ok();
+        return crmCustomerService.deleteCustomers(ids) ? R.ok() : R.fail("删除失败");
     }
 }

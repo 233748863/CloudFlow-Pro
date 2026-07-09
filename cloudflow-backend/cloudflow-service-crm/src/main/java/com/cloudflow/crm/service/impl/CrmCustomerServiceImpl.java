@@ -11,10 +11,15 @@ import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmFollowUp;
+import com.cloudflow.crm.domain.CrmOpportunity;
+import com.cloudflow.crm.domain.CrmQuote;
+import com.cloudflow.crm.domain.CrmReceivable;
 import com.cloudflow.crm.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmFollowUpMapper;
+import com.cloudflow.crm.mapper.CrmOpportunityMapper;
+import com.cloudflow.crm.mapper.CrmQuoteMapper;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
 import com.cloudflow.crm.mapper.CrmRenewalMapper;
 import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
@@ -51,6 +56,8 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
         implements ICrmCustomerService {
 
     private final CrmFollowUpMapper followUpMapper;
+    private final CrmOpportunityMapper opportunityMapper;
+    private final CrmQuoteMapper quoteMapper;
     private final CrmRenewalMapper renewalMapper;
     private final CrmReceivableMapper receivableMapper;
     private final CrmServiceTicketMapper serviceTicketMapper;
@@ -140,6 +147,31 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
             refreshHealth(customer.getCustomerId());
         }
         return updated;
+    }
+
+    @Override
+    @Audit(name = "删除客户", highRisk = true)
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteCustomers(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return false;
+        }
+        Long tenantId = currentTenantId();
+        for (Long id : ids) {
+            CrmCustomer customer = getAccessibleCustomer(id);
+            assertCustomerDeletable(customer);
+            boolean updated = update(new LambdaUpdateWrapper<CrmCustomer>()
+                    .eq(CrmCustomer::getCustomerId, id)
+                    .eq(CrmCustomer::getTenantId, tenantId)
+                    .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
+                    .set(CrmCustomer::getDeleted, CrmConstants.DelFlag.DELETED)
+                    .set(CrmCustomer::getUpdateBy, currentUserName())
+                    .set(CrmCustomer::getUpdateTime, now()));
+            if (!updated) {
+                throw new IllegalStateException("客户删除失败: " + id);
+            }
+        }
+        return true;
     }
 
     /**
@@ -291,6 +323,42 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
                 .distinct()
                 .reduce((left, right) -> left + "," + right)
                 .orElse(null);
+    }
+
+    private void assertCustomerDeletable(CrmCustomer customer) {
+        if (customer == null || customer.getCustomerId() == null) {
+            throw new IllegalArgumentException("客户不存在");
+        }
+        Long customerId = customer.getCustomerId();
+        Long wonOpportunities = opportunityMapper.selectCount(new LambdaQueryWrapper<CrmOpportunity>()
+                .eq(CrmOpportunity::getCustomerId, customerId)
+                .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmOpportunity::getStage, CrmConstants.OpportunityStage.WON));
+        if (wonOpportunities != null && wonOpportunities > 0) {
+            throw new IllegalArgumentException("客户存在赢单商机，禁止删除");
+        }
+        Long activeOpportunities = opportunityMapper.selectCount(new LambdaQueryWrapper<CrmOpportunity>()
+                .eq(CrmOpportunity::getCustomerId, customerId)
+                .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .notIn(CrmOpportunity::getStage,
+                        CrmConstants.OpportunityStage.WON,
+                        CrmConstants.OpportunityStage.LOST));
+        if (activeOpportunities != null && activeOpportunities > 0) {
+            throw new IllegalArgumentException("客户存在有效商机，禁止删除");
+        }
+        Long quotes = quoteMapper.selectCount(new LambdaQueryWrapper<CrmQuote>()
+                .eq(CrmQuote::getCustomerId, customerId)
+                .eq(CrmQuote::getDeleted, CrmConstants.DelFlag.NORMAL));
+        if (quotes != null && quotes > 0) {
+            throw new IllegalArgumentException("客户存在报价记录，禁止删除");
+        }
+        Long unpaidReceivables = receivableMapper.selectCount(new LambdaQueryWrapper<CrmReceivable>()
+                .eq(CrmReceivable::getCustomerId, customerId)
+                .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL)
+                .ne(CrmReceivable::getStatus, CrmConstants.ReceivableStatus.RECEIVED));
+        if (unpaidReceivables != null && unpaidReceivables > 0) {
+            throw new IllegalArgumentException("客户存在未结清回款，禁止删除");
+        }
     }
 
     private void publishCustomerCreated(CrmCustomer customer) {

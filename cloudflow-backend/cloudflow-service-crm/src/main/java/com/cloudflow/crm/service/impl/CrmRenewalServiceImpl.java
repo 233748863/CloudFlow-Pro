@@ -171,6 +171,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
             return;
         }
         InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
+        dto.setTenantId(current.getTenantId());
         dto.setProcessDefKey("customer_renewal_review");
         dto.setBusinessKey("CRM_RENEWAL:" + current.getRenewalId());
         dto.setStartUserId(current.getOwnerId());

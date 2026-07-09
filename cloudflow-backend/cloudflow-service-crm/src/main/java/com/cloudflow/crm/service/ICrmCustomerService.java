@@ -21,5 +21,7 @@ public interface ICrmCustomerService extends IService<CrmCustomer> {
 
     boolean updateCustomer(CrmCustomer customer);
 
+    boolean deleteCustomers(java.util.List<Long> ids);
+
     void refreshHealth(Long customerId);
 }

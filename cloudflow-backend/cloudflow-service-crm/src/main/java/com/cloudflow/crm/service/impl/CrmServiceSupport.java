@@ -23,7 +23,11 @@ abstract class CrmServiceSupport<M extends com.baomidou.mybatisplus.core.mapper.
     }
 
     protected Long currentTenantId() {
-        return UserContext.getTenantId() == null ? 100000L : UserContext.getTenantId();
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId不能为空");
+        }
+        return tenantId;
     }
 
     protected LocalDateTime now() {

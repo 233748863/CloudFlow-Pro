@@ -181,6 +181,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
             return;
         }
         InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
+        dto.setTenantId(current.getTenantId());
         dto.setProcessDefKey("quote_approval");
         dto.setBusinessKey("CRM_QUOTE:" + current.getQuoteId());
         dto.setStartUserId(current.getOwnerId());

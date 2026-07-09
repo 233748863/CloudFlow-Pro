@@ -1,6 +1,7 @@
 package com.cloudflow.crm.event.consumer;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.workflow.WorkflowFallbackRetryContext;
@@ -40,12 +41,43 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         String operation = String.valueOf(payload.get("operation"));
         Object request = payload.get("request");
         final R<?>[] result = new R<?>[1];
-        WorkflowFallbackRetryContext.runRetrying(() -> result[0] = "startProcess".equals(operation)
-                ? remoteWorkflowService.startProcess(objectMapper.convertValue(request, WorkflowProcessStartDTO.class))
-                : remoteWorkflowService.startProcessInternal(objectMapper.convertValue(request, InternalWorkflowStartDTO.class)));
+        if ("startProcess".equals(operation)) {
+            WorkflowProcessStartDTO dto = objectMapper.convertValue(request, WorkflowProcessStartDTO.class);
+            validateTenant(envelope, payload, dto.getTenantId());
+            WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcess(dto));
+        } else {
+            InternalWorkflowStartDTO dto = objectMapper.convertValue(request, InternalWorkflowStartDTO.class);
+            validateTenant(envelope, payload, dto.getTenantId());
+            WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcessInternal(dto));
+        }
         if (result[0] == null || !result[0].isSuccess()) {
             throw new IllegalStateException("workflow fallback retry failed: " + (result[0] == null ? "null" : result[0].getMsg()));
         }
         log.info("workflow fallback retry success, module={}, operation={}, eventId={}", SOURCE_MODULE, operation, envelope.getEventId());
+    }
+
+    private void validateTenant(BusinessEventEnvelope envelope, Map<String, Object> payload, Long requestTenantId) {
+        Long payloadTenantId = parseTenantId(payload.get("tenantId"));
+        Long contextTenantId = UserContext.getTenantId();
+        if (requestTenantId == null || envelope.getTenantId() == null || contextTenantId == null
+                || !requestTenantId.equals(envelope.getTenantId())
+                || !requestTenantId.equals(payloadTenantId)
+                || !requestTenantId.equals(contextTenantId)) {
+            throw new IllegalStateException("workflow fallback retry tenantId mismatch");
+        }
+    }
+
+    private Long parseTenantId(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(String.valueOf(value));
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
