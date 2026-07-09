@@ -11,6 +11,7 @@ import com.cloudflow.workflow.domain.system.SysUserRole;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
+import com.cloudflow.workflow.mapper.WfProcessCopyMapper;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
@@ -54,6 +55,9 @@ public class WorkflowPermissionService {
     @Autowired
     private WfTaskHistoryMapper taskHistoryMapper;
 
+    @Autowired
+    private WfProcessCopyMapper processCopyMapper;
+
     /**
      * 校验当前用户是否有权限处理任务
      */
@@ -63,6 +67,9 @@ public class WorkflowPermissionService {
             throw new PermissionDeniedException("用户未登录");
         }
         checkTenantIsolation(task.getTenantId(), "任务");
+        if (task.getAssignee() == null) {
+            throw new PermissionDeniedException("任务未认领，请先认领或由管理员指派");
+        }
         if (task.getAssignee() != null && !task.getAssignee().equals(currentUserId) && !isAdmin(currentUserId)) {
             log.warn("用户 {} 尝试处理非本人任务 {}", currentUserId, task.getTaskId());
             throw new PermissionDeniedException("无权处理此任务");
@@ -109,6 +116,9 @@ public class WorkflowPermissionService {
             throw new PermissionDeniedException("用户未登录");
         }
         checkTenantIsolation(task.getTenantId(), "任务");
+        if (task.getAssignee() == null) {
+            throw new PermissionDeniedException("任务未认领，请先认领或由管理员指派");
+        }
         if (task.getAssignee() != null && !task.getAssignee().equals(currentUserId) && !isAdmin(currentUserId)) {
             throw new PermissionDeniedException("无权驳回此任务");
         }
@@ -159,6 +169,18 @@ public class WorkflowPermissionService {
         }
         Long historyCount = taskHistoryMapper.selectCount(historyWrapper);
         if (historyCount != null && historyCount > 0) {
+            return;
+        }
+
+        LambdaQueryWrapper<com.cloudflow.workflow.domain.WfProcessCopy> copyWrapper =
+                new LambdaQueryWrapper<com.cloudflow.workflow.domain.WfProcessCopy>()
+                        .eq(com.cloudflow.workflow.domain.WfProcessCopy::getInstanceId, instance.getInstanceId())
+                        .eq(com.cloudflow.workflow.domain.WfProcessCopy::getUserId, currentUserId);
+        if (currentTenantId != null) {
+            copyWrapper.eq(com.cloudflow.workflow.domain.WfProcessCopy::getTenantId, currentTenantId);
+        }
+        Long copyCount = processCopyMapper.selectCount(copyWrapper);
+        if (copyCount != null && copyCount > 0) {
             return;
         }
 
@@ -247,9 +269,13 @@ public class WorkflowPermissionService {
     }
 
     private List<SysRole> getUserRoles(Long userId) {
-        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
-                new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId)
-        );
+        Long currentTenantId = UserContext.getTenantId();
+        LambdaQueryWrapper<SysUserRole> userRoleWrapper =
+                new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId);
+        if (currentTenantId != null) {
+            userRoleWrapper.eq(SysUserRole::getTenantId, currentTenantId);
+        }
+        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(userRoleWrapper);
         if (userRoles == null || userRoles.isEmpty()) {
             return Collections.emptyList();
         }
@@ -259,7 +285,14 @@ public class WorkflowPermissionService {
         if (roleIds.isEmpty()) {
             return Collections.emptyList();
         }
-        List<SysRole> roles = sysRoleMapper.selectBatchIds(roleIds);
+        LambdaQueryWrapper<SysRole> roleWrapper = new LambdaQueryWrapper<SysRole>()
+                .in(SysRole::getRoleId, roleIds)
+                .eq(SysRole::getStatus, "0")
+                .eq(SysRole::getDeleted, 0);
+        if (currentTenantId != null) {
+            roleWrapper.eq(SysRole::getTenantId, currentTenantId);
+        }
+        List<SysRole> roles = sysRoleMapper.selectList(roleWrapper);
         return roles == null ? Collections.emptyList() : roles;
     }
 

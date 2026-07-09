@@ -46,14 +46,28 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
 
     @Override
     public DynamicMapVO getTaskStatistics(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId == null) {
+            throw new IllegalStateException("用户未登录");
+        }
+        return buildTaskStatistics(currentUserId, startTime, endTime, false);
+    }
+
+    @Override
+    public DynamicMapVO getAdminTaskStatistics(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
+        Long currentUserId = UserContext.getUserId();
+        if (!permissionService.isAdmin(currentUserId)) {
+            throw new SecurityException("无权查看管理员任务统计");
+        }
+        Long targetUserId = userId != null ? userId : currentUserId;
+        return buildTaskStatistics(targetUserId, startTime, endTime, true);
+    }
+
+    private DynamicMapVO buildTaskStatistics(Long userId, LocalDateTime startTime, LocalDateTime endTime, boolean adminView) {
         log.info("[getTaskStatistics] 查询任务统计, userId={}, startTime={}, endTime={}", userId, startTime, endTime);
 
         Map<String, Object> stats = new HashMap<>();
         Long currentTenantId = UserContext.getTenantId();
-
-        if (userId == null) {
-            userId = UserContext.getUserId();
-        }
 
         // 1. 按时间段统计
         Map<String, Object> timePeriodStats = new HashMap<>();
@@ -155,7 +169,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         stats.put("processType", processTypeStats);
 
         // 4. 按处理人统计（管理员视角）
-        if (permissionService.isAdmin(userId)) {
+        if (adminView) {
             List<Map<String, Object>> assigneeStats = new ArrayList<>();
             LambdaQueryWrapper<WfTask> allTasksQuery = new LambdaQueryWrapper<WfTask>()
                 .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
@@ -164,6 +178,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
             }
             List<WfTask> allTasks = taskMapper.selectList(allTasksQuery);
             Map<Long, Long> assigneeCountMap = allTasks.stream()
+                .filter(task -> task.getAssignee() != null)
                 .collect(Collectors.groupingBy(WfTask::getAssignee, Collectors.counting()));
             for (Map.Entry<Long, Long> entry : assigneeCountMap.entrySet()) {
                 Map<String, Object> assigneeStat = new HashMap<>();
@@ -219,11 +234,25 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
 
     @Override
     public DynamicMapVO getTaskGroups(Long userId) {
-        log.info("[getTaskGroups] 查询任务分组, userId={}", userId);
-
-        if (userId == null) {
-            userId = UserContext.getUserId();
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId == null) {
+            throw new IllegalStateException("用户未登录");
         }
+        return buildTaskGroups(currentUserId, false);
+    }
+
+    @Override
+    public DynamicMapVO getAdminTaskGroups(Long userId) {
+        Long currentUserId = UserContext.getUserId();
+        if (!permissionService.isAdmin(currentUserId)) {
+            throw new SecurityException("无权查看管理员任务分组");
+        }
+        return buildTaskGroups(userId != null ? userId : currentUserId, true);
+    }
+
+    private DynamicMapVO buildTaskGroups(Long userId, boolean adminView) {
+        log.info("[getTaskGroups] 查询任务分组, userId={}, adminView={}", userId, adminView);
+
         Long currentTenantId = UserContext.getTenantId();
 
         Map<String, Object> groups = new HashMap<>();
@@ -275,7 +304,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         groups.put("byPriority", byPriority);
 
         // 4. 管理员视角：按处理人分组
-        if (permissionService.isAdmin(userId)) {
+        if (adminView) {
             LambdaQueryWrapper<WfTask> allTasksQuery = new LambdaQueryWrapper<WfTask>()
                 .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
             if (currentTenantId != null) {
@@ -283,6 +312,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
             }
             List<WfTask> allTasks = taskMapper.selectList(allTasksQuery);
             Map<Long, Long> byAssignee = allTasks.stream()
+                .filter(task -> task.getAssignee() != null)
                 .collect(Collectors.groupingBy(WfTask::getAssignee, Collectors.counting()));
             List<Map<String, Object>> assigneeGroups = new ArrayList<>();
             for (Map.Entry<Long, Long> entry : byAssignee.entrySet()) {

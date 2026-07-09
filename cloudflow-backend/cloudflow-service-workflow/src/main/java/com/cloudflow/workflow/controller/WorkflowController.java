@@ -259,13 +259,27 @@ public class WorkflowController {
     @GetMapping("/tasks/statistics")
     @SaCheckPermission("workflow:task:statistics")
     public R<DynamicMapVO> getTaskStatistics(
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        try {
+            java.time.LocalDateTime start = parseDateTimeParam(startTime, false);
+            java.time.LocalDateTime end = parseDateTimeParam(endTime, true);
+            return R.ok(taskStatisticsService.getTaskStatistics(UserContext.getUserId(), start, end));
+        } catch (IllegalArgumentException ex) {
+            return R.fail("时间参数格式错误，请使用 yyyy-MM-dd 或 yyyy-MM-ddTHH:mm:ss");
+        }
+    }
+
+    @GetMapping("/admin/tasks/statistics")
+    @SaCheckPermission("workflow:task:admin-statistics")
+    public R<DynamicMapVO> getAdminTaskStatistics(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
         try {
             java.time.LocalDateTime start = parseDateTimeParam(startTime, false);
             java.time.LocalDateTime end = parseDateTimeParam(endTime, true);
-            return R.ok(taskStatisticsService.getTaskStatistics(userId, start, end));
+            return R.ok(taskStatisticsService.getAdminTaskStatistics(userId, start, end));
         } catch (IllegalArgumentException ex) {
             return R.fail("时间参数格式错误，请使用 yyyy-MM-dd 或 yyyy-MM-ddTHH:mm:ss");
         }
@@ -277,8 +291,14 @@ public class WorkflowController {
      */
     @GetMapping("/tasks/groups")
     @SaCheckPermission("workflow:task:groups")
-    public R<DynamicMapVO> getTaskGroups(@RequestParam(required = false) Long userId) {
-        return R.ok(taskStatisticsService.getTaskGroups(userId));
+    public R<DynamicMapVO> getTaskGroups() {
+        return R.ok(taskStatisticsService.getTaskGroups(UserContext.getUserId()));
+    }
+
+    @GetMapping("/admin/tasks/groups")
+    @SaCheckPermission("workflow:task:admin-statistics")
+    public R<DynamicMapVO> getAdminTaskGroups(@RequestParam(required = false) Long userId) {
+        return R.ok(taskStatisticsService.getAdminTaskGroups(userId));
     }
 
     /**

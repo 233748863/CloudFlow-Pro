@@ -7,6 +7,8 @@ import java.util.Map;
 @Data
 public class InternalProcessStartReq {
 
+    private Long tenantId;
+
     private String processDefKey;
 
     private String businessKey;

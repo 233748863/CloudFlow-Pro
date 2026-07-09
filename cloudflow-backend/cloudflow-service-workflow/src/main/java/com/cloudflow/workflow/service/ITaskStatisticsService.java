@@ -24,6 +24,8 @@ public interface ITaskStatisticsService {
      */
     DynamicMapVO getTaskStatistics(Long userId, LocalDateTime startTime, LocalDateTime endTime);
 
+    DynamicMapVO getAdminTaskStatistics(Long userId, LocalDateTime startTime, LocalDateTime endTime);
+
     /**
      * 获取任务分组
      * 按流程类型、状态、优先级、处理人等维度分组
@@ -32,6 +34,8 @@ public interface ITaskStatisticsService {
      * @return 分组结果 Map
      */
     DynamicMapVO getTaskGroups(Long userId);
+
+    DynamicMapVO getAdminTaskGroups(Long userId);
 
     /**
      * 获取用户任务统计数量（轻量级）

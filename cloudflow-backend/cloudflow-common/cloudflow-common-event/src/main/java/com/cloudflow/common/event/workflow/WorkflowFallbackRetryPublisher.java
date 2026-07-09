@@ -28,10 +28,15 @@ public class WorkflowFallbackRetryPublisher {
             return;
         }
         try {
+            Long tenantId = resolveTenantId(request);
+            if (tenantId == null) {
+                throw new IllegalArgumentException("workflow fallback retry tenantId is required");
+            }
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("sourceModule", sourceModule);
             payload.put("operation", operation);
             payload.put("request", request);
+            payload.put("tenantId", tenantId);
             payload.put("retryFromFallback", true);
             payload.put("cause", cause == null ? null : cause.getClass().getName() + ": " + cause.getMessage());
             outboxPublisher.publish(BusinessEventEnvelope.builder()
@@ -39,6 +44,7 @@ public class WorkflowFallbackRetryPublisher {
                     .sourceModule(sourceModule)
                     .sourceId(resolveSourceId(request))
                     .payload(objectMapper.writeValueAsString(payload))
+                    .tenantId(tenantId)
                     .occurredAt(LocalDateTime.now())
                     .build());
         } catch (JsonProcessingException e) {
@@ -61,6 +67,21 @@ public class WorkflowFallbackRetryPublisher {
             int idx = text.lastIndexOf(':');
             String id = idx >= 0 ? text.substring(idx + 1) : text;
             return Long.valueOf(id);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Long resolveTenantId(Object request) {
+        if (request == null) {
+            return null;
+        }
+        try {
+            Object tenantId = request.getClass().getMethod("getTenantId").invoke(request);
+            if (tenantId instanceof Number) {
+                return ((Number) tenantId).longValue();
+            }
+            return tenantId == null ? null : Long.valueOf(String.valueOf(tenantId));
         } catch (Exception ignored) {
             return null;
         }

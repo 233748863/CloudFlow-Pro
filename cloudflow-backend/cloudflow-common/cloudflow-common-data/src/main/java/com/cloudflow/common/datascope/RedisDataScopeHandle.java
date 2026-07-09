@@ -37,10 +37,10 @@ public class RedisDataScopeHandle implements DataScopeHandle {
         try {
             Long userId = UserContext.getUserId();
 
-            // 未登录用户跳过过滤（网关白名单接口等场景）
+            // 未登录业务查询默认拒绝，公开接口必须显式使用 DataScopeUtils.skip()。
             if (userId == null) {
-                log.warn("用户未登录，跳过数据权限校验");
-                return true;
+                log.warn("用户未登录，数据权限默认拒绝");
+                return false;
             }
 
             // 业务代码已显式设置了过滤规则，优先使用业务规则

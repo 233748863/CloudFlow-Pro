@@ -28,7 +28,7 @@ public interface IWfInstanceService {
      */
     R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables);
 
-    R<?> startProcessInternal(String processDefKey, String businessKey, Long startUserId,
+    R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
                               String startUserName, Map<String, Object> variables);
 
     /**
@@ -121,6 +121,8 @@ public interface IWfInstanceService {
      * @return 结果
      */
     R<?> invalidateProcess(String instanceId, String reason);
+
+    R<?> invalidateProcessByBusiness(Long tenantId, String instanceId, String businessType, Long businessId, String reason);
 
     /**
      * P1-3: 终止流程实例

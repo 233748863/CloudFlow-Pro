@@ -1,11 +1,14 @@
 package com.cloudflow.workflow.strategy.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.system.SysRole;
+import com.cloudflow.workflow.domain.system.SysUser;
 import com.cloudflow.workflow.domain.system.SysUserRole;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
+import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.strategy.AssignUserStrategy;
 import org.slf4j.Logger;
@@ -39,6 +42,9 @@ public class RoleAssignStrategy implements AssignUserStrategy {
     @Autowired
     private SysUserRoleMapper sysUserRoleMapper;
 
+    @Autowired
+    private SysUserMapper sysUserMapper;
+
     @Override
     public Long resolve(WfNodeConfig node, WfProcessInstance instance) {
         List<Long> userIds = resolveMultiple(node, instance);
@@ -54,24 +60,51 @@ public class RoleAssignStrategy implements AssignUserStrategy {
         }
 
         Set<Long> userIds = new LinkedHashSet<>();
+        Long tenantId = instance != null && instance.getTenantId() != null ? instance.getTenantId() : UserContext.getTenantId();
         for (String roleKey : roleKeys) {
             String normalizedRoleKey = roleKey.trim().toLowerCase(Locale.ROOT);
-            SysRole role = sysRoleMapper.selectOne(
-                    new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, normalizedRoleKey));
+            LambdaQueryWrapper<SysRole> roleWrapper = new LambdaQueryWrapper<SysRole>()
+                    .eq(SysRole::getRoleKey, normalizedRoleKey)
+                    .eq(SysRole::getStatus, "0")
+                    .eq(SysRole::getDeleted, 0);
+            if (tenantId != null) {
+                roleWrapper.eq(SysRole::getTenantId, tenantId);
+            }
+            SysRole role = sysRoleMapper.selectOne(roleWrapper);
             if (role == null) {
                 log.warn("[RoleAssignStrategy] 角色不存在: {}", roleKey);
                 continue;
             }
 
-            List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
-                    new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
+            LambdaQueryWrapper<SysUserRole> userRoleWrapper =
+                    new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId());
+            if (tenantId != null) {
+                userRoleWrapper.eq(SysUserRole::getTenantId, tenantId);
+            }
+            List<SysUserRole> userRoles = sysUserRoleMapper.selectList(userRoleWrapper);
             if (userRoles == null || userRoles.isEmpty()) {
                 log.warn("[RoleAssignStrategy] 角色 {} 下无用户", roleKey);
                 continue;
             }
-            userRoles.stream()
+            List<Long> candidateUserIds = userRoles.stream()
                     .map(SysUserRole::getUserId)
-                    .forEach(userIds::add);
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (candidateUserIds.isEmpty()) {
+                continue;
+            }
+            LambdaQueryWrapper<SysUser> userWrapper = new LambdaQueryWrapper<SysUser>()
+                    .in(SysUser::getUserId, candidateUserIds)
+                    .eq(SysUser::getStatus, "0")
+                    .eq(SysUser::getDeleted, 0);
+            if (tenantId != null) {
+                userWrapper.eq(SysUser::getTenantId, tenantId);
+            }
+            List<SysUser> users = sysUserMapper.selectList(userWrapper);
+            if (users != null) {
+                users.stream().map(SysUser::getUserId).forEach(userIds::add);
+            }
         }
 
         return new ArrayList<>(userIds);
@@ -90,10 +123,17 @@ public class RoleAssignStrategy implements AssignUserStrategy {
         }
         try {
             List<String> roleNames = new ArrayList<>();
+            Long tenantId = UserContext.getTenantId();
             for (String roleKey : roleKeys) {
                 String normalizedRoleKey = roleKey.trim().toLowerCase(Locale.ROOT);
-                SysRole role = sysRoleMapper.selectOne(
-                        new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, normalizedRoleKey));
+                LambdaQueryWrapper<SysRole> roleWrapper = new LambdaQueryWrapper<SysRole>()
+                        .eq(SysRole::getRoleKey, normalizedRoleKey)
+                        .eq(SysRole::getStatus, "0")
+                        .eq(SysRole::getDeleted, 0);
+                if (tenantId != null) {
+                    roleWrapper.eq(SysRole::getTenantId, tenantId);
+                }
+                SysRole role = sysRoleMapper.selectOne(roleWrapper);
                 roleNames.add(role != null ? role.getRoleName() : roleKey);
             }
             return String.join(" / ", roleNames);

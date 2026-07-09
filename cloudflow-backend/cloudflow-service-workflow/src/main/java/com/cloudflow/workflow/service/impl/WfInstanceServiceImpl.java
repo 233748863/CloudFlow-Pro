@@ -117,9 +117,15 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public R<?> startProcessInternal(String processDefKey, String businessKey, Long startUserId,
+    public R<?> startProcessInternal(Long tenantId, String processDefKey, String businessKey, Long startUserId,
                                      String startUserName, Map<String, Object> variables) {
-        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            throw WorkflowException.validationError("tenantId不能为空");
+        }
+        Long contextTenantId = UserContext.getTenantId();
+        if (contextTenantId == null || !Objects.equals(contextTenantId, tenantId)) {
+            throw WorkflowException.validationError("租户上下文不一致，无法启动流程");
+        }
         UserBriefVO user = resolveStartUser(startUserId);
         Long effectiveUserId = user != null && user.getUserId() != null ? user.getUserId() : startUserId;
         String effectiveUserName = StringUtils.hasText(startUserName)
@@ -1011,9 +1017,42 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public R<?> invalidateProcess(String instanceId, String reason) {
-        // 权限校验：仅管理员可作废
         permissionService.checkDefinitionPermission("作废流程");
+        return doInvalidateProcess(instanceId, reason);
+    }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> invalidateProcessByBusiness(Long tenantId, String instanceId, String businessType, Long businessId, String reason) {
+        if (tenantId == null) {
+            throw WorkflowException.validationError("tenantId不能为空");
+        }
+        if (!StringUtils.hasText(instanceId)) {
+            throw WorkflowException.validationError("processInstanceId不能为空");
+        }
+        if (!StringUtils.hasText(businessType)) {
+            throw WorkflowException.validationError("businessType不能为空");
+        }
+        if (businessId == null) {
+            throw WorkflowException.validationError("businessId不能为空");
+        }
+        Long contextTenantId = UserContext.getTenantId();
+        if (contextTenantId == null || !Objects.equals(contextTenantId, tenantId)) {
+            throw WorkflowException.validationError("租户上下文不一致，无法作废流程");
+        }
+
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+        if (!Objects.equals(tenantId, instance.getTenantId())) {
+            throw new PermissionDeniedException("无权作废该租户流程实例");
+        }
+        checkBusinessBinding(instance, businessType, businessId);
+        return doInvalidateProcess(instanceId, StringUtils.hasText(reason) ? reason : "业务单据撤销");
+    }
+
+    private R<?> doInvalidateProcess(String instanceId, String reason) {
         if (!StringUtils.hasText(reason)) {
             throw WorkflowException.validationError("作废原因不能为空");
         }
@@ -1117,16 +1156,17 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (currentUserId == null) {
             throw WorkflowException.validationError("发起人不能为空");
         }
+        if (currentTenantId == null) {
+            throw WorkflowException.validationError("tenantId不能为空");
+        }
 
         rateLimiterService.checkStartProcessLimit(currentUserId);
 
         LambdaQueryWrapper<WfProcessDefinition> startDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
                 .eq(WfProcessDefinition::getProcessKey, processDefKey)
                 .eq(WfProcessDefinition::getStatus, "PUBLISHED")
+                .eq(WfProcessDefinition::getTenantId, currentTenantId)
                 .orderByDesc(WfProcessDefinition::getVersion);
-        if (currentTenantId != null) {
-            startDefQuery.eq(WfProcessDefinition::getTenantId, currentTenantId);
-        }
         WfProcessDefinition def = processDefinitionMapper.selectPage(new Page<>(1, 1, false), startDefQuery)
                 .getRecords().stream().findFirst().orElse(null);
         if (def == null) {
@@ -1146,13 +1186,12 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             if (def.getTenantId() != null && !Objects.equals(def.getTenantId(), boundForm.getTenantId())) {
                 throw WorkflowException.validationError("流程绑定的表单不属于当前租户，无法发起");
             }
-            if (currentTenantId != null && !Objects.equals(currentTenantId, boundForm.getTenantId())) {
+            if (!Objects.equals(currentTenantId, boundForm.getTenantId())) {
                 throw WorkflowException.validationError("流程绑定的表单租户不匹配，无法发起");
             }
         }
 
-        Long effectiveTenantId = currentTenantId != null ? currentTenantId : def.getTenantId();
-        WfProcessInstance existing = findExistingBusinessInstance(effectiveTenantId, businessKey);
+        WfProcessInstance existing = findExistingBusinessInstance(currentTenantId, businessKey);
         if (existing != null) {
             log.info("[startProcess] 流程实例已存在，直接返回, businessKey={}, instanceId={}",
                     businessKey, existing.getInstanceId());
@@ -1166,7 +1205,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         instance.setBusinessKey(businessKey);
         instance.setStartUserId(currentUserId);
         instance.setStartUserName(StringUtils.hasText(currentUserName) ? currentUserName : String.valueOf(currentUserId));
-        instance.setTenantId(effectiveTenantId);
+        instance.setTenantId(currentTenantId);
+        instance.setDeptId(resolveStartDeptId(currentUserId));
         instance.setStatus(WfProcessStatus.RUNNING.getCode());
         instance.setStartTime(LocalDateTime.now());
 
@@ -1190,7 +1230,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         try {
             processInstanceMapper.insert(instance);
         } catch (DuplicateKeyException e) {
-            WfProcessInstance duplicate = findExistingBusinessInstance(effectiveTenantId, businessKey);
+            WfProcessInstance duplicate = findExistingBusinessInstance(currentTenantId, businessKey);
             if (duplicate != null) {
                 log.info("[startProcess] 并发启动命中唯一键，返回已有实例, businessKey={}, instanceId={}",
                         businessKey, duplicate.getInstanceId());
@@ -1277,6 +1317,53 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         } catch (Exception e) {
             log.warn("[startProcessInternal] 获取发起人信息失败, userId={}", startUserId, e);
             return null;
+        }
+    }
+
+    private Long resolveStartDeptId(Long startUserId) {
+        UserBriefVO user = resolveStartUser(startUserId);
+        if (user != null && user.getDeptId() != null) {
+            return user.getDeptId();
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void checkBusinessBinding(WfProcessInstance instance, String businessType, Long businessId) {
+        Map<String, Object> variables = Collections.emptyMap();
+        if (StringUtils.hasText(instance.getVariables())) {
+            try {
+                variables = objectMapper.readValue(instance.getVariables(), Map.class);
+            } catch (Exception e) {
+                throw WorkflowException.validationError("流程变量解析失败，无法校验业务绑定");
+            }
+        }
+        Object rawType = variables.get("businessType");
+        Object rawId = variables.get("businessId");
+        if (rawType == null || rawId == null) {
+            throw WorkflowException.validationError("流程缺少业务绑定变量，拒绝业务作废");
+        }
+        String expectedType = normalizeBusinessType(businessType);
+        String actualType = normalizeBusinessType(String.valueOf(rawType));
+        Long actualId = parseLong(rawId);
+        if (!Objects.equals(expectedType, actualType) || !Objects.equals(businessId, actualId)) {
+            throw new PermissionDeniedException("业务单据与流程实例不匹配");
+        }
+    }
+
+    private String normalizeBusinessType(String businessType) {
+        String value = businessType == null ? "" : businessType.trim().toUpperCase(Locale.ROOT);
+        return value.startsWith("HR_") ? value.substring(3) : value;
+    }
+
+    private Long parseLong(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        try {
+            return Long.valueOf(String.valueOf(value));
+        } catch (Exception e) {
+            throw WorkflowException.validationError("businessId格式错误");
         }
     }
 
