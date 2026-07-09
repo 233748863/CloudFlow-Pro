@@ -81,7 +81,20 @@
       "Bash(grep -nA20 \"announcement-list-panel {\" src/styles.css)",
       "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies,...p.devDependencies}; console.log\\('sonner:', d.sonner||'NONE'\\); console.log\\('react-hot-toast:', d['react-hot-toast']||'NONE'\\); console.log\\('react-toastify:', d['react-toastify']||'NONE'\\); console.log\\('antd:', d.antd||'NONE'\\);\")",
       "Bash(grep -nA8 '\"paths\"' tsconfig.json)",
-      "Bash(git commit -m '修复: 加固定时节点续跑与汇聚节点校验 *)"
+      "Bash(git commit -m '修复: 加固定时节点续跑与汇聚节点校验 *)",
+      "Bash(git commit -m '优化: 精简列表筛选计数并统一交互主题色 *)",
+      "Bash(git push *)",
+      "Bash(npx playwright *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://127.0.0.1:3000/)",
+      "Bash(curl -s http://127.0.0.1:3000/)",
+      "Bash(npx vite *)",
+      "Bash(git commit -m '优化: 会议室列表改为卡片网格布局 *)",
+      "Bash(git commit -m '优化: 公告列表改为卡片网格布局 *)",
+      "Bash(git commit -m '优化: 通讯录改为部门树筛选与卡片布局 *)",
+      "Bash(curl -s http://127.0.0.1:3000/src/pages/ProjectManagementPage.tsx -o /dev/null -w \"HTTP %{http_code}  type=%{content_type}\\\\n\")",
+      "Bash(curl -s -D - http://127.0.0.1:3000/src/pages/ProjectManagementPage.tsx)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"http://127.0.0.1:3000/node_modules/.vite/deps/@dnd-kit_core.js?v=b27618db\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"http://127.0.0.1:3000/node_modules/.vite/deps/@dnd-kit_utilities.js?v=b27618db\")"
     ],
     "defaultMode": "auto"
   },
