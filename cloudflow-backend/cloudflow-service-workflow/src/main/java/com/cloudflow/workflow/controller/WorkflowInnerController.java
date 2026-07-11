@@ -21,7 +21,7 @@ public class WorkflowInnerController {
     private static final String INTERNAL_START_CALLERS =
             "${cloudflow.security.inner.workflow.start-callers:cloudflow-service-oa,cloudflow-service-hr,cloudflow-service-crm,cloudflow-auth}";
     private static final String INTERNAL_BUSINESS_INVALIDATE_CALLERS =
-            "${cloudflow.security.inner.workflow.business-invalidate-callers:cloudflow-service-hr}";
+            "${cloudflow.security.inner.workflow.business-invalidate-callers:cloudflow-service-hr,cloudflow-service-oa}";
 
     private final IWfInstanceService wfInstanceService;
 

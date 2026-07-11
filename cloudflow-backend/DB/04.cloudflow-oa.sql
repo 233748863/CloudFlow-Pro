@@ -1501,7 +1501,8 @@ CREATE TABLE oa_visitor (
   belongings        VARCHAR(500)    DEFAULT NULL COMMENT '携带物品',
   photo_url         VARCHAR(255)    DEFAULT NULL COMMENT '访客照片URL',
   pass_code         VARCHAR(32)     DEFAULT NULL COMMENT '通行证编号',
-  status            VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态(PENDING待确认/CONFIRMED已确认/ARRIVED已到访/COMPLETED已离开/CANCELLED已取消)',
+  process_instance_id VARCHAR(64)   DEFAULT NULL COMMENT '工作流实例ID',
+  status            VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态(PENDING待确认/APPROVING审批中/APPROVAL_FAILED流程启动失败/REJECTED已拒绝/CONFIRMED已确认/ARRIVED已到访/COMPLETED已离开/CANCELLED已取消)',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
@@ -1513,7 +1514,8 @@ CREATE TABLE oa_visitor (
   KEY idx_visitor_tenant (tenant_id),
   KEY idx_visitor_host (host_id),
   KEY idx_visitor_date (visit_date),
-  KEY idx_visitor_status (status)
+  KEY idx_visitor_status (status),
+  KEY idx_visitor_process_instance (process_instance_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='访客预约表';
 
 -- =========================================================

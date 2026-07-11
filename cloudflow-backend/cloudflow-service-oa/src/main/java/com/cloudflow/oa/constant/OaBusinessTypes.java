@@ -13,6 +13,7 @@ public final class OaBusinessTypes {
     public static final String PAYMENT_REQUEST = "payment_request";
     public static final String PURCHASE_REQUEST = "purchase_request";
     public static final String VEHICLE_APPROVAL = "vehicle_approval";
+    public static final String VISITOR_APPROVAL = "visitor_approval";
     public static final String KNOWLEDGE_DOCUMENT = "KNOWLEDGE_DOCUMENT";
     public static final String SEAL_APPLICATION = "seal_application";
     public static final String SEAL_RENEWAL = "seal_renewal";

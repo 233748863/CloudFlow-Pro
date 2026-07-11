@@ -256,6 +256,18 @@ export const PropertyPanel = ({
                   }
                 />
               )}
+              {formData.approverType === "VARIABLE_USER" && (
+                <div>
+                  <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    用户 ID 变量名
+                  </span>
+                  <LazyInput
+                    value={formData.approverValue || ""}
+                    onChange={(value) => handleChange("approverValue", value)}
+                    placeholder="例如 hostId"
+                  />
+                </div>
+              )}
             </div>
           )}
           {node.type === NodeType.PARALLEL && (

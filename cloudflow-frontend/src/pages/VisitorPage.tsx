@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getConfigIntSync } from '../hooks/useSystemConfig';
-import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
+import { getConfigIntSync, useConfigValue } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE, SYS_VISITOR_WORKFLOW_ENABLED } from '../constants/sysConfig';
 import {
   Building2,
   CheckCircle,
@@ -33,6 +33,7 @@ import {
 } from '@/components/common';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { UserSelector } from '@/components/common/UserSelector';
 
 const createDefaultForm = (): Visitor => ({
   visitorName: '',
@@ -98,12 +99,15 @@ export const VisitorPage: React.FC = () => {
   const [visitDateInput, setVisitDateInput] = useState('');
   const [total, setTotal] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Visitor | null>(null);
   const [formData, setFormData] = useState<Visitor>(createDefaultForm());
   const [passVisitor, setPassVisitor] = useState<Visitor | null>(null);
   const [passQrCodeUrl, setPassQrCodeUrl] = useState('');
   const [passQrCodeLoading, setPassQrCodeLoading] = useState(false);
   const [passQrCodeError, setPassQrCodeError] = useState('');
+  const [visitorWorkflowEnabledValue] = useConfigValue(SYS_VISITOR_WORKFLOW_ENABLED, 'false');
+  const visitorWorkflowEnabled = visitorWorkflowEnabledValue.toLowerCase() === 'true';
 
   useEffect(() => {
     void fetchList();
@@ -181,19 +185,22 @@ export const VisitorPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.visitorName || !formData.visitReason || !formData.visitDate) {
-      toast.error('请填写完整信息');
+    if (!formData.visitorName || !formData.visitReason || !formData.visitDate || !formData.hostId) {
+      toast.error('请填写访客信息并选择被访者');
       return;
     }
 
+    setSaving(true);
     try {
       await visitorApi.add(formData);
-      toast.success('预约成功');
+      toast.success(visitorWorkflowEnabled ? '预约已提交审批' : '预约成功');
       setShowDialog(false);
       setFormData(createDefaultForm());
       void fetchList();
     } catch (error) {
       toast.error(getErrorMessage(error, '保存失败'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -267,7 +274,7 @@ export const VisitorPage: React.FC = () => {
     ? statusDict.getLabel(searchParams.status) || '未配置状态'
     : '全部状态';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.visitorName || searchParams.visitDate);
-  const pendingCount = list.filter((item) => item.status === 'PENDING').length;
+  const pendingCount = list.filter((item) => ['PENDING', 'APPROVING', 'APPROVAL_FAILED'].includes(item.status || '')).length;
   const activeCount = list.filter((item) => item.status === 'CONFIRMED' || item.status === 'ARRIVED').length;
   const finishedCount = list.filter((item) => item.status === 'CHECKED_OUT' || item.status === 'FINISHED' || item.status === 'COMPLETED').length;
 
@@ -296,7 +303,7 @@ export const VisitorPage: React.FC = () => {
         </article>
         <article className="card admin-source-stat admin-source-tone-amber">
           <span className="admin-source-stat-icon"><CheckCircle size={18} /></span>
-          <div><p>待确认</p><strong>{pendingCount}</strong><span>需人工确认</span></div>
+          <div><p>待处理</p><strong>{pendingCount}</strong><span>待确认或审批</span></div>
         </article>
         <article className="card admin-source-stat admin-source-tone-green">
           <span className="admin-source-stat-icon"><LogIn size={18} /></span>
@@ -441,7 +448,7 @@ export const VisitorPage: React.FC = () => {
                       {item.status === 'ARRIVED' && hasPermission('oa:visitor:checkout') ? (
                         <button type="button" title="签退" aria-label="签退" onClick={() => handleCheckOut(item.visitorId!)}><LogOut size={15} /></button>
                       ) : null}
-                      {(item.status === 'PENDING' || item.status === 'CONFIRMED') && hasPermission('oa:visitor:cancel') ? (
+                      {(['PENDING', 'APPROVING', 'APPROVAL_FAILED', 'CONFIRMED'].includes(item.status || '')) && hasPermission('oa:visitor:cancel') ? (
                         <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => setCancelTarget(item)}><XCircle size={15} /></button>
                       ) : null}
                     </div>
@@ -546,7 +553,10 @@ export const VisitorPage: React.FC = () => {
             >
               取消
             </Button>
-            <Button onClick={handleSave}>保存</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <RotateCcw size={14} className="animate-spin" /> : null}
+              {visitorWorkflowEnabled ? '提交审批' : '保存预约'}
+            </Button>
           </>
         )}
       >
@@ -620,14 +630,25 @@ export const VisitorPage: React.FC = () => {
           </div>
 
           <div className="admin-dialog-field md:col-span-2">
-            <Label>被访人姓名</Label>
-            <Input
-              type="text"
-              value={formData.hostName || ''}
-              onChange={(event) => setFormData({ ...formData, hostName: event.target.value })}
-              placeholder="请输入被访人姓名"
-              className="h-11"
+            <Label>被访者</Label>
+            <UserSelector
+              single
+              value={formData.hostId ? String(formData.hostId) : null}
+              onChange={(id, user) => setFormData({
+                ...formData,
+                hostId: id ? Number(id) : 0,
+                hostName: user?.name || '',
+                hostDept: user?.deptName || '',
+              })}
+              placeholder="搜索姓名或部门选择被访者"
+              allowClear
+              className="min-h-11"
             />
+            {formData.hostId ? (
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {[formData.hostName, formData.hostDept].filter(Boolean).join(' · ')}
+              </span>
+            ) : null}
           </div>
 
           <div className="admin-dialog-field md:col-span-2">

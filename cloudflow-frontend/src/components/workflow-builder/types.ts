@@ -31,6 +31,7 @@ export type EditableWorkflowNode = WorkflowGraphNode & {
     | "INITIATOR"
     | "DEPT_MANAGER"
     | "DIRECT_LEADER"
+    | "VARIABLE_USER"
     | "DEPT";
   approverValue?: string;
   allowEdit?: boolean;

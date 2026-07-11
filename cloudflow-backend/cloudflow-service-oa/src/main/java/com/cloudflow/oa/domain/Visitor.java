@@ -87,7 +87,10 @@ public class Visitor implements Serializable {
     /** 通行证编号 */
     private String passCode;
 
-    /** 状态(PENDING/CONFIRMED/ARRIVED/COMPLETED/CANCELLED) */
+    /** 工作流实例ID */
+    private String processInstanceId;
+
+    /** 状态(PENDING/APPROVING/APPROVAL_FAILED/REJECTED/CONFIRMED/ARRIVED/COMPLETED/CANCELLED) */
     private String status;
 
     /** 备注 */

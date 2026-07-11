@@ -35,6 +35,7 @@ export const APPROVER_TYPE_LABELS: Record<string, string> = {
   INITIATOR: "发起人",
   DEPT_MANAGER: "部门负责人",
   DIRECT_LEADER: "直属上级",
+  VARIABLE_USER: "流程变量用户",
   DEPT: "按部门",
 };
 

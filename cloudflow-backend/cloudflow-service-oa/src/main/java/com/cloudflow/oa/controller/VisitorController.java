@@ -51,10 +51,12 @@ public class VisitorController {
     @PostMapping
     @SaCheckPermission("oa:visitor:add")
     public R add(@RequestBody Visitor visitor) {
-        // 填充当前登录用户信息作为创建者
-        visitor.setCreateBy(UserContext.getUserName());
-        visitor.setStatus("PENDING");
-        return R.result(visitorService.save(visitor));
+        try {
+            visitor.setCreateBy(UserContext.getUserName());
+            return R.result(visitorService.createVisitor(visitor));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     /** 修改访客信息 */
@@ -65,7 +67,11 @@ public class VisitorController {
         if (visitor.getVisitorId() == null) {
             return R.fail("访客ID不能为空");
         }
-        return R.result(visitorService.updateById(visitor));
+        try {
+            return R.result(visitorService.updateVisitor(visitor));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     /** 删除访客记录 */

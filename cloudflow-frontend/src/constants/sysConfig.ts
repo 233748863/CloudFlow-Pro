@@ -186,6 +186,10 @@ export const SYS_VEHICLE_FUEL_PRICE_UPDATE_CRON = 'sys.vehicle.fuelPriceUpdateCr
 export const SYS_MEETING_ROOM_ADVANCE_BOOKING_HOURS = 'sys.meetingRoom.advanceBookingHours';
 /** 会议室是否允许并发预订 */
 export const SYS_MEETING_ROOM_ALLOW_CONCURRENT = 'sys.meetingRoom.allowConcurrent';
+/** 是否启用访客预约审批 */
+export const SYS_VISITOR_WORKFLOW_ENABLED = 'sys.visitor.workflowEnabled';
+/** 访客预约审批流程Key */
+export const SYS_VISITOR_WORKFLOW_PROCESS_KEY = 'sys.visitor.workflowProcessKey';
 
 // ================= 加密（全局） =================
 
@@ -386,6 +390,8 @@ export const CONFIG_SCOPE_MAP: Record<string, string> = {
   [SYS_VEHICLE_FUEL_PRICE_UPDATE_CRON]: CONFIG_SCOPE_TENANT,
   [SYS_MEETING_ROOM_ADVANCE_BOOKING_HOURS]: CONFIG_SCOPE_TENANT,
   [SYS_MEETING_ROOM_ALLOW_CONCURRENT]: CONFIG_SCOPE_TENANT,
+  [SYS_VISITOR_WORKFLOW_ENABLED]: CONFIG_SCOPE_TENANT,
+  [SYS_VISITOR_WORKFLOW_PROCESS_KEY]: CONFIG_SCOPE_TENANT,
 
   // 硬编码收口新增 - 租户级
   [SYS_OA_CONTRACT_HIGH_AMOUNT_THRESHOLD]: CONFIG_SCOPE_TENANT,

@@ -165,7 +165,7 @@ WHERE tenant_id = 100000
 
 DELETE FROM cloud_flow_db.sys_config
 WHERE config_id BETWEEN 1 AND 92
-   OR config_id IN (157, 171, 172);
+   OR config_id IN (157, 158, 159, 171, 172);
 
 DELETE FROM cloud_flow_db.sys_legal_consent
 WHERE release_code = 'legal-2026-03-31';
@@ -198,6 +198,7 @@ WHERE form_id IN (
   'form_payment_request',
   'form_purchase_request',
   'form_business_trip',
+  'form_visitor_approval',
   'form_vehicle_approval',
   'form_seal_application',
   'form_seal_renewal',
@@ -229,6 +230,7 @@ WHERE definition_id IN (
   'wf_payment_request',
   'wf_purchase_request',
   'wf_business_trip',
+  'wf_visitor_approval',
   'wf_vehicle_approval',
   'wf_knowledge_publish',
   'wf_dict_change_approval',
@@ -3041,7 +3043,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remar
 ('HR值班排班状态', 'hr_duty_status', '已排班/签到/完成/换班/取消'),
 ('HR值班类型', 'hr_duty_type', '日常/节假日/应急'),
 ('HR值班班次', 'hr_duty_shift', '白班/夜班/全天'),
-('OA访客状态', 'oa_visitor_status', '待确认/确认/到访/离场/取消'),
+('OA访客状态', 'oa_visitor_status', '待确认/审批中/流程失败/已拒绝/确认/到访/离场/取消'),
 ('工作流监控操作', 'wf_monitor_action', '启动/完成/驳回/撤回/创建/发布'),
 ('OA车辆状态', 'oa_vehicle_status', '可用/已预约/使用中/维修中/已报废'),
 ('OA车辆用车状态', 'oa_vehicle_usage_status', '待审批/已批准/已驳回/进行中/已完成/已取消'),
@@ -3781,10 +3783,13 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (3, '全天', 'FULL', 'hr_duty_shift', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '待确认', 'PENDING', 'oa_visitor_status', 'warning'),
-(2, '已确认', 'CONFIRMED', 'oa_visitor_status', 'info'),
-(3, '已到访', 'ARRIVED', 'oa_visitor_status', 'success'),
-(4, '已离场', 'COMPLETED', 'oa_visitor_status', 'default'),
-(5, '已取消', 'CANCELLED', 'oa_visitor_status', 'default');
+(2, '审批中', 'APPROVING', 'oa_visitor_status', 'info'),
+(3, '流程启动失败', 'APPROVAL_FAILED', 'oa_visitor_status', 'danger'),
+(4, '已拒绝', 'REJECTED', 'oa_visitor_status', 'danger'),
+(5, '已确认', 'CONFIRMED', 'oa_visitor_status', 'info'),
+(6, '已到访', 'ARRIVED', 'oa_visitor_status', 'success'),
+(7, '已离场', 'COMPLETED', 'oa_visitor_status', 'default'),
+(8, '已取消', 'CANCELLED', 'oa_visitor_status', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '启动流程', 'PROCESS_START', 'wf_monitor_action', 'default'),
 (2, '完成任务', 'TASK_COMPLETE', 'wf_monitor_action', 'default'),
@@ -3970,6 +3975,10 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(48, 100000, '分布式锁-死
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(91, 100000, '工作流-是否启用进程内脚本',     'sys.workflow.script.enabled', 'false', 'Y', '0', 'admin', NOW(), '', null, '是否允许工作流服务进程内执行 Groovy/JavaScript 脚本，生产环境默认关闭');
 
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(92, 100000, '证照管理-到期提醒天数',     'sys.oa.license.expiryReminderDays', '30,15,7,0', 'Y', '1', 'admin', NOW(), '', null, '证照到期提醒提前天数，多个值用逗号分隔');
+
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(158, 100000, '访客管理-是否启用预约审批', 'sys.visitor.workflowEnabled', 'false', 'Y', '1', 'admin', NOW(), '', null, '开启后新增访客预约由被访者审批');
+
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(159, 100000, '访客管理-预约审批流程Key', 'sys.visitor.workflowProcessKey', 'visitor_approval', 'Y', '1', 'admin', NOW(), '', null, '访客预约使用的工作流定义Key');
 
 -- SSE实时推送配置（全局）
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(49, 100000, 'SSE-连接超时时间(毫秒)',        'sys.sse.timeout',               '0',        'Y', '0', 'admin', NOW(), '', null, 'SSE连接超时时间，0表示永不超时');
@@ -4320,6 +4329,7 @@ INSERT IGNORE INTO cloud_flow_db.wf_form_definition (form_id, form_name, fields_
 ('form_payment_request', '付款审批表单', '[{"id":"payeeName","type":"TEXT","label":"收款方名称","required":true},{"id":"bankAccount","type":"TEXT","label":"银行账号","required":true},{"id":"amount","type":"NUMBER","label":"付款金额","required":true},{"id":"contractNo","type":"TEXT","label":"合同编号","required":false},{"id":"purpose","type":"TEXTAREA","label":"付款用途","required":true}]', NOW()),
 ('form_purchase_request', '采购审批表单', '[{"id":"itemName","type":"TEXT","label":"采购物品","required":true},{"id":"quantity","type":"NUMBER","label":"采购数量","required":true},{"id":"amount","type":"NUMBER","label":"采购金额","required":true},{"id":"expectedDate","type":"DATE","label":"期望到货日期","required":false},{"id":"reason","type":"TEXTAREA","label":"采购原因","required":true}]', NOW()),
 ('form_business_trip', '出差审批表单', '[{"id":"destination","type":"TEXT","label":"出差地点","required":true},{"id":"startDate","type":"DATE","label":"开始日期","required":true},{"id":"endDate","type":"DATE","label":"结束日期","required":true},{"id":"budget","type":"NUMBER","label":"预算金额","required":true},{"id":"purpose","type":"TEXTAREA","label":"出差事由","required":true}]', NOW()),
+('form_visitor_approval', '访客预约审批表单', '[{"id":"visitorName","type":"TEXT","label":"访客姓名","required":true,"readonly":true},{"id":"visitorCompany","type":"TEXT","label":"访客单位","required":false,"readonly":true},{"id":"visitorCount","type":"NUMBER","label":"来访人数","required":true,"readonly":true},{"id":"visitDate","type":"DATE","label":"来访日期","required":true,"readonly":true},{"id":"hostName","type":"TEXT","label":"被访者","required":true,"readonly":true},{"id":"visitReason","type":"TEXTAREA","label":"来访事由","required":true,"readonly":true}]', NOW()),
 ('form_vehicle_approval', '用车审批表单', '[{"id":"vehiclePurpose","type":"TEXT","label":"用车事由","required":true},{"id":"destination","type":"TEXT","label":"目的地","required":true},{"id":"startTime","type":"DATE","label":"用车日期","required":true},{"id":"passengerCount","type":"NUMBER","label":"乘车人数","required":true},{"id":"remark","type":"TEXTAREA","label":"备注","required":false}]', NOW()),
 ('form_seal_application', '用印审批表单', '[{"id":"sealName","type":"TEXT","label":"印章名称","required":true},{"id":"documentName","type":"TEXT","label":"用印文件","required":true},{"id":"useCount","type":"NUMBER","label":"用印份数","required":true},{"id":"expectedReturnDate","type":"DATE","label":"预计归还日期","required":false},{"id":"purpose","type":"TEXTAREA","label":"用印事由","required":true}]', NOW()),
 ('form_seal_renewal', '印章续期审批表单', '[{"id":"sealName","type":"TEXT","label":"印章名称","required":true},{"id":"oldExpireDate","type":"DATE","label":"原到期日期","required":false},{"id":"newExpireDate","type":"DATE","label":"新到期日期","required":true},{"id":"reason","type":"TEXTAREA","label":"续期原因","required":true}]', NOW()),
@@ -4391,6 +4401,9 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_n
 INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_business_trip', '出差审批流程', 'business_trip', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交出差申请"},{"id":"n1","type":"APPROVAL","title":"部门经理审批","approverType":"DEPT_MANAGER"},{"id":"n2","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
+INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
+('wf_visitor_approval', '访客预约审批流程', 'visitor_approval', 1, 'PUBLISHED', 1, 'form_visitor_approval', '{"nodes":[{"id":"root","type":"START","title":"提交访客预约"},{"id":"n1","type":"APPROVAL","title":"被访者确认","approverType":"VARIABLE_USER","approverValue":"hostId","props":{"buttons":["APPROVE","REJECT"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+
 INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_vehicle_approval', '用车审批流程', 'vehicle_approval', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交用车申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政确认派车","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
@@ -4438,6 +4451,7 @@ SET form_id = CASE definition_id
   WHEN 'wf_payment_request' THEN 'form_payment_request'
   WHEN 'wf_purchase_request' THEN 'form_purchase_request'
   WHEN 'wf_business_trip' THEN 'form_business_trip'
+  WHEN 'wf_visitor_approval' THEN 'form_visitor_approval'
   WHEN 'wf_vehicle_approval' THEN 'form_vehicle_approval'
   WHEN 'wf_seal_application' THEN 'form_seal_application'
   WHEN 'wf_seal_renewal' THEN 'form_seal_renewal'
@@ -4462,6 +4476,7 @@ WHERE definition_id IN (
   'wf_payment_request',
   'wf_purchase_request',
   'wf_business_trip',
+  'wf_visitor_approval',
   'wf_vehicle_approval',
   'wf_seal_application',
   'wf_seal_renewal',

@@ -52,11 +52,17 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
             WorkflowProcessStartDTO dto = objectMapper.convertValue(request, WorkflowProcessStartDTO.class);
             validateTenant(envelope, payload, dto.getTenantId());
             businessKey = dto.getBusinessKey();
+            if (shouldSkipStartRetry(businessKey)) {
+                return;
+            }
             WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcess(dto));
         } else {
             InternalWorkflowStartDTO dto = objectMapper.convertValue(request, InternalWorkflowStartDTO.class);
             validateTenant(envelope, payload, dto.getTenantId());
             businessKey = dto.getBusinessKey();
+            if (shouldSkipStartRetry(businessKey)) {
+                return;
+            }
             WorkflowFallbackRetryContext.runRetrying(() -> result[0] = remoteWorkflowService.startProcessInternal(dto));
         }
         if (result[0] == null || !result[0].isSuccess()) {
@@ -106,7 +112,9 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
                 return;
             }
             BusinessBinding binding = entry.getValue();
-            int updated = jdbcTemplate.update(binding.updateSql(), instanceId, UPDATE_BY, businessId);
+            int updated = binding.successStatus() == null
+                    ? jdbcTemplate.update(binding.updateSql(), instanceId, UPDATE_BY, businessId)
+                    : jdbcTemplate.update(binding.updateSql(), instanceId, binding.successStatus(), UPDATE_BY, businessId);
             log.info("workflow fallback backfill finished, businessKey={}, instanceId={}, table={}, updated={}",
                     businessKey, instanceId, binding.tableName(), updated);
             return;
@@ -133,6 +141,25 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         }
     }
 
+    private boolean shouldSkipStartRetry(String businessKey) {
+        if (!StringUtils.hasText(businessKey) || !businessKey.startsWith("VISITOR:")) {
+            return false;
+        }
+        Long visitorId = parseBusinessId(businessKey.substring("VISITOR:".length()));
+        if (visitorId == null) {
+            return true;
+        }
+        String status = jdbcTemplate.query(
+                "SELECT status FROM oa_visitor WHERE visitor_id = ?",
+                rs -> rs.next() ? rs.getString(1) : null,
+                visitorId);
+        boolean skip = !"APPROVING".equals(status) && !"APPROVAL_FAILED".equals(status);
+        if (skip) {
+            log.info("skip visitor workflow retry, businessKey={}, status={}", businessKey, status);
+        }
+        return skip;
+    }
+
     private static Map<String, BusinessBinding> buildBusinessBindings() {
         Map<String, BusinessBinding> bindings = new HashMap<>();
         bindings.put("BUSINESS_TRIP:", new BusinessBinding("biz_business_trip", "id", "instance_id"));
@@ -149,17 +176,33 @@ public class WorkflowStartFallbackRetryConsumer implements BusinessEventConsumer
         bindings.put("PROJECT:", new BusinessBinding("oa_project", "project_id", "instance_id"));
         bindings.put("BUDGET_PLAN:", new BusinessBinding("oa_budget_plan", "budget_id", "instance_id"));
         bindings.put("BUDGET_ADJUSTMENT:", new BusinessBinding("oa_budget_adjustment", "adjustment_id", "instance_id"));
+        bindings.put("VISITOR:", new BusinessBinding(
+                "oa_visitor", "visitor_id", "process_instance_id", "status", "APPROVING"));
         return Map.copyOf(bindings);
     }
 
-    private record BusinessBinding(String tableName, String idColumn, String instanceColumn) {
+    private record BusinessBinding(String tableName, String idColumn, String instanceColumn,
+                                   String statusColumn, String successStatus) {
+        private BusinessBinding(String tableName, String idColumn, String instanceColumn) {
+            this(tableName, idColumn, instanceColumn, null, null);
+        }
+
         private BusinessBinding {
             validateIdentifier(tableName);
             validateIdentifier(idColumn);
             validateIdentifier(instanceColumn);
+            if (statusColumn != null) {
+                validateIdentifier(statusColumn);
+            }
         }
 
         private String updateSql() {
+            if (statusColumn != null && successStatus != null) {
+                return String.format(
+                        "UPDATE %s SET %s = ?, %s = ?, update_by = ?, update_time = NOW() WHERE %s = ? AND (%s IS NULL OR %s = '') AND %s IN ('APPROVING','APPROVAL_FAILED')",
+                        tableName, instanceColumn, statusColumn, idColumn, instanceColumn, instanceColumn, statusColumn
+                );
+            }
             return String.format(
                     "UPDATE %s SET %s = ?, update_by = ?, update_time = NOW() WHERE %s = ? AND (%s IS NULL OR %s = '')",
                     tableName, instanceColumn, idColumn, instanceColumn, instanceColumn

@@ -31,6 +31,9 @@ public class OaProperties {
     /** 会议室配置 */
     private MeetingRoomConfig meetingRoom = new MeetingRoomConfig();
 
+    /** 访客配置 */
+    private VisitorConfig visitor = new VisitorConfig();
+
     /** 错误上报配置 */
     private ErrorReportConfig errorReport = new ErrorReportConfig();
 
@@ -73,6 +76,11 @@ public class OaProperties {
         meetingRoom.setAllowConcurrentBooking(
                 sysConfigHelper.getTenantBoolean(SysConfigKeys.MEETING_ROOM_ALLOW_CONCURRENT, meetingRoom.getAllowConcurrentBooking()));
 
+        visitor.setWorkflowEnabled(
+                sysConfigHelper.getTenantBoolean(SysConfigKeys.VISITOR_WORKFLOW_ENABLED, visitor.getWorkflowEnabled()));
+        visitor.setWorkflowProcessKey(
+                sysConfigHelper.getTenantValue(SysConfigKeys.VISITOR_WORKFLOW_PROCESS_KEY, visitor.getWorkflowProcessKey()));
+
         errorReport.setEnabled(
                 sysConfigHelper.getTenantBoolean(SysConfigKeys.ERROR_REPORT_ENABLED, errorReport.getEnabled()));
         errorReport.setAllowAnonymousPath(
@@ -102,6 +110,11 @@ public class OaProperties {
     public MeetingRoomConfig getMeetingRoom() {
         loadFromSysConfig();
         return meetingRoom;
+    }
+
+    public VisitorConfig getVisitor() {
+        loadFromSysConfig();
+        return visitor;
     }
 
     public ErrorReportConfig getErrorReport() {
@@ -178,6 +191,15 @@ public class OaProperties {
 
         /** 自动释放分钟数 */
         private Integer autoReleaseMinutes = 15;
+    }
+
+    @Data
+    public static class VisitorConfig {
+        /** 是否启用访客预约审批 */
+        private Boolean workflowEnabled = false;
+
+        /** 访客预约审批流程 Key */
+        private String workflowProcessKey = "visitor_approval";
     }
 
     @Data

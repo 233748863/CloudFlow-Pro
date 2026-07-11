@@ -24,6 +24,7 @@ export interface Visitor {
   belongings?: string;
   photoUrl?: string;
   passCode?: string;
+  processInstanceId?: string;
   status?: string;
   remark?: string;
   createTime?: string;

@@ -4,6 +4,7 @@ import com.cloudflow.common.core.domain.ProcessFallbackResponse;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.event.workflow.WorkflowFallbackRetryPublisher;
 import com.cloudflow.oa.domain.dto.InternalWorkflowStartDTO;
+import com.cloudflow.oa.domain.dto.BusinessProcessInvalidateDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowRecallDTO;
 import com.cloudflow.oa.domain.dto.WorkflowTaskCompleteDTO;
@@ -45,6 +46,12 @@ public class RemoteWorkflowFallbackFactory implements FallbackFactory<RemoteWork
                 log.error("内部启动工作流失败，请求参数: {}", req);
                 retryPublisher.publish("cloudflow-oa", "startProcessInternal", req, cause);
                 return retryResponse(req != null ? req.getProcessDefKey() : null, req != null ? req.getBusinessKey() : null);
+            }
+
+            @Override
+            public R<?> invalidateByBusiness(BusinessProcessInvalidateDTO req) {
+                log.error("按业务作废工作流失败，请求参数: {}", req);
+                return R.fail("工作流服务暂时不可用，请稍后重试");
             }
             
             @Override

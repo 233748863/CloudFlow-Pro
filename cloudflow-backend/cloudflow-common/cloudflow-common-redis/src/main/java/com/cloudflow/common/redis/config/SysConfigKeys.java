@@ -77,6 +77,8 @@ public final class SysConfigKeys {
     public static final String MEETING_ROOM_AUTO_RELEASE_MINUTES = "sys.meetingRoom.autoReleaseMinutes";
     public static final String MEETING_ROOM_ADVANCE_BOOKING_HOURS = "sys.meetingRoom.advanceBookingHours";
     public static final String MEETING_ROOM_ALLOW_CONCURRENT = "sys.meetingRoom.allowConcurrent";
+    public static final String VISITOR_WORKFLOW_ENABLED = "sys.visitor.workflowEnabled";
+    public static final String VISITOR_WORKFLOW_PROCESS_KEY = "sys.visitor.workflowProcessKey";
     public static final String ERROR_REPORT_ENABLED = "sys.errorReport.enabled";
     public static final String ERROR_REPORT_ALLOW_ANONYMOUS_PATH = "sys.errorReport.allowAnonymousPath";
     public static final String SYNC_CONFLICT_STRATEGY = "sys.sync.conflictStrategy";
