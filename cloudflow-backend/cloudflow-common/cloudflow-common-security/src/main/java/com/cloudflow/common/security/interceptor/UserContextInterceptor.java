@@ -2,6 +2,9 @@ package com.cloudflow.common.security.interceptor;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.context.UserDataScopeSnapshot;
+import com.cloudflow.common.core.constant.SecurityConstants;
+import com.cloudflow.common.core.exception.ErrorCodeConstants;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.redis.core.UserDataScopeStore;
 import com.cloudflow.common.security.cookie.AuthCookieSupport;
 import com.cloudflow.common.security.core.TokenService;
@@ -51,7 +54,7 @@ public class UserContextInterceptor implements HandlerInterceptor {
             }
         }
 
-        fillTenantFromHeader(request);
+        fillTenantFromTrustedInnerRequest(request);
         return true;
     }
 
@@ -148,11 +151,19 @@ public class UserContextInterceptor implements HandlerInterceptor {
             UserContext.setTenantId(toLong(tenantIdObj));
             return;
         }
-        fillTenantFromHeader(request);
+        if (isTrustedInnerRequest(request)) {
+            fillTenantFromTrustedInnerRequest(request);
+            return;
+        }
+        throw new ServiceException("登录会话缺少租户信息", ErrorCodeConstants.UNAUTHORIZED);
     }
 
-    private void fillTenantFromHeader(HttpServletRequest request) {
+    private void fillTenantFromTrustedInnerRequest(HttpServletRequest request) {
         if (UserContext.getTenantId() != null) {
+            return;
+        }
+
+        if (!isTrustedInnerRequest(request)) {
             return;
         }
 
@@ -163,6 +174,13 @@ public class UserContextInterceptor implements HandlerInterceptor {
             } catch (NumberFormatException ignored) {
             }
         }
+    }
+
+    private boolean isTrustedInnerRequest(HttpServletRequest request) {
+        return request != null
+                && request.getRequestURI().startsWith("/inner/")
+                && SecurityConstants.INNER_CALL_VALUE.equals(
+                request.getHeader(SecurityConstants.INNER_CALL_HEADER));
     }
 
     private Long toLong(Object obj) {

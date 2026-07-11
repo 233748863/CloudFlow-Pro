@@ -170,7 +170,8 @@ CREATE TABLE sys_menu (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        COMMENT '更新时间',
   remark            VARCHAR(500)    DEFAULT '' COMMENT '备注',
-  PRIMARY KEY (menu_id)
+  PRIMARY KEY (menu_id),
+  KEY idx_sys_menu_perms (perms)
 ) ENGINE=InnoDB AUTO_INCREMENT=2000 DEFAULT CHARSET=utf8mb4 COMMENT='菜单权限表';
 
 -- 6. 用户和角色关联表

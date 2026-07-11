@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.security.annotation.Inner;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.workflow.domain.dto.BusinessProcessInvalidateReq;
@@ -25,6 +26,7 @@ public class WorkflowInnerController {
     private final IWfInstanceService wfInstanceService;
 
     @Inner(allowedServices = {INTERNAL_START_CALLERS})
+    @RepeatSubmit
     @PostMapping("/start")
     public R<?> startProcess(@RequestBody InternalProcessStartReq req) {
         if (req == null || req.getTenantId() == null) {
@@ -40,6 +42,7 @@ public class WorkflowInnerController {
     }
 
     @Inner(allowedServices = {INTERNAL_BUSINESS_INVALIDATE_CALLERS})
+    @RepeatSubmit
     @PostMapping("/invalidate-by-business")
     public R<?> invalidateByBusiness(@RequestBody BusinessProcessInvalidateReq req) {
         if (req == null || req.getTenantId() == null) {

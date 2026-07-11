@@ -37,9 +37,9 @@ const defaultForm = { employeeId: '', actionType: 'TRAINING', actionName: '', me
 
 export const HrTalentDevelopmentPage: React.FC = () => {
   const { hasPermission } = useAuth();
-  const canEdit = hasPermission?.('hr:talent:development:edit') ?? true;
-  const canAdd = hasPermission?.('hr:talent:development:add') ?? true;
-  const canRemove = hasPermission?.('hr:talent:development:remove') ?? true;
+  const canEdit = hasPermission?.('hr:talent:dev:edit') ?? true;
+  const canAdd = hasPermission?.('hr:talent:dev:add') ?? true;
+  const canRemove = hasPermission?.('hr:talent:dev:remove') ?? true;
 
   const [rows, setRows] = useState<HrTalentDevelopmentAction[]>([]);
   const [total, setTotal] = useState(0);

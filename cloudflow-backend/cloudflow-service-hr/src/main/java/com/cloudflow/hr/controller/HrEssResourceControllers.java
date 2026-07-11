@@ -110,7 +110,7 @@ class HrBankCardController {
     private final ObjectMapper objectMapper;
 
     @GetMapping
-    @SaCheckPermission("hr:ess:bankcard:view")
+    @SaCheckPermission("hr:ess:bankcard:edit")
     public R<List<HrBankCardVO>> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
@@ -122,7 +122,7 @@ class HrBankCardController {
     @SysLog("新增HR员工银行卡")
     @RepeatSubmit
     @PostMapping
-    @SaCheckPermission("hr:ess:bankcard:add")
+    @SaCheckPermission("hr:ess:bankcard:edit")
     public R<Long> create(@RequestBody HrBankCardPayload payload) {
         Map<String, Object> map = crudService.toMap(payload);
         map.put("employeeId", essSupport.currentEmployeeId());
@@ -141,7 +141,7 @@ class HrBankCardController {
 
     @SysLog("删除HR员工银行卡")
     @DeleteMapping("/{id}")
-    @SaCheckPermission("hr:ess:bankcard:remove")
+    @SaCheckPermission("hr:ess:bankcard:edit")
     public R<Void> delete(@PathVariable Long id) {
         Map<String, Object> existing = crudService.get(HrBankCard.class, id);
         Object employeeId = existing == null ? null : existing.get("employeeId");
@@ -164,7 +164,7 @@ class HrFamilyMemberController {
     private final ObjectMapper objectMapper;
 
     @GetMapping
-    @SaCheckPermission("hr:ess:family:view")
+    @SaCheckPermission("hr:ess:family:edit")
     public R<List<HrFamilyMemberVO>> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
@@ -176,7 +176,7 @@ class HrFamilyMemberController {
     @SysLog("新增HR员工家属")
     @RepeatSubmit
     @PostMapping
-    @SaCheckPermission("hr:ess:family:add")
+    @SaCheckPermission("hr:ess:family:edit")
     public R<Long> create(@RequestBody HrFamilyMemberPayload payload) {
         payload.setEmployeeId(essSupport.currentEmployeeId());
         return R.ok(crudService.create(HrFamilyMember.class, payload));
@@ -199,7 +199,7 @@ class HrFamilyMemberController {
 
     @SysLog("删除HR员工家属")
     @DeleteMapping("/{id}")
-    @SaCheckPermission("hr:ess:family:remove")
+    @SaCheckPermission("hr:ess:family:edit")
     public R<Void> delete(@PathVariable Long id) {
         Map<String, Object> existing = crudService.get(HrFamilyMember.class, id);
         Object employeeId = existing == null ? null : existing.get("employeeId");

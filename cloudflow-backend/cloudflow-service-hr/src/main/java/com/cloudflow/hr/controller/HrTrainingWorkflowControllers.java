@@ -291,7 +291,7 @@ class HrExamPaperController {
 
     @SysLog("HR考试开始作答")
     @PostMapping("/{id}/attempts")
-    @SaCheckPermission("hr:training:exam:attempt")
+    @SaCheckPermission("hr:training:exam:submit")
     public R<HrExamAttemptStartVO> startAttempt(@PathVariable Long id,
                                                 @RequestBody(required = false) HrExamAttemptStartDTO dto) {
         Long sessionId = dto == null ? null : dto.getSessionId();
@@ -319,7 +319,7 @@ class HrExamAttemptController {
     }
 
     @GetMapping("/mine")
-    @SaCheckPermission("hr:training:exam:attempt")
+    @SaCheckPermission("hr:training:exam:submit")
     public R<PageResult<HrExamAttemptVO>> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
@@ -339,7 +339,7 @@ class HrExamAttemptController {
     // M0-8: 防重复提交
     @RepeatSubmit
     @PostMapping("/{id}/submit")
-    @SaCheckPermission("hr:training:exam:attempt")
+    @SaCheckPermission("hr:training:exam:submit")
     public R<HrExamAttemptSubmitVO> submit(@PathVariable Long id,
                                             @Validated @RequestBody(required = false) HrExamAttemptSubmitDTO dto) {
         List<HrExamAnswerDTO> answers = (dto == null || dto.getAnswers() == null)

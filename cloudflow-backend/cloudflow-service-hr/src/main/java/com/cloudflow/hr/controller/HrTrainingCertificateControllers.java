@@ -73,7 +73,7 @@ class HrTrainingCertificateController {
     }
 
     @GetMapping("/mine")
-    @SaCheckPermission("hr:training:cert:view")
+    @SaCheckPermission("hr:training:cert:list")
     public R<PageResult<HrTrainingCertificateVO>> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
         return R.ok(pageCertificates(query, essSupport.currentEmployeeId()));
     }
@@ -89,7 +89,7 @@ class HrTrainingCertificateController {
     }
 
     @GetMapping("/{id}")
-    @SaCheckPermission("hr:training:cert:view")
+    @SaCheckPermission("hr:training:cert:list")
     public R<HrTrainingCertificateVO> get(@PathVariable Long id) {
         Map<String, Object> row = crudService.get(HrTrainingCertificate.class, id);
         enrichCertificateRows(List.of(row));
@@ -165,7 +165,7 @@ class HrTrainingCertificateController {
     }
 
     @GetMapping("/{id}/pdf")
-    @SaCheckPermission("hr:training:cert:view")
+    @SaCheckPermission("hr:training:cert:list")
     public ResponseEntity<byte[]> download(@PathVariable Long id) {
         HrTrainingCertificate cert = certificateMapper.selectById(id);
         if (cert == null || Integer.valueOf(1).equals(cert.getDeleted())) {

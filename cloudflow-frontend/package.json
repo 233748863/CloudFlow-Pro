@@ -13,6 +13,7 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "check-imports": "tsx scripts/check-imports.ts",
+    "audit:security": "node ../scripts/security-audit.mjs",
     "type-check": "tsc --noEmit",
     "migrate-imports": "tsx scripts/migrate-imports.ts",
     "migrate-imports:dry": "tsx scripts/migrate-imports.ts --dry-run"

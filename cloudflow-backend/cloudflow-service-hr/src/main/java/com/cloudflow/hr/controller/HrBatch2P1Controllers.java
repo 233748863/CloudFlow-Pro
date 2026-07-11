@@ -61,7 +61,7 @@ class HrResumeParseController {
     }
 
     @GetMapping("/parsed")
-    @SaCheckPermission("hr:recruitment:view")
+    @SaCheckPermission("hr:recruitment:list")
     public R<List<HrResumeParsedFieldVO>> listParsed(@RequestParam Long candidateId) {
         return R.ok(hrResumeParserService.listParsed(candidateId));
     }
@@ -106,7 +106,7 @@ class HrCompensationSimulateController {
 
     @SysLog("HR薪酬模拟")
     @PostMapping("/simulate")
-    @SaCheckPermission("hr:compensation:view")
+    @SaCheckPermission("hr:compensation:list")
     public R<HrCompensationSimulateVO> simulate(@RequestBody HrCompensationSimulateRequest request) {
         return R.ok(hrCompensationSimulationService.simulate(request));
     }

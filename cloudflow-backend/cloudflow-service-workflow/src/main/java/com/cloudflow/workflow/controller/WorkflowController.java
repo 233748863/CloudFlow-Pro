@@ -28,6 +28,7 @@ import com.cloudflow.workflow.service.WorkflowStatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 
 @RestController
 @RequestMapping("/wf")
@@ -59,6 +60,7 @@ public class WorkflowController {
      * 供前端 BusinessTypeSelector / 监控面板下拉框使用。所有已登录用户可读。
      */
     @GetMapping("/business-types")
+    @SaCheckLogin
     public R<java.util.Collection<BusinessTypeDef>> listBusinessTypes() {
         return R.ok(businessTypeRegistry.all());
     }

@@ -23,7 +23,7 @@ public class OaExpenseStandardController {
     private final IOaExpenseStandardService oaExpenseStandardService;
 
     @GetMapping("/page")
-    @SaCheckPermission("oa:expense:standard:list")
+    @SaCheckPermission("oa:expense:list")
     public R<Page<OaExpenseStandard>> page(@RequestParam(required = false) String keyword,
                                            @RequestParam(required = false) String positionLevel,
                                            @RequestParam(required = false) String category,
@@ -35,13 +35,13 @@ public class OaExpenseStandardController {
     }
 
     @GetMapping("/active")
-    @SaCheckPermission("oa:expense:claim:list")
+    @SaCheckPermission("oa:expense:list")
     public R<List<OaExpenseStandard>> listActive() {
         return R.ok(oaExpenseStandardService.listActive());
     }
 
     @GetMapping("/{id}")
-    @SaCheckPermission("oa:expense:standard:list")
+    @SaCheckPermission("oa:expense:list")
     public R<OaExpenseStandard> getInfo(@PathVariable("id") Long standardId) {
         return R.ok(oaExpenseStandardService.getById(standardId));
     }
@@ -50,7 +50,7 @@ public class OaExpenseStandardController {
     // M0-8: 防重复提交
     @RepeatSubmit
     @PostMapping
-    @SaCheckPermission("oa:expense:standard:add")
+    @SaCheckPermission("oa:expense:add")
     public R<Void> add(@RequestBody OaExpenseStandard standard) {
         try {
             return oaExpenseStandardService.save(standard) ? R.ok() : R.fail("新增失败");
@@ -61,7 +61,7 @@ public class OaExpenseStandardController {
 
     @SysLog("修改费用标准")
     @PutMapping
-    @SaCheckPermission("oa:expense:standard:edit")
+    @SaCheckPermission("oa:expense:edit")
     public R<Void> edit(@RequestBody OaExpenseStandard standard) {
         try {
             return oaExpenseStandardService.update(standard) ? R.ok() : R.fail("更新失败");
@@ -72,7 +72,7 @@ public class OaExpenseStandardController {
 
     @SysLog("删除费用标准")
     @DeleteMapping("/{id}")
-    @SaCheckPermission("oa:expense:standard:remove")
+    @SaCheckPermission("oa:expense:remove")
     public R<Void> remove(@PathVariable("id") Long standardId) {
         return oaExpenseStandardService.remove(standardId) ? R.ok() : R.fail("删除失败");
     }

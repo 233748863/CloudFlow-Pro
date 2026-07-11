@@ -131,13 +131,13 @@ class HrPointAccountController {
     }
 
     @GetMapping("/employees/{employeeId}")
-    @SaCheckPermission("hr:benefit:point:manage")
+    @SaCheckPermission("hr:benefit:point:view")
     public R<HrPointAccountVO> getByEmployee(@PathVariable Long employeeId) {
         return R.ok(hrPointAccountService.getEmployeeAccount(employeeId));
     }
 
     @GetMapping("/{accountId}/transactions")
-    @SaCheckPermission("hr:benefit:point:manage")
+    @SaCheckPermission("hr:benefit:point:txn")
     public R<PageResult<HrPointTransactionVO>> transactions(@PathVariable Long accountId,
                                                             @Validated @ModelAttribute HrPointTransactionQueryDTO query) {
         return R.ok(hrPointAccountService.listTransactions(accountId, query));
@@ -176,14 +176,14 @@ class HrMallItemController {
     @SysLog("新增积分商品")
     @RepeatSubmit
     @PostMapping
-    @SaCheckPermission("hr:benefit:mall:item:manage")
+    @SaCheckPermission("hr:benefit:mall:edit")
     public R<Long> create(@Validated @RequestBody HrMallItemDTO dto) {
         return R.ok(hrMallItemService.createItem(dto));
     }
 
     @SysLog("修改积分商品")
     @PutMapping("/{id}")
-    @SaCheckPermission("hr:benefit:mall:item:manage")
+    @SaCheckPermission("hr:benefit:mall:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrMallItemDTO dto) {
         hrMallItemService.updateItem(id, dto);
         return R.ok();
@@ -191,7 +191,7 @@ class HrMallItemController {
 
     @SysLog("商品上架")
     @PostMapping("/{id}/on-shelf")
-    @SaCheckPermission("hr:benefit:mall:item:manage")
+    @SaCheckPermission("hr:benefit:mall:on-shelf")
     public R<Void> onShelf(@PathVariable Long id) {
         hrMallItemService.onShelf(id);
         return R.ok();
@@ -199,7 +199,7 @@ class HrMallItemController {
 
     @SysLog("商品下架")
     @PostMapping("/{id}/off-shelf")
-    @SaCheckPermission("hr:benefit:mall:item:manage")
+    @SaCheckPermission("hr:benefit:mall:off-shelf")
     public R<Void> offShelf(@PathVariable Long id) {
         hrMallItemService.offShelf(id);
         return R.ok();

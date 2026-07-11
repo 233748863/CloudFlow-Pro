@@ -24,7 +24,7 @@ public class OaContractTemplateController {
     private final IOaContractTemplateService oaContractTemplateService;
 
     @GetMapping("/page")
-    @SaCheckPermission("oa:contract:template:list")
+    @SaCheckPermission("oa:contract:list")
     public R<Page<OaContractTemplate>> page(@RequestParam(required = false) String keyword,
                                             @RequestParam(required = false) String category,
                                             @RequestParam(required = false) String status,
@@ -40,7 +40,7 @@ public class OaContractTemplateController {
     }
 
     @GetMapping("/{id}")
-    @SaCheckPermission("oa:contract:template:list")
+    @SaCheckPermission("oa:contract:list")
     public R<OaContractTemplate> getInfo(@PathVariable("id") Long id) {
         return R.ok(oaContractTemplateService.getById(id));
     }
@@ -49,7 +49,7 @@ public class OaContractTemplateController {
     // M0-8: 防重复提交
     @RepeatSubmit
     @PostMapping
-    @SaCheckPermission("oa:contract:template:add")
+    @SaCheckPermission("oa:contract:add")
     public R<Void> add(@RequestBody OaContractTemplate template) {
         try {
             return oaContractTemplateService.save(template) ? R.ok() : R.fail("新增失败");
@@ -60,7 +60,7 @@ public class OaContractTemplateController {
 
     @SysLog("修改合同模板")
     @PutMapping
-    @SaCheckPermission("oa:contract:template:edit")
+    @SaCheckPermission("oa:contract:edit")
     public R<Void> edit(@RequestBody OaContractTemplate template) {
         try {
             return oaContractTemplateService.update(template) ? R.ok() : R.fail("更新失败");
@@ -71,7 +71,7 @@ public class OaContractTemplateController {
 
     @SysLog("删除合同模板")
     @DeleteMapping("/{id}")
-    @SaCheckPermission("oa:contract:template:remove")
+    @SaCheckPermission("oa:contract:remove")
     public R<Void> remove(@PathVariable("id") Long id) {
         return oaContractTemplateService.remove(id) ? R.ok() : R.fail("删除失败");
     }

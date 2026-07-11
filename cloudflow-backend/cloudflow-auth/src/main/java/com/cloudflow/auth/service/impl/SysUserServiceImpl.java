@@ -532,6 +532,7 @@ public class SysUserServiceImpl implements ISysUserService {
         user.setPwdResetRequired(ForcePasswordChangeService.REQUIRED);
         int rows = sysUserMapper.updateById(user);
         if (rows > 0 && existingUser != null) {
+            userSessionRevoker.revokeByUserId(userId);
             publishPasswordResetEvent(existingUser);
         }
         return rows;

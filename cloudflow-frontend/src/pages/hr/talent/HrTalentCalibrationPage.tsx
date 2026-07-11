@@ -40,8 +40,8 @@ const toDateTimePickerValue = (value?: string | null) => {
 
 export const HrTalentCalibrationPage: React.FC = () => {
   const { hasPermission } = useAuth();
-  const canEdit = hasPermission?.('hr:talent:calibration:edit') ?? true;
-  const canAdd = hasPermission?.('hr:talent:calibration:add') ?? true;
+  const canEdit = hasPermission?.('hr:talent:review:session') ?? true;
+  const canAdd = hasPermission?.('hr:talent:review:session') ?? true;
 
   const [reviews, setReviews] = useState<HrTalentReview[]>([]);
   const [reviewId, setReviewId] = useState<number | null>(null);

@@ -1720,6 +1720,27 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 (1099, '回调死信管理', 401,  9, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:callback:admin',  '#', 'admin', NOW(), '', NULL, '工作流回调死信查看/重放/忽略权限（原 @SaCheckRole admin 收口为权限码）'),
 (1100, '任务办理人覆盖', 302, 8, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:override',  '#', 'admin', NOW(), '', NULL, 'admin 跳过办理人归属校验，加签/减签/委派他人任务（P0-2 strictOwner 兜底）');
 
+-- 登录、角色与权限全链路审计补齐权限
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES
+(1200, '培训报名维护', 738, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:enroll:edit',       '#', 'admin', NOW(), '', NULL, '培训签到、结业与撤销维护权限'),
+(1201, '考试内容新增', 739, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:exam:add',          '#', 'admin', NOW(), '', NULL, '题库与试卷新增权限'),
+(1202, '考试内容编辑', 739, 5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:exam:edit',         '#', 'admin', NOW(), '', NULL, '题库与试卷编辑权限'),
+(1203, '考试内容删除', 739, 6, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:exam:remove',       '#', 'admin', NOW(), '', NULL, '题库与试卷删除权限'),
+(1204, '培训班次删除', 737, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:session:remove',    '#', 'admin', NOW(), '', NULL, '培训班次删除权限'),
+(1205, '会议纪要编辑', 280, 6, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:meeting:edit',               '#', 'admin', NOW(), '', NULL, '会议纪要维护权限'),
+(1206, '法律条款查看',   6, 97, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:legal:list',             '#', 'admin', NOW(), '', NULL, '法律条款管理查看权限'),
+(1207, '法律条款新增',   6, 98, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:legal:add',              '#', 'admin', NOW(), '', NULL, '法律条款管理新增权限'),
+(1208, '法律条款编辑',   6, 99, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:legal:edit',             '#', 'admin', NOW(), '', NULL, '法律条款管理编辑权限'),
+(1209, '用户黑名单编辑', 650, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:userBlacklist:edit',    '#', 'admin', NOW(), '', NULL, '用户黑名单修改与解除权限');
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, menu_id, tenant_id
+FROM (
+  SELECT 1 AS role_id, menu_id, 100000 AS tenant_id
+  FROM cloud_flow_db.sys_menu
+  WHERE menu_id BETWEEN 1200 AND 1209
+) security_permissions;
+
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 7, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 1012, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 720, 100000);

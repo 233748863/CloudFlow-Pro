@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.SysUserBlacklist;
 import com.cloudflow.auth.mapper.SysUserBlacklistMapper;
 import com.cloudflow.auth.service.ISysUserBlacklistService;
+import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class SysUserBlacklistServiceImpl implements ISysUserBlacklistService {
 
     private final SysUserBlacklistMapper blacklistMapper;
     private final StringRedisTemplate stringRedisTemplate;
+    private final UserSessionRevoker userSessionRevoker;
 
     @Override
     public Page<SysUserBlacklist> page(String keyword, String status, Integer pageNum, Integer pageSize) {
@@ -69,6 +71,7 @@ public class SysUserBlacklistServiceImpl implements ISysUserBlacklistService {
         int inserted = blacklistMapper.insert(rule);
         if (inserted > 0) {
             writeToRedis(rule);
+            userSessionRevoker.revokeByUserId(rule.getUserId());
         }
         return inserted > 0;
     }
@@ -86,6 +89,7 @@ public class SysUserBlacklistServiceImpl implements ISysUserBlacklistService {
             SysUserBlacklist latest = blacklistMapper.selectById(rule.getId());
             if (latest != null && "ACTIVE".equalsIgnoreCase(latest.getStatus())) {
                 writeToRedis(latest);
+                userSessionRevoker.revokeByUserId(latest.getUserId());
             } else if (latest != null) {
                 stringRedisTemplate.delete(REDIS_KEY_PREFIX + latest.getUserId());
             }
@@ -174,7 +178,10 @@ public class SysUserBlacklistServiceImpl implements ISysUserBlacklistService {
             throw new IllegalArgumentException("被拉黑用户 ID 必填");
         }
         if (rule.getTenantId() == null) {
-            rule.setTenantId(100000L);
+            rule.setTenantId(UserContext.getTenantId());
+        }
+        if (rule.getTenantId() == null) {
+            throw new IllegalArgumentException("租户上下文缺失");
         }
     }
 }

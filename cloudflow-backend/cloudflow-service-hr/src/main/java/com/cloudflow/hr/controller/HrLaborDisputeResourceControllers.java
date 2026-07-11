@@ -95,7 +95,7 @@ class HrLaborDisputeController {
 
     @SysLog("上传争议证据")
     @PostMapping("/{id}/evidence")
-    @SaCheckPermission("hr:dispute:upload-evidence")
+    @SaCheckPermission("hr:dispute:evidence:upload")
     public R<Long> uploadEvidence(@PathVariable Long id, @Validated @RequestBody HrDisputeEvidenceDTO dto) {
         return R.ok(hrLaborDisputeService.attachEvidence(id, dto));
     }

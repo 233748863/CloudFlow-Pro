@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.web.MapConverters;
+import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.HrPerformanceObjectiveTreePayload;
 import com.cloudflow.hr.domain.dto.HrPerformanceResultUpdatePayload;
 import com.cloudflow.hr.domain.dto.HrPerformanceSalaryAdjustmentRequest;
@@ -30,6 +31,7 @@ import com.cloudflow.hr.mapper.HrPerformanceAssignmentMapper;
 import com.cloudflow.hr.mapper.HrPerformanceObjectiveMapper;
 import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.cloudflow.hr.mapper.HrPerformanceSalaryAdjustmentMapper;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.service.IHrPerformanceService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.lock.DistributedLock;
@@ -59,7 +61,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HrPerformanceServiceImpl implements IHrPerformanceService {
 
-    private static final long TENANT_ID = 100000L;
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {};
     private static final TypeReference<List<LinkedHashMap<String, Object>>> LIST_MAP_TYPE = new TypeReference<>() {};
 
@@ -82,7 +83,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         int pageSize = Math.min(500, Math.max(1, toInt(query.get("pageSize"), toInt(query.get("size"), 50))));
 
         LambdaQueryWrapper<HrPerformanceObjective> wrapper = new LambdaQueryWrapper<HrPerformanceObjective>()
-                .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                .eq(HrPerformanceObjective::getTenantId, tenantId())
                 .eq(HrPerformanceObjective::getDeleted, 0);
         if (StringUtils.hasText(keyword)) {
             String like = keyword.trim();
@@ -95,15 +96,16 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         }
         List<Long> visibleDeptIds = currentVisibleDeptIds();
         if (visibleDeptIds != null) {
-            if (visibleDeptIds.isEmpty()) {
-                wrapper.apply("1 = 0");
-            } else {
-                wrapper.inSql(HrPerformanceObjective::getOwnerEmployeeId,
-                        "SELECT id FROM hr_employee WHERE tenant_id = " + TENANT_ID
-                                + " AND deleted = 0 AND dept_id IN (" + visibleDeptIds.stream()
-                                .map(String::valueOf)
-                                .collect(Collectors.joining(",")) + ")");
-            }
+            List<Long> visibleEmployeeIds = visibleDeptIds.isEmpty()
+                    ? List.of()
+                    : employeeMapper.selectList(new LambdaQueryWrapper<HrEmployee>()
+                            .select(HrEmployee::getId)
+                            .eq(HrEmployee::getTenantId, tenantId())
+                            .eq(HrEmployee::getDeleted, 0)
+                            .in(HrEmployee::getDeptId, visibleDeptIds))
+                    .stream().map(HrEmployee::getId).toList();
+            wrapper.in(HrPerformanceObjective::getOwnerEmployeeId,
+                    visibleEmployeeIds.isEmpty() ? List.of(-1L) : visibleEmployeeIds);
         }
         wrapper.orderByDesc(HrPerformanceObjective::getUpdateTime).orderByDesc(HrPerformanceObjective::getId);
 
@@ -146,7 +148,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         List<HrPerformanceObjective> rows = objectiveMapper.selectList(
                 new LambdaQueryWrapper<HrPerformanceObjective>()
                         .select(HrPerformanceObjective::getStatus)
-                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getTenantId, tenantId())
                         .eq(HrPerformanceObjective::getDeleted, 0));
         int draftCount = 0;
         int planApprovingCount = 0;
@@ -199,7 +201,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         }
 
         HrPerformanceObjective objective = new HrPerformanceObjective();
-        objective.setTenantId(TENANT_ID);
+        objective.setTenantId(tenantId());
         objective.setObjectiveNo(objectiveNo);
         objective.setCycleName(requireText(payloadMap.get("cycleName"), "cycleName"));
         objective.setCycleStartDate(LocalDate.parse(requireText(payloadMap.get("cycleStartDate"), "cycleStartDate")));
@@ -222,7 +224,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
             }
             BigDecimal deptTargetAmount = toDecimal(dept.get("targetAmount"));
             HrPerformanceAssignment deptAssignment = new HrPerformanceAssignment();
-            deptAssignment.setTenantId(TENANT_ID);
+            deptAssignment.setTenantId(tenantId());
             deptAssignment.setObjectiveId(objectiveId);
             deptAssignment.setParentId(null);
             deptAssignment.setAssigneeType("DEPT");
@@ -247,7 +249,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
                 BigDecimal weight = toDecimal(category.get("metricWeight"), BigDecimal.valueOf(100));
                 BigDecimal targetAmount = toDecimal(category.get("targetAmount"));
                 HrPerformanceAssignment catAssignment = new HrPerformanceAssignment();
-                catAssignment.setTenantId(TENANT_ID);
+                catAssignment.setTenantId(tenantId());
                 catAssignment.setObjectiveId(objectiveId);
                 catAssignment.setParentId(deptAssignmentId);
                 catAssignment.setAssigneeType("DEPT");
@@ -304,18 +306,18 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
 
         List<HrPerformanceAssignment> existed = assignmentMapper.selectList(
                 new LambdaQueryWrapper<HrPerformanceAssignment>()
-                        .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceAssignment::getTenantId, tenantId())
                         .eq(HrPerformanceAssignment::getParentId, parentId)
                         .orderByAsc(HrPerformanceAssignment::getId));
         if (!existed.isEmpty()) {
             List<Long> existingIds = existed.stream().map(HrPerformanceAssignment::getId).toList();
             performanceResultMapper.delete(
                     new LambdaQueryWrapper<HrPerformanceResult>()
-                            .eq(HrPerformanceResult::getTenantId, TENANT_ID)
+                            .eq(HrPerformanceResult::getTenantId, tenantId())
                             .in(HrPerformanceResult::getAssignmentId, existingIds));
             assignmentMapper.delete(
                     new LambdaQueryWrapper<HrPerformanceAssignment>()
-                            .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceAssignment::getTenantId, tenantId())
                             .eq(HrPerformanceAssignment::getParentId, parentId));
             existingIds.forEach(id -> assignmentMeta.remove(String.valueOf(id)));
         }
@@ -331,7 +333,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
             BigDecimal weight = toDecimal(firstNonNull(child.get("metricWeight"), child.get("weight")), BigDecimal.valueOf(100));
 
             HrPerformanceAssignment childEntity = new HrPerformanceAssignment();
-            childEntity.setTenantId(TENANT_ID);
+            childEntity.setTenantId(tenantId());
             childEntity.setObjectiveId(objectiveId);
             childEntity.setParentId(parentId);
             childEntity.setAssigneeType(assigneeType);
@@ -378,7 +380,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         Map<String, Object> before = new LinkedHashMap<>(assignment);
         assignmentMapper.update(null,
                 new LambdaUpdateWrapper<HrPerformanceAssignment>()
-                        .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceAssignment::getTenantId, tenantId())
                         .eq(HrPerformanceAssignment::getId, assignmentId)
                         .set(HrPerformanceAssignment::getActualValue, actualAmount)
                         .set(HrPerformanceAssignment::getUpdateTime, LocalDateTime.now()));
@@ -402,7 +404,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         Map<String, Object> before = loadObjective(objectiveId);
         objectiveMapper.update(null,
                 new LambdaUpdateWrapper<HrPerformanceObjective>()
-                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getTenantId, tenantId())
                         .eq(HrPerformanceObjective::getId, objectiveId)
                         .set(HrPerformanceObjective::getStatus, "PLAN_APPROVING")
                         .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
@@ -416,7 +418,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         Map<String, Object> before = loadObjective(objectiveId);
         objectiveMapper.update(null,
                 new LambdaUpdateWrapper<HrPerformanceObjective>()
-                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getTenantId, tenantId())
                         .eq(HrPerformanceObjective::getId, objectiveId)
                         .set(HrPerformanceObjective::getStatus, "RESULT_APPROVING")
                         .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
@@ -437,7 +439,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         LocalDate effectiveDate = LocalDate.parse(defaultText(payload.getEffectiveDate(), LocalDate.now().toString()));
 
         HrCompChange compChange = new HrCompChange();
-        compChange.setTenantId(TENANT_ID);
+        compChange.setTenantId(tenantId());
         compChange.setChangeNo("HRCG" + System.currentTimeMillis());
         compChange.setEmployeeId(employeeId);
         compChange.setChangeType("PERFORMANCE");
@@ -453,7 +455,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         compChangeMapper.insert(compChange);
 
         HrPerformanceSalaryAdjustment adjustment = new HrPerformanceSalaryAdjustment();
-        adjustment.setTenantId(TENANT_ID);
+        adjustment.setTenantId(tenantId());
         adjustment.setObjectiveId(objectiveId);
         adjustment.setEmployeeId(employeeId);
         adjustment.setCompChangeId(compChange.getId());
@@ -481,7 +483,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         Long objectiveId = toLong(result.get("id"));
         List<Map<String, Object>> assignments = assignmentMapper.selectList(
                         new LambdaQueryWrapper<HrPerformanceAssignment>()
-                                .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                            .eq(HrPerformanceAssignment::getTenantId, tenantId())
                                 .eq(HrPerformanceAssignment::getObjectiveId, objectiveId))
                 .stream()
                 .map(this::toMap)
@@ -489,7 +491,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         Map<String, Object> assignmentMeta = parseJsonObject(metricConfig.get("assignmentMeta"));
         List<Map<String, Object>> results = performanceResultMapper.selectList(
                         new LambdaQueryWrapper<HrPerformanceResult>()
-                                .eq(HrPerformanceResult::getTenantId, TENANT_ID)
+                                .eq(HrPerformanceResult::getTenantId, tenantId())
                                 .eq(HrPerformanceResult::getObjectiveId, objectiveId))
                 .stream()
                 .map(this::toMap)
@@ -669,7 +671,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     private Map<String, Object> loadObjective(Long id) {
         HrPerformanceObjective entity = objectiveMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrPerformanceObjective>()
-                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getTenantId, tenantId())
                         .eq(HrPerformanceObjective::getId, id)
                         .eq(HrPerformanceObjective::getDeleted, 0))
                 .getRecords().stream().findFirst().orElse(null);
@@ -678,7 +680,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
 
     private void updateObjectiveMetricConfig(Long objectiveId, Map<String, Object> metricConfig) {
         int updated = objectiveMapper.updateMetricConfig(
-                TENANT_ID,
+                tenantId(),
                 objectiveId,
                 objectMapper.valueToTree(metricConfig),
                 LocalDateTime.now());
@@ -693,7 +695,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         }
         HrPerformanceAssignment entity = assignmentMapper.selectPage(new Page<>(1, 1, false),
                 new LambdaQueryWrapper<HrPerformanceAssignment>()
-                        .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceAssignment::getTenantId, tenantId())
                         .eq(HrPerformanceAssignment::getId, id))
                 .getRecords().stream().findFirst().orElse(null);
         return entity == null ? Map.of() : toMap(entity);
@@ -702,7 +704,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
     private List<Map<String, Object>> loadAssignmentsByParent(Long parentId) {
         return assignmentMapper.selectList(
                         new LambdaQueryWrapper<HrPerformanceAssignment>()
-                                .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                                .eq(HrPerformanceAssignment::getTenantId, tenantId())
                                 .eq(HrPerformanceAssignment::getParentId, parentId)
                                 .orderByAsc(HrPerformanceAssignment::getId))
                 .stream()
@@ -730,7 +732,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
                                Map<String, Object> after) {
         try {
             auditLogMapper.insertLog(
-                    TENANT_ID,
+                    tenantId(),
                     tableName,
                     businessId,
                     operationType,
@@ -757,7 +759,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
                 return List.of();
             }
             return employeeMapper.selectList(new LambdaQueryWrapper<HrEmployee>()
-                            .eq(HrEmployee::getTenantId, TENANT_ID)
+                            .eq(HrEmployee::getTenantId, tenantId())
                             .eq(HrEmployee::getDeleted, 0)
                             .eq(HrEmployee::getUserId, userId))
                     .stream()
@@ -937,6 +939,17 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
         } catch (NumberFormatException ex) {
             return null;
         }
+    }
+
+    private Long tenantId() {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            tenantId = UserContext.getTenantId();
+        }
+        if (tenantId == null) {
+            throw new HrBusinessException("UNAUTHORIZED", "租户上下文缺失");
+        }
+        return tenantId;
     }
 
     private int toInt(Object value, int fallback) {

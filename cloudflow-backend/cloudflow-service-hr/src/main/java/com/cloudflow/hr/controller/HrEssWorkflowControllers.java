@@ -120,7 +120,7 @@ class HrEssContractController {
     private final ObjectMapper objectMapper;
 
     @GetMapping("/mine")
-    @SaCheckPermission("hr:ess:contract:view")
+    @SaCheckPermission("hr:ess:contract:sign")
     public R<List<HrEmployeeContractVO>> mine(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
@@ -130,7 +130,7 @@ class HrEssContractController {
     }
 
     @GetMapping("/signatures")
-    @SaCheckPermission("hr:ess:contract:view")
+    @SaCheckPermission("hr:ess:contract:sign")
     public R<List<HrContractSignatureVO>> signatures(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("signerId", essSupport.currentEmployeeId());

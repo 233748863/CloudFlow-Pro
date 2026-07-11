@@ -46,7 +46,7 @@ const emptyForm: Partial<HrMallItemPayload> = {
 
 export const HrMallItemAdminPage: React.FC = () => {
   const { hasPermission } = useAuth();
-  const canEditItem = hasPermission?.('hr:benefit:mall:item:edit') ?? true;
+  const canEditItem = hasPermission?.('hr:benefit:mall:edit') ?? true;
   const [rows, setRows] = useState<HrMallItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
