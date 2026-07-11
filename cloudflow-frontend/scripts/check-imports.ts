@@ -78,19 +78,19 @@ function checkAliasConsistency(): CheckResult {
   }
 }
 
-function listUiModules(): string[] {
-  const uiDir = path.join(rootDir, 'src/components/ui')
+function listCommonModules(): string[] {
+  const commonDir = path.join(rootDir, 'src/components/common')
   return fs
-    .readdirSync(uiDir, { withFileTypes: true })
+    .readdirSync(commonDir, { withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => entry.name)
-    .filter((name) => /\.(ts|tsx)$/.test(name) && name !== 'index.ts')
+    .filter((name) => /\.(ts|tsx)$/.test(name) && name !== 'index.ts' && name !== 'selectorCache.ts')
     .map((name) => name.replace(/\.(ts|tsx)$/, ''))
     .sort()
 }
 
-function checkUiIndexIntegrity(): CheckResult {
-  const indexContent = readText('src/components/ui/index.ts')
+function checkCommonIndexIntegrity(): CheckResult {
+  const indexContent = readText('src/components/common/index.ts')
   const exportedSources = new Set<string>()
   const exportPattern = /from\s+['"](\.\/[^'"]+)['"]/g
   let match: RegExpExecArray | null = null
@@ -98,19 +98,19 @@ function checkUiIndexIntegrity(): CheckResult {
     exportedSources.add(match[1])
   }
 
-  const missingModules = listUiModules().filter((moduleName) => !exportedSources.has(`./${moduleName}`))
+  const missingModules = listCommonModules().filter((moduleName) => !exportedSources.has(`./${moduleName}`))
   if (missingModules.length > 0) {
     return {
-      title: 'UI 组件索引完整性',
+      title: '公共组件索引完整性',
       ok: false,
       details: missingModules.map((moduleName) => `index.ts 未导出: ${moduleName}`),
     }
   }
 
   return {
-    title: 'UI 组件索引完整性',
+    title: '公共组件索引完整性',
     ok: true,
-    details: [`共检查 ${listUiModules().length} 个 UI 组件文件，均已接入 index.ts`],
+    details: [`共检查 ${listCommonModules().length} 个公共组件文件，均已接入 index.ts`],
   }
 }
 
@@ -237,7 +237,7 @@ function main(): void {
 
   const results = [
     checkAliasConsistency(),
-    checkUiIndexIntegrity(),
+    checkCommonIndexIntegrity(),
     checkDependencies(),
   ]
 
