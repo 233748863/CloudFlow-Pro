@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
-import { ConfirmDialog } from '@/components/common';
+import { ConfirmDialog, Pagination } from '@/components/common';
 import {
   Button,
   Input,
@@ -26,6 +26,8 @@ import {
   SelectValue,
 } from '@/components/common';
 import { addDept, deleteDept, getDeptTree, getUserList, migrateDeptUsers, updateDept, updateUser, deleteUser } from '../services/api/auth';
+import { getConfigIntSync } from '@/hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '@/constants/sysConfig';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface } from '@/components/layout/TablePageLayout';
 
@@ -910,6 +912,8 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
   const [users, setUsers] = useState<UserItem[]>([]);
   const [userLoading, setUserLoading] = useState(false);
   const [userError, setUserError] = useState<string | null>(null);
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(() => getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10));
   const [deptFormOpen, setDeptFormOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<DeptItem | null>(null);
   const [defaultParentId, setDefaultParentId] = useState(0);
@@ -937,6 +941,12 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
       }),
     [userSearch, users],
   );
+
+  const userTotal = filteredUsers.length;
+  const userTotalPages = Math.max(1, Math.ceil(userTotal / userPageSize));
+  const safeUserPage = Math.min(userPage, userTotalPages);
+  const userStartIndex = (safeUserPage - 1) * userPageSize;
+  const pagedUsers = filteredUsers.slice(userStartIndex, userStartIndex + userPageSize);
 
   const totalDepartments = useMemo(() => countDepartments(deptTree), [deptTree]);
   const filteredDepartments = useMemo(() => countDepartments(filteredDeptTree), [filteredDeptTree]);
@@ -998,6 +1008,11 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
       setSelectedDeptId(null);
     }
   }, [deptTree, selectedDeptId]);
+
+  // 切换部门或搜索关键词后，成员分页回到第一页
+  useEffect(() => {
+    setUserPage(1);
+  }, [selectedDeptId, userSearch]);
 
   useEffect(() => {
     onStatsChange?.({
@@ -1130,19 +1145,19 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
       className="flex min-h-0 flex-1 flex-col"
       wrapperClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-    <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-4">
+    <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-4 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-stretch">
       {/* 部门目录 */}
-      <div className="card admin-source-panel no-padding overflow-hidden">
-        <div className="p-4 admin-source-section-head flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800">
+      <div className="card admin-source-panel no-padding overflow-hidden flex min-h-0 flex-col xl:h-full">
+        <div className="p-4 admin-source-section-head flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
           <div className="text-sm font-bold text-slate-900 dark:text-slate-100">部门目录</div>
           <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs font-semibold" onClick={() => openCreateDeptDialog(0)}>
             <Plus size={14} className="mr-1 text-[#0d95b5] dark:text-[#d8f3fa]" />
             新增根部门
           </Button>
         </div>
-        <div className="p-4">
-          <div className="admin-dialog-stack">
-            <div className="relative">
+        <div className="p-4 flex min-h-0 flex-1 flex-col">
+          <div className="admin-dialog-stack !flex min-h-0 flex-1 flex-col">
+            <div className="relative flex-shrink-0">
               <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <Input
                 value={deptSearch}
@@ -1156,7 +1171,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
               type="button"
               onClick={() => setSelectedDeptId(null)}
               className={cn(
-                'flex w-full items-center gap-3 border px-3 py-3 text-left transition-all duration-300',
+                'flex w-full items-center gap-3 border px-3 py-3 text-left transition-all duration-300 flex-shrink-0',
                 selectedDeptId === null
                   ? 'border-[#b8e7f1] bg-[#effbfe] text-[#0b7894] shadow-none dark:border-[#0d95b5]/40 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
                 : 'admin-option-surface border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
@@ -1178,8 +1193,8 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
               </span>
             </button>
 
-            <div className="overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900">
-              <div className="admin-source-section-head flex items-center justify-between border-b border-slate-200 px-3 py-2.5 dark:border-slate-800 bg-[var(--cf-surface-strong)] dark:bg-slate-900">
+            <div className="overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900 flex min-h-0 flex-1 flex-col">
+              <div className="admin-source-section-head flex items-center justify-between border-b border-slate-200 px-3 py-2.5 dark:border-slate-800 bg-[var(--cf-surface-strong)] dark:bg-slate-900 flex-shrink-0">
                 <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
                   {deptSearch ? `搜索到 ${filteredDepartments} 个结果` : `部门层级树`}
                 </div>
@@ -1194,7 +1209,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                 </div>
               </div>
 
-              <div className="max-h-[280px] overflow-y-auto p-2 hide-scrollbar">
+              <div className="flex-1 overflow-y-auto p-2 hide-scrollbar">
                 {deptLoading ? (
                   <InlineState title="正在构筑部门模型..." loading className="py-12 scale-90" />
                 ) : deptError ? (
@@ -1225,8 +1240,8 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
       </div>
 
       {/* 成员表格 */}
-      <div className="card admin-source-panel no-padding overflow-hidden">
-        <div className="p-4 admin-source-section-head flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800">
+      <div className="card admin-source-panel no-padding overflow-hidden flex flex-col">
+        <div className="p-4 admin-source-section-head flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
           <div className="min-w-0">
             {selectedDept ? (
               <div>
@@ -1271,9 +1286,9 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             </div>
           ) : null}
         </div>
-        <div className="p-4">
-          <div className="overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900">
-            <div className="admin-source-section-head flex flex-col gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800 xl:flex-row xl:items-center xl:justify-between bg-[var(--cf-surface-strong)] dark:bg-slate-900">
+        <div className="p-4 flex flex-col">
+          <div className="overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900 flex flex-col">
+            <div className="admin-source-section-head flex flex-col gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800 xl:flex-row xl:items-center xl:justify-between bg-[var(--cf-surface-strong)] dark:bg-slate-900 flex-shrink-0">
               <div className="relative min-w-0 flex-1 max-w-md">
                 <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
@@ -1296,7 +1311,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
               </div>
             </div>
 
-            <div className="admin-horizontal-scroll">
+            <div className="admin-horizontal-scroll flex-shrink-0">
               <table className="unity-data-table admin-source-table min-w-[1100px]">
                 <thead>
                   <tr>
@@ -1315,14 +1330,14 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                     <TableStateRow colSpan={8} title="正在加载成员列表..." loading />
                   ) : userError ? (
                     <TableStateRow colSpan={8} title="成员列表加载失败" description={userError} />
-                  ) : filteredUsers.length === 0 ? (
+                  ) : userTotal === 0 ? (
                     <TableStateRow
                       colSpan={8}
                       title="暂无成员数据"
                       description={userSearch ? '请调整成员搜索条件后重试。' : selectedDept ? '当前部门暂无成员。' : '当前没有可展示的成员数据。'}
                     />
                   ) : (
-                    filteredUsers.map((user) => (
+                    pagedUsers.map((user) => (
                       <tr key={user.userId}>
                         <td>
                           <div className="flex items-center gap-3">
@@ -1391,6 +1406,20 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                 </tbody>
               </table>
             </div>
+            {userTotal > 0 ? (
+              <div className="border-t border-slate-200 p-3 dark:border-slate-800 flex-shrink-0">
+                <Pagination
+                  total={userTotal}
+                  page={safeUserPage}
+                  pageSize={userPageSize}
+                  onPageChange={(next) => setUserPage(next)}
+                  onPageSizeChange={(size) => {
+                    setUserPageSize(size);
+                    setUserPage(1);
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
