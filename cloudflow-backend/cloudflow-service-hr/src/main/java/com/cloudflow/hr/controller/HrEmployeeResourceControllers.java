@@ -20,7 +20,9 @@ import com.cloudflow.hr.domain.vo.employee.HrEmergencyContactVO;
 import com.cloudflow.hr.domain.vo.employee.HrEmployeeContractVO;
 import com.cloudflow.hr.domain.vo.employee.HrEmployeeDocumentVO;
 import com.cloudflow.hr.domain.vo.employee.HrEmployeeVO;
+import com.cloudflow.hr.domain.vo.employee.HrEmployeeOnboardingResultVO;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.service.HrEmployeeOnboardingService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +46,7 @@ import java.util.Map;
 class HrEmployeeController {
 
     private final HrTypedCrudService crudService;
+    private final HrEmployeeOnboardingService onboardingService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/current")
@@ -69,6 +72,15 @@ class HrEmployeeController {
     @SaCheckPermission("hr:employees:add")
     public R<Long> createEmployee(@RequestBody HrEmployeePayload payload) {
         return R.ok(crudService.create(HrEmployee.class, payload));
+    }
+
+    @SysLog("发起HR员工入职审批")
+    @RepeatSubmit
+    @PostMapping("/onboarding-requests")
+    @SaCheckPermission("hr:employees:add")
+    public R<HrEmployeeOnboardingResultVO> createEmployeeOnboardingRequest(
+            @RequestBody HrEmployeePayload payload) {
+        return R.ok(onboardingService.submit(payload));
     }
 
     @GetMapping("/{id}")

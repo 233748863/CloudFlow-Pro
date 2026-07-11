@@ -61,11 +61,19 @@ public class HrLifecycleService {
     }
 
     public Long createApplication(HrLifecycleApplicationPayload payload) {
+        return createApplication(payload, crudService.toMap(payload));
+    }
+
+    Long createApplication(HrLifecycleApplicationPayload payload, Map<String, Object> detailPayload) {
         Map<String, Object> normalized = normalizeLifecyclePayload(crudService.toMap(payload));
         Long id = crudService.create(HrLifecycleApplication.class, normalized);
-        saveLifecycleDetail(id, String.valueOf(normalized.get("type")), crudService.toMap(payload));
+        saveLifecycleDetail(id, String.valueOf(normalized.get("type")), detailPayload);
         createLifecycleTasks(id, String.valueOf(normalized.get("type")), normalized);
         return id;
+    }
+
+    String nextApplicationNo() {
+        return viewSupport.nextNo("HRLC");
     }
 
     public void updateApplication(Long id, HrLifecycleApplicationPayload payload) {

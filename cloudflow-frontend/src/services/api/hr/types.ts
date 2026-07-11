@@ -84,6 +84,14 @@ export interface EmployeeBrief {
   employeeStatus?: string | null;
 }
 
+export type HrEmployeeCreateMode = 'DIRECT' | 'WORKFLOW';
+
+export interface HrEmployeeOnboardingResult {
+  applicationId: number;
+  applicationNo: string;
+  processInstanceId: string;
+}
+
 export interface EmergencyContact extends HrRecord {
   id: number;
   employeeId: number;

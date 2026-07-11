@@ -165,7 +165,7 @@ WHERE tenant_id = 100000
 
 DELETE FROM cloud_flow_db.sys_config
 WHERE config_id BETWEEN 1 AND 92
-   OR config_id IN (157);
+   OR config_id IN (157, 171, 172);
 
 DELETE FROM cloud_flow_db.sys_legal_consent
 WHERE release_code = 'legal-2026-03-31';
@@ -4176,6 +4176,8 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(139, 100000, 'HR-人才盘点
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(140, 100000, 'HR-继任计划流程Key',            'sys.hr.talent.successionProcessKey',         'wf_hr_talent_succession', 'Y', '1', 'admin', NOW(), '', null, '继任计划发布审批流程定义Key');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(141, 100000, 'HR-培训报名流程Key',            'sys.hr.training.enrollmentProcessKey',       'wf_hr_training_enrollment', 'Y', '1', 'admin', NOW(), '', null, '培训报名审批流程定义Key');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(142, 100000, 'HR-工伤认定流程Key',            'sys.hr.injury.determinationProcessKey',      'wf_hr_work_injury', 'Y', '1', 'admin', NOW(), '', null, '工伤认定审批流程定义Key');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(171, 100000, 'HR-新建员工默认方式',            'sys.hr.employee.defaultCreateMode',          'DIRECT', 'Y', '1', 'admin', NOW(), '', null, '新建员工默认方式: DIRECT/WORKFLOW，用户仍可在弹窗切换');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(172, 100000, 'HR-入职审批流程Key',             'sys.hr.onboarding.processKey',                'onboarding_approval', 'Y', '1', 'admin', NOW(), '', null, '员工档案发起入职审批使用的流程定义Key');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(159, 100000, 'HR-业务规则默认降级策略',       'sys.hr.businessRule.fallback.default',       'WARN',      'Y', '0', 'admin', NOW(), '', null, '业务规则服务不可用时的默认处理策略: PASS/WARN/DENY');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(160, 100000, 'HR-请假额度规则降级策略',       'sys.hr.businessRule.fallback.hr.leave.quota.limit', 'PASS', 'Y', '0', 'admin', NOW(), '', null, '请假额度规则服务不可用时的处理策略');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(161, 100000, 'HR-OA报销金额规则降级策略',     'sys.hr.businessRule.fallback.oa.expense.amount.limit', 'WARN', 'Y', '0', 'admin', NOW(), '', null, 'OA报销金额规则服务不可用时的处理策略');

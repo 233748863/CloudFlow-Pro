@@ -256,6 +256,10 @@ export const SYS_OA_AUDIT_EXPORT_LIMIT = 'sys.oa.audit.exportLimit';
 export const SYS_OA_CONTACT_MAX_PAGE_SIZE = 'sys.oa.contact.maxPageSize';
 
 // HR
+/** HR 新建员工默认方式 */
+export const SYS_HR_EMPLOYEE_DEFAULT_CREATE_MODE = 'sys.hr.employee.defaultCreateMode';
+/** HR 入职审批流程Key */
+export const SYS_HR_ONBOARDING_PROCESS_KEY = 'sys.hr.onboarding.processKey';
 /** HR 月度个税起征点 */
 export const SYS_HR_COMPENSATION_MONTHLY_TAX_THRESHOLD = 'sys.hr.compensation.monthlyTaxThreshold';
 /** HR 个人合计社保费率 */
@@ -385,6 +389,8 @@ export const CONFIG_SCOPE_MAP: Record<string, string> = {
 
   // 硬编码收口新增 - 租户级
   [SYS_OA_CONTRACT_HIGH_AMOUNT_THRESHOLD]: CONFIG_SCOPE_TENANT,
+  [SYS_HR_EMPLOYEE_DEFAULT_CREATE_MODE]: CONFIG_SCOPE_TENANT,
+  [SYS_HR_ONBOARDING_PROCESS_KEY]: CONFIG_SCOPE_TENANT,
   [SYS_HR_COMPENSATION_MONTHLY_TAX_THRESHOLD]: CONFIG_SCOPE_TENANT,
   [SYS_HR_COMPENSATION_SOCIAL_PERSONAL_RATE]: CONFIG_SCOPE_TENANT,
   [SYS_HR_WORKPLACE_REMINDER_DAYS]: CONFIG_SCOPE_TENANT,

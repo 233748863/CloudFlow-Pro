@@ -6,6 +6,7 @@ import type {
   EmergencyContactUpdatePayload,
   EmployeeBrief,
   HrEmployee,
+  HrEmployeeOnboardingResult,
   HrEmployeePayload,
   HrPagedResult,
   HrPageQuery,
@@ -66,6 +67,9 @@ export const getEmployeeDetail = (id: number) =>
 
 export const createEmployee = (data: HrEmployeePayload) =>
   request.post<number>('/hr/employees', data);
+
+export const createEmployeeOnboardingRequest = (data: HrEmployeePayload) =>
+  request.post<HrEmployeeOnboardingResult>('/hr/employees/onboarding-requests', data);
 
 export const updateEmployee = (id: number, data: Partial<HrEmployeePayload>) =>
   request.put<void>(`/hr/employees/${id}`, data);

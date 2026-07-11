@@ -47,6 +47,8 @@ public final class SysConfigKeys {
     public static final String WORKFLOW_TIMEOUT_ESCALATION_SCAN_THRESHOLD_MS = "sys.workflow.timeout.escalation.defaultScanThresholdMs";
 
     public static final String HR_CERTIFICATE_COMPANY_NAME = "sys.hr.certificate.companyName";
+    public static final String HR_EMPLOYEE_DEFAULT_CREATE_MODE = "sys.hr.employee.defaultCreateMode";
+    public static final String HR_ONBOARDING_PROCESS_KEY = "sys.hr.onboarding.processKey";
     public static final String HR_CERTIFICATE_PROCESS_KEY = "sys.hr.certificate.processKey";
     public static final String HR_BENEFIT_REQUEST_PROCESS_KEY = "sys.hr.benefit.requestProcessKey";
     public static final String HR_CONTRACT_SIGN_PROCESS_KEY = "sys.hr.contract.signProcessKey";

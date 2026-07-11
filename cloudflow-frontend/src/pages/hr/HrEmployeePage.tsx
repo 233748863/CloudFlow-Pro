@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { getConfigIntSync } from '@/hooks/useSystemConfig';
-import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '@/constants/sysConfig';
+import { getConfigIntSync, useConfigValue } from '@/hooks/useSystemConfig';
+import { SYS_HR_EMPLOYEE_DEFAULT_CREATE_MODE, SYS_PAGE_DEFAULT_PAGE_SIZE } from '@/constants/sysConfig';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import {
   Button,
@@ -34,10 +34,12 @@ import { useDict } from '@/hooks/useDict';
 import { cn } from '@/utils/cn';
 import {
   HrEmployee,
+  HrEmployeeCreateMode,
   HrEmployeePayload,
   PositionOption,
   PostOption,
   createEmployee,
+  createEmployeeOnboardingRequest,
   getDeptTreeOptions,
   getEmployeeDetail,
   getPositionOptions,
@@ -61,6 +63,9 @@ const defaultForm: HrEmployeePayload = {
   employeeStatus: 'PROBATION',
   hireDate: '',
 };
+
+const normalizeCreateMode = (value: string): HrEmployeeCreateMode =>
+  value.trim().toUpperCase() === 'WORKFLOW' ? 'WORKFLOW' : 'DIRECT';
 
 const InlineState = ({
   title,
@@ -127,6 +132,8 @@ export const HrEmployeePage: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<HrEmployeePayload>(defaultForm);
+  const [creationMode, setCreationMode] = useState<HrEmployeeCreateMode>('DIRECT');
+  const [defaultCreationModeValue] = useConfigValue(SYS_HR_EMPLOYEE_DEFAULT_CREATE_MODE, 'DIRECT');
 
   const employeeStatusDict = useDict('employee_status');
 
@@ -215,6 +222,7 @@ export const HrEmployeePage: React.FC = () => {
   const handleCreate = () => {
     setEditingId(null);
     setForm(defaultForm);
+    setCreationMode(normalizeCreateMode(defaultCreationModeValue));
     setDialogOpen(true);
   };
 
@@ -313,10 +321,15 @@ export const HrEmployeePage: React.FC = () => {
         setPageNum(1);
         await loadEmployees(editingId, { pageNum: 1 });
       } else {
-        const createdId = await createEmployee(payload);
-        toast.success('员工档案已创建');
-        setPageNum(1);
-        await loadEmployees(createdId, { pageNum: 1 });
+        if (creationMode === 'WORKFLOW') {
+          const result = await createEmployeeOnboardingRequest(payload);
+          toast.success(`入职审批已提交（${result.applicationNo}）`);
+        } else {
+          const createdId = await createEmployee(payload);
+          toast.success('员工档案已创建');
+          setPageNum(1);
+          await loadEmployees(createdId, { pageNum: 1 });
+        }
       }
       resetForm();
     } catch (error: any) {
@@ -563,12 +576,42 @@ export const HrEmployeePage: React.FC = () => {
               取消
             </Button>
             <Button disabled={submitting} onClick={() => void handleSubmit()}>
-              {submitting ? '保存中...' : editingId ? '保存修改' : '创建员工'}
+              {submitting
+                ? (editingId || creationMode === 'DIRECT' ? '保存中...' : '提交中...')
+                : editingId
+                  ? '保存修改'
+                  : creationMode === 'WORKFLOW'
+                    ? '提交审批'
+                    : '创建员工'}
             </Button>
           </div>
         )}
       >
         <div className="admin-dialog-stack">
+          {!editingId ? (
+            <DialogSection title="创建方式">
+              <div className="admin-dialog-field max-w-md">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工档案生成方式</Label>
+                <Select
+                  value={creationMode}
+                  onValueChange={(value) => setCreationMode(normalizeCreateMode(value))}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DIRECT">直接创建</SelectItem>
+                    <SelectItem value="WORKFLOW">审批通过后创建</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  {creationMode === 'WORKFLOW'
+                    ? '提交后进入入职审批，审批通过前不会生成员工档案。'
+                    : '保存后立即生成员工档案。'}
+                </span>
+              </div>
+            </DialogSection>
+          ) : null}
           <DialogSection title="基础信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="admin-dialog-field">

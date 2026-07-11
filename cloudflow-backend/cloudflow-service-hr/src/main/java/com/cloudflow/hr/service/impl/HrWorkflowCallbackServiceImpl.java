@@ -52,6 +52,7 @@ import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.hr.service.IHrMallOrderService;
 import com.cloudflow.hr.service.IHrTalentPoolService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.hr.service.HrEmployeeOnboardingService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -89,6 +90,7 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
     private static final Set<String> CONTRACT_SIGN_APPROVING_STATUSES = Set.of("PENDING", "SIGNING");
 
     private final HrTypedCrudService crudService;
+    private final HrEmployeeOnboardingService employeeOnboardingService;
     private final AuthServiceClient authServiceClient;
     private final HrOfferMapper hrOfferMapper;
     private final HrCandidateMapper hrCandidateMapper;
@@ -227,6 +229,15 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
     }
 
     private void applySideEffects(ApprovalResultDTO dto, CallbackTarget target, String status) {
+        if (target.entityClass() == HrLifecycleApplication.class && "APPROVED".equals(status)) {
+            Map<String, Object> application = crudService.get(HrLifecycleApplication.class, dto.getBusinessId());
+            if ("ONBOARDING".equalsIgnoreCase(String.valueOf(application.get("type")))
+                    && employeeOnboardingService.isEmployeeCreationRequest(dto.getBusinessId())) {
+                runSideEffectOnce(dto, "ONBOARDING_CREATE_EMPLOYEE", () ->
+                        employeeOnboardingService.createEmployeeFromApprovedApplication(dto.getBusinessId()));
+            }
+            return;
+        }
         if (target.entityClass() == HrTrainingEnrollment.class) {
             if (!"APPROVED".equals(status)) {
                 return;
