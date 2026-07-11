@@ -100,12 +100,30 @@ public class CacheMonitorController {
      * 获取缓存 Key 列表（支持模式匹配）
      *
      * @param pattern 匹配模式，默认 *（全部）
+     * @param pageNum 页码，从 1 开始
+     * @param pageSize 每页数量，范围 1-200
      */
     @GetMapping("/keys")
     @SaCheckPermission("system:cache:list")
-    public R<Set<String>> getKeys(@RequestParam(defaultValue = "*") String pattern) {
+    public R<DynamicMapVO> getKeys(@RequestParam(defaultValue = "*") String pattern,
+                                   @RequestParam(defaultValue = "1") int pageNum,
+                                   @RequestParam(defaultValue = "10") int pageSize) {
         Set<String> keys = redisTemplate.keys(pattern);
-        return R.ok(keys != null ? keys : Collections.emptySet());
+        List<String> sortedKeys = new ArrayList<>(keys != null ? keys : Collections.emptySet());
+        sortedKeys.sort(String::compareTo);
+
+        int safePageNum = Math.max(pageNum, 1);
+        int safePageSize = Math.min(Math.max(pageSize, 1), 200);
+        long requestedOffset = (long) (safePageNum - 1) * safePageSize;
+        int fromIndex = (int) Math.min(requestedOffset, sortedKeys.size());
+        int toIndex = Math.min(fromIndex + safePageSize, sortedKeys.size());
+
+        Map<String, Object> result = new HashMap<>(4);
+        result.put("rows", sortedKeys.subList(fromIndex, toIndex));
+        result.put("total", sortedKeys.size());
+        result.put("pageNum", safePageNum);
+        result.put("pageSize", safePageSize);
+        return R.ok(DynamicMapVO.from(result));
     }
 
     /**

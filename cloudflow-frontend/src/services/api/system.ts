@@ -122,9 +122,19 @@ export const getCacheInfo = () => {
   return request.get<CacheInfo>('/auth/system/cache/info');
 };
 
-/** 获取缓存 Key 列表（支持模式匹配） */
-export const getCacheKeys = (pattern?: string) => {
-  return request.get<string[]>('/auth/system/cache/keys', { params: { pattern: pattern || '*' } });
+/** 缓存 Key 分页结果 */
+export interface CacheKeyPage {
+  rows: string[];
+  total: number;
+  pageNum: number;
+  pageSize: number;
+}
+
+/** 获取缓存 Key 列表（支持模式匹配与分页） */
+export const getCacheKeys = (params: { pattern?: string; pageNum: number; pageSize: number }) => {
+  return request.get<CacheKeyPage>('/auth/system/cache/keys', {
+    params: { ...params, pattern: params.pattern || '*' },
+  });
 };
 
 /** 缓存 Key 详情 */

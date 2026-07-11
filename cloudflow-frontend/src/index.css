@@ -5623,6 +5623,22 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     align-items: stretch;
   }
 
+  .admin-cache-page .admin-source-context-chip {
+    gap: 0.5rem;
+    padding-inline: 0.625rem;
+  }
+
+  .admin-cache-page .admin-source-context-chip em {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .admin-cache-page .admin-source-context-chip small {
+    margin-left: 0.125rem;
+    border-left: 1px solid var(--cf-border);
+    padding-left: 0.625rem;
+    white-space: nowrap;
+  }
+
   .admin-source-tabs {
     display: inline-flex;
     width: fit-content;

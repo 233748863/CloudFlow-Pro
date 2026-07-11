@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Copy,
+  Eye,
   Folder,
   FolderOpen,
   Key,
@@ -20,12 +21,16 @@ import {
   getCacheKeyValue,
 } from '../../services/api/system';
 import {
+  BaseDialog,
   Button,
+  ConfirmDialog,
   Input,
+  Pagination,
 } from '@/components/common';
-import { ConfirmDialog } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 
 type DeleteTarget =
   | { type: 'key'; value: string }
@@ -123,6 +128,11 @@ export const CacheMonitor = () => {
   const [keyGroups, setKeyGroups] = useState<{ prefix: string; count: number }[]>([]);
   const [activeTab, setActiveTab] = useState<CacheTab>('overview');
   const [cacheKeys, setCacheKeys] = useState<string[]>([]);
+  const [keyTotal, setKeyTotal] = useState(0);
+  const [keyQuery, setKeyQuery] = useState({
+    pageNum: 1,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
+  });
   const [keySearchInput, setKeySearchInput] = useState('');
   const [keySearch, setKeySearch] = useState('');
   const [keysLoading, setKeysLoading] = useState(false);
@@ -149,12 +159,13 @@ export const CacheMonitor = () => {
     }
   };
 
-  const fetchKeys = useCallback(async (pattern?: string) => {
+  const fetchKeys = useCallback(async (pattern: string, pageNum: number, pageSize: number) => {
     setKeysLoading(true);
     try {
-      const keys: any = await getCacheKeys(pattern || '*');
-      const keyList = Array.isArray(keys) ? keys : [];
-      setCacheKeys(keyList.map((item) => String(item)).sort((left, right) => left.localeCompare(right)));
+      const response = await getCacheKeys({ pattern, pageNum, pageSize });
+      const keyList = Array.isArray(response?.rows) ? response.rows : [];
+      setCacheKeys(keyList.map((item) => String(item)));
+      setKeyTotal(Number(response?.total) || 0);
     } catch (error) {
       console.error(error);
       toast.error(getErrorMessage(error, '获取 Key 列表失败'));
@@ -168,30 +179,35 @@ export const CacheMonitor = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'browser' && cacheKeys.length === 0) {
-      void fetchKeys();
+    if (activeTab === 'browser') {
+      const pattern = keySearch.trim() ? `*${keySearch.trim()}*` : '*';
+      void fetchKeys(pattern, keyQuery.pageNum, keyQuery.pageSize);
     }
-  }, [activeTab, cacheKeys.length, fetchKeys]);
+  }, [activeTab, fetchKeys, keyQuery.pageNum, keyQuery.pageSize, keySearch]);
 
   const handleSearch = () => {
     const keyword = keySearchInput.trim();
-    const pattern = keyword ? `*${keyword}*` : '*';
     setKeySearch(keyword);
-    void fetchKeys(pattern);
+    setKeyQuery((current) => ({ ...current, pageNum: 1 }));
+    if (keyword === keySearch && keyQuery.pageNum === 1) {
+      void fetchKeys(keyword ? `*${keyword}*` : '*', 1, keyQuery.pageSize);
+    }
   };
 
   const handleReset = () => {
     setKeySearchInput('');
     setKeySearch('');
+    setKeyQuery((current) => ({ ...current, pageNum: 1 }));
     setSelectedKey(null);
     setKeyDetail(null);
-    if (activeTab === 'browser') {
-      void fetchKeys('*');
+    if (activeTab === 'browser' && keySearch === '' && keyQuery.pageNum === 1) {
+      void fetchKeys('*', 1, keyQuery.pageSize);
     }
   };
 
   const handleSelectKey = async (key: string) => {
     setSelectedKey(key);
+    setKeyDetail(null);
     setDetailLoading(true);
     try {
       const detail: any = await getCacheKeyValue(key);
@@ -209,8 +225,10 @@ export const CacheMonitor = () => {
     if (!deleteTarget) return;
 
     try {
+      let removedCount = 0;
       if (deleteTarget.type === 'key') {
-        await deleteCacheKey(deleteTarget.value);
+        const deleted = await deleteCacheKey(deleteTarget.value);
+        removedCount = deleted ? 1 : 0;
         toast.success('删除成功');
         if (selectedKey === deleteTarget.value) {
           setSelectedKey(null);
@@ -218,14 +236,21 @@ export const CacheMonitor = () => {
         }
       } else {
         const count: any = await deleteCacheByPrefix(`${deleteTarget.value}:`);
-        toast.success(`已删除 ${count || 0} 个 Key`);
+        removedCount = Number(count) || 0;
+        toast.success(`已删除 ${removedCount} 个 Key`);
         setSelectedKey(null);
         setKeyDetail(null);
       }
 
       setDeleteTarget(null);
       const pattern = keySearch.trim() ? `*${keySearch.trim()}*` : '*';
-      void fetchKeys(pattern);
+      const remainingTotal = Math.max(0, keyTotal - removedCount);
+      const lastPage = Math.max(1, Math.ceil(remainingTotal / keyQuery.pageSize));
+      const nextPage = Math.min(keyQuery.pageNum, lastPage);
+      setKeyQuery((current) => ({ ...current, pageNum: nextPage }));
+      if (nextPage === keyQuery.pageNum) {
+        void fetchKeys(pattern, nextPage, keyQuery.pageSize);
+      }
       void fetchCacheInfo();
     } catch (error) {
       console.error(error);
@@ -308,7 +333,7 @@ export const CacheMonitor = () => {
               void fetchCacheInfo();
               if (activeTab === 'browser') {
                 const pattern = keySearch.trim() ? `*${keySearch.trim()}*` : '*';
-                void fetchKeys(pattern);
+                void fetchKeys(pattern, keyQuery.pageNum, keyQuery.pageSize);
               }
             }}
             disabled={loading || keysLoading}
@@ -350,11 +375,11 @@ export const CacheMonitor = () => {
             }}
           >
             <label className="admin-source-search">
-              <span className="input-label">Key 搜索</span>
               <div className="admin-source-search-field">
                 <Search size={16} />
                 <Input
                   type="search"
+                  aria-label="Key 搜索"
                   placeholder="输入 Key 关键字"
                   value={keySearchInput}
                   onChange={(event) => setKeySearchInput(event.target.value)}
@@ -362,7 +387,7 @@ export const CacheMonitor = () => {
               </div>
             </label>
             <div className="admin-users-toolbar-actions">
-              <span className="admin-users-filter-count">当前 {keyRows.length} 个 Key</span>
+              <span className="admin-users-filter-count">共 {keyTotal} 个 Key</span>
               <Button type="submit" size="sm">
                 搜索
               </Button>
@@ -538,146 +563,56 @@ export const CacheMonitor = () => {
                   </td>
                 </tr>
               ) : (
-                keyRows.map((row) => {
-                  const selected = row.key === selectedKey;
-                  return (
-                    <tr
-                      key={row.key}
-                      className={selected ? 'bg-[#effbfe] dark:bg-[#0d95b5]/15' : undefined}
-                    >
-                      <td>
+                keyRows.map((row) => (
+                  <tr key={row.key}>
+                    <td>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Key size={15} className="shrink-0 text-[#0d95b5] dark:text-[#d8f3fa]" />
+                        <span className="truncate font-mono text-xs text-slate-800 dark:text-slate-100">
+                          {row.key}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.prefix}</td>
+                    <td className="font-mono text-xs text-slate-700 dark:text-slate-200">{row.name}</td>
+                    <td>
+                      <div className="admin-users-row-actions">
                         <button
                           type="button"
-                          className="flex min-w-0 items-center gap-2 text-left"
                           onClick={() => void handleSelectKey(row.key)}
+                          title="查看详情"
+                          aria-label={`查看 Key ${row.key} 的详情`}
                         >
-                          <Key size={15} className="shrink-0 text-[#0d95b5] dark:text-[#d8f3fa]" />
-                          <span className="truncate font-mono text-xs text-slate-800 dark:text-slate-100">
-                            {row.key}
-                          </span>
+                          <Eye size={14} />
                         </button>
-                      </td>
-                      <td className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.prefix}</td>
-                      <td className="font-mono text-xs text-slate-700 dark:text-slate-200">{row.name}</td>
-                      <td>
-                        <div className="admin-users-row-actions">
-                          <button type="button" onClick={() => copyToClipboard(row.key)} title="复制 Key">
-                            <Copy size={14} />
-                          </button>
-                          {row.prefix !== '-' ? (
-                            <button
-                              type="button"
-                              onClick={() => setDeleteTarget({ type: 'prefix', value: row.prefix })}
-                              title={`删除 ${row.prefix}:*`}
-                            >
-                              <FolderOpen size={14} />
-                            </button>
-                          ) : null}
+                        <button type="button" onClick={() => copyToClipboard(row.key)} title="复制 Key">
+                          <Copy size={14} />
+                        </button>
+                        {row.prefix !== '-' ? (
                           <button
                             type="button"
-                            className="danger"
-                            onClick={() => setDeleteTarget({ type: 'key', value: row.key })}
-                            title="删除 Key"
+                            onClick={() => setDeleteTarget({ type: 'prefix', value: row.prefix })}
+                            title={`删除 ${row.prefix}:*`}
                           >
-                            <Trash2 size={14} />
+                            <FolderOpen size={14} />
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        ) : null}
+                        <button
+                          type="button"
+                          className="danger"
+                          onClick={() => setDeleteTarget({ type: 'key', value: row.key })}
+                          title="删除 Key"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
-      </CachePanel>
-
-      <CachePanel
-        title={selectedKey ? 'Key 详情' : '详情预览'}
-        description={selectedKey || '选择上方 Key 查看缓存值'}
-        action={selectedKey && keyDetail ? (
-          <div className="admin-users-row-actions">
-            <button type="button" onClick={() => copyToClipboard(keyDetail.key)} title="复制 Key">
-              <Copy size={14} />
-            </button>
-            <button
-              type="button"
-              className="danger"
-              onClick={() => setDeleteTarget({ type: 'key', value: keyDetail.key })}
-              title="删除 Key"
-            >
-              <Trash2 size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedKey(null);
-                setKeyDetail(null);
-              }}
-              title="关闭"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ) : null}
-      >
-        {selectedKey && keyDetail ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-3 text-xs dark:border-slate-800">
-            <span
-              className={cn(
-                'rounded-md px-2.5 py-1 font-medium',
-                typeColor[keyDetail.type] ||
-                  'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-              )}
-            >
-              {keyDetail.type.toUpperCase()}
-            </span>
-            <span className={surfaceChipClassName}>TTL：{formatTTL(keyDetail.ttl)}</span>
-            {keyDetail.size !== undefined ? (
-              <span className={surfaceChipClassName}>元素数：{keyDetail.size}</span>
-            ) : null}
-          </div>
-        ) : null}
-
-        {!selectedKey ? (
-          <InlineState title="选择上方的 Key 查看详情" className="min-h-[18rem]" />
-        ) : detailLoading ? (
-          <InlineState title="正在加载 Key 详情..." loading className="min-h-[18rem]" />
-        ) : keyDetail ? (
-          <div className="admin-source-content-grid p-4">
-            <div className="admin-cache-detail-key">
-              <div className="flex items-center gap-2">
-                <Key size={16} className="shrink-0 text-[#0d95b5] dark:text-[#d8f3fa]" />
-                <span
-                  className="truncate font-mono text-sm text-slate-800 dark:text-slate-100"
-                  title={keyDetail.key}
-                >
-                  {keyDetail.key}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                值
-              </span>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(formatValue(keyDetail.value))}
-                className="inline-flex items-center gap-1 text-xs text-[#0d95b5] transition hover:text-[#0b7894] dark:text-[#d8f3fa] dark:hover:text-white"
-              >
-                <Copy size={12} />
-                复制值
-              </button>
-            </div>
-
-            <pre className="admin-cache-value-block">
-              {formatValue(keyDetail.value)}
-            </pre>
-          </div>
-        ) : (
-          <InlineState title="加载失败，请重试" className="min-h-[18rem]" />
-        )}
       </CachePanel>
     </div>
   );
@@ -693,6 +628,18 @@ export const CacheMonitor = () => {
     </InnerTableSurface>
   );
 
+  const pagePagination = activeTab === 'browser' && keyTotal > 0 ? (
+    <Pagination
+      total={keyTotal}
+      page={keyQuery.pageNum}
+      pageSize={keyQuery.pageSize}
+      onPageChange={(pageNum) => setKeyQuery((current) => ({ ...current, pageNum }))}
+      onPageSizeChange={(pageSize) =>
+        setKeyQuery((current) => ({ ...current, pageNum: 1, pageSize }))
+      }
+    />
+  ) : null;
+
   return (
     <>
       <section className="admin-source-page admin-cache-page">
@@ -700,8 +647,90 @@ export const CacheMonitor = () => {
           actions={pageActions}
           filters={pageFilters}
           table={pageContent}
+          pagination={pagePagination}
         />
       </section>
+      <BaseDialog
+        open={Boolean(selectedKey)}
+        title="Key 详情"
+        description={selectedKey}
+        width="wide"
+        onClose={() => {
+          setSelectedKey(null);
+          setKeyDetail(null);
+        }}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => keyDetail && copyToClipboard(keyDetail.key)}
+              disabled={!keyDetail}
+            >
+              <Copy size={14} />
+              复制 Key
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => keyDetail && copyToClipboard(formatValue(keyDetail.value))}
+              disabled={!keyDetail}
+            >
+              <Copy size={14} />
+              复制值
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setSelectedKey(null);
+                setKeyDetail(null);
+              }}
+            >
+              关闭
+            </Button>
+          </>
+        }
+      >
+        {detailLoading ? (
+          <InlineState title="正在加载 Key 详情..." loading className="min-h-[18rem]" />
+        ) : keyDetail ? (
+          <div className="admin-source-content-grid">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span
+                className={cn(
+                  'rounded-md px-2.5 py-1 font-medium',
+                  typeColor[keyDetail.type] ||
+                    'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+                )}
+              >
+                {keyDetail.type.toUpperCase()}
+              </span>
+              <span className={surfaceChipClassName}>TTL：{formatTTL(keyDetail.ttl)}</span>
+              {keyDetail.size !== undefined ? (
+                <span className={surfaceChipClassName}>元素数：{keyDetail.size}</span>
+              ) : null}
+            </div>
+
+            <div className="admin-cache-detail-key">
+              <div className="flex items-center gap-2">
+                <Key size={16} className="shrink-0 text-[#0d95b5] dark:text-[#d8f3fa]" />
+                <span className="break-all font-mono text-sm text-slate-800 dark:text-slate-100">
+                  {keyDetail.key}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">值</div>
+              <pre className="admin-cache-value-block max-h-[50vh] overflow-auto">
+                {formatValue(keyDetail.value)}
+              </pre>
+            </div>
+          </div>
+        ) : (
+          <InlineState title="加载失败，请重试" className="min-h-[18rem]" />
+        )}
+      </BaseDialog>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget?.type === 'prefix' ? '确认批量删除前缀' : '确认删除缓存 Key'}
