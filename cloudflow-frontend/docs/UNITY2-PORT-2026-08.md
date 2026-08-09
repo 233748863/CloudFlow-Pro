@@ -1,6 +1,8 @@
 # CloudFlow Pro 移植 unity2 原型增量（批次 21）
 
 > 创建于 2026-08-06 ｜ 分支 `dev` ｜ 起点 commit `aa45b47e`
+> **批次 21 已于 2026-08-09 全部完成并提交**，落在三个 commit：
+> `370cb457`（前端六项重构 + unity2 移植）、`d1003c7c`（TOTP 全栈）、`4465ebd8`（AI 后端代理）。
 > 来源：`D:\unity2-dashboard-prototype` 的上游复刻（批次 0-20 已全部完成）与 CloudFlow Pro 前端/后端审计的差距比对。
 > 上游复刻侧的权威记录在 `D:\unity2-dashboard-prototype\docs\UPSTREAM-SYNC-2026-08.md`，本文件只管「移植进 CloudFlow Pro」这一段。
 > **本文档是断点恢复的唯一依据。每完成一个步骤，必须先回写本文档的「进度总览」和步骤内的「状态/落地记录」，再继续下一步。**
@@ -14,6 +16,7 @@
 | P1 | 补 5 个缺失原语（React 重写） | P1 能力 | ✅ 已完成 | 2026-08-07 |
 | P2 | 表格吸顶收尾（接 3-5 张最长的表） | P2 体验 | ✅ 已完成 | 2026-08-07 |
 | P3 | TOTP 两步验证（全栈） | P0 安全 | ✅ 已完成 | 2026-08-08 |
+| 审计 | 全批次交叉审计 + 缺陷修复 | P0 安全 | ✅ 已完成 | 2026-08-09 |
 
 状态图例：⬜ 未开始 / 🟡 进行中 / ✅ 已完成 / ⛔ 阻塞（需说明原因）
 
@@ -315,6 +318,64 @@ Redis 中有效期 300 秒、验证成功即删除的临时凭证，动态码验
   `npm run build` 成功
 - Playwright 在 Chromium `139.0.7258.5` 下完成桌面 `1440×1000` 与手机 `390×844` 检查，
   两个视口横向溢出均为 **0**，二维码、卡片与移动弹窗显示正常；用户目视确认符合审美
+
+### 全批次交叉审计与缺陷修复（2026-08-09）
+
+**状态：✅ 已完成**
+
+五项全部落地后做了一轮独立审计（后端 TOTP 安全 / 后端网关配置 / 前端六项重构 / unity2 四项），
+再逐条复核审计结论。**审计报的问题里有 6 条经复核不成立**，教训见下方「审计本身的教训」。
+
+#### 确认并已修复的 6 项
+
+| # | 问题 | 位置 | 修法 |
+|---|---|---|---|
+| 1 | 验证码可重放：`verifyCode` 只算不记，被消费的是 tempToken 不是码，同一码在 ±1 步窗口（最长 90 秒）内可反复用 | `TotpService.java` | 加 `last_used_step` 列，`matchStep` 返回步长 + `consumeStep` 条件更新原子消费 |
+| 2 | 验证码错误不消费凭证 + 无账号锁定，单凭证可在 300 秒 TTL 内枚举；IP 限流换 IP 即失效 | `AuthController.java` | 失败即 `discardLoginChallenge` + `loginLockService.recordFailure` |
+| 3 | `beginSetup` 静默覆盖未启用 secret，多端并发设置时先扫的设备拿失效密钥反复报错 | `TotpService.java` | 覆盖时清 `enabledAt`/`lastUsedStep`，`TotpSetupVO` 返 `regenerated` 让前端提示 |
+| 4 | 关闭 2FA 无任何通知（异地登录反而有），攻击者可静默削弱账号防护 | 新增 `SecurityChangeNoticeService` | 启用/禁用都发站内提醒，沿用 outbox 事件模式 |
+| 5 | 密钥无法灰度轮换，`v1:` 只标密文格式不标密钥版本，轮换将致全部 2FA 用户 500 | `TotpSecretCipher.java` | 加 `previous-encryption-keys`，解密依次试当前与历史密钥（GCM tag 保证不会解出错误明文） |
+| 6 | `index.html` importmap 残留 `@google/genai` CDN 映射，与 CSP 收紧冲突 | `index.html` | 删掉整块 importmap（Vite 已打包，属死配置） |
+
+顺带修：`TotpSetupModal` 的 `copySecret` 缺异常处理（非 HTTPS 时按钮「点了没反应」）；
+`AuthPage` 的 `setTotpChallenge(null)` 从 `await login()` 之前移到之后（原来网络抖动会让弹窗关闭且错误无处显示）。
+
+#### 复核后推翻的 6 条误报（**别再重复调查**）
+
+| 误报 | 为何不成立 |
+|---|---|
+| Tooltip 悬停内部 svg 导致「永不消失」 | `Tooltip.tsx:402` 用的是 `target.closest('[data-tooltip]')` 而非裸 `event.target`，`closest()` 正常上溯到 anchor |
+| `table.tsx` 包裹层无高度约束致吸顶失效 | 四个 `stickyHeader` 调用方**全传了 `disableScrollWrapper`**，该 div 根本不渲染 |
+| `cf-table-sticky` 被 hook 摘掉致 `border-collapse` 丢失 | 四个调用方**全传了 `pinnedColumns={{left:1,right:1}}`**，`left===0&&right===0` 条件不成立 |
+| `useFrozenColumns` ResizeObserver 无限回调 | 类名根本不会变，这条链的起点不存在（原报告自己也写了「侥幸不成立」） |
+| 依赖数组缺 columns 致列数变化不重算 | MutationObserver 的 `childList` 已兜底（原报告自己也承认「实际被覆盖了」） |
+| `safe-area-bottom` 拆分丢失 | 旧 `index.css:182` 那段是 `.pb-safe`（一路健在）；`.safe-area-bottom` 只在 `styles/responsive.css`，而该文件**在本批改动之前就没被 import**，是历史遗留 |
+
+另有一条**下调定性**：`@Audit` 静默丢弃审计日志（无 `spel` → `oldVal=null` → `changes.isEmpty()` 短路）。
+链路属实，但 `SysConfigServiceImpl:155`、`SysFileServiceImpl:199` 等既有删除操作全是同一写法，
+属既有审计基盘的固有行为，**不是这批引入的**，要修是独立立项。
+
+#### 审计本身的教训
+
+三个审计 agent 报的问题里 6 条经复核不成立，比例过半。两类典型：
+1. **读了一半就下结论** —— Tooltip 那条看了 `el === anchor` 就报，没往上看 `resolve()` 用的是 `closest()`。
+2. **不看实际调用方** —— sticky 的两条都是「组件默认行为有问题」，但四个调用方全都传了规避该默认值的 props。
+
+**结论：审计报告必须逐条复核到实际代码与实际调用点，不能直接采信。**
+
+#### 量化核实（文档声明 vs 实测，全部属实）
+
+| 声明 | 实测 |
+|---|---|
+| 原生 `title` 453 → 0 | **0**（454 处 `data-tooltip`；另有 731 处 `title=` 全是 React 组件 props，codemod 未误伤） |
+| `dark:text-<中性>` 1940 → 28 | **28** |
+| 中性色原子类 → 2076 | **2080** |
+| `index.css` → 13602 行 | 13697 |
+| CSS 2 → 34 个 | 产物 **34** |
+| 产物 API key → 0 | **0** |
+| 暗色槽 1 ≠ `#38b8d4` | `#22a2bf`；`38b8d4` 仅存于注释警示 |
+
+`src/` 下有 47 个 CSS 文件而非 34 —— 差额是 `styles/features/` 等非路由级文件，产物侧确为 34，不矛盾。
 
 ## 明确不移植（及理由）
 

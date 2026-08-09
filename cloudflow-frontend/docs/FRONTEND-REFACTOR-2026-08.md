@@ -1,6 +1,8 @@
 # CloudFlow Pro 前端重构规划（对标 unity2.ai）
 
 > 创建于 2026-08-06 ｜ 分支 `dev` ｜ 起点 commit `aa45b47e`
+> **六项已于 2026-08-09 全部完成并提交**，落在 commit `370cb457`；
+> 配套的 AI 后端代理在 `4465ebd8`。审计与缺陷修复记录见 `UNITY2-PORT-2026-08.md`。
 > 来源：对 https://unity2.ai/dashboard（内部名 Sub2API）线上产物与本地复刻快照 `D:\unity2-dashboard-prototype` 的三方 diff + CloudFlow Pro 前端审计。
 > **本文档是断点恢复的唯一依据。每完成一个步骤，必须先回写本文档的「进度总览」和步骤内的「状态/落地记录」，再继续下一步。**
 
@@ -38,9 +40,14 @@
 | `mvn -pl cloudflow-service-workflow -am compile` | — | **退出码 0** |
 
 **尚需用户手动处理**
-1. ⚠️ 到 Google Cloud Console **吊销旧 Gemini key 并重新签发**，新 key 只填后端 `.env` 的 `GEMINI_API_KEY`（旧 key 已出现在此前的本机构建产物中）。
+1. ⚠️ 到 Google Cloud Console **吊销旧 Gemini key 并重新签发**，新 key 只填后端 `.env` 的 `GEMINI_API_KEY`（旧 key 已出现在此前的本机构建产物中）。**这条至今未做，泄露事实不可撤销。**
 2. 生产 CSP 在网关 / Nginx 侧下发并去掉 `unsafe-eval`。
-3. 人工目视回归：亮/暗切换、表格横向滚动的冻结效果、Tooltip 的键盘与触屏行为。
+3. ~~人工目视回归~~ —— 已由 Playwright 在 Chromium `139.0.7258.5` 下完成桌面 `1440×1000`
+   与手机 `390×844` 检查（横向溢出均为 0），用户已目视确认。
+
+**2026-08-09 补充：六项声明已全部量化复核属实**，实测数字见 `UNITY2-PORT-2026-08.md`
+的「量化核实」表。同轮审计在 Tooltip 与表格 sticky 上报的 5 条缺陷经复核**全部不成立**，
+原因与复核依据一并记在那份文档，别再重复调查。
 
 **建议后续单独立项**
 - 表头吸顶：需要先给 189 张表的容器加高度约束（当前纵向滚动在页面级）。
