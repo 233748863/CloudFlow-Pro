@@ -38,6 +38,7 @@ public class CookieCsrfFilter implements GlobalFilter, Ordered {
 
     private static final List<String> EXCLUDE_PATHS = List.of(
             "/auth/login",
+            "/auth/login/totp",
             "/auth/register",
             "/auth/captcha/**",
             "/auth/tenant/options",

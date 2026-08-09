@@ -31,7 +31,9 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
 
     private static final String[] EXCLUDE_PATHS = {
             "/login",
+            "/login/totp",
             "/auth/login",
+            "/auth/login/totp",
             "/register",
             "/auth/register",
             "/tenant/options",

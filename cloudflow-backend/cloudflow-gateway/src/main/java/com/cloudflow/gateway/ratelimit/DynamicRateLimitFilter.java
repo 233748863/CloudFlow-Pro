@@ -135,9 +135,13 @@ public class DynamicRateLimitFilter implements GlobalFilter, Ordered {
 
         return reactiveStringRedisTemplate.opsForValue().increment(counterKey)
                 .flatMap(count -> {
-                    Mono<Boolean> ensureTtl = (count != null && count == 1L)
-                            ? reactiveStringRedisTemplate.expire(counterKey, Duration.ofSeconds(windowSeconds)).onErrorReturn(true)
-                            : Mono.just(true);
+                    Mono<Boolean> ensureTtl = reactiveStringRedisTemplate.getExpire(counterKey)
+                            .flatMap(ttl -> ttl.isNegative() || ttl.isZero()
+                                    ? reactiveStringRedisTemplate.expire(counterKey, Duration.ofSeconds(windowSeconds))
+                                    : Mono.just(true))
+                            .switchIfEmpty(reactiveStringRedisTemplate.expire(
+                                    counterKey, Duration.ofSeconds(windowSeconds)))
+                            .onErrorReturn(true);
                     return ensureTtl.then(Mono.just(count == null ? 0L : count));
                 })
                 .flatMap(count -> {

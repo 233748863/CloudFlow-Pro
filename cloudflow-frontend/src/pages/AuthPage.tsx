@@ -21,6 +21,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AuthCaptchaDialog } from '@/components/auth/AuthExperienceShell';
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common';
+import { TotpLoginModal } from '@/components/profile/TotpLoginModal';
 import { useAuth } from '@/context/AuthContext';
 import {
   getActiveLegalRelease,
@@ -28,6 +29,7 @@ import {
   getTenantOptions,
   login as apiLogin,
   register as apiRegister,
+  verifyTotpLogin,
   type LegalDocumentDetail,
   type LegalDocumentSummary,
   type LegalRelease,
@@ -193,6 +195,8 @@ export const AuthPage: React.FC = () => {
   const [captchaIntent, setCaptchaIntent] = useState<AuthMode | null>(null);
   const [pendingAction, setPendingAction] = useState<AuthMode | null>(null);
   const [loginError, setLoginError] = useState('');
+  const [totpChallenge, setTotpChallenge] = useState<{ tempToken: string; userEmailMasked?: string } | null>(null);
+  const [totpSubmitting, setTotpSubmitting] = useState(false);
   const [registerError, setRegisterError] = useState('');
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
   const [tenantLoading, setTenantLoading] = useState(true);
@@ -653,6 +657,13 @@ export const AuthPage: React.FC = () => {
           token,
           legalRelease?.releaseCode,
         );
+        if (response?.requiresTotp && response.tempToken) {
+          setTotpChallenge({
+            tempToken: response.tempToken,
+            userEmailMasked: response.userEmailMasked,
+          });
+          return;
+        }
         if (response?.token) {
           if (rememberMe) {
             saveAccountHistory(loginForm.tenantCode, loginForm.username.trim());
@@ -713,6 +724,45 @@ export const AuthPage: React.FC = () => {
     } finally {
       setPendingAction(null);
     }
+  };
+
+  const handleTotpVerify = async (code: string) => {
+    if (!totpChallenge) return;
+
+    setTotpSubmitting(true);
+    try {
+      const response = await verifyTotpLogin(totpChallenge.tempToken, code);
+      if (!response?.token) {
+        throw new Error('登录失败，未获取到有效凭证');
+      }
+      if (rememberMe) {
+        saveAccountHistory(loginForm.tenantCode, loginForm.username.trim());
+      }
+      await login(response.token);
+      setTotpChallenge(null);
+      toast.success('登录成功');
+      if (response.forcePasswordChange) {
+        navigate('/login', { replace: true });
+        return;
+      }
+      navigate(resolveRedirectTarget(), { replace: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '验证码错误，请重新登录后重试';
+      // 验证码错误时后端已作废临时凭证，必须退回登录页重新走密码校验
+      setTotpChallenge(null);
+      setLoginForm((current) => ({ ...current, password: '' }));
+      toast.error(message);
+      setTimeout(() => loginPasswordRef.current?.focus(), 100);
+    } finally {
+      setTotpSubmitting(false);
+    }
+  };
+
+  const closeTotpLogin = () => {
+    if (totpSubmitting) return;
+    setTotpChallenge(null);
+    setLoginForm((current) => ({ ...current, password: '' }));
+    setTimeout(() => loginPasswordRef.current?.focus(), 100);
   };
 
   const acceptAgreement = () => {
@@ -836,7 +886,7 @@ export const AuthPage: React.FC = () => {
                   <button
                     type="button"
                     className="cf-auth-settings-btn"
-                    title="服务器连接设置"
+                    data-tooltip="服务器连接设置"
                     aria-label="服务器连接设置"
                     aria-expanded={showSettings}
                     onClick={() => setShowSettings((prev) => !prev)}
@@ -969,7 +1019,7 @@ export const AuthPage: React.FC = () => {
                             type="button"
                             className="cf-auth-input-clear has-value"
                             onClick={() => handleClearField('login-username')}
-                            title="清空账号"
+                            data-tooltip="清空账号" aria-label="清空账号"
                             disabled={formsDisabled}
                           >
                             x
@@ -1002,7 +1052,7 @@ export const AuthPage: React.FC = () => {
                           className="cf-auth-input cf-auth-input--password"
                         />
                         {capsLockActive ? (
-                          <span className="cf-auth-capslock-badge" title="大写锁定已开启">
+                          <span className="cf-auth-capslock-badge" data-tooltip="大写锁定已开启">
                             A
                           </span>
                         ) : null}
@@ -1123,7 +1173,7 @@ export const AuthPage: React.FC = () => {
                             type="button"
                             className="cf-auth-input-clear has-value"
                             onClick={() => handleClearField('register-username')}
-                            title="清空用户名"
+                            data-tooltip="清空用户名" aria-label="清空用户名"
                             disabled={formsDisabled}
                           >
                             x
@@ -1155,7 +1205,7 @@ export const AuthPage: React.FC = () => {
                           className="cf-auth-input cf-auth-input--password"
                         />
                         {capsLockActive ? (
-                          <span className="cf-auth-capslock-badge" title="大写锁定已开启">
+                          <span className="cf-auth-capslock-badge" data-tooltip="大写锁定已开启">
                             A
                           </span>
                         ) : null}
@@ -1198,7 +1248,7 @@ export const AuthPage: React.FC = () => {
                           className="cf-auth-input cf-auth-input--password"
                         />
                         {capsLockActive ? (
-                          <span className="cf-auth-capslock-badge" title="大写锁定已开启">
+                          <span className="cf-auth-capslock-badge" data-tooltip="大写锁定已开启">
                             A
                           </span>
                         ) : null}
@@ -1239,7 +1289,7 @@ export const AuthPage: React.FC = () => {
                             type="button"
                             className="cf-auth-input-clear has-value"
                             onClick={() => handleClearField('register-email')}
-                            title="清空邮箱"
+                            data-tooltip="清空邮箱" aria-label="清空邮箱"
                             disabled={formsDisabled}
                           >
                             x
@@ -1440,6 +1490,14 @@ export const AuthPage: React.FC = () => {
           </div>
         </div>
       ) : null}
+
+      <TotpLoginModal
+        open={Boolean(totpChallenge)}
+        userEmailMasked={totpChallenge?.userEmailMasked}
+        submitting={totpSubmitting}
+        onClose={closeTotpLogin}
+        onVerify={handleTotpVerify}
+      />
 
       <AuthCaptchaDialog
         open={captchaIntent !== null}

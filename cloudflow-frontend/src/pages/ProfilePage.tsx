@@ -10,10 +10,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
-import { Button, Input, Label } from '@/components/common';
+import { Button, DefaultAvatar, Input, Label } from '@/components/common';
+import { ProfileTotpCard } from '@/components/profile/ProfileTotpCard';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { changeProfilePassword, updateProfile } from '@/services/api/auth';
 import { cn } from '@/utils/cn';
+import './ProfilePage.css';
 
 type ProfileFormState = {
   nickName: string;
@@ -25,11 +27,6 @@ type PasswordFormState = {
   oldPassword: string;
   newPassword: string;
   confirmPassword: string;
-};
-
-const getInitials = (name?: string, username?: string) => {
-  const source = String(name || username || 'CF').trim();
-  return Array.from(source).slice(0, 2).join('').toUpperCase() || 'CF';
 };
 
 const formatValue = (value?: string | number | null) => {
@@ -131,7 +128,6 @@ export const ProfilePage: React.FC = () => {
   }, [user]);
 
   const displayName = user?.name || user?.username || 'CloudFlow';
-  const initials = getInitials(user?.name, user?.username);
   const statusMeta = getStatusMeta(user?.status);
   const roleLabel = getRoleLabel(String(user?.role || ''));
   const memberSince = formatDate(user?.createTime);
@@ -294,9 +290,7 @@ export const ProfilePage: React.FC = () => {
                   {avatarPreview ? (
                     <img src={avatarPreview} alt={displayName} />
                   ) : (
-                    <div className="profile-default-avatar">
-                      <span>{initials}</span>
-                    </div>
+                    <DefaultAvatar label={displayName} size="md" />
                   )}
                 </div>
                 <Button
@@ -413,7 +407,7 @@ export const ProfilePage: React.FC = () => {
                             </header>
                             <div className="profile-perm-chip-row">
                               {group.items.map((item) => (
-                                <span key={item} className="profile-perm-chip" title={item}>
+                                <span key={item} className="profile-perm-chip" data-tooltip={item}>
                                   {item.split(':').slice(1).join(':') || item}
                                 </span>
                               ))}
@@ -483,6 +477,7 @@ export const ProfilePage: React.FC = () => {
                       </div>
                     </form>
                   </section>
+                  <ProfileTotpCard />
                 </div>
               </div>
             </InnerTableSurface>

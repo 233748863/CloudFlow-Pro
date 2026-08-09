@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, User, Mail, Phone, Building, LogOut } from 'lucide-react';
 import { Button } from '@/components/common';
+import { ProfileTotpCard } from '@/components/profile/ProfileTotpCard';
 
 export const MobileProfile: React.FC = () => {
   const { user, logout } = useAuth();
@@ -43,7 +44,7 @@ export const MobileProfile: React.FC = () => {
               <Mail size={20} className="text-[#0d95b5]" />
             </div>
             <div className="flex-1">
-              <div className="text-xs text-slate-500">邮箱</div>
+              <div className="text-xs text-cf-subtle">邮箱</div>
               <div className="text-sm font-medium">{user?.email || '未设置'}</div>
             </div>
           </div>
@@ -53,7 +54,7 @@ export const MobileProfile: React.FC = () => {
               <Phone size={20} className="text-[#0d95b5]" />
             </div>
             <div className="flex-1">
-              <div className="text-xs text-slate-500">手机号</div>
+              <div className="text-xs text-cf-subtle">手机号</div>
               <div className="text-sm font-medium">{user?.phone || '未设置'}</div>
             </div>
           </div>
@@ -63,7 +64,7 @@ export const MobileProfile: React.FC = () => {
               <Building size={20} className="text-[#0d95b5]" />
             </div>
             <div className="flex-1">
-              <div className="text-xs text-slate-500">部门</div>
+              <div className="text-xs text-cf-subtle">部门</div>
               <div className="text-sm font-medium">{user?.deptName || '未设置'}</div>
             </div>
           </div>
@@ -74,13 +75,17 @@ export const MobileProfile: React.FC = () => {
       <div className="px-4 mt-6 space-y-3">
         <button className="w-full bg-[var(--cf-surface-strong)] p-4 rounded-md shadow-none flex items-center justify-between hover:bg-[var(--cf-bg)] transition-colors">
           <span className="font-medium">修改密码</span>
-          <ChevronLeft size={20} className="rotate-180 text-slate-400" />
+          <ChevronLeft size={20} className="rotate-180 text-cf-faint" />
         </button>
         
         <button className="w-full bg-[var(--cf-surface-strong)] p-4 rounded-md shadow-none flex items-center justify-between hover:bg-[var(--cf-bg)] transition-colors">
           <span className="font-medium">设置</span>
-          <ChevronLeft size={20} className="rotate-180 text-slate-400" />
+          <ChevronLeft size={20} className="rotate-180 text-cf-faint" />
         </button>
+      </div>
+
+      <div className="px-4 mt-6">
+        <ProfileTotpCard />
       </div>
 
       {/* Logout Button */}

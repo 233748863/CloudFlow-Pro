@@ -32,6 +32,7 @@ public class GatewayAuthProperties implements SysConfigChangeListener {
      */
     public static final List<String> DEFAULT_WHITELIST = List.of(
             "/auth/login",
+            "/auth/login/totp",
             "/auth/register",
             "/auth/tenant/options",
             "/auth/legal/public/**",

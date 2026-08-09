@@ -10,8 +10,14 @@ import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.dto.ChangePasswordDTO;
 import com.cloudflow.auth.domain.dto.ProfileUpdateDTO;
 import com.cloudflow.auth.domain.dto.SwitchTenantDTO;
+import com.cloudflow.auth.domain.dto.TotpDisableDTO;
+import com.cloudflow.auth.domain.dto.TotpEnableDTO;
+import com.cloudflow.auth.domain.dto.TotpLoginDTO;
+import com.cloudflow.auth.domain.dto.TotpSetupDTO;
 import com.cloudflow.auth.domain.dto.UserInfo;
 import com.cloudflow.auth.domain.vo.DynamicMapVO;
+import com.cloudflow.auth.domain.vo.TotpSetupVO;
+import com.cloudflow.auth.domain.vo.TotpStatusVO;
 import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
@@ -25,6 +31,7 @@ import com.cloudflow.auth.service.ForcePasswordChangeService;
 import com.cloudflow.auth.service.LoginRiskNoticeService;
 import com.cloudflow.auth.service.UserLoginHistoryService;
 import com.cloudflow.auth.service.UserDataScopeService;
+import com.cloudflow.auth.service.TotpService;
 import com.cloudflow.common.core.context.UserDataScopeSnapshot;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
@@ -124,6 +131,9 @@ public class AuthController {
 
     @Autowired
     private ILegalAgreementService legalAgreementService;
+
+    @Autowired
+    private TotpService totpService;
 
     @PostMapping("/login")
     @RepeatSubmit.Disabled
@@ -244,13 +254,6 @@ public class AuthController {
             return R.fail("账号已被限制登录,请联系管理员");
         }
 
-        String loginIp = getClientIp(request);
-        LocalDateTime loginTime = LocalDateTime.now();
-        UserLoginHistoryService.LoginRiskContext loginRiskContext = userLoginHistoryService.recordLogin(user, loginIp, loginTime);
-        user.setLoginIp(loginIp);
-        user.setLoginDate(loginTime);
-        sysUserMapper.updateById(user);
-        loginRiskNoticeService.notifyIfLocationChanged(user, loginRiskContext);
         if (passwordMatchResult.legacyPlaintextMatch()) {
             SysUser passwordUpgrade = new SysUser();
             passwordUpgrade.setUserId(user.getUserId());
@@ -258,59 +261,58 @@ public class AuthController {
             sysUserMapper.updateById(passwordUpgrade);
         }
 
-        loginLockService.clearFailures(username, tenant.getTenantId());
+        if (totpService.isEnabled(user.getUserId(), user.getTenantId())) {
+            String tempToken = totpService.issueLoginChallenge(user, form.getLegalReleaseCode(), startAt);
+            Map<String, Object> challenge = new HashMap<>();
+            challenge.put("requiresTotp", true);
+            challenge.put("tempToken", tempToken);
+            challenge.put("userEmailMasked", maskAccount(user));
+            return R.ok(DynamicMapVO.from(challenge));
+        }
 
-        UserInfo userInfo = sysUserService.findUserInfo(username, tenant.getTenantId());
-        if (userInfo == null) {
+        return completeLogin(user, tenant, form.getLegalReleaseCode(), request, response, startAt);
+    }
+
+    @PostMapping("/login/totp")
+    @RepeatSubmit.Disabled
+    @RateLimiter(key = "auth:login:totp", time = 60, count = 10, limitType = LimitType.IP, message = "验证码尝试过于频繁，请稍后再试")
+    public R<DynamicMapVO> verifyLoginTotp(
+            @RequestBody @Validated TotpLoginDTO form,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        TotpService.PendingLoginChallenge challenge = totpService.requireLoginChallenge(trimValue(form.getTempToken()));
+        TotpService.LoginChallengePayload payload = challenge.payload();
+        SysUser user = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectOne(
+                new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getUserId, payload.userId())
+                        .eq(SysUser::getTenantId, payload.tenantId())
+        ));
+        SysTenant tenant = resolveTenantById(payload.tenantId());
+        String tenantError = validateTenantAvailable(tenant, false);
+        if (user == null || Integer.valueOf(1).equals(user.getDeleted()) || !"0".equals(user.getStatus()) || tenantError != null) {
+            throw new ServiceException("账号状态已变更，请重新登录", ErrorCodeConstants.BAD_REQUEST);
+        }
+        if (userBlacklistService.isBanned(user.getUserId())) {
+            throw new ServiceException("账号已被限制登录,请联系管理员", ErrorCodeConstants.FORBIDDEN);
+        }
+        if (!totpService.verifyLoginCode(user.getUserId(), user.getTenantId(), form.getCode())) {
+            // 失败也消费掉临时凭证：否则单个凭证可在 TTL 内被反复用来枚举 6 位码
+            totpService.discardLoginChallenge(challenge);
+            // 接入账号级锁定，与密码错误路径保持一致的防护强度
+            loginLockService.recordFailure(user.getUserName(), user.getTenantId());
             loginLogService.recordLoginFailure(
-                username,
-                user.getTenantId(),
-                request,
-                "用户信息异常",
-                System.currentTimeMillis() - startAt
+                    user.getUserName(),
+                    user.getTenantId(),
+                    request,
+                    "动态验证码错误",
+                    System.currentTimeMillis() - payload.startedAt()
             );
-            return R.fail("用户信息异常");
+            return R.fail("验证码错误，请重新登录后重试");
         }
 
-        Map<String, Object> loginUser = new HashMap<>();
-        loginUser.put("userId", user.getUserId());
-        loginUser.put("username", user.getUserName());
-        loginUser.put("nickName", user.getNickName());
-        loginUser.put("deptId", user.getDeptId());
-        if (user.getDeptId() != null) {
-            com.cloudflow.auth.domain.SysDept dept = sysDeptMapper.selectById(user.getDeptId());
-            loginUser.put("deptName", dept != null ? dept.getDeptName() : null);
-        }
-        loginUser.put("tenantId", user.getTenantId());
-        loginUser.put("tenantCode", tenant.getTenantCode());
-        loginUser.put("tenantName", tenant.getTenantName());
-        loginUser.put("avatar", user.getAvatar());
-        loginUser.put("roles", userInfo.getRoles());
-        loginUser.put("permissions", userInfo.getPermissions());
-        boolean forcePasswordChange = forcePasswordChangeService.isRequired(user);
-        loginUser.put("forcePasswordChange", forcePasswordChange);
-
-        UserDataScopeSnapshot dataScopeSnapshot = userDataScopeService.refresh(user.getUserId());
-        if (dataScopeSnapshot != null) {
-            loginUser.put("dsType", dataScopeSnapshot.getDsType());
-            loginUser.put("dsDeptIds", dataScopeSnapshot.getDsDeptIds());
-        }
-
-        String token = tokenService.createToken(loginUser);
-        loginLogService.recordLoginSuccess(
-            user.getUserName(),
-            user.getTenantId(),
-            request,
-            System.currentTimeMillis() - startAt
-        );
-
-        setAuthCookie(request, response, token);
-        legalAgreementService.recordConsent(user, form.getLegalReleaseCode(), request, "LOGIN");
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("token", token);
-        result.put("forcePasswordChange", forcePasswordChange);
-        return R.ok(DynamicMapVO.from(result));
+        totpService.consumeLoginChallenge(challenge);
+        return completeLogin(user, tenant, payload.legalReleaseCode(), request, response, payload.startedAt());
     }
 
     @PostMapping("/register")
@@ -517,6 +519,46 @@ public class AuthController {
         return R.ok("密码修改成功");
     }
 
+    @GetMapping("/profile/totp/status")
+    @SaCheckPermission("system:user:profile:password")
+    public R<TotpStatusVO> getTotpStatus(HttpServletRequest request) {
+        Map<String, Object> userMap = requireLoginUser(request);
+        SysUser user = requireExistingUser(requireUserId(userMap));
+        return R.ok(totpService.getStatus(user.getUserId(), user.getTenantId()));
+    }
+
+    @PostMapping("/profile/totp/setup")
+    @SaCheckPermission("system:user:profile:password")
+    @RateLimiter(key = "auth:profile:totp:setup", time = 60, count = 5, limitType = LimitType.USER)
+    public R<TotpSetupVO> setupTotp(@RequestBody @Validated TotpSetupDTO dto, HttpServletRequest request) {
+        Map<String, Object> userMap = requireLoginUser(request);
+        SysUser user = requireExistingUser(requireUserId(userMap));
+        verifyCurrentPassword(user, dto.getPassword());
+        return R.ok(totpService.beginSetup(user));
+    }
+
+    @PostMapping("/profile/totp/enable")
+    @SaCheckPermission("system:user:profile:password")
+    @RateLimiter(key = "auth:profile:totp:enable", time = 60, count = 10, limitType = LimitType.USER)
+    public R<TotpStatusVO> enableTotp(@RequestBody @Validated TotpEnableDTO dto, HttpServletRequest request) {
+        Map<String, Object> userMap = requireLoginUser(request);
+        SysUser user = requireExistingUser(requireUserId(userMap));
+        verifyCurrentPassword(user, dto.getPassword());
+        LocalDateTime enabledAt = totpService.enable(user, dto.getCode());
+        return R.ok(new TotpStatusVO(true, true, enabledAt));
+    }
+
+    @PostMapping("/profile/totp/disable")
+    @SaCheckPermission("system:user:profile:password")
+    @RateLimiter(key = "auth:profile:totp:disable", time = 60, count = 5, limitType = LimitType.USER)
+    public R<TotpStatusVO> disableTotp(@RequestBody @Validated TotpDisableDTO dto, HttpServletRequest request) {
+        Map<String, Object> userMap = requireLoginUser(request);
+        SysUser user = requireExistingUser(requireUserId(userMap));
+        verifyCurrentPassword(user, dto.getPassword());
+        totpService.disable(user);
+        return R.ok(new TotpStatusVO(true, false, null));
+    }
+
     /**
      * 获取路由信息（菜单树）- 通过 Spring Cache 自动缓存
      */
@@ -570,6 +612,92 @@ public class AuthController {
         clearAuthCookie(request, response);
 
         return R.ok("退出成功");
+    }
+
+    private R<DynamicMapVO> completeLogin(
+            SysUser user,
+            SysTenant tenant,
+            String legalReleaseCode,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            long startAt
+    ) {
+        UserInfo userInfo = sysUserService.findUserInfo(user.getUserName(), tenant.getTenantId());
+        if (userInfo == null) {
+            loginLogService.recordLoginFailure(
+                    user.getUserName(),
+                    user.getTenantId(),
+                    request,
+                    "用户信息异常",
+                    System.currentTimeMillis() - startAt
+            );
+            return R.fail("用户信息异常");
+        }
+
+        String loginIp = getClientIp(request);
+        LocalDateTime loginTime = LocalDateTime.now();
+        UserLoginHistoryService.LoginRiskContext loginRiskContext = userLoginHistoryService.recordLogin(user, loginIp, loginTime);
+        user.setLoginIp(loginIp);
+        user.setLoginDate(loginTime);
+        sysUserMapper.updateById(user);
+        loginRiskNoticeService.notifyIfLocationChanged(user, loginRiskContext);
+        loginLockService.clearFailures(user.getUserName(), tenant.getTenantId());
+
+        Map<String, Object> loginUser = new HashMap<>();
+        loginUser.put("userId", user.getUserId());
+        loginUser.put("username", user.getUserName());
+        loginUser.put("nickName", user.getNickName());
+        loginUser.put("deptId", user.getDeptId());
+        if (user.getDeptId() != null) {
+            com.cloudflow.auth.domain.SysDept dept = sysDeptMapper.selectById(user.getDeptId());
+            loginUser.put("deptName", dept != null ? dept.getDeptName() : null);
+        }
+        loginUser.put("tenantId", user.getTenantId());
+        loginUser.put("tenantCode", tenant.getTenantCode());
+        loginUser.put("tenantName", tenant.getTenantName());
+        loginUser.put("avatar", user.getAvatar());
+        loginUser.put("roles", userInfo.getRoles());
+        loginUser.put("permissions", userInfo.getPermissions());
+        boolean forcePasswordChange = forcePasswordChangeService.isRequired(user);
+        loginUser.put("forcePasswordChange", forcePasswordChange);
+
+        UserDataScopeSnapshot dataScopeSnapshot = userDataScopeService.refresh(user.getUserId());
+        if (dataScopeSnapshot != null) {
+            loginUser.put("dsType", dataScopeSnapshot.getDsType());
+            loginUser.put("dsDeptIds", dataScopeSnapshot.getDsDeptIds());
+        }
+
+        String token = tokenService.createToken(loginUser);
+        loginLogService.recordLoginSuccess(
+                user.getUserName(),
+                user.getTenantId(),
+                request,
+                System.currentTimeMillis() - startAt
+        );
+        setAuthCookie(request, response, token);
+        legalAgreementService.recordConsent(user, legalReleaseCode, request, "LOGIN");
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", token);
+        result.put("forcePasswordChange", forcePasswordChange);
+        return R.ok(DynamicMapVO.from(result));
+    }
+
+    private void verifyCurrentPassword(SysUser user, String password) {
+        if (!StringUtils.hasText(password)
+                || !passwordService.matchesPassword(password, user.getPassword()).matched()) {
+            throw new ServiceException("当前密码错误", ErrorCodeConstants.BAD_REQUEST);
+        }
+    }
+
+    private String maskAccount(SysUser user) {
+        String email = trimValue(user.getEmail());
+        int at = email.indexOf('@');
+        if (at > 0 && at < email.length() - 1) {
+            return email.substring(0, 1) + "***" + email.substring(at);
+        }
+        String username = trimValue(user.getUserName());
+        return username.isEmpty() ? "" : username.substring(0, 1) + "***";
     }
 
     private Map<String, Object> resolveLoginUser(HttpServletRequest request) {

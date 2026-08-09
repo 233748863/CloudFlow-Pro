@@ -119,6 +119,22 @@ CREATE TABLE sys_user_login_history (
   KEY idx_login_history_segment (tenant_id, network_segment)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户登录历史表';
 
+DROP TABLE IF EXISTS sys_user_totp;
+CREATE TABLE sys_user_totp (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '用户ID',
+  secret_ciphertext VARCHAR(512)    NOT NULL COMMENT 'TOTP密钥密文（AES-GCM）',
+  enabled           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '是否启用（0否 1是）',
+  enabled_at        DATETIME        DEFAULT NULL COMMENT '启用时间',
+  last_used_step    BIGINT(20)      DEFAULT NULL COMMENT '最近一次验证通过的时间步（防重放，RFC 6238 §5.2）',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_user_totp_tenant_user (tenant_id, user_id),
+  KEY idx_user_totp_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户双因素认证表';
+
 -- =========================================================
 -- 三、权限管理
 -- =========================================================

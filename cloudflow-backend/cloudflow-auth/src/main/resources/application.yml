@@ -36,6 +36,14 @@ spring:
 cloudflow:
   # 本地文件存储根目录
   profile: /data/cloudflow/profile
+  auth:
+    totp:
+      enabled: ${CLOUDFLOW_TOTP_ENABLED:true}
+      encryption-key: ${TOTP_ENCRYPTION_KEY:}
+      # 轮换旧密钥：逗号分隔，只用于解密历史密文
+      previous-encryption-keys: ${TOTP_PREVIOUS_ENCRYPTION_KEYS:}
+      issuer: CloudFlow Pro
+      challenge-ttl-seconds: 300
   workflow:
     callback:
       enabled: true

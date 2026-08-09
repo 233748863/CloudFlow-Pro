@@ -100,9 +100,25 @@ export interface PageQuery {
 // ==================== API 响应类型 ====================
 
 export interface LoginResponse {
-  token: string;
+  token?: string;
   expiresIn?: number;
   forcePasswordChange?: boolean;
+  requiresTotp?: boolean;
+  tempToken?: string;
+  userEmailMasked?: string;
+}
+
+export interface TotpStatus {
+  featureEnabled: boolean;
+  enabled: boolean;
+  enabledAt?: string | null;
+}
+
+export interface TotpSetup {
+  manualEntryKey: string;
+  otpAuthUri: string;
+  /** 覆盖了上一次未完成的设置，旧二维码已作废 */
+  regenerated?: boolean;
 }
 
 export interface TenantOption {
@@ -198,6 +214,10 @@ export const login = async (
   legalReleaseCode?: string,
 ): Promise<LoginResponse> => {
   return request.post('/auth/login', { tenantCode, username, password, captchaToken, legalReleaseCode });
+};
+
+export const verifyTotpLogin = (tempToken: string, code: string): Promise<LoginResponse> => {
+  return request.post('/auth/login/totp', { tempToken, code }, { silent: true });
 };
 
 /**
@@ -462,4 +482,20 @@ export const changeProfilePassword = async (
     newPassword,
   };
   return request.put('/auth/profile/password', data);
+};
+
+export const getTotpStatus = (): Promise<TotpStatus> => {
+  return request.get('/auth/profile/totp/status', { silent: true });
+};
+
+export const setupTotp = (password: string): Promise<TotpSetup> => {
+  return request.post('/auth/profile/totp/setup', { password }, { silent: true });
+};
+
+export const enableTotp = (password: string, code: string): Promise<TotpStatus> => {
+  return request.post('/auth/profile/totp/enable', { password, code }, { silent: true });
+};
+
+export const disableTotp = (password: string): Promise<TotpStatus> => {
+  return request.post('/auth/profile/totp/disable', { password }, { silent: true });
 };

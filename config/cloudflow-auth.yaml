@@ -54,6 +54,15 @@ spring:
 cloudflow:
   # 文件上传存储根路径
   profile: /data/cloudflow/profile
+  auth:
+    totp:
+      enabled: ${CLOUDFLOW_TOTP_ENABLED:true}
+      encryption-key: ${TOTP_ENCRYPTION_KEY:}
+      # 轮换旧密钥：逗号分隔，只用于解密历史密文。
+      # 轮换步骤：当前 key 挪进这里 → encryption-key 换新值 → 全量重新加密后清空。
+      previous-encryption-keys: ${TOTP_PREVIOUS_ENCRYPTION_KEYS:}
+      issuer: CloudFlow Pro
+      challenge-ttl-seconds: 300
   file-upload:
     max-size: ${CLOUDFLOW_FILE_MAX_SIZE:52428800}
     allowed-extensions:
@@ -131,6 +140,7 @@ auth:
   # 白名单路径（不需要认证）
   whitelist:
     - /auth/login
+    - /auth/login/totp
     - /auth/register
     - /auth/captcha
     - /auth/legal/public/**
