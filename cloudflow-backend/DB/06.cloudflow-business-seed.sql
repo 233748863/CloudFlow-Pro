@@ -1733,14 +1733,15 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 (1206, '法律条款查看',   6, 97, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:legal:list',             '#', 'admin', NOW(), '', NULL, '法律条款管理查看权限'),
 (1207, '法律条款新增',   6, 98, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:legal:add',              '#', 'admin', NOW(), '', NULL, '法律条款管理新增权限'),
 (1208, '法律条款编辑',   6, 99, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:legal:edit',             '#', 'admin', NOW(), '', NULL, '法律条款管理编辑权限'),
-(1209, '用户黑名单编辑', 650, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:userBlacklist:edit',    '#', 'admin', NOW(), '', NULL, '用户黑名单修改与解除权限');
+(1209, '用户黑名单编辑', 650, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:userBlacklist:edit',    '#', 'admin', NOW(), '', NULL, '用户黑名单修改与解除权限'),
+(1210, 'AI 产物生成',   604, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:ai:generate',          '#', 'admin', NOW(), '', NULL, '源码生成页调用后端 AI 代理生成 SQL/配置/Java 产物的权限');
 
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
 SELECT role_id, menu_id, tenant_id
 FROM (
   SELECT 1 AS role_id, menu_id, 100000 AS tenant_id
   FROM cloud_flow_db.sys_menu
-  WHERE menu_id BETWEEN 1200 AND 1209
+  WHERE menu_id BETWEEN 1200 AND 1210
 ) security_permissions;
 
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 7, 100000);

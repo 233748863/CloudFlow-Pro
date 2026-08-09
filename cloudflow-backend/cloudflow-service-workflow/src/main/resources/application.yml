@@ -95,6 +95,15 @@ cloudflow:
       - wf_callback_dead_letter
       - wf_reconcile_alert
     default-tenant-id: 100000
+  # AI 能力（代码产物生成）。密钥只从环境变量注入，禁止写入代码或前端产物。
+  # 未设置 GEMINI_API_KEY 时 enabled 为 false，接口直接返回未启用。
+  ai:
+    enabled: ${AI_ENABLED:false}
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-2.5-flash}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+      timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:60}
 sa-token:
   token-name: Authorization
   token-prefix: Bearer
