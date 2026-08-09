@@ -28,16 +28,16 @@ export const WorkspaceSectionHeader = ({
 }) => (
   <div className="flex items-start justify-between gap-4">
     <div>
-      <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+      <div className="text-[11px] font-semibold text-cf-faint">
         {eyebrow}
       </div>
-      <div className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</div>
+      <div className="mt-2 text-lg font-semibold text-cf-title">{title}</div>
     </div>
     {actionLabel && onAction ? (
       <button
         type="button"
         onClick={onAction}
-        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-cyan-700 dark:text-slate-500 dark:hover:text-cyan-300"
+        className="inline-flex items-center gap-1 text-xs font-semibold text-cf-faint transition hover:text-cyan-700 dark:hover:text-cyan-300"
       >
         {actionLabel}
         <ChevronRight size={14} />
@@ -88,15 +88,15 @@ export const WorkspaceStatusPanel = ({
     <div className="flex flex-col items-center justify-center">
       <div
         className={cn(
-          'mb-4 flex h-14 w-14 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-slate-400 dark:bg-slate-900 dark:text-slate-500',
+          'mb-4 flex h-14 w-14 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-cf-faint dark:bg-slate-900',
           iconWrapClassName,
         )}
       >
         {icon}
       </div>
-      <div className="text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</div>
+      <div className="text-lg font-semibold text-cf-title">{title}</div>
       {description ? (
-        <div className="mt-3 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+        <div className="mt-3 max-w-md text-sm leading-6 text-cf-subtle">{description}</div>
       ) : null}
       {actions ? (
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">{actions}</div>
@@ -154,7 +154,7 @@ export const WorkspaceInlineState = ({
     return (
       <div
         className={cn(
-          'rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-6 text-center text-slate-500 shadow-none dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
+          'rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-6 text-center text-cf-subtle shadow-none dark:border-slate-800 dark:bg-slate-950/88',
           className,
         )}
       >
@@ -162,7 +162,7 @@ export const WorkspaceInlineState = ({
           {icon || <LoadingSpinner size="sm" />}
           <span>{title}</span>
         </div>
-        {description ? <div className="mt-2 text-xs leading-6 text-slate-400 dark:text-slate-500">{description}</div> : null}
+        {description ? <div className="mt-2 text-xs leading-6 text-cf-faint">{description}</div> : null}
       </div>
     );
   }
@@ -204,7 +204,7 @@ export const WorkspaceTableStateRow = ({
       className={cn(type === 'loading' ? 'px-4 py-10' : 'px-4 py-6', cellClassName)}
     >
       {type === 'loading' ? (
-        <div className="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+        <div className="flex items-center justify-center gap-2 text-sm text-cf-subtle">
           {icon || <LoadingSpinner size="sm" />}
           {title}
         </div>

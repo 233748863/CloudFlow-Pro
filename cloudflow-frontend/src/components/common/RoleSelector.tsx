@@ -100,13 +100,13 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         )}
       >
         {selectedRoles.length === 0 ? (
-          <span className="text-slate-400 text-sm">{placeholder}</span>
+          <span className="text-cf-faint text-sm">{placeholder}</span>
         ) : (
           <div className="flex flex-wrap gap-1">
             {selectedRoles.map((role) => (
               <span
                 key={getRoleKey(role)}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs font-medium text-cf-body dark:border-slate-800 dark:bg-slate-900"
               >
                 <Shield size={10} className="text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]" />
                 {role.name}
@@ -125,7 +125,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         <div className="absolute z-50 mt-1.5 max-h-64 w-full overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] shadow-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
           <div className="border-b border-slate-200 p-2 dark:border-slate-800">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-cf-faint" size={16} />
               <input
                 type="text"
                 value={searchTerm}
@@ -140,9 +140,9 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
 
           <div className="overflow-y-auto max-h-48">
             {loading ? (
-              <div className="p-4 text-center text-sm text-slate-500">加载中...</div>
+              <div className="p-4 text-center text-sm text-cf-subtle">加载中...</div>
             ) : filteredRoles.length === 0 ? (
-              <div className="p-4 text-center text-sm text-slate-500">未找到角色</div>
+              <div className="p-4 text-center text-sm text-cf-subtle">未找到角色</div>
             ) : (
               filteredRoles.map((role) => {
                 const key = getRoleKey(role);
@@ -161,8 +161,8 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                         <Shield size={16} />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{role.name}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{key}</div>
+                        <div className="text-sm font-medium text-cf-title">{role.name}</div>
+                        <div className="text-xs text-cf-subtle">{key}</div>
                       </div>
                     </div>
                     {isSelected && <Check className="text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]" size={16} />}

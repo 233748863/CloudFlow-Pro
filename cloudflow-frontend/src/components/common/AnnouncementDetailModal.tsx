@@ -58,7 +58,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
             ) : null}
             {headerBadges}
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-cf-subtle">
             <span className="flex items-center gap-1.5">
               <Clock3 className="h-4 w-4" />
               <time>{formatAnnouncementRelativeWithDateTime(announcement.publishTime || announcement.createTime)}</time>
@@ -79,7 +79,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
       zIndex={zIndex}
       footer={announcement ? (
         <div className="flex w-full items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-2 text-xs text-cf-subtle">
               <Info className="h-4 w-4" />
               <span>{announcement.isRead ? footerReadText : footerUnreadText}</span>
             </div>

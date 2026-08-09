@@ -14,9 +14,9 @@ import { WORKFLOW_CATEGORY_OPTIONS, normalizeWorkflowCategory } from '../utils/w
 const SELECT_NONE_VALUE = '__NONE__';
 
 const sectionTitleClassName = 'text-xs font-medium text-cyan-700 dark:text-cyan-300';
-const fieldLabelClassName = 'mb-1 block text-[11px] text-slate-500 dark:text-slate-400';
+const fieldLabelClassName = 'mb-1 block text-[11px] text-cf-subtle';
 const loadingBlockClassName =
-  'w-full rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500';
+  'w-full rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 text-sm text-cf-faint dark:border-slate-800 dark:bg-slate-950';
 
 interface WorkflowSettingsModalProps {
   open: boolean;
@@ -204,7 +204,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
               <Input
                 value={workflowName}
                 disabled
-                className="bg-[var(--cf-surface-muted)] text-slate-500 dark:bg-slate-900 dark:text-slate-300"
+                className="bg-[var(--cf-surface-muted)] text-cf-subtle dark:bg-slate-900"
               />
             </div>
             <div>
@@ -212,7 +212,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
               <Input
                 value={workflowKey}
                 disabled
-                className="bg-[var(--cf-surface-muted)] font-mono text-slate-500 dark:bg-slate-900 dark:text-slate-300"
+                className="bg-[var(--cf-surface-muted)] font-mono text-cf-subtle dark:bg-slate-900"
               />
             </div>
           </div>

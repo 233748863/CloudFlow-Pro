@@ -102,12 +102,12 @@ export const CustomerTab: React.FC = () => {
                 <td>{renderStatus(item.status)}</td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
-                    <button type="button" title="编辑客户" onClick={() => openDialog({ type: 'customer', item })}><Handshake size={15} /></button>
-                    {item.poolFlag !== '1' ? <button type="button" title="释放审批" onClick={() => { setReleaseCustomer(item); setReleaseReason(''); }}><RefreshCcw size={15} /></button> : null}
-                    <button type="button" title="分级审批" onClick={() => { setLevelCustomer(item); setLevelAction('LEVEL_UP'); setTargetLevel(item.levelCode || ''); setLevelReason(''); }}><UserRound size={15} /></button>
-                    <button type="button" title="新增联系人" onClick={() => openDialog({ type: 'contact', item: { ...emptyContact, customerId: item.customerId! } })}><UserRound size={15} /></button>
-                    <button type="button" title="新增跟进" onClick={() => openDialog({ type: 'followUp', item: { ...emptyFollowUp, customerId: item.customerId! } })}><RefreshCcw size={15} /></button>
+                    <button type="button" data-tooltip="客户360" aria-label="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
+                    <button type="button" data-tooltip="编辑客户" aria-label="编辑客户" onClick={() => openDialog({ type: 'customer', item })}><Handshake size={15} /></button>
+                    {item.poolFlag !== '1' ? <button type="button" data-tooltip="释放审批" aria-label="释放审批" onClick={() => { setReleaseCustomer(item); setReleaseReason(''); }}><RefreshCcw size={15} /></button> : null}
+                    <button type="button" data-tooltip="分级审批" aria-label="分级审批" onClick={() => { setLevelCustomer(item); setLevelAction('LEVEL_UP'); setTargetLevel(item.levelCode || ''); setLevelReason(''); }}><UserRound size={15} /></button>
+                    <button type="button" data-tooltip="新增联系人" aria-label="新增联系人" onClick={() => openDialog({ type: 'contact', item: { ...emptyContact, customerId: item.customerId! } })}><UserRound size={15} /></button>
+                    <button type="button" data-tooltip="新增跟进" aria-label="新增跟进" onClick={() => openDialog({ type: 'followUp', item: { ...emptyFollowUp, customerId: item.customerId! } })}><RefreshCcw size={15} /></button>
                   </div>
                 </td>
               </tr>
@@ -129,7 +129,7 @@ export const CustomerTab: React.FC = () => {
         }
       >
         <div className="grid gap-4">
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-cf-subtle">
             当前负责人：{releaseCustomer?.ownerName || '-'}；当前等级：{releaseCustomer?.levelCode || '-'}。
           </div>
           <div>
@@ -152,7 +152,7 @@ export const CustomerTab: React.FC = () => {
         }
       >
         <div className="grid gap-4">
-          <div className="text-sm text-slate-500">当前等级：{levelCustomer?.levelCode || '-'}</div>
+          <div className="text-sm text-cf-subtle">当前等级：{levelCustomer?.levelCode || '-'}</div>
           <div>
             <Label>动作</Label>
             <Select value={levelAction} onValueChange={(value) => setLevelAction(value as 'LEVEL_UP' | 'LEVEL_DOWN')}>

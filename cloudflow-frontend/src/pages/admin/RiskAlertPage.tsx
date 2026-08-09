@@ -96,7 +96,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
         <div className="admin-source-stat-icon mb-3">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
       </div>
     </td>
   </tr>
@@ -435,7 +435,7 @@ export const RiskAlertPage: React.FC = () => {
 
   const pageTable = (
     <InnerTableSurface>
-      <table className="unity-data-table admin-source-table min-w-[1120px]">
+      <table className="unity-data-table admin-source-table min-w-[1120px] cf-freeze-edges">
           <thead>
             <tr>
               <th>风险</th>
@@ -456,12 +456,12 @@ export const RiskAlertPage: React.FC = () => {
             ) : rows.map((item) => (
               <tr key={item.id}>
                 <td>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{item.riskName}</div>
-                  <div className="mt-1 text-xs text-slate-400">{item.riskCode || '-'}</div>
+                  <div className="font-medium text-cf-title">{item.riskName}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{item.riskCode || '-'}</div>
                 </td>
                 <td>
                   <div>{businessTypeDict.getLabel(item.businessType || '') || '-'}</div>
-                  <div className="mt-1 text-xs text-slate-400">ID {item.businessId}</div>
+                  <div className="mt-1 text-xs text-cf-faint">ID {item.businessId}</div>
                 </td>
                 <td>{getLevelBadge(item.riskLevel)}</td>
                 <td>{getStatusBadge(item.riskStatus)}</td>
@@ -469,20 +469,20 @@ export const RiskAlertPage: React.FC = () => {
                 <td>{item.ownerName || item.ownerId || '-'}</td>
                 <td>
                   <div>{formatDateTimeDisplay(item.detectedTime)}</div>
-                  <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(item.handledTime)}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{formatDateTimeDisplay(item.handledTime)}</div>
                 </td>
                 <td>
                   <div className="admin-users-row-actions">
                     {item.riskStatus !== 'HANDLING' && item.riskStatus !== 'CLOSED' && item.riskStatus !== 'IGNORED' ? (
-                      <button type="button" title="处理中" aria-label="处理中" onClick={() => openStatus(item, 'HANDLING')}><Clock3 size={15} /></button>
+                      <button type="button" data-tooltip="处理中" aria-label="处理中" onClick={() => openStatus(item, 'HANDLING')}><Clock3 size={15} /></button>
                     ) : null}
                     {item.riskStatus !== 'CLOSED' ? (
-                      <button type="button" title="关闭" aria-label="关闭" onClick={() => openStatus(item, 'CLOSED')}><CheckCircle2 size={15} /></button>
+                      <button type="button" data-tooltip="关闭" aria-label="关闭" onClick={() => openStatus(item, 'CLOSED')}><CheckCircle2 size={15} /></button>
                     ) : null}
                     {item.riskStatus !== 'IGNORED' ? (
-                      <button type="button" className="danger" title="忽略" aria-label="忽略" onClick={() => openStatus(item, 'IGNORED')}><XCircle size={15} /></button>
+                      <button type="button" className="danger" data-tooltip="忽略" aria-label="忽略" onClick={() => openStatus(item, 'IGNORED')}><XCircle size={15} /></button>
                     ) : null}
-                    <button type="button" title="指派" aria-label="指派" onClick={() => openAssign(item)}><UserPlus size={15} /></button>
+                    <button type="button" data-tooltip="指派" aria-label="指派" onClick={() => openAssign(item)}><UserPlus size={15} /></button>
                   </div>
                 </td>
               </tr>
@@ -558,14 +558,14 @@ export const RiskAlertPage: React.FC = () => {
                       {item.meta ? `${item.label} / ${item.meta}` : item.label}
                     </SelectItem>
                   )) : (
-                    <div className="px-3 py-3 text-sm text-slate-500 dark:text-slate-400">
+                    <div className="px-3 py-3 text-sm text-cf-subtle">
                       {manualBusinessLoading ? '正在加载关联业务...' : '暂无可选业务'}
                     </div>
                   )}
                 </SelectContent>
               </Select>
               {selectedManualBusiness?.meta ? (
-                <div className="truncate text-xs text-slate-500 dark:text-slate-400">{selectedManualBusiness.meta}</div>
+                <div className="truncate text-xs text-cf-subtle">{selectedManualBusiness.meta}</div>
               ) : null}
             </div>
             <div className="admin-dialog-field">

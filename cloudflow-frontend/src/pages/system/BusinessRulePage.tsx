@@ -36,6 +36,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import '../../styles/features/admin-business.css';
 
 const ALL_VALUE = '__all__';
 
@@ -59,7 +60,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
   <tr>
     <td colSpan={colSpan} className="px-4 py-10 text-center">
       {loading ? <LoadingSpinner size="lg" className="mx-auto mb-3" /> : null}
-      <div className="text-sm text-slate-500 dark:text-slate-400">{title}</div>
+      <div className="text-sm text-cf-subtle">{title}</div>
     </td>
   </tr>
 );
@@ -264,8 +265,8 @@ export const BusinessRulePage = () => {
           ) : rows.map((rule) => (
             <tr key={rule.id}>
               <td>
-                <div className="font-medium text-slate-900 dark:text-slate-100">{rule.ruleName}</div>
-                <code className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{rule.ruleCode}</code>
+                <div className="font-medium text-cf-title">{rule.ruleName}</div>
+                <code className="mt-1 block text-xs text-cf-subtle">{rule.ruleCode}</code>
               </td>
               <td>{rule.module}</td>
               <td>{rule.thresholdValue ?? '-'}</td>
@@ -274,12 +275,12 @@ export const BusinessRulePage = () => {
               <td>
                 <Switch checked={rule.enabled === 1} onCheckedChange={(checked) => void toggleEnabled(rule, checked)} />
               </td>
-              <td className="max-w-[260px] truncate text-sm text-slate-500 dark:text-slate-400" title={rule.remark}>{rule.remark || '-'}</td>
+              <td className="max-w-[260px] truncate text-sm text-cf-subtle" data-tooltip={rule.remark}>{rule.remark || '-'}</td>
               <td>
                 <div className="admin-users-row-actions">
                   <button
                     type="button"
-                    title="编辑规则"
+                    data-tooltip="编辑规则" aria-label="编辑规则"
                     onClick={() => {
                       setEditingRule(rule);
                       setForm({ ...rule });
@@ -538,16 +539,16 @@ export const BusinessRulePage = () => {
               <td><DictBadge dictType="workflow_definition_status" value={version.status || ''} /></td>
               <td>{version.publisherName || '-'}</td>
               <td>{formatDateTime(version.publishedTime)}</td>
-              <td className="max-w-[240px] truncate text-sm text-slate-500" title={version.remark}>{version.remark || '-'}</td>
+              <td className="max-w-[240px] truncate text-sm text-cf-subtle" data-tooltip={version.remark}>{version.remark || '-'}</td>
               <td>
                 <div className="admin-users-row-actions">
                   {version.status === 'DRAFT' ? (
-                    <button type="button" title="发布版本" onClick={() => setConfirmState({ type: 'publish', version })}>
+                    <button type="button" data-tooltip="发布版本" aria-label="发布版本" onClick={() => setConfirmState({ type: 'publish', version })}>
                       <Play size={15} />
                     </button>
                   ) : null}
                   {version.status !== 'DRAFT' ? (
-                    <button type="button" title="回滚版本" onClick={() => setConfirmState({ type: 'rollback', version })}>
+                    <button type="button" data-tooltip="回滚版本" aria-label="回滚版本" onClick={() => setConfirmState({ type: 'rollback', version })}>
                       <Undo2 size={15} />
                     </button>
                   ) : null}
@@ -634,11 +635,11 @@ export const BusinessRulePage = () => {
         {form ? (
           <form id="business-rule-form" onSubmit={saveRule} className="admin-dialog-stack">
             <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-3 dark:border-slate-800 dark:bg-slate-950">
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+              <div className="flex items-center gap-2 text-sm font-medium text-cf-title">
                 <ListChecks size={16} />
                 {editingRule?.ruleName}
               </div>
-              <div className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">{editingRule?.ruleCode}</div>
+              <div className="mt-1 font-mono text-xs text-cf-subtle">{editingRule?.ruleCode}</div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="admin-dialog-field">
@@ -664,7 +665,7 @@ export const BusinessRulePage = () => {
                 <Label>启用状态</Label>
                 <div className="flex h-10 items-center gap-3">
                   <Switch checked={form.enabled === 1} onCheckedChange={(checked) => setForm((current) => current ? { ...current, enabled: checked ? 1 : 0 } : current)} />
-                  <span className="text-sm text-slate-600 dark:text-slate-300">{form.enabled === 1 ? '启用' : '停用'}</span>
+                  <span className="text-sm text-cf-muted">{form.enabled === 1 ? '启用' : '停用'}</span>
                 </div>
               </div>
             </div>

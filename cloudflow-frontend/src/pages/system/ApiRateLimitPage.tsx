@@ -70,7 +70,7 @@ const STATUS_BADGE: Record<RateLimitStatus, string> = {
   ACTIVE:
     'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200',
   INACTIVE:
-    'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
+    'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-subtle dark:border-slate-700 dark:bg-slate-900/40',
 };
 
 const STRATEGY_BADGE: Record<RateLimitStrategy, string> = {
@@ -97,9 +97,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -486,9 +486,9 @@ export const ApiRateLimitPage = () => {
             ) : (
               rules.map((rule) => (
                 <tr key={rule.id}>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">{rule.id}</td>
+                  <td className="text-sm text-cf-subtle">{rule.id}</td>
                   <td>
-                    <span className="inline-block max-w-[128px] truncate font-mono text-xs text-slate-900 dark:text-slate-100">
+                    <span className="inline-block max-w-[128px] truncate font-mono text-xs text-cf-title">
                       {rule.ruleCode}
                     </span>
                   </td>
@@ -497,10 +497,10 @@ export const ApiRateLimitPage = () => {
                   </td>
                   <td>
                     <div className="flex min-w-0 flex-col gap-1">
-                      <span className="truncate font-mono text-xs text-slate-700 dark:text-slate-200">
+                      <span className="truncate font-mono text-xs text-cf-body">
                         {rule.pathPattern}
                       </span>
-                      <span className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                      <span className="truncate text-[11px] text-cf-subtle">
                         {rule.httpMethod}
                         {rule.serviceName ? ` · ${rule.serviceName}` : ''}
                       </span>
@@ -514,9 +514,9 @@ export const ApiRateLimitPage = () => {
                   <td className="text-center">
                     <span className="whitespace-nowrap font-mono text-sm">
                       {rule.rps}
-                      <span className="mx-1 text-slate-400">/</span>
+                      <span className="mx-1 text-cf-faint">/</span>
                       {rule.burst ?? rule.rps}
-                      <span className="mx-1 text-slate-400">@</span>
+                      <span className="mx-1 text-cf-faint">@</span>
                       {rule.windowSeconds ?? 1}s
                     </span>
                   </td>
@@ -545,18 +545,18 @@ export const ApiRateLimitPage = () => {
                     <div className="admin-users-row-actions">
                       <button
                         type="button"
-                        title={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'}
+                        data-tooltip={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'} aria-label={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'}
                         onClick={() => handleToggle(rule)}
                       >
                         <Power size={15} />
                       </button>
-                      <button type="button" title="编辑规则" onClick={() => handleOpenModal(rule)}>
+                      <button type="button" data-tooltip="编辑规则" aria-label="编辑规则" onClick={() => handleOpenModal(rule)}>
                         <Edit size={15} />
                       </button>
                       <button
                         type="button"
                         className="danger"
-                        title="删除规则"
+                        data-tooltip="删除规则" aria-label="删除规则"
                         onClick={() => setPendingDelete(rule)}
                       >
                         <Trash2 size={15} />

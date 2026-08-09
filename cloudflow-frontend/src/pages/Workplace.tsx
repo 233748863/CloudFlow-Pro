@@ -344,10 +344,10 @@ export const Workplace = () => {
             return (
               <TableRow key={workflow.id}>
                 <TableCell className="min-w-[320px]">
-                  <div className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">
+                  <div className="truncate text-sm font-semibold text-cf-title">
                     {workflow.name}
                   </div>
-                  <p className="mt-1 line-clamp-2 max-w-xl text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 line-clamp-2 max-w-xl text-xs leading-5 text-cf-subtle">
                     {workflow.description || '暂无流程描述，点击发起进入表单填写。'}
                   </p>
                 </TableCell>
@@ -358,22 +358,22 @@ export const Workplace = () => {
                     {workflowTags.slice(0, 2).map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                        className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-xs text-cf-subtle dark:border-slate-800 dark:bg-slate-900"
                       >
                         {tag}
                       </span>
                     ))}
                     {workflowTags.length > 2 ? (
-                      <span className="text-xs text-slate-400">+{workflowTags.length - 2}</span>
+                      <span className="text-xs text-cf-faint">+{workflowTags.length - 2}</span>
                     ) : null}
                   </div>
                 </TableCell>
 
                 <TableCell className="whitespace-nowrap">
-                  <div className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                  <div className="text-sm font-medium text-cf-title">
                     {workflow.key}
                   </div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="mt-1 text-xs text-cf-subtle">
                     v{workflow.version || 1}
                   </div>
                 </TableCell>
@@ -384,7 +384,7 @@ export const Workplace = () => {
                       已绑定
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                    <span className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-cf-subtle dark:border-slate-800 dark:bg-slate-900">
                       无表单
                     </span>
                   )}
@@ -527,7 +527,7 @@ export const Workplace = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-xs font-medium text-slate-500 dark:text-slate-400">常用标签</span>
+          <span className="mr-1 text-xs font-medium text-cf-subtle">常用标签</span>
           {allTags.length > 0 ? (
             allTags.map((tag) => (
               <FilterChip
@@ -539,7 +539,7 @@ export const Workplace = () => {
               </FilterChip>
             ))
           ) : (
-            <span className="text-xs text-slate-400 dark:text-slate-500">暂无标签</span>
+            <span className="text-xs text-cf-faint">暂无标签</span>
           )}
         </div>
       </section>
@@ -549,8 +549,8 @@ export const Workplace = () => {
       <InnerTableSurface className="flex min-h-0 flex-1 flex-col" wrapperClassName="flex min-h-0 flex-1 flex-col p-0">
         <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <div>
-            <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">可发起流程</div>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-sm font-semibold text-cf-title">可发起流程</div>
+            <p className="mt-1 text-xs text-cf-subtle">
               {filteredWorkflows.length} 条 · {viewMode === 'grid' ? '卡片视图' : '表格视图'}
             </p>
           </div>

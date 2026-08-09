@@ -245,13 +245,13 @@ export const HrMallItemAdminPage: React.FC = () => {
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={9} className="py-10 text-center text-sm text-slate-400">
+              <td colSpan={9} className="py-10 text-center text-sm text-cf-faint">
                 <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={9} className="py-10 text-center text-sm text-slate-400">暂无商品</td>
+              <td colSpan={9} className="py-10 text-center text-sm text-cf-faint">暂无商品</td>
             </tr>
           ) : (
             rows.map((row) => (
@@ -267,13 +267,13 @@ export const HrMallItemAdminPage: React.FC = () => {
                 <td>
                   <div className="admin-users-row-actions">
                     {canEditItem ? (
-                      <button type="button" title="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Edit size={15} /></button>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Edit size={15} /></button>
                     ) : null}
                     {canEditItem && row.status === 'OFF_SHELF' ? (
-                      <button type="button" title="上架" aria-label="上架" onClick={() => void handleOnShelf(row)}><Send size={15} /></button>
+                      <button type="button" data-tooltip="上架" aria-label="上架" onClick={() => void handleOnShelf(row)}><Send size={15} /></button>
                     ) : null}
                     {canEditItem && row.status === 'ON_SHELF' ? (
-                      <button type="button" className="danger" title="下架" aria-label="下架" onClick={() => void handleOffShelf(row)}><Ban size={15} /></button>
+                      <button type="button" className="danger" data-tooltip="下架" aria-label="下架" onClick={() => void handleOffShelf(row)}><Ban size={15} /></button>
                     ) : null}
                   </div>
                 </td>

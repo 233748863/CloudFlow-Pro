@@ -21,6 +21,7 @@ import {
 import { formatDateValue, formatDateTimeValue, formatMoneyValue } from './hrShared';
 import { DictLabel } from '@/components/common/DictLabel';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import '../../styles/features/admin-recruitment.css';
 
 const SummaryCard: React.FC<{
   title: string;
@@ -244,11 +245,11 @@ export const HrEssPortalPage: React.FC = () => {
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={6} className="py-10 text-center text-sm text-slate-400">加载中...</td>
+              <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">加载中...</td>
             </tr>
           ) : selfServiceRows.length === 0 ? (
             <tr>
-              <td colSpan={6} className="py-10 text-center text-sm text-slate-400">
+              <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">
                 <UserCheck className="mx-auto mb-1 h-5 w-5" />暂无自助事项
               </td>
             </tr>

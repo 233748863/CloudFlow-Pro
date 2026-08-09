@@ -66,7 +66,7 @@ const canRemindExpiry = (item: Pick<OaSeal, 'expireDate' | 'status'>) => {
 const getExpiryBadge = (expireDate?: string) => {
   const days = getDaysUntil(expireDate);
   if (days === null) {
-    return <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">未维护</span>;
+    return <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-semibold text-cf-subtle dark:border-slate-700 dark:bg-slate-900">未维护</span>;
   }
   if (days < 0) {
     return <span className="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">已到期</span>;
@@ -90,7 +90,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string }> = ({ colSpan, 
         <div className="admin-source-stat-icon mb-3">
           <Stamp className="h-4 w-4" />
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
       </div>
     </td>
   </tr>
@@ -120,8 +120,8 @@ const DialogPanel: React.FC<{
 
 const DetailField: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="admin-seal-detail-item">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value || '-'}</div>
   </div>
 );
 
@@ -423,7 +423,7 @@ export const SealListPage: React.FC = () => {
 
   const pageTable = (
     <InnerTableSurface className="admin-seal-list-table-panel">
-      <table className="unity-data-table admin-source-table admin-seal-license-table min-w-[1180px]">
+      <table className="unity-data-table admin-source-table admin-seal-license-table min-w-[1180px] cf-freeze-edges">
           <thead>
             <tr>
               <th>编码</th>
@@ -443,22 +443,22 @@ export const SealListPage: React.FC = () => {
               <tr key={item.sealId}>
                 <td>{item.sealCode}</td>
                 <td>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{item.sealName}</div>
-                  <div className="mt-1 text-xs text-slate-400">{typeDict.getLabel(item.sealType) || '-'}</div>
+                  <div className="font-medium text-cf-title">{item.sealName}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{typeDict.getLabel(item.sealType) || '-'}</div>
                 </td>
                 <td>
                   <div>{item.sealNo || '-'}</div>
-                  <div className="mt-1 text-xs text-slate-400">{item.issuer || '-'}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{item.issuer || '-'}</div>
                 </td>
                 <td>
                   <div>{item.issueDate || '-'}</div>
-                  <div className="mt-1 text-xs text-slate-400">{item.expireDate || '-'}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{item.expireDate || '-'}</div>
                 </td>
                 <td>{getExpiryBadge(item.expireDate)}</td>
                 <td>{getAttachmentList(item.attachmentUrl).length ? `${getAttachmentList(item.attachmentUrl).length} 个` : '-'}</td>
                 <td>
                   {getStatusBadge(item.status)}
-                  <div className="mt-1 text-xs text-slate-400">{item.borrowDueTime ? formatDateTimeDisplay(item.borrowDueTime) : '-'}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{item.borrowDueTime ? formatDateTimeDisplay(item.borrowDueTime) : '-'}</div>
                 </td>
                 <td>
                   <TableRowActions
@@ -593,7 +593,7 @@ export const SealListPage: React.FC = () => {
               </div>
               {form.keeperName ? (
                 <div className="admin-dialog-value-note mt-3">
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{form.keeperName}</div>
+                  <div className="font-medium text-cf-title">{form.keeperName}</div>
                 </div>
               ) : null}
             </DialogPanel>
@@ -601,24 +601,24 @@ export const SealListPage: React.FC = () => {
             <DialogPanel title="印章摘要">
               <dl className="admin-dialog-stack text-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">类型</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">{typeDict.getLabel(form.sealType) || '-'}</dd>
+                  <dt className="text-cf-subtle">类型</dt>
+                  <dd className="font-medium text-cf-title">{typeDict.getLabel(form.sealType) || '-'}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">状态</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">{statusDict.getLabel(form.status || 'AVAILABLE') || '-'}</dd>
+                  <dt className="text-cf-subtle">状态</dt>
+                  <dd className="font-medium text-cf-title">{statusDict.getLabel(form.status || 'AVAILABLE') || '-'}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">到期日期</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">{form.expireDate || '-'}</dd>
+                  <dt className="text-cf-subtle">到期日期</dt>
+                  <dd className="font-medium text-cf-title">{form.expireDate || '-'}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">预计归还</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">{form.borrowDueTime ? formatDateTimeDisplay(form.borrowDueTime) : '-'}</dd>
+                  <dt className="text-cf-subtle">预计归还</dt>
+                  <dd className="font-medium text-cf-title">{form.borrowDueTime ? formatDateTimeDisplay(form.borrowDueTime) : '-'}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">位置</dt>
-                  <dd className="max-w-[12rem] truncate font-medium text-slate-900 dark:text-slate-100">{form.location || '-'}</dd>
+                  <dt className="text-cf-subtle">位置</dt>
+                  <dd className="max-w-[12rem] truncate font-medium text-cf-title">{form.location || '-'}</dd>
                 </div>
               </dl>
             </DialogPanel>
@@ -691,23 +691,23 @@ export const SealListPage: React.FC = () => {
                 <div key={item.id} className="admin-seal-renewal-card">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.renewalNo || '-'}</div>
-                      <div className="mt-1 text-xs text-slate-400">{item.oldExpireDate || '-'} → {item.newExpireDate || '-'}</div>
+                      <div className="text-sm font-medium text-cf-title">{item.renewalNo || '-'}</div>
+                      <div className="mt-1 text-xs text-cf-faint">{item.oldExpireDate || '-'} → {item.newExpireDate || '-'}</div>
                     </div>
                     <div className="flex items-center gap-2">
                       {getRenewalStatusBadge(item.status)}
                       <div className="admin-users-row-actions">
-                        {item.status === 'DRAFT' && hasPermission('oa:seal-renewal:edit') ? <button type="button" title="编辑" onClick={() => setRenewalForm({ ...item })}><Edit size={15} /></button> : null}
-                        {item.status === 'DRAFT' && hasPermission('oa:seal-renewal:submit') ? <button type="button" title="提交" onClick={() => void submitRenewal(item.id)}><Send size={15} /></button> : null}
-                        {item.status === 'PENDING' && hasPermission('oa:seal-renewal:cancel') ? <button type="button" title="取消" onClick={() => void cancelRenewal(item.id)}><XCircle size={15} /></button> : null}
-                        {item.status && ['DRAFT', 'REJECTED', 'CANCELLED'].includes(item.status) && hasPermission('oa:seal-renewal:remove') ? <button type="button" className="danger" title="删除" onClick={() => void removeRenewal(item.id)}><Trash2 size={15} /></button> : null}
+                        {item.status === 'DRAFT' && hasPermission('oa:seal-renewal:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => setRenewalForm({ ...item })}><Edit size={15} /></button> : null}
+                        {item.status === 'DRAFT' && hasPermission('oa:seal-renewal:submit') ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => void submitRenewal(item.id)}><Send size={15} /></button> : null}
+                        {item.status === 'PENDING' && hasPermission('oa:seal-renewal:cancel') ? <button type="button" data-tooltip="取消" aria-label="取消" onClick={() => void cancelRenewal(item.id)}><XCircle size={15} /></button> : null}
+                        {item.status && ['DRAFT', 'REJECTED', 'CANCELLED'].includes(item.status) && hasPermission('oa:seal-renewal:remove') ? <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => void removeRenewal(item.id)}><Trash2 size={15} /></button> : null}
                       </div>
                     </div>
                   </div>
-                  <div className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.renewalReason || '-'}</div>
+                  <div className="mt-2 text-sm leading-6 text-cf-muted">{item.renewalReason || '-'}</div>
                   {getAttachmentList(item.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={item.attachmentUrl} compact /></div> : null}
                 </div>
-              )) : <div className="py-6 text-center text-sm text-slate-400">暂无续期记录</div>}
+              )) : <div className="py-6 text-center text-sm text-cf-faint">暂无续期记录</div>}
             </div>
           </DialogPanel>
         </div>

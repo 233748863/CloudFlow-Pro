@@ -10,10 +10,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BACKEND_SOURCE } from '@/pages/CodeGeneration/demo-data/code-generation-samples';
-import { generateBackendArtifacts } from '../services/geminiService';
+import { generateBackendArtifacts } from '@/services/api/ai';
 import { WorkflowDefinition } from '../types';
 import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';
 import { cn } from '@/utils/cn';
+import '../styles/features/code-generation.css';
 
 type ArtifactTab = 'java' | 'sql';
 
@@ -59,13 +60,13 @@ const InlineState: React.FC<{
 }> = ({ title, description, icon, loading = false }) => (
   <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
     {loading ? (
-      <Loader2 className="mb-3 h-4 w-4 animate-spin text-slate-400 dark:text-slate-500" />
+      <Loader2 className="mb-3 h-4 w-4 animate-spin text-cf-faint" />
     ) : icon ? (
-      <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div>
+      <div className="mb-3 text-cf-faint">{icon}</div>
     ) : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">
         {description}
       </div>
     ) : null}
@@ -77,10 +78,10 @@ const MetaField: React.FC<{
   value: React.ReactNode;
 }> = ({ label, value }) => (
   <div className="px-4 py-3">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+    <div className="text-[11px] font-medium text-cf-faint">
       {label}
     </div>
-    <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+    <div className="mt-1.5 text-sm font-semibold text-cf-title">
       {value}
     </div>
   </div>
@@ -111,15 +112,15 @@ const CodePreviewPanel = ({
     <div className="source-code-preview-panel overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
       <div className="source-code-preview-head flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+          <div className="flex items-center gap-2 text-sm font-medium text-cf-title">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-cf-subtle dark:border-slate-700 dark:bg-slate-950">
               {meta.icon}
             </span>
             <span className="truncate">{meta.fileName}</span>
           </div>
-          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{meta.description}</div>
+          <div className="mt-1 text-xs text-cf-subtle">{meta.description}</div>
         </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
+        <span className="text-xs text-cf-subtle">
           {getLineCount(code).toLocaleString()} 行
         </span>
       </div>
@@ -173,7 +174,7 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
       toast.success('代码产物已刷新');
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : '代码生成失败，请检查 API Key';
+        error instanceof Error ? error.message : '代码生成失败，请稍后重试或联系管理员';
       setGeneratedCode((prev) => ({ ...prev, loading: false }));
       toast.error(message);
     }
@@ -193,10 +194,10 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
     <div className="source-code-viewer divide-y divide-slate-200 dark:divide-slate-800">
       <div className="source-code-toolbar flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          <div className="text-sm font-medium text-cf-title">
             {workflow.name}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-cf-subtle">
             <span className="inline-flex items-center gap-1">
               <Workflow size={13} />
               {workflow.key}
@@ -232,7 +233,7 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
           label="图模型"
           value={
             <span className="inline-flex items-center gap-1">
-              <GitBranch size={13} className="text-slate-400 dark:text-slate-500" />
+              <GitBranch size={13} className="text-cf-faint" />
               {workflowNodeCount} 节点 / {workflowEdgeCount} 连线
             </span>
           }
@@ -261,7 +262,7 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
               </SegmentedControlItem>
             </SegmentedControl>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-cf-subtle">
               <span>{currentMeta.fileName}</span>
               <span>{getLineCount(currentCode).toLocaleString()} 行</span>
             </div>
@@ -269,7 +270,7 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
 
           {generatedCode.loading ? (
             <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <div className="flex items-center gap-2 text-sm text-cf-muted">
                 <Loader2 size={14} className="animate-spin" />
                 正在生成最新代码产物，当前预览会在完成后自动替换。
               </div>

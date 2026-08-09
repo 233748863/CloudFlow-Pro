@@ -73,7 +73,7 @@ const getLeaveTypeTone = (leaveCode?: string) => {
     case 'MATERNITY':
       return 'bg-[#d8f3fa] text-[#0b7894]';
     default:
-      return 'bg-slate-100 text-slate-600';
+      return 'bg-cf-surface-3 text-cf-muted';
   }
 };
 
@@ -204,7 +204,7 @@ export const MobileLeaveApplication: React.FC = () => {
       <div className="flex min-h-screen items-center justify-center bg-[var(--cf-bg)]">
         <div className="text-center">
           <Loader2 className="mx-auto mb-3 animate-spin text-[#0d95b5]" size={32} />
-          <p className="text-sm text-slate-500">正在加载请假类型...</p>
+          <p className="text-sm text-cf-subtle">正在加载请假类型...</p>
         </div>
       </div>
     );
@@ -218,9 +218,9 @@ export const MobileLeaveApplication: React.FC = () => {
           className="p-1 -ml-1"
           aria-label="返回"
         >
-          <ChevronLeft size={24} className="text-slate-600" />
+          <ChevronLeft size={24} className="text-cf-muted" />
         </button>
-        <h1 className="flex-1 text-lg font-semibold text-slate-900">请假申请</h1>
+        <h1 className="flex-1 text-lg font-semibold text-cf-title">请假申请</h1>
       </div>
 
       <div className="space-y-4 p-4">
@@ -242,7 +242,7 @@ export const MobileLeaveApplication: React.FC = () => {
         )}
 
         <div className="rounded-lg border border-slate-100 bg-[var(--cf-surface-strong)] p-4 shadow-none">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cf-faint">
             Leave Type
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -252,10 +252,10 @@ export const MobileLeaveApplication: React.FC = () => {
                 onClick={() => setForm((prev) => ({ ...prev, leaveTypeId: type.id }))}
                 disabled={selfServiceLocked}
                 className={`rounded-lg border px-3 py-3 text-sm font-medium transition-all ${
-                  form.leaveTypeId === type.id
-                    ? 'border-[#0d95b5] bg-[#effbfe] text-[#0d95b5]'
-                    : 'border-slate-200 text-slate-600'
-                }`}
+ form.leaveTypeId === type.id
+ ? 'border-[#0d95b5] bg-[#effbfe] text-[#0d95b5]'
+ : 'border-slate-200 text-cf-muted'
+ }`}
               >
                 {type.leaveName}
               </button>
@@ -264,12 +264,12 @@ export const MobileLeaveApplication: React.FC = () => {
         </div>
 
         <div className="rounded-lg border border-slate-100 bg-[var(--cf-surface-strong)] p-4 shadow-none">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cf-faint">
             Time Range
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1 block text-sm font-medium text-cf-body">
                 {selectedType?.unit === 'HOUR' ? '开始时间' : '开始日期'}
               </label>
               <DatePicker
@@ -281,7 +281,7 @@ export const MobileLeaveApplication: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1 block text-sm font-medium text-cf-body">
                 {selectedType?.unit === 'HOUR' ? '结束时间' : '结束日期'}
               </label>
               <DatePicker
@@ -296,7 +296,7 @@ export const MobileLeaveApplication: React.FC = () => {
         </div>
 
         <div className="rounded-lg border border-slate-100 bg-[var(--cf-surface-strong)] p-4 shadow-none">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cf-faint">
             Reason
           </div>
           <div className="mt-3">
@@ -316,8 +316,8 @@ export const MobileLeaveApplication: React.FC = () => {
               <ClipboardList size={18} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold text-slate-900">申请摘要</div>
-              <div className="mt-2 text-sm text-slate-600">
+              <div className="text-sm font-semibold text-cf-title">申请摘要</div>
+              <div className="mt-2 text-sm text-cf-muted">
                 <div>类型：{selectedType?.leaveName || '未选择'}</div>
                 <div>
                   时长：
@@ -325,7 +325,7 @@ export const MobileLeaveApplication: React.FC = () => {
                     {duration > 0 ? `${duration} ${selectedType?.unit === 'HOUR' ? '小时' : '天'}` : '未计算'}
                   </span>
                 </div>
-                <div className="mt-1 text-xs text-slate-500">
+                <div className="mt-1 text-xs text-cf-subtle">
                   后端将按 HR 请假类型配置的正式单位和额度规则处理，不再拼装兼容字段。
                 </div>
               </div>

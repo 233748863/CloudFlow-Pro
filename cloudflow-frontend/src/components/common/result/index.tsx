@@ -47,10 +47,10 @@ export const Result500: React.FC<Result500Props> = ({
   const details =
     showStack && error?.stack ? (
       <details className="text-left">
-        <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
+        <summary className="cursor-pointer text-xs text-cf-faint hover:text-cf-muted">
           查看错误详情
         </summary>
-        <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-3 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-900">
           {error.stack}
         </pre>
       </details>
@@ -62,7 +62,7 @@ export const Result500: React.FC<Result500Props> = ({
         const text = [error.message, error.stack].filter(Boolean).join('\n');
         void navigator.clipboard.writeText(text).then(() => toast.success('已复制'));
       }}
-      className="mt-3 inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+      className="mt-3 inline-flex items-center gap-1.5 text-xs text-cf-faint hover:text-cf-muted"
     >
       <Copy size={12} />
       复制报错信息

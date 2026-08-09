@@ -375,7 +375,7 @@ const getEventTimingMeta = (event: ScheduleEventLike, referenceDate: Date): Even
     return {
       label: '时间异常',
       hint: '请检查开始时间和结束时间',
-      badgeClass: 'bg-[var(--cf-surface-muted)] text-slate-500 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800',
+      badgeClass: 'bg-[var(--cf-surface-muted)] text-cf-subtle border border-slate-200 dark:bg-slate-900 dark:border-slate-800',
     };
   }
 
@@ -383,7 +383,7 @@ const getEventTimingMeta = (event: ScheduleEventLike, referenceDate: Date): Even
     return {
       label: '已结束',
       hint: `结束于 ${start.toDateString() === end.toDateString() ? timeFormatter.format(end) : monthDayFormatter.format(end)}`,
-      badgeClass: 'bg-[var(--cf-surface-muted)] text-slate-600 border border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800',
+      badgeClass: 'bg-[var(--cf-surface-muted)] text-cf-muted border border-slate-200 dark:bg-slate-900 dark:border-slate-800',
     };
   }
 
@@ -439,9 +439,9 @@ const InlineState = ({
     <div className="admin-source-stat-icon mb-3">
       {icon || <Calendar className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -465,9 +465,9 @@ const TableStateRow = ({
         <div className="admin-source-stat-icon mb-3">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : icon || <Calendar className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
         ) : null}
       </div>
     </td>
@@ -513,8 +513,8 @@ const ScheduleDetailRow: React.FC<{
   wide?: boolean;
 }> = ({ label, value, wide = false }) => (
   <div className={cn('admin-schedule-detail-item', wide && 'admin-schedule-detail-item-wide')}>
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value || '-'}</div>
   </div>
 );
 
@@ -949,15 +949,15 @@ export const SchedulePage = () => {
             <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <div className="text-sm font-semibold text-cf-title">
                     {calendarTitle || currentViewLabel}
                   </div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  <div className="mt-1 text-sm text-cf-subtle">
                     {loadError || (calendarWindowLabel || '日历视图')}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="hidden flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 sm:flex">
+                  <div className="hidden flex-wrap items-center gap-2 text-xs text-cf-subtle sm:flex">
                     <span>今日 {todayEvents.length}</span>
                     <span>进行中 {todayOngoingCount}</span>
                     <span>24 小时内 {next24HourEventsCount}</span>
@@ -978,18 +978,18 @@ export const SchedulePage = () => {
                     <button
                       type="button"
                       onClick={() => calendarRef.current?.getApi().prev()}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-cf-subtle transition hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:hover:bg-slate-800"
                       aria-label="上一周期"
-                      title="上一周期"
+                      data-tooltip="上一周期"
                     >
                       <ChevronLeft size={16} />
                     </button>
                     <button
                       type="button"
                       onClick={() => calendarRef.current?.getApi().next()}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-cf-subtle transition hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:hover:bg-slate-800"
                       aria-label="下一周期"
-                      title="下一周期"
+                      data-tooltip="下一周期"
                     >
                       <ChevronRight size={16} />
                     </button>
@@ -999,7 +999,7 @@ export const SchedulePage = () => {
             </div>
 
             <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-cf-subtle">
                 {(['MEETING', 'WORK', 'PERSONAL'] as ScheduleEventType[]).map(type => (
                   <span
                     key={type}
@@ -1180,7 +1180,7 @@ export const SchedulePage = () => {
                 `}</style>
                 {isLoadingEvents ? (
                   <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[var(--cf-surface-strong)] dark:bg-slate-950">
-                    <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-2 text-sm font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                    <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-2 text-sm font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950">
                       正在同步日程...
                     </div>
                   </div>
@@ -1312,12 +1312,12 @@ export const SchedulePage = () => {
             <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">日程列表</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  <div className="text-sm font-semibold text-cf-title">日程列表</div>
+                  <div className="mt-1 text-sm text-cf-subtle">
                     {tableHasActiveFilters ? listSummary : '按当前时间窗口同步显示日程记录'}
                   </div>
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
+                <div className="text-xs text-cf-subtle">
                   {tableTotal > 0 ? `${tablePageStart}-${tablePageEnd} / ${tableTotal}` : '0 / 0'}
                 </div>
               </div>
@@ -1360,27 +1360,27 @@ export const SchedulePage = () => {
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: meta.color }} />
-                                <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                                <span className="truncate text-sm font-medium text-cf-title">
                                   {event.extendedProps.originalTitle}
                                 </span>
                                 <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${meta.badgeClass}`}>
                                   {meta.label}
                                 </span>
                               </div>
-                              <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                              <div className="mt-1 truncate text-xs text-cf-subtle">
                                 {description || '暂无补充说明'}
                               </div>
                             </div>
                           </td>
                           <td>
                             <div>{formatEventSlot(event)}</div>
-                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                            <div className="mt-1 text-xs text-cf-faint">
                               {getDurationLabel(event.extendedProps.startTime, event.extendedProps.endTime, event.allDay)}
                             </div>
                           </td>
                           <td>
                             <div className="inline-flex items-center gap-1.5">
-                              <MapPin size={14} className="text-slate-400 dark:text-slate-500" />
+                              <MapPin size={14} className="text-cf-faint" />
                               <span>{getEventLocationLabel(event)}</span>
                             </div>
                           </td>
@@ -1389,18 +1389,18 @@ export const SchedulePage = () => {
                               <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${statusMeta.badgeClass}`}>
                                 {statusMeta.label}
                               </span>
-                              <span className="text-[11px] text-slate-400 dark:text-slate-500">{statusMeta.hint}</span>
+                              <span className="text-[11px] text-cf-faint">{statusMeta.hint}</span>
                             </div>
                           </td>
                           <td>
                             <div className="admin-users-row-actions justify-end">
-                              <button type="button" title="详情" aria-label="详情" onClick={() => openEventDetail(event)}>
+                              <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => openEventDetail(event)}>
                                 <Eye size={15} />
                               </button>
                               <button
                                 className="danger"
                                 type="button"
-                                title="删除"
+                                data-tooltip="删除"
                                 aria-label="删除"
                                 onClick={() => void handleDeleteFromTable(event)}
                                 disabled={isDeleting || !canDeleteSchedule}
@@ -1527,14 +1527,14 @@ export const SchedulePage = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
+                <div className="text-xs text-cf-subtle">
                   {meetingRooms.length > 0 ? `当前可选 ${meetingRooms.length} 间会议室` : '当前没有可选会议室'}
                 </div>
               </div>
             ) : (
               <div className="admin-dialog-value-note">
-                <div className="text-xs font-medium text-slate-500 dark:text-slate-400">会议室 / 地点</div>
-                <div className="mt-1.5 text-sm text-slate-700 dark:text-slate-300">
+                <div className="text-xs font-medium text-cf-subtle">会议室 / 地点</div>
+                <div className="mt-1.5 text-sm text-cf-body">
                   非会议事项无需绑定会议室。
                 </div>
               </div>
@@ -1550,7 +1550,7 @@ export const SchedulePage = () => {
                 className="h-4 w-4 rounded border-slate-300"
               />
               <span>全天事项</span>
-              <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-normal text-cf-subtle">
                 开启后自动按整天保存时间范围
               </span>
             </label>
@@ -1625,7 +1625,7 @@ export const SchedulePage = () => {
               </div>
             )}
 
-            <div className="text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-xs text-cf-subtle">
               {form.type === 'MEETING'
                 ? `当前类型：会议预约${draftMeetingRoomLabel ? ` · ${draftMeetingRoomLabel}` : ''}`
                 : '当前类型无需绑定会议室。'}

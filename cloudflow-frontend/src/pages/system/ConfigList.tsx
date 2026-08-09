@@ -25,6 +25,7 @@ import {
 } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './ConfigList.css';
 
 type ConfigFilters = {
   configName: string;
@@ -94,7 +95,7 @@ const RESTART_REQUIRED_KEYS = new Set<string>([
 const getConfigTypeBadgeClassName = (configType: string) =>
   configType === 'Y'
     ? 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200'
-    : 'border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+    : 'border border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-700 dark:bg-slate-950';
 
 const getConfigScopeBadgeClassName = (configScope: string) =>
   configScope === '0'
@@ -111,9 +112,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -529,7 +530,7 @@ export const ConfigList = () => {
             ) : (
               configs.map((config) => (
                 <tr key={config.configId}>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">
+                  <td className="text-sm text-cf-subtle">
                     {config.configId}
                   </td>
                   <td>
@@ -555,7 +556,7 @@ export const ConfigList = () => {
                       {RESTART_REQUIRED_KEYS.has(config.configKey) ? (
                         <span
                           className="inline-flex w-fit items-center rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                          title="该参数由 Spring Cache 注解控制，修改后需重启服务才能生效"
+                          data-tooltip="该参数由 Spring Cache 注解控制，修改后需重启服务才能生效"
                         >
                           重启生效
                         </span>
@@ -563,7 +564,7 @@ export const ConfigList = () => {
                     </div>
                   </td>
                   <td>
-                    <span className="admin-config-value" title={config.configValue}>
+                    <span className="admin-config-value" data-tooltip={config.configValue}>
                       {config.configValue}
                     </span>
                   </td>
@@ -587,19 +588,19 @@ export const ConfigList = () => {
                       {config.configScope === '0' ? '全局' : '租户'}
                     </span>
                   </td>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">
+                  <td className="text-sm text-cf-subtle">
                     {config.createTime || '-'}
                   </td>
                   <td className="admin-config-actions-col">
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑参数" onClick={() => handleOpenModal(config)}>
+                      <button type="button" data-tooltip="编辑参数" aria-label="编辑参数" onClick={() => handleOpenModal(config)}>
                         <Edit size={15} />
                       </button>
                       {config.configType !== 'Y' ? (
                         <button
                           type="button"
                           className="danger"
-                          title="删除参数"
+                          data-tooltip="删除参数" aria-label="删除参数"
                           onClick={() => setPendingDeleteConfig(config)}
                         >
                           <Trash2 size={15} />

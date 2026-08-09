@@ -111,16 +111,16 @@ export const HrTrainingArchivePage: React.FC = () => {
         table={
           loading ? (
             <InnerTableSurface>
-              <div className="py-12 text-center text-sm text-slate-400">加载中...</div>
+              <div className="py-12 text-center text-sm text-cf-faint">加载中...</div>
             </InnerTableSurface>
           ) : !archive ? (
             <InnerTableSurface>
-              <div className="py-12 text-center text-sm text-slate-400">无档案数据</div>
+              <div className="py-12 text-center text-sm text-cf-faint">无档案数据</div>
             </InnerTableSurface>
           ) : (
             <div className="admin-source-content-grid admin-training-archive-grid">
               <InnerTableSurface>
-                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-100">参训记录</div>
+                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-cf-title dark:border-slate-800">参训记录</div>
                 <div className="admin-horizontal-scroll">
                   <table className="unity-data-table admin-source-table min-w-[720px]">
                     <thead>
@@ -152,7 +152,7 @@ export const HrTrainingArchivePage: React.FC = () => {
               </InnerTableSurface>
       
               <InnerTableSurface>
-                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-100">获得证书</div>
+                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-cf-title dark:border-slate-800">获得证书</div>
                 <div className="admin-horizontal-scroll">
                   <table className="unity-data-table admin-source-table min-w-[560px]">
                     <thead>

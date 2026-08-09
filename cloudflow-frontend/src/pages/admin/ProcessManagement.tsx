@@ -56,7 +56,7 @@ interface WorkflowDefinition extends Omit<BaseWorkflowDefinition, 'tags'> {
   workflowCreatorId: string; // 流程创建者ID（用于权限判断）
 }
 
-const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
+const fieldLabelClassName = 'text-xs font-medium text-cf-subtle';
 const dialogSectionClassName =
   'overflow-hidden rounded-md border border-slate-200 px-4 py-2.5 dark:border-slate-800';
 const DEFAULT_PAGE_SIZE = 10;
@@ -73,9 +73,9 @@ const ManagementTableStateRow: React.FC<{
         <div className="admin-source-stat-icon mb-3">
           {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-xs leading-5 text-cf-subtle">{description}</div>
         ) : null}
       </div>
     </td>
@@ -87,12 +87,13 @@ const DialogMetaRow: React.FC<{
   value: React.ReactNode;
 }> = ({ label, value }) => (
   <div className="flex items-center justify-between gap-4 border-b border-slate-200 py-2 last:border-b-0 dark:border-slate-800">
-    <span className="text-xs text-slate-400 dark:text-slate-500">{label}</span>
-    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{value}</span>
+    <span className="text-xs text-cf-faint">{label}</span>
+    <span className="text-sm font-medium text-cf-title">{value}</span>
   </div>
 );
 
 import { useDict } from '@/hooks/useDict';
+import '../../styles/features/admin-workflow.css';
 
 const formatWorkflowTags = (tags: string[]) => {
   if (tags.length === 0) {
@@ -960,7 +961,7 @@ export const ProcessManagement = () => {
                       onClick={handleSelectAll}
                       disabled={filteredWorkflows.length === 0}
                       aria-label={allVisibleSelected ? '取消全选结果' : '全选结果'}
-                      className="mx-auto h-7 w-7 rounded-md text-slate-400 hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+                      className="mx-auto h-7 w-7 rounded-md text-cf-faint hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:hover:bg-slate-900"
                     >
                       {allVisibleSelected ? <CheckSquare size={16} /> : <Square size={16} />}
                     </Button>
@@ -995,8 +996,8 @@ export const ProcessManagement = () => {
                             aria-label={selected ? `取消选择 ${workflow.name}` : `选择 ${workflow.name}`}
                             onClick={() => handleSelectOne(workflow.id)}
                             className={cn(
-                              'h-8 w-8 rounded-md text-slate-400 hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200',
-                              selected && 'bg-[var(--cf-surface-muted)] text-slate-700 dark:bg-slate-900 dark:text-slate-200',
+                              'h-8 w-8 rounded-md text-cf-faint hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:hover:bg-slate-900',
+                              selected && 'bg-[var(--cf-surface-muted)] text-cf-body dark:bg-slate-900',
                             )}
                           >
                             {selected ? <CheckSquare size={18} /> : <Square size={18} />}
@@ -1019,17 +1020,17 @@ export const ProcessManagement = () => {
                             <span className="admin-users-muted">未分类</span>
                           )}
                         </td>
-                        <td><span title={workflow.tags.join(', ') || undefined}>{formatWorkflowTags(workflow.tags)}</span></td>
+                        <td><span data-tooltip={workflow.tags.join(', ') || undefined}>{formatWorkflowTags(workflow.tags)}</span></td>
                         <td>v{workflow.version}</td>
                         <td>
                           <div className="admin-users-row-actions">
-                            <button type="button" onClick={() => navigate(`/workflow/design?id=${workflow.id}`)} disabled={!isAdmin} title={isAdmin ? '编辑流程' : '仅管理员可编辑流程'} aria-label="编辑流程">
+                            <button type="button" onClick={() => navigate(`/workflow/design?id=${workflow.id}`)} disabled={!isAdmin} data-tooltip={isAdmin ? '编辑流程' : '仅管理员可编辑流程'} aria-label="编辑流程">
                               <Edit size={15} />
                             </button>
-                            <button type="button" onClick={() => navigate(`/workflow/versions/${workflow.id}`)} title="查看版本历史" aria-label="查看版本历史">
+                            <button type="button" onClick={() => navigate(`/workflow/versions/${workflow.id}`)} data-tooltip="查看版本历史" aria-label="查看版本历史">
                               <RefreshCw size={15} />
                             </button>
-                            <button type="button" onClick={() => openExportDialog(workflow.id)} disabled={!canExportCurrent} title={canExportCurrent ? '导出流程' : '仅流程创建者或管理员可导出'} aria-label="导出流程">
+                            <button type="button" onClick={() => openExportDialog(workflow.id)} disabled={!canExportCurrent} data-tooltip={canExportCurrent ? '导出流程' : '仅流程创建者或管理员可导出'} aria-label="导出流程">
                               <FileDown size={15} />
                             </button>
                           </div>
@@ -1152,7 +1153,7 @@ export const ProcessManagement = () => {
                         key={tag}
                         type="button"
                         onClick={() => removeBatchTag(tag)}
-                        className="inline-flex items-center gap-1.5 rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-600 dark:border-slate-800 dark:text-slate-300"
+                        className="inline-flex items-center gap-1.5 rounded border border-slate-200 px-2 py-1 text-[11px] text-cf-muted dark:border-slate-800"
                       >
                         {tag}
                         <X size={12} />
@@ -1224,7 +1225,7 @@ export const ProcessManagement = () => {
                 />
               </>
             ) : (
-              <div className="text-sm text-slate-600 dark:text-slate-300">未找到要导出的流程信息。</div>
+              <div className="text-sm text-cf-muted">未找到要导出的流程信息。</div>
             )}
           </div>
           <div className={dialogSectionClassName}>
@@ -1232,13 +1233,13 @@ export const ProcessManagement = () => {
               <input type="checkbox"
                 checked={includeSensitive}
                 onChange={(event) => setIncludeSensitive(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-cf-title focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:focus:ring-slate-500"
               />
               <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                <div className="text-sm font-medium text-cf-body">
                   包含敏感配置信息
                 </div>
-                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                <div className="mt-1 text-xs leading-6 text-cf-subtle">
                   默认导出脱敏内容
                 </div>
               </div>
@@ -1279,7 +1280,7 @@ export const ProcessManagement = () => {
           {showSafetyWarning && safetyWarnings.length > 0 ? (
             <div className={dialogSectionClassName}>
               <DialogMetaRow label="安全检查" value={`${safetyWarnings.length} 条提示`} />
-              <div className="mt-2 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <div className="mt-2 space-y-1.5 text-sm text-cf-muted">
                 {safetyWarnings.map((warning, index) => (
                   <div key={index}>{warning}</div>
                 ))}

@@ -48,17 +48,17 @@ export const UserDashboardPendingTasks: React.FC<UserDashboardPendingTasksProps>
                   <ClipboardCheck size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <p className="truncate text-sm font-semibold text-cf-title">
                     {task.title || task.workflowName || '流程待办'}
                   </p>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  <p className="truncate text-xs text-cf-subtle">
                     {task.nodeName || task.currentNodeName || '待处理节点'}
                   </p>
                 </div>
               </div>
 
               <div className="ml-4 text-right">
-                <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                <p className="text-xs font-medium text-cf-faint">
                   {task.createdTime || ''}
                 </p>
                 <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[#0d95b5] dark:text-cyan-200">

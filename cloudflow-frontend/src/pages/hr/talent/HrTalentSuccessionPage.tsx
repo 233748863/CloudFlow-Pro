@@ -308,16 +308,16 @@ export const HrTalentSuccessionPage: React.FC = () => {
                           <td>{formatDateTimeValue(row.publishTime) || '-'}</td>
                           <td>
                             <div className="admin-users-row-actions">
-                              <button type="button" title="详情/提名" onClick={() => void openDetail(row)}>
+                              <button type="button" data-tooltip="详情/提名" aria-label="详情/提名" onClick={() => void openDetail(row)}>
                                 <Eye size={15} />
                               </button>
                               {canEdit && row.status === 'DRAFT' ? (
-                                <button type="button" title="发起发布" onClick={() => void handlePublish(row)}>
+                                <button type="button" data-tooltip="发起发布" aria-label="发起发布" onClick={() => void handlePublish(row)}>
                                   <Send size={15} />
                                 </button>
                               ) : null}
                               {canRemove ? (
-                                <button type="button" className="danger" title="删除" onClick={() => setDeleteId(row.id)}>
+                                <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteId(row.id)}>
                                   <Trash2 size={15} />
                                 </button>
                               ) : null}
@@ -380,7 +380,7 @@ export const HrTalentSuccessionPage: React.FC = () => {
       >
         <div className="admin-source-content-grid">
           <InnerTableSurface>
-            <div className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">已提名继任人</div>
+            <div className="px-4 py-3 text-sm font-semibold text-cf-title">已提名继任人</div>
             <div className="admin-horizontal-scroll">
               <table className="unity-data-table admin-source-table min-w-[560px]">
                 <thead>
@@ -401,7 +401,7 @@ export const HrTalentSuccessionPage: React.FC = () => {
                       <td className="max-w-[12rem] truncate">{s.developmentGap || '-'}</td>
                       <td>
                         <div className="admin-users-row-actions">
-                          <button type="button" className="danger" title="移除" onClick={() => void handleRemoveSuccessor(s)}>
+                          <button type="button" className="danger" data-tooltip="移除" aria-label="移除" onClick={() => void handleRemoveSuccessor(s)}>
                             <UserMinus size={15} />
                           </button>
                         </div>

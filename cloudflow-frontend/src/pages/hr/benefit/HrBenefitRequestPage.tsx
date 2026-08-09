@@ -255,13 +255,13 @@ export const HrBenefitRequestPage: React.FC = () => {
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={8} className="py-10 text-center text-sm text-slate-400">
+              <td colSpan={8} className="py-10 text-center text-sm text-cf-faint">
                 <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无数据</td>
+              <td colSpan={8} className="py-10 text-center text-sm text-cf-faint">暂无数据</td>
             </tr>
           ) : (
             rows.map((row) => (
@@ -279,13 +279,13 @@ export const HrBenefitRequestPage: React.FC = () => {
                 <td>
                   <div className="admin-users-row-actions">
                     {hasWorkflowStatus(row.status, 'DRAFT') ? (
-                      <button type="button" title="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Edit size={15} /></button>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Edit size={15} /></button>
                     ) : null}
                     {hasWorkflowStatus(row.status, 'DRAFT') ? (
-                      <button type="button" title="提交" aria-label="提交" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
+                      <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
                     ) : null}
                     {hasWorkflowStatus(row.status, 'DRAFT', 'SUBMITTED', 'APPROVING') ? (
-                      <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => { setCancelTarget(row); setCancelReason('撤回'); }}><Ban size={15} /></button>
+                      <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => { setCancelTarget(row); setCancelReason('撤回'); }}><Ban size={15} /></button>
                     ) : null}
                   </div>
                 </td>

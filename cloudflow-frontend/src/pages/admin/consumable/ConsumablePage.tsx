@@ -423,7 +423,7 @@ const ConsumablePage: React.FC = () => {
                   <tr>
                     <td
                       colSpan={9}
-                      className="px-4 py-10 text-center text-sm text-slate-500"
+                      className="px-4 py-10 text-center text-sm text-cf-subtle"
                     >
                       正在加载耗材...
                     </td>
@@ -432,7 +432,7 @@ const ConsumablePage: React.FC = () => {
                   <tr>
                     <td
                       colSpan={9}
-                      className="px-4 py-10 text-center text-sm text-slate-500"
+                      className="px-4 py-10 text-center text-sm text-cf-subtle"
                     >
                       暂无耗材
                     </td>
@@ -441,10 +441,10 @@ const ConsumablePage: React.FC = () => {
                   list.map((item) => (
                     <tr key={item.consumableId}>
                       <td>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">
+                        <div className="font-medium text-cf-title">
                           {item.name}
                         </div>
-                        <div className="mt-1 text-xs text-slate-400">
+                        <div className="mt-1 text-xs text-cf-faint">
                           ID {item.consumableId || "-"}
                         </div>
                       </td>
@@ -459,7 +459,7 @@ const ConsumablePage: React.FC = () => {
                           className={
                             isLowStock(item)
                               ? "font-semibold text-rose-600"
-                              : "font-semibold text-slate-900 dark:text-slate-100"
+                              : "font-semibold text-cf-title"
                           }
                         >
                           {item.quantity ?? 0}
@@ -476,7 +476,7 @@ const ConsumablePage: React.FC = () => {
                       </td>
                       <td>
                         {Number(item.warnEnabled ?? 1) !== 1 ? (
-                          <span className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                          <span className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-semibold text-cf-subtle dark:border-slate-800 dark:bg-slate-900">
                             未预警
                           </span>
                         ) : isLowStock(item) ? (
@@ -492,12 +492,12 @@ const ConsumablePage: React.FC = () => {
                       </td>
                       <td>
                         <div className="admin-users-row-actions">
-                          {isLowStock(item) ? <button type="button" title="采购" aria-label="采购" onClick={() => void openSuggestion(item)}><ShoppingCart size={15} /></button> : null}
-                          {hasPermission("oa:consumable:add-stock") ? <button type="button" title="入库" aria-label="入库" onClick={() => openStockModal(item, "add")}><ArrowUpCircle size={15} /></button> : null}
-                          {hasPermission("oa:consumable:reduce-stock") ? <button type="button" title="出库" aria-label="出库" onClick={() => openStockModal(item, "reduce")}><ArrowDownCircle size={15} /></button> : null}
-                          <button type="button" title="流水" aria-label="流水" onClick={() => void openLogs(item)}><History size={15} /></button>
-                          {hasPermission("oa:consumable:edit") ? <button type="button" title="编辑" aria-label="编辑" onClick={() => handleEdit(item)}><Edit size={15} /></button> : null}
-                          {hasPermission("oa:consumable:remove") ? <button type="button" title="删除" aria-label="删除" onClick={() => setDeleteTarget(item)}><Trash2 size={15} /></button> : null}
+                          {isLowStock(item) ? <button type="button" data-tooltip="采购" aria-label="采购" onClick={() => void openSuggestion(item)}><ShoppingCart size={15} /></button> : null}
+                          {hasPermission("oa:consumable:add-stock") ? <button type="button" data-tooltip="入库" aria-label="入库" onClick={() => openStockModal(item, "add")}><ArrowUpCircle size={15} /></button> : null}
+                          {hasPermission("oa:consumable:reduce-stock") ? <button type="button" data-tooltip="出库" aria-label="出库" onClick={() => openStockModal(item, "reduce")}><ArrowDownCircle size={15} /></button> : null}
+                          <button type="button" data-tooltip="流水" aria-label="流水" onClick={() => void openLogs(item)}><History size={15} /></button>
+                          {hasPermission("oa:consumable:edit") ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => handleEdit(item)}><Edit size={15} /></button> : null}
+                          {hasPermission("oa:consumable:remove") ? <button type="button" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(item)}><Trash2 size={15} /></button> : null}
                         </div>
                       </td>
                     </tr>
@@ -644,10 +644,10 @@ const ConsumablePage: React.FC = () => {
           </div>
           <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70 md:col-span-2">
             <div>
-              <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              <div className="text-sm font-medium text-cf-body">
                 启用库存预警
               </div>
-              <div className="mt-1 text-xs text-slate-400">
+              <div className="mt-1 text-xs text-cf-faint">
                 低于阈值后进入补货建议。
               </div>
             </div>
@@ -733,13 +733,13 @@ const ConsumablePage: React.FC = () => {
               <tbody>
                 {suggestionLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-cf-subtle">
                       正在加载补货建议...
                     </td>
                   </tr>
                 ) : suggestions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-cf-subtle">
                       暂无补货建议
                     </td>
                   </tr>
@@ -747,7 +747,7 @@ const ConsumablePage: React.FC = () => {
                   <tr key={item.consumableId}>
                     <td>
                       {item.name}
-                      <div className="mt-1 text-xs text-slate-400">{item.model || "-"} / {item.unit || "-"}</div>
+                      <div className="mt-1 text-xs text-cf-faint">{item.model || "-"} / {item.unit || "-"}</div>
                     </td>
                     <td className="text-center">{item.quantity ?? 0}</td>
                     <td className="text-center">{item.lowStockThreshold ?? 0}</td>
@@ -846,13 +846,13 @@ const ConsumablePage: React.FC = () => {
             <tbody>
               {logLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center text-sm text-slate-500">
+                  <td colSpan={4} className="px-4 py-12 text-center text-sm text-cf-subtle">
                     正在加载库存流水...
                   </td>
                 </tr>
               ) : stockLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center text-sm text-slate-500">
+                  <td colSpan={4} className="px-4 py-12 text-center text-sm text-cf-subtle">
                     暂无库存流水
                   </td>
                 </tr>

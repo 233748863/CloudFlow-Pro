@@ -69,7 +69,7 @@ export const QuoteDialogContent: React.FC = () => {
         <div className="mb-3 flex items-center justify-between">
           <div>
             <div className="text-sm font-medium">报价行项目</div>
-            <div className="text-xs text-slate-500">按产品带入标准价，可继续调整数量、折扣与税率。</div>
+            <div className="text-xs text-cf-subtle">按产品带入标准价，可继续调整数量、折扣与税率。</div>
           </div>
           <Button type="button" size="sm" variant="outline" onClick={addQuoteLine}><Plus size={14} className="mr-1.5" />新增行</Button>
         </div>

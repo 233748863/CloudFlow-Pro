@@ -216,9 +216,9 @@ export default function CrmCustomerPoolPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-slate-500">正在加载公海客户...</span></td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-cf-subtle">正在加载公海客户...</span></td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500"><Anchor className="mx-auto mb-3 h-4 w-4" />公海暂无客户</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-cf-subtle"><Anchor className="mx-auto mb-3 h-4 w-4" />公海暂无客户</td></tr>
                 ) : (
                   rows.map((row) => (
                     <tr key={row.customerId}>
@@ -230,9 +230,9 @@ export default function CrmCustomerPoolPage() {
                       <td>{row.customerTags || '-'}</td>
                       <td>
                         <div className="admin-users-row-actions">
-                          <button type="button" title="申请领取" onClick={() => void handleClaim(row)}><HandCoins size={15} /></button>
-                          <button type="button" title="指派负责人" onClick={() => { setAssignDialog(row); setAssignForm({ ownerId: '', ownerName: '', reason: '' }); }}><Gavel size={15} /></button>
-                          <button type="button" title="查看日志" onClick={() => void openLogs(row)}><History size={15} /></button>
+                          <button type="button" data-tooltip="申请领取" aria-label="申请领取" onClick={() => void handleClaim(row)}><HandCoins size={15} /></button>
+                          <button type="button" data-tooltip="指派负责人" aria-label="指派负责人" onClick={() => { setAssignDialog(row); setAssignForm({ ownerId: '', ownerName: '', reason: '' }); }}><Gavel size={15} /></button>
+                          <button type="button" data-tooltip="查看日志" aria-label="查看日志" onClick={() => void openLogs(row)}><History size={15} /></button>
                         </div>
                       </td>
                     </tr>
@@ -302,7 +302,7 @@ export default function CrmCustomerPoolPage() {
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!logLoading && logs.length === 0 ? (
-                <tr><td colSpan={5} className="px-2 py-6 text-center text-xs text-slate-500 dark:text-slate-400">暂无日志</td></tr>
+                <tr><td colSpan={5} className="px-2 py-6 text-center text-xs text-cf-subtle">暂无日志</td></tr>
               ) : null}
               {logs.map((log) => (
                 <tr key={log.logId}>
@@ -310,7 +310,7 @@ export default function CrmCustomerPoolPage() {
                   <td className="px-2 py-2">{actionDict.getLabel(log.actionType || '') || '-'}</td>
                   <td className="px-2 py-2">{log.fromOwnerName || '-'}</td>
                   <td className="px-2 py-2">{log.toOwnerName || '-'}</td>
-                  <td className="px-2 py-2 text-xs text-slate-500 dark:text-slate-400">{log.reason || '-'}</td>
+                  <td className="px-2 py-2 text-xs text-cf-subtle">{log.reason || '-'}</td>
                 </tr>
               ))}
             </tbody>

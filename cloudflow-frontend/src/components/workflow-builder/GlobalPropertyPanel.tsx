@@ -55,12 +55,12 @@ export const GlobalPropertyPanel = ({
   return (
     <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
       <div className="flex items-center justify-between border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
-        <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+        <div className="text-sm font-semibold text-cf-title">
           全局属性
         </div>
         <button
           onClick={onClose}
-          className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1.5 text-slate-400 transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+          className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1.5 text-cf-faint transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           <X size={18} />
         </button>
@@ -71,7 +71,7 @@ export const GlobalPropertyPanel = ({
             <div className={studioSectionTitleClassName}>基础信息</div>
 
             <div>
-              <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
                 流程描述
               </span>
               <LazyTextarea
@@ -84,7 +84,7 @@ export const GlobalPropertyPanel = ({
 
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
                   流程分类
                 </span>
                 <Select
@@ -108,7 +108,7 @@ export const GlobalPropertyPanel = ({
               </div>
 
               <div>
-                <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
                   关联表单
                 </span>
                 <LazyInput
@@ -120,7 +120,7 @@ export const GlobalPropertyPanel = ({
             </div>
 
             <div>
-              <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
                 流程标签
               </span>
               <LazyInput
@@ -134,7 +134,7 @@ export const GlobalPropertyPanel = ({
           <div className="admin-dialog-field border-t border-slate-200 pt-3 dark:border-slate-800">
             <div className={studioSectionTitleClassName}>发起权限</div>
             <div>
-              <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
                 谁可以发起此流程
               </span>
               <Select

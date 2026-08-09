@@ -28,6 +28,7 @@ import {
   type WorkflowDesignContextPayload,
 } from './workflowDesignCache';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import '../styles/features/admin-workflow.css';
 
 export { resetWorkflowDesignCaches };
 
@@ -38,11 +39,11 @@ const StatusPanel: React.FC<{
   actions?: React.ReactNode;
 }> = ({ icon, title, description, actions }) => (
   <InnerTableSurface wrapperClassName="px-6 py-10 text-center">
-    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-cf-subtle dark:border-slate-800 dark:bg-slate-950">
       {icon}
     </div>
-    <div className="mt-4 text-base font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-    <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    <div className="mt-4 text-base font-semibold text-cf-title">{title}</div>
+    <div className="mt-2 text-sm leading-6 text-cf-subtle">{description}</div>
     {actions ? <div className="mt-5 flex justify-center gap-3">{actions}</div> : null}
   </InnerTableSurface>
 );
@@ -486,7 +487,7 @@ export const WorkflowDesign = () => {
   if (loading) {
     return renderStatusShell(
       <StatusPanel
-        icon={<Loader2 size={28} className="animate-spin text-slate-600 dark:text-slate-200" />}
+        icon={<Loader2 size={28} className="animate-spin text-cf-muted" />}
         title="正在加载流程设计器..."
         description="正在准备流程定义、表单列表和审批基础数据，请稍候。"
       />
@@ -496,7 +497,7 @@ export const WorkflowDesign = () => {
   if (error) {
     return renderStatusShell(
       <StatusPanel
-        icon={<AlertTriangle size={28} className="text-slate-500 dark:text-slate-300" />}
+        icon={<AlertTriangle size={28} className="text-cf-subtle" />}
         title="流程设计数据加载失败"
         description={error}
         actions={
@@ -515,7 +516,7 @@ export const WorkflowDesign = () => {
   if (!workflow) {
     return renderStatusShell(
       <StatusPanel
-        icon={<GitMerge size={28} className="text-slate-400" />}
+        icon={<GitMerge size={28} className="text-cf-faint" />}
         title="未找到可编辑流程"
         description="当前没有加载到流程定义。可以重新尝试，或者直接创建一个新的空白流程。"
         actions={

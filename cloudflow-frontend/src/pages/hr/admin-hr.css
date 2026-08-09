@@ -1,0 +1,110 @@
+/* 从 index.css 拆分而来：admin-hr
+   由 HrRecruitmentPage.tsx, HrPerformancePage.tsx, HrOrganizationPage.tsx, HrLifecyclePage.tsx, HrEmployeeWorkspace.tsx, HrCompensationPage.tsx, HrAttendancePage.tsx, HrAttendanceAppealPage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-hr-employee-workspace .admin-hr-workspace-stat-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+  .admin-hr-archive-shell,
+    .admin-hr-archive-surface {
+      min-width: 0;
+      min-height: 0;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-hr-archive-shell-wrapper {
+      flex: 1 1 auto;
+    }
+
+  .admin-hr-archive-summary,
+    .admin-hr-archive-tabs,
+    .admin-hr-archive-toolbar,
+    .admin-hr-archive-surface-head {
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--cf-border);
+    }
+
+  .admin-hr-archive-summary {
+      padding: 1rem;
+    }
+
+  .admin-hr-archive-tabs {
+      padding: 0.75rem 1rem;
+    }
+
+  .admin-hr-archive-toolbar,
+    .admin-hr-archive-surface-head {
+      display: flex;
+      min-width: 0;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.875rem;
+      padding: 1rem;
+    }
+
+  .admin-hr-archive-toolbar {
+      align-items: center;
+      padding-block: 0.75rem;
+    }
+
+  .admin-hr-archive-surface-head strong {
+      display: block;
+      color: #0f172a;
+      font-size: 0.875rem;
+      font-weight: 650;
+    }
+
+  .admin-hr-archive-surface-head span {
+      display: block;
+      margin-top: 0.125rem;
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+  .admin-hr-archive-surface-action {
+      flex-shrink: 0;
+    }
+
+  .admin-hr-archive-surface-body {
+      min-width: 0;
+      min-height: 0;
+      padding: 1rem;
+    }
+
+  .admin-hr-archive-list-body {
+      flex: 1 1 0%;
+      min-width: 0;
+      min-height: 0;
+      overflow-y: auto;
+      background: var(--cf-surface-muted);
+      padding: 1rem;
+      scrollbar-gutter: stable;
+    }
+
+  .admin-hr-archive-item,
+    .admin-hr-archive-field {
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-hr-archive-item {
+      overflow: hidden;
+    }
+
+  .admin-hr-archive-item-head,
+    .admin-hr-archive-item-grid {
+      padding: 1rem;
+    }
+
+  .admin-hr-archive-item-head {
+      border-bottom: 1px solid var(--cf-border);
+    }
+
+  .admin-hr-archive-field {
+      padding: 0.75rem;
+    }
+}

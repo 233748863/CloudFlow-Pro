@@ -261,17 +261,17 @@ export const HrTalentReviewPage: React.FC = () => {
                           <td>
                             <div className="admin-users-row-actions">
                               {canEdit ? (
-                                <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, deadline: toDateInputValue(row.deadline) }); setOpen(true); }}>
+                                <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, deadline: toDateInputValue(row.deadline) }); setOpen(true); }}>
                                   <Pencil size={15} />
                                 </button>
                               ) : null}
                               {canEdit && (row.status === 'DRAFT' || row.status === 'IN_PROGRESS') ? (
-                                <button type="button" title="拉取业绩" onClick={() => { setSnapshotReview(row); setSnapshotOpen(true); }}>
+                                <button type="button" data-tooltip="拉取业绩" aria-label="拉取业绩" onClick={() => { setSnapshotReview(row); setSnapshotOpen(true); }}>
                                   <DatabaseZap size={15} />
                                 </button>
                               ) : null}
                               {canEdit && (row.status === 'IN_PROGRESS' || row.status === 'CALIBRATING') ? (
-                                <button type="button" title="发起发布" onClick={() => void handlePublish(row)}>
+                                <button type="button" data-tooltip="发起发布" aria-label="发起发布" onClick={() => void handlePublish(row)}>
                                   <Send size={15} />
                                 </button>
                               ) : null}
@@ -346,7 +346,7 @@ export const HrTalentReviewPage: React.FC = () => {
         }
       >
         <>
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-cf-subtle">
             拉取的目标计划必须状态为 PUBLISHED。员工将按业绩分自动落入九宫格（潜力默认为中）。
           </div>
           <div className="admin-dialog-field"><Label>目标计划 ID</Label><Input value={objectiveId} onChange={(e) => setObjectiveId(e.target.value)} placeholder="hr_performance_objective.id" /></div>

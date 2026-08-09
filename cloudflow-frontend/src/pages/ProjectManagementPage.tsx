@@ -22,6 +22,7 @@ import { Button, DatePicker, DeptSelector, Input, Label, Select, SelectContent, 
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { useDict } from '@/hooks/useDict';
 import { cn } from '@/utils/cn';
+import './ProjectManagementPage.css';
 
 const STATUS_OPTIONS = ['DRAFT', 'PENDING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'ARCHIVED'] as const;
 const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
@@ -83,7 +84,7 @@ const emptyDependency: ProjectDependency = {
   lagDays: 0,
 };
 
-const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
+const fieldLabelClassName = 'text-xs font-medium text-cf-subtle';
 
 const tabs: Array<{ value: DetailTab; label: string; icon: React.ReactNode }> = [
   { value: 'overview', label: '概览', icon: <FolderKanban size={14} /> },
@@ -148,7 +149,7 @@ const getUserDisplayText = (user?: Partial<SysUser> | null, fallbackName?: strin
   return secondary;
 };
 const renderSelectText = (valueText: string, placeholder: string) => (
-  <span className={`min-w-0 flex-1 truncate ${valueText ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}`}>
+  <span className={`min-w-0 flex-1 truncate ${valueText ? 'text-cf-title ' : 'text-cf-faint '}`}>
     {valueText || placeholder}
   </span>
 );
@@ -161,9 +162,9 @@ const renderUserOption = (user: SysUser) => {
 
   return (
     <div className="flex min-w-0 flex-col">
-      <span className="truncate font-medium text-slate-900 dark:text-slate-100">{primary || '未命名成员'}</span>
+      <span className="truncate font-medium text-cf-title">{primary || '未命名成员'}</span>
       {secondary ? (
-        <span className="truncate text-xs text-slate-500 dark:text-slate-400">{secondary}</span>
+        <span className="truncate text-xs text-cf-subtle">{secondary}</span>
       ) : null}
     </div>
   );
@@ -239,7 +240,7 @@ const DraggableGanttBar: React.FC<{
             type="button"
             className={`absolute top-1/2 z-10 h-4 w-4 -translate-y-1/2 rounded-[4px] rotate-45 transition ${colorClassName}`}
             style={{ ...baseStyle, left: `${markerLeft}px` }}
-            title={`${fullLabel}，拖动可按日改期`}
+            data-tooltip={`${fullLabel}，拖动可按日改期`}
             aria-label={`${fullLabel}，拖动可按日改期`}
             {...listeners}
             {...attributes}
@@ -258,7 +259,7 @@ const DraggableGanttBar: React.FC<{
             type="button"
             className={`absolute top-1/2 z-10 h-8 -translate-y-1/2 rounded-md px-3 text-left text-xs font-medium text-white transition ${colorClassName}`}
             style={{ ...baseStyle, width: `${width}px`, left: `${left}px` }}
-            title={`${fullLabel}，拖动可按日改期`}
+            data-tooltip={`${fullLabel}，拖动可按日改期`}
             aria-label={`${fullLabel}，拖动可按日改期`}
             {...listeners}
             {...attributes}
@@ -270,12 +271,12 @@ const DraggableGanttBar: React.FC<{
       {showExternalLabel ? (
         <div
           className={`pointer-events-none absolute top-1/2 z-20 max-w-[180px] -translate-y-1/2 truncate rounded-md border px-2 py-1 text-[11px] font-medium ${
-            kind === 'milestone'
-              ? 'border-cyan-200 bg-cyan-50/95 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/95 dark:text-cyan-200'
-              : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
-          }`}
+ kind === 'milestone'
+ ? 'border-cyan-200 bg-cyan-50/95 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/95 dark:text-cyan-200'
+ : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-700 dark:bg-slate-900 '
+ }`}
           style={externalLabelStyle}
-          title={fullLabel}
+          data-tooltip={fullLabel}
         >
           {externalLabel}
         </div>
@@ -645,13 +646,13 @@ export default function ProjectManagementPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-cf-subtle">
                   <FolderKanban className="mx-auto mb-3 h-4 w-4" />正在加载项目...
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-cf-subtle">
                   <FolderKanban className="mx-auto mb-3 h-4 w-4" />暂无项目。下一步操作：新建项目或从 CRM 商机 / 报价 / 合同生成草稿。
                 </td>
               </tr>
@@ -666,10 +667,10 @@ export default function ProjectManagementPage() {
                     </div>
                   </div>
                 </td>
-                <td><div>{row.ownerName || '-'}</div><div className="text-xs text-slate-500 dark:text-slate-400">{row.deptName || '-'}</div></td>
-                <td><div>{formatMoney(row.budgetAmount)}</div><div className="text-xs text-slate-500 dark:text-slate-400">成本 {formatMoney(row.actualCostAmount)}</div></td>
-                <td><div>{row.progress || 0}%</div><div className="text-xs text-slate-500 dark:text-slate-400">{severityDict.getLabel(row.riskLevel || '') || '-'}</div></td>
-                <td><div>{row.sourceName || sourceTypeDict.getLabel(row.sourceType || 'MANUAL') || '-'}</div><div className="text-xs text-slate-500 dark:text-slate-400">基线 {row.baselineVersion || 0}</div></td>
+                <td><div>{row.ownerName || '-'}</div><div className="text-xs text-cf-subtle">{row.deptName || '-'}</div></td>
+                <td><div>{formatMoney(row.budgetAmount)}</div><div className="text-xs text-cf-subtle">成本 {formatMoney(row.actualCostAmount)}</div></td>
+                <td><div>{row.progress || 0}%</div><div className="text-xs text-cf-subtle">{severityDict.getLabel(row.riskLevel || '') || '-'}</div></td>
+                <td><div>{row.sourceName || sourceTypeDict.getLabel(row.sourceType || 'MANUAL') || '-'}</div><div className="text-xs text-cf-subtle">基线 {row.baselineVersion || 0}</div></td>
                 <td>
                   <TableRowActions
                     iconOnly
@@ -899,20 +900,20 @@ export default function ProjectManagementPage() {
                         <div key={item.id} className="admin-project-detail-row text-sm">
                           <div>
                             <div>{item.userName || '-'}</div>
-                            <div className="text-xs text-slate-500">{item.roleName || item.roleCode || '-'}</div>
+                            <div className="text-xs text-cf-subtle">{item.roleName || item.roleCode || '-'}</div>
                           </div>
                           {hasPermission('oa:project:edit') ? (
                             <div className="admin-users-row-actions">
-                              <button type="button" title="编辑成员" aria-label="编辑成员" onClick={() => openChildDialog({ type: 'member', item })}>
+                              <button type="button" data-tooltip="编辑成员" aria-label="编辑成员" onClick={() => openChildDialog({ type: 'member', item })}>
                                 <Edit size={15} />
                               </button>
-                              <button className="danger" type="button" title="删除成员" aria-label="删除成员" onClick={() => void removeChild('member', item.id!)}>
+                              <button className="danger" type="button" data-tooltip="删除成员" aria-label="删除成员" onClick={() => void removeChild('member', item.id!)}>
                                 <Trash2 size={15} />
                               </button>
                             </div>
                           ) : <span className="text-sm text-slate-300">-</span>}
                       </div>
-                    )) : <div className="text-sm text-slate-500">暂无项目成员</div>}
+                    )) : <div className="text-sm text-cf-subtle">暂无项目成员</div>}
                       <Button size="sm" variant="outline" onClick={() => openChildDialog({ type: 'member' })} disabled={!hasPermission('oa:project:edit')}><Users size={14} className="mr-1.5" />新增成员</Button>
                   </ProjectDetailPanel>
                 </div>
@@ -922,13 +923,13 @@ export default function ProjectManagementPage() {
                 <ProjectDetailPanel title="专业计划版甘特图" contentClassName="admin-project-detail-stack">
                     <div className="flex flex-wrap items-center gap-2">
                       <Button size="sm" variant="outline" onClick={() => setConfirm({ type: 'baseline', row: detail.project })} disabled={!hasPermission('oa:project:baseline')}><RefreshCcw size={14} className="mr-1.5" />重置基线</Button>
-                      <div className="text-xs text-slate-500">灰条 = 基线排期；彩色条 = 当前排期；拖动彩条可按日改期。</div>
+                      <div className="text-xs text-cf-subtle">灰条 = 基线排期；彩色条 = 当前排期；拖动彩条可按日改期。</div>
                     </div>
                     {ganttRows.length ? (
                       <DndContext sensors={sensors} onDragEnd={handleGanttDragEnd}>
                         <div className="admin-horizontal-scroll">
                           <div style={{ minWidth: `${260 + ganttDateColumns.length * DAY_WIDTH}px` }}>
-                            <div className="grid border-b border-slate-200 pb-2 text-xs text-slate-500 dark:border-slate-800" style={{ gridTemplateColumns: `260px repeat(${ganttDateColumns.length}, ${DAY_WIDTH}px)` }}>
+                            <div className="grid border-b border-slate-200 pb-2 text-xs text-cf-subtle dark:border-slate-800" style={{ gridTemplateColumns: `260px repeat(${ganttDateColumns.length}, ${DAY_WIDTH}px)` }}>
                               <div>任务 / 里程碑</div>
                               {ganttDateColumns.map((date) => <div key={date} className="text-center">{date.slice(5)}</div>)}
                             </div>
@@ -941,8 +942,8 @@ export default function ProjectManagementPage() {
                                 return (
                                   <div key={item.key} className="admin-project-gantt-row grid items-center gap-0" style={{ gridTemplateColumns: `260px 1fr` }}>
                                     <div className="px-3 text-sm">
-                                      <div className="font-medium text-slate-900 dark:text-slate-100">{item.label}</div>
-                                      <div className="text-xs text-slate-500">{item.start} ~ {item.end}{item.overdue ? ' / 已逾期' : ''}</div>
+                                      <div className="font-medium text-cf-title">{item.label}</div>
+                                      <div className="text-xs text-cf-subtle">{item.start} ~ {item.end}{item.overdue ? ' / 已逾期' : ''}</div>
                                     </div>
                                     <div className="relative h-10 border-l border-slate-200 dark:border-slate-800" style={{ width: `${ganttDateColumns.length * DAY_WIDTH}px` }}>
                                       {ganttDateColumns.map((date) => (
@@ -971,7 +972,7 @@ export default function ProjectManagementPage() {
                           </div>
                         </div>
                       </DndContext>
-                    ) : <div className="text-sm text-slate-500">暂无可渲染的排期数据。先新增里程碑或 WBS 任务。</div>}
+                    ) : <div className="text-sm text-cf-subtle">暂无可渲染的排期数据。先新增里程碑或 WBS 任务。</div>}
                 </ProjectDetailPanel>
               </TabsContent>
 
@@ -981,20 +982,20 @@ export default function ProjectManagementPage() {
                       <div key={item.milestoneId} className="admin-project-detail-row text-sm">
                         <div>
                           <div>{item.milestoneName}</div>
-                          <div className="text-xs text-slate-500">计划 {item.plannedDate || '-'} / 基线 {item.baselineDate || '-'} / 实际 {item.actualDate || '-'} / {item.status || '-'}</div>
+                          <div className="text-xs text-cf-subtle">计划 {item.plannedDate || '-'} / 基线 {item.baselineDate || '-'} / 实际 {item.actualDate || '-'} / {item.status || '-'}</div>
                         </div>
                         {hasPermission('oa:project:edit') ? (
                           <div className="admin-users-row-actions">
-                            <button type="button" title="编辑里程碑" aria-label="编辑里程碑" onClick={() => openChildDialog({ type: 'milestone', item })}>
+                            <button type="button" data-tooltip="编辑里程碑" aria-label="编辑里程碑" onClick={() => openChildDialog({ type: 'milestone', item })}>
                               <Edit size={15} />
                             </button>
-                            <button className="danger" type="button" title="删除里程碑" aria-label="删除里程碑" onClick={() => void removeChild('milestone', item.milestoneId!)}>
+                            <button className="danger" type="button" data-tooltip="删除里程碑" aria-label="删除里程碑" onClick={() => void removeChild('milestone', item.milestoneId!)}>
                               <Trash2 size={15} />
                             </button>
                           </div>
                         ) : <span className="text-sm text-slate-300">-</span>}
                       </div>
-                    )) : <div className="text-sm text-slate-500">暂无里程碑</div>}
+                    )) : <div className="text-sm text-cf-subtle">暂无里程碑</div>}
                     <Button size="sm" onClick={() => openChildDialog({ type: 'milestone' })} disabled={!hasPermission('oa:project:edit')}><Plus size={14} className="mr-1.5" />新增里程碑</Button>
                 </ProjectDetailPanel>
               </TabsContent>
@@ -1005,20 +1006,20 @@ export default function ProjectManagementPage() {
                       <div key={item.taskId} className="admin-project-detail-row text-sm">
                         <div>
                           <div>{item.wbsCode || '-'} {item.title || '-'}</div>
-                          <div className="text-xs text-slate-500">计划 {item.plannedStartTime ? String(item.plannedStartTime).slice(0, 10) : '-'} ~ {item.plannedEndTime ? String(item.plannedEndTime).slice(0, 10) : '-'} / 基线 {item.baselineStartTime ? String(item.baselineStartTime).slice(0, 10) : '-'} ~ {item.baselineEndTime ? String(item.baselineEndTime).slice(0, 10) : '-'}</div>
+                          <div className="text-xs text-cf-subtle">计划 {item.plannedStartTime ? String(item.plannedStartTime).slice(0, 10) : '-'} ~ {item.plannedEndTime ? String(item.plannedEndTime).slice(0, 10) : '-'} / 基线 {item.baselineStartTime ? String(item.baselineStartTime).slice(0, 10) : '-'} ~ {item.baselineEndTime ? String(item.baselineEndTime).slice(0, 10) : '-'}</div>
                         </div>
                         {hasPermission('oa:project:wbs') ? (
                           <div className="admin-users-row-actions">
-                            <button type="button" title="编辑 WBS" aria-label="编辑 WBS" onClick={() => openChildDialog({ type: 'wbs', item })}>
+                            <button type="button" data-tooltip="编辑 WBS" aria-label="编辑 WBS" onClick={() => openChildDialog({ type: 'wbs', item })}>
                               <Edit size={15} />
                             </button>
-                            <button className="danger" type="button" title="删除 WBS" aria-label="删除 WBS" onClick={() => void removeChild('wbs', item.taskId!)}>
+                            <button className="danger" type="button" data-tooltip="删除 WBS" aria-label="删除 WBS" onClick={() => void removeChild('wbs', item.taskId!)}>
                               <Trash2 size={15} />
                             </button>
                           </div>
                         ) : <span className="text-sm text-slate-300">-</span>}
                       </div>
-                    )) : <div className="text-sm text-slate-500">暂无 WBS 任务</div>}
+                    )) : <div className="text-sm text-cf-subtle">暂无 WBS 任务</div>}
                     <div className="flex flex-wrap gap-2">
                       <Button size="sm" onClick={() => openChildDialog({ type: 'wbs' })} disabled={!hasPermission('oa:project:wbs')}><Plus size={14} className="mr-1.5" />新增 WBS</Button>
                       <Button size="sm" variant="outline" onClick={() => {
@@ -1077,7 +1078,7 @@ export default function ProjectManagementPage() {
                                   <span
                                     key={item.label}
                                     style={{ width: `${pct(item.value)}%`, background: item.color }}
-                                    title={`${item.label} ${formatMoney(item.value)}`}
+                                    data-tooltip={`${item.label} ${formatMoney(item.value)}`}
                                   />
                                 ))}
                               </div>
@@ -1092,7 +1093,7 @@ export default function ProjectManagementPage() {
                               ))}
                             </>
                           ) : (
-                            <div className="text-sm text-slate-500">暂无成本数据</div>
+                            <div className="text-sm text-cf-subtle">暂无成本数据</div>
                           )}
                         </ProjectDetailPanel>
                       </div>
@@ -1108,20 +1109,20 @@ export default function ProjectManagementPage() {
                         <div key={`${item.riskId || item.riskCode || index}`} className="admin-project-detail-row text-sm">
                           <div>
                             <div>{item.riskName || '-'}</div>
-                            <div className="text-xs text-slate-500">{severityDict.getLabel(item.riskLevel || '') || '-'} / {item.triggerSource ? '已触发' : '-'} / {item.status ? '已记录' : '-'}</div>
+                            <div className="text-xs text-cf-subtle">{severityDict.getLabel(item.riskLevel || '') || '-'} / {item.triggerSource ? '已触发' : '-'} / {item.status ? '已记录' : '-'}</div>
                           </div>
                           {item.riskId && hasPermission('oa:project:edit') ? (
                             <div className="admin-users-row-actions">
-                              <button type="button" title="编辑风险" aria-label="编辑风险" onClick={() => openChildDialog({ type: 'risk', item })}>
+                              <button type="button" data-tooltip="编辑风险" aria-label="编辑风险" onClick={() => openChildDialog({ type: 'risk', item })}>
                                 <Edit size={15} />
                               </button>
-                              <button className="danger" type="button" title="删除风险" aria-label="删除风险" onClick={() => void removeChild('risk', item.riskId!)}>
+                              <button className="danger" type="button" data-tooltip="删除风险" aria-label="删除风险" onClick={() => void removeChild('risk', item.riskId!)}>
                                 <Trash2 size={15} />
                               </button>
                             </div>
                           ) : <span className="text-sm text-slate-300">-</span>}
                         </div>
-                      )) : <div className="text-sm text-slate-500">暂无项目风险</div>}
+                      )) : <div className="text-sm text-cf-subtle">暂无项目风险</div>}
                       <Button size="sm" onClick={() => openChildDialog({ type: 'risk' })} disabled={!hasPermission('oa:project:edit')}><Plus size={14} className="mr-1.5" />新增风险</Button>
                   </ProjectDetailPanel>
 
@@ -1130,20 +1131,20 @@ export default function ProjectManagementPage() {
                         <div key={item.dependencyId} className="admin-project-detail-row text-sm">
                           <div>
                             <div>{item.predecessorType} {item.predecessorId} → {item.successorType} {item.successorId}</div>
-                            <div className="text-xs text-slate-500">{item.dependencyType || 'FS'} / 延迟 {item.lagDays || 0} 天</div>
+                            <div className="text-xs text-cf-subtle">{item.dependencyType || 'FS'} / 延迟 {item.lagDays || 0} 天</div>
                           </div>
                           {hasPermission('oa:project:edit') ? (
                             <div className="admin-users-row-actions">
-                              <button type="button" title="编辑依赖" aria-label="编辑依赖" onClick={() => openChildDialog({ type: 'dependency', item })}>
+                              <button type="button" data-tooltip="编辑依赖" aria-label="编辑依赖" onClick={() => openChildDialog({ type: 'dependency', item })}>
                                 <Edit size={15} />
                               </button>
-                              <button className="danger" type="button" title="删除依赖" aria-label="删除依赖" onClick={() => void removeChild('dependency', item.dependencyId!)}>
+                              <button className="danger" type="button" data-tooltip="删除依赖" aria-label="删除依赖" onClick={() => void removeChild('dependency', item.dependencyId!)}>
                                 <Trash2 size={15} />
                               </button>
                             </div>
                           ) : <span className="text-sm text-slate-300">-</span>}
                         </div>
-                      )) : <div className="text-sm text-slate-500">暂无项目依赖</div>}
+                      )) : <div className="text-sm text-cf-subtle">暂无项目依赖</div>}
                       <Button size="sm" variant="outline" onClick={() => openChildDialog({ type: 'dependency' })} disabled={!hasPermission('oa:project:edit')}><Link2 size={14} className="mr-1.5" />新增依赖</Button>
                   </ProjectDetailPanel>
                 </div>

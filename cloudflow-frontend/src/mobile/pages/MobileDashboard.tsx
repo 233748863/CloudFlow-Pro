@@ -135,7 +135,7 @@ export const MobileDashboard: React.FC = () => {
       case '中':
         return 'text-orange-500';
       default:
-        return 'text-slate-400';
+        return 'text-cf-faint';
     }
   };
 
@@ -159,7 +159,7 @@ export const MobileDashboard: React.FC = () => {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <Loader2 className="animate-spin text-[#0d95b5] mx-auto mb-3" size={32} />
-          <p className="text-sm text-slate-500">加载中...</p>
+          <p className="text-sm text-cf-subtle">加载中...</p>
         </div>
       </div>
     );
@@ -213,8 +213,8 @@ export const MobileDashboard: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">早安, {user?.name}</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="text-xl font-bold text-cf-title">早安, {user?.name}</h1>
+            <p className="text-sm text-cf-subtle">
               今天是 {format(new Date(), 'yyyy年M月d日', { locale: zhCN })}
             </p>
           </div>
@@ -223,7 +223,7 @@ export const MobileDashboard: React.FC = () => {
             className="relative p-2"
             aria-label="消息通知"
           >
-            <Bell className="text-slate-600" />
+            <Bell className="text-cf-muted" />
             {stats.unreadMessages > 0 && (
               <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center">
                 <span className="text-[10px] text-white font-bold">
@@ -246,7 +246,7 @@ export const MobileDashboard: React.FC = () => {
               <div className={`w-12 h-12 rounded-md flex items-center justify-center ${action.color}`}>
                 <span className="font-bold text-lg">{action.label[0]}</span>
               </div>
-              <span className="text-xs text-slate-600">{action.label}</span>
+              <span className="text-xs text-cf-muted">{action.label}</span>
             </button>
           ))}
         </div>
@@ -274,7 +274,7 @@ export const MobileDashboard: React.FC = () => {
         {/* Todo List Preview */}
         <div>
           <div className="flex justify-between items-center mb-3">
-            <h2 className="font-bold text-slate-800">待办事项</h2>
+            <h2 className="font-bold text-cf-title">待办事项</h2>
             <button
               onClick={() => navigate('/tasks')}
               className="text-xs text-[#0d95b5] flex items-center"
@@ -298,10 +298,10 @@ export const MobileDashboard: React.FC = () => {
                     className={`mt-1 flex-shrink-0 ${getPriorityStyle(task.priority)}`}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-slate-800 text-sm truncate">
+                    <div className="font-medium text-cf-title text-sm truncate">
                       {task.taskName || '未命名任务'}
                     </div>
-                    <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                    <div className="text-xs text-cf-subtle mt-1 flex items-center gap-2">
                       {task.applicant && <span>申请人：{task.applicant}</span>}
                       {task.deadline && <span>· 截止：{task.deadline}</span>}
                     </div>
@@ -311,7 +311,7 @@ export const MobileDashboard: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-400 flex-shrink-0">
+                  <span className="text-[10px] text-cf-faint flex-shrink-0">
                     {getStatusLabel(task.status)}
                   </span>
                 </div>
@@ -319,8 +319,8 @@ export const MobileDashboard: React.FC = () => {
             ) : (
               <div className="bg-[var(--cf-surface-strong)] p-6 rounded-lg border border-slate-100 text-center">
                 <CheckCircle2 size={32} className="text-green-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">暂无待办事项</p>
-                <p className="text-xs text-slate-400 mt-1">所有任务已处理完毕</p>
+                <p className="text-sm text-cf-subtle">暂无待办事项</p>
+                <p className="text-xs text-cf-faint mt-1">所有任务已处理完毕</p>
               </div>
             )}
           </div>
@@ -329,7 +329,7 @@ export const MobileDashboard: React.FC = () => {
         {/* Schedule Preview */}
         <div>
           <div className="flex justify-between items-center mb-3">
-            <h2 className="font-bold text-slate-800">今日日程</h2>
+            <h2 className="font-bold text-cf-title">今日日程</h2>
             <button
               onClick={() => navigate('/schedule')}
               className="text-xs text-[#0d95b5] flex items-center"
@@ -352,11 +352,11 @@ export const MobileDashboard: React.FC = () => {
                       <div className="text-xs text-[#7ed5e6]">{period}</div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-slate-800 text-sm truncate">
+                      <div className="font-medium text-cf-title text-sm truncate">
                         {event.title}
                       </div>
                       {event.roomId && (
-                        <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                        <div className="text-xs text-cf-subtle mt-1 flex items-center gap-1">
                           <Calendar size={10} />
                           会议室 {event.roomId}
                         </div>
@@ -368,7 +368,7 @@ export const MobileDashboard: React.FC = () => {
             ) : (
               <div className="bg-[var(--cf-bg)] p-6 rounded-lg text-center">
                 <Calendar size={32} className="text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">今日暂无日程安排</p>
+                <p className="text-sm text-cf-subtle">今日暂无日程安排</p>
               </div>
             )}
           </div>

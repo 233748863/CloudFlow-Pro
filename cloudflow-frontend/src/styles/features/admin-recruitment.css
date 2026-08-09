@@ -1,0 +1,104 @@
+/* 从 index.css 拆分而来：admin-recruitment
+   由 HrRecruitmentPage.tsx, HrEssPortalPage.tsx, HrBenefitMinePage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-recruitment-surface {
+      min-width: 0;
+      min-height: 0;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-recruitment-table-head,
+    .admin-recruitment-surface-head {
+      display: flex;
+      min-width: 0;
+      flex-shrink: 0;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.875rem;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 1rem;
+    }
+
+  .admin-recruitment-table-head strong,
+    .admin-recruitment-surface-head strong {
+      display: block;
+      color: #0f172a;
+      font-size: 0.875rem;
+      font-weight: 650;
+    }
+
+  .admin-recruitment-table-head span,
+    .admin-recruitment-surface-head span {
+      display: block;
+      margin-top: 0.125rem;
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+  .admin-recruitment-surface-body {
+      min-width: 0;
+      min-height: 0;
+      padding: 1rem;
+    }
+
+  .admin-recruitment-alert {
+      min-width: 0;
+      border: 1px solid #fcd34d;
+      border-radius: 0.5rem;
+      background: #fffbeb;
+      color: #b45309;
+      padding: 0.875rem 1rem;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+
+  .admin-recruitment-candidate-table .admin-recruitment-progress-cell {
+      width: 16.5rem;
+      min-width: 16.5rem;
+      text-align: right;
+    }
+
+  .admin-recruitment-progress-actions {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+  .admin-recruitment-progress-button {
+      display: inline-grid;
+      width: 2rem;
+      min-width: 2rem;
+      height: 2rem;
+      place-items: center;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      background: #fff;
+      color: #64748b;
+      transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    }
+
+  .admin-recruitment-progress-button:hover {
+      border-color: #b8e7f1;
+      background: #effbfe;
+      color: #0d95b5;
+    }
+
+  .admin-recruitment-progress-select {
+      width: 9.25rem;
+      min-width: 9.25rem;
+    }
+
+  .admin-recruitment-progress-note {
+      width: 11.25rem;
+      min-width: 11.25rem;
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.35;
+      text-align: right;
+    }
+}

@@ -92,10 +92,10 @@ const InlineState: React.FC<{
   className?: string;
 }> = ({ title, description, loading = false, className }) => (
   <div className={cn('flex min-h-[240px] flex-col items-center justify-center px-6 py-10 text-center', className)}>
-    {loading ? <LoadingSpinner size="lg" className="mb-3" /> : <Eye className="mb-3 h-5 w-5 text-slate-400 dark:text-slate-500" />}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {loading ? <LoadingSpinner size="lg" className="mb-3" /> : <Eye className="mb-3 h-5 w-5 text-cf-faint" />}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -245,7 +245,7 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
 
           <div className="admin-dialog-stack">
             <div className="card admin-source-panel no-padding overflow-hidden">
-              <div className="p-4 admin-source-section-head text-sm font-medium text-slate-900 dark:text-slate-100">
+              <div className="p-4 admin-source-section-head text-sm font-medium text-cf-title">
                 审批单列表
               </div>
               <div className="max-h-[560px] overflow-y-auto">
@@ -270,7 +270,7 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{item.approvalNo}</div>
+                            <div className="truncate text-sm font-medium text-cf-title">{item.approvalNo}</div>
                             <span
                               className={cn(
                                 'rounded-md px-2 py-0.5 text-xs font-medium',
@@ -280,10 +280,10 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
                               {getApprovalStatusLabel(item.status || 'PENDING')}
                             </span>
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                          <div className="text-xs text-cf-subtle">
                             {getApprovalActionLabel(item.actionType)} · {item.targetSummary || item.dictType}
                           </div>
-                          <div className="text-xs text-slate-400 dark:text-slate-500">{formatDateTime(item.createTime)}</div>
+                          <div className="text-xs text-cf-faint">{formatDateTime(item.createTime)}</div>
                         </button>
                       );
                     })}
@@ -293,7 +293,7 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
             </div>
 
             <div className="card admin-source-panel no-padding overflow-hidden">
-              <div className="p-4 admin-source-section-head text-sm font-medium text-slate-900 dark:text-slate-100">
+              <div className="p-4 admin-source-section-head text-sm font-medium text-cf-title">
                 审批单详情
               </div>
               {detailLoading ? (
@@ -337,19 +337,19 @@ export const DictApprovalDialog: React.FC<DictApprovalDialogProps> = ({
                   <Block title="备注" value={approvalDetail.remark || '-'} />
 
                   <div className="px-3 py-3">
-                    <div className="text-xs text-slate-400 dark:text-slate-500">载荷概览</div>
+                    <div className="text-xs text-cf-faint">载荷概览</div>
                     <div className="mt-2 grid gap-3 md:grid-cols-2">
-                      <div className="bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      <div className="bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-cf-body dark:bg-slate-900">
                         旧数据 {approvalDetail.payload?.oldDictDataList?.length || 0} 条
                       </div>
-                      <div className="bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      <div className="bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-cf-body dark:bg-slate-900">
                         新数据 {approvalDetail.payload?.newDictDataList?.length || 0} 条
                       </div>
                     </div>
                   </div>
 
                   <div className="px-3 py-3">
-                    <div className="text-xs text-slate-400 dark:text-slate-500">载荷 JSON</div>
+                    <div className="text-xs text-cf-faint">载荷 JSON</div>
                     <pre className="mt-2 overflow-x-auto bg-slate-950 px-3 py-3 text-xs leading-6 text-slate-100">
                       {formatPayload(approvalDetail.payload, approvalDetail.payloadJson)}
                     </pre>
@@ -370,8 +370,8 @@ const InfoCard: React.FC<{
   mono?: boolean;
 }> = ({ label, value, mono = false }) => (
   <div className="px-3 py-2">
-    <div className="text-xs text-slate-400 dark:text-slate-500">{label}</div>
-    <div className={cn('mt-1 text-sm text-slate-900 dark:text-slate-100', mono && 'font-mono')}>{value}</div>
+    <div className="text-xs text-cf-faint">{label}</div>
+    <div className={cn('mt-1 text-sm text-cf-title', mono && 'font-mono')}>{value}</div>
   </div>
 );
 
@@ -380,8 +380,8 @@ const Block: React.FC<{
   value: string;
 }> = ({ title, value }) => (
   <div className="px-3 py-3">
-    <div className="text-xs text-slate-400 dark:text-slate-500">{title}</div>
-    <div className="mt-1 text-sm text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="text-xs text-cf-faint">{title}</div>
+    <div className="mt-1 text-sm text-cf-title">{value}</div>
   </div>
 );
 

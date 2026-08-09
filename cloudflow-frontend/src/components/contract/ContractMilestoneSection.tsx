@@ -36,7 +36,7 @@ interface Props {
 
 const MILESTONE_STATUS_META: Record<ContractMilestoneStatus, { cls: string; icon: React.ReactNode }> = {
   PENDING: {
-    cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300',
+    cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900/40',
     icon: <CircleDashed size={12} className="mr-1" />,
   },
   IN_PROGRESS: {
@@ -52,16 +52,16 @@ const MILESTONE_STATUS_META: Record<ContractMilestoneStatus, { cls: string; icon
     icon: <CircleX size={12} className="mr-1" />,
   },
   CANCELLED: {
-    cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
+    cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-subtle dark:border-slate-700 dark:bg-slate-900/40',
     icon: <CircleX size={12} className="mr-1" />,
   },
 };
 
 const PAYMENT_STATUS_META: Record<PaymentStatus, { cls: string }> = {
-  PENDING: { cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300' },
+  PENDING: { cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900/40' },
   PAID: { cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200' },
   OVERDUE: { cls: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200' },
-  CANCELLED: { cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400' },
+  CANCELLED: { cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-subtle dark:border-slate-700 dark:bg-slate-900/40' },
 };
 
 const MILESTONE_TYPE_VALUES: ContractMilestoneType[] = ['DELIVERY', 'PAYMENT', 'ACCEPTANCE', 'OTHER'];
@@ -232,7 +232,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
   return (
     <div className="rounded-md border border-slate-200 px-4 py-4 dark:border-slate-800">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+        <div className="flex items-center gap-2 text-sm font-medium text-cf-title">
           <Wallet className="h-4 w-4 text-sky-500" />
           履约 / 付款节点
           {overdueCount > 0 ? (
@@ -266,9 +266,9 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
 
       <div className="grid gap-3 xl:grid-cols-2">
         <div>
-          <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">履约里程碑 ({milestones.length})</div>
+          <div className="mb-2 text-xs font-medium text-cf-subtle">履约里程碑 ({milestones.length})</div>
           {milestones.length === 0 ? (
-            <div className="rounded-md border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400 dark:border-slate-800">
+            <div className="rounded-md border border-dashed border-slate-200 py-6 text-center text-xs text-cf-faint dark:border-slate-800">
               暂无履约节点
             </div>
           ) : (
@@ -282,10 +282,10 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        <span className="text-sm font-medium text-cf-title">
                           {m.milestoneName}
                         </span>
-                        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-0.5 text-[10px] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+                        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-0.5 text-[10px] text-cf-subtle dark:border-slate-700 dark:bg-slate-900/40">
                           {milestoneTypeDict.getLabel(m.milestoneType)}
                         </span>
                         <span
@@ -318,14 +318,14 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                         </Button>
                       </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-cf-subtle">
                       <span>计划: {m.plannedDate}</span>
                       {m.actualDate ? <span>实际: {m.actualDate}</span> : null}
                       {m.amount ? <span>金额: ¥{Number(m.amount).toLocaleString()}</span> : null}
                       {m.ownerName ? <span>负责人: {m.ownerName}</span> : null}
                     </div>
                     {m.completionRemark ? (
-                      <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                      <div className="mt-1 text-[11px] text-cf-subtle">
                         备注: {m.completionRemark}
                       </div>
                     ) : null}
@@ -337,9 +337,9 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
         </div>
 
         <div>
-          <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">付款计划 ({payments.length})</div>
+          <div className="mb-2 text-xs font-medium text-cf-subtle">付款计划 ({payments.length})</div>
           {payments.length === 0 ? (
-            <div className="rounded-md border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400 dark:border-slate-800">
+            <div className="rounded-md border border-dashed border-slate-200 py-6 text-center text-xs text-cf-faint dark:border-slate-800">
               暂无付款节点
             </div>
           ) : (
@@ -353,7 +353,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        <span className="text-sm font-medium text-cf-title">
                           {p.paymentName}
                         </span>
                         <span
@@ -383,7 +383,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                         </Button>
                       </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-cf-subtle">
                       <span>计划: {p.planDate}</span>
                       {p.actualDate ? <span>实际: {p.actualDate}</span> : null}
                       <span>金额: {currencyDict.getLabel(p.currency || 'CNY')} {Number(p.amount).toLocaleString()}</span>

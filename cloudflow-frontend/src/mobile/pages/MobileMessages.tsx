@@ -152,9 +152,9 @@ export const MobileMessages: React.FC = () => {
             className="p-1 -ml-1"
             aria-label="返回"
           >
-            <ChevronLeft size={24} className="text-slate-600" />
+            <ChevronLeft size={24} className="text-cf-muted" />
           </button>
-          <h1 className="text-lg font-semibold text-slate-900 truncate flex-1">消息详情</h1>
+          <h1 className="text-lg font-semibold text-cf-title truncate flex-1">消息详情</h1>
           <button
             onClick={() => handleDelete(selectedMessage.id)}
             className="p-2 text-red-500"
@@ -169,16 +169,16 @@ export const MobileMessages: React.FC = () => {
           <div className="bg-[var(--cf-surface-strong)] rounded-md p-4 shadow-none">
             <div className="flex items-center gap-2 mb-3">
               {getTypeIcon(selectedMessage.type)}
-              <span className="text-xs text-slate-400">{selectedMessage.type || '通知'}</span>
-              <span className="text-xs text-slate-400 ml-auto">
+              <span className="text-xs text-cf-faint">{selectedMessage.type || '通知'}</span>
+              <span className="text-xs text-cf-faint ml-auto">
                 {formatTime(selectedMessage.createTime)}
               </span>
             </div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-3">{selectedMessage.title}</h2>
+            <h2 className="text-lg font-semibold text-cf-title mb-3">{selectedMessage.title}</h2>
             {selectedMessage.sender && (
-              <p className="text-sm text-slate-500 mb-3">发送人：{selectedMessage.sender}</p>
+              <p className="text-sm text-cf-subtle mb-3">发送人：{selectedMessage.sender}</p>
             )}
-            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+            <div className="text-sm text-cf-body leading-relaxed whitespace-pre-wrap">
               {selectedMessage.content}
             </div>
           </div>
@@ -193,7 +193,7 @@ export const MobileMessages: React.FC = () => {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <Loader2 className="animate-spin text-[#0d95b5] mx-auto mb-3" size={32} />
-          <p className="text-sm text-slate-500">加载消息...</p>
+          <p className="text-sm text-cf-subtle">加载消息...</p>
         </div>
       </div>
     );
@@ -231,11 +231,11 @@ export const MobileMessages: React.FC = () => {
           className="p-1 -ml-1"
           aria-label="返回"
         >
-          <ChevronLeft size={24} className="text-slate-600" />
+          <ChevronLeft size={24} className="text-cf-muted" />
         </button>
-        <h1 className="text-lg font-semibold text-slate-900 flex-1">消息通知</h1>
+        <h1 className="text-lg font-semibold text-cf-title flex-1">消息通知</h1>
         <div className="relative">
-          <Bell size={20} className="text-slate-600" />
+          <Bell size={20} className="text-cf-muted" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center">
               <span className="text-[10px] text-white font-bold px-1">
@@ -253,10 +253,10 @@ export const MobileMessages: React.FC = () => {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-[#0d95b5] text-[#0d95b5]'
-                : 'border-transparent text-slate-500'
-            }`}
+ activeTab === tab
+ ? 'border-[#0d95b5] text-[#0d95b5]'
+ : 'border-transparent text-cf-subtle'
+ }`}
           >
             {tab === 'all' ? '全部' : tab === 'unread' ? '未读' : '已读'}
             {tab === 'unread' && unreadCount > 0 && (
@@ -285,8 +285,8 @@ export const MobileMessages: React.FC = () => {
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <h3
                       className={`text-sm font-medium truncate ${
-                        message.isRead ? 'text-slate-700' : 'text-slate-900'
-                      }`}
+ message.isRead ? 'text-cf-body' : 'text-cf-title'
+ }`}
                     >
                       {message.title}
                     </h3>
@@ -294,13 +294,13 @@ export const MobileMessages: React.FC = () => {
                       <span className="flex-shrink-0 w-2 h-2 bg-[#0d95b5] rounded-full mt-1.5"></span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 line-clamp-2 mb-2">{message.content}</p>
+                  <p className="text-xs text-cf-subtle line-clamp-2 mb-2">{message.content}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">{formatTime(message.createTime)}</span>
+                    <span className="text-xs text-cf-faint">{formatTime(message.createTime)}</span>
                     <button
                       onClick={e => handleDelete(message.id, e)}
                       disabled={deleting === message.id}
-                      className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                      className="p-1 text-cf-faint hover:text-red-500 transition-colors"
                       aria-label="删除消息"
                     >
                       {deleting === message.id ? (
@@ -317,7 +317,7 @@ export const MobileMessages: React.FC = () => {
         ) : (
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-12 text-center">
             <Mail size={48} className="text-slate-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-cf-subtle">
               {activeTab === 'unread' ? '暂无未读消息' : activeTab === 'read' ? '暂无已读消息' : '暂无消息'}
             </p>
           </div>

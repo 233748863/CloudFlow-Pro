@@ -36,36 +36,36 @@ export const TemplateLibraryHeader: React.FC<TemplateLibraryHeaderProps> = ({
         <button
           type="button"
           onClick={onBackToCreateFlow}
-          className="mb-2 inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+          className="mb-2 inline-flex items-center gap-1.5 text-sm text-cf-subtle transition-colors hover:text-cf-title"
         >
           <ArrowLeft className="h-4 w-4" />
           {TEXT.backToCreate}
         </button>
       ) : null}
 
-      <h1 className="text-xl font-semibold text-slate-950 dark:text-slate-100">
+      <h1 className="text-xl font-semibold text-cf-title">
         {title}
       </h1>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-cf-subtle">
         {description}
       </p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-cf-subtle">
         <span>
           {TEXT.currentResults}{" "}
-          <span className="font-medium text-slate-700 dark:text-slate-200">{total}</span>
+          <span className="font-medium text-cf-body">{total}</span>
         </span>
         <span>
           {TEXT.categoryCount}{" "}
-          <span className="font-medium text-slate-700 dark:text-slate-200">{categoryCount}</span>
+          <span className="font-medium text-cf-body">{categoryCount}</span>
         </span>
         <span>
           {TEXT.activeFilters}{" "}
-          <span className="font-medium text-slate-700 dark:text-slate-200">{activeFilterCount}</span>
+          <span className="font-medium text-cf-body">{activeFilterCount}</span>
         </span>
         <span>
           {TEXT.currentView}{" "}
-          <span className="font-medium text-slate-700 dark:text-slate-200">{viewModeLabel}</span>
+          <span className="font-medium text-cf-body">{viewModeLabel}</span>
         </span>
       </div>
     </div>

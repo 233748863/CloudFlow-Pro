@@ -18,6 +18,7 @@ import { FileUpload } from '@/components/FileUpload';
 import { getErrorMessage } from '@/utils/errorMessage';
 import type { UserBrief } from '@/types/workflow';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './admin-vehicle.css';
 
 interface InlineStateProps {
   title: string;
@@ -41,9 +42,9 @@ const InlineState: React.FC<InlineStateProps> = ({
     <div className="admin-source-stat-icon mb-4">
       {icon || <Car size={18} />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 max-w-md text-sm leading-6 text-cf-subtle">{description}</div>
     ) : null}
     {action ? <div className="mt-5">{action}</div> : null}
   </div>
@@ -66,19 +67,19 @@ const VehicleCard: React.FC<{
   >
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <div className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+        <div className="font-mono text-sm font-semibold text-cf-title">
           {vehicle.licensePlate}
         </div>
-        <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <div className="mt-1 text-sm text-cf-subtle">
           {vehicle.brand} {vehicle.model}
         </div>
-        <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-2 text-xs text-cf-subtle">
           {vehicle.capacity} 座
           {vehicle.location ? ` · ${vehicle.location}` : ''}
           {vehicle.color ? ` · ${vehicle.color}` : ''}
         </div>
       </div>
-      {selected ? <CheckCircle size={16} className="shrink-0 text-slate-600 dark:text-slate-300" /> : null}
+      {selected ? <CheckCircle size={16} className="shrink-0 text-cf-muted" /> : null}
     </div>
   </button>
 );
@@ -91,8 +92,8 @@ const StepStrip: React.FC<{ current: number; steps: string[] }> = ({ current, st
           className={[
             'inline-flex items-center gap-2 text-sm',
             index === current
-              ? 'text-slate-900 dark:text-slate-100'
-              : 'text-slate-400 dark:text-slate-500',
+              ? 'text-cf-title'
+              : 'text-cf-faint',
           ].join(' ')}
         >
           <span
@@ -117,8 +118,8 @@ const StepStrip: React.FC<{ current: number; steps: string[] }> = ({ current, st
 
 const SummaryField: React.FC<SummaryFieldProps> = ({ label, value }) => (
   <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800">
-    <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="max-w-[65%] text-right text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="text-xs font-medium text-cf-faint">{label}</div>
+    <div className="max-w-[65%] text-right text-sm font-medium text-cf-title">{value}</div>
   </div>
 );
 
@@ -323,9 +324,9 @@ export const VehicleBooking: React.FC = () => {
       <section className="card admin-users-toolbar">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{currentStepTitle}</div>
+            <div className="text-sm font-semibold text-cf-title">{currentStepTitle}</div>
             {currentStepMeta ? (
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{currentStepMeta}</div>
+              <div className="mt-1 text-xs text-cf-subtle">{currentStepMeta}</div>
             ) : null}
           </div>
           {!loading && !loadError && vehicles.length > 0 ? <StepStrip current={step} steps={steps} /> : null}
@@ -342,13 +343,13 @@ export const VehicleBooking: React.FC = () => {
           {loading ? (
             <InlineState
               title="正在加载可用车辆"
-              icon={<Loader2 className="animate-spin text-slate-500" size={18} />}
+              icon={<Loader2 className="animate-spin text-cf-subtle" size={18} />}
             />
           ) : loadError ? (
             <InlineState
               title="加载车辆失败"
               description={loadError}
-              icon={<AlertCircle className="text-slate-500" size={18} />}
+              icon={<AlertCircle className="text-cf-subtle" size={18} />}
               action={<Button variant="outline" onClick={() => void loadVehicles()}>重试</Button>}
             />
           ) : vehicles.length === 0 ? (
@@ -427,10 +428,10 @@ export const VehicleBooking: React.FC = () => {
                   <div className="flex flex-col gap-4">
                     <div className="admin-vehicle-booking-selected">
                       <div className="min-w-0 flex-1">
-                        <div className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        <div className="font-mono text-sm font-semibold text-cf-title">
                           {selectedVehicle?.licensePlate}
                         </div>
-                        <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                        <div className="mt-1 truncate text-xs text-cf-subtle">
                           {selectedVehicleSummary}
                         </div>
                       </div>
@@ -494,7 +495,7 @@ export const VehicleBooking: React.FC = () => {
                                 'inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium transition',
                                 formData.isRoundTrip === 0
                                   ? 'border-[#0d95b5] bg-[#effbfe] text-[#0b7894] dark:border-[#0d95b5]/70 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
-                                  : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 hover:border-[#0d95b5]/50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
+                                  : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted hover:border-[#0d95b5]/50 dark:border-slate-800 dark:bg-slate-950',
                               ].join(' ')}
                             >
                               单程
@@ -506,7 +507,7 @@ export const VehicleBooking: React.FC = () => {
                                 'inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium transition',
                                 formData.isRoundTrip === 1
                                   ? 'border-[#0d95b5] bg-[#effbfe] text-[#0b7894] dark:border-[#0d95b5]/70 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
-                                  : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 hover:border-[#0d95b5]/50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
+                                  : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted hover:border-[#0d95b5]/50 dark:border-slate-800 dark:bg-slate-950',
                               ].join(' ')}
                             >
                               往返
@@ -561,20 +562,20 @@ export const VehicleBooking: React.FC = () => {
 
                     <VehicleBookingSurface title="申请摘要" bodyClassName="flex flex-col gap-2 text-sm">
                         <div className="flex justify-between gap-3">
-                          <span className="text-slate-500 dark:text-slate-400">车辆</span>
-                          <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{selectedVehicle?.licensePlate || '--'}</span>
+                          <span className="text-cf-subtle">车辆</span>
+                          <span className="font-mono font-medium text-cf-title">{selectedVehicle?.licensePlate || '--'}</span>
                         </div>
                         <div className="flex justify-between gap-3">
-                          <span className="text-slate-500 dark:text-slate-400">行程</span>
-                          <span className="font-medium text-slate-900 dark:text-slate-100">{formData.isRoundTrip ? '往返' : '单程'}</span>
+                          <span className="text-cf-subtle">行程</span>
+                          <span className="font-medium text-cf-title">{formData.isRoundTrip ? '往返' : '单程'}</span>
                         </div>
                         <div className="flex justify-between gap-3">
-                          <span className="text-slate-500 dark:text-slate-400">人数</span>
-                          <span className="font-medium text-slate-900 dark:text-slate-100">{formData.passengerCount || 1} 人</span>
+                          <span className="text-cf-subtle">人数</span>
+                          <span className="font-medium text-cf-title">{formData.passengerCount || 1} 人</span>
                         </div>
                         <div className="flex justify-between gap-3">
-                          <span className="text-slate-500 dark:text-slate-400">附件</span>
-                          <span className="font-medium text-slate-900 dark:text-slate-100">{attachmentCount} 个</span>
+                          <span className="text-cf-subtle">附件</span>
+                          <span className="font-medium text-cf-title">{attachmentCount} 个</span>
                         </div>
                     </VehicleBookingSurface>
                   </div>
@@ -606,7 +607,7 @@ export const VehicleBooking: React.FC = () => {
                     </SummarySection>
 
                     <SummarySection title="用车事由">
-                      <div className="px-4 py-3 whitespace-pre-wrap text-sm leading-6 text-slate-900 dark:text-slate-100">
+                      <div className="px-4 py-3 whitespace-pre-wrap text-sm leading-6 text-cf-title">
                         {formData.reason}
                       </div>
                     </SummarySection>

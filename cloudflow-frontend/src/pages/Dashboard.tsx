@@ -34,6 +34,8 @@ import {
   UserDashboardStatsData,
 } from '@/components/user/dashboard';
 import { tenantStorage } from '@/utils/tenantStorage';
+import './Dashboard.css';
+import '../styles/features/dashboard-chart.css';
 
 type DashboardGranularity = 'day' | 'hour';
 
@@ -405,25 +407,25 @@ export const Dashboard = () => {
         label: '待办审批',
         count: activityPanels.todoTasks.length,
         description: '当前时间范围内需要处理的审批任务',
-        tone: 'cyan' as const,
+        slot: 1 as const,
       },
       {
         label: '我的申请',
         count: activityPanels.applications.length,
         description: '我发起并仍在跟踪的流程申请',
-        tone: 'emerald' as const,
+        slot: 2 as const,
       },
       {
         label: '公告提醒',
         count: activityPanels.announcements.length,
         description: '命中当前时间范围的公司公告',
-        tone: 'amber' as const,
+        slot: 3 as const,
       },
       {
         label: '日程安排',
         count: activityPanels.schedules.length,
         description: '时间范围内的会议与个人安排',
-        tone: 'slate' as const,
+        slot: 4 as const,
       },
     ],
     [activityPanels],
@@ -566,7 +568,7 @@ export const Dashboard = () => {
         typeLabel: '日程安排',
         icon: <CalendarDays size={18} />,
         toneClassName:
-          'bg-[var(--cf-surface-muted)] text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+          'bg-[var(--cf-surface-muted)] text-cf-body dark:bg-slate-800',
         onClick: () => navigate('/schedule'),
         sortTime: time,
       });

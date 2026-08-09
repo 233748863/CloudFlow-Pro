@@ -143,9 +143,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -729,16 +729,16 @@ export const UserList = () => {
                     </td>
                     <td>
                       <div className="admin-users-row-actions">
-                        <button type="button" title="编辑用户" onClick={() => handleOpenModal(user)}>
+                        <button type="button" data-tooltip="编辑用户" aria-label="编辑用户" onClick={() => handleOpenModal(user)}>
                           <Edit size={15} />
                         </button>
-                        <button type="button" title="重置密码" onClick={() => handleOpenResetPassword(user)}>
+                        <button type="button" data-tooltip="重置密码" aria-label="重置密码" onClick={() => handleOpenResetPassword(user)}>
                           <KeyRound size={15} />
                         </button>
                         <button
                           type="button"
                           className="danger"
-                          title="删除用户"
+                          data-tooltip="删除用户" aria-label="删除用户"
                           onClick={() => setPendingDeleteUser(user)}
                         >
                           <Trash2 size={15} />
@@ -948,7 +948,7 @@ export const UserList = () => {
                       label={dept.deptName}
                       className={cn(
                         'pl-3',
-                        level === 0 ? 'font-semibold' : 'text-slate-600 dark:text-slate-300',
+                        level === 0 ? 'font-semibold' : 'text-cf-muted',
                       )}
                     >
                       {renderDeptOptionLabel(dept, level)}
@@ -1001,7 +1001,7 @@ export const UserList = () => {
                   })}
                 </>
               ) : (
-                <div className="px-2 py-4 text-center text-sm text-slate-400 dark:text-slate-500">
+                <div className="px-2 py-4 text-center text-sm text-cf-faint">
                   暂无角色数据
                 </div>
               )}

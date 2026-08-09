@@ -1,0 +1,190 @@
+/* 从 index.css 拆分而来：admin-contact
+   由 ContactPage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-contact-split {
+      display: flex;
+      min-height: 0;
+      width: 100%;
+      gap: 0.875rem;
+    }
+
+  .admin-contact-tree {
+      display: flex;
+      min-width: 0;
+      flex: 0 0 16rem;
+      flex-direction: column;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.75rem;
+      background: var(--cf-surface-strong);
+      overflow: hidden;
+    }
+
+  .admin-contact-tree-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 0.75rem 0.75rem 0.625rem;
+    }
+
+  .admin-contact-tree-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1;
+    }
+
+  .admin-contact-tree-list {
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow: auto;
+      padding: 0.375rem 0.5rem 0.625rem;
+      scrollbar-gutter: stable;
+    }
+
+  .admin-contact-tree-item,
+    .admin-contact-tree-row {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      border-radius: 0.5rem;
+      padding: 0.375rem 0.5rem;
+      cursor: pointer;
+      color: #334155;
+      font-size: 0.8125rem;
+      line-height: 1.3;
+      user-select: none;
+      transition: background-color 120ms ease, color 120ms ease;
+    }
+
+  .admin-contact-tree-item:hover,
+    .admin-contact-tree-row:hover {
+      background: var(--cf-surface-muted);
+    }
+
+  .admin-contact-tree-toggle {
+      display: inline-flex;
+      width: 1.125rem;
+      height: 1.125rem;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+    }
+
+  .admin-contact-tree-toggle-placeholder {
+      display: inline-block;
+      width: 1.125rem;
+      height: 1.125rem;
+      flex: 0 0 auto;
+    }
+
+  .admin-contact-tree-icon {
+      flex: 0 0 auto;
+      color: #94a3b8;
+    }
+
+  .admin-contact-tree-label {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-contact-tree-count {
+      flex: 0 0 auto;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.375rem;
+      background: var(--cf-surface-muted);
+      padding: 0.0625rem 0.375rem;
+      color: #94a3b8;
+      font-size: 0.6875rem;
+      line-height: 1.2;
+    }
+
+  .admin-contact-main {
+      display: flex;
+      min-width: 0;
+      flex: 1 1 0%;
+      flex-direction: column;
+      min-height: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.75rem;
+      background: var(--cf-surface-strong);
+      overflow: hidden;
+    }
+
+  .admin-contact-main-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.875rem;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 0.625rem 0.875rem;
+    }
+
+  .admin-contact-grid {
+      flex: 1 1 0%;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+      align-content: start;
+      overflow: auto;
+      padding: 0.875rem;
+      scrollbar-gutter: stable;
+    }
+
+  .admin-contact-card {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.625rem;
+      background: var(--cf-surface-strong);
+      padding: 0.75rem 0.875rem 0.875rem;
+      text-align: left;
+      transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
+    }
+
+  .admin-contact-card:hover {
+      border-color: color-mix(in srgb, var(--cf-primary-500, #0d95b5) 40%, var(--cf-border));
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.10);
+      transform: translateY(-1px);
+    }
+}
+
+@layer components {
+  @media (max-width: 1280px) {
+    .admin-contact-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+  }
+}
+
+@layer components {
+  @media (max-width: 768px) {
+    .admin-contact-split {
+          flex-direction: column;
+          gap: 0.625rem;
+        }
+
+    .admin-contact-tree {
+          flex: 0 0 auto;
+          max-height: 18rem;
+          width: 100%;
+        }
+
+    .admin-contact-grid {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0.625rem;
+          padding: 0.75rem;
+        }
+  }
+}

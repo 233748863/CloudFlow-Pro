@@ -74,7 +74,7 @@ export const DialogContent = ({
       >
         {children}
         <button
-          className="modal-close absolute right-3 top-3 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 text-slate-400 transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:pointer-events-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+          className="modal-close absolute right-3 top-3 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 text-cf-faint transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-cf-body focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:pointer-events-none dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
           onClick={() => onOpenChange(false)}
         >
           <span className="sr-only">关闭</span>
@@ -96,11 +96,11 @@ export const DialogHeader = ({ className = '', ...props }: React.HTMLAttributes<
 );
 
 export const DialogTitle = ({ className = '', ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h2 className={cn('modal-title text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100', className)} {...props} />
+  <h2 className={cn('modal-title text-sm font-semibold leading-tight text-cf-title', className)} {...props} />
 );
 
 export const DialogDescription = ({ className = '', ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-  <p className={cn('text-xs leading-5 text-slate-500 dark:text-slate-400', className)} {...props} />
+  <p className={cn('text-xs leading-5 text-cf-subtle', className)} {...props} />
 );
 
 export const DialogFooter = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (

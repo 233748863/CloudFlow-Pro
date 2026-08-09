@@ -61,7 +61,7 @@ export const WorkspaceIconButton: React.FC<WorkspaceIconButtonProps> = ({
     aria-label={label}
     title={label}
     className={cn(
-      'h-10 w-10 text-slate-500 shadow-none hover:text-cyan-700',
+      'h-10 w-10 text-cf-subtle shadow-none hover:text-cyan-700',
       variant === 'outline'
         ? 'border border-slate-200 bg-[var(--cf-surface-strong)] hover:border-cyan-100 hover:bg-cyan-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-950 dark:hover:bg-cyan-950/30'
         : 'border-0 bg-transparent hover:bg-cyan-50 dark:text-slate-300 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200',

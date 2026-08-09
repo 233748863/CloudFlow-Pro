@@ -31,7 +31,7 @@ const expenseTypes: { value: ExpenseType; label: string; color: string }[] = [
   { value: 'accommodation', label: '住宿费', color: 'bg-[#effbfe] text-[#0d95b5]' },
   { value: 'transportation', label: '交通费', color: 'bg-[#effbfe] text-[#0d95b5]' },
   { value: 'office', label: '办公费', color: 'bg-[#effbfe] text-[#0d95b5]' },
-  { value: 'other', label: '其他', color: 'bg-slate-100 text-slate-600' },
+  { value: 'other', label: '其他', color: 'bg-cf-surface-3 text-cf-muted' },
 ];
 
 export const MobileReimbursement: React.FC = () => {
@@ -197,10 +197,10 @@ export const MobileReimbursement: React.FC = () => {
           className="p-1 -ml-1"
           aria-label="返回"
         >
-          <ChevronLeft size={24} className="text-slate-600" />
+          <ChevronLeft size={24} className="text-cf-muted" />
         </button>
-        <h1 className="text-lg font-semibold text-slate-900 flex-1">报销申请</h1>
-        <span className="text-sm text-slate-400">步骤 {step}/3</span>
+        <h1 className="text-lg font-semibold text-cf-title flex-1">报销申请</h1>
+        <span className="text-sm text-cf-faint">步骤 {step}/3</span>
       </div>
 
       {/* Progress Bar */}
@@ -210,12 +210,12 @@ export const MobileReimbursement: React.FC = () => {
             <div
               key={s}
               className={`flex-1 h-1.5 rounded-full transition-colors ${
-                s <= step ? 'bg-[#0d95b5]' : 'bg-slate-200'
-              }`}
+ s <= step ? 'bg-[#0d95b5]' : 'bg-slate-200'
+ }`}
             />
           ))}
         </div>
-        <div className="flex justify-between mt-2 text-xs text-slate-500">
+        <div className="flex justify-between mt-2 text-xs text-cf-subtle">
           <span className={step >= 1 ? 'text-[#0d95b5] font-medium' : ''}>添加费用</span>
           <span className={step >= 2 ? 'text-[#0d95b5] font-medium' : ''}>填写信息</span>
           <span className={step >= 3 ? 'text-[#0d95b5] font-medium' : ''}>确认提交</span>
@@ -227,17 +227,17 @@ export const MobileReimbursement: React.FC = () => {
         <div className="p-4 space-y-4">
           {/* 费用类型 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-slate-700 mb-3">费用类型</label>
+            <label className="block text-sm font-medium text-cf-body mb-3">费用类型</label>
             <div className="grid grid-cols-3 gap-2">
               {expenseTypes.map(type => (
                 <button
                   key={type.value}
                   onClick={() => setCurrentItem({ ...currentItem, type: type.value })}
                   className={`py-2 px-2 rounded-lg text-xs font-medium border-2 transition-all ${
-                    currentItem.type === type.value
-                      ? 'border-[#0d95b5] bg-[#effbfe] text-[#0d95b5]'
-                      : 'border-slate-200 text-slate-600'
-                  }`}
+ currentItem.type === type.value
+ ? 'border-[#0d95b5] bg-[#effbfe] text-[#0d95b5]'
+ : 'border-slate-200 text-cf-muted'
+ }`}
                 >
                   {type.label}
                 </button>
@@ -249,7 +249,7 @@ export const MobileReimbursement: React.FC = () => {
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-cf-body mb-2">
                   <DollarSign size={16} className="inline mr-1" />
                   金额（元）
                 </label>
@@ -264,7 +264,7 @@ export const MobileReimbursement: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">日期</label>
+                <label className="block text-sm font-medium text-cf-body mb-2">日期</label>
                 <DatePicker
                   type="date"
                   value={currentItem.date}
@@ -278,7 +278,7 @@ export const MobileReimbursement: React.FC = () => {
 
           {/* 费用说明 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-cf-body mb-2">
               <FileText size={16} className="inline mr-1" />
               费用说明
             </label>
@@ -302,7 +302,7 @@ export const MobileReimbursement: React.FC = () => {
           {form.items.length > 0 && (
             <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold text-slate-900">费用清单</h3>
+                <h3 className="font-semibold text-cf-title">费用清单</h3>
                 <span className="text-lg font-bold text-[#0d95b5]">
                   ¥{form.totalAmount.toFixed(2)}
                 </span>
@@ -318,12 +318,12 @@ export const MobileReimbursement: React.FC = () => {
                         <span className={`text-xs px-2 py-0.5 rounded ${getTypeColor(item.type)}`}>
                           {getTypeLabel(item.type)}
                         </span>
-                        <span className="text-sm font-semibold text-slate-900">
+                        <span className="text-sm font-semibold text-cf-title">
                           ¥{item.amount.toFixed(2)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-600">{item.description}</p>
-                      <p className="text-xs text-slate-400 mt-1">{item.date}</p>
+                      <p className="text-xs text-cf-muted">{item.description}</p>
+                      <p className="text-xs text-cf-faint mt-1">{item.date}</p>
                     </div>
                     <button
                       onClick={() => handleRemoveItem(item.id)}
@@ -353,7 +353,7 @@ export const MobileReimbursement: React.FC = () => {
         <div className="p-4 space-y-4">
           {/* 银行账号 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-cf-body mb-2">
               银行账号 <span className="text-red-500">*</span>
             </label>
             <input
@@ -367,7 +367,7 @@ export const MobileReimbursement: React.FC = () => {
 
           {/* 备注 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-slate-700 mb-2">备注说明</label>
+            <label className="block text-sm font-medium text-cf-body mb-2">备注说明</label>
             <textarea
               value={form.remarks}
               onChange={e => setForm({ ...form, remarks: e.target.value })}
@@ -390,11 +390,11 @@ export const MobileReimbursement: React.FC = () => {
       {step === 3 && (
         <div className="p-4 space-y-4">
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <h3 className="font-semibold text-slate-900 mb-4">确认报销信息</h3>
+            <h3 className="font-semibold text-cf-title mb-4">确认报销信息</h3>
             
             {/* 费用清单 */}
             <div className="mb-4">
-              <h4 className="text-sm font-medium text-slate-700 mb-2">费用清单</h4>
+              <h4 className="text-sm font-medium text-cf-body mb-2">费用清单</h4>
               <div className="space-y-2">
                 {form.items.map(item => (
                   <div key={item.id} className="flex justify-between items-center py-2 border-b border-slate-100">
@@ -402,9 +402,9 @@ export const MobileReimbursement: React.FC = () => {
                       <span className={`text-xs px-2 py-0.5 rounded ${getTypeColor(item.type)}`}>
                         {getTypeLabel(item.type)}
                       </span>
-                      <p className="text-xs text-slate-600 mt-1">{item.description}</p>
+                      <p className="text-xs text-cf-muted mt-1">{item.description}</p>
                     </div>
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm font-semibold text-cf-title">
                       ¥{item.amount.toFixed(2)}
                     </span>
                   </div>
@@ -414,7 +414,7 @@ export const MobileReimbursement: React.FC = () => {
 
             {/* 总金额 */}
             <div className="flex justify-between items-center py-3 border-t-2 border-slate-200 mb-4">
-              <span className="text-base font-semibold text-slate-900">总金额</span>
+              <span className="text-base font-semibold text-cf-title">总金额</span>
               <span className="text-xl font-bold text-[#0d95b5]">
                 ¥{form.totalAmount.toFixed(2)}
               </span>
@@ -423,13 +423,13 @@ export const MobileReimbursement: React.FC = () => {
             {/* 其他信息 */}
             <div className="space-y-2">
               <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                <span className="text-sm text-slate-500">银行账号</span>
-                <span className="text-sm text-slate-900">{form.bankAccount}</span>
+                <span className="text-sm text-cf-subtle">银行账号</span>
+                <span className="text-sm text-cf-title">{form.bankAccount}</span>
               </div>
               {form.remarks && (
                 <div className="py-2">
-                  <span className="text-sm text-slate-500 block mb-1">备注说明</span>
-                  <span className="text-sm text-slate-900">{form.remarks}</span>
+                  <span className="text-sm text-cf-subtle block mb-1">备注说明</span>
+                  <span className="text-sm text-cf-title">{form.remarks}</span>
                 </div>
               )}
             </div>

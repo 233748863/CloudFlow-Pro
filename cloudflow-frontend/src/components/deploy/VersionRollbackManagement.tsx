@@ -28,6 +28,7 @@ import {
   listRollbackVersions,
   rollbackDeploy,
 } from '@/services/api/deployEnhancement';
+import '../../styles/features/admin-deploy.css';
 
 interface ProcessOption {
   definitionId?: string | number;
@@ -112,9 +113,9 @@ const SurfaceBlock: React.FC<{
   <InnerTableSurface wrapperClassName="p-0">
     <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-semibold text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-1 text-sm text-cf-subtle">{description}</div>
         ) : null}
       </div>
       {aside ? <div className="flex items-center gap-2">{aside}</div> : null}
@@ -133,13 +134,13 @@ const InlineState: React.FC<{
 }> = ({ title, description, icon, loading = false }) => (
   <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
     {loading ? (
-      <RefreshCw className="mb-3 h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
+      <RefreshCw className="mb-3 h-5 w-5 animate-spin text-cf-faint" />
     ) : icon ? (
-      <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div>
+      <div className="mb-3 text-cf-faint">{icon}</div>
     ) : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 max-w-md text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 max-w-md text-xs leading-6 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -357,16 +358,16 @@ export const VersionRollbackManagement: React.FC = () => {
           </div>
 
           <div className="admin-users-toolbar-actions">
-            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-900">
               流程 {summary.processCount}
             </span>
-            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-900">
               快照 {summary.versionCount}
             </span>
-            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-900">
               历史 {summary.historyCount}
             </span>
-            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-900">
               最新 {summary.latestVersion > 0 ? `v${summary.latestVersion}` : '暂无'}
             </span>
             <Button
@@ -408,7 +409,7 @@ export const VersionRollbackManagement: React.FC = () => {
           </InnerTableSurface>
         ) : (
           <InnerTableSurface className="min-h-[30rem]">
-            <div className="hidden bg-[var(--cf-surface-muted)] px-4 py-3 text-xs font-medium text-slate-500 dark:bg-slate-900/70 dark:text-slate-400 lg:grid lg:grid-cols-[minmax(0,1fr)_120px_180px_160px_220px] lg:items-center">
+            <div className="hidden bg-[var(--cf-surface-muted)] px-4 py-3 text-xs font-medium text-cf-subtle dark:bg-slate-900/70 lg:grid lg:grid-cols-[minmax(0,1fr)_120px_180px_160px_220px] lg:items-center">
               <span>版本</span>
               <span>部署</span>
               <span>创建时间</span>
@@ -426,7 +427,7 @@ export const VersionRollbackManagement: React.FC = () => {
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      <span className="text-sm font-semibold text-cf-title">
                         版本 v{version.version}
                       </span>
                       {latest ? (
@@ -435,14 +436,14 @@ export const VersionRollbackManagement: React.FC = () => {
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    <div className="mt-1 text-sm text-cf-subtle">
                       流程定义 {version.processDefId}
                     </div>
                   </div>
 
-                  <div className="text-sm text-slate-600 dark:text-slate-300">{version.deployId}</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-300">{version.createdTime}</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-300">{version.createdBy}</div>
+                  <div className="text-sm text-cf-muted">{version.deployId}</div>
+                  <div className="text-sm text-cf-muted">{version.createdTime}</div>
+                  <div className="text-sm text-cf-muted">{version.createdBy}</div>
 
                   <div className="flex flex-wrap items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => void handleViewSnapshot(version)}>
@@ -469,7 +470,7 @@ export const VersionRollbackManagement: React.FC = () => {
         </InnerTableSurface>
       ) : (
         <InnerTableSurface className="min-h-[30rem]">
-          <div className="hidden bg-[var(--cf-surface-muted)] px-4 py-3 text-xs font-medium text-slate-500 dark:bg-slate-900/70 dark:text-slate-400 lg:grid lg:grid-cols-[minmax(0,1fr)_180px_220px_160px] lg:items-center">
+          <div className="hidden bg-[var(--cf-surface-muted)] px-4 py-3 text-xs font-medium text-cf-subtle dark:bg-slate-900/70 lg:grid lg:grid-cols-[minmax(0,1fr)_180px_220px_160px] lg:items-center">
             <span>回滚链路</span>
             <span>状态</span>
             <span>时间与操作人</span>
@@ -486,14 +487,14 @@ export const VersionRollbackManagement: React.FC = () => {
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    <span className="text-sm font-semibold text-cf-title">
                       v{record.fromVersion} {'->'} v{record.toVersion}
                     </span>
-                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-[11px] font-semibold text-cf-muted dark:border-slate-700 dark:bg-slate-900">
                       {record.rollbackType === 'MANUAL' ? '手动回滚' : '自动回滚'}
                     </span>
                   </div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  <div className="mt-1 text-sm text-cf-subtle">
                     原始部署 ID {record.originalDeployId}
                   </div>
                   {record.errorMessage ? (
@@ -512,12 +513,12 @@ export const VersionRollbackManagement: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="text-sm text-slate-600 dark:text-slate-300">
+                <div className="text-sm text-cf-muted">
                   <div>{record.rollbackTime}</div>
                   <div className="mt-1">操作人 · {record.rollbackBy}</div>
                 </div>
 
-                <div className="text-sm text-slate-600 dark:text-slate-300">{record.rollbackReason}</div>
+                <div className="text-sm text-cf-muted">{record.rollbackReason}</div>
               </div>
             );
           })}
@@ -534,16 +535,16 @@ export const VersionRollbackManagement: React.FC = () => {
         {snapshotModal ? (
           <div className="admin-dialog-stack max-h-[72vh] overflow-y-auto">
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-950/70">
                 流程定义 · {snapshotModal.processDefId}
               </span>
-              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-950/70">
                 版本号 · v{snapshotModal.version}
               </span>
-              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-950/70">
                 部署 ID · {snapshotModal.deployId}
               </span>
-              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-950/70">
                 创建时间 · {snapshotModal.createdTime}
               </span>
             </div>
@@ -607,13 +608,13 @@ export const VersionRollbackManagement: React.FC = () => {
         {rollbackModal ? (
           <div className="admin-dialog-stack max-h-[72vh] overflow-y-auto">
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-950/70">
                 目标版本 · v{rollbackModal.version.version}
               </span>
-              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-950/70">
                 部署 ID · {rollbackModal.version.deployId}
               </span>
-              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-950/70">
                 快照时间 · {rollbackModal.version.createdTime}
               </span>
             </div>
@@ -654,10 +655,10 @@ export const VersionRollbackManagement: React.FC = () => {
                         >
                           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                             <div className="grid gap-2">
-                              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                              <div className="text-sm font-semibold text-cf-title">
                                 {impact.impactType}
                               </div>
-                              <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+                              <div className="text-sm leading-6 text-cf-subtle">
                                 {impact.impactDetail}
                               </div>
                             </div>
@@ -674,18 +675,18 @@ export const VersionRollbackManagement: React.FC = () => {
 
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
                             <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-cf-faint">
                                 影响数量
                               </div>
-                              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              <div className="mt-1.5 text-sm font-semibold text-cf-title">
                                 {impact.impactCount}
                               </div>
                             </div>
                             <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                              <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-cf-faint">
                                 建议处理
                               </div>
-                              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              <div className="mt-1.5 text-sm font-semibold text-cf-title">
                                 {impact.suggestion || '暂无建议'}
                               </div>
                             </div>
@@ -720,7 +721,7 @@ export const VersionRollbackManagement: React.FC = () => {
             ) : null}
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <label className="mb-2 block text-sm font-semibold text-cf-body">
                 回滚原因 <span className="text-rose-500">*</span>
               </label>
               <Textarea

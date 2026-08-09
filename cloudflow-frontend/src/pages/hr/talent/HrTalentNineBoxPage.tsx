@@ -86,9 +86,9 @@ const EmployeeChip: React.FC<EmployeeChipProps> = ({ participant, editable, onOp
       {...attributes}
       onDoubleClick={() => onOpen(participant)}
       className="flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-950"
-      title="双击查看 / 编辑评语"
+      data-tooltip="双击查看 / 编辑评语"
     >
-      <User className="h-3 w-3 text-slate-400" />
+      <User className="h-3 w-3 text-cf-faint" />
       <span className="font-mono">#{participant.employeeId}</span>
       {participant.potentialScore != null ? (
         <span className="text-emerald-600">P{participant.potentialScore}</span>
@@ -117,10 +117,10 @@ const NineBoxCell: React.FC<NineBoxCellProps> = ({ meta, participants, editable,
       }`}
     >
       <div className="flex items-center justify-between text-xs">
-        <div className="font-semibold text-slate-700 dark:text-slate-200">
+        <div className="font-semibold text-cf-body">
           [{meta.cell}] {meta.label}
         </div>
-        <div className="text-slate-500">业绩{meta.performance} · 潜力{meta.potential}</div>
+        <div className="text-cf-subtle">业绩{meta.performance} · 潜力{meta.potential}</div>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {visible.map((p) => (
@@ -130,13 +130,13 @@ const NineBoxCell: React.FC<NineBoxCellProps> = ({ meta, participants, editable,
           <button
             type="button"
             onClick={() => onShowAll(meta.cell)}
-            className="rounded border border-dashed border-slate-300 px-2 py-1 text-xs text-slate-500 hover:border-sky-400 hover:text-sky-600"
+            className="rounded border border-dashed border-slate-300 px-2 py-1 text-xs text-cf-subtle hover:border-sky-400 hover:text-sky-600"
           >
             其余 {overflow} 人…
           </button>
         ) : null}
         {participants.length === 0 ? (
-          <div className="text-xs text-slate-400">暂无人员</div>
+          <div className="text-xs text-cf-faint">暂无人员</div>
         ) : null}
       </div>
     </div>
@@ -336,7 +336,7 @@ export const HrTalentNineBoxPage: React.FC = () => {
           table={
             <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
               <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="mb-3 flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mb-3 flex items-center gap-4 text-xs text-cf-subtle">
                   <span>X 轴(横向):业绩 高 → 低</span>
                   <span>Y 轴(纵向):潜力 高 → 低</span>
                 </div>
@@ -351,7 +351,7 @@ export const HrTalentNineBoxPage: React.FC = () => {
                   </div>
                 ) : (
                   <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-                    <div className="mb-1 grid grid-cols-3 gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <div className="mb-1 grid grid-cols-3 gap-2 text-xs font-medium text-cf-subtle">
                       <div className="text-center">潜力高</div>
                       <div className="text-center">潜力中</div>
                       <div className="text-center">潜力低</div>
@@ -400,7 +400,7 @@ export const HrTalentNineBoxPage: React.FC = () => {
         }
       >
         <>
-          <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+          <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2 text-xs text-cf-subtle dark:border-slate-800 dark:bg-slate-950">
             业绩分 {editParticipant?.performanceScore ?? '-'} · 业绩带 {editParticipant?.performanceBand ?? '-'} ·
             当前格 {editParticipant?.gridCell ?? '-'}
           </div>
@@ -470,7 +470,7 @@ export const HrTalentNineBoxPage: React.FC = () => {
               className="flex items-center justify-between rounded border border-slate-200 px-3 py-2 text-sm"
             >
               <div className="flex items-center gap-3">
-                <span className="font-mono text-xs text-slate-500">#{p.employeeId}</span>
+                <span className="font-mono text-xs text-cf-subtle">#{p.employeeId}</span>
                 <span>业绩 {p.performanceScore ?? '-'} / 潜力 {p.potentialScore ?? '-'}</span>
               </div>
               <Button
@@ -486,7 +486,7 @@ export const HrTalentNineBoxPage: React.FC = () => {
             </div>
           ))}
           {cellListParticipants.length === 0 ? (
-            <div className="py-6 text-center text-sm text-slate-400">该格暂无人员</div>
+            <div className="py-6 text-center text-sm text-cf-faint">该格暂无人员</div>
           ) : null}
         </div>
       </BaseDialog>

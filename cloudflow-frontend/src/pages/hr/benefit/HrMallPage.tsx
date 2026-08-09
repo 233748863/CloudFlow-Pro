@@ -18,6 +18,7 @@ import {
 } from '@/services/api/hr';
 import { normalizeRows } from '../hrShared';
 import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
+import './HrMallPage.css';
 
 interface CartItem {
   item: HrMallItem;
@@ -221,10 +222,10 @@ export const HrMallPage: React.FC = () => {
                     type="button"
                     onClick={() => setCategory(c)}
                     className={`min-h-[42px] rounded-md border px-3 py-2 text-xs font-medium transition ${
-                      category === c
-                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40'
-                        : 'border-slate-200 text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:border-slate-700 dark:text-slate-300'
-                    }`}
+ category === c
+ ? 'border-cyan-500 bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40'
+ : 'border-slate-200 text-cf-muted hover:bg-[var(--cf-surface-muted)] dark:border-slate-700 '
+ }`}
                   >
                     {c === 'all' ? '全部' : c}
                   </button>
@@ -245,9 +246,9 @@ export const HrMallPage: React.FC = () => {
         <div className="admin-mall-workbench-grid">
           <InnerTableSurface className="admin-mall-table-surface flex min-h-0 flex-1 flex-col">
             {loading ? (
-              <div className="py-10 text-center text-sm text-slate-400">加载中...</div>
+              <div className="py-10 text-center text-sm text-cf-faint">加载中...</div>
             ) : filtered.length === 0 ? (
-              <div className="py-10 text-center text-sm text-slate-400">暂无商品</div>
+              <div className="py-10 text-center text-sm text-cf-faint">暂无商品</div>
             ) : (
               <table className="unity-data-table admin-source-table admin-mall-table min-w-[740px]">
                 <thead>
@@ -367,15 +368,15 @@ export const HrMallPage: React.FC = () => {
               {detail.coverImage ? (
                 <img src={detail.coverImage} alt={detail.itemName} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">无图</div>
+                <div className="flex h-full w-full items-center justify-center text-xs text-cf-faint">无图</div>
               )}
             </div>
             <div className="grid gap-2 text-sm">
-              <div className="text-xs text-slate-500">编号 {detail.itemNo}</div>
+              <div className="text-xs text-cf-subtle">编号 {detail.itemNo}</div>
               <div className="text-xl font-semibold text-amber-600">{detail.pointPrice} 分</div>
-              <div className="text-xs text-slate-500">分类:{detail.category ?? '-'}</div>
-              <div className="text-xs text-slate-500">库存:{detail.stock}</div>
-              <div className="text-xs text-slate-500">已售:{detail.salesCount ?? 0}</div>
+              <div className="text-xs text-cf-subtle">分类:{detail.category ?? '-'}</div>
+              <div className="text-xs text-cf-subtle">库存:{detail.stock}</div>
+              <div className="text-xs text-cf-subtle">已售:{detail.salesCount ?? 0}</div>
               {Number(detail.approvalThreshold ?? 0) > 0 && (
                 <div className="text-xs text-amber-700">
                   ⚠ 单笔订单 ≥ {detail.approvalThreshold} 分触发审批
@@ -383,7 +384,7 @@ export const HrMallPage: React.FC = () => {
               )}
               {detail.detailHtml && (
                 <div
-                  className="prose prose-sm mt-3 max-w-none text-sm text-slate-600 dark:prose-invert dark:text-slate-300"
+                  className="prose prose-sm mt-3 max-w-none text-sm text-cf-muted dark:prose-invert"
                   dangerouslySetInnerHTML={{ __html: detail.detailHtml }}
                 />
               )}
@@ -428,7 +429,7 @@ export const HrMallPage: React.FC = () => {
               <tbody>
                 {cart.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-sm text-slate-400">购物车为空</td>
+                    <td colSpan={5} className="py-6 text-center text-sm text-cf-faint">购物车为空</td>
                   </tr>
                 ) : (
                   cart.map((c) => (

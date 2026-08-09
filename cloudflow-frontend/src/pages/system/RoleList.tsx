@@ -45,6 +45,7 @@ import { getTenantList } from '../../services/api/tenant';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './RoleList.css';
 
 type TreeNode = {
   menuId: number;
@@ -97,7 +98,7 @@ const getRoleStatusClassName = (status: string) =>
 const getDsTypeClassName = (dsType: number) =>
   dsType === 1
     ? 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200'
-    : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
+    : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900/70';
 
 const checkboxClassName =
   'h-4 w-4 shrink-0 rounded border-slate-300 accent-[#0d95b5] text-[#0d95b5] focus:ring-2 focus:ring-[#0d95b5]/30 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
@@ -153,9 +154,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="admin-settings-empty">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -182,8 +183,8 @@ const TreeCheckboxList: React.FC<{
             className={cn(
               'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition',
               checked
-                ? 'bg-[var(--cf-surface-muted)] text-slate-900 dark:bg-slate-900/70 dark:text-slate-100'
-                : 'text-slate-700 hover:bg-[var(--cf-surface-muted)] dark:text-slate-200 dark:hover:bg-slate-950/80',
+                ? 'bg-[var(--cf-surface-muted)] text-cf-title dark:bg-slate-900/70'
+                : 'text-cf-body hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-950/80',
             )}
           >
             {node.children && node.children.length > 0 ? (
@@ -194,7 +195,7 @@ const TreeCheckboxList: React.FC<{
                   event.stopPropagation();
                   onToggleExpand(node.menuId);
                 }}
-                className="rounded-md p-1 text-slate-400 transition hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+                className="rounded-md p-1 text-cf-faint transition hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:hover:bg-slate-900"
               >
                 {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </button>
@@ -859,7 +860,7 @@ export const RoleList = () => {
             ) : (
               roles.map((role) => (
                 <tr key={role.roleId}>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">
+                  <td className="text-sm text-cf-subtle">
                     {role.roleId}
                   </td>
                   <td>
@@ -908,7 +909,7 @@ export const RoleList = () => {
                   <td>
                     <div className="admin-users-row-actions">
                       {canEditRole ? (
-                        <button type="button" title="编辑角色" onClick={() => handleOpenModal(role)}>
+                        <button type="button" data-tooltip="编辑角色" aria-label="编辑角色" onClick={() => handleOpenModal(role)}>
                           <Edit size={15} />
                         </button>
                       ) : null}
@@ -916,7 +917,7 @@ export const RoleList = () => {
                         <button
                           type="button"
                           className="danger"
-                          title="删除角色"
+                          data-tooltip="删除角色" aria-label="删除角色"
                           onClick={() => setPendingDeleteRole(role)}
                         >
                           <Trash2 size={15} />
@@ -1121,7 +1122,7 @@ export const RoleList = () => {
                       onToggleCheck={toggleDeptCheck}
                     />
                   ) : (
-                    <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                    <div className="px-2 py-6 text-center text-sm text-cf-faint">
                       暂无部门数据
                     </div>
                   )}
@@ -1153,7 +1154,7 @@ export const RoleList = () => {
                     onToggleCheck={roleDetailLoading ? () => undefined : toggleMenuCheck}
                   />
                 ) : (
-                  <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                  <div className="px-2 py-6 text-center text-sm text-cf-faint">
                     暂无菜单数据
                   </div>
                 )}
@@ -1255,13 +1256,13 @@ export const RoleList = () => {
                 ) : (
                   mutexRules.map((rule) => (
                     <tr key={rule.id}>
-                      <td className="text-sm text-slate-700 dark:text-slate-200">
+                      <td className="text-sm text-cf-body">
                         {roleNameById.get(rule.roleId1) || `角色 #${rule.roleId1}`}
                       </td>
-                      <td className="text-sm text-slate-700 dark:text-slate-200">
+                      <td className="text-sm text-cf-body">
                         {roleNameById.get(rule.roleId2) || `角色 #${rule.roleId2}`}
                       </td>
-                      <td className="text-sm text-slate-500 dark:text-slate-400">
+                      <td className="text-sm text-cf-subtle">
                         {rule.createTime || '-'}
                       </td>
                       <td>
@@ -1269,7 +1270,7 @@ export const RoleList = () => {
                           <button
                             type="button"
                             className="danger"
-                            title="删除规则"
+                            data-tooltip="删除规则" aria-label="删除规则"
                             onClick={() => setPendingDeleteMutexRule(rule)}
                           >
                             <Trash2 size={15} />

@@ -144,13 +144,13 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
         )}
       >
         {selectedOptions.length === 0 ? (
-          <span className="text-[13px] text-slate-400">{placeholder}</span>
+          <span className="text-[13px] text-cf-faint">{placeholder}</span>
         ) : multiple ? (
           <div className="flex w-full flex-wrap items-center gap-1">
             {selectedOptions.map((opt) => (
               <span
                 key={opt.id}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs font-medium text-cf-body dark:border-slate-800 dark:bg-slate-900"
               >
                 {opt.label}
                 {!disabled && (
@@ -171,16 +171,16 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
         ) : (
           <div className="flex w-full min-w-0 items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-              <span className="min-w-0 truncate text-[13px] text-slate-800 dark:text-slate-100">{selectedOptions[0].label}</span>
+              <span className="min-w-0 truncate text-[13px] text-cf-title">{selectedOptions[0].label}</span>
               {selectedOptions[0].subLabel && (
-                <span className="min-w-0 flex-1 truncate text-xs text-slate-400">{selectedOptions[0].subLabel}</span>
+                <span className="min-w-0 flex-1 truncate text-xs text-cf-faint">{selectedOptions[0].subLabel}</span>
               )}
             </div>
             {allowClear && !disabled && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="rounded-md p-0.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="rounded-md p-0.5 text-cf-faint transition hover:bg-slate-200 hover:text-cf-body dark:hover:bg-slate-800"
                 aria-label="清空"
               >
                 <X size={14} />
@@ -211,7 +211,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
           >
           <div className="border-b border-slate-200 p-2 dark:border-slate-800">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-cf-faint" size={16} />
               <input
                 ref={inputRef}
                 type="text"
@@ -227,9 +227,9 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
 
           <div className="max-h-56 overflow-y-auto">
             {loading ? (
-              <div className="p-4 text-center text-sm text-slate-500">加载中...</div>
+              <div className="p-4 text-center text-sm text-cf-subtle">加载中...</div>
             ) : filteredOptions.length === 0 ? (
-              <div className="p-4 text-center text-sm text-slate-500">{emptyText}</div>
+              <div className="p-4 text-center text-sm text-cf-subtle">{emptyText}</div>
             ) : (
               filteredOptions.map((opt) => {
                 const isSelected = value.includes(opt.id);
@@ -252,9 +252,9 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
                     >
                       {renderAvatar(opt)}
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{opt.label}</div>
+                        <div className="truncate text-sm font-medium text-cf-title">{opt.label}</div>
                         {opt.subLabel && (
-                          <div className="truncate text-xs text-slate-500 dark:text-slate-400">{opt.subLabel}</div>
+                          <div className="truncate text-xs text-cf-subtle">{opt.subLabel}</div>
                         )}
                       </div>
                     </div>

@@ -18,6 +18,7 @@ import { toBackendDateString } from '../utils/dateFormat';
 import { Button, DatePicker, Input, SegmentedControl, SegmentedControlItem, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './admin-meeting.css';
 
 // ==================== 类型定义 ====================
 interface UserBrief {
@@ -107,9 +108,9 @@ const InlineState: React.FC<{
     <div className="admin-source-stat-icon mb-3">
       {icon || <LoaderCircle className="h-4 w-4 animate-spin" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -122,11 +123,11 @@ const EmptyPanel: React.FC<{
 }> = ({ title, description, icon, action }) => (
   <InnerTableSurface className="admin-meeting-state-surface">
     <div className="admin-meeting-state-body">
-      <div className="admin-source-stat-icon mx-auto text-slate-400 dark:text-slate-500">
+      <div className="admin-source-stat-icon mx-auto text-cf-faint">
         {icon || <Monitor className="h-5 w-5" />}
       </div>
-      <div className="mt-4 text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-      <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-4 text-sm font-medium text-cf-title">{title}</div>
+      <div className="mt-2 text-sm leading-6 text-cf-subtle">{description}</div>
       {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
     </div>
   </InnerTableSurface>
@@ -141,11 +142,11 @@ const StatusPanel: React.FC<{
 }> = ({ title, description, icon, action, className }) => (
   <InnerTableSurface className={cn('admin-meeting-state-surface', className)}>
     <div className="admin-meeting-state-body">
-      <div className="admin-source-stat-icon mx-auto text-slate-400 dark:text-slate-500">
+      <div className="admin-source-stat-icon mx-auto text-cf-faint">
         {icon || <Monitor className="h-5 w-5" />}
       </div>
-      <div className="mt-4 text-base font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-      <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-4 text-base font-semibold text-cf-title">{title}</div>
+      <div className="mt-2 text-sm leading-6 text-cf-subtle">{description}</div>
       {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
     </div>
   </InnerTableSurface>
@@ -240,7 +241,7 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
         >
           <button
             onClick={() => toggleExpand(node.deptId)}
-            className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 shrink-0"
+            className="w-5 h-5 flex items-center justify-center text-cf-faint hover:text-cf-muted shrink-0"
           >
             {hasChildren ? (
               isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
@@ -260,10 +261,10 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
             {partialSelected && !allSelected && <div className="h-0.5 w-2 rounded bg-cyan-500" />}
           </button>
           <Building2 size={14} className="text-amber-500 dark:text-amber-300 shrink-0 ml-1" />
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200 flex-1 truncate" onClick={() => toggleExpand(node.deptId)}>
+          <span className="text-sm font-medium text-cf-body flex-1 truncate" onClick={() => toggleExpand(node.deptId)}>
             {node.deptName}
           </span>
-          <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{userCount}人</span>
+          <span className="text-xs text-cf-faint shrink-0">{userCount}人</span>
         </div>
         {isExpanded && (
           <div>
@@ -283,9 +284,9 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
                 >
                   {selectedIds.includes(user.id) && <CheckCircle2 size={10} className="text-white" />}
                 </button>
-                <User size={14} className="text-slate-400 dark:text-slate-500 shrink-0 ml-1" />
-                <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{user.name}</span>
-                {user.email && <span className="text-xs text-slate-400 dark:text-slate-500 ml-1 truncate hidden sm:inline">{user.email}</span>}
+                <User size={14} className="text-cf-faint shrink-0 ml-1" />
+                <span className="text-sm text-cf-muted truncate">{user.name}</span>
+                {user.email && <span className="text-xs text-cf-faint ml-1 truncate hidden sm:inline">{user.email}</span>}
               </div>
             ))}
           </div>
@@ -309,25 +310,25 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
     <InnerTableSurface className="admin-meeting-picker" wrapperClassName="admin-meeting-picker-wrapper">
       {selectedUsers.length > 0 && (
         <div className="admin-meeting-picker-section">
-          <div className="mb-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">已选成员</div>
+          <div className="mb-2 text-[11px] font-semibold text-cf-subtle">已选成员</div>
           <div className="flex flex-wrap gap-1">
             {selectedUsers.slice(0, 10).map(u => (
-              <span key={u.id} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <span key={u.id} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-950">
                 {u.name}
-                <button onClick={(e) => { e.stopPropagation(); toggleUser(u.id); }} className="text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-300">
+                <button onClick={(e) => { e.stopPropagation(); toggleUser(u.id); }} className="text-slate-300 hover:text-cf-subtle">
                   <X size={10} />
                 </button>
               </span>
             ))}
             {selectedUsers.length > 10 && (
-              <span className="text-xs text-slate-400 dark:text-slate-500 px-1 py-0.5">+{selectedUsers.length - 10}人</span>
+              <span className="text-xs text-cf-faint px-1 py-0.5">+{selectedUsers.length - 10}人</span>
             )}
           </div>
         </div>
       )}
       <div className="admin-meeting-picker-section">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
           <Input
             type="text"
             className="h-11 rounded-md pl-9 text-sm"
@@ -345,7 +346,7 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
         )}
       </div>
       <div className="admin-meeting-picker-footer">
-        已选择 <span className="font-medium text-slate-700 dark:text-slate-200">{selectedUsers.length}</span> 人
+        已选择 <span className="font-medium text-cf-body">{selectedUsers.length}</span> 人
       </div>
     </InnerTableSurface>
   );
@@ -411,30 +412,30 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
 
   const statusStyles: Record<string, { bg: string; text: string }> = {
     ongoing: { bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-600 dark:text-emerald-200' },
-    ended: { bg: 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/70', text: 'text-slate-400 dark:text-slate-500' },
+    ended: { bg: 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/70', text: 'text-cf-faint' },
     upcoming: { bg: 'bg-sky-50 dark:bg-sky-950/20', text: 'text-sky-700 dark:text-sky-200' },
   };
 
   return (
     <div className="flex flex-col gap-2">
       <div className="mb-1 flex items-center justify-between">
-        <div className="flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-500"><Calendar size={10} /> 今日预订</div>
-        <span className="text-[11px] text-slate-400 dark:text-slate-500">{bookings.length} 条</span>
+        <div className="flex items-center gap-1 text-[11px] font-medium text-cf-faint"><Calendar size={10} /> 今日预订</div>
+        <span className="text-[11px] text-cf-faint">{bookings.length} 条</span>
       </div>
       {bookings.slice(0, 3).map((b, i) => {
         const status = getBookingStatus(b);
         const style = statusStyles[status];
         return (
           <div key={i} className={`admin-meeting-booking-row flex items-center gap-2 text-xs ${style.bg}`}>
-            <Clock size={10} className={`${status === 'ongoing' ? 'text-emerald-500 dark:text-emerald-300' : status === 'ended' ? 'text-slate-400 dark:text-slate-500' : 'text-sky-500 dark:text-sky-300'} shrink-0`} />
+            <Clock size={10} className={`${status === 'ongoing' ? 'text-emerald-500 dark:text-emerald-300' : status === 'ended' ? 'text-cf-faint ' : 'text-sky-500 dark:text-sky-300'} shrink-0`} />
             <span className={`${style.text} whitespace-nowrap font-medium`}>{fmt(b.startTime)}-{fmt(b.endTime)}</span>
-            <span className={`${status === 'ended' ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'} min-w-0 flex-1 truncate`}>{b.title}</span>
+            <span className={`${status === 'ended' ? 'text-cf-faint line-through ' : 'text-cf-muted '} min-w-0 flex-1 truncate`}>{b.title}</span>
             {status === 'ongoing' && <span className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-200">进行中</span>}
-            {status === 'ended' && <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">已结束</span>}
+            {status === 'ended' && <span className="shrink-0 text-[10px] text-cf-faint">已结束</span>}
           </div>
         );
       })}
-      {bookings.length > 3 && <div className="pl-1 text-xs text-slate-400 dark:text-slate-500">还有 {bookings.length - 3} 条预订...</div>}
+      {bookings.length > 3 && <div className="pl-1 text-xs text-cf-faint">还有 {bookings.length - 3} 条预订...</div>}
     </div>
   );
 };
@@ -609,8 +610,8 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
       open
       title="周排期"
       description={(
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="font-medium text-slate-700 dark:text-slate-200">{room.name}</span>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-cf-subtle">
+          <span className="font-medium text-cf-body">{room.name}</span>
           <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">{room.location}</span>
           <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">容纳 {room.capacity} 人</span>
         </div>
@@ -628,30 +629,30 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
                 <button
                   type="button"
                   onClick={goToPrevWeek}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-[var(--cf-surface-strong)] hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-200"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-cf-subtle transition-colors hover:bg-[var(--cf-surface-strong)] hover:text-cf-body dark:hover:bg-slate-950"
                   aria-label="上一周"
-                  title="上一周"
+                  data-tooltip="上一周"
                 >
                   <ChevronLeft size={18} />
                 </button>
                 <button
                   type="button"
                   onClick={goToNextWeek}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-[var(--cf-surface-strong)] hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-200"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-cf-subtle transition-colors hover:bg-[var(--cf-surface-strong)] hover:text-cf-body dark:hover:bg-slate-950"
                   aria-label="下一周"
-                  title="下一周"
+                  data-tooltip="下一周"
                 >
                   <ChevronRight size={18} />
                 </button>
               </div>
-              <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <div className="text-sm font-semibold text-cf-body">
                 {currentWeekStart.getFullYear()}年{currentWeekStart.getMonth() + 1}月
               </div>
               <Button variant="outline" size="sm" onClick={goToToday}>
                 本周
               </Button>
             </div>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex flex-wrap items-center gap-4 text-xs text-cf-subtle">
               <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30"></span> 空闲可选</span>
               <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-red-200 bg-red-100 dark:border-red-900 dark:bg-red-950/30"></span> 已预订</span>
               <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-slate-200 bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-900"></span> 已过期</span>
@@ -666,16 +667,16 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
           ) : (
             <div className="min-w-[800px]">
               <div className="grid grid-cols-8 gap-2 mb-2">
-                <div className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center">时间</div>
+                <div className="text-xs font-medium text-cf-subtle text-center">时间</div>
                 {weekDays.map((day, i) => (
-                  <div key={i} className={`rounded-md py-2 text-center text-xs font-medium ${isToday(day) ? 'bg-[var(--cf-surface-muted)] text-slate-700 dark:bg-slate-900 dark:text-slate-200' : 'text-slate-600 dark:text-slate-300'}`}>
+                  <div key={i} className={`rounded-md py-2 text-center text-xs font-medium ${isToday(day) ? 'bg-[var(--cf-surface-muted)] text-cf-body dark:bg-slate-900 ' : 'text-cf-muted '}`}>
                     {formatDate(day)}
                   </div>
                 ))}
               </div>
               {timeSlots.map(hour => (
                 <div key={hour} className="grid grid-cols-8 gap-2 mb-1">
-                  <div className="text-xs text-slate-500 dark:text-slate-400 text-center py-2">
+                  <div className="text-xs text-cf-subtle text-center py-2">
                     {hour.toString().padStart(2, '0')}:00
                   </div>
                   {weekDays.map((day, i) => {
@@ -695,15 +696,15 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
                         onMouseEnter={() => handleMouseEnter(i, hour)}
                         onMouseUp={handleMouseUp}
                         className={`text-xs py-2 px-1 rounded-md text-center select-none transition-colors ${
-                          bookedEvent
-                            ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-200 cursor-not-allowed'
-                            : isPast
-                              ? 'bg-[var(--cf-surface-muted)] text-slate-300 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed'
-                              : inDragRange
-                                ? 'bg-sky-100 text-sky-700 border-2 border-sky-300 dark:bg-sky-950/30 dark:text-sky-200 dark:border-sky-900'
-                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-200 dark:hover:bg-emerald-950/40 cursor-pointer'
-                        }`}
-                        title={
+ bookedEvent
+ ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-200 cursor-not-allowed'
+ : isPast
+ ? 'bg-[var(--cf-surface-muted)] text-slate-300 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed'
+ : inDragRange
+ ? 'bg-sky-100 text-sky-700 border-2 border-sky-300 dark:bg-sky-950/30 dark:text-sky-200 dark:border-sky-900'
+ : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-200 dark:hover:bg-emerald-950/40 cursor-pointer'
+ }`}
+                        data-tooltip={
                           bookedEvent
                             ? bookedEvent.title
                             : isPast
@@ -764,13 +765,13 @@ const RoomFormModal: React.FC<{
       open={visible}
       title={isEdit ? '编辑会议室' : '新增会议室'}
       description={(
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-cf-subtle">
           <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">{isEdit ? '修改现有信息' : '录入新会议室'}</span>
-          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">保持预订信息一致</span>
+          <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-cf-muted dark:border-slate-800 dark:bg-slate-950">保持预订信息一致</span>
         </div>
       )}
       headerAside={(
-        <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1.5 text-[11px] font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1.5 text-[11px] font-semibold text-cf-muted dark:border-slate-800 dark:bg-slate-900">
           <Settings size={14} />
           会议室配置
         </span>
@@ -790,26 +791,26 @@ const RoomFormModal: React.FC<{
       )}
     >
           <div className="admin-dialog-field">
-            <label className="text-xs font-medium text-slate-500 dark:text-slate-400">会议室名称 <span className="text-red-500">*</span></label>
+            <label className="text-xs font-medium text-cf-subtle">会议室名称 <span className="text-red-500">*</span></label>
             <Input className="h-12" type="text" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：大会议室A" />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="admin-dialog-field">
-              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">位置 <span className="text-red-500">*</span></label>
+              <label className="text-xs font-medium text-cf-subtle">位置 <span className="text-red-500">*</span></label>
               <Input className="h-12" type="text" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="例如：3楼东侧" />
             </div>
             <div className="admin-dialog-field">
-              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">容纳人数 <span className="text-red-500">*</span></label>
+              <label className="text-xs font-medium text-cf-subtle">容纳人数 <span className="text-red-500">*</span></label>
               <Input className="h-12" type="number" min={1} value={form.capacity || ''} onChange={e => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} placeholder="例如：50" />
             </div>
           </div>
           <div className="admin-dialog-field">
-            <label className="text-xs font-medium text-slate-500 dark:text-slate-400">设备配置</label>
+            <label className="text-xs font-medium text-cf-subtle">设备配置</label>
             <Input className="h-12" type="text" value={equipmentInput} onChange={e => setEquipmentInput(e.target.value)} placeholder="多个设备用逗号分隔，例如：投影仪, 白板, 音响" />
-            <p className="text-xs text-slate-400 dark:text-slate-500">多个设备用逗号分隔</p>
+            <p className="text-xs text-cf-faint">多个设备用逗号分隔</p>
           </div>
           <div className="admin-dialog-field">
-            <label className="text-xs font-medium text-slate-500 dark:text-slate-400">状态</label>
+            <label className="text-xs font-medium text-cf-subtle">状态</label>
             <Select value={form.status || '1'} onValueChange={v => setForm({...form, status: v as '0' | '1'})}>
               <SelectTrigger className="h-12">
                 <SelectValue placeholder="请选择" />
@@ -1130,7 +1131,7 @@ export const MeetingRoomPage = () => {
     } else if (now >= start && now <= end) {
       return <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:border-emerald-900">进行中</span>;
     } else {
-      return <span className="rounded-md bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-500 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800">已结束</span>;
+      return <span className="rounded-md bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-cf-subtle border border-slate-200 dark:bg-slate-900 dark:border-slate-800">已结束</span>;
     }
   };
 
@@ -1401,19 +1402,19 @@ export const MeetingRoomPage = () => {
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    <h3 className="min-w-0 truncate text-sm font-semibold text-cf-title">
                       {booking.title}
                     </h3>
                     {getBookingStatusBadge(booking)}
                   </div>
                   {booking.description ? (
-                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-cf-subtle">
                       {booking.description}
                     </p>
                   ) : null}
                 </div>
 
-                <div className="grid gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <div className="grid gap-1.5 text-xs text-cf-subtle">
                   <div className="flex flex-wrap items-center gap-2">
                     <Clock size={12} className="shrink-0" />
                     <span>{formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}</span>
@@ -1433,7 +1434,7 @@ export const MeetingRoomPage = () => {
                       取消预订
                     </Button>
                   ) : (
-                    <span className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                    <span className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1.5 text-xs text-cf-subtle dark:border-slate-800 dark:bg-slate-900">
                       记录已归档
                     </span>
                   )}
@@ -1477,8 +1478,8 @@ export const MeetingRoomPage = () => {
                 <tr key={index}>
                   <td className="whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <Monitor size={14} className="text-slate-400 dark:text-slate-500" />
-                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{stat.roomName}</span>
+                      <Monitor size={14} className="text-cf-faint" />
+                      <span className="text-sm font-medium text-cf-title">{stat.roomName}</span>
                     </div>
                   </td>
                   <td className="whitespace-nowrap">{stat.bookingCount} 次</td>
@@ -1492,7 +1493,7 @@ export const MeetingRoomPage = () => {
                           style={{ width: `${Math.min(parseFloat(utilizationRate), 100)}%` }}
                         />
                       </div>
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{utilizationRate}%</span>
+                      <span className="text-sm font-medium text-cf-body">{utilizationRate}%</span>
                     </div>
                   </td>
                 </tr>
@@ -1657,13 +1658,13 @@ export const MeetingRoomPage = () => {
           open={Boolean(selectedRoom)}
           title={selectedRoom.name}
           description={(
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-cf-subtle">
               <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">{selectedRoom.location}</span>
               <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">容纳 {selectedRoom.capacity} 人</span>
             </div>
           )}
           headerAside={(
-            <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1.5 text-[11px] font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1.5 text-[11px] font-semibold text-cf-muted dark:border-slate-800 dark:bg-slate-900">
               <CalendarDays size={14} />
               预订会议室
             </span>
@@ -1683,7 +1684,7 @@ export const MeetingRoomPage = () => {
           )}
         >
               <div className="admin-dialog-field">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">会议主题 <span className="text-red-500">*</span></label>
+                <label className="text-xs font-medium text-cf-subtle">会议主题 <span className="text-red-500">*</span></label>
                 <Input
                   className="h-12"
                   type="text"
@@ -1694,7 +1695,7 @@ export const MeetingRoomPage = () => {
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="admin-dialog-field">
-                  <label className="text-xs font-medium text-slate-500 dark:text-slate-400">日期 <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-medium text-cf-subtle">日期 <span className="text-red-500">*</span></label>
                   <DatePicker
                     type="date"
                     value={bookingForm.date}
@@ -1702,7 +1703,7 @@ export const MeetingRoomPage = () => {
                   />
                 </div>
                 <div className="admin-dialog-field">
-                  <label className="text-xs font-medium text-slate-500 dark:text-slate-400">开始时间 <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-medium text-cf-subtle">开始时间 <span className="text-red-500">*</span></label>
                   <DatePicker
                     type="time"
                     value={bookingForm.startTime}
@@ -1710,7 +1711,7 @@ export const MeetingRoomPage = () => {
                   />
                 </div>
                 <div className="admin-dialog-field">
-                  <label className="text-xs font-medium text-slate-500 dark:text-slate-400">结束时间 <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-medium text-cf-subtle">结束时间 <span className="text-red-500">*</span></label>
                   <DatePicker
                     type="time"
                     value={bookingForm.endTime}
@@ -1720,7 +1721,7 @@ export const MeetingRoomPage = () => {
               </div>
               {/* 当日时段展示 */}
               <div className="admin-dialog-subsection">
-                <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <div className="mb-2 flex items-center gap-2 text-xs font-medium text-cf-subtle">
                   <Clock size={13} />
                   <span>当日预约情况</span>
                   {bookingTimelineLoading && <LoaderCircle size={12} className="animate-spin" />}
@@ -1733,18 +1734,18 @@ export const MeetingRoomPage = () => {
                       return (
                         <div key={evt.eventId} className="flex items-center gap-2 text-xs">
                           <span className="inline-block h-3 w-1.5 shrink-0 rounded-sm bg-rose-400" />
-                          <span className="text-slate-600 dark:text-slate-300">{startStr} - {endStr}</span>
-                          <span className="text-slate-400 truncate">{evt.title}</span>
+                          <span className="text-cf-muted">{startStr} - {endStr}</span>
+                          <span className="text-cf-faint truncate">{evt.title}</span>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="text-xs text-slate-400">{bookingTimelineLoading ? '加载中...' : '当日暂无预约，全部空闲'}</div>
+                  <div className="text-xs text-cf-faint">{bookingTimelineLoading ? '加载中...' : '当日暂无预约，全部空闲'}</div>
                 )}
                 {bookingFreeSlots.length > 0 && (
                   <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-700">
-                    <div className="text-[11px] text-slate-400 mb-1">空闲时段</div>
+                    <div className="text-[11px] text-cf-faint mb-1">空闲时段</div>
                     <div className="flex flex-wrap gap-1.5">
                       {bookingFreeSlots.map((slot, i) => {
                         const slotStart = slot.start.substring(11, 16);
@@ -1760,7 +1761,7 @@ export const MeetingRoomPage = () => {
                 )}
               </div>
               <div className="admin-dialog-field">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">会议描述</label>
+                <label className="text-xs font-medium text-cf-subtle">会议描述</label>
                 <Textarea
                   className="h-20"
                   rows={3}
@@ -1770,7 +1771,7 @@ export const MeetingRoomPage = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <label className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <label className="flex items-center gap-1 text-xs font-medium text-cf-subtle">
                   <UserPlus size={14} />参会人员
                 </label>
                 <OrgTreePicker deptTree={deptTree} selectedIds={selectedAttendees} onChange={setSelectedAttendees} />

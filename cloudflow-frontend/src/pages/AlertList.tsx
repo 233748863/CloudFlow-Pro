@@ -28,6 +28,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import '../styles/features/admin-workflow.css';
 
 type AlertType = 'timeout' | 'escalation' | 'anomaly';
 type AlertFilters = {
@@ -154,7 +155,7 @@ const AnomalyDetailDialog: React.FC<{
         </div>
 
         <AlertPanel title="异常说明">
-          <div className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-300">
+          <div className="mt-1 text-sm leading-6 text-cf-body">
             {getAnomalyMessage(alert)}
           </div>
         </AlertPanel>
@@ -206,8 +207,8 @@ const ResolveModal: React.FC<{
     {alert ? (
       <>
         <AlertPanel title="告警对象">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{alert.processName}</div>
-          <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <div className="text-sm font-medium text-cf-title">{alert.processName}</div>
+          <div className="mt-1 text-sm leading-6 text-cf-subtle">
             {getAnomalyMessage(alert)}
           </div>
         </AlertPanel>
@@ -252,13 +253,13 @@ const TimeoutResolveModal: React.FC<{
     {alert ? (
       <>
         <AlertPanel title="超时对象">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          <div className="text-sm font-medium text-cf-title">
             {alert.targetName}
           </div>
-          <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-1 text-sm leading-6 text-cf-subtle">
             {alert.alertType === 'TASK' ? '任务超时' : '流程超时'} / 目标 ID: {alert.targetId}
           </div>
-          <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-1 text-sm leading-6 text-cf-subtle">
             升级给: {alert.escalatedToName || '-'} / 升级时间: {formatDateTime(alert.escalatedTime)}
           </div>
         </AlertPanel>

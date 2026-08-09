@@ -68,8 +68,8 @@ const InlineState: React.FC<{
     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <Mail className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
+    {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
     {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
   </div>
 );
@@ -343,7 +343,7 @@ export const CopyListPage: React.FC = () => {
       case 'REVOKED':
         return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
       default:
-        return 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
+        return 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900';
     }
   };
 
@@ -569,7 +569,7 @@ export const CopyListPage: React.FC = () => {
         />
       ) : (
         <>
-          <div className="border-b border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <div className="border-b border-slate-200 px-4 py-3 text-xs text-cf-subtle dark:border-slate-800">
             {summary}
           </div>
           <div className="min-h-0 flex-1 divide-y divide-slate-200 overflow-auto dark:divide-slate-800">
@@ -605,7 +605,7 @@ export const CopyListPage: React.FC = () => {
                           <h4
                             className={cn(
                               'min-w-0 truncate text-sm font-semibold',
-                              isUnread ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200',
+                              isUnread ? 'text-cf-title' : 'text-cf-body',
                             )}
                           >
                             {record.title || '未命名流程'}
@@ -617,13 +617,13 @@ export const CopyListPage: React.FC = () => {
                             'shrink-0 rounded-md px-2.5 py-1 text-xs font-medium',
                             isUnread
                               ? 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
-                              : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+                              : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900',
                           )}>
                             {isUnread ? '未读' : '已读'}
                           </span>
                         </div>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cf-subtle">
                           <span>发起人 {record.startUserName || '-'}</span>
                           {record.processName ? <span>流程 {record.processName}</span> : null}
                           <span>抄送节点 {record.nodeName || '-'}</span>
@@ -640,11 +640,11 @@ export const CopyListPage: React.FC = () => {
                       onClick={(e) => e.stopPropagation()}
                     >
                       {isUnread ? (
-                        <button type="button" title="标记已读" aria-label="标记已读" onClick={() => void handleMarkRead(record)}>
+                        <button type="button" data-tooltip="标记已读" aria-label="标记已读" onClick={() => void handleMarkRead(record)}>
                           <CheckCheck size={15} />
                         </button>
                       ) : null}
-                      <button type="button" title="查看" aria-label="查看" onClick={() => handleViewDetail(record)}>
+                      <button type="button" data-tooltip="查看" aria-label="查看" onClick={() => handleViewDetail(record)}>
                         <Eye size={15} />
                       </button>
                     </div>
@@ -723,10 +723,10 @@ export const CopyListPage: React.FC = () => {
                           key={key}
                           className="admin-copy-snapshot-row"
                         >
-                          <div className="w-28 flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                          <div className="w-28 flex-shrink-0 text-xs text-cf-subtle">
                             {key}
                           </div>
-                          <div className="min-w-0 flex-1 break-all text-sm text-slate-700 dark:text-slate-200">
+                          <div className="min-w-0 flex-1 break-all text-sm text-cf-body">
                             {typeof value === 'object'
                               ? JSON.stringify(value)
                               : String(value ?? '-')}

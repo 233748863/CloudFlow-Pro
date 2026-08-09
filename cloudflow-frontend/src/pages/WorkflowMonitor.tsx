@@ -26,6 +26,7 @@ import {
 } from '@/services/api/monitor';
 import { cn } from '@/utils/cn';
 import { getErrorMessage } from '@/utils/errorMessage';
+import './WorkflowMonitor.css';
 
 const EmptyBlock: React.FC<{
   title: string;
@@ -360,7 +361,7 @@ const WorkflowMonitor: React.FC = () => {
                       key={bar.key}
                       className={`workflow-monitor-trend-bar is-${bar.key}`}
                       style={{ height: `${Math.max(8, percentOf(bar.value, trendPeak))}%` }}
-                      title={`${bar.label} ${bar.value}`}
+                      data-tooltip={`${bar.label} ${bar.value}`}
                     />
                   ))}
                 </div>

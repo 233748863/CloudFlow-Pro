@@ -251,14 +251,14 @@ export const HrLaborDisputePage: React.FC = () => {
                 <td>{formatDateTimeValue(row.openedAt ?? row.createTime)}</td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
+                    <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
                     {hasWorkflowStatus(row.status, 'REGISTERED', 'MEDIATED') ? (
-                      <button type="button" title="发起处理" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
+                      <button type="button" data-tooltip="发起处理" aria-label="发起处理" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
                     ) : null}
-                    <button type="button" title="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
-                    <button type="button" title="上传证据" onClick={() => setEvidenceOpen(row)}><FileUp size={15} /></button>
+                    <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
+                    <button type="button" data-tooltip="上传证据" aria-label="上传证据" onClick={() => setEvidenceOpen(row)}><FileUp size={15} /></button>
                     {!hasWorkflowStatus(row.status, 'CLOSED') ? (
-                      <button type="button" className="danger" title="关闭" onClick={() => { setCloseTarget(row); setCloseReason(''); }}><XCircle size={15} /></button>
+                      <button type="button" className="danger" data-tooltip="关闭" aria-label="关闭" onClick={() => { setCloseTarget(row); setCloseReason(''); }}><XCircle size={15} /></button>
                     ) : null}
                   </div>
                 </td>
@@ -348,16 +348,16 @@ export const HrLaborDisputePage: React.FC = () => {
           <div className="admin-source-content-grid text-sm">
             <StageTimeline steps={statusFlow} dictType="hr_labor_dispute_status" current={detail.status} tone="sky" />
             <div className="grid grid-cols-2 gap-3">
-              <div className="admin-dialog-field"><span className="text-slate-500">申请人:</span> {detail.applicantEmployeeId ? `员工 #${detail.applicantEmployeeId}` : `${detail.applicantExternalName ?? '-'} ${detail.applicantExternalPhone ?? ''}`}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">类型:</span> <DictLabel dictType="hr_labor_dispute_type" value={detail.disputeType} fallback="-" /></div>
-              <div className="admin-dialog-field"><span className="text-slate-500">诉求金额:</span> {formatMoneyValue(detail.claimAmount)}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">登记时间:</span> {formatDateTimeValue(detail.openedAt ?? detail.createTime)}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">关闭时间:</span> {formatDateTimeValue(detail.closedAt)}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">工作流:</span> {detail.processInstanceId ?? '-'}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">申请人:</span> {detail.applicantEmployeeId ? `员工 #${detail.applicantEmployeeId}` : `${detail.applicantExternalName ?? '-'} ${detail.applicantExternalPhone ?? ''}`}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">类型:</span> <DictLabel dictType="hr_labor_dispute_type" value={detail.disputeType} fallback="-" /></div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">诉求金额:</span> {formatMoneyValue(detail.claimAmount)}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">登记时间:</span> {formatDateTimeValue(detail.openedAt ?? detail.createTime)}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">关闭时间:</span> {formatDateTimeValue(detail.closedAt)}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">工作流:</span> {detail.processInstanceId ?? '-'}</div>
             </div>
             {detail.claimDescription && (
               <div className="admin-dialog-field">
-                <div className="text-slate-500">诉求描述:</div>
+                <div className="text-cf-subtle">诉求描述:</div>
                 <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2 text-xs whitespace-pre-wrap dark:border-slate-800 dark:bg-slate-950">{detail.claimDescription}</div>
               </div>
             )}

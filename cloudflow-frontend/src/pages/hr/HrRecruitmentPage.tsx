@@ -77,6 +77,8 @@ import { listRecruitmentChannels, type RecruitmentChannel } from '@/services/api
 import { DictBadge } from '@/components/common/DictBadge';
 import { useDict } from '@/hooks/useDict';
 import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
+import '../../styles/features/admin-recruitment.css';
+import './admin-hr.css';
 
 type RecruitmentTab = 'request' | 'candidate' | 'interview' | 'offer' | 'channel';
 
@@ -193,7 +195,7 @@ const InlineState = ({
     <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       <BriefcaseBusiness className="h-4 w-4" />
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
   </div>
 );
 
@@ -793,7 +795,7 @@ export const HrRecruitmentPage: React.FC = () => {
                             <div className="admin-users-row-actions">
                               <button
                                 type="button"
-                                title="提交"
+                                data-tooltip="提交" aria-label="提交"
                                 disabled={item.status !== 'DRAFT'}
                                 onClick={() => void handleSubmitRequest(item.id)}
                               >
@@ -801,7 +803,7 @@ export const HrRecruitmentPage: React.FC = () => {
                               </button>
                               <button
                                 type="button"
-                                title="审批通过"
+                                data-tooltip="审批通过" aria-label="审批通过"
                                 disabled={item.status !== 'APPROVING'}
                                 onClick={() => void handleApproveRequest(item.id)}
                               >
@@ -809,7 +811,7 @@ export const HrRecruitmentPage: React.FC = () => {
                               </button>
                               <button
                                 type="button"
-                                title="完成"
+                                data-tooltip="完成" aria-label="完成"
                                 disabled={item.status !== 'RECRUITING'}
                                 onClick={() => void handleCompleteRequest(item.id)}
                               >
@@ -818,7 +820,7 @@ export const HrRecruitmentPage: React.FC = () => {
                               <button
                                 type="button"
                                 className="danger"
-                                title="取消"
+                                data-tooltip="取消" aria-label="取消"
                                 disabled={item.status === 'COMPLETED' || item.status === 'CANCELLED'}
                                 onClick={() => void handleCancelRequest(item.id)}
                               >
@@ -890,7 +892,7 @@ export const HrRecruitmentPage: React.FC = () => {
                               <button
                                 type="button"
                                 className="admin-recruitment-progress-button"
-                                title="简历解析"
+                                data-tooltip="简历解析" aria-label="简历解析"
                                 onClick={() => setResumePanel({ open: true, candidate: item })}
                               >
                                 <FileSearch size={15} />
@@ -969,7 +971,7 @@ export const HrRecruitmentPage: React.FC = () => {
                           <td>
                             <div>{formatDateTimeValue(item.interviewTime)}</div>
                             {item.interviewEndTime ? (
-                              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              <div className="mt-1 text-xs text-cf-subtle">
                                 至 {formatDateTimeValue(item.interviewEndTime)}
                               </div>
                             ) : null}
@@ -1026,22 +1028,22 @@ export const HrRecruitmentPage: React.FC = () => {
                             </td>
                             <td>
                               <div className="admin-users-row-actions">
-                                <button type="button" title="提交" disabled={status !== 'DRAFT'} onClick={() => void handleOfferAction(item.id, 'submit')}>
+                                <button type="button" data-tooltip="提交" aria-label="提交" disabled={status !== 'DRAFT'} onClick={() => void handleOfferAction(item.id, 'submit')}>
                                   <Send size={15} />
                                 </button>
-                                <button type="button" title="通过" disabled={status !== 'APPROVING'} onClick={() => void handleOfferAction(item.id, 'approve')}>
+                                <button type="button" data-tooltip="通过" aria-label="通过" disabled={status !== 'APPROVING'} onClick={() => void handleOfferAction(item.id, 'approve')}>
                                   <Check size={15} />
                                 </button>
-                                <button type="button" title="发送" disabled={status !== 'APPROVED'} onClick={() => void handleOfferAction(item.id, 'send')}>
+                                <button type="button" data-tooltip="发送" aria-label="发送" disabled={status !== 'APPROVED'} onClick={() => void handleOfferAction(item.id, 'send')}>
                                   <Send size={15} />
                                 </button>
-                                <button type="button" title="接受" disabled={status !== 'SENT'} onClick={() => void handleOfferAction(item.id, 'accept')}>
+                                <button type="button" data-tooltip="接受" aria-label="接受" disabled={status !== 'SENT'} onClick={() => void handleOfferAction(item.id, 'accept')}>
                                   <UserCheck size={15} />
                                 </button>
-                                <button type="button" className="danger" title="拒绝" disabled={!['SENT', 'APPROVING'].includes(status)} onClick={() => void handleOfferAction(item.id, 'reject')}>
+                                <button type="button" className="danger" data-tooltip="拒绝" aria-label="拒绝" disabled={!['SENT', 'APPROVING'].includes(status)} onClick={() => void handleOfferAction(item.id, 'reject')}>
                                   <CircleX size={15} />
                                 </button>
-                                <button type="button" title="转入职" disabled={status !== 'ACCEPTED'} onClick={() => void handleOfferAction(item.id, 'convert')}>
+                                <button type="button" data-tooltip="转入职" aria-label="转入职" disabled={status !== 'ACCEPTED'} onClick={() => void handleOfferAction(item.id, 'convert')}>
                                   <Flag size={15} />
                                 </button>
                               </div>
@@ -1085,7 +1087,7 @@ export const HrRecruitmentPage: React.FC = () => {
         <DialogSection title="需求信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">部门</Label>
+                <Label className="text-sm font-semibold text-cf-body">部门</Label>
                 <DeptSelector
                   single
                   value={requestForm.deptId ?? null}
@@ -1094,7 +1096,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
+                <Label className="text-sm font-semibold text-cf-body">职位</Label>
                 <PositionSelector
                   single
                   deptId={requestForm.deptId ?? null}
@@ -1104,7 +1106,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">招聘人数</Label>
+                <Label className="text-sm font-semibold text-cf-body">招聘人数</Label>
                 <Input
                   type="number"
                   min={1}
@@ -1119,7 +1121,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">期望到岗日期</Label>
+                <Label className="text-sm font-semibold text-cf-body">期望到岗日期</Label>
                 <DatePicker
                   type="date"
                   value={requestForm.expectedDate || ''}
@@ -1130,7 +1132,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">薪资下限</Label>
+                <Label className="text-sm font-semibold text-cf-body">薪资下限</Label>
                 <Input
                   type="number"
                   value={requestForm.salaryMin || ''}
@@ -1144,7 +1146,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">薪资上限</Label>
+                <Label className="text-sm font-semibold text-cf-body">薪资上限</Label>
                 <Input
                   type="number"
                   value={requestForm.salaryMax || ''}
@@ -1158,7 +1160,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field xl:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">任职要求</Label>
+                <Label className="text-sm font-semibold text-cf-body">任职要求</Label>
                 <Textarea
                   rows={4}
                   value={requestForm.jobRequirements || ''}
@@ -1199,7 +1201,7 @@ export const HrRecruitmentPage: React.FC = () => {
           <DialogSection title="候选人信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="admin-dialog-field xl:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">关联招聘需求</Label>
+                <Label className="text-sm font-semibold text-cf-body">关联招聘需求</Label>
                 <Select
                   value={candidateForm.requestId ? String(candidateForm.requestId) : undefined}
                   onValueChange={(value) =>
@@ -1219,7 +1221,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">姓名</Label>
+                <Label className="text-sm font-semibold text-cf-body">姓名</Label>
                 <Input
                   value={candidateForm.name}
                   onChange={(event) =>
@@ -1229,7 +1231,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">性别</Label>
+                <Label className="text-sm font-semibold text-cf-body">性别</Label>
                 <Select
                   value={candidateForm.gender || 'MALE'}
                   onValueChange={(value) =>
@@ -1246,7 +1248,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">手机号</Label>
+                <Label className="text-sm font-semibold text-cf-body">手机号</Label>
                 <Input
                   value={candidateForm.phone}
                   onChange={(event) =>
@@ -1256,7 +1258,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">邮箱</Label>
+                <Label className="text-sm font-semibold text-cf-body">邮箱</Label>
                 <Input
                   value={candidateForm.email || ''}
                   onChange={(event) =>
@@ -1266,7 +1268,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">来源</Label>
+                <Label className="text-sm font-semibold text-cf-body">来源</Label>
                 <Select
                   value={candidateForm.source || 'WEBSITE'}
                   onValueChange={(value) =>
@@ -1284,7 +1286,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">招聘渠道</Label>
+                <Label className="text-sm font-semibold text-cf-body">招聘渠道</Label>
                 <Select
                   value={candidateForm.channelId ? String(candidateForm.channelId) : '__NONE__'}
                   onValueChange={(value) =>
@@ -1308,7 +1310,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="admin-dialog-field xl:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">简历附件</Label>
+                <Label className="text-sm font-semibold text-cf-body">简历附件</Label>
                 <FileUpload
                   value={Array.isArray(candidateForm.resumeAttachmentUrls)
                     ? candidateForm.resumeAttachmentUrls.join(',')
@@ -1359,7 +1361,7 @@ export const HrRecruitmentPage: React.FC = () => {
           <DialogSection title="面试信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="admin-dialog-field xl:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">候选人</Label>
+                <Label className="text-sm font-semibold text-cf-body">候选人</Label>
                 <Select
                   value={interviewForm.candidateId ? String(interviewForm.candidateId) : undefined}
                   onValueChange={(value) =>
@@ -1379,7 +1381,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">轮次</Label>
+                <Label className="text-sm font-semibold text-cf-body">轮次</Label>
                 <Select
                   value={interviewForm.interviewRound}
                   onValueChange={(value) =>
@@ -1397,7 +1399,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">面试形式</Label>
+                <Label className="text-sm font-semibold text-cf-body">面试形式</Label>
                 <Select
                   value={interviewForm.interviewType}
                   onValueChange={(value) =>
@@ -1415,7 +1417,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">开始时间</Label>
+                <Label className="text-sm font-semibold text-cf-body">开始时间</Label>
                 <DatePicker
                   type="datetime-local"
                   value={interviewForm.interviewTime}
@@ -1426,7 +1428,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">结束时间</Label>
+                <Label className="text-sm font-semibold text-cf-body">结束时间</Label>
                 <DatePicker
                   type="datetime-local"
                   value={interviewForm.interviewEndTime}
@@ -1437,7 +1439,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field xl:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">会议室</Label>
+                <Label className="text-sm font-semibold text-cf-body">会议室</Label>
                 <Select
                   value={interviewForm.meetingRoomId ? String(interviewForm.meetingRoomId) : 'none'}
                   onValueChange={(value) =>
@@ -1463,12 +1465,12 @@ export const HrRecruitmentPage: React.FC = () => {
               </div>
               {selectedMeetingRoom ? (
                 <div className="admin-dialog-field xl:col-span-3">
-                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">地点快照</Label>
+                  <Label className="text-sm font-semibold text-cf-body">地点快照</Label>
                   <Input value={getRoomSnapshot(selectedMeetingRoom)} readOnly className="h-11 bg-[var(--cf-surface-muted)] dark:bg-slate-900" />
                 </div>
               ) : (
                 <div className="admin-dialog-field xl:col-span-3">
-                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">地点 / 链接</Label>
+                  <Label className="text-sm font-semibold text-cf-body">地点 / 链接</Label>
                   <Input
                     value={interviewForm.location || ''}
                     placeholder="会议室 / Teams 链接"
@@ -1511,7 +1513,7 @@ export const HrRecruitmentPage: React.FC = () => {
           <DialogSection title="Offer信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="admin-dialog-field xl:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">候选人</Label>
+                <Label className="text-sm font-semibold text-cf-body">候选人</Label>
                 <Select
                   value={offerForm.candidateId ? String(offerForm.candidateId) : undefined}
                   onValueChange={(value) => {
@@ -1536,7 +1538,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
+                <Label className="text-sm font-semibold text-cf-body">职位</Label>
                 <PositionSelector
                   single
                   value={offerForm.positionId ?? null}
@@ -1545,7 +1547,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">薪资</Label>
+                <Label className="text-sm font-semibold text-cf-body">薪资</Label>
                 <Input
                   type="number"
                   value={offerForm.salary || ''}
@@ -1556,7 +1558,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">预计到岗</Label>
+                <Label className="text-sm font-semibold text-cf-body">预计到岗</Label>
                 <DatePicker
                   type="date"
                   value={offerForm.expectedArrivalDate || ''}
@@ -1567,7 +1569,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">有效期至</Label>
+                <Label className="text-sm font-semibold text-cf-body">有效期至</Label>
                 <DatePicker
                   type="date"
                   value={offerForm.expireDate || ''}
@@ -1578,7 +1580,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field xl:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Offer内容</Label>
+                <Label className="text-sm font-semibold text-cf-body">Offer内容</Label>
                 <Textarea
                   rows={4}
                   value={offerForm.offerContent || ''}
@@ -1618,7 +1620,7 @@ export const HrRecruitmentPage: React.FC = () => {
         bodyClassName="admin-dialog-stack"
       >
         <div className="admin-dialog-field">
-          <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">拒绝原因</Label>
+          <Label className="text-sm font-semibold text-cf-body">拒绝原因</Label>
           <Textarea
             rows={4}
             value={rejectReason}

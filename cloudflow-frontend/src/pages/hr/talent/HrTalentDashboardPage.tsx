@@ -25,6 +25,7 @@ import {
 } from '@/services/api/hr';
 import { normalizeRows } from '../hrShared';
 import { DictLabel } from '@/components/common/DictLabel';
+import './HrTalentDashboardPage.css';
 
 interface TalentDashboardData {
   ongoingReviews: number;
@@ -173,7 +174,7 @@ export const HrTalentDashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <InnerTableSurface>
-                <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-cf-title">
                   <span>最近盘点活动</span>
                   <Button size="sm" variant="ghost" onClick={() => navigate('/hr/talent/reviews')}>
                     全部 <ArrowRight className="ml-1 h-3 w-3" />
@@ -199,7 +200,7 @@ export const HrTalentDashboardPage: React.FC = () => {
                           <td><DictLabel dictType="hr_talent_review_status" value={String(review.status ?? '')} fallback="-" /></td>
                           <td>
                             <div className="admin-users-row-actions">
-                              <button type="button" title="九宫格校准" onClick={() => navigate('/hr/talent/nine-box')}>
+                              <button type="button" data-tooltip="九宫格校准" aria-label="九宫格校准" onClick={() => navigate('/hr/talent/nine-box')}>
                                 <Grid3x3 size={15} />
                               </button>
                             </div>
@@ -214,7 +215,7 @@ export const HrTalentDashboardPage: React.FC = () => {
               </InnerTableSurface>
       
               <InnerTableSurface>
-                <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-cf-title">
                   <span>最近继任计划</span>
                   <Button size="sm" variant="ghost" onClick={() => navigate('/hr/talent/succession')}>
                     全部 <ArrowRight className="ml-1 h-3 w-3" />

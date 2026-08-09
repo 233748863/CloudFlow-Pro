@@ -48,16 +48,16 @@ export const UserDashboardRecentApplications: React.FC<UserDashboardRecentApplic
                   <FileText size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <p className="truncate text-sm font-semibold text-cf-title">
                     {item.title || item.processDefinitionName || '流程申请'}
                   </p>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  <p className="truncate text-xs text-cf-subtle">
                     {item.reason || item.currentNodeName || '查看当前流程状态'}
                   </p>
                 </div>
               </div>
               <div className="ml-4 text-right">
-                <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                <p className="text-xs font-medium text-cf-faint">
                   {item.createdTime || ''}
                 </p>
                 <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[#0d95b5] dark:text-cyan-200">

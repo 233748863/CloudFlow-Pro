@@ -48,16 +48,16 @@ export const UserDashboardSchedules: React.FC<UserDashboardSchedulesProps> = ({
                   <CalendarDays size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <p className="truncate text-sm font-semibold text-cf-title">
                     {item.title || '日程安排'}
                   </p>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  <p className="truncate text-xs text-cf-subtle">
                     {item.description || '查看详细日程安排'}
                   </p>
                 </div>
               </div>
               <div className="ml-4 text-right">
-                <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                <p className="text-xs font-medium text-cf-faint">
                   {item.startTime || ''}
                 </p>
                 <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-200">

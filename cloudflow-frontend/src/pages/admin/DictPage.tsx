@@ -49,7 +49,7 @@ type DeleteTarget =
 
 const DEFAULT_STATUS_VALUE = '__all__';
 const DEFAULT_LIST_CLASS_VALUE = 'default';
-const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
+const fieldLabelClassName = 'text-xs font-medium text-cf-subtle';
 
 const createTypeForm = (): DictTypeFormState => ({
   dictName: '',
@@ -87,7 +87,7 @@ const getListClassBadgeClassName = (listClass: string) => {
     case 'info':
       return 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200';
     default:
-      return 'border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+      return 'border border-slate-200 bg-[var(--cf-surface-strong)] text-cf-subtle dark:border-slate-700 dark:bg-slate-950';
   }
 };
 
@@ -111,7 +111,7 @@ const getListClassLabel = (listClass: string) => {
 const getDefaultBadgeClassName = (isDefault: string) =>
   isDefault === 'Y'
     ? 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
-    : 'border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+    : 'border border-slate-200 bg-[var(--cf-surface-strong)] text-cf-subtle dark:border-slate-700 dark:bg-slate-950';
 
 const getRiskLevelBadgeClassName = (riskLevel: string) => {
   switch (riskLevel) {
@@ -150,9 +150,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -627,7 +627,7 @@ export const DictPage: React.FC = () => {
                 <SelectItem key={item.dictId} value={String(item.dictId)} label={item.dictName}>
                   <span className="flex w-full items-center justify-between gap-3">
                     <span className="truncate">{item.dictName}</span>
-                    <span className="truncate font-mono text-xs text-slate-400">{item.dictType}</span>
+                    <span className="truncate font-mono text-xs text-cf-faint">{item.dictType}</span>
                   </span>
                 </SelectItem>
               ))}
@@ -676,11 +676,11 @@ export const DictPage: React.FC = () => {
     >
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+          <div className="truncate text-sm font-medium text-cf-title">
             {selectedType ? selectedType.dictName : '字典数据'}
           </div>
           {selectedType ? (
-            <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-2 text-xs text-cf-subtle">
               <span className="truncate font-mono">{selectedType.dictType}</span>
               <span
                 className={cn(
@@ -727,21 +727,21 @@ export const DictPage: React.FC = () => {
             ) : (
               dictDataList.map((item) => (
                 <tr key={item.dictCode}>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">
+                  <td className="text-sm text-cf-subtle">
                     {item.dictSort ?? 0}
                   </td>
                   <td>
                     <div className="min-w-0">
-                      <div className="truncate font-medium text-slate-900 dark:text-slate-100">
+                      <div className="truncate font-medium text-cf-title">
                         {item.dictLabel}
                       </div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="mt-1 text-xs text-cf-subtle">
                         {item.createTime || '-'}
                       </div>
                     </div>
                   </td>
                   <td>
-                    <span className="font-mono text-xs text-slate-700 dark:text-slate-200">
+                    <span className="font-mono text-xs text-cf-body">
                       {item.dictValue}
                     </span>
                   </td>
@@ -786,8 +786,8 @@ export const DictPage: React.FC = () => {
                     </span>
                   </td>
                   <td
-                    className="max-w-[220px] truncate text-sm text-slate-500 dark:text-slate-400"
-                    title={item.remark || '-'}
+                    className="max-w-[220px] truncate text-sm text-cf-subtle"
+                    data-tooltip={item.remark || '-'}
                   >
                     {item.remark || '-'}
                   </td>
@@ -795,7 +795,7 @@ export const DictPage: React.FC = () => {
                     <div className="admin-users-row-actions">
                       <button
                         type="button"
-                        title="编辑数据"
+                        data-tooltip="编辑数据"
                         aria-label="编辑数据"
                         onClick={() => openDataModal(item)}
                       >
@@ -804,7 +804,7 @@ export const DictPage: React.FC = () => {
                       <button
                         type="button"
                         className="danger"
-                        title="删除数据"
+                        data-tooltip="删除数据"
                         aria-label="删除数据"
                         onClick={() => setDeleteTarget({ type: 'dictData', item })}
                       >

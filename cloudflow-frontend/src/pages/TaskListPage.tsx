@@ -125,7 +125,7 @@ const buildProcessOptions = (source: any[]): ProcessOption[] => {
 };
 
 const TaskFilterBadge = ({ children }: { children: React.ReactNode }) => (
-  <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+  <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1 text-xs font-medium text-cf-subtle dark:border-slate-800 dark:bg-slate-900/70">
     {children}
   </span>
 );
@@ -152,16 +152,16 @@ const TaskCompactWorkCard = ({
         'w-full px-4 py-4 text-left transition-colors hover:bg-[var(--cf-surface-muted)]',
         isOverdue
           ? 'text-rose-600 dark:text-rose-300'
-          : 'text-slate-500 dark:text-slate-400',
+          : 'text-cf-subtle',
         'dark:hover:bg-slate-900/40',
       )}
     >
       <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.7fr)_160px_120px] lg:items-center">
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium leading-6 text-slate-900 dark:text-slate-100">
+          <div className="text-sm font-medium leading-6 text-cf-title">
             {task.title}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cf-subtle">
             <span>负责人 {task.assigneeName || '待认领'}</span>
             <span>创建 {createdLabel}</span>
             <span className={cn(isOverdue && 'text-rose-600 dark:text-rose-300')}>
@@ -170,7 +170,7 @@ const TaskCompactWorkCard = ({
           </div>
         </div>
 
-        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
+        <div className="space-y-1 text-xs text-cf-subtle lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
           <div>状态</div>
           <div
             className={cn(
@@ -186,9 +186,9 @@ const TaskCompactWorkCard = ({
           </div>
         </div>
 
-        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
+        <div className="space-y-1 text-xs text-cf-subtle lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
           <div>优先级</div>
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          <div className="text-sm font-medium text-cf-title">
             {task.priority === 2 ? '高' : task.priority === 1 ? '中' : '低'}
           </div>
         </div>
@@ -690,10 +690,10 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
     return (
       <section className="admin-source-page">
         <div className="card px-6 py-10 text-center">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          <div className="text-sm font-medium text-cf-title">
             {pageTitle}加载失败
           </div>
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {error}
           </div>
           <div className="mt-4">
@@ -908,12 +908,12 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
     >
         <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between dark:border-slate-800">
           <div>
-            <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">{resultTitle}</div>
-            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-sm font-semibold text-cf-title">{resultTitle}</div>
+            <div className="mt-1 text-xs text-cf-subtle">
               {centerMode === 'pending' ? `共 ${visibleTotalCount} 条` : `共 ${total} 条`}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-cf-subtle">
             <TaskFilterBadge>{centerMode === 'pending' ? currentTypeLabel : centerMode === 'done' ? currentPendingProcessLabel : currentStatusLabel}</TaskFilterBadge>
             {centerMode === 'pending' ? <TaskFilterBadge>{currentViewLabel}</TaskFilterBadge> : null}
             {centerMode === 'applications' && processDefKey ? <TaskFilterBadge>{currentApplicationProcessLabel}</TaskFilterBadge> : null}
@@ -936,12 +936,12 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
                 }}
               />
             ) : (
-              <div className="flex min-h-[320px] items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+              <div className="flex min-h-[320px] items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm text-cf-subtle dark:border-slate-800 dark:bg-slate-950">
                 当前筛选条件下暂无待办任务
               </div>
             )
           ) : visibleTotalCount === 0 ? (
-            <div className="flex min-h-[320px] items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+            <div className="flex min-h-[320px] items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm text-cf-subtle dark:border-slate-800 dark:bg-slate-950">
               {centerMode === 'pending' ? '当前筛选条件下暂无待处理任务' : centerMode === 'done' ? '当前筛选条件下暂无已办记录' : '当前筛选条件下暂无申请记录'}
             </div>
           ) : (
@@ -950,8 +950,8 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
                 <section className="grid gap-3 py-5 first:pt-0 last:pb-0">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">流程审批</div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="text-sm font-semibold text-cf-title">流程审批</div>
+                      <div className="mt-1 text-xs text-cf-subtle">
                         {centerMode !== 'pending' ? `当前页 ${visibleProcessTasks.length} 条，总计 ${total} 条` : `当前筛选下 ${visibleProcessTasks.length} 条流程待办`}
                       </div>
                     </div>
@@ -974,8 +974,8 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
                 <section className="grid gap-3 py-5 first:pt-0 last:pb-0">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">协作待办</div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">当前筛选下 {visibleWorkTasks.length} 条协作待办</div>
+                      <div className="text-sm font-semibold text-cf-title">协作待办</div>
+                      <div className="mt-1 text-xs text-cf-subtle">当前筛选下 {visibleWorkTasks.length} 条协作待办</div>
                     </div>
                     <TaskFilterBadge>协作待办</TaskFilterBadge>
                   </div>

@@ -52,6 +52,7 @@ import {
 } from '@/components/common';
 import { useDict } from '@/hooks/useDict';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './admin-attendance.css';
 
 const WEEKDAYS = [
   { value: 1, label: '周一' },
@@ -103,7 +104,7 @@ const addDays = (days: number) => {
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="admin-attendance-field">
-    <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300">{label}</Label>
+    <Label className="text-xs font-semibold text-cf-muted">{label}</Label>
     {children}
   </div>
 );
@@ -112,7 +113,7 @@ const Panel = ({ title, icon, children }: { title: string; icon: React.ReactNode
   <section className="admin-attendance-surface">
     <div className="admin-attendance-surface-head">
       <div className="flex items-center gap-2">
-        <div className="text-slate-500 dark:text-slate-400">{icon}</div>
+        <div className="text-cf-subtle">{icon}</div>
         <strong>{title}</strong>
       </div>
     </div>
@@ -398,7 +399,7 @@ const AttendanceRulePage: React.FC = () => {
     <section className="card admin-users-toolbar">
       <div className="admin-toolbar-filter-grid [--admin-toolbar-filter-count:2]">
         <label className="grid gap-1.5">
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">当前规则</span>
+          <span className="text-xs font-medium text-cf-subtle">当前规则</span>
           <Select value={selectedId ? String(selectedId) : NEW_RULE_VALUE} onValueChange={handleRuleSelect}>
             <SelectTrigger className="cf-control">
               <SelectValue placeholder="选择考勤规则" />
@@ -417,15 +418,15 @@ const AttendanceRulePage: React.FC = () => {
             </SelectContent>
           </Select>
         </label>
-        <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-900">
           班次<br />
-          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <span className="text-sm font-semibold text-cf-title">
             {selectedShift ? `${normalizeTime(selectedShift.startTime)}-${normalizeTime(selectedShift.endTime)}` : '未选择'}
           </span>
         </div>
-        <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-900">
           适用范围<br />
-          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{assignments.length} 项</span>
+          <span className="text-sm font-semibold text-cf-title">{assignments.length} 项</span>
         </div>
         <div className="admin-users-toolbar-actions">
           {draft?.id ? (
@@ -587,8 +588,8 @@ const AttendanceRulePage: React.FC = () => {
                   ) : assignments.map((item) => (
                     <div key={item.id} className="admin-attendance-list-row">
                       <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{targetTypeDict.getLabel(item.targetType || '') || '-'}</span>
-                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.targetName || item.targetId}</span>
-                      <span className="text-xs text-slate-500">{item.effectiveStart} 起</span>
+                      <span className="text-sm font-medium text-cf-title">{item.targetName || item.targetId}</span>
+                      <span className="text-xs text-cf-subtle">{item.effectiveStart} 起</span>
                       <Button className="ml-auto" variant="ghost" size="icon" onClick={() => handleDeleteAssignment(item.id)}>
                         <Trash2 size={15} />
                       </Button>
@@ -619,8 +620,8 @@ const AttendanceRulePage: React.FC = () => {
                   {calendarDays.map((item) => (
                     <div key={item.id} className="admin-attendance-list-row">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.calendarDate}</div>
-                        <div className="mt-1 text-xs text-slate-500">{item.dayName || dayTypeDict.getLabel(item.dayType || '') || '-'}</div>
+                        <div className="truncate text-sm font-semibold text-cf-title">{item.calendarDate}</div>
+                        <div className="mt-1 text-xs text-cf-subtle">{item.dayName || dayTypeDict.getLabel(item.dayType || '') || '-'}</div>
                       </div>
                       <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{dayTypeDict.getLabel(item.dayType || '') || '-'}</span>
                       <Button variant="ghost" size="icon" onClick={() => handleDeleteCalendar(item.id)}>

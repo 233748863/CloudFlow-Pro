@@ -149,17 +149,17 @@ const CertificateList: React.FC<{ mine: boolean }> = ({ mine }) => {
                   <td>
                     <div className="admin-users-row-actions">
                       {row.pdfFileId ? (
-                        <button type="button" title="下载" onClick={() => void handleDownload(row)}>
+                        <button type="button" data-tooltip="下载" aria-label="下载" onClick={() => void handleDownload(row)}>
                           <Download size={15} />
                         </button>
                       ) : null}
                       {!mine && row.status === 'VALID' ? (
-                        <button type="button" title="重生 PDF" onClick={() => void handleRegenerate(row)}>
+                        <button type="button" data-tooltip="重生 PDF" aria-label="重生 PDF" onClick={() => void handleRegenerate(row)}>
                           <RotateCcw size={15} />
                         </button>
                       ) : null}
                       {!mine && row.status === 'VALID' ? (
-                        <button type="button" className="danger" title="撤销" onClick={() => { setRevokeTarget(row); setRevokeReason(''); }}>
+                        <button type="button" className="danger" data-tooltip="撤销" aria-label="撤销" onClick={() => { setRevokeTarget(row); setRevokeReason(''); }}>
                           <Ban size={15} />
                         </button>
                       ) : null}

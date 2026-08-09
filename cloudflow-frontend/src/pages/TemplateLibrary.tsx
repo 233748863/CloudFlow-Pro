@@ -24,6 +24,7 @@ import {
   parseTemplateDefinition,
 } from "./template-library/utils";
 import { TablePageLayout } from "@/components/layout/TablePageLayout";
+import '../styles/features/template-market.css';
 
 export const TemplateLibrary: React.FC = () => {
   const navigate = useNavigate();

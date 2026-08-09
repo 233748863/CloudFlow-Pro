@@ -189,9 +189,9 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
     const displayValue = formatFieldValue(field, displayRawValue);
     const isEmpty = !hasValue(displayRawValue);
     return (
-      <div className="min-h-[44px] bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-slate-800 dark:bg-slate-900/70 dark:text-slate-100">
+      <div className="min-h-[44px] bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-cf-title dark:bg-slate-900/70">
         {isEmpty ? (
-          <span className="italic text-slate-400 dark:text-slate-500">未填写</span>
+          <span className="italic text-cf-faint">未填写</span>
         ) : (
           displayValue
         )}
@@ -339,7 +339,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
   if (!formDef?.fields || formDef.fields.length === 0) {
     if (hideActions) {
       return (
-        <div className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">
+        <div className="py-4 text-center text-sm text-cf-faint">
           暂无表单字段
         </div>
       );
@@ -374,7 +374,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
             id={`field-${field.id}`}
             className={cn('admin-dialog-field', field.type === 'TEXTAREA' && 'sm:col-span-2')}
           >
-            <label className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">
+            <label className="mb-1 block text-xs font-bold text-cf-subtle">
               {field.label}
               {!readonly && field.required ? <span className="text-red-500"> *</span> : null}
             </label>
@@ -413,7 +413,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
             id={`field-${field.id}`}
             className={cn('admin-dialog-field', field.type === 'TEXTAREA' && 'sm:col-span-2')}
           >
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+            <label className="block text-sm font-semibold text-cf-body">
               {field.label}
               {field.required ? <span className="ml-1 text-red-500">*</span> : null}
             </label>

@@ -1,0 +1,429 @@
+/* 从 index.css 拆分而来：admin-performance
+   由 PerformanceStats.tsx, HrPerformancePage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-performance-command-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      overflow: hidden;
+      padding: 0;
+    }
+
+  .admin-performance-status-cell {
+      position: relative;
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.75rem;
+      min-height: 5rem;
+      padding: 1rem;
+    }
+
+  .admin-performance-status-cell::after {
+      position: absolute;
+      top: 1rem;
+      right: 0;
+      bottom: 1rem;
+      width: 1px;
+      background: var(--cf-border);
+      content: "";
+    }
+
+  .admin-performance-status-cell:last-child::after {
+      display: none;
+    }
+
+  .admin-performance-status-icon {
+      display: inline-flex;
+      width: 2.25rem;
+      height: 2.25rem;
+      flex: 0 0 2.25rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.5rem;
+    }
+
+  .admin-performance-status-cell p,
+    .admin-performance-status-cell em {
+      margin: 0;
+      overflow: hidden;
+      color: #64748b;
+      font-size: 0.75rem;
+      font-style: normal;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-performance-status-cell strong {
+      display: block;
+      margin: 0.125rem 0;
+      color: #0f172a;
+      font-size: 1.375rem;
+      font-weight: 760;
+      line-height: 1.15;
+    }
+
+  .admin-performance-create-overview,
+    .admin-performance-split-card,
+    .admin-performance-mobile-card {
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-performance-create-overview {
+      padding: 1rem;
+    }
+
+  .admin-performance-step-chip {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.5rem;
+      border: 1px solid #eef2f7;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+      padding: 0.5rem 0.75rem;
+      color: #334155;
+      font-size: 0.875rem;
+    }
+
+  .admin-performance-split-card,
+    .admin-performance-mobile-card {
+      padding: 1rem;
+    }
+
+  .admin-performance-panel {
+      min-width: 0;
+      min-height: 0;
+    }
+
+  .admin-performance-panel-head {
+      min-width: 0;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 1rem;
+    }
+
+  .admin-performance-panel-body {
+      min-width: 0;
+      min-height: 0;
+      padding: 1rem;
+    }
+
+  .admin-performance-context-pill {
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-performance-filter-toolbar {
+      display: grid;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+  .admin-performance-filter-controls {
+      display: flex;
+      min-width: 0;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 0.75rem;
+    }
+
+  .admin-performance-filter-controls label {
+      flex: 0 1 14rem;
+      min-width: 0;
+    }
+
+  .admin-performance-process-control {
+      flex-basis: 16rem;
+      min-width: 0;
+    }
+
+  .admin-performance-context-strip {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+
+  .admin-performance-filter-toolbar .admin-performance-context-pill {
+      background: var(--cf-surface-muted);
+      padding: 0.625rem 0.75rem;
+    }
+
+  .admin-performance-content-grid {
+      gap: 1rem;
+    }
+
+  .admin-performance-metrics-workbench {
+      overflow: hidden;
+    }
+
+  .admin-performance-workbench-head strong {
+      display: block;
+      color: #0f172a;
+      font-size: 0.9375rem;
+      font-weight: 750;
+      line-height: 1.25;
+    }
+
+  .admin-performance-workbench-head span {
+      display: block;
+      margin-top: 0.25rem;
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.35;
+    }
+
+  .admin-performance-selected-process {
+      display: flex;
+      min-width: 0;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+  .admin-performance-selected-process span {
+      margin: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-muted);
+      padding: 0.375rem 0.5rem;
+      color: #64748b;
+      font-size: 0.75rem;
+      font-weight: 650;
+      line-height: 1;
+    }
+
+  .admin-performance-kpi-strip {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+  .admin-performance-kpi-cell {
+      display: flex;
+      min-width: 0;
+      align-items: flex-start;
+      gap: 0.625rem;
+      border-right: 1px solid var(--cf-border);
+      padding: 0.875rem 1rem;
+    }
+
+  .admin-performance-kpi-cell:last-child {
+      border-right: 0;
+    }
+
+  .admin-performance-kpi-icon {
+      display: inline-flex;
+      width: 1.75rem;
+      height: 1.75rem;
+      flex: 0 0 1.75rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.5rem;
+      background: #ecfeff;
+      color: #0d95b5;
+    }
+
+  .admin-performance-kpi-icon svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+  .admin-performance-kpi-cell p,
+    .admin-performance-kpi-cell span {
+      margin: 0;
+      color: #64748b;
+      font-size: 0.71875rem;
+      line-height: 1.35;
+    }
+
+  .admin-performance-kpi-cell strong {
+      display: block;
+      max-width: 100%;
+      margin-top: 0.125rem;
+      overflow: hidden;
+      color: #0f172a;
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-performance-detail-table {
+      width: 100%;
+      min-width: 0 !important;
+      table-layout: fixed;
+      font-size: 0.8125rem;
+    }
+
+  .admin-performance-detail-table th,
+    .admin-performance-detail-table td {
+      overflow: hidden;
+      padding: 0.625rem 0.5rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-performance-detail-table th:first-child,
+    .admin-performance-detail-table td:first-child {
+      width: 20%;
+      padding-left: 1rem;
+    }
+
+  .admin-performance-detail-table th:nth-child(5),
+    .admin-performance-detail-table td:nth-child(5) {
+      width: 9%;
+    }
+
+  .admin-performance-objective-strip {
+      display: grid;
+      grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+      min-height: 6.25rem;
+    }
+
+  .admin-performance-objective-main {
+      min-width: 0;
+      border-right: 1px solid var(--cf-border);
+      padding: 1rem;
+    }
+
+  .admin-performance-objective-kicker {
+      color: #8091aa;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+  .admin-performance-objective-title {
+      margin-top: 0.5rem;
+      overflow: hidden;
+      color: #0f172a;
+      font-size: 1.125rem;
+      font-weight: 750;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-performance-objective-meta {
+      margin-top: 0.25rem;
+      overflow: hidden;
+      color: #64748b;
+      font-size: 0.875rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-performance-summary-grid {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr));
+    }
+
+  .admin-performance-summary-cell {
+      min-width: 0;
+      border-right: 1px solid var(--cf-border);
+      padding: 0.75rem 1rem;
+    }
+
+  .admin-performance-summary-cell:last-child {
+      border-right-width: 0;
+    }
+
+  .admin-performance-summary-cell p,
+    .admin-performance-summary-cell span {
+      margin: 0;
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+  .admin-performance-summary-value {
+      display: block;
+      margin: 0.25rem 0 0.125rem;
+      overflow: visible;
+      color: #0f172a;
+      font-size: 1.2rem;
+      font-weight: 780;
+      line-height: 1.12;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+
+  .admin-performance-metric-summary {
+      display: grid;
+      min-width: 0;
+      gap: 0.2rem;
+    }
+
+  .admin-performance-metric-row {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: minmax(0, 1fr) max-content;
+      align-items: baseline;
+      gap: 0.625rem;
+    }
+
+  .admin-performance-summary-cell .admin-performance-metric-label {
+      display: block;
+      overflow: hidden;
+      color: #475569;
+      font-size: 0.76rem;
+      font-weight: 650;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-performance-summary-cell .admin-performance-metric-value {
+      color: #0f172a;
+      font-size: 0.9rem;
+      font-weight: 780;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+  .admin-performance-metric-more {
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.1;
+    }
+
+  .admin-performance-summary-hint {
+      display: block;
+      overflow: hidden;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-performance-tree-shell {
+      min-height: 0;
+    }
+
+  .admin-performance-tree-table {
+      height: 100%;
+      border-top-width: 0;
+    }
+}
+
+@layer components {
+  @media (max-width: 1024px) {
+    .admin-performance-objective-strip {
+          grid-template-columns: 1fr;
+        }
+
+    .admin-performance-objective-main {
+          border-right-width: 0;
+          border-bottom: 1px solid var(--cf-border);
+        }
+  }
+}

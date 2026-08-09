@@ -1,0 +1,87 @@
+/* 从 index.css 拆分而来：admin-menus
+   由 MenuList.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-menus-filter-grid {
+      grid-template-columns: minmax(20rem, 1fr) auto;
+    }
+}
+
+.admin-menus-table th:nth-child(1),
+.admin-menus-table td:nth-child(1) {
+  width: 31%;
+}
+
+.admin-menus-table th:nth-child(2),
+.admin-menus-table td:nth-child(2) {
+  width: 16%;
+}
+
+.admin-menus-table th:nth-child(3),
+.admin-menus-table td:nth-child(3) {
+  width: 7%;
+}
+
+.admin-menus-table th:nth-child(4),
+.admin-menus-table td:nth-child(4) {
+  width: 16%;
+}
+
+.admin-menus-table th:nth-child(5),
+.admin-menus-table td:nth-child(5) {
+  width: 10%;
+}
+
+.admin-menus-table th:nth-child(6),
+.admin-menus-table td:nth-child(6) {
+  width: 10%;
+}
+
+.admin-menus-table th:nth-child(7),
+.admin-menus-table td:nth-child(7) {
+  width: 10%;
+}
+
+.admin-menus-node {
+  align-items: flex-start;
+}
+
+.admin-menus-node small {
+  max-width: 300px;
+}
+
+.admin-menus-node small,
+.admin-menus-icon-text {
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-menus-expand,
+.admin-menus-expand-placeholder {
+  flex: 0 0 24px;
+  margin-top: 1px;
+}
+
+.admin-menus-expand {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+}
+
+.admin-menus-expand:hover {
+  background: #f1f5f9;
+  color: #0d95b5;
+}
+
+.admin-menus-icon-text {
+  max-width: 128px;
+}

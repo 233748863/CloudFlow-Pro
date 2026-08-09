@@ -108,7 +108,7 @@ const formatDateTime = (value?: string) => {
 const getFileIcon = (type: string) => {
   const category = getSystemFileTypeCategory(type);
   if (category === SYSTEM_FILE_TYPE_CATEGORY.IMAGE) {
-    return <ImageIcon size={16} className="text-slate-500 dark:text-slate-400" />;
+    return <ImageIcon size={16} className="text-cf-subtle" />;
   }
   if (
     category === SYSTEM_FILE_TYPE_CATEGORY.PDF ||
@@ -117,13 +117,13 @@ const getFileIcon = (type: string) => {
     category === SYSTEM_FILE_TYPE_CATEGORY.PPT ||
     category === SYSTEM_FILE_TYPE_CATEGORY.TEXT
   ) {
-    return <FileText size={16} className="text-slate-500 dark:text-slate-400" />;
+    return <FileText size={16} className="text-cf-subtle" />;
   }
-  return <FileIcon size={16} className="text-slate-500 dark:text-slate-400" />;
+  return <FileIcon size={16} className="text-cf-subtle" />;
 };
 
 const getFileTypeBadgeClassName = () =>
-  'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
+  'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900/70';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -135,9 +135,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -507,21 +507,21 @@ export const FileList = () => {
                       </div>
                       <div className="min-w-0">
                         <div
-                          className="max-w-md truncate text-sm font-semibold text-slate-900 dark:text-slate-100"
-                          title={file.fileName}
+                          className="max-w-md truncate text-sm font-semibold text-cf-title"
+                          data-tooltip={file.fileName}
                         >
                           {file.fileName}
                         </div>
                         <div
-                          className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500"
-                          title={file.filePath}
+                          className="mt-1 truncate text-xs text-cf-faint"
+                          data-tooltip={file.filePath}
                         >
                           {file.filePath}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                  <td className="font-mono text-xs text-cf-subtle">
                     {formatSize(file.fileSize)}
                   </td>
                   <td>
@@ -534,17 +534,17 @@ export const FileList = () => {
                       {getFileTypeDisplayLabel(file.fileType)}
                     </span>
                   </td>
-                  <td className="text-sm text-slate-600 dark:text-slate-300">
+                  <td className="text-sm text-cf-muted">
                     {file.createBy || '-'}
                   </td>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">
+                  <td className="text-sm text-cf-subtle">
                     {formatDateTime(file.createTime)}
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
                       <button
                         type="button"
-                        title="下载文件"
+                        data-tooltip="下载文件" aria-label="下载文件"
                         onClick={() => window.open(file.url, '_blank', 'noopener,noreferrer')}
                       >
                         <Download size={15} />
@@ -552,7 +552,7 @@ export const FileList = () => {
                       <button
                         type="button"
                         className="danger"
-                        title="删除文件"
+                        data-tooltip="删除文件" aria-label="删除文件"
                         onClick={() => setPendingDeleteFile(file)}
                       >
                         <Trash2 size={15} />

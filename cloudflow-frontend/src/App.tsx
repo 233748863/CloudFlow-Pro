@@ -3,6 +3,8 @@ import { RouterProvider } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { TooltipLayer } from './components/common/Tooltip';
+import { NavigationProgress } from './components/common/NavigationProgress';
 import { CustomTitleBar } from './components/layout/CustomTitleBar';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -81,7 +83,10 @@ function AppInner() {
   }, []);
 
   return (
-    <RouterProvider router={router} />
+    <>
+      <NavigationProgress router={router} />
+      <RouterProvider router={router} />
+    </>
   );
 }
 
@@ -104,6 +109,8 @@ function App() {
           <AuthProvider>
             {appInner}
             <Toaster />
+            {/* 全局提示层：接管所有 data-tooltip 元素，替代原生 title */}
+            <TooltipLayer />
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

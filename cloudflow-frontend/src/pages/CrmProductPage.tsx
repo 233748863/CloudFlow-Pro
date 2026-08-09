@@ -194,9 +194,9 @@ export default function CrmProductPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-slate-500">正在加载产品...</span></td></tr>
+                  <tr><td colSpan={8} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-cf-subtle">正在加载产品...</span></td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500"><Boxes className="mx-auto mb-3 h-4 w-4" />暂无产品</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-cf-subtle"><Boxes className="mx-auto mb-3 h-4 w-4" />暂无产品</td></tr>
                 ) : rows.map((row) => (
                   <tr key={row.productId}>
                     <td className="font-mono text-xs">{row.productNo || '-'}</td>
@@ -206,7 +206,7 @@ export default function CrmProductPage() {
                     <td>{row.ownerName || '-'}</td>
                     <td><span className={row.status === 'ACTIVE' ? 'badge badge-success' : 'badge badge-gray'}>{getCrmGenericStatusLabel(row.status)}</span></td>
                     <td>{formatDateTimeDisplay((row as CrmProduct & { updateTime?: string }).updateTime) || '-'}</td>
-                    <td><div className="admin-users-row-actions"><button type="button" title="编辑产品" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><Boxes size={15} /></button><button type="button" className="danger" title="删除产品" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
+                    <td><div className="admin-users-row-actions"><button type="button" data-tooltip="编辑产品" aria-label="编辑产品" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><Boxes size={15} /></button><button type="button" className="danger" data-tooltip="删除产品" aria-label="删除产品" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
                   </tr>
                 ))}
               </tbody>

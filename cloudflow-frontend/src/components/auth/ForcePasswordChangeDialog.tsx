@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { BaseDialog, Button, Input, Label } from '@/components/common';
 import { changeProfilePassword } from '@/services/api/auth';
 
-const passwordLabelClassName = 'text-slate-700 dark:text-slate-200';
+const passwordLabelClassName = 'text-cf-body';
 
 interface ForcePasswordChangeDialogProps {
   open: boolean;

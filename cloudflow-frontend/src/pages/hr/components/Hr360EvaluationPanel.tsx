@@ -198,7 +198,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
               <strong>被评人</strong>
               <span>选择后加载当前目标下的 360 评估人</span>
             </div>
-            <Users2 className="h-4 w-4 text-slate-400" />
+            <Users2 className="h-4 w-4 text-cf-faint" />
           </div>
           <div className="flex flex-wrap items-center gap-3 p-4">
             <div className="min-w-[240px] flex-1">
@@ -215,7 +215,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                 当前被评人 #{evaluateeId}
               </span>
             ) : (
-              <span className="text-xs text-slate-400 dark:text-slate-500">未选择被评人，下方列表为空</span>
+              <span className="text-xs text-cf-faint">未选择被评人，下方列表为空</span>
             )}
           </div>
         </section>
@@ -226,7 +226,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
               <strong>邀请评估人</strong>
               <span>配置来源、评估人和权重后写入评估列表</span>
             </div>
-            <UserPlus className="h-4 w-4 text-slate-400" />
+            <UserPlus className="h-4 w-4 text-cf-faint" />
           </div>
           <div className="grid grid-cols-1 gap-2 p-4 md:grid-cols-[180px_minmax(0,1fr)_120px_auto]">
             <Select value={inviteSource} onValueChange={(v) => setInviteSource(v as EvaluatorSource)}>
@@ -271,7 +271,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
             </Button>
           </div>
           {external ? (
-            <p className="px-4 pb-4 text-xs text-slate-400 dark:text-slate-500">
+            <p className="px-4 pb-4 text-xs text-cf-faint">
               客户来源为外部参与方，需在 CRM 客户表中已存在；权重建议 0-1 之间
             </p>
           ) : null}
@@ -293,7 +293,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                 const isExternal = String(row.evaluatorSource || '').toUpperCase() === 'CUSTOMER';
                 return (
                   <tr key={row.id}>
-                    <td className="font-medium text-slate-700 dark:text-slate-200">
+                    <td className="font-medium text-cf-body">
                       {isExternal ? `外部客户 #${row.evaluatorId}` : `员工 #${row.evaluatorId}`}
                       {row.evaluatorName ? ` · ${row.evaluatorName}` : ''}
                     </td>
@@ -303,7 +303,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                           'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border',
                           isExternal
                             ? 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-900/40'
-                            : 'bg-[var(--cf-surface-muted)] text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
+                            : 'bg-[var(--cf-surface-muted)] text-cf-body border-slate-200 dark:bg-slate-800 dark:border-slate-700',
                         )}
                       >
                         {SOURCE_OPTIONS.find((opt) => opt.value === row.evaluatorSource)?.label || '-'}
@@ -324,10 +324,10 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
                           }
                         />
                         <div className="admin-users-row-actions">
-                          <button type="button" title="提交评分" onClick={() => void handleSubmitResponse(row.id || 0)}>
+                          <button type="button" data-tooltip="提交评分" aria-label="提交评分" onClick={() => void handleSubmitResponse(row.id || 0)}>
                             <Check size={15} />
                           </button>
-                          <button type="button" className="danger" title="取消" onClick={() => void handleCancel(row.id || 0)}>
+                          <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => void handleCancel(row.id || 0)}>
                             <X size={15} />
                           </button>
                         </div>
@@ -339,7 +339,7 @@ export const Hr360EvaluationPanel = ({ open, objectiveId, onClose }: Props) => {
               {evaluators.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="admin-settings-empty">
-                    <div className="flex flex-col items-center gap-2 py-10 text-slate-400 dark:text-slate-500">
+                    <div className="flex flex-col items-center gap-2 py-10 text-cf-faint">
                       <Users2 className="h-8 w-8 opacity-50" />
                       <span className="text-sm">
                         {evaluateeId ? '暂无评估人，使用上方表单邀请' : '请先选择被评人'}

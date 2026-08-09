@@ -102,7 +102,7 @@ const toneClassName: Record<EntryTone, string> = {
   amber: 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
   green: 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
   violet: 'border-violet-100 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
-  slate: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+  slate: 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-body dark:border-slate-800 dark:bg-slate-900',
 };
 
 const statusPill = (text?: string, tone: EntryTone = 'slate') => (
@@ -116,7 +116,7 @@ const InlineState = ({ title }: { title: string }) => (
     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       <Users className="h-4 w-4" />
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
   </div>
 );
 
@@ -131,12 +131,12 @@ const DirectoryEntryButton = ({ entry, onOpen }: { entry: ModuleEntry; onOpen: (
     </span>
     <span className="min-w-0 flex-1">
       <span className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{entry.title}</span>
+        <span className="text-sm font-semibold text-cf-title">{entry.title}</span>
         {entry.meta ? <span className="badge badge-gray">{entry.meta}</span> : null}
       </span>
-      <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">{entry.hint}</span>
+      <span className="mt-1 block text-xs leading-5 text-cf-subtle">{entry.hint}</span>
     </span>
-    <ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 dark:text-slate-500" />
+    <ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-cf-faint transition-transform group-hover:translate-x-0.5" />
   </button>
 );
 
@@ -147,12 +147,12 @@ const MetricRow = ({ title, helper, value, onOpen }: { title: string; helper: st
     className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/40"
   >
     <span className="min-w-0">
-      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</span>
-      <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{helper}</span>
+      <span className="text-sm font-medium text-cf-title">{title}</span>
+      <span className="mt-1 block text-xs text-cf-subtle">{helper}</span>
     </span>
     <span className="flex items-center gap-2">
-      <span className="text-base font-semibold text-slate-900 dark:text-slate-100">{value}</span>
-      <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+      <span className="text-base font-semibold text-cf-title">{value}</span>
+      <ArrowRight className="h-4 w-4 text-cf-faint" />
     </span>
   </button>
 );
@@ -174,12 +174,12 @@ const ActivityRow = ({
     className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/40"
   >
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">{title}</span>
-      <span className="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">{secondary}</span>
+      <span className="block truncate text-sm font-medium text-cf-title">{title}</span>
+      <span className="mt-1 block truncate text-xs text-cf-subtle">{secondary}</span>
     </span>
     <span className="flex items-center gap-2">
       {aside}
-      <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+      <ArrowRight className="h-4 w-4 text-cf-faint" />
     </span>
   </button>
 );
@@ -468,7 +468,7 @@ export const HrDashboardPage: React.FC = () => {
         <div className="flex min-h-0 flex-col">
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">模块入口</div>
+              <div className="text-sm font-semibold text-cf-title">模块入口</div>
               <span className="badge badge-gray">{loading ? '同步中' : `${totalModuleCount} 个入口`}</span>
             </div>
             {moduleGroups.length === 0 ? (
@@ -478,8 +478,8 @@ export const HrDashboardPage: React.FC = () => {
                 {moduleGroups.map((group) => (
                   <section key={group.title} className="p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{group.title}</div>
-                      <div className="text-xs text-slate-400 dark:text-slate-500">{group.entries.length} 个入口</div>
+                      <div className="text-xs font-medium text-cf-subtle">{group.title}</div>
+                      <div className="text-xs text-cf-faint">{group.entries.length} 个入口</div>
                     </div>
                     <div className="grid gap-3 2xl:grid-cols-2">
                       {group.entries.map((entry) => (
@@ -495,8 +495,8 @@ export const HrDashboardPage: React.FC = () => {
           <div className="grid min-w-0 divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
             <section>
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前关注</div>
-                <span className="text-xs text-slate-500 dark:text-slate-400">按链路进入</span>
+                <div className="text-sm font-semibold text-cf-title">当前关注</div>
+                <span className="text-xs text-cf-subtle">按链路进入</span>
               </div>
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {focusRows.map((item) => (
@@ -507,7 +507,7 @@ export const HrDashboardPage: React.FC = () => {
 
             <section>
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">最近员工</div>
+                <div className="text-sm font-semibold text-cf-title">最近员工</div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/hr/employees')}>查看员工</Button>
               </div>
               {loading ? (
@@ -531,7 +531,7 @@ export const HrDashboardPage: React.FC = () => {
 
             <section>
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">招聘推进</div>
+                <div className="text-sm font-semibold text-cf-title">招聘推进</div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/hr/recruitment')}>查看招聘</Button>
               </div>
               {loading ? (

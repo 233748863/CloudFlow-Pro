@@ -2,20 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, LogOut, Mail, Phone, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-
-function getInitials(name?: string, email?: string) {
-  const userName = String(name || '').trim();
-  if (userName) {
-    return userName.slice(0, 2).toUpperCase();
-  }
-
-  const localPart = String(email || '').split('@')[0];
-  if (localPart) {
-    return localPart.slice(0, 2).toUpperCase();
-  }
-
-  return 'CF';
-}
+import { DefaultAvatar } from '@/components/common/DefaultAvatar';
+import './HeaderUserMenu.css';
 
 export const HeaderUserMenu: React.FC = () => {
   const { user, logout } = useAuth();
@@ -68,7 +56,6 @@ export const HeaderUserMenu: React.FC = () => {
   }
 
   const avatar = user.avatar;
-  const initials = getInitials(user.username || user.name, user.email);
 
   const closeDropdown = () => setDropdownOpen(false);
 
@@ -91,11 +78,7 @@ export const HeaderUserMenu: React.FC = () => {
           {avatar ? (
             <img src={avatar} alt={displayName} className="h-full w-full object-cover" />
           ) : (
-            <div className="default-avatar default-avatar--xs" role="img" aria-label={`${displayName} avatar`}>
-              <span className="default-avatar-glow" aria-hidden="true" />
-              <span className="default-avatar-ring" aria-hidden="true" />
-              <span className="default-avatar-initials">{initials}</span>
-            </div>
+            <DefaultAvatar label={displayName} size="xs" />
           )}
         </div>
         <div className="app-user-meta">
@@ -104,9 +87,9 @@ export const HeaderUserMenu: React.FC = () => {
         </div>
         <ChevronDown
           size={14}
-          className={`app-user-chevron text-slate-400 transition-transform duration-200 ${
-            dropdownOpen ? 'rotate-180' : ''
-          }`}
+          className={`app-user-chevron text-cf-faint transition-transform duration-200 ${
+ dropdownOpen ? 'rotate-180' : ''
+ }`}
         />
       </button>
 
@@ -136,25 +119,25 @@ export const HeaderUserMenu: React.FC = () => {
         {user.email || user.phone ? (
           <div className="border-t border-slate-200 px-3 py-2.5 dark:border-slate-800">
             {user.email ? (
-              <div className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-start gap-2 text-xs text-cf-subtle">
                 <Mail size={14} className="mt-0.5 shrink-0" />
                 <div>
                   <div>邮箱</div>
-                  <div className="font-medium text-slate-700 dark:text-slate-200">{user.email}</div>
+                  <div className="font-medium text-cf-body">{user.email}</div>
                 </div>
               </div>
             ) : null}
 
             {user.phone ? (
               <div
-                className={`flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400 ${
-                  user.email ? 'mt-2' : ''
-                }`}
+                className={`flex items-start gap-2 text-xs text-cf-subtle ${
+ user.email ? 'mt-2' : ''
+ }`}
               >
                 <Phone size={14} className="mt-0.5 shrink-0" />
                 <div>
                   <div>电话</div>
-                  <div className="font-medium text-slate-700 dark:text-slate-200">{user.phone}</div>
+                  <div className="font-medium text-cf-body">{user.phone}</div>
                 </div>
               </div>
             ) : null}

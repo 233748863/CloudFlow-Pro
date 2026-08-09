@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useAuth } from '@/context/AuthContext';
 import { getTenantList } from '@/services/api/tenant';
+import './TenantSwitcher.css';
 
 interface Tenant {
   tenantId: number;
@@ -188,13 +189,13 @@ export const TenantSwitcher: React.FC = () => {
         <Building2 size={16} />
         <span className="hidden max-w-[7.5rem] truncate 2xl:inline">{currentTenantName}</span>
         {switching ? (
-          <Loader2 size={14} className="shrink-0 animate-spin text-slate-400 dark:text-slate-500" />
+          <Loader2 size={14} className="shrink-0 animate-spin text-cf-faint" />
         ) : (
           <ChevronDown
             size={14}
-            className={`shrink-0 text-slate-400 transition-transform duration-200 dark:text-slate-500 ${
-              isOpen ? 'rotate-180' : ''
-            }`}
+            className={`shrink-0 text-cf-faint transition-transform duration-200 ${
+ isOpen ? 'rotate-180' : ''
+ }`}
           />
         )}
       </button>
@@ -228,7 +229,7 @@ export const TenantSwitcher: React.FC = () => {
                     type="button"
                     onClick={() => void handleSwitchTenant(tenant.tenantId)}
                     disabled={switching}
-                    title={`${tenantName} ${tenantIdText}`}
+                    data-tooltip={`${tenantName} ${tenantIdText}`} aria-label={`${tenantName} ${tenantIdText}`}
                     className={`tenant-option ${active ? 'is-active' : ''}`}
                   >
                     <div className="tenant-option-icon">

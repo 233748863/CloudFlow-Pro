@@ -112,7 +112,7 @@ export const statusTone = (status?: string | number | null) => {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
   }
   if (['DRAFT', 'PENDING', 'SCHEDULED', 'SENT'].includes(normalized)) {
-    return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+    return 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-body dark:border-slate-800 dark:bg-slate-900';
   }
   if (['APPROVING', 'SCREENING', 'INTERVIEW', 'OFFER'].includes(normalized)) {
     return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
@@ -120,7 +120,7 @@ export const statusTone = (status?: string | number | null) => {
   if (['REJECTED', 'CANCELLED', 'RESIGNED', 'INACTIVE', 'ABSENT', 'FALSE', '0'].includes(normalized)) {
     return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
   }
-  return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+  return 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-body dark:border-slate-800 dark:bg-slate-900';
 };
 
 export const statusLabel = (status?: string | number | null) => {
@@ -325,8 +325,8 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
     <InnerTableSurface>
       <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-sm font-semibold text-cf-title">{title}</div>
+          <div className="mt-1 text-xs text-cf-subtle">
             {loading ? '同步中' : `${total} 条`}
           </div>
         </div>
@@ -358,9 +358,9 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={colCount} className="py-10 text-center text-sm text-slate-400">加载中…</td></tr>
+              <tr><td colSpan={colCount} className="py-10 text-center text-sm text-cf-faint">加载中…</td></tr>
             ) : visibleRows.length === 0 ? (
-              <tr><td colSpan={colCount} className="py-10 text-center text-sm text-slate-400">{emptyTitle || '暂无数据'}</td></tr>
+              <tr><td colSpan={colCount} className="py-10 text-center text-sm text-cf-faint">{emptyTitle || '暂无数据'}</td></tr>
             ) : (
               visibleRows.map((row) => {
                 const rowActions = actions
@@ -385,7 +385,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                                 <button
                                   key={action.key ?? `${action.label}-${index}`}
                                   type={action.type ?? 'button'}
-                                  title={label}
+                                  data-tooltip={label}
                                   aria-label={label}
                                   disabled={action.disabled}
                                   className={cn(isDangerAction(action) && 'danger', action.className)}
@@ -439,7 +439,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {formFields.map((field) => (
               <div key={field.key} className={cn('admin-dialog-field', field.className)}>
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                <Label className="text-sm font-semibold text-cf-body">
                   {field.label}
                 </Label>
                 {field.type === 'select' || field.type === 'city' ? (
@@ -534,7 +534,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                         <SelectTrigger className="h-11">
                           <span className={cn(
                             'min-w-0 flex-1 truncate text-left',
-                            selectedValues.length ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500',
+                            selectedValues.length ? 'text-cf-title' : 'text-cf-faint',
                           )}>
                             {selectedOptionText(field, selectedValues) || field.placeholder || field.label}
                           </span>
@@ -552,7 +552,7 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                               </SelectItem>
                             );
                           }) : (
-                            <div className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                            <div className="px-3 py-6 text-center text-sm text-cf-subtle">
                               暂无可选项
                             </div>
                           )}

@@ -44,6 +44,7 @@ import type { UserBrief } from '@/types/workflow';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import '../styles/features/admin-business.css';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'cancel';
@@ -104,12 +105,12 @@ const InlineState: React.FC<{
   className?: string;
 }> = ({ title, description, icon, className }) => (
   <div className={joinClass('admin-dialog-empty-note', className)}>
-    <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3 text-cf-faint">
       {icon || <Plane className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -124,12 +125,12 @@ const TableStateRow: React.FC<{
   <tr className="hover:bg-transparent">
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3 text-cf-faint">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : icon || <Plane className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
         ) : null}
       </div>
     </td>
@@ -180,8 +181,8 @@ const DetailRow: React.FC<{
       alignStart && 'admin-business-trip-detail-item-wide',
     )}
   >
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value}</div>
   </div>
 );
 
@@ -585,18 +586,18 @@ export const BusinessTripPage: React.FC = () => {
                     list.map((item) => (
                       <tr key={item.id}>
                         <td>
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.tripNo || '-'}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.createTime)}</div>
+                          <div className="font-medium text-cf-title">{item.tripNo || '-'}</div>
+                          <div className="mt-1 text-xs text-cf-faint">{formatDateTimeDisplay(item.createTime)}</div>
                         </td>
                         <td>
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.userName || '-'}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.deptName || '-'}</div>
+                          <div className="font-medium text-cf-title">{item.userName || '-'}</div>
+                          <div className="mt-1 text-xs text-cf-faint">{item.deptName || '-'}</div>
                         </td>
                         <td>
-                          <div className="font-medium text-slate-900 dark:text-slate-100">
-                            {(item.departure || '-') + ' -> ' + (item.destination || '-')}
+                          <div className="font-medium text-cf-title">
+                            {(item.departure || '-') + '->' + (item.destination || '-')}
                           </div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                          <div className="mt-1 text-xs text-cf-faint">
                             {item.projectName || item.companions || '-'}
                           </div>
                         </td>
@@ -613,11 +614,11 @@ export const BusinessTripPage: React.FC = () => {
                         <td>{getStatusBadge(item.status)}</td>
                         <td>
                           <div className="admin-users-row-actions">
-                            <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
-                            {item.status === 'DRAFT' && hasPermission('oa:trip:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
-                            {item.status === 'DRAFT' && hasPermission('oa:trip:submit') ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
-                            {item.status === 'DRAFT' && hasPermission('oa:trip:remove') ? <button type="button" title="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
-                            {item.status === 'PENDING' && hasPermission('oa:trip:cancel') ? <button type="button" title="取消申请" aria-label="取消申请" onClick={() => openCancelConfirm(item.id!)}><RotateCcw size={15} /></button> : null}
+                            <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
+                            {item.status === 'DRAFT' && hasPermission('oa:trip:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                            {item.status === 'DRAFT' && hasPermission('oa:trip:submit') ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                            {item.status === 'DRAFT' && hasPermission('oa:trip:remove') ? <button type="button" data-tooltip="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
+                            {item.status === 'PENDING' && hasPermission('oa:trip:cancel') ? <button type="button" data-tooltip="取消申请" aria-label="取消申请" onClick={() => openCancelConfirm(item.id!)}><RotateCcw size={15} /></button> : null}
                           </div>
                         </td>
                       </tr>
@@ -832,26 +833,26 @@ export const BusinessTripPage: React.FC = () => {
 
             <dl className="grid gap-3 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-4 text-sm dark:border-slate-800 dark:bg-slate-900/60">
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500 dark:text-slate-400">路线</dt>
-                <dd className="max-w-[18rem] truncate font-medium text-slate-900 dark:text-slate-100">
-                  {(formData.departure || '-') + ' -> ' + (formData.destination || '-')}
+                <dt className="text-cf-subtle">路线</dt>
+                <dd className="max-w-[18rem] truncate font-medium text-cf-title">
+                  {(formData.departure || '-') + '->' + (formData.destination || '-')}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500 dark:text-slate-400">天数</dt>
-                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                <dt className="text-cf-subtle">天数</dt>
+                <dd className="font-medium text-cf-title">
                   {formTripDays ? `${formTripDays} 天` : '-'}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500 dark:text-slate-400">交通</dt>
-                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                <dt className="text-cf-subtle">交通</dt>
+                <dd className="font-medium text-cf-title">
                   {transportDict.getLabel(String(formData.transportType ?? '')) || '-'}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500 dark:text-slate-400">预算</dt>
-                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                <dt className="text-cf-subtle">预算</dt>
+                <dd className="font-medium text-cf-title">
                   {formatAmount(formData.estimatedCost)}
                 </dd>
               </div>
@@ -925,7 +926,7 @@ export const BusinessTripPage: React.FC = () => {
             </DetailRows>
 
             <DialogPanel title="出差事由">
-              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <div className="whitespace-pre-wrap text-sm leading-6 text-cf-muted">
                 {detailTrip.reason || '-'}
               </div>
             </DialogPanel>
@@ -957,7 +958,7 @@ export const BusinessTripPage: React.FC = () => {
             <DialogPanel
               title="流程轨迹"
               actions={detailTrip.instanceId ? (
-                <div className="text-xs text-slate-500 dark:text-slate-400">{detailTrip.instanceId}</div>
+                <div className="text-xs text-cf-subtle">{detailTrip.instanceId}</div>
               ) : null}
             >
               {detailTrip.instanceId ? (

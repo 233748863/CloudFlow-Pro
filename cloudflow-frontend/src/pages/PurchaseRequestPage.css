@@ -1,0 +1,72 @@
+/* 从 index.css 拆分而来：admin-purchase
+   由 PurchaseRequestPage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-purchase-detail-grid {
+      display: grid;
+      min-width: 0;
+      gap: 0.875rem 1.5rem;
+    }
+
+  .admin-purchase-detail-item {
+      min-width: 0;
+      border-bottom: 1px solid var(--cf-border);
+      padding-bottom: 0.75rem;
+    }
+
+  .admin-purchase-detail-item > div:last-child {
+      overflow-wrap: anywhere;
+    }
+
+  .admin-purchase-item-list {
+      display: grid;
+      min-width: 0;
+      gap: 0.875rem;
+    }
+
+  .admin-purchase-item-card {
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-muted);
+      padding: 1rem;
+    }
+
+  .admin-purchase-item-grid {
+      display: grid;
+      min-width: 0;
+      gap: 0.75rem;
+    }
+
+  .admin-purchase-item-grid > * {
+      min-width: 0;
+    }
+
+  .admin-purchase-item-actions {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+    }
+}
+
+@layer components {
+  @media (min-width: 768px) {
+    .admin-purchase-detail-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+    .admin-purchase-item-grid {
+          grid-template-columns: minmax(12rem, 1.2fr) minmax(9rem, 0.9fr) minmax(6rem, 0.6fr) minmax(6.5rem, 0.7fr) minmax(7rem, 0.75fr) 2.5rem;
+          align-items: end;
+        }
+  }
+}
+
+@layer components {
+  @media (min-width: 1024px) {
+    .admin-purchase-detail-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+  }
+}

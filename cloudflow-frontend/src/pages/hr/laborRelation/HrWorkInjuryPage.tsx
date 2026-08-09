@@ -237,15 +237,15 @@ export const HrWorkInjuryPage: React.FC = () => {
                 <td>{row.determinedGrade ? `${row.determinedGrade} 级` : '-'}</td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
+                    <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
                     {hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') ? (
-                      <button type="button" title="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
                     ) : null}
                     {hasWorkflowStatus(row.status, 'REPORTED', 'INVESTIGATING') ? (
-                      <button type="button" title="发起认定" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
+                      <button type="button" data-tooltip="发起认定" aria-label="发起认定" onClick={() => void handleSubmit(row)}><Send size={15} /></button>
                     ) : null}
                     {!hasWorkflowStatus(row.status, 'CLOSED') ? (
-                      <button type="button" className="danger" title="关闭" onClick={() => { setCloseTarget(row); setCloseReason(''); }}><XCircle size={15} /></button>
+                      <button type="button" className="danger" data-tooltip="关闭" aria-label="关闭" onClick={() => { setCloseTarget(row); setCloseReason(''); }}><XCircle size={15} /></button>
                     ) : null}
                   </div>
                 </td>
@@ -335,18 +335,18 @@ export const HrWorkInjuryPage: React.FC = () => {
           <div className="admin-dialog-stack text-sm">
             <StageTimeline steps={statusFlow} dictType="hr_work_injury_status" current={detail.status} tone="emerald" />
             <div className="grid grid-cols-2 gap-3">
-              <div className="admin-dialog-field"><span className="text-slate-500">员工 ID:</span> {detail.employeeId}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">发生时间:</span> {formatDateTimeValue(detail.occurredAt)}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">地点:</span> {detail.location ?? '-'}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">部位:</span> {detail.injuryPart ?? '-'}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">等级:</span> <DictLabel dictType="hr_work_injury_level" value={detail.injuryLevel} fallback="-" /></div>
-              <div className="admin-dialog-field"><span className="text-slate-500">伤残等级:</span> {detail.determinedGrade ? `${detail.determinedGrade} 级` : '-'}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">认定时间:</span> {formatDateTimeValue(detail.determinedAt)}</div>
-              <div className="admin-dialog-field"><span className="text-slate-500">工作流:</span> {detail.processInstanceId ?? '-'}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">员工 ID:</span> {detail.employeeId}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">发生时间:</span> {formatDateTimeValue(detail.occurredAt)}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">地点:</span> {detail.location ?? '-'}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">部位:</span> {detail.injuryPart ?? '-'}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">等级:</span> <DictLabel dictType="hr_work_injury_level" value={detail.injuryLevel} fallback="-" /></div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">伤残等级:</span> {detail.determinedGrade ? `${detail.determinedGrade} 级` : '-'}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">认定时间:</span> {formatDateTimeValue(detail.determinedAt)}</div>
+              <div className="admin-dialog-field"><span className="text-cf-subtle">工作流:</span> {detail.processInstanceId ?? '-'}</div>
             </div>
             {detail.eventDescription && (
               <div className="admin-dialog-field">
-                <div className="text-slate-500">事件描述:</div>
+                <div className="text-cf-subtle">事件描述:</div>
                 <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2 text-xs whitespace-pre-wrap dark:border-slate-800 dark:bg-slate-950">{detail.eventDescription}</div>
               </div>
             )}

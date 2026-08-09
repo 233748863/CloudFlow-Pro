@@ -37,7 +37,7 @@ function buildFullClass(colorName: StatusColorName): string {
     rose: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
     sky: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
     slate:
-      'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+      'border-slate-200 bg-cf-surface-3 text-cf-body dark:border-slate-800',
     violet:
       'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
     orange:
@@ -57,7 +57,7 @@ function buildTone(colorName: StatusColorName): string {
     amber: 'bg-amber-50 text-amber-700',
     rose: 'bg-rose-50 text-rose-700',
     sky: 'bg-sky-50 text-sky-700',
-    slate: 'bg-slate-100 text-slate-600',
+    slate: 'bg-cf-surface-3 text-cf-muted',
     violet: 'bg-violet-50 text-violet-700',
     orange: 'bg-orange-50 text-orange-700',
     teal: 'bg-teal-50 text-teal-700',

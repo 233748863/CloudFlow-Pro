@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -16,10 +16,9 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { getAnomalyTypeLabel } from '@/utils/enumLabels';
 import {
+  AutoRefreshButton,
   Button,
-  DatePicker,
-  SegmentedControl,
-  SegmentedControlItem,
+  DateRangePicker,
   Select,
   SelectContent,
   SelectItem,
@@ -40,12 +39,8 @@ import {
 import { downloadBlob } from '@/utils/download';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
-
-const RANGE_PRESETS = [
-  { value: '7', label: '近 7 天' },
-  { value: '30', label: '近 30 天' },
-  { value: '90', label: '近 90 天' },
-];
+import '../styles/features/admin-performance.css';
+import '../styles/features/dashboard-stat.css';
 
 const getLocalDateString = (date: Date = new Date()) => {
   const year = date.getFullYear();
@@ -161,7 +156,7 @@ const DeltaMeta: React.FC<{
   const delta = current - previous;
 
   if (delta === 0) {
-    return <span className="text-slate-500 dark:text-slate-400">较上期持平</span>;
+    return <span className="text-cf-subtle">较上期持平</span>;
   }
 
   const isGood = kind === 'duration' ? delta < 0 : kind === 'risk' ? delta < 0 : delta > 0;
@@ -186,13 +181,13 @@ const EmptyBlock: React.FC<{
 }> = ({ title, description, icon, loading = false }) => (
   <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
     {loading ? (
-      <RefreshCw className="mb-3 h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
+      <RefreshCw className="mb-3 h-5 w-5 animate-spin text-cf-faint" />
     ) : icon ? (
-      <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div>
+      <div className="mb-3 text-cf-faint">{icon}</div>
     ) : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 max-w-xl text-xs leading-6 text-slate-500 dark:text-slate-400">
+      <div className="mt-2 max-w-xl text-xs leading-6 text-cf-subtle">
         {description}
       </div>
     ) : null}
@@ -206,9 +201,9 @@ const SectionHeader: React.FC<{
 }> = ({ title, description, action }) => (
   <div className="flex flex-wrap items-start justify-between gap-3">
     <div>
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+      <div className="text-sm font-semibold text-cf-title">{title}</div>
       {description ? (
-        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+        <div className="mt-1 text-xs leading-6 text-cf-subtle">{description}</div>
       ) : null}
     </div>
     {action ? <div className="flex items-center gap-2">{action}</div> : null}
@@ -241,7 +236,7 @@ const ChartCard: React.FC<{
   >
     {loading ? (
       <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--cf-surface-strong)] dark:bg-slate-950">
-        <RefreshCw className="h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
+        <RefreshCw className="h-5 w-5 animate-spin text-cf-faint" />
       </div>
     ) : null}
     <div className="admin-performance-panel-head">
@@ -257,10 +252,10 @@ const ContextPill: React.FC<{
   valueClassName?: string;
 }> = ({ label, value, valueClassName }) => (
   <div className="admin-performance-context-pill px-3 py-2">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+    <div className="text-[11px] font-medium text-cf-faint">
       {label}
     </div>
-    <div className={cn('mt-1 text-sm font-medium text-slate-900 dark:text-slate-100', valueClassName)}>
+    <div className={cn('mt-1 text-sm font-medium text-cf-title', valueClassName)}>
       {value}
     </div>
   </div>
@@ -319,17 +314,17 @@ const ExecutionTrendChart: React.FC<{
 
   return (
     <div className="admin-source-content-grid">
-      <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-slate-500 dark:text-slate-400">
+      <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-cf-subtle">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cyan-500 dark:bg-cyan-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-1" />
           流程总量
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500 dark:bg-emerald-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-2" />
           完成数
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-amber-500 dark:bg-amber-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-3" />
           平均时长
         </span>
       </div>
@@ -388,7 +383,7 @@ const ExecutionTrendChart: React.FC<{
                     textAnchor="end"
                     fontSize={10}
                     fill="currentColor"
-                    className="text-slate-400 dark:text-slate-500"
+                    className="text-cf-faint"
                   >
                     {value}
                   </text>
@@ -396,7 +391,7 @@ const ExecutionTrendChart: React.FC<{
               );
             })}
 
-            <path d={durationLine} fill="none" stroke="#f59e0b" strokeWidth={2.5} />
+            <path d={durationLine} fill="none" stroke="var(--cf-chart-3)" strokeWidth={2.5} />
 
             {data.map((item, index) => {
               const centerX = x(index);
@@ -410,7 +405,7 @@ const ExecutionTrendChart: React.FC<{
                     width={barWidth}
                     height={totalHeight}
                     rx={4}
-                    fill="#06b6d4"
+                    fill="var(--cf-chart-1)"
                     opacity={0.92}
                   />
                   <rect
@@ -419,10 +414,10 @@ const ExecutionTrendChart: React.FC<{
                     width={barWidth}
                     height={completedHeight}
                     rx={4}
-                    fill="#10b981"
+                    fill="var(--cf-chart-2)"
                     opacity={0.92}
                   />
-                  <circle cx={centerX} cy={yDuration(item.avgDurationMs)} r={3.5} fill="#f59e0b" />
+                  <circle cx={centerX} cy={yDuration(item.avgDurationMs)} r={3.5} fill="var(--cf-chart-3)" />
                   <rect
                     x={centerX - columnWidth / 2}
                     y={padding.top}
@@ -445,7 +440,7 @@ const ExecutionTrendChart: React.FC<{
                   textAnchor="middle"
                   fontSize={10}
                   fill="currentColor"
-                  className="text-slate-400 dark:text-slate-500"
+                  className="text-cf-faint"
                 >
                   {item.statDate.slice(5)}
                 </text>
@@ -495,13 +490,13 @@ const RiskTrendChart: React.FC<{
 
   return (
     <div className="admin-source-content-grid">
-      <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-slate-500 dark:text-slate-400">
+      <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-cf-subtle">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-amber-500 dark:bg-amber-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-warning" />
           超时实例率
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-500 dark:bg-rose-400" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-critical" />
           异常实例率
         </span>
       </div>
@@ -559,7 +554,7 @@ const RiskTrendChart: React.FC<{
                     textAnchor="end"
                     fontSize={10}
                     fill="currentColor"
-                    className="text-slate-400 dark:text-slate-500"
+                    className="text-cf-faint"
                   >
                     {formatPercent(value)}
                   </text>
@@ -567,13 +562,13 @@ const RiskTrendChart: React.FC<{
               );
             })}
 
-            <path d={timeoutLine} fill="none" stroke="#f59e0b" strokeWidth={2.5} />
-            <path d={anomalyLine} fill="none" stroke="#f43f5e" strokeWidth={2.5} />
+            <path d={timeoutLine} fill="none" stroke="var(--cf-chart-warning)" strokeWidth={2.5} />
+            <path d={anomalyLine} fill="none" stroke="var(--cf-chart-critical)" strokeWidth={2.5} />
 
             {data.map((item, index) => (
               <g key={item.statDate}>
-                <circle cx={x(index)} cy={y(item.timeoutInstanceRate)} r={3.5} fill="#f59e0b" />
-                <circle cx={x(index)} cy={y(item.anomalyInstanceRate)} r={3.5} fill="#f43f5e" />
+                <circle cx={x(index)} cy={y(item.timeoutInstanceRate)} r={3.5} fill="var(--cf-chart-warning)" />
+                <circle cx={x(index)} cy={y(item.anomalyInstanceRate)} r={3.5} fill="var(--cf-chart-critical)" />
                 <rect
                   x={x(index) - chartW / Math.max(data.length - 1, 1) / 2}
                   y={padding.top}
@@ -595,7 +590,7 @@ const RiskTrendChart: React.FC<{
                   textAnchor="middle"
                   fontSize={10}
                   fill="currentColor"
-                  className="text-slate-400 dark:text-slate-500"
+                  className="text-cf-faint"
                 >
                   {item.statDate.slice(5)}
                 </text>
@@ -663,14 +658,14 @@ const ProcessRankingChart: React.FC<{
               <div className="min-w-0">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    <div className="truncate text-sm font-semibold text-cf-title">
                       {item.processName}
                     </div>
-                    <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                    <div className="mt-1 truncate text-xs text-cf-subtle">
                       {item.processDefKey}
                     </div>
                   </div>
-                  <div className="shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100 md:hidden">
+                  <div className="shrink-0 text-sm font-semibold text-cf-title md:hidden">
                     {formatCount(item.totalCount)}
                   </div>
                 </div>
@@ -688,27 +683,27 @@ const ProcessRankingChart: React.FC<{
                       style={{ width: barWidth }}
                     />
                   </div>
-                  <div className="hidden shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100 md:block">
+                  <div className="hidden shrink-0 text-sm font-semibold text-cf-title md:block">
                     {formatCount(item.totalCount)}
                   </div>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-left text-[11px] md:grid-cols-1 md:text-right">
                 <div>
-                  <div className="text-slate-400 dark:text-slate-500">完成率</div>
+                  <div className="text-cf-faint">完成率</div>
                   <div className={cn('mt-0.5 text-sm font-semibold', getSuccessTone(item.successRate))}>
                     {formatPercent(item.successRate)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-slate-400 dark:text-slate-500">失败率</div>
+                  <div className="text-cf-faint">失败率</div>
                   <div className={cn('mt-0.5 text-sm font-semibold', getRiskTone(item.failedRate))}>
                     {formatPercent(item.failedRate)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-slate-400 dark:text-slate-500">平均时长</div>
-                  <div className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <div className="text-cf-faint">平均时长</div>
+                  <div className="mt-0.5 text-sm font-semibold text-cf-title">
                     {formatDurationCompact(item.avgDurationMs)}
                   </div>
                 </div>
@@ -818,12 +813,15 @@ const RiskMatrixChart: React.FC<{
           {data.map((item) => {
             const selected = selectedProcess === item.processDefKey;
             const totalRisk = item.timeoutInstanceRate + item.anomalyInstanceRate;
-            const fill =
+            // 风险高低是状态而不是分类，所以走状态色而不是分类槽；
+            // 半透明是为了让重叠气泡能看出叠了几层。
+            const fillToken =
               totalRisk <= 5
-                ? 'rgba(16,185,129,0.55)'
+                ? '--cf-chart-good'
                 : totalRisk <= 12
-                  ? 'rgba(245,158,11,0.55)'
-                  : 'rgba(244,63,94,0.6)';
+                  ? '--cf-chart-warning'
+                  : '--cf-chart-critical';
+            const fill = `color-mix(in srgb, var(${fillToken}), transparent 45%)`;
             return (
               <circle
                 key={item.processDefKey}
@@ -831,7 +829,10 @@ const RiskMatrixChart: React.FC<{
                 cy={toY(totalRisk)}
                 r={radius(item.totalCount)}
                 fill={fill}
-                stroke={selected ? '#06b6d4' : '#0f172a'}
+                // 未选中态是「重叠标记的表面色分隔环」，必须跟着主题走：
+                // 原来写死 #0f172a，暗色下这圈会糊进背景，等于没有分隔。
+                // 选中态用品牌主色，与三档风险状态色都不同色，不会被误读成风险等级。
+                stroke={selected ? 'var(--cf-primary)' : 'var(--cf-surface-1)'}
                 strokeWidth={selected ? 3 : 1.5}
                 className="cursor-pointer"
                 data-testid={`performance-matrix-${item.processDefKey}`}
@@ -848,7 +849,7 @@ const RiskMatrixChart: React.FC<{
             textAnchor="middle"
             fontSize={11}
             fill="currentColor"
-            className="text-slate-500 dark:text-slate-400"
+            className="text-cf-subtle"
           >
             平均时长
           </text>
@@ -859,21 +860,21 @@ const RiskMatrixChart: React.FC<{
             fontSize={10}
             fill="currentColor"
             transform={`rotate(-90 16 ${height / 2})`}
-            className="text-slate-500 dark:text-slate-400"
+            className="text-cf-subtle"
           >
             风险强度
           </text>
 
-          <text x={padding.left} y={height - 14} fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
+          <text x={padding.left} y={height - 14} fontSize={10} fill="currentColor" className="text-cf-faint">
             0
           </text>
-          <text x={width - padding.right} y={height - 14} textAnchor="end" fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
+          <text x={width - padding.right} y={height - 14} textAnchor="end" fontSize={10} fill="currentColor" className="text-cf-faint">
             {formatChartDuration(maxDuration)}
           </text>
-          <text x={padding.left - 6} y={padding.top + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
+          <text x={padding.left - 6} y={padding.top + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-cf-faint">
             {formatPercent(maxRisk)}
           </text>
-          <text x={padding.left - 6} y={height - padding.bottom + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
+          <text x={padding.left - 6} y={height - padding.bottom + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-cf-faint">
             0.0%
           </text>
         </svg>
@@ -882,14 +883,39 @@ const RiskMatrixChart: React.FC<{
   );
 };
 
+/**
+ * 超时等级 → 图表状态色。
+ *
+ * stroke（SVG 标记）与 dot（图例色块）必须取自同一个 token：改造前 stroke 是
+ * 写死的 v3 hex、dot 是 Tailwind 类名，而项目已升到 v4——v4 的 `amber-500` 是
+ * `#fe9a00` 而不是 `#f59e0b`，于是图例色块和扇区显示的根本不是一个颜色。
+ * 现在两者都指向 `--cf-chart-*`，亮暗切换交给 index.css。
+ *
+ * text 仍用 Tailwind 语义色：它是文字，要保证对比度，不能用图表标记色。
+ *
+ * 「正常」档用 good（绿）而不是另造一个青色档：没超时本身就是好状态，
+ * 而青绿两色常视力 ΔE 只有 12.5，低于 15 的可辨底线，并列时读者分不开。
+ */
 const timeoutLevelTone = (level: string) => {
   if (level === 'CRITICAL') {
-    return { stroke: '#f43f5e', dot: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-300' };
+    return {
+      stroke: 'var(--cf-chart-critical)',
+      dot: 'bg-cf-chart-critical',
+      text: 'text-rose-600 dark:text-rose-300',
+    };
   }
   if (level === 'WARNING') {
-    return { stroke: '#f59e0b', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-300' };
+    return {
+      stroke: 'var(--cf-chart-warning)',
+      dot: 'bg-cf-chart-warning',
+      text: 'text-amber-600 dark:text-amber-300',
+    };
   }
-  return { stroke: '#06b6d4', dot: 'bg-cyan-500', text: 'text-cyan-600 dark:text-cyan-300' };
+  return {
+    stroke: 'var(--cf-chart-good)',
+    dot: 'bg-cf-chart-good',
+    text: 'text-emerald-600 dark:text-emerald-300',
+  };
 };
 
 const TimeoutLevelDistributionCard: React.FC<{
@@ -928,8 +954,8 @@ const TimeoutLevelDistributionCard: React.FC<{
     <div className="grid gap-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
       <div className="relative mx-auto h-28 w-28">
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-xl font-semibold text-slate-900 dark:text-slate-100">{formatCount(total)}</div>
-          <div className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+          <div className="text-xl font-semibold text-cf-title">{formatCount(total)}</div>
+          <div className="mt-1 text-[11px] text-cf-faint">
             超时事件
           </div>
         </div>
@@ -966,10 +992,10 @@ const TimeoutLevelDistributionCard: React.FC<{
             <div key={item.level} className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
                 <span className={cn('inline-block h-2.5 w-2.5 rounded-sm', tone.dot)} />
-                <span className="truncate text-sm text-slate-700 dark:text-slate-200">{item.label}</span>
+                <span className="truncate text-sm text-cf-body">{item.label}</span>
               </div>
               <div className="text-right">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                <div className="text-sm font-semibold text-cf-title">
                   {formatCount(item.count)}
                 </div>
                 <div className={cn('text-xs', tone.text)}>{formatPercent(item.rate)}</div>
@@ -982,16 +1008,19 @@ const TimeoutLevelDistributionCard: React.FC<{
   );
 };
 
-const anomalyBarTone = (index: number) => {
-  const tones = [
-    'bg-rose-500',
-    'bg-[#0d95b5]',
-    'bg-orange-500',
-    'bg-amber-500',
-    'bg-[var(--cf-text-muted)]',
-  ];
-  return tones[index % tones.length];
-};
+/**
+ * 异常类型分布条的颜色：**单色**。
+ *
+ * 改造前是 5 个色按 `index % 5` 轮着发，两个问题：
+ * 1. 颜色跟的是名次而不是实体——筛选一变、排序一变，所有条的颜色重排，
+ *    读者会误以为分类变了；
+ * 2. 这是单系列的量级比较，每条旁边已经有类型名 + 数量 + 占比三个可见标签，
+ *    颜色不携带任何信息，多色只是噪声（而且首位用的还是状态色 rose，
+ *    会被误读成"这一类是严重的"）。
+ *
+ * 量级比较用同一个色即可，长度已经表达了大小。
+ */
+const ANOMALY_BAR_TONE = 'bg-cf-chart-1';
 
 const AnomalyTypeRankingCard: React.FC<{
   items: PerformanceAnomalyTypeBreakdownItem[];
@@ -1014,20 +1043,20 @@ const AnomalyTypeRankingCard: React.FC<{
 
   return (
     <div className="grid gap-3">
-      {rows.map((item, index) => (
+      {rows.map((item) => (
         <div key={item.type} className="space-y-1.5">
           <div className="flex items-center justify-between gap-3">
-            <div className="truncate text-sm text-slate-700 dark:text-slate-200">{getAnomalyTypeLabel(item.type) || item.label}</div>
+            <div className="truncate text-sm text-cf-body">{getAnomalyTypeLabel(item.type) || item.label}</div>
             <div className="text-right">
-              <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <span className="text-sm font-semibold text-cf-title">
                 {formatCount(item.count)}
               </span>
-              <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">{formatPercent(item.rate)}</span>
+              <span className="ml-2 text-xs text-cf-subtle">{formatPercent(item.rate)}</span>
             </div>
           </div>
           <div className="h-2 overflow-hidden rounded-md bg-slate-200 dark:bg-slate-800">
             <div
-              className={cn('h-full rounded-md', anomalyBarTone(index))}
+              className={cn('h-full rounded-md', ANOMALY_BAR_TONE)}
               style={{ width: `${Math.max((item.count / maxCount) * 100, 10)}%` }}
             />
           </div>
@@ -1041,15 +1070,16 @@ const PerformanceStatsPage: React.FC = () => {
   const [dashboard, setDashboard] = useState<PerformanceDashboardResponse | null>(null);
   const [riskBreakdown, setRiskBreakdown] = useState<PerformanceRiskBreakdownResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(60);
   const [dateRange, setDateRange] = useState({
     startDate: getDaysAgoDateString(29),
     endDate: getLocalDateString(),
   });
   const [selectedProcess, setSelectedProcess] = useState('');
-  const [rangePreset, setRangePreset] = useState('30');
   const [processCatalog, setProcessCatalog] = useState<Record<string, string>>({});
 
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
       const [dashboardData, riskBreakdownData] = await Promise.all([
@@ -1086,33 +1116,11 @@ const PerformanceStatsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange.endDate, dateRange.startDate, selectedProcess]);
 
   useEffect(() => {
     void loadDashboard();
-  }, [dateRange.endDate, dateRange.startDate, selectedProcess]);
-
-  const applyRangePreset = (value: string) => {
-    setRangePreset(value);
-    const days = Number(value);
-    if (Number.isNaN(days)) {
-      return;
-    }
-    setDateRange({
-      startDate: getDaysAgoDateString(days - 1),
-      endDate: getLocalDateString(),
-    });
-  };
-
-  const handleStartDateChange = (value: string) => {
-    setRangePreset('custom');
-    setDateRange((previous) => ({ ...previous, startDate: value }));
-  };
-
-  const handleEndDateChange = (value: string) => {
-    setRangePreset('custom');
-    setDateRange((previous) => ({ ...previous, endDate: value }));
-  };
+  }, [loadDashboard]);
 
   const processOptions = useMemo(
     () =>
@@ -1293,10 +1301,15 @@ const PerformanceStatsPage: React.FC = () => {
           <span>监控流程吞吐、耗时、失败、超时与异常风险。</span>
         </div>
         <div className="admin-source-controls">
-          <Button variant="outline" size="sm" onClick={() => void loadDashboard()} disabled={loading}>
-            <RefreshCw className={cn('h-4 w-4', loading ? 'animate-spin' : '')} />
-            刷新
-          </Button>
+          <AutoRefreshButton
+            enabled={autoRefreshEnabled}
+            intervalSeconds={autoRefreshInterval}
+            intervals={[30, 60, 300]}
+            loading={loading}
+            onEnabledChange={setAutoRefreshEnabled}
+            onIntervalChange={setAutoRefreshInterval}
+            onRefresh={loadDashboard}
+          />
           <Button variant="outline" size="sm" onClick={exportDashboard} disabled={processRows.length === 0}>
             <Download className="h-4 w-4" />
             导出 CSV
@@ -1341,35 +1354,12 @@ const PerformanceStatsPage: React.FC = () => {
   const pageFilters = (
       <section className="admin-source-inline-toolbar admin-performance-filter-toolbar">
         <div className="admin-performance-filter-controls">
-          <SegmentedControl className="min-h-9">
-            {RANGE_PRESETS.map((item) => (
-              <SegmentedControlItem
-                key={item.value}
-                size="sm"
-                active={rangePreset === item.value}
-                onClick={() => applyRangePreset(item.value)}
-              >
-                {item.label}
-              </SegmentedControlItem>
-            ))}
-          </SegmentedControl>
-
-          <label>
-            <span className="input-label">开始日期</span>
-            <DatePicker
-              className="cf-control admin-performance-date-control"
-              type="date"
-              value={dateRange.startDate}
-              onChange={(event) => handleStartDateChange(event.target.value)}
-            />
-          </label>
-          <label>
-            <span className="input-label">结束日期</span>
-            <DatePicker
-              className="cf-control admin-performance-date-control"
-              type="date"
-              value={dateRange.endDate}
-              onChange={(event) => handleEndDateChange(event.target.value)}
+          <label className="admin-performance-date-range-control">
+            <span className="input-label">统计区间</span>
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+              ariaLabel="选择流程性能统计区间"
             />
           </label>
 
@@ -1450,7 +1440,7 @@ const PerformanceStatsPage: React.FC = () => {
                 testId="process-ranking-card"
                 compact
                 action={
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-xs text-cf-subtle">
                     {processRows.length} 项
                   </span>
                 }
@@ -1480,7 +1470,7 @@ const PerformanceStatsPage: React.FC = () => {
                     testId="timeout-level-card"
                     compact
                     action={
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                      <span className="text-xs text-cf-subtle">
                         {timeoutBreakdownTotal} 个
                       </span>
                     }
@@ -1498,7 +1488,7 @@ const PerformanceStatsPage: React.FC = () => {
                     testId="anomaly-type-card"
                     compact
                     action={
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                      <span className="text-xs text-cf-subtle">
                         {anomalyBreakdownTotal} 个
                       </span>
                     }
@@ -1516,14 +1506,14 @@ const PerformanceStatsPage: React.FC = () => {
             <InnerTableSurface data-testid="process-detail-card" className="relative">
               {loading ? (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--cf-surface-strong)] dark:bg-slate-950">
-                  <RefreshCw className="h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
+                  <RefreshCw className="h-5 w-5 animate-spin text-cf-faint" />
                 </div>
               ) : null}
               <div className="admin-performance-panel-head">
                 <SectionHeader
                   title="流程明细表"
                   action={
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                    <span className="text-xs text-cf-subtle">
                       {processRows.length} 条
                     </span>
                   }
@@ -1555,10 +1545,10 @@ const PerformanceStatsPage: React.FC = () => {
                         )}
                       >
                         <td className="min-w-0">
-                          <div className="truncate font-medium text-slate-900 dark:text-slate-100">
+                          <div className="truncate font-medium text-cf-title">
                             {item.processName}
                           </div>
-                          <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                          <div className="mt-1 truncate text-xs text-cf-subtle">
                             {item.processDefKey}
                           </div>
                         </td>

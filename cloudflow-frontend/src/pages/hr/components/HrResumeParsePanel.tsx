@@ -169,11 +169,11 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
         )}
       >
         {loading ? (
-          <div className="py-10 text-center text-sm text-slate-400">
+          <div className="py-10 text-center text-sm text-cf-faint">
             <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
           </div>
         ) : records.length === 0 ? (
-          <div className="py-10 text-center text-sm text-slate-400">暂无解析记录，点击"重新解析"触发</div>
+          <div className="py-10 text-center text-sm text-cf-faint">暂无解析记录，点击"重新解析"触发</div>
         ) : (
           <InnerTableSurface>
             <div className="admin-source-section-head border-b border-slate-200 p-4 dark:border-slate-800">
@@ -201,39 +201,39 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                         <tr key={record.id}>
                           <td>
                             <DictBadge dictType="hr_resume_parse_status" value={String(record.status || 'PENDING')} />
-                            {record.createTime ? <div className="mt-1 text-xs text-slate-500">{record.createTime}</div> : null}
+                            {record.createTime ? <div className="mt-1 text-xs text-cf-subtle">{record.createTime}</div> : null}
                           </td>
                           <td>
-                            <div className="font-medium text-slate-700 dark:text-slate-200">{record.parsedName || '-'}</div>
-                            <div className="text-xs text-slate-500">{record.parsedPhone || '-'}</div>
-                            <div className="text-xs text-slate-500">{record.parsedEmail || '-'}</div>
+                            <div className="font-medium text-cf-body">{record.parsedName || '-'}</div>
+                            <div className="text-xs text-cf-subtle">{record.parsedPhone || '-'}</div>
+                            <div className="text-xs text-cf-subtle">{record.parsedEmail || '-'}</div>
                           </td>
                           <td className="max-w-[240px]">
-                            <div className="text-sm text-slate-700 dark:text-slate-200">{record.parsedEducation || '-'}</div>
-                            <div className="line-clamp-2 whitespace-pre-wrap text-xs text-slate-500">{record.parsedSkills || '-'}</div>
+                            <div className="text-sm text-cf-body">{record.parsedEducation || '-'}</div>
+                            <div className="line-clamp-2 whitespace-pre-wrap text-xs text-cf-subtle">{record.parsedSkills || '-'}</div>
                           </td>
                           <td className="max-w-[320px]">
-                            <div className="line-clamp-3 whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-300">
+                            <div className="line-clamp-3 whitespace-pre-wrap text-xs text-cf-muted">
                               {record.parsedWorkExperience || '-'}
                             </div>
                             {record.reviewRemark ? (
-                              <div className="mt-1 text-xs text-slate-500">复核意见：{record.reviewRemark}</div>
+                              <div className="mt-1 text-xs text-cf-subtle">复核意见：{record.reviewRemark}</div>
                             ) : null}
                           </td>
                           <td className="tabular-nums">{formatConfidence(record.confidence)}</td>
                           <td>
                             {record.status === 'PENDING' && !isEditing ? (
                               <div className="admin-users-row-actions">
-                                <button type="button" title="编辑" onClick={() => startEdit(record)} disabled={submitting}>
+                                <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => startEdit(record)} disabled={submitting}>
                                   <Edit size={15} />
                                 </button>
-                                <button type="button" title="确认回填" onClick={() => void confirmRecord(record.id)} disabled={submitting}>
+                                <button type="button" data-tooltip="确认回填" aria-label="确认回填" onClick={() => void confirmRecord(record.id)} disabled={submitting}>
                                   <Check size={15} />
                                 </button>
                                 <button
                                   type="button"
                                   className="danger"
-                                  title="驳回"
+                                  data-tooltip="驳回" aria-label="驳回"
                                   onClick={() => {
                                     setRejectingId(record.id);
                                     setRejectReason('');
@@ -246,10 +246,10 @@ export const HrResumeParsePanel = ({ open, candidateId, candidateName, defaultRe
                             ) : null}
                             {isEditing ? (
                               <div className="admin-users-row-actions">
-                                <button type="button" title="取消" onClick={cancelEdit} disabled={submitting}>
+                                <button type="button" data-tooltip="取消" aria-label="取消" onClick={cancelEdit} disabled={submitting}>
                                   <X size={15} />
                                 </button>
-                                <button type="button" title="保存" onClick={() => void saveEdit(record.id)} disabled={submitting}>
+                                <button type="button" data-tooltip="保存" aria-label="保存" onClick={() => void saveEdit(record.id)} disabled={submitting}>
                                   <Save size={15} />
                                 </button>
                               </div>

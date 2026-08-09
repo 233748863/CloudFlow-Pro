@@ -90,7 +90,7 @@ export const MobileTasks: React.FC = () => {
       case 'low':
         return 'bg-green-100 text-green-600 border-green-200';
       default:
-        return 'bg-slate-100 text-slate-600 border-slate-200';
+        return 'bg-cf-surface-3 text-cf-muted border-slate-200';
     }
   };
 
@@ -145,7 +145,7 @@ export const MobileTasks: React.FC = () => {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <Loader2 className="animate-spin text-[#0d95b5] mx-auto mb-3" size={32} />
-          <p className="text-sm text-slate-500">加载任务...</p>
+          <p className="text-sm text-cf-subtle">加载任务...</p>
         </div>
       </div>
     );
@@ -183,11 +183,11 @@ export const MobileTasks: React.FC = () => {
           className="p-1 -ml-1"
           aria-label="返回"
         >
-          <ChevronLeft size={24} className="text-slate-600" />
+          <ChevronLeft size={24} className="text-cf-muted" />
         </button>
-        <h1 className="text-lg font-semibold text-slate-900 flex-1">我的任务</h1>
+        <h1 className="text-lg font-semibold text-cf-title flex-1">我的任务</h1>
         <button className="p-2" aria-label="筛选">
-          <Filter size={20} className="text-slate-600" />
+          <Filter size={20} className="text-cf-muted" />
         </button>
       </div>
 
@@ -195,15 +195,15 @@ export const MobileTasks: React.FC = () => {
       <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 grid grid-cols-3 gap-4">
         <div className="text-center">
           <div className="text-2xl font-bold text-[#0d95b5]">{taskCounts.pending}</div>
-          <div className="text-xs text-slate-500 mt-1">待办</div>
+          <div className="text-xs text-cf-subtle mt-1">待办</div>
         </div>
         <div className="text-center border-l border-r border-slate-200">
           <div className="text-2xl font-bold text-green-600">{taskCounts.completed}</div>
-          <div className="text-xs text-slate-500 mt-1">已完成</div>
+          <div className="text-xs text-cf-subtle mt-1">已完成</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-slate-600">{taskCounts.myApplications}</div>
-          <div className="text-xs text-slate-500 mt-1">我的申请</div>
+          <div className="text-2xl font-bold text-cf-muted">{taskCounts.myApplications}</div>
+          <div className="text-xs text-cf-subtle mt-1">我的申请</div>
         </div>
       </div>
 
@@ -214,10 +214,10 @@ export const MobileTasks: React.FC = () => {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-[#0d95b5] text-[#0d95b5]'
-                : 'border-transparent text-slate-500'
-            }`}
+ activeTab === tab
+ ? 'border-[#0d95b5] text-[#0d95b5]'
+ : 'border-transparent text-cf-subtle'
+ }`}
           >
             {tab === 'all' ? '全部' : tab === 'pending' ? '待办' : '紧急'}
           </button>
@@ -239,12 +239,12 @@ export const MobileTasks: React.FC = () => {
                 <CheckCircle2
                   size={20}
                   className={`mt-0.5 flex-shrink-0 ${
-                    task.priority === 'high' ? 'text-red-500' : 'text-slate-400'
-                  }`}
+ task.priority === 'high' ? 'text-red-500' : 'text-cf-faint'
+ }`}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="text-sm font-medium text-slate-900 line-clamp-2">
+                    <h3 className="text-sm font-medium text-cf-title line-clamp-2">
                       {task.taskName}
                     </h3>
                     <span
@@ -260,10 +260,10 @@ export const MobileTasks: React.FC = () => {
                     <span className="text-xs bg-[#effbfe] text-[#0d95b5] px-2 py-0.5 rounded">
                       {task.processName}
                     </span>
-                    <span className="text-xs text-slate-500">申请人：{task.applicantName}</span>
+                    <span className="text-xs text-cf-subtle">申请人：{task.applicantName}</span>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-400">
+                  <div className="flex items-center justify-between text-xs text-cf-faint">
                     <div className="flex items-center gap-1">
                       <Clock size={12} />
                       <span>{formatTime(task.createTime)}</span>
@@ -296,14 +296,14 @@ export const MobileTasks: React.FC = () => {
         ) : (
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-12 text-center">
             <CheckCircle2 size={48} className="text-slate-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-cf-subtle">
               {activeTab === 'pending'
                 ? '暂无待办任务'
                 : activeTab === 'urgent'
                 ? '暂无紧急任务'
                 : '暂无任务'}
             </p>
-            <p className="text-xs text-slate-400 mt-1">所有任务已处理完毕</p>
+            <p className="text-xs text-cf-faint mt-1">所有任务已处理完毕</p>
           </div>
         )}
       </div>

@@ -51,7 +51,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     >
       <div className="admin-dialog-stack">
         {content ? (
-          <p className="whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">{content}</p>
+          <p className="whitespace-pre-line text-sm leading-6 text-cf-muted">{content}</p>
         ) : null}
         {children}
       </div>

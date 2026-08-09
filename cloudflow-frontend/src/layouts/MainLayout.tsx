@@ -369,7 +369,7 @@ export const MainLayout = () => {
           <div key={item.id} className="sidebar-tree-node">
             <button
               type="button"
-              title={title}
+              data-tooltip={title} aria-label={title}
               aria-expanded={expanded}
               onClick={() => toggleMenuExpanded(item.id, depth)}
               className={cn(
@@ -398,7 +398,7 @@ export const MainLayout = () => {
         <button
           key={item.id}
           type="button"
-          title={title}
+          data-tooltip={title} aria-label={title}
           onClick={() => navigateToItem(item)}
           className={cn(
             'sidebar-link cf-side-link',
@@ -416,14 +416,14 @@ export const MainLayout = () => {
   const sidebarCompact = sidebarCollapsed && !mobileSidebarOpen;
   if (loading || menuLoading) {
     return (
-      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-[var(--cf-bg)] px-4 text-slate-600 dark:text-slate-300">
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-[var(--cf-bg)] px-4 text-cf-muted">
         <div className="card flex items-center gap-3 px-4 py-3">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900">
             <img src="/icon.svg" alt="CloudFlow Pro" className="h-8 w-8 object-contain" />
           </div>
           <div className="space-y-0.5">
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">正在加载工作区资源…</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">主题、菜单与用户状态同步中</p>
+            <p className="text-sm font-medium text-cf-title">正在加载工作区资源…</p>
+            <p className="text-xs text-cf-subtle">主题、菜单与用户状态同步中</p>
           </div>
         </div>
       </div>
@@ -472,7 +472,7 @@ export const MainLayout = () => {
                   <button
                     key={item.id}
                     type="button"
-                    title={`${item.groupLabel} / ${item.label}`}
+                    data-tooltip={`${item.groupLabel} / ${item.label}`} aria-label={`${item.groupLabel} / ${item.label}`}
                     onClick={() => navigateToItem(item)}
                     className={cn(
                       'sidebar-link sidebar-link-collapsed cf-side-link h-8 w-8 justify-center gap-0 px-0 transition-all duration-300',
@@ -496,7 +496,7 @@ export const MainLayout = () => {
             <button
               type="button"
               onClick={toggleThemeMode}
-              title={sidebarCompact ? (resolvedTheme === 'dark' ? '浅色模式' : '深色模式') : undefined}
+              data-tooltip={sidebarCompact ? (resolvedTheme === 'dark' ? '浅色模式' : '深色模式') : undefined} aria-label={sidebarCompact ? (resolvedTheme === 'dark' ? '浅色模式' : '深色模式') : undefined}
               className={cn(
                 'sidebar-link cf-side-link overflow-hidden',
                 sidebarCompact ? 'sidebar-link-collapsed h-8 w-8 justify-center gap-0 px-0' : '',
@@ -513,7 +513,7 @@ export const MainLayout = () => {
             <button
               type="button"
               onClick={() => setSidebarCollapsed((prev) => !prev)}
-              title={sidebarCompact ? '展开侧栏' : '收起侧栏'}
+              data-tooltip={sidebarCompact ? '展开侧栏' : '收起侧栏'} aria-label={sidebarCompact ? '展开侧栏' : '收起侧栏'}
               className={cn(
                 'sidebar-link cf-side-link overflow-hidden',
                 sidebarCompact ? 'sidebar-link-collapsed h-8 w-8 justify-center gap-0 px-0' : '',
@@ -549,22 +549,22 @@ export const MainLayout = () => {
               <button
                 type="button"
                 aria-label="打开导航"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-50 lg:hidden"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-cf-surface-1 text-cf-muted transition-colors hover:bg-cf-surface-2 hover:text-cf-title dark:border-slate-800 lg:hidden"
                 onClick={() => setMobileSidebarOpen(true)}
               >
                 <Menu size={18} />
               </button>
               <div className="min-w-0 lg:hidden">
-                <h1 className="truncate text-[15px] font-semibold text-slate-950 dark:text-slate-100">
+                <h1 className="truncate text-[15px] font-semibold text-cf-title">
                   {activeLabel.item}
                 </h1>
-                <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{activeLabel.group}</p>
+                <p className="mt-0.5 truncate text-xs text-cf-subtle">{activeLabel.group}</p>
               </div>
               <div className="hidden lg:block">
-                <h1 className="truncate text-[15px] font-semibold text-slate-950 dark:text-slate-100">
+                <h1 className="truncate text-[15px] font-semibold text-cf-title">
                   {activeLabel.item}
                 </h1>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{activeLabel.group}</p>
+                <p className="mt-0.5 text-xs text-cf-subtle">{activeLabel.group}</p>
               </div>
             </div>
 

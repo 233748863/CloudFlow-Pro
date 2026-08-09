@@ -96,7 +96,7 @@ export const DictSelect: React.FC<DictSelectProps> = ({
   if (isLoading) {
     return (
       <div className={cn('cf-control h-10 rounded-md px-4 py-2.5', className)}>
-        <span className="text-sm text-slate-400">加载中...</span>
+        <span className="text-sm text-cf-faint">加载中...</span>
       </div>
     );
   }
@@ -112,7 +112,7 @@ export const DictSelect: React.FC<DictSelectProps> = ({
       <SelectContent>
         {allowClear && value && (
           <SelectItem value="" label="清空">
-            <span className="text-slate-400">清空</span>
+            <span className="text-cf-faint">清空</span>
           </SelectItem>
         )}
         {filteredData.map((item) => (

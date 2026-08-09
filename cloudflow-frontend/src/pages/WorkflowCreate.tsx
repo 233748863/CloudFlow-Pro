@@ -13,6 +13,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/common';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './WorkflowCreate.css';
 
 type LaunchMetric = {
   label: string;

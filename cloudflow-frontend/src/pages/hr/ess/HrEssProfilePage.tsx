@@ -152,10 +152,10 @@ const BankCardTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
                   <td><span className={row.isPrimary ? 'badge badge-success' : 'badge badge-gray'}>{row.isPrimary ? '是' : '否'}</span></td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, accountNo: '' }); setOpen(true); }}>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, accountNo: '' }); setOpen(true); }}>
                         <Pencil size={15} />
                       </button>
-                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                      <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(row)}>
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -281,10 +281,10 @@ const FamilyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
                   <td><span className={row.isDependent ? 'badge badge-success' : 'badge badge-gray'}>{row.isDependent ? '是' : '否'}</span></td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, birthDate: toDateInputValue(row.birthDate), idCardNo: '' }); setOpen(true); }}>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, birthDate: toDateInputValue(row.birthDate), idCardNo: '' }); setOpen(true); }}>
                         <Pencil size={15} />
                       </button>
-                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                      <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(row)}>
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -424,10 +424,10 @@ const EmergencyTab: React.FC<{ employeeId: number }> = ({ employeeId }) => {
                   <td>{row.phone}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
                         <Pencil size={15} />
                       </button>
-                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                      <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(row)}>
                         <Trash2 size={15} />
                       </button>
                     </div>

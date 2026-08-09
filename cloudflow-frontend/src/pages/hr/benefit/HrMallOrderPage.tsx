@@ -222,13 +222,13 @@ export const HrMallOrderPage: React.FC = () => {
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={8} className="py-10 text-center text-sm text-slate-400">
+              <td colSpan={8} className="py-10 text-center text-sm text-cf-faint">
                 <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无订单</td>
+              <td colSpan={8} className="py-10 text-center text-sm text-cf-faint">暂无订单</td>
             </tr>
           ) : (
             rows.map((row) => (
@@ -246,15 +246,15 @@ export const HrMallOrderPage: React.FC = () => {
                 <td className="text-xs">{formatDateTimeValue(row.createTime)}</td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="详情" aria-label="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
+                    <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDetail(row)}><Eye size={15} /></button>
                     {hasWorkflowStatus(row.status, 'APPROVED') ? (
-                      <button type="button" title="发货" aria-label="发货" onClick={() => setShipOpen(row)}><Send size={15} /></button>
+                      <button type="button" data-tooltip="发货" aria-label="发货" onClick={() => setShipOpen(row)}><Send size={15} /></button>
                     ) : null}
                     {hasWorkflowStatus(row.status, 'SHIPPED') && query.scope === 'mine' ? (
-                      <button type="button" title="确认收货" aria-label="确认收货" onClick={() => void handleComplete(row)}><Check size={15} /></button>
+                      <button type="button" data-tooltip="确认收货" aria-label="确认收货" onClick={() => void handleComplete(row)}><Check size={15} /></button>
                     ) : null}
                     {hasWorkflowStatus(row.status, 'PENDING', 'APPROVED') ? (
-                      <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => { setCancelTarget(row); setCancelReason('不需要了'); }}><Ban size={15} /></button>
+                      <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => { setCancelTarget(row); setCancelReason('不需要了'); }}><Ban size={15} /></button>
                     ) : null}
                   </div>
                 </td>
@@ -302,16 +302,16 @@ export const HrMallOrderPage: React.FC = () => {
         >
           <div className="grid gap-3 text-sm">
             <div className="grid grid-cols-2 gap-3">
-              <div><span className="text-slate-500">状态:</span> <DictLabel dictType="hr_mall_order_status" value={detail.status} fallback="-" /></div>
-              <div><span className="text-slate-500">积分合计:</span> {detail.totalPoints}</div>
-              <div><span className="text-slate-500">收件人:</span> {detail.receiverName ?? '-'}</div>
-              <div><span className="text-slate-500">联系电话:</span> {detail.receiverPhone ?? '-'}</div>
-              <div className="col-span-2"><span className="text-slate-500">收货地址:</span> {detail.receiverAddress ?? '-'}</div>
-              <div><span className="text-slate-500">下单时间:</span> {formatDateTimeValue(detail.createTime)}</div>
-              <div><span className="text-slate-500">物流单号:</span> {detail.expressNo ?? '-'}</div>
-              <div><span className="text-slate-500">发货时间:</span> {formatDateTimeValue(detail.shippedAt)}</div>
-              <div><span className="text-slate-500">完成时间:</span> {formatDateTimeValue(detail.completedAt)}</div>
-              {detail.remark && <div className="col-span-2"><span className="text-slate-500">备注:</span> {detail.remark}</div>}
+              <div><span className="text-cf-subtle">状态:</span> <DictLabel dictType="hr_mall_order_status" value={detail.status} fallback="-" /></div>
+              <div><span className="text-cf-subtle">积分合计:</span> {detail.totalPoints}</div>
+              <div><span className="text-cf-subtle">收件人:</span> {detail.receiverName ?? '-'}</div>
+              <div><span className="text-cf-subtle">联系电话:</span> {detail.receiverPhone ?? '-'}</div>
+              <div className="col-span-2"><span className="text-cf-subtle">收货地址:</span> {detail.receiverAddress ?? '-'}</div>
+              <div><span className="text-cf-subtle">下单时间:</span> {formatDateTimeValue(detail.createTime)}</div>
+              <div><span className="text-cf-subtle">物流单号:</span> {detail.expressNo ?? '-'}</div>
+              <div><span className="text-cf-subtle">发货时间:</span> {formatDateTimeValue(detail.shippedAt)}</div>
+              <div><span className="text-cf-subtle">完成时间:</span> {formatDateTimeValue(detail.completedAt)}</div>
+              {detail.remark && <div className="col-span-2"><span className="text-cf-subtle">备注:</span> {detail.remark}</div>}
             </div>
             <div>
               <div className="mb-2 font-semibold">商品明细</div>
@@ -359,7 +359,7 @@ export const HrMallOrderPage: React.FC = () => {
             <Label>物流单号</Label>
             <Input value={expressNo} onChange={(e) => setExpressNo(e.target.value)} placeholder="例如 SF1234567890" />
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-cf-subtle">
             收件人:{shipOpen.receiverName ?? '-'} {shipOpen.receiverPhone ?? ''}<br />
             地址:{shipOpen.receiverAddress ?? '-'}
           </div>
@@ -379,7 +379,7 @@ export const HrMallOrderPage: React.FC = () => {
         }
       >
         <div className="admin-dialog-field">
-          <div className="text-xs text-slate-500">取消后积分与库存将自动退回。</div>
+          <div className="text-xs text-cf-subtle">取消后积分与库存将自动退回。</div>
           <Label>取消理由</Label>
           <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="请输入取消理由" />
         </div>

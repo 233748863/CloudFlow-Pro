@@ -63,8 +63,8 @@ const InlineState: React.FC<{
     <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <Megaphone className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
+    {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
   </div>
 );
 
@@ -574,7 +574,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
         <div className="admin-dialog-stack">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="admin-dialog-field md:col-span-2">
-              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">标题</Label>
+              <Label className="text-xs font-medium text-cf-subtle">标题</Label>
               <Input
                 className="h-11"
                 value={formData.title || ''}
@@ -584,7 +584,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
             </div>
 
             <div className="admin-dialog-field md:col-span-2">
-              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">内容</Label>
+              <Label className="text-xs font-medium text-cf-subtle">内容</Label>
               <Textarea
                 className="min-h-[160px] font-mono text-sm"
                 value={formData.content || ''}
@@ -594,7 +594,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
             </div>
 
             <div className="admin-dialog-field">
-              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">类型</Label>
+              <Label className="text-xs font-medium text-cf-subtle">类型</Label>
               <Select
                 value={String(formData.type ?? AnnouncementType.NOTIFICATION)}
                 onValueChange={(value) => setFormData({ ...formData, type: value as AnnouncementType })}
@@ -611,7 +611,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
             </div>
 
             <div className="admin-dialog-field">
-              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">优先级</Label>
+              <Label className="text-xs font-medium text-cf-subtle">优先级</Label>
               <Select
                 value={String(formData.priority ?? 'M')}
                 onValueChange={(value) => setFormData({ ...formData, priority: value as 'L' | 'M' | 'H' })}
@@ -628,7 +628,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
             </div>
 
             <div className="admin-dialog-field">
-              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">过期时间</Label>
+              <Label className="text-xs font-medium text-cf-subtle">过期时间</Label>
               <DatePicker
                 className="h-11"
                 type="datetime-local"
@@ -641,7 +641,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
             </div>
 
             <div className="admin-dialog-field">
-              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">置顶</Label>
+              <Label className="text-xs font-medium text-cf-subtle">置顶</Label>
               <label className="admin-dialog-checkline">
                 <input
                   type="checkbox"
@@ -658,7 +658,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
           </div>
 
           <div className="admin-dialog-subsection">
-            <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">发布范围</div>
+            <div className="mb-3 text-sm font-semibold text-cf-title">发布范围</div>
 
             <AnnouncementTargetingEditor
               scopeType={(formData.scopeType as AnnouncementScope) || AnnouncementScope.ALL}

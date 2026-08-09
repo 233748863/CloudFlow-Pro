@@ -40,6 +40,7 @@ import { buildEmployeeLabel, flattenDeptTree, idFallbackLabel, normalizeRows } f
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 import { useDict } from '@/hooks/useDict';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import './admin-hr.css';
 
 const formatTimeValue = (value?: unknown) => {
   const text = String(value || '');

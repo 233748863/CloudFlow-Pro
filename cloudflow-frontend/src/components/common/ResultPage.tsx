@@ -76,7 +76,7 @@ const STATUS_MAP: Record<ResultStatus, StatusConfig> = {
     subTitle: '请检查网络后重试，或稍后再试。',
     iconWrap:
       'border-slate-200 bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-900/50',
-    iconColor: 'text-slate-500 dark:text-slate-300',
+    iconColor: 'text-cf-subtle',
   },
   success: {
     icon: CheckCircle2,
@@ -199,11 +199,11 @@ export const ResultPage: React.FC<ResultPageProps> = ({
           <div className="text-xs font-semibold text-cyan-600 dark:text-cyan-300">
             {cfg.code}
           </div>
-          <h1 className="mt-3 text-xl font-semibold text-slate-900 dark:text-slate-100">
+          <h1 className="mt-3 text-xl font-semibold text-cf-title">
             {effectiveTitle}
           </h1>
           {effectiveSubTitle && (
-            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-400">
+            <p className="mt-3 max-w-xl text-sm leading-7 text-cf-muted">
               {effectiveSubTitle}
             </p>
           )}

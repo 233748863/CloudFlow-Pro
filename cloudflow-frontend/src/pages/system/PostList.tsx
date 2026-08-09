@@ -60,9 +60,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -431,7 +431,7 @@ export const PostList = () => {
             ) : (
               posts.map((post) => (
                 <tr key={post.postId}>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">{post.postId}</td>
+                  <td className="text-sm text-cf-subtle">{post.postId}</td>
                   <td>
                     <div className="admin-posts-name">
                       <span>
@@ -455,16 +455,16 @@ export const PostList = () => {
                       {post.status === '0' ? '正常' : '停用'}
                     </span>
                   </td>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">{post.createTime || '-'}</td>
+                  <td className="text-sm text-cf-subtle">{post.createTime || '-'}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑岗位" onClick={() => handleOpenModal(post)}>
+                      <button type="button" data-tooltip="编辑岗位" aria-label="编辑岗位" onClick={() => handleOpenModal(post)}>
                         <Edit size={15} />
                       </button>
                       <button
                         type="button"
                         className="danger"
-                        title="删除岗位"
+                        data-tooltip="删除岗位" aria-label="删除岗位"
                         onClick={() => setPendingDeletePost(post)}
                       >
                         <Trash2 size={15} />

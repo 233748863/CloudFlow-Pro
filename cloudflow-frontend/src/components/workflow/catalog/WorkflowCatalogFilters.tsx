@@ -61,7 +61,7 @@ export const WorkflowCatalogFilters: React.FC<WorkflowCatalogFiltersProps> = ({
             清空筛选
           </Button>
         ) : (
-          <div className="p-4 inline-flex min-h-10 items-center border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+          <div className="p-4 inline-flex min-h-10 items-center border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-xs text-cf-faint dark:border-slate-800 dark:bg-slate-900">
             当前未应用额外筛选
           </div>
         )}

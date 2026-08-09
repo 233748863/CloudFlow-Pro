@@ -20,7 +20,7 @@ import {
   SysLog,
   SysLogQuery,
 } from '@/services/api/log';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, Pagination, Table, TableScrollArea } from '@/components/common';
 import {
   Button,
   DatePicker,
@@ -62,9 +62,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -118,10 +118,10 @@ const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
                 key={item.label}
                 className="border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800"
               >
-                <div className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                <div className="text-xs font-medium text-cf-faint">
                   {item.label}
                 </div>
-                <div className="mt-2 break-all text-sm text-slate-900 dark:text-slate-100">
+                <div className="mt-2 break-all text-sm text-cf-title">
                   {item.value || '-'}
                 </div>
               </div>
@@ -135,7 +135,7 @@ const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
                   <strong>异常信息</strong>
                 </div>
               </div>
-              <div className="break-all p-4 text-sm leading-7 text-slate-700 dark:text-slate-200">
+              <div className="break-all p-4 text-sm leading-7 text-cf-body">
                 {log.exception}
               </div>
             </section>
@@ -421,8 +421,15 @@ export const OperationLogPage: React.FC = () => {
             </section>
           )}
           table={(
-            <InnerTableSurface className="admin-operation-log-table-panel">
-              <table className="unity-data-table admin-source-table admin-operation-log-table min-w-[1180px]">
+            <InnerTableSurface className="admin-operation-log-table-panel" disableScrollWrapper>
+              <TableScrollArea aria-label="操作日志表格">
+                <Table
+                  disableScrollWrapper
+                  stickyHeader
+                  pinnedColumns={{ left: 1, right: 1 }}
+                  className="admin-source-table admin-operation-log-table min-w-[1180px]"
+                  style={{ minWidth: 1180 }}
+                >
                   <thead>
                     <tr>
                       <th className="w-10">
@@ -462,7 +469,7 @@ export const OperationLogPage: React.FC = () => {
                               className={checkboxClassName}
                             />
                           </td>
-                          <td className="text-slate-400 dark:text-slate-500">
+                          <td className="text-cf-faint">
                             {((query.pageNum || 1) - 1) * (query.pageSize || 10) + index + 1}
                           </td>
                           <td>
@@ -477,10 +484,10 @@ export const OperationLogPage: React.FC = () => {
                           </td>
                           <td>
                             <div className="max-w-[280px]">
-                              <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100" title={log.title}>
+                              <div className="truncate text-sm font-medium text-cf-title" data-tooltip={log.title}>
                                 {log.title}
                               </div>
-                              <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={log.requestUri || ''}>
+                              <div className="mt-1 truncate text-xs text-cf-subtle" data-tooltip={log.requestUri || ''}>
                                 {log.requestUri || '未记录请求地址'}
                               </div>
                             </div>
@@ -489,16 +496,16 @@ export const OperationLogPage: React.FC = () => {
                           <td className="whitespace-nowrap">{log.method || '-'}</td>
                           <td className="whitespace-nowrap">{log.time ? `${log.time} ms` : '-'}</td>
                           <td className="whitespace-nowrap">{log.createTime || '-'}</td>
-                          <td className="whitespace-nowrap text-slate-700 dark:text-slate-200">{log.createBy || '-'}</td>
+                          <td className="whitespace-nowrap text-cf-body">{log.createBy || '-'}</td>
                           <td>
                             <div className="admin-users-row-actions">
-                              <button type="button" title="查看详情" onClick={() => void handleViewDetail(log.logId)}>
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => void handleViewDetail(log.logId)}>
                                 <Eye size={15} />
                               </button>
                               <button
                                 type="button"
                                 className="danger"
-                                title="删除日志"
+                                data-tooltip="删除日志" aria-label="删除日志"
                                 onClick={() => setPendingDeleteIds([log.logId])}
                               >
                                 <Trash2 size={15} />
@@ -509,7 +516,8 @@ export const OperationLogPage: React.FC = () => {
                       ))
                     )}
                   </tbody>
-              </table>
+                </Table>
+              </TableScrollArea>
             </InnerTableSurface>
           )}
           pagination={total > 0 ? (

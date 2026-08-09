@@ -89,7 +89,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   const getStatusMeta = useAnnouncementStatusMeta();
   const getPriorityMeta = useAnnouncementPriorityMeta();
   const table = (
-    <table className="unity-data-table admin-source-table admin-announcements-table min-w-[1180px]">
+    <table className="unity-data-table admin-source-table admin-announcements-table min-w-[1180px] cf-freeze-edges">
       <thead>
         <tr>
           <th className="w-[30%]">标题</th>
@@ -111,7 +111,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
               <td className="px-4 py-3">
                 <div className="min-w-0">
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate font-medium text-slate-900 dark:text-slate-100">
+                    <span className="truncate font-medium text-cf-title">
                       {item.title}
                     </span>
                     {item.isTop === 1 ? (
@@ -122,7 +122,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                     ) : null}
                   </div>
 
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="mt-1 text-xs text-cf-subtle">
                     {item.createTime ? new Date(item.createTime).toLocaleString() : '-'}
                   </div>
                 </div>
@@ -161,16 +161,16 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                 </span>
               </td>
 
-              <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                <div className="font-medium text-slate-900 dark:text-slate-100">
+              <td className="px-4 py-3 text-sm text-cf-muted">
+                <div className="font-medium text-cf-title">
                   {formatScopeLabel(item)}
                 </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mt-1 text-xs text-cf-subtle">
                   {formatScopeDisplay(item, deptNameMap, roleNameMap)}
                 </div>
               </td>
 
-              <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+              <td className="px-4 py-3 text-xs text-cf-subtle">
                 <div>
                   发布时间：{item.publishTime ? new Date(item.publishTime).toLocaleString() : '-'}
                 </div>
@@ -181,28 +181,28 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
 
               <td>
                 <div className="admin-users-row-actions">
-                  <button type="button" title="阅读状态" onClick={() => onViewStats(item.announcementId)}>
+                  <button type="button" data-tooltip="阅读状态" aria-label="阅读状态" onClick={() => onViewStats(item.announcementId)}>
                     <Eye size={15} />
                   </button>
-                  <button type="button" title="编辑" onClick={() => onEdit(item)}>
+                  <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => onEdit(item)}>
                     <Edit size={15} />
                   </button>
                   <button
                     type="button"
-                    title={item.isTop === 1 ? '取消置顶' : '置顶'}
+                    data-tooltip={item.isTop === 1 ? '取消置顶' : '置顶'} aria-label={item.isTop === 1 ? '取消置顶' : '置顶'}
                     onClick={() => onToggleTop(item.announcementId)}
                   >
                     <Pin size={15} />
                   </button>
                   {item.status === '1' ? (
-                    <button type="button" title="撤销" onClick={() => onRevoke(item.announcementId)}>
+                    <button type="button" data-tooltip="撤销" aria-label="撤销" onClick={() => onRevoke(item.announcementId)}>
                       <X size={15} />
                     </button>
                   ) : null}
                   <button
                     type="button"
                     className="danger"
-                    title="删除"
+                    data-tooltip="删除" aria-label="删除"
                     onClick={() => onDelete(item.announcementId)}
                   >
                     <Trash2 size={15} />

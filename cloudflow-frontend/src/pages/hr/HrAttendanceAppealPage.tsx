@@ -32,6 +32,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
+import './admin-hr.css';
 
 const emptyForm = (): HrAttendanceAppeal => ({
   attendanceDate: new Date().toISOString().slice(0, 10),
@@ -48,8 +49,8 @@ const StatusBadge: React.FC<{ status?: AttendanceAppealStatus }> = ({ status }) 
 
 const DetailField: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="border-b border-slate-200 pb-3 dark:border-slate-800">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value || '-'}</div>
   </div>
 );
 
@@ -324,13 +325,13 @@ const HrAttendanceAppealPage: React.FC = () => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="py-10 text-center text-sm text-slate-400">
+                      <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">
                         <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
                       </td>
                     </tr>
                   ) : rows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-10 text-center text-sm text-slate-400">暂无数据</td>
+                      <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">暂无数据</td>
                     </tr>
                   ) : (
                     rows.map((row) => {
@@ -342,24 +343,24 @@ const HrAttendanceAppealPage: React.FC = () => {
                           <td className="text-sm">{row.attendanceDate || '-'}</td>
                           <td className="text-sm">{appealReasonDict.getLabel(String(row.appealReason || 'OTHER'))}</td>
                           <td><StatusBadge status={row.status} /></td>
-                          <td className="text-xs text-slate-400">{formatDateTimeDisplay(row.createTime)}</td>
+                          <td className="text-xs text-cf-faint">{formatDateTimeDisplay(row.createTime)}</td>
                           <td>
                             <div className="admin-users-row-actions">
-                              <button type="button" title="查看" aria-label="查看" onClick={() => void openDetail(row)}>
+                              <button type="button" data-tooltip="查看" aria-label="查看" onClick={() => void openDetail(row)}>
                                 <Eye size={15} />
                               </button>
                               {isReviewable && row.status === 'MANAGER_REVIEWING' ? (
-                                <button type="button" title="主管审核" aria-label="主管审核" onClick={() => openManagerReview(row)}>
+                                <button type="button" data-tooltip="主管审核" aria-label="主管审核" onClick={() => openManagerReview(row)}>
                                   <Check size={15} />
                                 </button>
                               ) : null}
                               {isReviewable && row.status === 'HR_REVIEWING' ? (
-                                <button type="button" title="HR 复核" aria-label="HR 复核" onClick={() => openHrReview(row)}>
+                                <button type="button" data-tooltip="HR 复核" aria-label="HR 复核" onClick={() => openHrReview(row)}>
                                   <Check size={15} />
                                 </button>
                               ) : null}
                               {row.status === 'SUBMITTED' || row.status === 'MANAGER_REVIEWING' ? (
-                                <button type="button" title="撤回" aria-label="撤回" onClick={() => setPendingCancel(row)}>
+                                <button type="button" data-tooltip="撤回" aria-label="撤回" onClick={() => setPendingCancel(row)}>
                                   <RotateCcw size={15} />
                                 </button>
                               ) : null}
@@ -482,7 +483,7 @@ const HrAttendanceAppealPage: React.FC = () => {
                 </div>
               </div>
               <div>
-                <div className="text-sm leading-6 text-slate-700 dark:text-slate-200">{detail.appealDetail || '-'}</div>
+                <div className="text-sm leading-6 text-cf-body">{detail.appealDetail || '-'}</div>
               </div>
             </section>
             <section className="card admin-source-panel">

@@ -92,7 +92,7 @@ const InlineState: React.FC<InlineStateProps> = ({
     <div className="admin-source-stat-icon mb-3">
       {icon || <Timer className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
   </div>
 );
 
@@ -108,7 +108,7 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
         <div className="admin-source-stat-icon mb-3">
           {loading ? <Timer className="h-4 w-4" /> : icon || <Timer className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
       </div>
     </td>
   </tr>
@@ -116,8 +116,8 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
 
 const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
   <div className="border-b border-slate-200 pb-3 dark:border-slate-800">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value}</div>
   </div>
 );
 
@@ -507,18 +507,18 @@ export const OvertimeApplicationPage: React.FC = () => {
                   <td>{typeDict.getLabel(item.overtimeType || '') || '-'}</td>
                   <td>
                     <div>{formatDateTimeDisplay(item.startTime)}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDateTimeDisplay(item.endTime)}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{formatDateTimeDisplay(item.endTime)}</div>
                   </td>
                   <td>{item.duration ? `${item.duration} 小时` : '-'}</td>
                   <td>{compensationDict.getLabel(item.compensationType || '') || '-'}</td>
                   <td>{getStatusBadge(item.status || 'DRAFT')}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
-                      {item.status === 'DRAFT' && !selfServiceLocked ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
-                      {item.status === 'DRAFT' && !selfServiceLocked ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
-                      {item.status === 'DRAFT' && !selfServiceLocked ? <button type="button" className="danger" title="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
-                      {item.status && ['APPROVING', 'APPROVED'].includes(item.status) && !selfServiceLocked ? <button type="button" title="撤销" aria-label="撤销" onClick={() => openCancelConfirm(item.id!)}><RotateCcw size={15} /></button> : null}
+                      <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
+                      {item.status === 'DRAFT' && !selfServiceLocked ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                      {item.status === 'DRAFT' && !selfServiceLocked ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                      {item.status === 'DRAFT' && !selfServiceLocked ? <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
+                      {item.status && ['APPROVING', 'APPROVED'].includes(item.status) && !selfServiceLocked ? <button type="button" data-tooltip="撤销" aria-label="撤销" onClick={() => openCancelConfirm(item.id!)}><RotateCcw size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
@@ -629,7 +629,7 @@ export const OvertimeApplicationPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-cf-subtle">
             <span>时长 {formDuration > 0 ? `${formDuration} 小时` : '--'}</span>
             <span>{typeDict.getLabel(formData.overtimeType || '') || '--'}</span>
             <span>{compensationDict.getLabel(formData.compensationType || '') || '--'}</span>
@@ -683,7 +683,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                   <h3>加班事由</h3>
                 </div>
               </div>
-              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <div className="whitespace-pre-wrap text-sm leading-6 text-cf-muted">
                 {detailRecord.reason || '-'}
               </div>
             </section>
@@ -694,7 +694,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                   <h3>流程轨迹</h3>
                 </div>
                 {detailRecord.processInstanceId ? (
-                  <div className="text-xs text-slate-500 dark:text-slate-400">{detailRecord.processInstanceId}</div>
+                  <div className="text-xs text-cf-subtle">{detailRecord.processInstanceId}</div>
                 ) : null}
               </div>
               <div>

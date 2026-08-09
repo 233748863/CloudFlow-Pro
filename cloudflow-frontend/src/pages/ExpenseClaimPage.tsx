@@ -32,6 +32,7 @@ import {
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './ExpenseClaimPage.css';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'pay';
@@ -102,12 +103,12 @@ const InlineState: React.FC<{
 }> = ({ title, description, icon, className }) => (
   <div className={['admin-dialog-empty-note', className].filter(Boolean).join(' ')}>
     <div className="flex flex-col items-center justify-center text-center">
-      <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
+      <div className="admin-source-stat-icon mb-3 text-cf-faint">
         {icon || <Receipt className="h-4 w-4" />}
       </div>
-      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+      <div className="text-sm font-medium text-cf-title">{title}</div>
       {description ? (
-        <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+        <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
       ) : null}
     </div>
   </div>
@@ -123,12 +124,12 @@ const TableStateRow: React.FC<{
   <tr className="hover:bg-transparent">
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3 text-cf-faint">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : icon || <Receipt className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
         ) : null}
       </div>
     </td>
@@ -174,8 +175,8 @@ const DetailRow: React.FC<{
   alignStart?: boolean;
 }> = ({ label, value, alignStart = false }) => (
   <div className={['admin-expense-detail-item', alignStart && 'admin-expense-detail-item-wide'].filter(Boolean).join(' ')}>
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value}</div>
   </div>
 );
 
@@ -613,26 +614,26 @@ export const ExpenseClaimPage: React.FC = () => {
                 <tr key={item.id}>
                   <td>
                     <strong>{item.claimNo || '-'}</strong>
-                    <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.createTime)}</div>
+                    <div className="mt-1 text-xs text-cf-faint">{formatDateTimeDisplay(item.createTime)}</div>
                   </td>
                   <td>
                     <strong>{item.userName || '-'}</strong>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.deptName || '-'}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{item.deptName || '-'}</div>
                   </td>
                   <td>
                     <strong>{categoryDict.getLabel(String(item.category ?? '')) || '-'}</strong>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{(item.items?.length || 0)} 条明细</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{(item.items?.length || 0)} 条明细</div>
                   </td>
                   <td>{formatAmount(item.totalAmount)}</td>
                   <td><div className="max-w-sm truncate">{item.description || '-'}</div></td>
                   <td>{getStatusBadge(item.status)}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item)}><Eye size={15} /></button>
-                      {item.status === 'DRAFT' && hasPermission('oa:expense:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
-                      {item.status === 'DRAFT' && hasPermission('oa:expense:submit') ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
-                      {item.status === 'APPROVED' && hasPermission('oa:expense:pay') ? <button type="button" title="打款" aria-label="打款" onClick={() => openPayConfirm(item.id!)}><Receipt size={15} /></button> : null}
-                      {item.status === 'DRAFT' && hasPermission('oa:expense:remove') ? <button type="button" className="danger" title="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
+                      <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void handleView(item)}><Eye size={15} /></button>
+                      {item.status === 'DRAFT' && hasPermission('oa:expense:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                      {item.status === 'DRAFT' && hasPermission('oa:expense:submit') ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                      {item.status === 'APPROVED' && hasPermission('oa:expense:pay') ? <button type="button" data-tooltip="打款" aria-label="打款" onClick={() => openPayConfirm(item.id!)}><Receipt size={15} /></button> : null}
+                      {item.status === 'DRAFT' && hasPermission('oa:expense:remove') ? <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
@@ -683,7 +684,7 @@ export const ExpenseClaimPage: React.FC = () => {
         <div className="admin-dialog-stack">
           <DialogPanel title="基础信息" bodyClassName="grid gap-4 md:grid-cols-2">
             <div className="admin-dialog-field">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">报销类别</Label>
+              <Label className="text-sm font-medium text-cf-body">报销类别</Label>
               <Select
                 value={formData.category}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
@@ -702,14 +703,14 @@ export const ExpenseClaimPage: React.FC = () => {
             </div>
 
             <div className="admin-dialog-field">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">汇总金额</Label>
+              <Label className="text-sm font-medium text-cf-body">汇总金额</Label>
               <Input className="h-11" value={formatAmount(formTotalAmount)} disabled />
             </div>
           </DialogPanel>
 
           <DialogPanel title="业务归属" bodyClassName="grid gap-4 md:grid-cols-3">
             <div className="admin-dialog-field">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">关联项目</Label>
+              <Label className="text-sm font-medium text-cf-body">关联项目</Label>
               <Select
                 value={formData.projectId ? String(formData.projectId) : 'NONE'}
                 onValueChange={(value) => {
@@ -736,7 +737,7 @@ export const ExpenseClaimPage: React.FC = () => {
             </div>
 
             <div className="admin-dialog-field">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">客户</Label>
+              <Label className="text-sm font-medium text-cf-body">客户</Label>
               <Select
                 value={formData.customerId ? String(formData.customerId) : 'NONE'}
                 onValueChange={(value) => {
@@ -761,7 +762,7 @@ export const ExpenseClaimPage: React.FC = () => {
             </div>
 
             <div className="admin-dialog-field">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">预算科目</Label>
+              <Label className="text-sm font-medium text-cf-body">预算科目</Label>
               <Select
                 value={formData.budgetSubjectCode || 'NONE'}
                 onValueChange={(value) => {
@@ -793,7 +794,7 @@ export const ExpenseClaimPage: React.FC = () => {
 
           <DialogPanel title="报销说明">
             <div className="admin-dialog-field">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">说明内容</Label>
+              <Label className="text-sm font-medium text-cf-body">说明内容</Label>
               <Textarea
                 className="min-h-[120px] resize-none"
                 value={formData.description || ''}
@@ -818,7 +819,7 @@ export const ExpenseClaimPage: React.FC = () => {
               <article key={item.clientKey} className="admin-expense-item-card">
                 <div className="admin-expense-item-grid">
                     <div className="admin-dialog-field">
-                      <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">费用类型</Label>
+                      <Label className="text-xs font-medium text-cf-subtle">费用类型</Label>
                       <Select value={item.expenseType} onValueChange={(value) => updateItem(index, 'expenseType', value)}>
                         <SelectTrigger className={expenseItemControlClass}>
                           <SelectValue placeholder="请选择费用类型" />
@@ -834,7 +835,7 @@ export const ExpenseClaimPage: React.FC = () => {
                     </div>
 
                     <div className="admin-dialog-field">
-                      <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">金额</Label>
+                      <Label className="text-xs font-medium text-cf-subtle">金额</Label>
                       <Input
                         className={expenseItemControlClass}
                         type="number"
@@ -847,7 +848,7 @@ export const ExpenseClaimPage: React.FC = () => {
                     </div>
 
                     <div className="admin-dialog-field">
-                      <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">费用日期</Label>
+                      <Label className="text-xs font-medium text-cf-subtle">费用日期</Label>
                       <DatePicker
                         className={expenseItemControlClass}
                         type="date"
@@ -857,7 +858,7 @@ export const ExpenseClaimPage: React.FC = () => {
                     </div>
 
                     <div className="admin-dialog-field">
-                      <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">费用说明</Label>
+                      <Label className="text-xs font-medium text-cf-subtle">费用说明</Label>
                       <Input
                         className={expenseItemControlClass}
                         type="text"
@@ -883,7 +884,7 @@ export const ExpenseClaimPage: React.FC = () => {
                 </div>
 
                 <div className="admin-dialog-field mt-3">
-                  <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">凭证附件</Label>
+                  <Label className="text-xs font-medium text-cf-subtle">凭证附件</Label>
                   <FileUpload
                     value={item.receiptUrl || ''}
                     onChange={(urls) => updateItem(index, 'receiptUrl', urls)}
@@ -951,7 +952,7 @@ export const ExpenseClaimPage: React.FC = () => {
             </DetailRows>
 
             <ExpensePanel title="报销说明">
-              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <div className="whitespace-pre-wrap text-sm leading-6 text-cf-muted">
                 {detailClaim.description || '-'}
               </div>
             </ExpensePanel>

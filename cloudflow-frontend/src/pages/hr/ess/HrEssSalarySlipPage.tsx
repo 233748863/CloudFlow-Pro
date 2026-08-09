@@ -187,13 +187,13 @@ export const HrEssSalarySlipPage: React.FC = () => {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={7} className="py-10 text-center text-sm text-slate-400">
+                        <td colSpan={7} className="py-10 text-center text-sm text-cf-faint">
                           <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
                         </td>
                       </tr>
                     ) : rows.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无工资条</td>
+                        <td colSpan={7} className="py-10 text-center text-sm text-cf-faint">暂无工资条</td>
                       </tr>
                     ) : (
                       rows.map((row) => (
@@ -206,9 +206,9 @@ export const HrEssSalarySlipPage: React.FC = () => {
                           <td className="text-sm">{row.employeeConfirmed ? '是' : '否'}</td>
                           <td>
                             <div className="admin-users-row-actions">
-                              <button type="button" title="查看" aria-label="查看" onClick={() => setDetail(row)}><Eye size={15} /></button>
+                              <button type="button" data-tooltip="查看" aria-label="查看" onClick={() => setDetail(row)}><Eye size={15} /></button>
                               {!row.employeeConfirmed ? (
-                                <button type="button" title="确认" aria-label="确认" onClick={() => void handleConfirm(row)}><CheckCircle2 size={15} /></button>
+                                <button type="button" data-tooltip="确认" aria-label="确认" onClick={() => void handleConfirm(row)}><CheckCircle2 size={15} /></button>
                               ) : null}
                             </div>
                           </td>
@@ -254,37 +254,37 @@ export const HrEssSalarySlipPage: React.FC = () => {
           <>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs text-slate-500">应发合计</Label>
+                <Label className="text-xs text-cf-subtle">应发合计</Label>
                 <div className="text-lg font-semibold">{formatMoneyValue(detail.grossTotal)}</div>
               </div>
               <div>
-                <Label className="text-xs text-slate-500">扣除合计</Label>
+                <Label className="text-xs text-cf-subtle">扣除合计</Label>
                 <div className="text-lg font-semibold">{formatMoneyValue(detail.deductionTotal)}</div>
               </div>
               <div>
-                <Label className="text-xs text-slate-500">个税</Label>
+                <Label className="text-xs text-cf-subtle">个税</Label>
                 <div>{formatMoneyValue(detail.taxAmount)}</div>
               </div>
               <div>
-                <Label className="text-xs text-slate-500">福利</Label>
+                <Label className="text-xs text-cf-subtle">福利</Label>
                 <div>{formatMoneyValue(detail.benefitAmount)}</div>
               </div>
               <div>
-                <Label className="text-xs text-slate-500">发放日期</Label>
+                <Label className="text-xs text-cf-subtle">发放日期</Label>
                 <div>{detail.payDate || '-'}</div>
               </div>
               <div>
-                <Label className="text-xs text-slate-500">确认时间</Label>
+                <Label className="text-xs text-cf-subtle">确认时间</Label>
                 <div>{formatDateTimeValue(detail.confirmedTime)}</div>
               </div>
             </div>
             {detail.components ? (
               <div className="admin-dialog-field">
-                <Label className="text-xs text-slate-500">分项明细</Label>
+                <Label className="text-xs text-cf-subtle">分项明细</Label>
                 <div className="card mt-1 overflow-hidden">
                   {Object.entries(detail.components).map(([key, value]) => (
                     <div key={key} className="flex items-center justify-between border-b border-slate-200 px-3 py-2 text-xs last:border-b-0 dark:border-slate-800">
-                      <span className="text-slate-600 dark:text-slate-300">{key}</span>
+                      <span className="text-cf-muted">{key}</span>
                       <span className="font-medium">{formatMoneyValue(value)}</span>
                     </div>
                   ))}

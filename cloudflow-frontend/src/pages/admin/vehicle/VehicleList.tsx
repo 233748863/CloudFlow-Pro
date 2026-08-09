@@ -52,6 +52,7 @@ import {
   VehicleProfile,
   VehicleStats,
 } from '@/services/api/vehicle';
+import './admin-vehicle.css';
 
 interface TableStateRowProps {
   colSpan: number;
@@ -111,8 +112,8 @@ const TableStateRow: React.FC<TableStateRowProps> = ({ colSpan, title, descripti
         <div className="admin-source-stat-icon mb-3">
           {loading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Car className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+        <div className="text-sm font-medium text-cf-title">{title}</div>
+        {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
       </div>
     </td>
   </tr>
@@ -120,7 +121,7 @@ const TableStateRow: React.FC<TableStateRowProps> = ({ colSpan, title, descripti
 
 const SummaryMetric: React.FC<SummaryMetricProps> = ({ label, value, tone = 'default' }) => {
   const toneClassName = {
-    default: 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200',
+    default: 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-body dark:border-slate-800 dark:bg-slate-900/60',
     warning: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
     danger: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
   }[tone];
@@ -171,7 +172,7 @@ const createVehicleForm = (): Partial<SysVehicle> => ({
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const statusDict = useDict('oa_vehicle_status');
   const config = STATUS_CONFIG[status] || {
-    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900',
     icon: null,
   };
 
@@ -198,7 +199,7 @@ const formatMileage = (value?: number | null) => `${Number(value || 0).toLocaleS
 const WarningTags: React.FC<{ value?: string; compact?: boolean; maxVisible?: number }> = ({ value, compact = false, maxVisible }) => {
   const tags = String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
   if (tags.length === 0) {
-    return <span className="text-slate-400 dark:text-slate-500">-</span>;
+    return <span className="text-cf-faint">-</span>;
   }
   const visibleTags = typeof maxVisible === 'number' ? tags.slice(0, maxVisible) : tags;
   const hiddenCount = tags.length - visibleTags.length;
@@ -215,7 +216,7 @@ const WarningTags: React.FC<{ value?: string; compact?: boolean; maxVisible?: nu
         </span>
       ))}
       {hiddenCount > 0 ? (
-        <span className="rounded-md bg-[var(--cf-surface-muted)] px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+        <span className="rounded-md bg-[var(--cf-surface-muted)] px-1.5 py-0.5 text-[11px] font-medium text-cf-subtle dark:bg-slate-900">
           +{hiddenCount}
         </span>
       ) : null}
@@ -499,14 +500,14 @@ const VehicleList: React.FC = () => {
         >
             {selectedIds.length > 0 ? (
               <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                  <span className="inline-flex items-center rounded-md bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-cf-muted">
+                  <span className="inline-flex items-center rounded-md bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:bg-slate-900">
                     已选 {selectedIds.length} 辆
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 justify-start px-2 text-slate-600 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                    className="h-8 justify-start px-2 text-cf-muted hover:bg-[var(--cf-surface-muted)] hover:text-cf-title dark:hover:bg-slate-900"
                     onClick={() => openDeleteConfirm(selectedIds, `确认删除选中的 ${selectedIds.length} 辆车？`)}
                   >
                     <Trash2 size={14} className="mr-1.5" />
@@ -515,7 +516,7 @@ const VehicleList: React.FC = () => {
                 </div>
               </div>
             ) : null}
-              <table className="unity-data-table admin-source-table admin-vehicle-table min-w-[1640px] table-fixed">
+              <table className="unity-data-table admin-source-table admin-vehicle-table min-w-[1640px] table-fixed cf-freeze-edges">
                 <colgroup>
                   <col className="w-11" />
                   <col className="w-32" />
@@ -567,90 +568,90 @@ const VehicleList: React.FC = () => {
                             />
                           </td>
                           <td className="font-mono">
-                            <div className="truncate" title={vehicle.licensePlate}>{vehicle.licensePlate}</div>
-                            <div className="mt-1 truncate text-xs font-normal text-slate-400 dark:text-slate-500" title={vehicle.purchaseDate || '-'}>
+                            <div className="truncate" data-tooltip={vehicle.licensePlate}>{vehicle.licensePlate}</div>
+                            <div className="mt-1 truncate text-xs font-normal text-cf-faint" data-tooltip={vehicle.purchaseDate || '-'}>
                               购置 {vehicle.purchaseDate || '-'}
                             </div>
                           </td>
                           <td>
-                            <div className="truncate font-medium text-slate-900 dark:text-slate-100" title={`${vehicle.brand || '-'} / ${vehicle.model || '-'}`}>
+                            <div className="truncate font-medium text-cf-title" data-tooltip={`${vehicle.brand || '-'} / ${vehicle.model || '-'}`}>
                               {[vehicle.brand || '-', vehicle.model || '-'].join(' / ')}
                             </div>
-                            <div className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500" title={`${vehicle.color || '-'} / ${vehicle.capacity || 0} 座`}>
+                            <div className="mt-1 truncate text-xs text-cf-faint" data-tooltip={`${vehicle.color || '-'} / ${vehicle.capacity || 0} 座`}>
                               {[vehicle.color || '-', `${vehicle.capacity || 0} 座`].join(' / ')}
                             </div>
                           </td>
                           <td>
-                            <div className="truncate font-medium text-slate-900 dark:text-slate-100" title={formatMileage(vehicle.mileage)}>
+                            <div className="truncate font-medium text-cf-title" data-tooltip={formatMileage(vehicle.mileage)}>
                               {formatMileage(vehicle.mileage)}
                             </div>
-                            <div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-slate-500 dark:text-slate-400" title={vehicle.location || '-'}>
-                              <MapPin size={12} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                            <div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-cf-subtle" data-tooltip={vehicle.location || '-'}>
+                              <MapPin size={12} className="shrink-0 text-cf-faint" />
                               <span className="truncate">{vehicle.location || '-'}</span>
                             </div>
                           </td>
                           <td>
                             <div className="space-y-1.5">
                               <StatusBadge status={runtimeStatus} />
-                              <div className="truncate text-xs text-slate-500 dark:text-slate-400" title={`基础 ${vehicleStatusDict.getLabel(vehicle.status || '1') || '-'}`}>
+                              <div className="truncate text-xs text-cf-subtle" data-tooltip={`基础 ${vehicleStatusDict.getLabel(vehicle.status || '1') || '-'}`}>
                                 基础 {vehicleStatusDict.getLabel(vehicle.status || '1') || '-'}
                               </div>
                             </div>
                           </td>
                           <td>
                             <div className="flex min-w-0 items-center gap-1.5">
-                              <span className="truncate font-medium text-slate-900 dark:text-slate-100" title={vehicle.currentUserName || '-'}>
+                              <span className="truncate font-medium text-cf-title" data-tooltip={vehicle.currentUserName || '-'}>
                                 {vehicle.currentUserName || '-'}
                               </span>
                               {currentUsageStatusLabel ? (
-                                <span className="shrink-0 rounded-md bg-[var(--cf-surface-muted)] px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                                <span className="shrink-0 rounded-md bg-[var(--cf-surface-muted)] px-1.5 py-0.5 text-[11px] font-medium text-cf-subtle dark:bg-slate-900">
                                   {currentUsageStatusLabel}
                                 </span>
                               ) : null}
                             </div>
-                            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={vehicle.currentDriverName || '-'}>
+                            <div className="mt-1 truncate text-xs text-cf-subtle" data-tooltip={vehicle.currentDriverName || '-'}>
                               司机 {vehicle.currentDriverName || '-'}
                             </div>
                           </td>
                           <td>
-                            <div className="line-clamp-2 min-h-[2.25rem] leading-5" title={vehicle.currentDestination || '-'}>
+                            <div className="line-clamp-2 min-h-[2.25rem] leading-5" data-tooltip={vehicle.currentDestination || '-'}>
                               {vehicle.currentDestination || '-'}
                             </div>
                           </td>
                           <td>
-                            <div className="truncate font-medium text-slate-900 dark:text-slate-100" title={formatDateTime(vehicle.plannedReturnTime)}>
+                            <div className="truncate font-medium text-cf-title" data-tooltip={formatDateTime(vehicle.plannedReturnTime)}>
                               还 {formatShortDateTime(vehicle.plannedReturnTime)}
                             </div>
-                            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={formatDateTime(vehicle.nextBookingStartTime)}>
+                            <div className="mt-1 truncate text-xs text-cf-subtle" data-tooltip={formatDateTime(vehicle.nextBookingStartTime)}>
                               约 {formatShortDateTime(vehicle.nextBookingStartTime)}
                             </div>
                           </td>
                           <td>
-                            <div className="truncate" title={vehicle.insuranceExpiry || '-'}>
+                            <div className="truncate" data-tooltip={vehicle.insuranceExpiry || '-'}>
                               保 {vehicle.insuranceExpiry || '-'}
                             </div>
-                            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={vehicle.annualInspectionExpiry || '-'}>
+                            <div className="mt-1 truncate text-xs text-cf-subtle" data-tooltip={vehicle.annualInspectionExpiry || '-'}>
                               检 {vehicle.annualInspectionExpiry || '-'}
                             </div>
                           </td>
                           <td>
-                            <div className="truncate font-medium text-slate-900 dark:text-slate-100" title={formatCurrency(vehicle.expenseAmount30d)}>
+                            <div className="truncate font-medium text-cf-title" data-tooltip={formatCurrency(vehicle.expenseAmount30d)}>
                               {formatCurrency(vehicle.expenseAmount30d)}
                             </div>
-                            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={`保养 ${vehicle.nextMaintenanceMileage != null ? `${vehicle.nextMaintenanceMileage} km` : '-'}`}>
+                            <div className="mt-1 truncate text-xs text-cf-subtle" data-tooltip={`保养 ${vehicle.nextMaintenanceMileage != null ? `${vehicle.nextMaintenanceMileage} km` : '-'}`}>
                               保养 {vehicle.nextMaintenanceMileage != null ? `${vehicle.nextMaintenanceMileage} km` : '-'}
                             </div>
                           </td>
                           <td>
-                            <div title={vehicle.warningTags || '-'}>
+                            <div data-tooltip={vehicle.warningTags || '-'}>
                               <WarningTags value={vehicle.warningTags} compact maxVisible={1} />
                             </div>
                           </td>
                           <td>
                             <div className="admin-users-row-actions">
-                              <button type="button" title="详情" onClick={() => handleViewDetail(vehicle)}><Eye size={15} /></button>
-                              {hasPermission('oa:vehicle:edit') ? <button type="button" title="编辑" onClick={() => handleEdit(vehicle)}><Edit2 size={15} /></button> : null}
-                              {hasPermission('oa:vehicle:remove') ? <button type="button" className="danger" title="删除" onClick={() => openDeleteConfirm([vehicle.vehicleId!], '确认删除该车辆？删除后不可恢复。')}><Trash2 size={15} /></button> : null}
+                              <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => handleViewDetail(vehicle)}><Eye size={15} /></button>
+                              {hasPermission('oa:vehicle:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => handleEdit(vehicle)}><Edit2 size={15} /></button> : null}
+                              {hasPermission('oa:vehicle:remove') ? <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => openDeleteConfirm([vehicle.vehicleId!], '确认删除该车辆？删除后不可恢复。')}><Trash2 size={15} /></button> : null}
                             </div>
                           </td>
                         </tr>
@@ -799,7 +800,7 @@ const VehicleList: React.FC = () => {
         )}
       >
         {!detailVehicle ? null : detailLoading ? (
-          <div className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">正在加载运营详情...</div>
+          <div className="py-10 text-center text-sm text-cf-subtle">正在加载运营详情...</div>
         ) : (
           <>
             <div className="grid gap-4 xl:grid-cols-2">
@@ -835,14 +836,14 @@ const VehicleList: React.FC = () => {
                   <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {detailProfile?.recentUsages.map((item) => (
                       <div key={item.usageId} className="px-4 py-3 text-sm">
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.applicantName || `用户${item.applicantId}`}</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDateTime(item.startTime)} 至 {formatDateTime(item.endTime)}</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.destination || '-'}</div>
+                        <div className="font-medium text-cf-title">{item.applicantName || `用户${item.applicantId}`}</div>
+                        <div className="mt-1 text-xs text-cf-subtle">{formatDateTime(item.startTime)} 至 {formatDateTime(item.endTime)}</div>
+                        <div className="mt-1 text-xs text-cf-subtle">{item.destination || '-'}</div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">暂无记录</div>
+                  <div className="px-4 py-6 text-sm text-cf-faint">暂无记录</div>
                 )}
               </DetailSection>
 
@@ -851,13 +852,13 @@ const VehicleList: React.FC = () => {
                   <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {detailProfile?.recentExpenses.map((item) => (
                       <div key={item.expenseId} className="px-4 py-3 text-sm">
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(item.amount)}</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.expenseDate || '-'} · {item.description || '车辆费用'}</div>
+                        <div className="font-medium text-cf-title">{formatCurrency(item.amount)}</div>
+                        <div className="mt-1 text-xs text-cf-subtle">{item.expenseDate || '-'} · {item.description || '车辆费用'}</div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">暂无费用</div>
+                  <div className="px-4 py-6 text-sm text-cf-faint">暂无费用</div>
                 )}
               </DetailSection>
 
@@ -875,7 +876,7 @@ const VehicleList: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">暂无风险</div>
+                  <div className="px-4 py-6 text-sm text-cf-faint">暂无风险</div>
                 )}
               </DetailSection>
             </div>
@@ -886,14 +887,14 @@ const VehicleList: React.FC = () => {
                   <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {detailProfile?.maintenances.map((item) => (
                       <div key={item.maintenanceId} className="px-4 py-3 text-sm">
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.title}</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.maintenanceDate || '-'} · {item.status || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.description || '-'}</div>
+                        <div className="font-medium text-cf-title">{item.title}</div>
+                        <div className="mt-1 text-xs text-cf-subtle">{item.maintenanceDate || '-'} · {item.status || '-'}</div>
+                        <div className="mt-1 text-xs text-cf-subtle">{item.description || '-'}</div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">暂无维保记录</div>
+                  <div className="px-4 py-6 text-sm text-cf-faint">暂无维保记录</div>
                 )}
               </DetailSection>
 
@@ -902,14 +903,14 @@ const VehicleList: React.FC = () => {
                   <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {detailProfile?.violations.map((item) => (
                       <div key={item.violationId} className="px-4 py-3 text-sm">
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.violationReason}</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDateTime(item.violationTime)} · 罚款 {formatCurrency(item.penaltyAmount)} · 扣分 {item.points || 0}</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.status || '-'}</div>
+                        <div className="font-medium text-cf-title">{item.violationReason}</div>
+                        <div className="mt-1 text-xs text-cf-subtle">{formatDateTime(item.violationTime)} · 罚款 {formatCurrency(item.penaltyAmount)} · 扣分 {item.points || 0}</div>
+                        <div className="mt-1 text-xs text-cf-subtle">{item.status || '-'}</div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">暂无违章记录</div>
+                  <div className="px-4 py-6 text-sm text-cf-faint">暂无违章记录</div>
                 )}
               </DetailSection>
             </div>
@@ -920,25 +921,25 @@ const VehicleList: React.FC = () => {
                   {detailFuelLogs.map((item) => (
                     <div key={item.fuelLogId} className="grid grid-cols-2 gap-2 px-4 py-3 text-sm sm:grid-cols-5">
                       <div>
-                        <div className="text-xs text-slate-400">日期</div>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.fuelDate}</div>
+                        <div className="text-xs text-cf-faint">日期</div>
+                        <div className="font-medium text-cf-title">{item.fuelDate}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-slate-400">加油量 / 单价</div>
-                        <div className="font-mono text-xs text-slate-700 dark:text-slate-200">
+                        <div className="text-xs text-cf-faint">加油量 / 单价</div>
+                        <div className="font-mono text-xs text-cf-body">
                           {item.liters} L · ¥{item.unitPrice}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-slate-400">总额</div>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(Number(item.totalAmount))}</div>
+                        <div className="text-xs text-cf-faint">总额</div>
+                        <div className="font-medium text-cf-title">{formatCurrency(Number(item.totalAmount))}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-slate-400">行驶里程</div>
-                        <div className="text-xs text-slate-700 dark:text-slate-200">{item.driveDistance ?? '-'} km</div>
+                        <div className="text-xs text-cf-faint">行驶里程</div>
+                        <div className="text-xs text-cf-body">{item.driveDistance ?? '-'} km</div>
                       </div>
                       <div>
-                        <div className="text-xs text-slate-400">百公里油耗</div>
+                        <div className="text-xs text-cf-faint">百公里油耗</div>
                         <div className="font-medium text-emerald-600 dark:text-emerald-300">
                           {item.fuelPer100km != null ? `${item.fuelPer100km} L` : '-'}
                         </div>
@@ -947,13 +948,13 @@ const VehicleList: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">暂无油耗记录</div>
+                <div className="px-4 py-6 text-sm text-cf-faint">暂无油耗记录</div>
               )}
             </DetailSection>
 
             {detailVehicle.remark ? (
               <DetailSection title="备注">
-                <div className="px-4 py-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{detailVehicle.remark}</div>
+                <div className="px-4 py-3 text-sm leading-6 text-cf-muted">{detailVehicle.remark}</div>
               </DetailSection>
             ) : null}
 

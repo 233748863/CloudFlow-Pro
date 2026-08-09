@@ -92,13 +92,13 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
           )}
         >
           <div className="flex items-center justify-between border-b border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50">
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{column.title}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">{column.tasks.length} 条</div>
+            <div className="text-sm font-medium text-cf-title">{column.title}</div>
+            <div className="text-xs text-cf-subtle">{column.tasks.length} 条</div>
           </div>
 
           <div className="flex flex-1 flex-col overflow-y-auto">
             {column.tasks.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center px-6 py-10 text-center text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex flex-1 items-center justify-center px-6 py-10 text-center text-xs text-cf-subtle">
                 当前列暂无内容
               </div>
             ) : (
@@ -131,10 +131,10 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                          <div className="truncate text-sm font-medium text-cf-title">
                             {task.title}
                           </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cf-subtle">
                             <span>{isProcessTask ? '流程审批' : '协作待办'}</span>
                             <span>负责人 {task.assigneeName || '待认领'}</span>
                             <span className={cn(isOverdue && 'text-rose-600 dark:text-rose-300')}>
@@ -146,7 +146,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                         <InlineBadge
                           className={
                             isProcessTask
-                              ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300'
+                              ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950'
                               : task.status === WorkTaskStatus.DONE
                                 ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200'
                                 : task.status === WorkTaskStatus.DOING
@@ -158,15 +158,15 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                         </InlineBadge>
                       </div>
 
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <InlineBadge className="border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-cf-subtle">
+                        <InlineBadge className="border-slate-200 bg-[var(--cf-surface-strong)] text-cf-subtle dark:border-slate-800 dark:bg-slate-950">
                           创建 {formatDate(task.createdTime)}
                         </InlineBadge>
                         <InlineBadge
                           className={cn(
                             isOverdue
                               ? 'border-rose-100 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200'
-                              : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
+                              : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-subtle dark:border-slate-800 dark:bg-slate-950',
                           )}
                         >
                           <Clock size={12} />

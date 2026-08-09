@@ -62,7 +62,7 @@ export const DictBadge: React.FC<DictBadgeProps> = ({
   // 使用字典项的 fullClass，如果没有则使用默认样式
   const colorClass =
     item?.fullClass ||
-    'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
+    'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900';
 
   return (
     <span

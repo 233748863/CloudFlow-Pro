@@ -87,7 +87,7 @@ export const studioQuickAddMenuClassName =
 export const studioSectionTitleClassName =
   "text-[11px] font-medium text-cyan-700 dark:text-cyan-300";
 
-export const quickAddOptionIconClassName = "text-slate-500 dark:text-slate-300";
+export const quickAddOptionIconClassName = "text-cf-subtle";
 export const workflowConnectorLineClassName = "bg-slate-300 dark:bg-slate-700";
 
 export const APPROVER_CACHE_PREFIX = "workflow_approver_options_";

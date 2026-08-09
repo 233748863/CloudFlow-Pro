@@ -1,33 +1,68 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
+import { useFrozenColumns } from '@/hooks/useFrozenColumns';
 
 interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
   wrapperClassName?: string;
   disableScrollWrapper?: boolean;
+  /** 表头吸顶。需要滚动容器有高度约束才有意义 */
+  stickyHeader?: boolean;
+  /**
+   * 冻结列数量。左侧从第 1 列起、右侧从最后 1 列起，
+   * 偏移量按实际列宽自动累加。含 colspan 的表格不要开。
+   */
+  pinnedColumns?: { left?: number; right?: number };
 }
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  TableProps
->(({ className = '', wrapperClassName = '', disableScrollWrapper = false, ...props }, ref) => {
-  const tableElement = (
-    <table
-      ref={ref}
-      className={cn('unity-data-table w-full caption-bottom text-sm', className)}
-      {...props}
-    />
-  );
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  (
+    {
+      className = '',
+      wrapperClassName = '',
+      disableScrollWrapper = false,
+      stickyHeader = false,
+      pinnedColumns,
+      ...props
+    },
+    ref,
+  ) => {
+    const leftCount = pinnedColumns?.left ?? 0;
+    const rightCount = pinnedColumns?.right ?? 0;
+    const frozenRef = useFrozenColumns<HTMLTableElement>({
+      left: leftCount,
+      right: rightCount,
+    });
 
-  if (disableScrollWrapper) {
-    return tableElement;
-  }
+    const setRefs = React.useCallback(
+      (node: HTMLTableElement | null) => {
+        frozenRef.current = node;
+        if (typeof ref === 'function') ref(node);
+        else if (ref) (ref as React.MutableRefObject<HTMLTableElement | null>).current = node;
+      },
+      [ref, frozenRef],
+    );
 
-  return (
-    <div className={cn('relative w-full overflow-auto', wrapperClassName)}>
-      {tableElement}
-    </div>
-  );
-});
+    const tableElement = (
+      <table
+        ref={setRefs}
+        className={cn(
+          'unity-data-table w-full caption-bottom text-sm',
+          stickyHeader && 'cf-table-sticky cf-table-sticky-header',
+          className,
+        )}
+        {...props}
+      />
+    );
+
+    if (disableScrollWrapper) {
+      return tableElement;
+    }
+
+    return (
+      <div className={cn('relative w-full overflow-auto', wrapperClassName)}>{tableElement}</div>
+    );
+  },
+);
 
 Table.displayName = 'Table';
 
@@ -101,7 +136,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'px-4 py-3 text-left align-middle text-xs font-medium whitespace-nowrap text-slate-500 dark:text-slate-400 [&:has([role=checkbox])]:pr-0',
+      'px-4 py-3 text-left align-middle text-xs font-medium whitespace-nowrap text-cf-subtle [&:has([role=checkbox])]:pr-0',
       className,
     )}
     {...props}
@@ -132,7 +167,7 @@ const TableCell = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <td
     ref={ref}
-    className={cn('p-4 align-middle text-slate-700 dark:text-slate-200 [&:has([role=checkbox])]:pr-0', className)}
+    className={cn('p-4 align-middle text-cf-body [&:has([role=checkbox])]:pr-0', className)}
     {...props}
   />
 ));
@@ -145,7 +180,7 @@ const TableCaption = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn('mt-4 text-sm text-slate-500 dark:text-slate-400', className)}
+    className={cn('mt-4 text-sm text-cf-subtle', className)}
     {...props}
   />
 ));

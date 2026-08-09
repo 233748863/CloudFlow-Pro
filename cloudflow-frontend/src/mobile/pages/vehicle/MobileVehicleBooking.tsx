@@ -179,7 +179,7 @@ export const MobileVehicleBooking: React.FC = () => {
                   </SelectTrigger>
                     <SelectContent>
                       {vehicles.length === 0 ? (
-                        <div className="p-4 text-center text-slate-500">暂无可用车辆</div>
+                        <div className="p-4 text-center text-cf-subtle">暂无可用车辆</div>
                       ) : (
                         vehicles.map(v => (
                           <SelectItem key={v.vehicleId} value={String(v.vehicleId)}>

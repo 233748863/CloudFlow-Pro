@@ -218,7 +218,7 @@ export const HrTalentCalibrationPage: React.FC = () => {
                           <td>
                             <div className="admin-users-row-actions">
                               {canEdit ? (
-                                <button type="button" title="编辑/纪要" onClick={() => openEdit(s)}>
+                                <button type="button" data-tooltip="编辑/纪要" aria-label="编辑/纪要" onClick={() => openEdit(s)}>
                                   <Pencil size={15} />
                                 </button>
                               ) : null}

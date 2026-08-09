@@ -125,9 +125,9 @@ const StatePanel: React.FC<{
     <div className="admin-source-stat-icon mb-3">
       {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <History className="h-5 w-5" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-1.5 max-w-2xl text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-1.5 max-w-2xl text-xs leading-5 text-cf-subtle">{description}</div>
     ) : null}
     {action ? <div className="mt-3">{action}</div> : null}
   </div>
@@ -155,10 +155,10 @@ const DetailRow: React.FC<{
       className,
     )}
   >
-    <div className="text-xs font-medium text-slate-400 dark:text-slate-500 sm:min-w-[88px]">{label}</div>
+    <div className="text-xs font-medium text-cf-faint sm:min-w-[88px]">{label}</div>
     <div
       className={cn(
-        'min-w-0 text-sm text-slate-700 dark:text-slate-200',
+        'min-w-0 text-sm text-cf-body',
         alignStart ? 'sm:max-w-[72%]' : 'sm:text-right',
       )}
     >
@@ -179,8 +179,8 @@ const RefinedCompareNodeSection: React.FC<{
   return (
     <section className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-        <span className="text-xs text-slate-400 dark:text-slate-500">{items.length}</span>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
+        <span className="text-xs text-cf-faint">{items.length}</span>
       </div>
 
       <DetailRows>
@@ -188,10 +188,10 @@ const RefinedCompareNodeSection: React.FC<{
           <div key={node.nodeId} className="border-b border-slate-200 px-3.5 py-2.5 last:border-b-0 dark:border-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{node.nodeName}</div>
-                <div className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{node.nodeId}</div>
+                <div className="truncate text-sm font-medium text-cf-title">{node.nodeName}</div>
+                <div className="mt-0.5 text-xs text-cf-faint">{node.nodeId}</div>
               </div>
-              <span className="text-xs text-slate-400 dark:text-slate-500">类型：{node.nodeType || '未知'}</span>
+              <span className="text-xs text-cf-faint">类型：{node.nodeType || '未知'}</span>
             </div>
 
             {showChanges ? (
@@ -202,14 +202,14 @@ const RefinedCompareNodeSection: React.FC<{
                       key={`${node.nodeId}-${change.path}-${index}`}
                       label={change.path}
                       value={
-                        <div className="flex flex-col gap-1 text-xs leading-6 text-slate-500 dark:text-slate-300">
+                        <div className="flex flex-col gap-1 text-xs leading-6 text-cf-subtle">
                           <div>
-                            <span className="mr-2 text-slate-400 dark:text-slate-500">旧值</span>
+                            <span className="mr-2 text-cf-faint">旧值</span>
                             <span>{formatValue(change.oldValue)}</span>
                           </div>
                           <div>
-                            <span className="mr-2 text-slate-400 dark:text-slate-500">新值</span>
-                            <span className="text-slate-700 dark:text-slate-100">{formatValue(change.newValue)}</span>
+                            <span className="mr-2 text-cf-faint">新值</span>
+                            <span className="text-cf-body">{formatValue(change.newValue)}</span>
                           </div>
                         </div>
                       }
@@ -218,7 +218,7 @@ const RefinedCompareNodeSection: React.FC<{
                   ))}
                 </DetailRows>
               ) : (
-                <div className="mt-3 text-xs text-slate-400 dark:text-slate-500">未返回属性差异明细</div>
+                <div className="mt-3 text-xs text-cf-faint">未返回属性差异明细</div>
               )
             ) : null}
           </div>
@@ -239,8 +239,8 @@ const RefinedCompareEdgeSection: React.FC<{
   return (
     <section className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">连线变化</div>
-        <span className="text-xs text-slate-400 dark:text-slate-500">{addedEdges.length + removedEdges.length}</span>
+        <div className="text-sm font-medium text-cf-title">连线变化</div>
+        <span className="text-xs text-cf-faint">{addedEdges.length + removedEdges.length}</span>
       </div>
 
       <DetailRows>
@@ -489,11 +489,11 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
           table={(
             <InnerTableSurface>
               <div className="px-6 py-10 text-center">
-                <div className="admin-source-stat-icon mx-auto mb-3 flex h-10 w-10 items-center justify-center text-slate-400 dark:text-slate-500">
+                <div className="admin-source-stat-icon mx-auto mb-3 flex h-10 w-10 items-center justify-center text-cf-faint">
                   <History className="h-5 w-5" />
                 </div>
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">没有权限查看版本历史</div>
-                <div className="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">当前流程的版本历史仅对流程创建者和管理员开放。</div>
+                <div className="text-sm font-medium text-cf-title">没有权限查看版本历史</div>
+                <div className="mt-1.5 text-xs leading-6 text-cf-subtle">当前流程的版本历史仅对流程创建者和管理员开放。</div>
               </div>
             </InnerTableSurface>
           )}
@@ -579,8 +579,8 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
       <InnerTableSurface className="flex min-h-0 flex-1 flex-col" wrapperClassName="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
           <div className="min-w-0">
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">版本时间线</div>
-            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-sm font-medium text-cf-title">版本时间线</div>
+            <div className="mt-0.5 text-xs text-cf-subtle">
               版本 {versions.length} · 当前 {currentVersion ? `v${currentVersion.versionNumber}` : '未生成'} · 回滚 {rollbackCount} · 已选 {selectedVersions.length}/2
             </div>
           </div>
@@ -613,7 +613,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleVersionSelection(version.id)}
-                          className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
+                          className="h-4 w-4 rounded border-slate-300 text-cf-title focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:focus:ring-slate-500"
                           aria-label={`选择版本 v${version.versionNumber}`}
                         />
                         {index !== versions.length - 1 ? (
@@ -623,26 +623,26 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
                       <div className="min-w-0 flex-1 space-y-1.5">
                         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          <span className="text-sm font-semibold text-cf-title">
                             v{version.versionNumber}
                           </span>
                           {index === 0 ? (
-                            <span className="text-xs text-slate-500 dark:text-slate-400">当前版本</span>
+                            <span className="text-xs text-cf-subtle">当前版本</span>
                           ) : null}
                           {version.isRollback ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                            <span className="inline-flex items-center gap-1 text-xs text-cf-subtle">
                               <RotateCcw className="h-3.5 w-3.5" />
                               回滚版本
                             </span>
                           ) : null}
-                          <span className="text-xs text-slate-500 dark:text-slate-400">{changeType.label}</span>
+                          <span className="text-xs text-cf-subtle">{changeType.label}</span>
                         </div>
 
-                        <div className="text-sm leading-5 text-slate-600 dark:text-slate-300">
+                        <div className="text-sm leading-5 text-cf-muted">
                           {version.changeLog || '暂无版本说明'}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cf-subtle">
                           <span className="inline-flex items-center gap-1.5">
                             <Clock3 className="h-3.5 w-3.5" />
                             {formatDateTime(version.createdAt)}
@@ -768,12 +768,12 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               <DetailRows>
                 <DetailRow label="运行实例" value="检测到运行中的流程实例" />
                 <div className="px-4 py-3">
-                  <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                  <label className="inline-flex items-center gap-2 text-sm text-cf-body">
                       <input
                         type="checkbox"
                         checked={forceRollback}
                         onChange={(event) => setForceRollback(event.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
+                        className="h-4 w-4 rounded border-slate-300 text-cf-title focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:focus:ring-slate-500"
                       />
                     强制回滚
                   </label>
@@ -782,8 +782,8 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             ) : null}
 
             <div className="admin-dialog-field">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                回滚原因 <span className="text-slate-400 dark:text-slate-500">*</span>
+              <label className="text-sm font-medium text-cf-body">
+                回滚原因 <span className="text-cf-faint">*</span>
               </label>
               <Textarea
                 value={rollbackReason}
@@ -837,12 +837,12 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               <DetailRow label="影响说明" value={warningData.description} alignStart />
             ) : null}
           </DetailRows>
-          <label className="inline-flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+          <label className="inline-flex items-start gap-2 text-sm text-cf-body">
             <input
               type="checkbox"
               checked={warningConfirmed}
               onChange={(event) => setWarningConfirmed(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-cf-title focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:focus:ring-slate-500"
             />
             我已了解风险，确认继续强制回滚
           </label>

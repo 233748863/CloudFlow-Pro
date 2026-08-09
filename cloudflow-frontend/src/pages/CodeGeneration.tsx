@@ -13,6 +13,7 @@ import { getProcessDefinitions } from '../services/api/workflow';
 import { WorkflowDefinition } from '../types';
 import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 import { cn } from '@/utils/cn';
+import '../styles/features/code-generation.css';
 
 type PublishedProcessDefinition = {
   definitionId?: string;

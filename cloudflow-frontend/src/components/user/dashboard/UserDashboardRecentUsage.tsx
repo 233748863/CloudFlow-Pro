@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { EmptyState, LoadingSpinner } from '@/components/common';
+import './UserDashboardRecentUsage.css';
 
 export interface UserDashboardRecentUsageItem {
   id: string;

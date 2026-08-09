@@ -1,0 +1,197 @@
+/* 从 index.css 拆分而来：workflow-category
+   由 ProcessCategoryPage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+.workflow-category-page {
+  gap: 20px;
+}
+
+.workflow-category-toolbar {
+  padding: 16px;
+}
+
+.workflow-category-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(156px, 180px) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.workflow-category-filter-grid label {
+  min-width: 0;
+}
+
+.workflow-category-table-panel {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.workflow-category-table-head {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 10px 16px;
+}
+
+.workflow-category-table-head > div {
+  min-width: 0;
+}
+
+.workflow-category-table-head strong,
+.workflow-category-table-head span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-category-table-head strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.workflow-category-table-head span {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.workflow-category-table-count {
+  flex: 0 0 auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #64748b;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.workflow-category-table {
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.workflow-category-table th,
+.workflow-category-table td {
+  min-width: 0;
+  overflow: hidden;
+  padding: 10px 12px;
+  text-overflow: ellipsis;
+}
+
+.workflow-category-table th:nth-child(1),
+.workflow-category-table td:nth-child(1) {
+  width: 22%;
+}
+
+.workflow-category-table th:nth-child(2),
+.workflow-category-table td:nth-child(2) {
+  width: 11%;
+}
+
+.workflow-category-table th:nth-child(3),
+.workflow-category-table td:nth-child(3) {
+  width: 6%;
+}
+
+.workflow-category-table th:nth-child(4),
+.workflow-category-table td:nth-child(4) {
+  width: 13%;
+}
+
+.workflow-category-table th:nth-child(5),
+.workflow-category-table td:nth-child(5) {
+  width: 6%;
+}
+
+.workflow-category-table th:nth-child(6),
+.workflow-category-table td:nth-child(6) {
+  width: 7%;
+}
+
+.workflow-category-table th:nth-child(7),
+.workflow-category-table td:nth-child(7) {
+  width: 23%;
+}
+
+.workflow-category-table th:nth-child(8),
+.workflow-category-table td:nth-child(8) {
+  width: 11%;
+}
+
+.workflow-category-table tbody tr {
+  cursor: pointer;
+}
+
+.workflow-category-identity {
+  max-width: 100%;
+}
+
+.workflow-category-identity > div {
+  min-width: 0;
+}
+
+.workflow-category-identity strong,
+.workflow-category-identity small {
+  max-width: 100%;
+}
+
+.workflow-category-parent,
+.workflow-category-remark,
+.workflow-category-icon-token {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-category-icon-token svg {
+  flex: 0 0 auto;
+}
+
+.workflow-category-child-count,
+.workflow-category-sort {
+  display: inline-flex;
+  min-width: 32px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.workflow-category-actions-cell {
+  overflow: visible !important;
+}
+
+.workflow-category-dialog-body {
+  max-height: min(66vh, 620px);
+  overflow: auto;
+}
+
+.workflow-category-dialog-form {
+  gap: 14px;
+}
+
+@media (max-width: 1100px) {
+  .workflow-category-filter-grid {
+      grid-template-columns: minmax(280px, 1fr) minmax(150px, 180px);
+    }
+}

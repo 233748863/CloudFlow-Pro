@@ -4,7 +4,7 @@ import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { Clock, Eye, Globe2, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, Pagination, Table, TableScrollArea } from '@/components/common';
 import {
   Button,
   DatePicker,
@@ -54,9 +54,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -99,8 +99,8 @@ const LoginDetailDialog: React.FC<{
           { label: '异常信息', value: log.exception || '-' },
         ].map((item) => (
           <div key={item.label} className="border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800">
-            <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{item.label}</div>
-            <div className="mt-2 break-all whitespace-pre-wrap text-sm text-slate-900 dark:text-slate-100">{item.value}</div>
+            <div className="text-xs font-medium text-cf-faint">{item.label}</div>
+            <div className="mt-2 break-all whitespace-pre-wrap text-sm text-cf-title">{item.value}</div>
           </div>
         ))}
       </div>
@@ -411,8 +411,15 @@ export const LoginLogPage: React.FC = () => {
             </section>
           )}
           table={(
-            <InnerTableSurface className="admin-login-log-table-panel">
-              <table className="unity-data-table admin-source-table admin-login-log-table min-w-[1040px]">
+            <InnerTableSurface className="admin-login-log-table-panel" disableScrollWrapper>
+              <TableScrollArea aria-label="登录日志表格">
+                <Table
+                  disableScrollWrapper
+                  stickyHeader
+                  pinnedColumns={{ left: 1, right: 1 }}
+                  className="admin-source-table admin-login-log-table min-w-[1040px]"
+                  style={{ minWidth: 1040 }}
+                >
                   <thead>
                     <tr>
                       <th className="w-10">
@@ -451,7 +458,7 @@ export const LoginLogPage: React.FC = () => {
                             />
                           </td>
                           <td>
-                            <strong className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            <strong className="text-sm font-medium text-cf-title">
                               {item.createBy || '-'}
                             </strong>
                           </td>
@@ -468,20 +475,20 @@ export const LoginLogPage: React.FC = () => {
                           <td className="whitespace-nowrap">{item.remoteAddr || '-'}</td>
                           <td className="whitespace-nowrap">{item.time ?? 0} ms</td>
                           <td>
-                            <div className="max-w-[260px] truncate text-slate-500 dark:text-slate-400" title={item.userAgent || ''}>
+                            <div className="max-w-[260px] truncate text-cf-subtle" data-tooltip={item.userAgent || ''}>
                               {item.userAgent || '-'}
                             </div>
                           </td>
                           <td className="whitespace-nowrap">{item.createTime || '-'}</td>
                           <td>
                             <div className="admin-users-row-actions">
-                              <button type="button" title="查看详情" onClick={() => void handleView(item.logId)}>
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => void handleView(item.logId)}>
                                 <Eye size={15} />
                               </button>
                               <button
                                 type="button"
                                 className="danger"
-                                title="删除日志"
+                                data-tooltip="删除日志" aria-label="删除日志"
                                 onClick={() => setPendingDeleteIds([item.logId])}
                               >
                                 <Trash2 size={15} />
@@ -492,7 +499,8 @@ export const LoginLogPage: React.FC = () => {
                       ))
                     )}
                   </tbody>
-              </table>
+                </Table>
+              </TableScrollArea>
             </InnerTableSurface>
           )}
           pagination={total > 0 ? (

@@ -98,8 +98,8 @@ const InfoRows = ({ rows }: { rows: Array<[string, React.ReactNode]> }) => (
   <div className="admin-crm-workspace-rows">
     {rows.map(([label, value]) => (
       <div key={label} className="admin-crm-workspace-row">
-        <span className="text-slate-500 dark:text-slate-400">{label}</span>
-        <strong className="text-right font-medium text-slate-900 dark:text-slate-100">{value || '-'}</strong>
+        <span className="text-cf-subtle">{label}</span>
+        <strong className="text-right font-medium text-cf-title">{value || '-'}</strong>
       </div>
     ))}
   </div>
@@ -116,7 +116,7 @@ const ActionListButton = ({
 }) => (
   <button type="button" className="cf-side-link cf-side-link-sm w-full justify-between text-left" onClick={onClick}>
     <span className="min-w-0 truncate">{title}</span>
-    {meta ? <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{meta}</span> : null}
+    {meta ? <span className="shrink-0 text-xs text-cf-subtle">{meta}</span> : null}
   </button>
 );
 
@@ -136,7 +136,7 @@ const renderProjectCard = (
     <td>{item.sourceName || '-'}</td>
     <td>
       <div className="admin-users-row-actions">
-        {item.projectId ? <button type="button" title="查看项目工作区" onClick={() => onOpen(item.projectId!)}><FolderKanban size={15} /></button> : null}
+        {item.projectId ? <button type="button" data-tooltip="查看项目工作区" aria-label="查看项目工作区" onClick={() => onOpen(item.projectId!)}><FolderKanban size={15} /></button> : null}
       </div>
     </td>
   </tr>
@@ -606,7 +606,7 @@ export default function CrmCustomerWorkspacePage() {
                         <td>{item.ownerName || '-'}</td>
                         <td>
                           <div className="admin-users-row-actions">
-                            {item.contractId ? <button type="button" title="打开 OA 合同" onClick={() => navigate('/office/contracts', { state: { focusContractId: item.contractId } })}><FileText size={15} /></button> : null}
+                            {item.contractId ? <button type="button" data-tooltip="打开 OA 合同" aria-label="打开 OA 合同" onClick={() => navigate('/office/contracts', { state: { focusContractId: item.contractId } })}><FileText size={15} /></button> : null}
                           </div>
                         </td>
                       </tr>
@@ -645,7 +645,7 @@ export default function CrmCustomerWorkspacePage() {
                         <td>{item.amount || 0}</td>
                         <td>
                           <div className="admin-users-row-actions">
-                            <button type="button" title="打开 OA 合同" onClick={() => navigate('/office/contracts', { state: { focusContractId: item.contractId } })}><FileText size={15} /></button>
+                            <button type="button" data-tooltip="打开 OA 合同" aria-label="打开 OA 合同" onClick={() => navigate('/office/contracts', { state: { focusContractId: item.contractId } })}><FileText size={15} /></button>
                           </div>
                         </td>
                       </tr>
@@ -758,9 +758,9 @@ export default function CrmCustomerWorkspacePage() {
                         <td>{item.grossAmount || 0}</td>
                         <td>
                           <div className="admin-users-row-actions">
-                            <button type="button" title="打开 OA 发票" onClick={() => navigate('/office/invoice')}><ReceiptText size={15} /></button>
-                            {item.status !== 'VOID' ? <button type="button" title="作废" onClick={() => void voidInvoice(item.invoiceId)}><RefreshCcw size={15} /></button> : null}
-                            {item.externalLinkUrl ? <button type="button" title="外链" onClick={() => window.open(item.externalLinkUrl, '_blank')}><FileText size={15} /></button> : null}
+                            <button type="button" data-tooltip="打开 OA 发票" aria-label="打开 OA 发票" onClick={() => navigate('/office/invoice')}><ReceiptText size={15} /></button>
+                            {item.status !== 'VOID' ? <button type="button" data-tooltip="作废" aria-label="作废" onClick={() => void voidInvoice(item.invoiceId)}><RefreshCcw size={15} /></button> : null}
+                            {item.externalLinkUrl ? <button type="button" data-tooltip="外链" aria-label="外链" onClick={() => window.open(item.externalLinkUrl, '_blank')}><FileText size={15} /></button> : null}
                           </div>
                         </td>
                       </tr>
@@ -930,7 +930,7 @@ export default function CrmCustomerWorkspacePage() {
                         <td>{item.reservedAmount || 0} / {item.actualAmount || 0}</td>
                         <td>
                           <div className="admin-users-row-actions">
-                            <button type="button" title="打开 OA 预算" onClick={() => navigate('/office/budget')}><ReceiptText size={15} /></button>
+                            <button type="button" data-tooltip="打开 OA 预算" aria-label="打开 OA 预算" onClick={() => navigate('/office/budget')}><ReceiptText size={15} /></button>
                           </div>
                         </td>
                       </tr>

@@ -283,10 +283,10 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                       ) : (
                         <AlertTriangle size={16} className="text-rose-600 dark:text-rose-300" />
                       )}
-                      <span className="text-slate-900 dark:text-slate-100">{result.message || '分析完成'}</span>
+                      <span className="text-cf-title">{result.message || '分析完成'}</span>
                     </div>
                     {result.fromVersion > 0 ? (
-                      <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="mt-2 text-xs text-cf-subtle">
                         版本迁移：V{result.fromVersion} {'->'} V{result.toVersion}
                       </div>
                     ) : null}
@@ -308,7 +308,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                     <InnerTableSurface className="max-h-64">
                       <table className="unity-data-table admin-source-table min-w-[760px]">
                         <thead className="sticky top-0">
-                          <tr className="text-left text-slate-500 dark:text-slate-400">
+                          <tr className="text-left text-cf-subtle">
                             <th className="px-4 py-3 font-medium">流程编号</th>
                             <th className="px-4 py-3 font-medium">当前节点</th>
                             <th className="px-4 py-3 font-medium">状态</th>
@@ -326,7 +326,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                                 <td className="px-4 py-3">
                                   {item.processNo || item.instanceId.slice(0, 8)}
                                 </td>
-                                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                                <td className="px-4 py-3 text-cf-muted">
                                   {item.currentNodeTitle || item.currentNodeKey || '-'}
                                 </td>
                                 <td className="px-4 py-3">
@@ -337,7 +337,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                                     {statusMeta.label}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                                <td className="px-4 py-3 text-cf-subtle">
                                   {item.reason || '-'}
                                 </td>
                               </tr>
@@ -363,7 +363,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                   ) : null}
                 </>
               ) : (
-                <div className="rounded-md border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+                <div className="rounded-md border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-5 py-10 text-center text-sm text-cf-subtle dark:border-slate-700 dark:bg-slate-900/50">
                   先执行影响分析，再在这里确认迁移结果。
                 </div>
               )}
@@ -377,7 +377,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
             bodyClassName="admin-dialog-stack"
           >
             {historyLoading ? (
-              <div className="flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-5 py-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+              <div className="flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-5 py-6 text-sm text-cf-subtle dark:border-slate-700 dark:bg-slate-900/50">
                 <Loader2 size={16} className="animate-spin" />
                 正在加载历史记录
               </div>
@@ -391,10 +391,10 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                   >
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        <div className="text-sm font-semibold text-cf-title">
                           {summary.title}
                         </div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        <div className="mt-1 text-xs text-cf-subtle">
                           {summary.modeLabel} · {summary.executedAt} · 执行人 {record.executedBy || '-'}
                         </div>
                       </div>
@@ -402,7 +402,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                         <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                           迁移 {record.migratedCount}
                         </span>
-                        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-cf-muted dark:border-slate-700 dark:bg-slate-900">
                           跳过 {record.skippedCount}
                         </span>
                         <span className="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
@@ -414,7 +414,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                 );
               })
             ) : (
-              <div className="rounded-md border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-5 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+              <div className="rounded-md border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-5 py-10 text-center text-sm text-cf-subtle dark:border-slate-700 dark:bg-slate-900/50">
                 暂无热更新记录。
               </div>
             )}

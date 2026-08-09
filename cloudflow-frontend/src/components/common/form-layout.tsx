@@ -23,14 +23,14 @@ export const FormField: React.FC<FormFieldProps> = ({
 }) => (
   <div className={cn('admin-dialog-field', className)}>
     {label ? (
-      <Label className={cn('text-sm font-medium text-slate-700 dark:text-slate-300', labelClassName)}>
+      <Label className={cn('text-sm font-medium text-cf-body', labelClassName)}>
         {label}
         {required ? <span className="ml-1 text-red-500">*</span> : null}
       </Label>
     ) : null}
     {children}
     {error ? <p className="text-xs leading-5 text-red-600 dark:text-red-400">{error}</p> : null}
-    {!error && hint ? <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">{hint}</p> : null}
+    {!error && hint ? <p className="text-xs leading-5 text-cf-subtle">{hint}</p> : null}
   </div>
 );
 
@@ -54,8 +54,8 @@ export const DialogSection = React.forwardRef<HTMLDivElement, DialogSectionProps
       {title || description || headerAside ? (
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            {title ? <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div> : null}
-            {description ? <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div> : null}
+            {title ? <div className="text-sm font-semibold text-cf-title">{title}</div> : null}
+            {description ? <div className="mt-1 text-xs leading-5 text-cf-subtle">{description}</div> : null}
           </div>
           {headerAside ? <div className="flex shrink-0 flex-wrap items-center gap-2">{headerAside}</div> : null}
         </div>
@@ -99,8 +99,8 @@ interface DetailItemProps {
 
 export const DetailItem: React.FC<DetailItemProps> = ({ label, value, className, valueClassName }) => (
   <div className={cn('min-w-0 border-b border-slate-200 py-2.5 dark:border-slate-800', className)}>
-    <div className="text-xs leading-5 text-slate-500 dark:text-slate-400">{label}</div>
-    <div className={cn('mt-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100', valueClassName)}>
+    <div className="text-xs leading-5 text-cf-subtle">{label}</div>
+    <div className={cn('mt-1 truncate text-sm font-medium text-cf-title', valueClassName)}>
       {value}
     </div>
   </div>

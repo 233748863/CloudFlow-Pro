@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Clock3, Edit, Eye, FileSignature, Link2, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import { toast } from 'sonner';
-import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
+import { AmountInput, BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import { ContractMilestoneSection } from '@/components/contract/ContractMilestoneSection';
@@ -63,7 +63,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
         <div className="admin-source-stat-icon mb-3">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
       </div>
     </td>
   </tr>
@@ -127,8 +127,8 @@ const DetailRows: React.FC<{ children: React.ReactNode; className?: string }> = 
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="admin-contract-detail-item">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value || '-'}</div>
   </div>
 );
 
@@ -484,35 +484,35 @@ export const ContractPage: React.FC = () => {
           ) : rows.map((item) => (
             <tr key={item.contractId}>
               <td>
-                <div className="font-medium text-slate-900 dark:text-slate-100">{item.contractNo || '-'}</div>
-                <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(item.createTime)}</div>
+                <div className="font-medium text-cf-title">{item.contractNo || '-'}</div>
+                <div className="mt-1 text-xs text-cf-faint">{formatDateTimeDisplay(item.createTime)}</div>
               </td>
               <td>
-                <div className="font-medium text-slate-900 dark:text-slate-100">{item.contractName}</div>
-                <div className="mt-1 text-xs text-slate-400">{item.counterpartyName}</div>
+                <div className="font-medium text-cf-title">{item.contractName}</div>
+                <div className="mt-1 text-xs text-cf-faint">{item.counterpartyName}</div>
               </td>
               <td>
                 <div>{typeDict.getLabel(String(item.contractType ?? ''))}</div>
-                <div className="mt-1 text-xs text-slate-400">{item.currency || 'CNY'} {Number(item.amount || 0).toLocaleString()}</div>
+                <div className="mt-1 text-xs text-cf-faint">{item.currency || 'CNY'} {Number(item.amount || 0).toLocaleString()}</div>
               </td>
               <td>
                 <div>{item.ownerName || '-'}</div>
-                <div className="mt-1 text-xs text-slate-400">{item.deptName || '-'}</div>
+                <div className="mt-1 text-xs text-cf-faint">{item.deptName || '-'}</div>
               </td>
               <td>
                 <div>{item.startDate || '-'}</div>
-                <div className="mt-1 text-xs text-slate-400">{item.endDate || '-'}</div>
+                <div className="mt-1 text-xs text-cf-faint">{item.endDate || '-'}</div>
               </td>
               <td>{getAttachmentList(item.attachmentUrl).length} 个</td>
               <td>{getStatusBadge(item.status)}</td>
               <td>{getRiskBadge(item.riskLevel)}</td>
               <td>
                 <div className="admin-users-row-actions">
-                  <button type="button" title="查看详情" aria-label="查看详情" onClick={() => void openDetail(item)}><Eye size={15} /></button>
-                  {['DRAFT', 'REJECTED', 'APPROVED', 'ACTIVE'].includes(item.status || 'DRAFT') && hasPermission('oa:contract:edit') ? <button type="button" title="编辑合同" aria-label="编辑合同" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
-                  {['DRAFT', 'REJECTED'].includes(item.status || 'DRAFT') && hasPermission('oa:contract:submit') ? <button type="button" title="提交审批" aria-label="提交审批" onClick={() => setConfirmState({ type: 'submit', id: item.contractId!, title: '提交合同审批', message: '提交后将进入合同审批流程。', confirmText: '提交' })}><Send size={15} /></button> : null}
-                  {['DRAFT', 'PENDING'].includes(item.status || 'DRAFT') && hasPermission('oa:contract:cancel') ? <button type="button" title="取消合同" aria-label="取消合同" onClick={() => setConfirmState({ type: 'cancel', id: item.contractId!, title: '取消合同', message: '取消后该合同不再继续审批。', confirmText: '取消' })}><XCircle size={15} /></button> : null}
-                  {['DRAFT', 'REJECTED', 'CANCELLED'].includes(item.status || 'DRAFT') && hasPermission('oa:contract:remove') ? <button type="button" title="删除合同" aria-label="删除合同" onClick={() => setConfirmState({ type: 'delete', id: item.contractId!, title: '删除合同', message: '删除后当前合同不可恢复。', confirmText: '删除', danger: true })}><Trash2 size={15} /></button> : null}
+                  <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => void openDetail(item)}><Eye size={15} /></button>
+                  {['DRAFT', 'REJECTED', 'APPROVED', 'ACTIVE'].includes(item.status || 'DRAFT') && hasPermission('oa:contract:edit') ? <button type="button" data-tooltip="编辑合同" aria-label="编辑合同" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
+                  {['DRAFT', 'REJECTED'].includes(item.status || 'DRAFT') && hasPermission('oa:contract:submit') ? <button type="button" data-tooltip="提交审批" aria-label="提交审批" onClick={() => setConfirmState({ type: 'submit', id: item.contractId!, title: '提交合同审批', message: '提交后将进入合同审批流程。', confirmText: '提交' })}><Send size={15} /></button> : null}
+                  {['DRAFT', 'PENDING'].includes(item.status || 'DRAFT') && hasPermission('oa:contract:cancel') ? <button type="button" data-tooltip="取消合同" aria-label="取消合同" onClick={() => setConfirmState({ type: 'cancel', id: item.contractId!, title: '取消合同', message: '取消后该合同不再继续审批。', confirmText: '取消' })}><XCircle size={15} /></button> : null}
+                  {['DRAFT', 'REJECTED', 'CANCELLED'].includes(item.status || 'DRAFT') && hasPermission('oa:contract:remove') ? <button type="button" data-tooltip="删除合同" aria-label="删除合同" onClick={() => setConfirmState({ type: 'delete', id: item.contractId!, title: '删除合同', message: '删除后当前合同不可恢复。', confirmText: '删除', danger: true })}><Trash2 size={15} /></button> : null}
                 </div>
               </td>
             </tr>
@@ -592,8 +592,17 @@ export const ContractPage: React.FC = () => {
               </Select>
             </div>
             <div className="admin-dialog-field">
-              <Label>合同金额</Label>
-              <Input className="h-11" type="number" min={0} value={form.amount} onChange={(event) => setForm((prev) => ({ ...prev, amount: Number(event.target.value) || 0 }))} />
+              <Label htmlFor="contract-amount">合同金额</Label>
+              <AmountInput
+                id="contract-amount"
+                className="h-11"
+                min={0}
+                precision={2}
+                currency={form.currency === 'CNY' ? '¥' : form.currency}
+                value={form.amount}
+                onValueChange={(amount) => setForm((prev) => ({ ...prev, amount: amount ?? 0 }))}
+                placeholder="0.00"
+              />
             </div>
             <div className="admin-dialog-field">
               <Label>风险等级</Label>
@@ -717,7 +726,7 @@ export const ContractPage: React.FC = () => {
         footer={<Button variant="outline" onClick={() => setDetail(null)}>关闭</Button>}
       >
         {detailLoading ? (
-          <div className="flex items-center justify-center py-12 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-center py-12 text-sm text-cf-subtle">
             <Clock3 className="mr-2 h-4 w-4 animate-spin" />
             正在加载合同详情...
           </div>
@@ -794,10 +803,10 @@ export const ContractPage: React.FC = () => {
                   {risks.map((risk) => (
                     <div key={risk.id} className="admin-contract-risk-card">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{risk.riskName}</span>
+                        <span className="text-sm font-medium text-cf-title">{risk.riskName}</span>
                         {getRiskBadge(risk.riskLevel)}
                       </div>
-                      <div className="mt-2 text-xs text-slate-400">{risk.riskSource} / {risk.riskStatus} / {formatDateTimeDisplay(risk.detectedTime)}</div>
+                      <div className="mt-2 text-xs text-cf-faint">{risk.riskSource} / {risk.riskStatus} / {formatDateTimeDisplay(risk.detectedTime)}</div>
                     </div>
                   ))}
                 </>
@@ -824,7 +833,7 @@ export const ContractPage: React.FC = () => {
       >
         <div className="admin-dialog-stack">
           {Object.keys(templateVarsForm).length === 0 ? (
-            <div className="text-sm text-slate-500">该模板未定义变量。</div>
+            <div className="text-sm text-cf-subtle">该模板未定义变量。</div>
           ) : (
             Object.keys(templateVarsForm).map((key) => (
               <div key={key} className="admin-dialog-field">

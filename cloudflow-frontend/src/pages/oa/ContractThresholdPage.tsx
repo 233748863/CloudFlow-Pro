@@ -56,9 +56,9 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; description?: st
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
         ) : null}
       </div>
     </td>
@@ -190,14 +190,14 @@ export const ContractThresholdPage: React.FC = () => {
         <td>
           <DictBadge dictType="oa_contract_threshold_status" value={String(row.status || '')} />
         </td>
-        <td className="max-w-[240px] truncate text-xs text-slate-500" title={row.remark}>
+        <td className="max-w-[240px] truncate text-xs text-cf-subtle" data-tooltip={row.remark}>
           {row.remark || '—'}
         </td>
-        <td className="text-xs text-slate-500">{row.updateTime || '—'}</td>
+        <td className="text-xs text-cf-subtle">{row.updateTime || '—'}</td>
         <td>
           <div className="admin-users-row-actions">
-            <button type="button" title="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
-            <button type="button" className="danger" title="删除" aria-label="删除" onClick={() => row.id && setConfirmId(row.id)}><Trash2 size={15} /></button>
+            <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
+            <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => row.id && setConfirmId(row.id)}><Trash2 size={15} /></button>
           </div>
         </td>
       </tr>

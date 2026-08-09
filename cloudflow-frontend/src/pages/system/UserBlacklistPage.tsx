@@ -45,7 +45,7 @@ const STATUS_BADGE: Record<UserBlacklistStatus, string> = {
   ACTIVE:
     'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200',
   INACTIVE:
-    'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
+    'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-subtle dark:border-slate-700 dark:bg-slate-900/40',
 };
 
 const TableStateRow: React.FC<{
@@ -58,9 +58,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -360,20 +360,20 @@ export const UserBlacklistPage = () => {
             ) : (
               rows.map((row) => (
                 <tr key={row.id}>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">{row.id}</td>
+                  <td className="text-sm text-cf-subtle">{row.id}</td>
                   <td>
                     <div className="flex items-center gap-2">
                       <UserX size={14} className="text-rose-500" />
                       <span className="font-medium">{row.userName || `#${row.userId}`}</span>
                     </div>
                   </td>
-                  <td className="text-xs text-slate-600 dark:text-slate-300">{row.reason || '—'}</td>
+                  <td className="text-xs text-cf-muted">{row.reason || '—'}</td>
                   <td>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                    <span className="text-xs text-cf-subtle">
                       {row.expireAt ? formatDateTimeDisplay(row.expireAt) : '长期'}
                     </span>
                   </td>
-                  <td className="text-xs text-slate-500 dark:text-slate-400">{row.opUserName || '—'}</td>
+                  <td className="text-xs text-cf-subtle">{row.opUserName || '—'}</td>
                   <td>
                     <span
                       className={cn(
@@ -387,17 +387,17 @@ export const UserBlacklistPage = () => {
                   <td>
                     <div className="admin-users-row-actions">
                       {row.status === 'ACTIVE' ? (
-                        <button type="button" title="解除拉黑" onClick={() => handleUnban(row)}>
+                        <button type="button" data-tooltip="解除拉黑" aria-label="解除拉黑" onClick={() => handleUnban(row)}>
                           <ShieldOff size={15} />
                         </button>
                       ) : null}
-                      <button type="button" title="编辑记录" onClick={() => handleOpenModal(row)}>
+                      <button type="button" data-tooltip="编辑记录" aria-label="编辑记录" onClick={() => handleOpenModal(row)}>
                         <Edit size={15} />
                       </button>
                       <button
                         type="button"
                         className="danger"
-                        title="删除记录"
+                        data-tooltip="删除记录" aria-label="删除记录"
                         onClick={() => setPendingDelete(row)}
                       >
                         <Trash2 size={15} />

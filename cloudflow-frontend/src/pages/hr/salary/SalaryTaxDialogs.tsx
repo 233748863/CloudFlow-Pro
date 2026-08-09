@@ -32,19 +32,19 @@ type DialogProps = {
 
 const subtleBadgeToneMap = {
   neutral: {
-    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72',
     dot: 'bg-[var(--cf-text-muted)] dark:bg-[var(--cf-text-muted)]',
   },
   primary: {
-    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72',
     dot: 'bg-cyan-600 dark:bg-cyan-400',
   },
   warning: {
-    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72',
     dot: 'bg-amber-500 dark:bg-amber-400',
   },
   danger: {
-    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+    wrap: 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72',
     dot: 'bg-rose-500 dark:bg-rose-400',
   },
 } as const;
@@ -96,8 +96,8 @@ const SubtleRiskList: React.FC<{
               item.severity === 'danger' ? 'bg-rose-500 dark:bg-rose-400' : 'bg-amber-500 dark:bg-amber-400',
             )}
           />
-          <div className="min-w-0 flex-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
-            <span className="font-medium text-slate-900 dark:text-slate-100">{item.title}</span>
+          <div className="min-w-0 flex-1 text-xs leading-5 text-cf-muted">
+            <span className="font-medium text-cf-title">{item.title}</span>
             <span>：{item.detail}</span>
           </div>
         </div>
@@ -154,7 +154,7 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
       ) : (
         <div className="grid grid-cols-1 gap-4">
           <div className="card admin-source-panel">
-            <div className="mb-4 font-semibold text-slate-900 dark:text-slate-100">基础参数</div>
+            <div className="mb-4 font-semibold text-cf-title">基础参数</div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -179,7 +179,7 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
             </div>
 
             <div className="mt-6">
-              <div className="font-semibold text-slate-900 dark:text-slate-100">专项附加扣除</div>
+              <div className="font-semibold text-cf-title">专项附加扣除</div>
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 {deductionTypeOptions.map((item: any) => (
                   <div key={item.value}>
@@ -205,7 +205,7 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
 
           <div className="card admin-source-panel">
             <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="font-semibold text-slate-900 dark:text-slate-100">税率档配置</div>
+              <div className="font-semibold text-cf-title">税率档配置</div>
               <Button
                 variant="outline"
                 onClick={() => setTaxConfigForm((prev: any) => ({ ...prev, taxBracketsJson: defaultTaxBracketJson }))}
@@ -251,7 +251,7 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
             <div className="mt-4 grid grid-cols-1 gap-4">
               <div className="card admin-source-panel">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="font-semibold text-slate-900 dark:text-slate-100">样本</div>
+                  <div className="font-semibold text-cf-title">样本</div>
                 </div>
 
                 {currentEmployeeRecord ? (
@@ -285,24 +285,24 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
                     ]}
                   />
                 ) : (
-                  <div className="mt-4 border border-dashed border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="mt-4 border border-dashed border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-10 text-center text-sm text-cf-subtle dark:border-slate-800 dark:bg-slate-950">
                     无样本
                   </div>
                 )}
               </div>
 
               <div className="border border-slate-200 bg-[var(--cf-surface-muted)] p-4 dark:border-slate-800 dark:bg-slate-950/40">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">参考</div>
+                <div className="font-semibold text-cf-title">参考</div>
 
                 {taxConfigReferenceEntries.length > 0 ? (
                   <div className="mt-4 overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
                     {taxConfigReferenceEntries.map((item: any) => (
                       <div key={item.type} className="border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800">
                         <div className="flex items-center justify-between gap-3">
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.label}</div>
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          <div className="font-medium text-cf-title">{item.label}</div>
+                          <div className="text-sm font-semibold text-cf-title">
                             {formatCurrency(item.amount)}
-                            <span className="ml-2 text-xs font-normal text-slate-400">
+                            <span className="ml-2 text-xs font-normal text-cf-faint">
                               当前 {formatCurrency(currentTaxConfigReferenceMap.get(item.type) || 0)}
                             </span>
                           </div>
@@ -311,14 +311,14 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-4 border border-dashed border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                  <div className="mt-4 border border-dashed border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-10 text-center text-sm text-cf-subtle dark:border-slate-800 dark:bg-slate-950">
                     无参考值
                   </div>
                 )}
               </div>
             </div>
           <div className="card admin-source-panel xl:col-span-2">
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">税率档 JSON 与预览</div>
+            <div className="text-sm font-medium text-cf-title">税率档 JSON 与预览</div>
 
             <Textarea
               className="mt-4 min-h-[260px] font-mono text-sm"
@@ -328,7 +328,7 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
             />
 
             {taxConfigBracketPreview.error ? (
-              <div className="mt-4 border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300">
+              <div className="mt-4 border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-cf-muted dark:border-slate-800 dark:bg-slate-950/40">
                 {taxConfigBracketPreview.error}
               </div>
             ) : (
@@ -367,7 +367,7 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
                             ) : next ? (
                               <SubtleStatusBadge tone="warning">下一档</SubtleStatusBadge>
                             ) : (
-                              <span className="text-xs text-slate-400">未命中</span>
+                              <span className="text-xs text-cf-faint">未命中</span>
                             )}
                           </td>
                         </tr>
@@ -470,7 +470,7 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
       <div className="grid grid-cols-1 gap-4">
         <div className="card admin-source-panel">
           <div className="mb-4">
-            <div className="font-semibold text-slate-900 dark:text-slate-100">{editingTaxDeductionId ? '编辑专项扣除' : '新增专项扣除'}</div>
+            <div className="font-semibold text-cf-title">{editingTaxDeductionId ? '编辑专项扣除' : '新增专项扣除'}</div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -557,12 +557,12 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
             <DetailRow
               label="本月命中"
               value={`${taxDeductionFormDiagnostics.proposedInScope ? '命中' : '未命中'} / 当前 ${taxDeductionFormDiagnostics.sameTypeCurrentScopeCount} / 保存后 ${taxDeductionFormDiagnostics.predictedInScopeCount} / ${formatCurrency(taxDeductionFormDiagnostics.predictedInScopeAmount)}`}
-              valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+              valueClassName="max-w-[72%] text-left text-cf-muted"
             />
             <DetailRow
               label="参考与历史"
               value={`${taxDeductionFormDiagnostics.referenceAmount > 0 ? formatCurrency(taxDeductionFormDiagnostics.referenceAmount) : '-'} / 历史 ${taxDeductionFormDiagnostics.sameTypeHistoryCount} / ACTIVE ${taxDeductionFormDiagnostics.sameTypeActiveCount}${taxDeductionFormDiagnostics.overlappingActiveCount > 0 ? ` / 重叠 ${taxDeductionFormDiagnostics.overlappingActiveCount}` : ''}`}
-              valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+              valueClassName="max-w-[72%] text-left text-cf-muted"
             />
           </div>
 
@@ -583,9 +583,9 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
         <div className="card admin-source-panel">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <div className="font-semibold text-slate-900 dark:text-slate-100">个税参考</div>
+              <div className="font-semibold text-cf-title">个税参考</div>
             </div>
-            <div className="text-xs text-slate-400">{employeeTaxDeductionStats.matched} / {employeeTaxDeductionStats.total} 条</div>
+            <div className="text-xs text-cf-faint">{employeeTaxDeductionStats.matched} / {employeeTaxDeductionStats.total} 条</div>
           </div>
 
           <WorkspaceMetricStrip
@@ -620,7 +620,7 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
           {employeeTaxDeductionDiagnostics.referenceEntries.length > 0 && (
             <div className="mt-4 overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
               <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div className="font-semibold text-slate-900 dark:text-slate-100">参考值对照</div>
+                <div className="font-semibold text-cf-title">参考值对照</div>
               </div>
 
               <div className="admin-horizontal-scroll">
@@ -659,7 +659,7 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                     return (
                       <tr key={item.type}>
                         <td>
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.label}</div>
+                          <div className="font-medium text-cf-title">{item.label}</div>
                         </td>
                         <td>{item.referenceAmount > 0 ? formatCurrency(item.referenceAmount) : '未配置'}</td>
                         <td>
@@ -704,9 +704,9 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
         <div className="card admin-source-panel xl:col-span-2">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <div className="font-semibold text-slate-900 dark:text-slate-100">专项扣除记录</div>
+              <div className="font-semibold text-cf-title">专项扣除记录</div>
             </div>
-            <div className="text-xs text-slate-400">{filteredEmployeeAllTaxDeductions.length} 条结果</div>
+            <div className="text-xs text-cf-faint">{filteredEmployeeAllTaxDeductions.length} 条结果</div>
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-3 border-b border-slate-200 pb-4 dark:border-slate-800 xl:grid-cols-[minmax(0,180px)_minmax(0,180px)_minmax(0,180px)_auto] xl:items-center">
@@ -786,13 +786,13 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
                   return (
                     <tr key={item.id}>
                       <td>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{deductionTypeLabel(item.deductionType) || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{compactTaxDeductionRemark(item.remark)}</div>
+                        <div className="font-medium text-cf-title">{deductionTypeLabel(item.deductionType) || '-'}</div>
+                        <div className="mt-1 text-xs text-cf-faint">{compactTaxDeductionRemark(item.remark)}</div>
                       </td>
                       <td>{formatCurrency(item.amount)}</td>
                       <td>
                         <div>{toDateInputValue(item.startDate) || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">截止 {toDateInputValue(item.endDate) || '长期有效'}</div>
+                        <div className="mt-1 text-xs text-cf-faint">截止 {toDateInputValue(item.endDate) || '长期有效'}</div>
                       </td>
                       <td>
                         <div className="flex flex-col gap-2">

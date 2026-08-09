@@ -142,10 +142,10 @@ const CoursesTab: React.FC<{
                   <td>{row.creditHours ?? '-'}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
                         <Pencil size={15} />
                       </button>
-                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                      <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(row)}>
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -280,7 +280,7 @@ const CategoryTab: React.FC<{ reload: () => void; categories: HrTrainingCategory
                   <td><strong>{c.name}</strong></td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(c)}>
+                      <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(c)}>
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -364,7 +364,7 @@ const InstructorTab: React.FC<{ reload: () => void; instructors: HrTrainingInstr
                   <td>{i.contact || '-'}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(i)}>
+                      <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(i)}>
                         <Trash2 size={15} />
                       </button>
                     </div>

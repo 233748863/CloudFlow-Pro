@@ -45,7 +45,7 @@ export const ThemeModeSwitcher: React.FC<ThemeModeSwitcherProps> = ({
       size={compact ? 'icon' : 'default'}
       className={cn(
         compact
-          ? 'h-10 w-10 rounded-md text-slate-500 hover:bg-[var(--cf-surface-muted)] hover:text-cyan-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-cyan-300'
+          ? 'h-10 w-10 rounded-md text-cf-subtle hover:bg-[var(--cf-surface-muted)] hover:text-cyan-700 dark:hover:bg-slate-800 dark:hover:text-cyan-300'
           : 'justify-start dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-white',
         className,
       )}

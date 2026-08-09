@@ -127,10 +127,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               {isAttachmentImage(file.raw) ? (
                 <ImageIcon size={16} className="text-cyan-500 flex-shrink-0" />
               ) : (
-                <FileText size={16} className="text-slate-500 flex-shrink-0" />
+                <FileText size={16} className="text-cf-subtle flex-shrink-0" />
               )}
               {/* 文件名 */}
-              <span className="text-sm text-slate-700 truncate flex-1 dark:text-slate-300" title={file.name}>
+              <span className="text-sm text-cf-body truncate flex-1" data-tooltip={file.name}>
                 {decodeURIComponent(file.name)}
               </span>
               {/* 删除按钮 */}
@@ -138,8 +138,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 <button
                   type="button"
                   onClick={() => handleRemove(index)}
-                  className="flex-shrink-0 text-slate-400 opacity-100 transition-opacity hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 dark:text-slate-500 dark:hover:text-red-300"
-                  title="删除"
+                  className="flex-shrink-0 text-cf-faint opacity-100 transition-opacity hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 dark:hover:text-red-300"
+                  data-tooltip="删除" aria-label="删除"
                 >
                   <X size={14} />
                 </button>
@@ -171,10 +171,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           ) : (
             <Paperclip size={16} className="text-cyan-500" />
           )}
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-cf-subtle">
             {uploading ? '上传中...' : '点击上传附件'}
           </span>
-          <span className="ml-auto text-xs text-slate-400">
+          <span className="ml-auto text-xs text-cf-faint">
             {fileList.length}/{maxCount}
           </span>
         </label>
@@ -182,7 +182,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* 提示文字 */}
       {resolvedHint && (
-        <p className="text-xs text-slate-400 dark:text-slate-500">{resolvedHint}</p>
+        <p className="text-xs text-cf-faint">{resolvedHint}</p>
       )}
     </div>
   );

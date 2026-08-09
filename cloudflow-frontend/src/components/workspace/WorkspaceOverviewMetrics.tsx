@@ -67,7 +67,7 @@ export const WorkspaceOverviewMetricsSection: React.FC<WorkspaceOverviewMetricsS
                   {item.value}
                 </div>
                 {item.hint ? (
-                  <div className={cn('mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400', item.hintClassName)}>
+                  <div className={cn('mt-1 text-xs leading-5 text-cf-subtle', item.hintClassName)}>
                     {item.hint}
                   </div>
                 ) : null}

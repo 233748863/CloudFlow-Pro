@@ -144,26 +144,26 @@ const WorkflowCanvasNodeView = memo(
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <div className="truncate text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      <div className="truncate text-sm font-semibold text-cf-body">
                         {displayNode.title}
                       </div>
                       {isSharedEndNode && (
                         <span
-                          className="nodrag inline-flex shrink-0 items-center gap-0.5 rounded-sm border border-slate-200 bg-[var(--cf-surface-muted)] px-1 py-px text-[10px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
-                          title="多分支汇聚点"
+                          className="nodrag inline-flex shrink-0 items-center gap-0.5 rounded-sm border border-slate-200 bg-[var(--cf-surface-muted)] px-1 py-px text-[10px] font-medium text-cf-subtle dark:border-slate-700 dark:bg-slate-900"
+                          data-tooltip="多分支汇聚点"
                         >
                           <GitMerge size={10} /> 汇聚
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 truncate text-[11px] text-slate-400 dark:text-slate-500">
+                    <div className="mt-0.5 truncate text-[11px] text-cf-faint">
                       {nodeMetaText}
                     </div>
                   </div>
                   {canStructureDrag && (
                     <div
                       className="nodrag mt-0.5 cursor-grab text-slate-300 active:cursor-grabbing"
-                      title="拖到连线空位调整顺序"
+                      data-tooltip="拖到连线空位调整顺序"
                       draggable
                       onClick={(e) => e.stopPropagation()}
                       onDragStart={(e) => {
@@ -185,12 +185,12 @@ const WorkflowCanvasNodeView = memo(
                 {(nodeAssigneeSummary || displayNode.condition) && (
                   <div className="mt-1.5 space-y-1 text-[11px] leading-5">
                     {nodeAssigneeSummary && (
-                      <div className="truncate text-slate-600 dark:text-slate-300">
+                      <div className="truncate text-cf-muted">
                         {nodeAssigneeSummary}
                       </div>
                     )}
                     {displayNode.condition && (
-                      <div className="truncate font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                      <div className="truncate font-mono text-[10px] text-cf-subtle">
                         条件 · {displayNode.condition}
                       </div>
                     )}
@@ -219,11 +219,11 @@ const WorkflowCanvasNodeView = memo(
                 ui.setActiveQuickAddId(showQuickAdd ? null : id);
               }}
               className={`flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
-                showQuickAdd
-                  ? "border-cyan-600 bg-cyan-600 text-white dark:border-cyan-400 dark:bg-cyan-500"
-                  : "border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
-              }`}
-              title={showQuickAdd ? "关闭菜单" : "添加节点"}
+ showQuickAdd
+ ? "border-cyan-600 bg-cyan-600 text-white dark:border-cyan-400 dark:bg-cyan-500"
+ : "border-slate-200 bg-[var(--cf-surface-strong)] text-cf-subtle hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+ }`}
+              data-tooltip={showQuickAdd ? "关闭菜单" : "添加节点"} aria-label={showQuickAdd ? "关闭菜单" : "添加节点"}
             >
               <Plus size={16} />
             </button>
@@ -258,7 +258,7 @@ const WorkflowCanvasNodeView = memo(
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs font-medium text-slate-700 dark:text-slate-100">
+                        <div className="text-xs font-medium text-cf-body">
                           {item.label}
                         </div>
                       </div>
@@ -268,14 +268,14 @@ const WorkflowCanvasNodeView = memo(
                 {displayNode.type !== NodeType.END && (
                   <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-800">
                     <button
-                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-600 transition-colors hover:bg-cyan-50 hover:text-cyan-700 dark:text-slate-300 dark:hover:bg-cyan-950/20 dark:hover:text-cyan-200"
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-cf-muted transition-colors hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-cyan-950/20 dark:hover:text-cyan-200"
                       onClick={(e) => {
                         e.stopPropagation();
                         actions.onCopy(id);
                         ui.setActiveQuickAddId(null);
                       }}
                     >
-                      <Copy size={14} className="text-slate-400" /> 复制此节点
+                      <Copy size={14} className="text-cf-faint" /> 复制此节点
                     </button>
                   </div>
                 )}
@@ -285,7 +285,7 @@ const WorkflowCanvasNodeView = memo(
         </div>
 
         {branchChildIds.length > 0 && (
-          <div className="nodrag pointer-events-none absolute -right-2 -top-2 rounded-sm border border-slate-200 bg-[var(--cf-surface-strong)] px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400">
+          <div className="nodrag pointer-events-none absolute -right-2 -top-2 rounded-sm border border-slate-200 bg-[var(--cf-surface-strong)] px-1.5 py-0.5 text-[10px] font-medium text-cf-subtle dark:border-slate-700 dark:bg-slate-950">
             {branchChildIds.length} 分支
           </div>
         )}
@@ -342,7 +342,7 @@ const WorkflowCanvasEdgeView = ({
         >
           {data?.isDraggingGlobal && !isInvalidDrop ? (
             <div
-              className="workflow-flow-dropzone flex h-8 w-28 cursor-pointer items-center justify-center rounded-md border border-dashed border-slate-300 bg-[var(--cf-surface-strong)] text-[11px] font-medium text-slate-500 shadow-sm transition-colors hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/20 dark:hover:text-cyan-200"
+              className="workflow-flow-dropzone flex h-8 w-28 cursor-pointer items-center justify-center rounded-md border border-dashed border-slate-300 bg-[var(--cf-surface-strong)] text-[11px] font-medium text-cf-subtle shadow-sm transition-colors hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/20 dark:hover:text-cyan-200"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = "move";
@@ -357,7 +357,7 @@ const WorkflowCanvasEdgeView = ({
               拖入空位
             </div>
           ) : label ? (
-            <span className="rounded-sm border border-slate-200 bg-[var(--cf-surface-strong)] px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400">
+            <span className="rounded-sm border border-slate-200 bg-[var(--cf-surface-strong)] px-1.5 py-0.5 text-[10px] font-medium text-cf-subtle dark:border-slate-700 dark:bg-slate-950">
               {label}
             </span>
           ) : null}
@@ -494,8 +494,8 @@ const WorkflowCanvasInner = ({
     <div
       ref={canvasRef}
       className={`workflow-studio-canvas workflow-flow-canvas relative h-full min-h-0 flex-1 basis-0 overflow-hidden bg-[var(--cf-bg)] dark:bg-slate-950 ${
-        hasSelectedNode ? "mr-[24rem]" : ""
-      }`}
+ hasSelectedNode ? "mr-[24rem]" : ""
+ }`}
       onClick={() => {
         actions.onSelect("");
         ui.setActiveQuickAddId(null);

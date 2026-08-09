@@ -31,9 +31,9 @@ const InlineState: React.FC<{
     <div className="admin-source-stat-icon mb-3">
       {icon || <Inbox className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">
         {description}
       </div>
     ) : null}
@@ -271,7 +271,7 @@ export const AnnouncementPage = () => {
               >
                 {getAnnouncementPriorityMeta(selectedAnnouncement.priority).label}
               </span>
-              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950">
                 {selectedAnnouncement.scopeType === AnnouncementScope.ALL ? '全员可见' : '定向发布'}
               </span>
             </>
@@ -279,7 +279,7 @@ export const AnnouncementPage = () => {
         }
         extraInfo={
           selectedAnnouncement ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-cf-subtle">
               <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 dark:border-slate-800 dark:bg-slate-950">
                 发布时间：
                 {formatAnnouncementRelativeWithDateTime(

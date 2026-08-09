@@ -19,7 +19,7 @@ export const AttachmentLinks: React.FC<AttachmentLinksProps> = ({
   const attachments = getAttachmentList(value);
 
   if (!attachments.length) {
-    return <span className="text-sm text-slate-400">{emptyText}</span>;
+    return <span className="text-sm text-cf-faint">{emptyText}</span>;
   }
 
   return (
@@ -33,7 +33,7 @@ export const AttachmentLinks: React.FC<AttachmentLinksProps> = ({
             target="_blank"
             rel="noreferrer"
             className={[
-              'admin-option-surface inline-flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
+              'admin-option-surface inline-flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm text-cf-body dark:border-slate-800 dark:bg-slate-950',
               compact ? 'max-w-[12rem] px-2.5 py-1.5' : 'w-full px-4 py-3',
             ].join(' ')}
           >

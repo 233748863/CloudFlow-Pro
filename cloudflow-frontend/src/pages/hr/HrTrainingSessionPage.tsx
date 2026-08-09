@@ -262,32 +262,32 @@ export const HrTrainingSessionPage: React.FC = () => {
                           <td>
                             <div className="admin-users-row-actions">
                               {canEdit ? (
-                                <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, startTime: toLocalDatetimeString(row.startTime), endTime: toLocalDatetimeString(row.endTime) }); setOpen(true); }}>
+                                <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ ...row, startTime: toLocalDatetimeString(row.startTime), endTime: toLocalDatetimeString(row.endTime) }); setOpen(true); }}>
                                   <Pencil size={15} />
                                 </button>
                               ) : null}
                               {canEdit && row.status === 'PLANNED' ? (
-                                <button type="button" title="开放报名" onClick={() => void handleAction(row, 'register')}>
+                                <button type="button" data-tooltip="开放报名" aria-label="开放报名" onClick={() => void handleAction(row, 'register')}>
                                   <Send size={15} />
                                 </button>
                               ) : null}
                               {canEdit && row.status === 'REGISTERING' ? (
-                                <button type="button" title="开始" onClick={() => void handleAction(row, 'start')}>
+                                <button type="button" data-tooltip="开始" aria-label="开始" onClick={() => void handleAction(row, 'start')}>
                                   <Play size={15} />
                                 </button>
                               ) : null}
                               {canEdit && row.status === 'ONGOING' ? (
-                                <button type="button" title="完成" onClick={() => void handleAction(row, 'complete')}>
+                                <button type="button" data-tooltip="完成" aria-label="完成" onClick={() => void handleAction(row, 'complete')}>
                                   <Check size={15} />
                                 </button>
                               ) : null}
                               {canEdit && row.status !== 'COMPLETED' && row.status !== 'CANCELLED' ? (
-                                <button type="button" title="取消" onClick={() => void handleAction(row, 'cancel')}>
+                                <button type="button" data-tooltip="取消" aria-label="取消" onClick={() => void handleAction(row, 'cancel')}>
                                   <Ban size={15} />
                                 </button>
                               ) : null}
                               {canRemove ? (
-                                <button type="button" className="danger" title="删除" onClick={() => setPendingDelete(row)}>
+                                <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setPendingDelete(row)}>
                                   <Trash2 size={15} />
                                 </button>
                               ) : null}

@@ -100,12 +100,12 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
           value={assignFormDiagnostics.benchmarkStats.count
             ? `${assignFormDiagnostics.benchmarkStats.count} 条 / ${formatCurrency(assignFormDiagnostics.benchmarkStats.min)} - ${formatCurrency(assignFormDiagnostics.benchmarkStats.max)}`
             : '-'}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
         <DetailRow
           label="录入口径"
           value={`已录入 ${assignFormDiagnostics.filledItemCount} / ${assignFormDiagnostics.selectedItemCount} 项 / 固定 ${assignFormDiagnostics.fixedItemCount} 个 / 浮动 ${assignFormDiagnostics.variableItemCount} 个 / 正值 ${assignFormDiagnostics.positiveItemCount} 项${assignFormDiagnostics.positiveVariableItemCount > 0 ? ` / 浮动正值 ${assignFormDiagnostics.positiveVariableItemCount} 项` : ''}`}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
       </div>
 
@@ -114,9 +114,9 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
       <div className="admin-source-content-grid mt-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">薪资明细</h3>
+            <h3 className="text-base font-semibold text-cf-title">薪资明细</h3>
           </div>
-          <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+          <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-2 text-sm font-medium text-cf-body dark:border-slate-800 dark:bg-slate-950">
             合计 {formatCurrency(assignTotal)}
           </div>
         </div>
@@ -252,12 +252,12 @@ export const CreateAdjustmentDialog: React.FC<DialogProps> = ({ components, view
           value={adjustmentFormEmployee
             ? `${buildEmployeeLabel(adjustmentFormEmployee)}${adjustmentBaseline ? ` / ${toDateInputValue(adjustmentBaseline.effectiveDate) || '-'} / ${formatCurrency(adjustmentBaseline.totalSalary)}` : ''}`
             : '-'}
-          valueClassName="max-w-[72%] text-left text-slate-900 dark:text-slate-100"
+          valueClassName="max-w-[72%] text-left text-cf-title"
         />
         <DetailRow
           label="变更规模"
           value={`${adjustmentFormDiagnostics.changedItemCount} 项 / 同日 ${adjustmentFormDiagnostics.sameDateAdjustments.length} 张 / 未来 ${adjustmentFormDiagnostics.futureAdjustments.length} 条`}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
       </div>
 
@@ -265,7 +265,7 @@ export const CreateAdjustmentDialog: React.FC<DialogProps> = ({ components, view
 
       <div className="mt-6">
         <div className="mb-3">
-          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">调薪后明细</h3>
+          <h3 className="text-base font-semibold text-cf-title">调薪后明细</h3>
         </div>
 
         <SalaryAmountEditor
@@ -368,7 +368,7 @@ export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewM
         <DetailRow
           label="选定方案"
           value={selectedInsuranceScheme?.schemeName || '-'}
-          valueClassName="max-w-[72%] text-left text-slate-900 dark:text-slate-100"
+          valueClassName="max-w-[72%] text-left text-cf-title"
         />
         <DetailRow
           label="适用口径"
@@ -379,7 +379,7 @@ export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewM
               toDateInputValue(selectedInsuranceScheme.effectiveDate) || '-',
             ].join(' / ')
             : '-'}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
         <DetailRow
           label="当前台账"
@@ -388,14 +388,14 @@ export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewM
             : employeeInsuranceDetail
               ? `${employeeInsuranceDetail.schemeName || '-'} / ${toDateInputValue(employeeInsuranceDetail.effectiveDate) || '-'} / ${formatCurrency(employeeInsuranceDetail.base)}`
               : '-'}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
         <DetailRow
           label="预计缴纳"
           value={insuranceAssignPreview
             ? `${formatCurrency(insuranceAssignPreview.totalAmount)} / 个人 ${formatCurrency(insuranceAssignPreview.personalTotal)} / 公司 ${formatCurrency(insuranceAssignPreview.companyTotal)}`
             : '-'}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
       </div>
 
@@ -416,7 +416,7 @@ export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewM
               {insuranceAssignPreview.rows.map((row: any) => (
                 <tr key={row.key}>
                   <td>
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{row.label}</div>
+                    <div className="font-medium text-cf-title">{row.label}</div>
                   </td>
                   <td>{formatCurrency(row.personalAmount)}</td>
                   <td>{formatCurrency(row.companyAmount)}</td>

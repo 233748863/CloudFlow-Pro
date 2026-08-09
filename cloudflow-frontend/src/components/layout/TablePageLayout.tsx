@@ -12,12 +12,14 @@ interface TablePageLayoutProps {
 
 interface InnerTableSurfaceProps extends React.HTMLAttributes<HTMLDivElement> {
   wrapperClassName?: string;
+  /** 子节点自带 TableScrollArea 时关闭默认滚动层，避免 sticky 绑定到外层坐标系。 */
+  disableScrollWrapper?: boolean;
 }
 
 export const InnerTableSurface = React.forwardRef<
   HTMLDivElement,
   InnerTableSurfaceProps
->(({ className = '', wrapperClassName = '', children, ...props }, ref) => (
+>(({ className = '', wrapperClassName = '', disableScrollWrapper = false, children, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
@@ -27,9 +29,11 @@ export const InnerTableSurface = React.forwardRef<
     )}
     {...props}
   >
-    <div className={cn('table-wrapper', wrapperClassName, 'flex-none overflow-x-auto overflow-y-visible')}>
-      {children}
-    </div>
+    {disableScrollWrapper ? children : (
+      <div className={cn('table-wrapper', wrapperClassName, 'flex-none overflow-x-auto overflow-y-visible')}>
+        {children}
+      </div>
+    )}
   </div>
 ));
 

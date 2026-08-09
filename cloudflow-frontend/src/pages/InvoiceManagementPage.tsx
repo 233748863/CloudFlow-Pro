@@ -14,6 +14,7 @@ import { getInvoiceDirectionLabel } from '@/utils/enumLabels';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './InvoiceManagementPage.css';
 
 type InvoiceDialog =
   | { type: 'invoice'; item?: Invoice | null }
@@ -24,7 +25,7 @@ type InvoiceDialog =
 
 type BindTargetType = 'NONE' | 'EXPENSE' | 'PAYMENT';
 
-const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
+const fieldLabelClassName = 'text-xs font-medium text-cf-subtle';
 
 
 const emptyInvoice: Invoice = {
@@ -397,38 +398,38 @@ export default function InvoiceManagementPage() {
               <tr key={item.invoiceId}>
                 <td>
                   <strong>{item.invoiceCode} / {item.invoiceNo}</strong>
-                  <div className="text-xs text-slate-500">{item.invoiceType || '未分类'} / {item.invoiceDate || '-'}</div>
+                  <div className="text-xs text-cf-subtle">{item.invoiceType || '未分类'} / {item.invoiceDate || '-'}</div>
                 </td>
                 <td>{getInvoiceDirectionLabel(item.invoiceDirection || 'OUTPUT')}</td>
                 <td>
                   <div>{formatMoney(item.grossAmount)}</div>
-                  <div className="text-xs text-slate-500">税额 {formatMoney(item.taxAmount)}</div>
+                  <div className="text-xs text-cf-subtle">税额 {formatMoney(item.taxAmount)}</div>
                 </td>
                 <td>
                   <div>{item.buyerName || '-'}</div>
-                  <div className="text-xs text-slate-500">{item.sellerName || '-'}</div>
+                  <div className="text-xs text-cf-subtle">{item.sellerName || '-'}</div>
                 </td>
                 <td>
                   <div>{item.contractNo || '-'}</div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-cf-subtle">
                     回款 {item.receivableId || '-'} / 报销 {item.expenseClaimId || '-'} / 付款 {item.paymentRequestId || '-'}
                   </div>
                 </td>
                 <td>{statusBadge(item.status)}</td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="详情" aria-label="详情" onClick={() => void openDialog({ type: 'detail', item })}><Eye size={15} /></button>
-                    {hasPermission('oa:invoice:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'invoice', item })}><Edit size={15} /></button> : null}
-                    {item.status !== 'VOID' && hasPermission('oa:invoice:bind') ? <button type="button" title="绑定业务" aria-label="绑定业务" onClick={() => void openDialog({ type: 'bind', item })}><Send size={15} /></button> : null}
-                    {item.status !== 'VOID' && hasPermission('oa:invoice:writeoff') ? <button type="button" title="核销发票" aria-label="核销发票" onClick={() => void openDialog({ type: 'writeoff', item })}><Receipt size={15} /></button> : null}
-                    {item.status !== 'VOID' && hasPermission('oa:invoice:void') ? <button type="button" className="danger" title="作废发票" aria-label="作废发票" onClick={() => setVoidTarget(item)}><RotateCcw size={15} /></button> : null}
-                    {item.externalLinkUrl ? <button type="button" title="打开外链" aria-label="打开外链" onClick={() => window.open(item.externalLinkUrl, '_blank', 'noopener,noreferrer')}><ExternalLink size={15} /></button> : null}
+                    <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDialog({ type: 'detail', item })}><Eye size={15} /></button>
+                    {hasPermission('oa:invoice:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'invoice', item })}><Edit size={15} /></button> : null}
+                    {item.status !== 'VOID' && hasPermission('oa:invoice:bind') ? <button type="button" data-tooltip="绑定业务" aria-label="绑定业务" onClick={() => void openDialog({ type: 'bind', item })}><Send size={15} /></button> : null}
+                    {item.status !== 'VOID' && hasPermission('oa:invoice:writeoff') ? <button type="button" data-tooltip="核销发票" aria-label="核销发票" onClick={() => void openDialog({ type: 'writeoff', item })}><Receipt size={15} /></button> : null}
+                    {item.status !== 'VOID' && hasPermission('oa:invoice:void') ? <button type="button" className="danger" data-tooltip="作废发票" aria-label="作废发票" onClick={() => setVoidTarget(item)}><RotateCcw size={15} /></button> : null}
+                    {item.externalLinkUrl ? <button type="button" data-tooltip="打开外链" aria-label="打开外链" onClick={() => window.open(item.externalLinkUrl, '_blank', 'noopener,noreferrer')}><ExternalLink size={15} /></button> : null}
                   </div>
                 </td>
               </tr>
             ))}
             {!rows.length ? (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500"><FileCheck2 className="mx-auto mb-3 h-4 w-4" />暂无发票。下一步操作：新建一张进项或销项发票，随后绑定业务对象。</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-cf-subtle"><FileCheck2 className="mx-auto mb-3 h-4 w-4" />暂无发票。下一步操作：新建一张进项或销项发票，随后绑定业务对象。</td></tr>
             ) : null}
           </tbody>
       </table>
@@ -549,9 +550,9 @@ export default function InvoiceManagementPage() {
               {writeoffHistory.length ? writeoffHistory.map((item) => (
                 <InvoiceHistoryRow key={item.writeoffId || `${item.businessType}-${item.businessId}-${item.writeoffDate}`}>
                   <div>{item.businessType} / {item.businessNo || item.businessId || '-'}</div>
-                  <div className="text-xs text-slate-500">核销金额 {formatMoney(item.writeoffAmount)} / 核销日期 {item.writeoffDate || '-'}</div>
+                  <div className="text-xs text-cf-subtle">核销金额 {formatMoney(item.writeoffAmount)} / 核销日期 {item.writeoffDate || '-'}</div>
                 </InvoiceHistoryRow>
-              )) : <div className="text-sm text-slate-500">暂无核销历史。下一步操作：在“核销发票”中录入第一笔核销。</div>}
+              )) : <div className="text-sm text-cf-subtle">暂无核销历史。下一步操作：在“核销发票”中录入第一笔核销。</div>}
             </div>
           </InvoicePanel>
         </div>
@@ -768,9 +769,9 @@ export default function InvoiceManagementPage() {
               {writeoffHistory.length ? writeoffHistory.map((item) => (
                 <InvoiceHistoryRow key={item.writeoffId || `${item.businessType}-${item.businessId}-${item.writeoffDate}`}>
                   <div>{item.businessType} / {item.businessNo || item.businessId || '-'}</div>
-                  <div className="text-xs text-slate-500">核销金额 {formatMoney(item.writeoffAmount)} / 核销日期 {item.writeoffDate || '-'}</div>
+                  <div className="text-xs text-cf-subtle">核销金额 {formatMoney(item.writeoffAmount)} / 核销日期 {item.writeoffDate || '-'}</div>
                 </InvoiceHistoryRow>
-              )) : <div className="text-sm text-slate-500">暂无核销历史。</div>}
+              )) : <div className="text-sm text-cf-subtle">暂无核销历史。</div>}
             </div>
           </InvoicePanel>
         </div>

@@ -58,6 +58,8 @@ import Hr360EvaluationPanel from './components/Hr360EvaluationPanel';
 import HrPerformanceDistributionPanel from './components/HrPerformanceDistributionPanel';
 import HrPerformanceInterviewPanel from './components/HrPerformanceInterviewPanel';
 import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
+import '../../styles/features/admin-performance.css';
+import './admin-hr.css';
 
 const ALL_STATUS = '__all__';
 
@@ -169,14 +171,14 @@ const EmployeePicker: React.FC<{
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="min-h-10 px-3">
-        <span className={cn('min-w-0 flex-1 truncate text-left', selected || fallbackLabel ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500')}>
+        <span className={cn('min-w-0 flex-1 truncate text-left', selected || fallbackLabel ? 'text-cf-title' : 'text-cf-faint')}>
           {selected?.searchLabel || fallbackLabel || placeholder}
         </span>
       </SelectTrigger>
       <SelectContent className="w-[min(460px,calc(100vw-24px))]">
         <div className="border-b border-slate-200 bg-[var(--cf-surface-muted)] p-2 dark:border-slate-800 dark:bg-slate-900">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
             <Input
               className="h-9 rounded-md pl-9 text-sm"
               value={searchText}
@@ -188,15 +190,15 @@ const EmployeePicker: React.FC<{
         </div>
         <div className="max-h-64 overflow-y-auto p-1">
           {loading ? (
-            <div className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">员工列表加载中...</div>
+            <div className="px-3 py-6 text-center text-sm text-cf-subtle">员工列表加载中...</div>
           ) : options.length === 0 && loaded ? (
-            <div className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">未加载到员工，请导入员工种子数据</div>
+            <div className="px-3 py-6 text-center text-sm text-cf-subtle">未加载到员工，请导入员工种子数据</div>
           ) : groupedOptions.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">未找到匹配员工</div>
+            <div className="px-3 py-6 text-center text-sm text-cf-subtle">未找到匹配员工</div>
           ) : (
             groupedOptions.map((group) => (
               <div key={group.deptLabel} className="py-1">
-                <div className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-cf-subtle">
                   <Users size={13} />
                   <span className="truncate">{group.deptLabel}</span>
                 </div>
@@ -205,9 +207,9 @@ const EmployeePicker: React.FC<{
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="truncate font-medium">{option.employee.name}</span>
-                        <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{option.employee.employeeNo}</span>
+                        <span className="shrink-0 text-xs text-cf-subtle">{option.employee.employeeNo}</span>
                       </div>
-                      <div className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      <div className="truncate text-xs text-cf-subtle">
                         {[option.deptLabel, option.employee.postName || option.employee.positionName].filter(Boolean).join(' / ')}
                       </div>
                     </div>
@@ -537,7 +539,7 @@ const PerformanceMetricSummaryValue = ({
 }) => (
   <div className="admin-performance-metric-summary">
     {items.slice(0, 2).map((item) => (
-      <div key={item.key} className="admin-performance-metric-row" title={`${item.label} ${item.value}`}>
+      <div key={item.key} className="admin-performance-metric-row" data-tooltip={`${item.label} ${item.value}`}>
         <span className="admin-performance-metric-label">{item.label}</span>
         <span className="admin-performance-metric-value">{item.value}</span>
       </div>
@@ -565,9 +567,9 @@ const PerformanceCompletionSummaryCard = ({
 
   return (
     <div className="card p-4">
-      <div className="truncate text-[11px] font-semibold text-slate-400 dark:text-slate-500">{label}</div>
+      <div className="truncate text-[11px] font-semibold text-cf-faint">{label}</div>
       <div className="mt-2 flex items-end justify-between gap-3">
-        <div className={cn('text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100', completionTone(value))}>
+        <div className={cn('text-xl font-bold tabular-nums text-cf-title', completionTone(value))}>
           {value.toFixed(1)}%
         </div>
         <span className={cn('inline-flex rounded-md px-2.5 py-1 text-xs font-semibold tabular-nums border', completionBadgeClass(value))}>
@@ -580,7 +582,7 @@ const PerformanceCompletionSummaryCard = ({
           style={{ width: `${progressWidth}%` }}
         />
       </div>
-      {hint ? <div className="mt-2 truncate text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
+      {hint ? <div className="mt-2 truncate text-xs text-cf-subtle">{hint}</div> : null}
     </div>
   );
 };
@@ -601,9 +603,9 @@ const MetricLabelCell = ({
   const resolvedWeight = weight == null ? '' : `权重${Number(weight).toFixed(0)}`;
   return (
     <div className="min-w-0 text-left">
-      <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{resolvedName}</div>
+      <div className="truncate text-sm font-medium text-cf-title">{resolvedName}</div>
       {(resolvedUnit || resolvedWeight) ? (
-        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-cf-subtle">
           {resolvedUnit ? <span className="badge badge-gray">{resolvedUnit}</span> : null}
           {resolvedWeight ? <span className="badge badge-gray">{resolvedWeight}</span> : null}
         </div>
@@ -626,8 +628,8 @@ const PerformanceNodeCell = ({
   <div className="flex items-center gap-2" style={{ paddingLeft: `${depth * 18}px` }}>
     {icon}
     <div className="min-w-0">
-      <div className="truncate font-medium text-slate-900 dark:text-slate-100">{title}</div>
-      {subtitle ? <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{subtitle}</div> : null}
+      <div className="truncate font-medium text-cf-title">{title}</div>
+      {subtitle ? <div className="mt-0.5 truncate text-xs text-cf-subtle">{subtitle}</div> : null}
     </div>
   </div>
 );
@@ -1465,7 +1467,7 @@ export const HrPerformancePage: React.FC = () => {
             }}
           >
             <label className="min-w-0">
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">关键词</span>
+              <span className="mb-1 block text-xs font-medium text-cf-subtle">关键词</span>
               <div className="admin-source-search-field">
                 <Search className="h-4 w-4" />
                 <Input
@@ -1476,7 +1478,7 @@ export const HrPerformancePage: React.FC = () => {
               </div>
             </label>
             <label className="min-w-0">
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">状态</span>
+              <span className="mb-1 block text-xs font-medium text-cf-subtle">状态</span>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="状态" />
@@ -1572,7 +1574,7 @@ export const HrPerformancePage: React.FC = () => {
               </div>
         
               {loading || treeLoading ? (
-                <div className="card flex items-center justify-center py-10 text-sm text-slate-500 dark:text-slate-400">
+                <div className="card flex items-center justify-center py-10 text-sm text-cf-subtle">
                   <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
                   加载绩效数据...
                 </div>
@@ -1673,7 +1675,7 @@ export const HrPerformancePage: React.FC = () => {
               ))}
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm text-slate-600 dark:text-slate-300">
+              <div className="text-sm text-cf-muted">
                 当前配置：{validCreateCategories.length}个类型 / {validCreateMetrics.length}个指标 / {createMatrixItems.length}个类型指标
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1701,7 +1703,7 @@ export const HrPerformancePage: React.FC = () => {
             action={<Button size="sm" variant="outline" onClick={() => setCreateCategoryRows((rows) => [...rows, { key: rowKey(), categoryCode: `TYPE_${rows.length + 1}`, categoryName: `考核类型${rows.length + 1}` }])}>添加类型</Button>}
           >
             <div className="grid gap-2">
-              <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_64px] gap-2 px-1 text-xs font-medium text-slate-500 md:grid">
+              <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_64px] gap-2 px-1 text-xs font-medium text-cf-subtle md:grid">
                 <span>类型名称</span><span>类型编码</span><span />
               </div>
               {createCategoryRows.map((row) => (
@@ -1721,7 +1723,7 @@ export const HrPerformancePage: React.FC = () => {
             action={<Button size="sm" variant="outline" onClick={() => setCreateMetricRows((rows) => [...rows, { key: rowKey(), metricCode: `METRIC_${rows.length + 1}`, metricName: `指标${rows.length + 1}`, metricUnit: '个', valueType: 'INTEGER', precision: '0', metricWeight: '10' }])}>添加指标</Button>}
           >
             <div className="grid gap-2">
-              <div className="hidden grid-cols-[minmax(0,1.3fr)_80px_120px_92px_92px_minmax(0,1fr)_64px] gap-2 px-1 text-xs font-medium text-slate-500 xl:grid">
+              <div className="hidden grid-cols-[minmax(0,1.3fr)_80px_120px_92px_92px_minmax(0,1fr)_64px] gap-2 px-1 text-xs font-medium text-cf-subtle xl:grid">
                 <span>指标名称</span><span>单位</span><span>数值类型</span><span>小数位</span><span>默认权重</span><span>指标编码</span><span />
               </div>
               {createMetricRows.map((row) => (
@@ -1747,7 +1749,7 @@ export const HrPerformancePage: React.FC = () => {
             <div className="grid gap-3 md:grid-cols-2">
               {createMatrixItems.map(({ category, metric, key, weight }) => (
                 <div key={key} className="grid grid-cols-[minmax(0,1fr)_120px] items-center gap-2">
-                  <Label className="truncate text-sm text-slate-600 dark:text-slate-300">
+                  <Label className="truncate text-sm text-cf-muted">
                     {category.categoryName}-{metric.metricName}（{metric.metricUnit} / {getMetricTypeLabel(String(metric.valueType ?? '')) || '小数'}）
                   </Label>
                   <Input
@@ -1831,7 +1833,7 @@ export const HrPerformancePage: React.FC = () => {
               {splitRows.map((row) => (
                 <div key={row.key} className="admin-performance-split-card">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    <span className="text-sm font-medium text-cf-title">
                       {row.categoryName || row.categoryCode} / {row.metricName || row.metricCode}
                     </span>
                     {row.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-gray">部门补齐</span>}
@@ -1934,10 +1936,10 @@ const CreateSection = ({
   <section className="card admin-source-panel">
     <div className="admin-source-panel-head">
       <div className="flex min-w-0 items-start gap-3">
-        <span className="mt-0.5 rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">{index}</span>
+        <span className="mt-0.5 rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs font-semibold text-cf-muted dark:bg-slate-900">{index}</span>
         <div className="min-w-0">
           <h3>{title}</h3>
-          <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{summary}</div>
+          <div className="mt-0.5 text-xs text-cf-subtle">{summary}</div>
         </div>
       </div>
       {action ? <div className="admin-source-panel-actions">{action}</div> : null}
@@ -1985,7 +1987,7 @@ const TreeTable = ({
     <section className="table-scroll-container admin-inner-table-surface admin-performance-tree-shell">
       <div className="admin-performance-tree-nav border-b border-slate-200 p-4 dark:border-slate-800">
         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-xs font-semibold text-slate-400 dark:text-slate-500">目标列表</div>
+          <div className="text-xs font-semibold text-cf-faint">目标列表</div>
           <span className="badge badge-gray">{objectives.length} 个目标</span>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -2030,7 +2032,7 @@ const TreeTable = ({
                         <td>
                           <PerformanceNodeCell
                             depth={row.depth}
-                            icon={row.depth === 0 ? <Layers3 className="h-4 w-4 shrink-0 text-cyan-600" /> : row.assigneeType === 'EMPLOYEE' ? <Users className="h-4 w-4 shrink-0 text-slate-400" /> : <GitBranch className="h-4 w-4 shrink-0 text-cyan-600" />}
+                            icon={row.depth === 0 ? <Layers3 className="h-4 w-4 shrink-0 text-cyan-600" /> : row.assigneeType === 'EMPLOYEE' ? <Users className="h-4 w-4 shrink-0 text-cf-faint" /> : <GitBranch className="h-4 w-4 shrink-0 text-cyan-600" />}
                             title={row.assigneeType === 'EMPLOYEE' ? resolveAssigneeLabel(row) : nodeTitle(row, null, resolveAssigneeLabel(row))}
                             subtitle={row.assigneeType === 'EMPLOYEE' ? nodeSubtitle(row, displayMetric) : `#${row.id}${row.categoryCode ? ` · ${nodeSubtitle(row, displayMetric)}` : ''}`}
                           />
@@ -2069,8 +2071,8 @@ const TreeTable = ({
                 <div key={row.id} className="admin-performance-mobile-card">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">{nodeTitle(row, displayMetric, resolveAssigneeLabel(row))}</div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">目标 {formatValue(row.targetAmount, displayUnit, displayPrecision)} / 实际 {actualText}</div>
+                      <div className="font-medium text-cf-title">{nodeTitle(row, displayMetric, resolveAssigneeLabel(row))}</div>
+                      <div className="mt-1 text-xs text-cf-subtle">目标 {formatValue(row.targetAmount, displayUnit, displayPrecision)} / 实际 {actualText}</div>
                     </div>
                     {row.locked ? <span className="badge badge-warning">锁定</span> : null}
                   </div>
@@ -2106,8 +2108,8 @@ const MatrixView = ({
   <div className="admin-source-content-grid">
     <div className="card">
       <div className="card-header">
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">部门目标值校验</div>
-        <div className="text-xs text-slate-500 dark:text-slate-400">单指标按部门总目标值校验，多指标按每个类型指标的员工叶子合计校验。</div>
+        <div className="text-sm font-semibold text-cf-title">部门目标值校验</div>
+        <div className="text-xs text-cf-subtle">单指标按部门总目标值校验，多指标按每个类型指标的员工叶子合计校验。</div>
       </div>
       <PerformanceTableShell minWidthClassName="min-w-[940px]">
         <table className="unity-data-table admin-source-table min-w-[940px]">
@@ -2137,8 +2139,8 @@ const MatrixView = ({
     </div>
     <div className="card">
       <div className="card-header">
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">类型指标矩阵</div>
-        <div className="text-xs text-slate-500 dark:text-slate-400">经理锁定与部门补齐分开展示，每个指标按自己的单位计算完成率。</div>
+        <div className="text-sm font-semibold text-cf-title">类型指标矩阵</div>
+        <div className="text-xs text-cf-subtle">经理锁定与部门补齐分开展示，每个指标按自己的单位计算完成率。</div>
       </div>
       <PerformanceTableShell minWidthClassName="min-w-[1160px]">
         <table className="unity-data-table admin-source-table min-w-[1160px]">
@@ -2193,7 +2195,7 @@ const EmployeeView = ({ rows, renderProgress }: { rows: EmployeeSummaryRow[]; re
             <td className="font-medium">{row.employeeName}</td>
             <td>{row.categories || '-'}</td>
             <td>
-              <div className="line-clamp-2 text-sm text-slate-700 dark:text-slate-200">{row.metricSummary || '-'}</div>
+              <div className="line-clamp-2 text-sm text-cf-body">{row.metricSummary || '-'}</div>
             </td>
             <td className="px-3 text-center">{renderProgress(row.completionRate)}</td>
           </tr>
@@ -2224,8 +2226,8 @@ const ProgressView = ({
   <div className="admin-source-content-grid">
       <div className="card">
         <div className="card-header">
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">部门类型指标完成率</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">每个类型指标按自己的单位统计，部门总分由指标权重折算。</div>
+          <div className="text-sm font-semibold text-cf-title">部门类型指标完成率</div>
+          <div className="text-xs text-cf-subtle">每个类型指标按自己的单位统计，部门总分由指标权重折算。</div>
         </div>
         <PerformanceTableShell minWidthClassName="min-w-[1120px]">
           <table className="unity-data-table admin-source-table min-w-[1120px]">
@@ -2259,8 +2261,8 @@ const ProgressView = ({
       </div>
       <div className="card">
         <div className="card-header">
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工个人完成率</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">叶子任务实绩汇总到个人、类型指标和部门。</div>
+          <div className="text-sm font-semibold text-cf-title">员工个人完成率</div>
+          <div className="text-xs text-cf-subtle">叶子任务实绩汇总到个人、类型指标和部门。</div>
         </div>
         <PerformanceTableShell minWidthClassName="min-w-[1180px]">
           <table className="unity-data-table admin-source-table min-w-[1180px]">
@@ -2288,7 +2290,7 @@ const ProgressView = ({
                   <td className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</td>
                   <td className="px-3 text-center">{renderProgress(node.completionRate)}</td>
                   <td className="text-right">
-                    {canFillResult ? <Button size="sm" variant="soft" className="min-w-[96px] justify-center" onClick={() => onResult(node)}>填报实绩</Button> : <span className="text-xs text-slate-400">待执行</span>}
+                    {canFillResult ? <Button size="sm" variant="soft" className="min-w-[96px] justify-center" onClick={() => onResult(node)}>填报实绩</Button> : <span className="text-xs text-cf-faint">待执行</span>}
                   </td>
                 </tr>
               ))}
@@ -2304,19 +2306,19 @@ const ArchiveView = ({ objective, categoryNodes, employeeRows, renderProgress }:
   <div className="admin-source-content-grid hr-performance-archive-grid">
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <div className="card p-4">
-        <div className="text-sm text-slate-500 dark:text-slate-400">周期总分</div>
-        <div className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">{Number(objective.score || 0).toFixed(1)}</div>
-        <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">等级 {objective.grade || '-'}</div>
+        <div className="text-sm text-cf-subtle">周期总分</div>
+        <div className="mt-2 text-xl font-bold text-cf-title">{Number(objective.score || 0).toFixed(1)}</div>
+        <div className="mt-1 text-sm text-cf-subtle">等级 {objective.grade || '-'}</div>
       </div>
       <div className="card p-4">
-        <div className="text-sm text-slate-500 dark:text-slate-400">类型指标数</div>
-        <div className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">{categoryNodes.length}</div>
-        <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">部门类型指标节点</div>
+        <div className="text-sm text-cf-subtle">类型指标数</div>
+        <div className="mt-2 text-xl font-bold text-cf-title">{categoryNodes.length}</div>
+        <div className="mt-1 text-sm text-cf-subtle">部门类型指标节点</div>
       </div>
       <div className="card p-4">
-        <div className="text-sm text-slate-500 dark:text-slate-400">员工叶子数</div>
-        <div className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">{objective.leafTaskCount || 0}</div>
-        <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">个人绩效口径</div>
+        <div className="text-sm text-cf-subtle">员工叶子数</div>
+        <div className="mt-2 text-xl font-bold text-cf-title">{objective.leafTaskCount || 0}</div>
+        <div className="mt-1 text-sm text-cf-subtle">个人绩效口径</div>
       </div>
       <PerformanceCompletionSummaryCard
         label="权重后总完成率"
@@ -2341,7 +2343,7 @@ const ArchiveView = ({ objective, categoryNodes, employeeRows, renderProgress }:
               <td className="font-medium">{row.employeeName}</td>
               <td>{row.categories || '-'}</td>
               <td>
-                <div className="line-clamp-2 text-sm text-slate-700 dark:text-slate-200">{row.metricSummary || '-'}</div>
+                <div className="line-clamp-2 text-sm text-cf-body">{row.metricSummary || '-'}</div>
               </td>
               <td className="px-3 text-center">{renderProgress(row.completionRate)}</td>
             </tr>
@@ -2376,8 +2378,8 @@ const SalaryLinkView = ({
       <div className="mb-4 flex items-center gap-3">
         <div className="stat-icon stat-icon-primary"><BarChart3 className="h-6 w-6" /></div>
         <div>
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">绩效调薪联动</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">归档后生成调薪申请，后续继续走现有调薪审批。</div>
+          <div className="text-sm font-semibold text-cf-title">绩效调薪联动</div>
+          <div className="text-xs text-cf-subtle">归档后生成调薪申请，后续继续走现有调薪审批。</div>
         </div>
       </div>
       {objective.status !== 'COMPLETED' ? (
@@ -2497,11 +2499,11 @@ const CrmSalesView: React.FC = () => {
     <div className="flex flex-col gap-4">
       <div className="card flex flex-wrap items-end gap-3 p-4">
         <div className="flex flex-col gap-1">
-          <Label className="text-xs text-slate-500">起始日期</Label>
+          <Label className="text-xs text-cf-subtle">起始日期</Label>
           <DatePicker type="date" className="h-9 w-40" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </div>
         <div className="flex flex-col gap-1">
-          <Label className="text-xs text-slate-500">结束日期</Label>
+          <Label className="text-xs text-cf-subtle">结束日期</Label>
           <DatePicker type="date" className="h-9 w-40" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
         </div>
         <Button variant="outline" onClick={() => void fetchAll()} disabled={loading}>
@@ -2553,7 +2555,7 @@ const CrmSalesRankTable: React.FC<CrmSalesRankTableProps> = ({ title, subtitle, 
         <strong>{title}</strong>
         <span>{subtitle}</span>
       </div>
-      <Users className="h-5 w-5 text-slate-400" />
+      <Users className="h-5 w-5 text-cf-faint" />
     </div>
     <table className="unity-data-table admin-source-table min-w-[860px]">
       <thead>
@@ -2570,15 +2572,15 @@ const CrmSalesRankTable: React.FC<CrmSalesRankTableProps> = ({ title, subtitle, 
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={7} className="py-6 text-center text-sm text-slate-500">
+            <td colSpan={7} className="py-6 text-center text-sm text-cf-subtle">
               暂无数据
             </td>
           </tr>
         ) : (
           rows.map((row, index) => (
             <tr key={`${row.dimension}-${row.targetId}`}>
-              <td className="tabular-nums text-slate-500">{index + 1}</td>
-              <td className="font-medium text-slate-800 dark:text-slate-200">
+              <td className="tabular-nums text-cf-subtle">{index + 1}</td>
+              <td className="font-medium text-cf-title">
                 {row.targetName || `#${row.targetId}`}
               </td>
               <td className="text-right tabular-nums">{row.wonOpportunityCount}</td>

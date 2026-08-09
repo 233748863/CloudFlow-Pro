@@ -22,8 +22,8 @@ const MiniGrid: React.FC<MiniGridProps> = ({ currentCell }) => (
       <div
         key={cell}
         className={`flex h-4 w-4 items-center justify-center text-[8px] ${
-          currentCell === cell ? 'bg-emerald-500 text-white' : 'bg-[var(--cf-surface-muted)] text-slate-400 dark:bg-slate-800'
-        }`}
+ currentCell === cell ? 'bg-emerald-500 text-white' : 'bg-[var(--cf-surface-muted)] text-cf-faint dark:bg-slate-800'
+ }`}
       >
         {cell}
       </div>
@@ -159,16 +159,16 @@ export const HrTalentArchivePage: React.FC = () => {
               <article className="card admin-source-panel">
                 <div className="flex items-center gap-3">
                   <div className="admin-source-stat-icon h-12 w-12 bg-[var(--cf-surface-muted)] dark:bg-slate-800">
-                    <User className="h-6 w-6 text-slate-500" />
+                    <User className="h-6 w-6 text-cf-subtle" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    <div className="text-lg font-semibold text-cf-title">
                       {(employee as { name?: string }).name || '-'}
-                      <span className="ml-2 text-sm font-normal text-slate-500">
+                      <span className="ml-2 text-sm font-normal text-cf-subtle">
                         #{employeeId} · {(employee as { employeeNo?: string }).employeeNo || '-'}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
+                    <div className="mt-1 text-xs text-cf-subtle">
                       {(employee as { deptName?: string }).deptName || '-'} ·
                       {' '}{(employee as { postName?: string }).postName || '-'}
                       {' '}· {mode === 'mine' ? '当前为本人视图' : '查看他人档案'}
@@ -179,7 +179,7 @@ export const HrTalentArchivePage: React.FC = () => {
       
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <InnerTableSurface>
-                  <div className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  <div className="px-4 py-3 text-sm font-semibold text-cf-title">
                     历次盘点 · 共 {archive.reviews?.length ?? 0} 次
                   </div>
                   <div className="admin-horizontal-scroll">
@@ -198,7 +198,7 @@ export const HrTalentArchivePage: React.FC = () => {
                           <tr key={`${row.reviewId ?? idx}`}>
                             <td>
                               <strong>{asText(row.reviewName)}</strong>
-                              <div className="text-xs text-slate-400">{asText(row.reviewYear, '')}</div>
+                              <div className="text-xs text-cf-faint">{asText(row.reviewYear, '')}</div>
                             </td>
                             <td><DictLabel dictType="hr_talent_review_status" value={String(row.status ?? '')} fallback="-" /></td>
                             <td>
@@ -222,7 +222,7 @@ export const HrTalentArchivePage: React.FC = () => {
                 </InnerTableSurface>
       
                 <InnerTableSurface>
-                  <div className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  <div className="px-4 py-3 text-sm font-semibold text-cf-title">
                     所在人才池 · 共 {archive.pools?.length ?? 0} 个
                   </div>
                   <div className="admin-horizontal-scroll">
@@ -264,11 +264,11 @@ export const HrTalentArchivePage: React.FC = () => {
                         {(archive.developmentActions ?? []).map((row: Record<string, unknown>, idx) => (
                           <li key={`${row.id ?? idx}`} className="relative">
                             <div className="absolute -left-[19px] mt-1 h-2 w-2 rounded-sm bg-emerald-500" />
-                            <div className="text-xs text-slate-400">
+                            <div className="text-xs text-cf-faint">
                               {formatDateValue(row.startDate)} ~ {formatDateValue(row.endDate)}
                             </div>
                             <div className="mt-0.5 text-sm font-medium">{asText(row.actionName)}</div>
-                            <div className="text-xs text-slate-500">
+                            <div className="text-xs text-cf-subtle">
                               <DictLabel dictType="hr_talent_action_type" value={String(row.actionType ?? '')} fallback="-" /> ·
                               {' '}<DictLabel dictType="hr_talent_action_status" value={String(row.status ?? '')} fallback="-" />
                               {row.evaluationScore != null && row.evaluationScore !== ''
@@ -276,7 +276,7 @@ export const HrTalentArchivePage: React.FC = () => {
                                 : ''}
                             </div>
                             {row.evaluationNotes ? (
-                              <div className="mt-1 text-xs text-slate-500">{String(row.evaluationNotes)}</div>
+                              <div className="mt-1 text-xs text-cf-subtle">{String(row.evaluationNotes)}</div>
                             ) : null}
                           </li>
                         ))}
@@ -288,7 +288,7 @@ export const HrTalentArchivePage: React.FC = () => {
                 </article>
       
                 <InnerTableSurface>
-                  <div className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  <div className="px-4 py-3 text-sm font-semibold text-cf-title">
                     继任提名 · 共 {archive.successorOf?.length ?? 0} 项
                   </div>
                   <div className="admin-horizontal-scroll">

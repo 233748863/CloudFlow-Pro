@@ -29,12 +29,12 @@ export const RenewalTab: React.FC = () => {
               <td>{item.renewalAmount || 0}</td>
               <td>
                 <div className="admin-users-row-actions">
-                  <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
-                  <button type="button" title="编辑续约" onClick={() => openDialog({ type: 'renewal', item })}><Handshake size={15} /></button>
+                  <button type="button" data-tooltip="客户360" aria-label="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
+                  <button type="button" data-tooltip="编辑续约" aria-label="编辑续约" onClick={() => openDialog({ type: 'renewal', item })}><Handshake size={15} /></button>
                   {item.status === 'PLANNED' || item.status === 'NEGOTIATING' ? (
                     <button
                       type="button"
-                      title="提交提审"
+                      data-tooltip="提交提审" aria-label="提交提审"
                       onClick={async () => {
                         try {
                           await crmApi.submitRenewal(item.renewalId!);

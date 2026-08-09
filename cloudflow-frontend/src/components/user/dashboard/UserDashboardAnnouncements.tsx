@@ -56,16 +56,16 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="line-clamp-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    <p className="line-clamp-1 text-sm font-semibold text-cf-title">
                       {item.title || '系统公告'}
                     </p>
-                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                    <p className="mt-1 text-xs text-cf-faint">
                       {item.publishTime || '刚刚发布'}
                     </p>
                   </div>
                   {!isRead ? <span className="badge badge-primary">未读</span> : null}
                 </div>
-                <p className="mt-3 line-clamp-3 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                <p className="mt-3 line-clamp-3 text-xs leading-6 text-cf-subtle">
                   {getAnnouncementExcerpt(item.summary || item.content)}
                 </p>
                 <div className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[#0d95b5] dark:text-cyan-200">

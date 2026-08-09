@@ -1,0 +1,283 @@
+@layer components {
+  .cf-amount-input-shell {
+    position: relative;
+    width: 100%;
+  }
+
+  .cf-amount-input-shell.has-currency .cf-amount-input {
+    padding-left: 2rem !important;
+  }
+
+  .cf-amount-input-currency {
+    position: absolute;
+    top: 50%;
+    left: 0.75rem;
+    z-index: 1;
+    color: var(--cf-fg-subtle);
+    font-size: 0.8125rem;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .cf-control-invalid {
+    border-color: #e34948 !important;
+  }
+
+  .cf-auto-refresh {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    min-height: 2.25rem;
+  }
+
+  .cf-auto-refresh-main,
+  .cf-auto-refresh-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border: 1px solid var(--cf-border);
+    background: var(--cf-surface-1);
+    color: var(--cf-fg-body);
+    font-size: 0.8125rem;
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+  }
+
+  .cf-auto-refresh-main {
+    min-width: 8.5rem;
+    border-right: 0;
+    border-radius: 0.5rem 0 0 0.5rem;
+    padding: 0.375rem 0.625rem;
+  }
+
+  .cf-auto-refresh-main.is-enabled {
+    border-color: var(--cf-primary-500);
+    background: color-mix(in srgb, var(--cf-primary-500) 9%, var(--cf-surface-1));
+    color: var(--cf-primary-700);
+  }
+
+  .dark .cf-auto-refresh-main.is-enabled {
+    color: var(--cf-primary-300);
+  }
+
+  .cf-auto-refresh-toggle {
+    border-radius: 0 0.5rem 0.5rem 0;
+    padding: 0.375rem 0.5rem;
+    color: var(--cf-fg-subtle);
+  }
+
+  .cf-auto-refresh-main:hover:not(:disabled),
+  .cf-auto-refresh-toggle:hover:not(:disabled) {
+    background: var(--cf-surface-2);
+  }
+
+  .cf-auto-refresh-main:focus-visible,
+  .cf-auto-refresh-toggle:focus-visible,
+  .cf-auto-refresh-option:focus-visible,
+  .cf-date-range-trigger:focus-visible,
+  .cf-date-range-presets button:focus-visible {
+    outline: 2px solid var(--cf-primary-300);
+    outline-offset: 2px;
+  }
+
+  .cf-auto-refresh-main:disabled,
+  .cf-auto-refresh-toggle:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .cf-auto-refresh-menu {
+    position: absolute;
+    top: calc(100% + 0.375rem);
+    right: 0;
+    z-index: 170;
+    width: 8rem;
+    overflow: hidden;
+    border: 1px solid var(--cf-border);
+    border-radius: 0.5rem;
+    background: var(--cf-surface-strong);
+    padding: 0.25rem;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  }
+
+  .cf-auto-refresh-option {
+    display: flex;
+    width: 100%;
+    min-height: 2rem;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    color: var(--cf-fg-body);
+    font-size: 0.8125rem;
+  }
+
+  .cf-auto-refresh-option:hover,
+  .cf-auto-refresh-option.is-active {
+    background: color-mix(in srgb, var(--cf-primary-500) 9%, var(--cf-surface-1));
+    color: var(--cf-primary-700);
+  }
+
+  .dark .cf-auto-refresh-option:hover,
+  .dark .cf-auto-refresh-option.is-active {
+    color: var(--cf-primary-300);
+  }
+
+  .cf-navigation-progress {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 9999;
+    height: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .cf-navigation-progress.is-visible {
+    opacity: 1;
+  }
+
+  .cf-navigation-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cf-primary-500), var(--cf-primary-300));
+    box-shadow: 0 0 8px color-mix(in srgb, var(--cf-primary-500) 60%, transparent);
+    transition: width 0.16s ease-out;
+  }
+
+  .cf-date-range-picker {
+    min-width: 0;
+  }
+
+  .cf-date-range-trigger {
+    display: flex;
+    width: 100%;
+    min-width: 13rem;
+    min-height: 2.25rem;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    color: var(--cf-fg-body);
+    font-size: 0.8125rem;
+  }
+
+  .cf-date-range-trigger > span {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cf-date-range-chevron {
+    flex-shrink: 0;
+    color: var(--cf-fg-faint);
+    transition: transform 0.18s ease;
+  }
+
+  .cf-date-range-chevron.is-open {
+    transform: rotate(180deg);
+  }
+
+  .cf-date-range-popover {
+    position: fixed;
+    z-index: 180;
+    overflow: hidden;
+    border: 1px solid var(--cf-border);
+    border-radius: 0.5rem;
+    background: var(--cf-surface-strong);
+    color: var(--cf-fg-body);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+  }
+
+  .cf-date-range-presets {
+    display: grid;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--cf-border);
+    padding: 0.5rem;
+  }
+
+  .cf-date-range-presets button {
+    display: flex;
+    min-height: 2.25rem;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.625rem;
+    color: var(--cf-fg-body);
+    font-size: 0.8125rem;
+  }
+
+  .cf-date-range-presets button:hover,
+  .cf-date-range-presets button.is-active {
+    background: color-mix(in srgb, var(--cf-primary-500) 9%, var(--cf-surface-1));
+    color: var(--cf-primary-700);
+  }
+
+  .dark .cf-date-range-presets button:hover,
+  .dark .cf-date-range-presets button.is-active {
+    color: var(--cf-primary-300);
+  }
+
+  .cf-date-range-custom {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .cf-date-range-custom label {
+    display: grid;
+    min-width: 0;
+    gap: 0.375rem;
+  }
+
+  .cf-date-range-custom label > span {
+    color: var(--cf-fg-subtle);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .cf-date-range-custom input {
+    min-width: 0;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .cf-date-range-error {
+    margin: -0.25rem 0.75rem 0;
+    color: #c92f35;
+    font-size: 0.75rem;
+  }
+
+  .dark .cf-date-range-error {
+    color: #f0a2a5;
+  }
+
+  .cf-date-range-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid var(--cf-border);
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 479px) {
+  .cf-date-range-custom {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-navigation-progress,
+  .cf-navigation-progress-bar,
+  .cf-date-range-chevron {
+    transition: none;
+  }
+}

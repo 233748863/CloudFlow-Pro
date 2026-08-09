@@ -1,0 +1,104 @@
+/* 从 index.css 拆分而来：admin-tenants
+   由 TenantList.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-tenants-filter-grid {
+      grid-template-columns: minmax(20rem, 1fr) auto;
+    }
+}
+
+.admin-tenants-filter-grid {
+  grid-template-columns: minmax(20rem, 1fr) auto;
+}
+
+.admin-tenants-table th:nth-child(1),
+.admin-tenants-table td:nth-child(1) {
+  width: 30%;
+}
+
+.admin-tenants-table th:nth-child(2),
+.admin-tenants-table td:nth-child(2) {
+  width: 14%;
+}
+
+.admin-tenants-table th:nth-child(3),
+.admin-tenants-table td:nth-child(3) {
+  width: 22%;
+}
+
+.admin-tenants-table th:nth-child(4),
+.admin-tenants-table td:nth-child(4) {
+  width: 14%;
+}
+
+.admin-tenants-table th:nth-child(5),
+.admin-tenants-table td:nth-child(5) {
+  width: 8%;
+}
+
+.admin-tenants-table th:nth-child(6),
+.admin-tenants-table td:nth-child(6) {
+  width: 12%;
+}
+
+.admin-tenants-identity strong {
+  max-width: 280px;
+}
+
+.admin-tenants-chip-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.admin-tenants-contact strong {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.admin-tenants-contact span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.admin-tenants-contact small {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.admin-tenants-contact small {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-tenants-quota {
+  display: grid;
+  gap: 8px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.admin-tenants-quota span,
+.admin-tenants-expire {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-tenants-quota svg,
+.admin-tenants-expire svg {
+  flex: 0 0 auto;
+  color: #94a3b8;
+}
+
+.admin-tenants-expire {
+  color: #475569;
+  font-size: 13px;
+}

@@ -1,0 +1,224 @@
+/* 从 index.css 拆分而来：admin-mall
+   由 HrMallPage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-mall-status-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      overflow: hidden;
+      padding: 0;
+    }
+
+  .admin-mall-status-cell {
+      position: relative;
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.75rem;
+      min-height: 5.125rem;
+      padding: 1rem;
+    }
+
+  .admin-mall-status-cell::after {
+      position: absolute;
+      top: 1rem;
+      right: 0;
+      bottom: 1rem;
+      width: 1px;
+      background: var(--cf-border);
+      content: "";
+    }
+
+  .admin-mall-status-cell:last-child::after {
+      display: none;
+    }
+
+  .admin-mall-status-icon {
+      display: inline-flex;
+      width: 2.25rem;
+      height: 2.25rem;
+      flex: 0 0 2.25rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.5rem;
+      background: #effbfe;
+      color: #0d95b5;
+    }
+
+  .admin-mall-status-cell p,
+    .admin-mall-status-cell span {
+      margin: 0;
+      overflow: hidden;
+      color: #64748b;
+      font-size: 0.75rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-mall-status-cell strong {
+      display: block;
+      margin: 0.125rem 0;
+      overflow: hidden;
+      color: #0f172a;
+      font-size: 1.5rem;
+      font-weight: 780;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-mall-workbench-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 20rem;
+      min-height: 0;
+      gap: 1rem;
+    }
+
+  .admin-mall-table th:nth-child(3),
+    .admin-mall-table th:nth-child(4),
+    .admin-mall-table th:nth-child(5),
+    .admin-mall-table td:nth-child(3),
+    .admin-mall-table td:nth-child(4),
+    .admin-mall-table td:nth-child(5) {
+      text-align: right;
+    }
+
+  .admin-mall-product-cell {
+      display: inline-flex;
+      max-width: 100%;
+      min-width: 0;
+      align-items: center;
+      gap: 0.75rem;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+    }
+
+  .admin-mall-product-cell strong,
+    .admin-mall-cart-row strong {
+      display: block;
+      overflow: hidden;
+      color: #0f172a;
+      font-size: 0.875rem;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-mall-product-cell small,
+    .admin-mall-cart-row span {
+      display: block;
+      margin-top: 0.125rem;
+      overflow: hidden;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .admin-mall-product-thumb {
+      display: inline-flex;
+      width: 2.75rem;
+      height: 2.75rem;
+      flex: 0 0 2.75rem;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-muted);
+      color: #94a3b8;
+    }
+
+  .admin-mall-product-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+  .admin-mall-price {
+      color: #d97706;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+  .admin-mall-cart-panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+  .admin-mall-cart-body {
+      display: flex;
+      min-height: 0;
+      flex: 1 1 0%;
+      flex-direction: column;
+      gap: 0.875rem;
+      padding: 1rem;
+    }
+
+  .admin-mall-account-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-muted);
+      padding: 0.75rem;
+    }
+
+  .admin-mall-account-row span {
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+  .admin-mall-account-row strong {
+      color: #0f172a;
+      font-size: 1rem;
+      font-weight: 760;
+    }
+
+  .admin-mall-cart-list {
+      display: grid;
+      min-height: 0;
+      gap: 0.5rem;
+      overflow-y: auto;
+    }
+
+  .admin-mall-cart-row {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+    }
+
+  .admin-mall-cart-empty {
+      display: flex;
+      min-height: 9rem;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed var(--cf-border);
+      border-radius: 0.5rem;
+      color: #94a3b8;
+      font-size: 0.875rem;
+    }
+}
+
+@layer components {
+  @media (max-width: 1024px) {
+    .admin-mall-workbench-grid {
+          grid-template-columns: 1fr;
+        }
+
+    .admin-mall-cart-panel {
+          min-height: 16rem;
+        }
+  }
+}

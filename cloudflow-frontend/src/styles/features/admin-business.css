@@ -1,0 +1,113 @@
+/* 从 index.css 拆分而来：admin-business
+   由 BusinessTripPage.tsx, BusinessRulePage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-business-trip-detail-grid {
+      display: grid;
+      min-width: 0;
+      gap: 0.875rem 1.5rem;
+    }
+
+  .admin-business-trip-detail-item {
+      min-width: 0;
+      border-bottom: 1px solid var(--cf-border);
+      padding-bottom: 0.75rem;
+    }
+
+  .admin-business-trip-detail-item > div:last-child {
+      overflow-wrap: anywhere;
+    }
+
+  .admin-business-trip-summary dl {
+      min-width: 0;
+    }
+
+  .admin-business-trip-summary dt,
+    .admin-business-trip-summary dd {
+      min-width: 0;
+    }
+
+  .admin-business-trip-table {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      table-layout: fixed;
+    }
+
+  .admin-business-trip-table col:nth-child(1) {
+      width: 14%;
+    }
+
+  .admin-business-trip-table col:nth-child(2) {
+      width: 12%;
+    }
+
+  .admin-business-trip-table col:nth-child(3) {
+      width: 16%;
+    }
+
+  .admin-business-trip-table col:nth-child(4) {
+      width: 14%;
+    }
+
+  .admin-business-trip-table col:nth-child(5) {
+      width: 6%;
+    }
+
+  .admin-business-trip-table col:nth-child(6) {
+      width: 8%;
+    }
+
+  .admin-business-trip-table col:nth-child(7) {
+      width: 9%;
+    }
+
+  .admin-business-trip-table col:nth-child(8) {
+      width: 8%;
+    }
+
+  .admin-business-trip-table col:nth-child(9) {
+      width: 13%;
+    }
+
+  .admin-business-trip-table th,
+    .admin-business-trip-table td {
+      min-width: 0 !important;
+      padding-right: 0.75rem;
+      padding-left: 0.75rem;
+      overflow-wrap: anywhere;
+    }
+
+  .admin-business-rules-filter-grid {
+      grid-template-columns: minmax(18rem, 1fr) minmax(10rem, 12rem) minmax(10rem, 12rem) auto;
+    }
+
+  .admin-business-versions-filter-grid {
+      grid-template-columns: minmax(18rem, 1fr) minmax(12rem, 14rem) auto;
+    }
+
+  .admin-business-hits-filter-grid {
+      grid-template-columns: minmax(18rem, 1fr) minmax(12rem, 14rem) minmax(10rem, 12rem) auto;
+    }
+}
+
+@layer components {
+  @media (min-width: 768px) {
+    .admin-business-trip-detail-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+    .admin-business-trip-detail-item-wide {
+          grid-column: 1 / -1;
+        }
+  }
+}
+
+@layer components {
+  @media (min-width: 1024px) {
+    .admin-business-trip-detail-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+  }
+}

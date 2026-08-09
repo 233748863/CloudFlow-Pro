@@ -60,13 +60,13 @@ export const ReceivableTab: React.FC = () => {
                 <td>{item.plannedAmount || 0}</td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
-                    <button type="button" title="编辑回款" onClick={() => openDialog({ type: 'receivable', item })}><Handshake size={15} /></button>
-                    {item.status !== 'RECEIVED' ? <button type="button" title="确认回款" onClick={() => setConfirm({ action: 'confirmReceivable', item })}><Wallet size={15} /></button> : null}
-                    {Number(item.receivedAmount || 0) > 0 ? <button type="button" title="退款审批" onClick={() => { setRefundItem(item); setRefundAmount(String(item.receivedAmount || 0)); setRefundReason(''); }}><Wallet size={15} /></button> : null}
+                    <button type="button" data-tooltip="客户360" aria-label="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
+                    <button type="button" data-tooltip="编辑回款" aria-label="编辑回款" onClick={() => openDialog({ type: 'receivable', item })}><Handshake size={15} /></button>
+                    {item.status !== 'RECEIVED' ? <button type="button" data-tooltip="确认回款" aria-label="确认回款" onClick={() => setConfirm({ action: 'confirmReceivable', item })}><Wallet size={15} /></button> : null}
+                    {Number(item.receivedAmount || 0) > 0 ? <button type="button" data-tooltip="退款审批" aria-label="退款审批" onClick={() => { setRefundItem(item); setRefundAmount(String(item.receivedAmount || 0)); setRefundReason(''); }}><Wallet size={15} /></button> : null}
                     <button
                       type="button"
-                      title="绑定发票"
+                      data-tooltip="绑定发票" aria-label="绑定发票"
                       onClick={async () => {
                           await loadReceivableInvoices(item);
                           openDialog({ type: 'receivable', item });
@@ -94,7 +94,7 @@ export const ReceivableTab: React.FC = () => {
         }
       >
         <div className="grid gap-4">
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-cf-subtle">
             已到账金额：{refundItem?.receivedAmount || 0}；当前状态：{renderStatus(refundItem?.status)}。
           </div>
           <div>

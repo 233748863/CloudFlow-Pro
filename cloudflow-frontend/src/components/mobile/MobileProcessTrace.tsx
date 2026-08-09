@@ -32,8 +32,8 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; label
     label: '处理中',
   },
   pending: {
-    icon: <Clock size={18} className="text-slate-400" />,
-    color: 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900',
+    icon: <Clock size={18} className="text-cf-faint" />,
+    color: 'border-slate-300 bg-cf-surface-2 dark:border-slate-700',
     label: '待处理',
   },
   rejected: {
@@ -42,8 +42,8 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; label
     label: '已拒绝',
   },
   skipped: {
-    icon: <AlertCircle size={18} className="text-slate-400" />,
-    color: 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900',
+    icon: <AlertCircle size={18} className="text-cf-faint" />,
+    color: 'border-slate-300 bg-cf-surface-2 dark:border-slate-700',
     label: '已跳过',
   },
 };
@@ -146,8 +146,8 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
     return (
       <div className="flex h-full flex-col bg-[var(--cf-bg)] text-[var(--cf-text)]">
         <div className="flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
-          <button onClick={onBack} className="p-1"><ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" /></button>
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">流程轨迹</h2>
+          <button onClick={onBack} className="p-1"><ArrowLeft size={20} className="text-cf-muted" /></button>
+          <h2 className="text-base font-semibold text-cf-title">流程轨迹</h2>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
@@ -160,8 +160,8 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
     return (
       <div className="flex h-full flex-col bg-[var(--cf-bg)] text-[var(--cf-text)]">
         <div className="flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
-          <button onClick={onBack} className="p-1"><ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" /></button>
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">流程轨迹</h2>
+          <button onClick={onBack} className="p-1"><ArrowLeft size={20} className="text-cf-muted" /></button>
+          <h2 className="text-base font-semibold text-cf-title">流程轨迹</h2>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4">
           <AlertCircle className="text-red-500" size={32} />
@@ -178,15 +178,15 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
     <div className="flex h-full flex-col bg-[var(--cf-bg)] text-[var(--cf-text)]">
       <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
         <button onClick={onBack} className="p-1">
-          <ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" />
+          <ArrowLeft size={20} className="text-cf-muted" />
         </button>
-        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">流程轨迹</h2>
-        <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">{nodes.length} 个节点</span>
+        <h2 className="text-base font-semibold text-cf-title">流程轨迹</h2>
+        <span className="ml-auto text-xs text-cf-subtle">{nodes.length} 个节点</span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {nodes.length === 0 ? (
-          <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">暂无流程轨迹</div>
+          <div className="py-8 text-center text-sm text-cf-subtle">暂无流程轨迹</div>
         ) : (
           <div className="relative">
             <div className="absolute bottom-4 left-[21px] top-4 w-0.5 bg-slate-200 dark:bg-slate-800" />
@@ -201,29 +201,29 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
 
                   <div className="flex-1 min-w-0 pt-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{node.name}</span>
+                      <span className="truncate text-sm font-medium text-cf-title">{node.name}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        node.status === 'finished' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-200' :
-                        node.status === 'active' ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200' :
-                        node.status === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-200' :
-                        'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                      }`}>
+ node.status === 'finished' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-200' :
+ node.status === 'active' ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200' :
+ node.status === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-200' :
+ 'bg-cf-surface-3 text-cf-muted '
+ }`}>
                         {config.label}
                       </span>
                     </div>
 
                     {node.operatorName && (
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">处理人: {node.operatorName}</p>
+                      <p className="mt-1 text-xs text-cf-subtle">处理人: {node.operatorName}</p>
                     )}
 
                     {node.comment && (
-                      <p className="mt-1 break-words rounded bg-slate-50 px-2 py-1 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                      <p className="mt-1 break-words rounded bg-cf-surface-2 px-2 py-1 text-xs text-cf-muted">
                         "{node.comment}"
                       </p>
                     )}
 
                     {node.time && (
-                      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                      <p className="mt-1 text-xs text-cf-faint">
                         {new Date(node.time).toLocaleString('zh-CN')}
                       </p>
                     )}

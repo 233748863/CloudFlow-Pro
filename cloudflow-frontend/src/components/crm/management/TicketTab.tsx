@@ -27,10 +27,10 @@ export const TicketTab: React.FC = () => {
             <td>{item.ownerName || '-'}</td>
             <td>
               <div className="admin-users-row-actions">
-                <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
-                <button type="button" title="编辑工单" onClick={() => openDialog({ type: 'ticket', item })}><LifeBuoy size={15} /></button>
-                {item.status !== 'RESOLVED' && item.status !== 'CLOSED' ? <button type="button" title="解决工单" onClick={() => setConfirm({ action: 'resolveTicket', item: { ...item, solution: item.solution || '已处理完成' } })}><RefreshCcw size={15} /></button> : null}
-                {item.status !== 'CLOSED' ? <button type="button" title="关闭工单" onClick={() => setConfirm({ action: 'closeTicket', item })}><Send size={15} /></button> : null}
+                <button type="button" data-tooltip="客户360" aria-label="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
+                <button type="button" data-tooltip="编辑工单" aria-label="编辑工单" onClick={() => openDialog({ type: 'ticket', item })}><LifeBuoy size={15} /></button>
+                {item.status !== 'RESOLVED' && item.status !== 'CLOSED' ? <button type="button" data-tooltip="解决工单" aria-label="解决工单" onClick={() => setConfirm({ action: 'resolveTicket', item: { ...item, solution: item.solution || '已处理完成' } })}><RefreshCcw size={15} /></button> : null}
+                {item.status !== 'CLOSED' ? <button type="button" data-tooltip="关闭工单" aria-label="关闭工单" onClick={() => setConfirm({ action: 'closeTicket', item })}><Send size={15} /></button> : null}
               </div>
             </td>
           </tr>

@@ -5,6 +5,7 @@ import { InnerTableSurface } from "@/components/layout/TablePageLayout";
 import { TEXT } from "./config";
 import { EMPTY_GRAPH, normalizeTags } from "./utils";
 import type { ParsedTemplateGraph, TemplateItem } from "./types";
+import '../../styles/features/template-market.css';
 
 interface TemplateLibraryResultsProps {
   templates: TemplateItem[];
@@ -63,7 +64,7 @@ const TemplateCard: React.FC<{
         <span className={`template-market-card-icon ${template.isSystem ? "is-system" : "is-custom"}`}>
           {template.isSystem ? <ShieldCheck size={18} /> : <Workflow size={18} />}
         </span>
-        <button type="button" title={template.name} onClick={() => onPreview(template)}>
+        <button type="button" data-tooltip={template.name} aria-label={template.name} onClick={() => onPreview(template)}>
           {template.name}
         </button>
       </div>
@@ -94,13 +95,13 @@ const TemplateCard: React.FC<{
       <div className="template-market-node-strip">
         {previewNodes.length > 0 ? (
           previewNodes.map((node) => (
-            <span key={node.id} title={node.name}>
+            <span key={node.id} data-tooltip={node.name}>
               <GitBranch size={12} />
               <em>{compactLabel(node.name)}</em>
             </span>
           ))
         ) : (
-          <span title={TEXT.invalidDefinition}>
+          <span data-tooltip={TEXT.invalidDefinition}>
             <Layers3 size={12} />
             <em>未解析到流程定义</em>
           </span>

@@ -95,9 +95,9 @@ const DEFAULT_TEMPLATE_DEFINITION = {
 };
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
+const fieldLabelClassName = 'text-xs font-medium text-cf-subtle';
 const tagTokenClassName =
-  'inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-0.5 text-[11px] text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 dark:border-slate-800 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-200';
+  'inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-0.5 text-[11px] text-cf-subtle transition-colors hover:border-slate-300 hover:text-cf-body dark:border-slate-800 dark:hover:border-slate-700';
 const selectTriggerClassName = 'h-10';
 
 const createTemplateForm = (): TemplateFormState => ({
@@ -198,9 +198,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
         ) : null}
       </div>
     </td>
@@ -222,8 +222,8 @@ const AccessState: React.FC<{
           <div className="admin-source-stat-icon mb-4">
             <ShieldOff className="h-5 w-5" />
           </div>
-          <div className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-          <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="text-base font-semibold text-cf-title">{title}</div>
+          <div className="mt-2 text-sm text-cf-subtle">{description}</div>
         </div>
         </InnerTableSurface>
       )}
@@ -246,8 +246,8 @@ const RowActionButton: React.FC<{
     className={cn(
       'h-8 w-8 rounded-md p-0 shadow-none',
       tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
+        ? 'text-cf-faint hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
+        : 'text-cf-faint hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:hover:bg-slate-800',
       className,
     )}
     title={label}
@@ -671,14 +671,14 @@ export const TemplateManagement: React.FC = () => {
               <SelectItem value="" label="全部分类">
                 <span className="flex w-full items-center justify-between gap-3">
                   <span>全部分类</span>
-                  <span className="text-xs text-slate-400">{flatCategories.length}</span>
+                  <span className="text-xs text-cf-faint">{flatCategories.length}</span>
                 </span>
               </SelectItem>
               {flatCategories.map((category) => (
                 <SelectItem key={category.id} value={category.id} label={category.name}>
                   <span className="flex w-full items-center justify-between gap-3">
                     <span className="truncate">{`${'　'.repeat(category.depth)}${category.name}`}</span>
-                    <span className="text-xs text-slate-400">{category.templateCount ?? 0}</span>
+                    <span className="text-xs text-cf-faint">{category.templateCount ?? 0}</span>
                   </span>
                 </SelectItem>
               ))}
@@ -752,10 +752,10 @@ export const TemplateManagement: React.FC = () => {
       wrapperClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
-        <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+        <div className="truncate text-sm font-medium text-cf-title">
           {selectedCategoryNode?.name || '模板列表'}
         </div>
-        <div className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+        <div className="text-[11px] tabular-nums text-cf-faint">
           {total} 项 · 表格视图
         </div>
       </div>
@@ -798,13 +798,13 @@ export const TemplateManagement: React.FC = () => {
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑" aria-label="编辑模板" onClick={() => openTemplateModal(template)}>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑模板" onClick={() => openTemplateModal(template)}>
                         <Edit size={15} />
                       </button>
                       <button
                         type="button"
                         className="danger"
-                        title="删除"
+                        data-tooltip="删除"
                         aria-label="删除模板"
                         onClick={() =>
                           setDeleteTarget({
@@ -958,7 +958,7 @@ export const TemplateManagement: React.FC = () => {
                   </button>
                 ))
               ) : (
-                <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                <span className="text-xs text-cf-faint">-</span>
               )}
             </div>
           </div>

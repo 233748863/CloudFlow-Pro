@@ -239,13 +239,13 @@ export const HrEssCertificatePage: React.FC = () => {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={8} className="py-10 text-center text-sm text-slate-400">
+                        <td colSpan={8} className="py-10 text-center text-sm text-cf-faint">
                           <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
                         </td>
                       </tr>
                     ) : rows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无申请</td>
+                        <td colSpan={8} className="py-10 text-center text-sm text-cf-faint">暂无申请</td>
                       </tr>
                     ) : (
                       rows.map((row) => (
@@ -260,10 +260,10 @@ export const HrEssCertificatePage: React.FC = () => {
                           <td>
                             <div className="admin-users-row-actions">
                               {row.status === 'ISSUED' && row.pdfFileId ? (
-                                <button type="button" title="下载" aria-label="下载" onClick={() => void handleDownload(row)}><Download size={15} /></button>
+                                <button type="button" data-tooltip="下载" aria-label="下载" onClick={() => void handleDownload(row)}><Download size={15} /></button>
                               ) : null}
                               {hasWorkflowStatus(row.status, 'DRAFT', 'PENDING', 'APPROVING') ? (
-                                <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => setPendingCancel(row)}><XCircle size={15} /></button>
+                                <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => setPendingCancel(row)}><XCircle size={15} /></button>
                               ) : null}
                             </div>
                           </td>

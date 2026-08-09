@@ -116,11 +116,11 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       >
         <div className="modal-header p-4 admin-source-section-head flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-800">
           <div className="min-w-0">
-            <h3 id={titleId} className="modal-title text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 id={titleId} className="modal-title text-sm font-semibold text-cf-title">
               {title}
             </h3>
             {description ? (
-              <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+              <div className="mt-1 text-xs leading-6 text-cf-subtle">
                 {description}
               </div>
             ) : null}
@@ -131,7 +131,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="modal-close rounded-md p-2 text-slate-400 transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="modal-close rounded-md p-2 text-cf-faint transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:hover:bg-slate-800"
                 aria-label="关闭弹窗"
               >
                 <X size={18} />

@@ -79,8 +79,8 @@ export const OrgStructurePage = () => {
       <section className="card admin-users-toolbar">
         <div className="admin-users-toolbar-actions justify-start">
           <span className="admin-users-filter-count">{currentDeptLabel}</span>
-          <span className="text-xs text-slate-500">部门 {stats.deptSearch ? stats.filteredDepartments : stats.totalDepartments}</span>
-          <span className="text-xs text-slate-500">成员 {stats.userSearch ? stats.filteredUsers : stats.scopedUsers}</span>
+          <span className="text-xs text-cf-subtle">部门 {stats.deptSearch ? stats.filteredDepartments : stats.totalDepartments}</span>
+          <span className="text-xs text-cf-subtle">成员 {stats.userSearch ? stats.filteredUsers : stats.scopedUsers}</span>
         </div>
       </section>
   );

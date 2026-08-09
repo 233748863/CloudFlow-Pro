@@ -12,6 +12,7 @@ import {
 } from "@/components/common";
 import { TEXT } from "./config";
 import type { CategoryNode } from "./types";
+import '../../styles/features/template-market.css';
 
 interface TemplateLibraryToolbarProps {
   searchTerm: string;
@@ -101,7 +102,7 @@ export const TemplateLibraryToolbar: React.FC<TemplateLibraryToolbarProps> = ({
               <SelectItem value="" label={TEXT.allTemplates}>
                 <span className="flex w-full items-center justify-between gap-3">
                   <span>{TEXT.allTemplates}</span>
-                  <span className="text-xs text-slate-400">{total}</span>
+                  <span className="text-xs text-cf-faint">{total}</span>
                 </span>
               </SelectItem>
               {categoryOptions.map((category) => (
@@ -109,7 +110,7 @@ export const TemplateLibraryToolbar: React.FC<TemplateLibraryToolbarProps> = ({
                   <span className="flex w-full items-center justify-between gap-3">
                     <span className="truncate">{category.label}</span>
                     {category.count > 0 ? (
-                      <span className="text-xs text-slate-400">{category.count}</span>
+                      <span className="text-xs text-cf-faint">{category.count}</span>
                     ) : null}
                   </span>
                 </SelectItem>

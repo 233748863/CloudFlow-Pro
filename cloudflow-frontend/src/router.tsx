@@ -266,7 +266,7 @@ const mobileRoutes = [
           {
             path: '*',
             element: (
-              <div className="mt-20 p-4 text-center text-gray-500">
+              <div className="mt-20 p-4 text-center text-cf-subtle">
                 此功能暂不支持移动端，请在电脑访问。
               </div>
             ),

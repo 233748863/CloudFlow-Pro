@@ -42,6 +42,7 @@ import {
 } from '../../services/api/tenant';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './TenantList.css';
 
 interface TenantView extends SysTenant, TenantStatistics {
   tenantId: number;
@@ -154,7 +155,7 @@ const getExpireHint = (expireTime?: string) => {
     return {
       text: '未设置',
       toneClassName:
-        'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300',
+        'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900/70',
     };
   }
 
@@ -205,7 +206,7 @@ const getUsageBadgeClassName = (percent: number, high: number, medium: number) =
     return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
   }
 
-  return 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
+  return 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900/70';
 };
 
 const TableStateRow: React.FC<{
@@ -218,9 +219,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -716,7 +717,7 @@ export const TenantList: React.FC = () => {
                             'rounded-md px-2.5 py-1 text-xs font-medium',
                             tenant.expired
                               ? 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200'
-                              : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300',
+                              : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900/70',
                           )}
                         >
                           {tenant.expired ? '已过期' : '未过期'}
@@ -726,19 +727,19 @@ export const TenantList: React.FC = () => {
 
                     <td className="text-right">
                       <div className="admin-users-row-actions">
-                        <button type="button" title="编辑租户" onClick={() => handleOpenModal(tenant)}>
+                        <button type="button" data-tooltip="编辑租户" aria-label="编辑租户" onClick={() => handleOpenModal(tenant)}>
                           <Edit size={15} />
                         </button>
                         <button
                           type="button"
-                          title={tenant.status === '0' ? '停用租户' : '启用租户'}
+                          data-tooltip={tenant.status === '0' ? '停用租户' : '启用租户'} aria-label={tenant.status === '0' ? '停用租户' : '启用租户'}
                           onClick={() => void handleToggleStatus(tenant)}
                         >
                           {tenant.status === '0' ? <PowerOff size={15} /> : <Power size={15} />}
                         </button>
                         <button
                           type="button"
-                          title="刷新存储"
+                          data-tooltip="刷新存储" aria-label="刷新存储"
                           onClick={() => void handleRefreshStorage(tenant.tenantId)}
                           disabled={refreshingTenantId === tenant.tenantId}
                         >
@@ -750,7 +751,7 @@ export const TenantList: React.FC = () => {
                         <button
                           type="button"
                           className="danger"
-                          title="删除租户"
+                          data-tooltip="删除租户" aria-label="删除租户"
                           onClick={() => setPendingDeleteTenant(tenant)}
                         >
                           <Trash2 size={15} />

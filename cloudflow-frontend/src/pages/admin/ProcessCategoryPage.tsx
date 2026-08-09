@@ -32,6 +32,7 @@ import {
 } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { processCategoryApi, type ProcessCategory } from '../../services/api/processCategory';
+import './ProcessCategoryPage.css';
 
 const STATUS_ALL_VALUE = '__all__';
 const EMPTY_ICON_VALUE = '__none__';
@@ -77,9 +78,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
         ) : null}
       </div>
     </td>
@@ -90,7 +91,7 @@ const getStatusLabel = (status?: string) => (status === '1' ? '停用' : '正常
 const getParentLabel = (item?: ProcessCategory | null) =>
   Number(item?.parentId || 0) === 0 ? '顶级分类' : item?.parentName || item?.parentId || '-';
 
-const renderIcon = (icon?: string, className = 'h-4 w-4 text-slate-400 dark:text-slate-500') => {
+const renderIcon = (icon?: string, className = 'h-4 w-4 text-cf-faint') => {
   const Icon = icon && iconMap[icon] ? iconMap[icon] : Layers;
   return <Icon className={className} />;
 };
@@ -106,8 +107,8 @@ const IconOptionDisplay: React.FC<{
       className={cn(
         'flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border',
         empty
-          ? 'border-dashed border-slate-200 bg-[var(--cf-surface-muted)] text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500'
-          : 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100',
+          ? 'border-dashed border-slate-200 bg-[var(--cf-surface-muted)] text-cf-faint dark:border-slate-700 dark:bg-slate-900'
+          : 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-body dark:border-slate-700 dark:bg-slate-900',
       )}
     >
       {empty ? (
@@ -117,9 +118,9 @@ const IconOptionDisplay: React.FC<{
       )}
     </span>
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-sm text-slate-900 dark:text-slate-100">{label}</span>
+      <span className="block truncate text-sm text-cf-title">{label}</span>
       {code ? (
-        <span className="block truncate font-mono text-[11px] text-slate-400 dark:text-slate-500">
+        <span className="block truncate font-mono text-[11px] text-cf-faint">
           {code}
         </span>
       ) : null}
@@ -577,7 +578,7 @@ const ProcessCategoryPage: React.FC = () => {
                       </span>
                     </td>
                     <td>
-                      <span className="workflow-category-remark" title={item.remark || '-'}>
+                      <span className="workflow-category-remark" data-tooltip={item.remark || '-'}>
                         {item.remark || '-'}
                       </span>
                     </td>
@@ -585,7 +586,7 @@ const ProcessCategoryPage: React.FC = () => {
                       <div className="admin-users-row-actions">
                         <button
                           type="button"
-                          title="编辑"
+                          data-tooltip="编辑"
                           aria-label="编辑分类"
                           onClick={(event) => {
                             event.stopPropagation();
@@ -596,7 +597,7 @@ const ProcessCategoryPage: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          title="新建子分类"
+                          data-tooltip="新建子分类"
                           aria-label="新建子分类"
                           onClick={(event) => {
                             event.stopPropagation();
@@ -608,7 +609,7 @@ const ProcessCategoryPage: React.FC = () => {
                         <button
                           type="button"
                           className="danger"
-                          title="删除"
+                          data-tooltip="删除"
                           aria-label="删除分类"
                           onClick={(event) => {
                             event.stopPropagation();

@@ -91,7 +91,7 @@ const InlineState: React.FC<InlineStateProps> = ({
     <div className="admin-source-stat-icon mb-3">
       {icon || <ClipboardList className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
   </div>
 );
 
@@ -107,7 +107,7 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
         <div className="admin-source-stat-icon mb-3">
           {loading ? <ClipboardList className="h-4 w-4" /> : icon || <ClipboardList className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
       </div>
     </td>
   </tr>
@@ -115,8 +115,8 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
 
 const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
   <div className="border-b border-slate-200 pb-3 dark:border-slate-800">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value}</div>
   </div>
 );
 
@@ -663,16 +663,16 @@ export const LeaveApplicationPage: React.FC = () => {
                   <td>{item.leaveTypeName || '-'}</td>
                   <td>
                     <div>{formatDateTimeDisplay(item.startTime)}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDateTimeDisplay(item.endTime)}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{formatDateTimeDisplay(item.endTime)}</div>
                   </td>
                   <td>{formatDuration(item)}</td>
                   <td><div className="max-w-sm truncate">{item.reason || '-'}</div></td>
                   <td>{getStatusBadge(item.status || 'DRAFT')}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
-                      {item.status === 'DRAFT' && !selfServiceLocked ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
-                      {(item.status === 'APPROVING' || item.status === 'APPROVED') && !selfServiceLocked ? <button type="button" title="撤销" aria-label="撤销" onClick={() => openCancelConfirm(item.id!)}><RotateCcw size={15} /></button> : null}
+                      <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
+                      {item.status === 'DRAFT' && !selfServiceLocked ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                      {(item.status === 'APPROVING' || item.status === 'APPROVED') && !selfServiceLocked ? <button type="button" data-tooltip="撤销" aria-label="撤销" onClick={() => openCancelConfirm(item.id!)}><RotateCcw size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
@@ -772,7 +772,7 @@ export const LeaveApplicationPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-cf-subtle">
             <span>时长 {duration > 0 ? `${duration}${unitDict.getLabel(selectedType?.unit || '') || ''}` : '--'}</span>
             <span>{unitDict.getLabel(selectedType?.unit || '') || '--'}</span>
             <span>{selectedType?.needQuota ? '占用额度' : '不校验额度'}</span>
@@ -827,7 +827,7 @@ export const LeaveApplicationPage: React.FC = () => {
                   <h3>请假原因</h3>
                 </div>
               </div>
-              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <div className="whitespace-pre-wrap text-sm leading-6 text-cf-muted">
                 {detailRecord.reason || '-'}
               </div>
             </section>
@@ -838,7 +838,7 @@ export const LeaveApplicationPage: React.FC = () => {
                   <h3>流程轨迹</h3>
                 </div>
                 {detailRecord.processInstanceId ? (
-                  <div className="text-xs text-slate-500 dark:text-slate-400">{detailRecord.processInstanceId}</div>
+                  <div className="text-xs text-cf-subtle">{detailRecord.processInstanceId}</div>
                 ) : null}
               </div>
               <div>

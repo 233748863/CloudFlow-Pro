@@ -63,9 +63,9 @@ const InlineState: React.FC<{
     <div className="admin-source-stat-icon mb-3">
       {icon || <DollarSign className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -83,9 +83,9 @@ const TableStateRow: React.FC<{
         <div className="admin-source-stat-icon mb-3">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : icon || <DollarSign className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
         ) : null}
       </div>
     </td>
@@ -526,30 +526,30 @@ export const PaymentRequestPage: React.FC = () => {
                 <tr key={item.id}>
                   <td>
                     <strong>{item.paymentNo || '-'}</strong>
-                    <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.createTime)}</div>
+                    <div className="mt-1 text-xs text-cf-faint">{formatDateTimeDisplay(item.createTime)}</div>
                   </td>
                   <td>
                     <strong>{item.payeeName || '-'}</strong>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.payeeAccount || item.payeeBank || '-'}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{item.payeeAccount || item.payeeBank || '-'}</div>
                   </td>
                   <td>
                     <strong>{item.userName || '-'}</strong>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.deptName || '-'}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{item.deptName || '-'}</div>
                   </td>
                   <td>
                     <span>{getPaymentTypeLabel(item.paymentType)}</span>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.expectedDate || '-'}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{item.expectedDate || '-'}</div>
                   </td>
                   <td>{formatAmount(item.amount)}</td>
                   <td><div className="max-w-sm truncate">{item.reason || '-'}</div></td>
                   <td>{getStatusBadge(item.status)}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item)}><Eye size={15} /></button>
-                      {item.status === 'DRAFT' && hasPermission('oa:payment:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
-                      {item.status === 'DRAFT' && hasPermission('oa:payment:submit') ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
-                      {item.status === 'APPROVED' && hasPermission('oa:payment:pay') ? <button type="button" title="付款" aria-label="付款" onClick={() => openPayConfirm(item.id!)}><CheckCircle2 size={15} /></button> : null}
-                      {item.status === 'DRAFT' && hasPermission('oa:payment:remove') ? <button type="button" className="danger" title="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
+                      <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void handleView(item)}><Eye size={15} /></button>
+                      {item.status === 'DRAFT' && hasPermission('oa:payment:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                      {item.status === 'DRAFT' && hasPermission('oa:payment:submit') ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                      {item.status === 'APPROVED' && hasPermission('oa:payment:pay') ? <button type="button" data-tooltip="付款" aria-label="付款" onClick={() => openPayConfirm(item.id!)}><CheckCircle2 size={15} /></button> : null}
+                      {item.status === 'DRAFT' && hasPermission('oa:payment:remove') ? <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
@@ -807,7 +807,7 @@ export const PaymentRequestPage: React.FC = () => {
             </DetailRows>
 
             <PaymentPanel title="付款事由">
-              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-cf-muted">
                 {detailPayment.reason || '-'}
               </div>
             </PaymentPanel>
@@ -823,7 +823,7 @@ export const PaymentRequestPage: React.FC = () => {
                         href={url}
                         target="_blank"
                         rel="noreferrer"
-                        className="admin-option-surface flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+                        className="admin-option-surface flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-cf-body dark:border-slate-800 dark:bg-slate-950"
                       >
                         <Paperclip size={14} />
                         <span className="truncate">{label}</span>

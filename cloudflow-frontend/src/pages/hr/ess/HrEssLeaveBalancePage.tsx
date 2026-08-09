@@ -123,19 +123,19 @@ export const HrEssLeaveBalancePage: React.FC = () => {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-sm text-slate-400">
+                        <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">
                           <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
                         </td>
                       </tr>
                     ) : rows.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-sm text-slate-400">暂无额度记录</td>
+                        <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">暂无额度记录</td>
                       </tr>
                     ) : (
                       rows.map((row) => (
                         <tr key={`${row.leaveTypeId}-${row.year ?? year}`}>
                           <td className="text-sm font-medium">{row.leaveTypeName || `类型#${row.leaveTypeId}`}</td>
-                          <td className="text-xs text-slate-500">{row.leaveCode || '-'}</td>
+                          <td className="text-xs text-cf-subtle">{row.leaveCode || '-'}</td>
                           <td className="text-sm">{Number(row.totalQuota ?? 0).toFixed(1)}</td>
                           <td className="text-sm">{Number(row.usedQuota ?? 0).toFixed(1)}</td>
                           <td className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">{Number(row.remainQuota ?? 0).toFixed(1)}</td>

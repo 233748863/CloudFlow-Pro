@@ -51,12 +51,12 @@ export const PageLoading: React.FC<PageLoadingProps> = ({
         <LoadingSpinner size={size} />
         <div className="space-y-1.5">
           {tip && (
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <p className="text-sm font-semibold text-cf-title">
               {tip}
             </p>
           )}
           {description && (
-            <p className="max-w-sm text-xs text-slate-500 dark:text-slate-400">
+            <p className="max-w-sm text-xs text-cf-subtle">
               {description}
             </p>
           )}

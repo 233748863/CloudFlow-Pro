@@ -67,8 +67,8 @@ const InlineState: React.FC<{
     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <Calendar className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
+    {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
   </div>
 );
 
@@ -85,8 +85,8 @@ const TableStateRow: React.FC<{
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
           {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : icon || <Calendar className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+        <div className="text-sm font-medium text-cf-title">{title}</div>
+        {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
       </div>
     </td>
   </tr>
@@ -382,7 +382,7 @@ export const DutySchedulePage: React.FC = () => {
                   <td>
                     <div>{item.userName || '-'}</div>
                     {item.backupUserName ? (
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="mt-1 text-xs text-cf-subtle">
                         替班 {item.backupUserName}
                       </div>
                     ) : null}
@@ -397,9 +397,9 @@ export const DutySchedulePage: React.FC = () => {
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
-                      {item.status === 'SCHEDULED' && hasPermission('oa:duty:checkin') ? <button type="button" title="签到" aria-label="签到" onClick={() => handleCheckIn(item.scheduleId!)}><LogIn size={15} /></button> : null}
-                      {item.status === 'SCHEDULED' && hasPermission('oa:duty:swap') ? <button type="button" title="换班" aria-label="换班" onClick={() => openSwapDialog(item.scheduleId!)}><RefreshCw size={15} /></button> : null}
-                      {item.status === 'CHECKED_IN' && hasPermission('oa:duty:checkout') ? <button type="button" title="签退" aria-label="签退" onClick={() => handleCheckOut(item.scheduleId!)}><LogOut size={15} /></button> : null}
+                      {item.status === 'SCHEDULED' && hasPermission('oa:duty:checkin') ? <button type="button" data-tooltip="签到" aria-label="签到" onClick={() => handleCheckIn(item.scheduleId!)}><LogIn size={15} /></button> : null}
+                      {item.status === 'SCHEDULED' && hasPermission('oa:duty:swap') ? <button type="button" data-tooltip="换班" aria-label="换班" onClick={() => openSwapDialog(item.scheduleId!)}><RefreshCw size={15} /></button> : null}
+                      {item.status === 'CHECKED_IN' && hasPermission('oa:duty:checkout') ? <button type="button" data-tooltip="签退" aria-label="签退" onClick={() => handleCheckOut(item.scheduleId!)}><LogOut size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
@@ -553,32 +553,32 @@ export const DutySchedulePage: React.FC = () => {
                 />
                 {formData.userName ? (
                   <div className="mt-3 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/60">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{formData.userName}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formData.deptName || '未设置部门'}</div>
+                    <div className="font-medium text-cf-title">{formData.userName}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{formData.deptName || '未设置部门'}</div>
                   </div>
                 ) : null}
               </div>
 
               <dl className="grid gap-3 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-4 text-sm dark:border-slate-800 dark:bg-slate-900/60">
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">类型</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">
+                  <dt className="text-cf-subtle">类型</dt>
+                  <dd className="font-medium text-cf-title">
                     {typeDict.getLabel(formData.scheduleType || '') || '-'}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">班次</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">
+                  <dt className="text-cf-subtle">班次</dt>
+                  <dd className="font-medium text-cf-title">
                     {shiftDict.getLabel(formData.shiftType || 'DAY') || '-'}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">日期</dt>
-                  <dd className="font-medium text-slate-900 dark:text-slate-100">{formData.dutyDate || '-'}</dd>
+                  <dt className="text-cf-subtle">日期</dt>
+                  <dd className="font-medium text-cf-title">{formData.dutyDate || '-'}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">地点</dt>
-                  <dd className="max-w-[18rem] truncate font-medium text-slate-900 dark:text-slate-100">
+                  <dt className="text-cf-subtle">地点</dt>
+                  <dd className="max-w-[18rem] truncate font-medium text-cf-title">
                     {formData.location || '-'}
                   </dd>
                 </div>
@@ -646,7 +646,7 @@ export const DutySchedulePage: React.FC = () => {
             />
             {swapData.backupUserName ? (
               <div className="border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="font-medium text-slate-900 dark:text-slate-100">{swapData.backupUserName}</div>
+                <div className="font-medium text-cf-title">{swapData.backupUserName}</div>
               </div>
             ) : null}
           </div>

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/utils/cn';
 import { getProcessDefinitions } from '@/services/api/workflow';
 import { getDeployStatistics } from '@/services/api/deployEnhancement';
+import '../../styles/features/admin-deploy.css';
 
 interface DeployStats {
   totalDeploys: number;
@@ -34,13 +35,13 @@ const InlineState: React.FC<{
 }> = ({ title, description, icon, loading = false }) => (
   <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
     {loading ? (
-      <RefreshCw className="mb-3 h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
+      <RefreshCw className="mb-3 h-5 w-5 animate-spin text-cf-faint" />
     ) : icon ? (
-      <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div>
+      <div className="mb-3 text-cf-faint">{icon}</div>
     ) : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">
         {description}
       </div>
     ) : null}
@@ -70,10 +71,10 @@ const DetailRow: React.FC<{
       alignStart ? 'sm:items-start' : 'sm:items-center',
     )}
   >
-    <div className="w-24 flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">{label}</div>
+    <div className="w-24 flex-shrink-0 text-xs text-cf-subtle">{label}</div>
     <div
       className={cn(
-        'min-w-0 flex-1 text-sm text-slate-700 dark:text-slate-200',
+        'min-w-0 flex-1 text-sm text-cf-body',
         alignStart ? '' : 'sm:text-right',
       )}
     >
@@ -256,7 +257,7 @@ export const DeployStatistics: React.FC = () => {
                     },
                   ].map((item) => (
                     <tr key={item.label}>
-                      <td><strong className="text-slate-900 dark:text-slate-100">{item.label}</strong></td>
+                      <td><strong className="text-cf-title">{item.label}</strong></td>
                       <td>{item.value}</td>
                       <td>{item.note}</td>
                     </tr>

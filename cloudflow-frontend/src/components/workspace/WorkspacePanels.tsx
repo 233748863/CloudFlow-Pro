@@ -73,10 +73,10 @@ interface WorkspaceWorkbenchCardProps {
 const panelClassName = 'card overflow-hidden';
 
 const defaultOverviewToneClassName =
-  'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-900 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-100';
+  'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-title dark:border-slate-800 dark:bg-slate-900/70';
 
 const defaultMetricToneClassName =
-  'border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100';
+  'border border-slate-200 bg-[var(--cf-surface-strong)] text-cf-title dark:border-slate-800 dark:bg-slate-950';
 
 export const WorkspaceWorkbenchCard: React.FC<WorkspaceWorkbenchCardProps> = ({
   eyebrow = '记录',
@@ -97,10 +97,10 @@ export const WorkspaceWorkbenchCard: React.FC<WorkspaceWorkbenchCardProps> = ({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+            <div className="text-[11px] font-semibold text-cf-faint">
               {eyebrow}
             </div>
-            <div className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-100">
+            <div className="mt-2 text-xl font-semibold text-cf-title">
               {title}
             </div>
           </div>
@@ -108,10 +108,10 @@ export const WorkspaceWorkbenchCard: React.FC<WorkspaceWorkbenchCardProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             {headerBadges || (
               <>
-                <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-cf-subtle dark:border-slate-800 dark:bg-slate-950">
                   {hasActiveFilters ? '筛选结果' : '默认视图'}
                 </span>
-                <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1 text-xs font-medium text-cf-subtle dark:border-slate-800 dark:bg-slate-900">
                   共 {total} 条
                 </span>
               </>
@@ -125,10 +125,10 @@ export const WorkspaceWorkbenchCard: React.FC<WorkspaceWorkbenchCardProps> = ({
               key={String(item.label)}
               className={cn('rounded-md px-3.5 py-3 shadow-none', defaultOverviewToneClassName)}
             >
-              <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+              <div className="text-[10px] font-medium text-cf-faint">
                 {item.label}
               </div>
-              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <div className="mt-1.5 text-sm font-semibold text-cf-title">
                 {item.value}
               </div>
             </div>
@@ -185,7 +185,7 @@ export const WorkspaceMetricCard: React.FC<WorkspaceMetricCardProps> = ({
     <div className="min-w-0 flex-1">
       <div className="stat-label">{label}</div>
       <div className={cn('stat-value mt-1 truncate', valueClassName)}>{value}</div>
-      {hint ? <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{hint}</div> : null}
+      {hint ? <div className="mt-1 text-xs leading-5 text-cf-subtle">{hint}</div> : null}
     </div>
   </div>
 );
@@ -205,11 +205,11 @@ export const WorkspaceSummaryCard: React.FC<WorkspaceSummaryCardProps> = ({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           {badge ? <div className="mb-3">{badge}</div> : null}
-          <div className="text-xl font-semibold text-slate-950 dark:text-slate-100">
+          <div className="text-xl font-semibold text-cf-title">
             {title}
           </div>
           {description ? (
-            <div className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            <div className="mt-2 max-w-3xl text-sm leading-6 text-cf-subtle">
               {description}
             </div>
           ) : null}
@@ -237,20 +237,20 @@ export const WorkspaceSectionCard: React.FC<WorkspaceSectionCardProps> = ({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           {eyebrow ? (
-            <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+            <div className="text-[11px] font-semibold text-cf-faint">
               {eyebrow}
             </div>
           ) : null}
           <div
             className={cn(
               eyebrow ? 'mt-2' : '',
-              'text-lg font-semibold text-slate-950 dark:text-slate-100',
+              'text-lg font-semibold text-cf-title',
             )}
           >
             {title}
           </div>
           {description ? (
-            <div className="mt-1.5 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            <div className="mt-1.5 text-sm leading-6 text-cf-subtle">
               {description}
             </div>
           ) : null}
@@ -305,10 +305,10 @@ export const WorkspaceResultCard: React.FC<WorkspaceResultCardProps> = ({
   <div className={cn(panelClassName, className)}>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3.5 dark:border-slate-800 dark:bg-slate-900/60">
       <div>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{description}</div>
+        <div className="text-sm font-semibold text-cf-title">{title}</div>
+        <div className="mt-1 text-xs text-cf-subtle">{description}</div>
       </div>
-      <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+      <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-xs font-medium text-cf-subtle dark:border-slate-800 dark:bg-slate-950">
         共 {total} 条
       </span>
     </div>
@@ -337,7 +337,7 @@ export const WorkspacePaginationBar: React.FC<WorkspacePaginationBarProps> = ({
   nextDisabled,
 }) => (
   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3.5 dark:border-slate-800 dark:bg-slate-950">
-    <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1.5 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+    <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-1.5 text-xs font-medium text-cf-subtle dark:border-slate-800 dark:bg-slate-900">
       共 {total} 条
     </span>
     <div className="flex items-center gap-2">
@@ -345,18 +345,18 @@ export const WorkspacePaginationBar: React.FC<WorkspacePaginationBarProps> = ({
         type="button"
         onClick={onPrev}
         disabled={prevDisabled}
-        className="h-9 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-white"
+        className="h-9 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3.5 text-sm font-medium text-cf-muted transition hover:border-slate-300 hover:text-cf-title disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
       >
         上一页
       </button>
-      <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3.5 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+      <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3.5 py-2 text-sm text-cf-muted dark:border-slate-700 dark:bg-slate-900">
         第 {pageNum} / {totalPages} 页
       </span>
       <button
         type="button"
         onClick={onNext}
         disabled={nextDisabled}
-        className="h-9 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-white"
+        className="h-9 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3.5 text-sm font-medium text-cf-muted transition hover:border-slate-300 hover:text-cf-title disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
       >
         下一页
       </button>

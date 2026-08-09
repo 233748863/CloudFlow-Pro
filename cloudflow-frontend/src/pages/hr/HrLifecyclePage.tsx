@@ -24,6 +24,7 @@ import { buildEmployeeLabel, flattenDeptTree, formatDateValue, normalizeRows, op
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 import { useDict } from '@/hooks/useDict';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import './admin-hr.css';
 
 type LifecycleType = 'ONBOARDING' | 'PROBATION' | 'TRANSFER' | 'RESIGNATION';
 

@@ -58,8 +58,8 @@ const InlineState: React.FC<{
     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <UserCheck className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
+    {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
   </div>
 );
 
@@ -76,8 +76,8 @@ const TableStateRow: React.FC<{
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
           {loading ? <RotateCcw className="h-4 w-4 animate-spin" /> : icon || <UserCheck className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+        <div className="text-sm font-medium text-cf-title">{title}</div>
+        {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
       </div>
     </td>
   </tr>
@@ -409,12 +409,12 @@ export const VisitorPage: React.FC = () => {
               list.map((item) => (
                 <tr key={item.visitorId}>
                   <td>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.visitorName}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.visitorPhone || '未填写联系电话'}</div>
+                    <div className="text-sm font-semibold text-cf-title">{item.visitorName}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{item.visitorPhone || '未填写联系电话'}</div>
                   </td>
                   <td className="text-sm">
                     <span className="inline-flex items-center gap-1">
-                      <Building2 size={12} className="text-slate-400 dark:text-slate-500" />
+                      <Building2 size={12} className="text-cf-faint" />
                       {item.visitorCompany || '-'}
                     </span>
                   </td>
@@ -433,23 +433,23 @@ export const VisitorPage: React.FC = () => {
                         <QrCode size={14} className="mr-1.5" />查看
                       </Button>
                     ) : (
-                      <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+                      <span className="text-sm text-cf-faint">-</span>
                     )}
                   </td>
                   <td><DictBadge dictType="oa_visitor_status" value={String(item.status || 'PENDING')} /></td>
                   <td>
                     <div className="admin-users-row-actions">
                       {item.status === 'PENDING' && hasPermission('oa:visitor:confirm') ? (
-                        <button type="button" title="确认" aria-label="确认" onClick={() => handleConfirm(item.visitorId!)}><CheckCircle size={15} /></button>
+                        <button type="button" data-tooltip="确认" aria-label="确认" onClick={() => handleConfirm(item.visitorId!)}><CheckCircle size={15} /></button>
                       ) : null}
                       {item.status === 'CONFIRMED' && hasPermission('oa:visitor:checkin') ? (
-                        <button type="button" title="签到" aria-label="签到" onClick={() => handleCheckIn(item.visitorId!)}><LogIn size={15} /></button>
+                        <button type="button" data-tooltip="签到" aria-label="签到" onClick={() => handleCheckIn(item.visitorId!)}><LogIn size={15} /></button>
                       ) : null}
                       {item.status === 'ARRIVED' && hasPermission('oa:visitor:checkout') ? (
-                        <button type="button" title="签退" aria-label="签退" onClick={() => handleCheckOut(item.visitorId!)}><LogOut size={15} /></button>
+                        <button type="button" data-tooltip="签退" aria-label="签退" onClick={() => handleCheckOut(item.visitorId!)}><LogOut size={15} /></button>
                       ) : null}
                       {(['PENDING', 'APPROVING', 'APPROVAL_FAILED', 'CONFIRMED'].includes(item.status || '')) && hasPermission('oa:visitor:cancel') ? (
-                        <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => setCancelTarget(item)}><XCircle size={15} /></button>
+                        <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => setCancelTarget(item)}><XCircle size={15} /></button>
                       ) : null}
                     </div>
                   </td>
@@ -498,9 +498,9 @@ export const VisitorPage: React.FC = () => {
       >
         {passVisitor ? (
           <div className="admin-dialog-stack py-1">
-            <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-              <div className="font-medium text-slate-900 dark:text-slate-100">{passVisitor.visitorName}</div>
-              <div className="mt-1 grid gap-1 text-xs text-slate-500 dark:text-slate-400">
+            <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-cf-muted dark:border-slate-800 dark:bg-slate-950">
+              <div className="font-medium text-cf-title">{passVisitor.visitorName}</div>
+              <div className="mt-1 grid gap-1 text-xs text-cf-subtle">
                 <span>{passVisitor.visitorCompany || '-'}</span>
                 <span>{passVisitor.visitDate || '-'} / {passVisitor.hostName || '-'}</span>
               </div>
@@ -508,7 +508,7 @@ export const VisitorPage: React.FC = () => {
             <div className="flex flex-col items-center justify-center gap-4 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-4 dark:border-slate-800 dark:bg-slate-950">
               {passQrCodeLoading ? (
                 <div className="flex h-52 w-52 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-3 dark:border-slate-800 dark:bg-slate-900">
-                  <RotateCcw className="h-5 w-5 animate-spin text-slate-400" />
+                  <RotateCcw className="h-5 w-5 animate-spin text-cf-faint" />
                 </div>
               ) : passQrCodeError ? (
                 <InlineState
@@ -524,7 +524,7 @@ export const VisitorPage: React.FC = () => {
                   className="h-52 w-52 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3"
                 />
               ) : null}
-              <div className="font-mono text-sm text-slate-500 dark:text-slate-400">
+              <div className="font-mono text-sm text-cf-subtle">
                 {passVisitor.passCode || '-'}
               </div>
             </div>
@@ -645,7 +645,7 @@ export const VisitorPage: React.FC = () => {
               className="min-h-11"
             />
             {formData.hostId ? (
-              <span className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="text-xs text-cf-subtle">
                 {[formData.hostName, formData.hostDept].filter(Boolean).join(' · ')}
               </span>
             ) : null}

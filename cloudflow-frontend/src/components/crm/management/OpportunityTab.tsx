@@ -39,13 +39,13 @@ export const OpportunityTab: React.FC = () => {
                   <td>{item.ownerName || '-'}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Handshake size={15} /></button>
-                      <button type="button" title="编辑商机" onClick={() => openDialog({ type: 'opportunity', item })}><Target size={15} /></button>
-                      <button type="button" title="赢单" onClick={() => setConfirm({ action: 'winOpportunity', item })}><Send size={15} /></button>
-                      <button type="button" title="输单审批" onClick={() => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } })}><TriangleAlert size={15} /></button>
+                      <button type="button" data-tooltip="客户360" aria-label="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Handshake size={15} /></button>
+                      <button type="button" data-tooltip="编辑商机" aria-label="编辑商机" onClick={() => openDialog({ type: 'opportunity', item })}><Target size={15} /></button>
+                      <button type="button" data-tooltip="赢单" aria-label="赢单" onClick={() => setConfirm({ action: 'winOpportunity', item })}><Send size={15} /></button>
+                      <button type="button" data-tooltip="输单审批" aria-label="输单审批" onClick={() => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } })}><TriangleAlert size={15} /></button>
                       <button
                         type="button"
-                        title="转项目"
+                        data-tooltip="转项目" aria-label="转项目"
                         onClick={async () => {
                             try {
                               const projectId = await crmApi.createProjectDraft(item.opportunityId!);

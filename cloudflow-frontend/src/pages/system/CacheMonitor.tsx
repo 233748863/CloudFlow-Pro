@@ -26,11 +26,14 @@ import {
   ConfirmDialog,
   Input,
   Pagination,
+  Table,
+  TableScrollArea,
 } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
+import './CacheMonitor.css';
 
 type DeleteTarget =
   | { type: 'key'; value: string }
@@ -39,7 +42,7 @@ type DeleteTarget =
 type CacheTab = 'overview' | 'browser';
 
 const surfaceChipClassName =
-  'rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
+  'rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs text-cf-subtle dark:border-slate-700 dark:bg-slate-900/70';
 
 const typeColor: Record<string, string> = {
   string:
@@ -90,10 +93,10 @@ const InlineState: React.FC<{
   className?: string;
 }> = ({ title, description, loading = false, className }) => (
   <div className={cn('flex flex-col items-center justify-center px-6 py-10 text-center', className)}>
-    {loading ? <RefreshCw size={20} className="mb-3 animate-spin text-slate-400" /> : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {loading ? <RefreshCw size={20} className="mb-3 animate-spin text-cf-faint" /> : null}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">
         {description}
       </div>
     ) : null}
@@ -429,10 +432,10 @@ export const CacheMonitor = () => {
                     ['客户端连接数', connectedClients],
                   ].map(([label, value]) => (
                     <tr key={label}>
-                      <td className="w-1/3 py-2.5 text-slate-500 dark:text-slate-400">
+                      <td className="w-1/3 py-2.5 text-cf-subtle">
                         {label}
                       </td>
-                      <td className="py-2.5 font-medium text-slate-800 dark:text-slate-100">
+                      <td className="py-2.5 font-medium text-cf-title">
                         {value}
                       </td>
                     </tr>
@@ -454,10 +457,10 @@ export const CacheMonitor = () => {
                 return (
                   <div key={cmd.name}>
                     <div className="mb-1 flex justify-between text-sm">
-                      <span className="font-mono text-slate-700 dark:text-slate-200">
+                      <span className="font-mono text-cf-body">
                         {cmd.name}
                       </span>
-                      <span className="text-slate-500 dark:text-slate-400">
+                      <span className="text-cf-subtle">
                         {cmd.value.toLocaleString()}
                       </span>
                     </div>
@@ -502,7 +505,7 @@ export const CacheMonitor = () => {
                   const percent = dbSize > 0 ? ((group.count / dbSize) * 100).toFixed(1) : '0';
                   return (
                     <tr key={group.prefix}>
-                      <td className="font-mono text-sm text-slate-800 dark:text-slate-100">
+                      <td className="font-mono text-sm text-cf-title">
                         {group.prefix}*
                       </td>
                       <td>{group.count}</td>
@@ -514,7 +517,7 @@ export const CacheMonitor = () => {
                               style={{ width: `${Math.min(parseFloat(percent), 100)}%` }}
                             />
                           </div>
-                          <span className="text-slate-500 dark:text-slate-400">
+                          <span className="text-cf-subtle">
                             {percent}%
                           </span>
                         </div>
@@ -536,8 +539,14 @@ export const CacheMonitor = () => {
         description={keySearch ? `搜索：${keySearch}` : '按完整 Key 平铺展示'}
         bodyClassName="p-0"
       >
-        <div className="admin-horizontal-scroll">
-          <table className="unity-data-table admin-source-table min-w-[860px]">
+        <TableScrollArea aria-label="缓存 Key 列表">
+          <Table
+            disableScrollWrapper
+            stickyHeader
+            pinnedColumns={{ left: 1, right: 1 }}
+            className="admin-source-table min-w-[860px]"
+            style={{ minWidth: 860 }}
+          >
             <thead>
               <tr>
                 <th>Key</th>
@@ -568,31 +577,31 @@ export const CacheMonitor = () => {
                     <td>
                       <div className="flex min-w-0 items-center gap-2">
                         <Key size={15} className="shrink-0 text-[#0d95b5] dark:text-[#d8f3fa]" />
-                        <span className="truncate font-mono text-xs text-slate-800 dark:text-slate-100">
+                        <span className="truncate font-mono text-xs text-cf-title">
                           {row.key}
                         </span>
                       </div>
                     </td>
-                    <td className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.prefix}</td>
-                    <td className="font-mono text-xs text-slate-700 dark:text-slate-200">{row.name}</td>
+                    <td className="font-mono text-xs text-cf-subtle">{row.prefix}</td>
+                    <td className="font-mono text-xs text-cf-body">{row.name}</td>
                     <td>
                       <div className="admin-users-row-actions">
                         <button
                           type="button"
                           onClick={() => void handleSelectKey(row.key)}
-                          title="查看详情"
+                          data-tooltip="查看详情"
                           aria-label={`查看 Key ${row.key} 的详情`}
                         >
                           <Eye size={14} />
                         </button>
-                        <button type="button" onClick={() => copyToClipboard(row.key)} title="复制 Key">
+                        <button type="button" onClick={() => copyToClipboard(row.key)} data-tooltip="复制 Key" aria-label="复制 Key">
                           <Copy size={14} />
                         </button>
                         {row.prefix !== '-' ? (
                           <button
                             type="button"
                             onClick={() => setDeleteTarget({ type: 'prefix', value: row.prefix })}
-                            title={`删除 ${row.prefix}:*`}
+                            data-tooltip={`删除 ${row.prefix}:*`} aria-label={`删除 ${row.prefix}:*`}
                           >
                             <FolderOpen size={14} />
                           </button>
@@ -601,7 +610,7 @@ export const CacheMonitor = () => {
                           type="button"
                           className="danger"
                           onClick={() => setDeleteTarget({ type: 'key', value: row.key })}
-                          title="删除 Key"
+                          data-tooltip="删除 Key" aria-label="删除 Key"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -611,8 +620,8 @@ export const CacheMonitor = () => {
                 ))
               )}
             </tbody>
-          </table>
-        </div>
+          </Table>
+        </TableScrollArea>
       </CachePanel>
     </div>
   );
@@ -700,7 +709,7 @@ export const CacheMonitor = () => {
                 className={cn(
                   'rounded-md px-2.5 py-1 font-medium',
                   typeColor[keyDetail.type] ||
-                    'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+                    'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900',
                 )}
               >
                 {keyDetail.type.toUpperCase()}
@@ -714,14 +723,14 @@ export const CacheMonitor = () => {
             <div className="admin-cache-detail-key">
               <div className="flex items-center gap-2">
                 <Key size={16} className="shrink-0 text-[#0d95b5] dark:text-[#d8f3fa]" />
-                <span className="break-all font-mono text-sm text-slate-800 dark:text-slate-100">
+                <span className="break-all font-mono text-sm text-cf-title">
                   {keyDetail.key}
                 </span>
               </div>
             </div>
 
             <div>
-              <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">值</div>
+              <div className="mb-2 text-xs font-medium text-cf-subtle">值</div>
               <pre className="admin-cache-value-block max-h-[50vh] overflow-auto">
                 {formatValue(keyDetail.value)}
               </pre>

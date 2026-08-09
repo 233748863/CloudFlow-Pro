@@ -263,7 +263,7 @@ export const DashboardTab: React.FC = () => {
             label="成交管道"
             value={formatDashboardCurrency(pipelineAmount)}
             hint={`${opportunities.length} 个商机，谈判阶段 ${Number(negotiationColumn?.count || 0)} 个`}
-            valueClassName="text-slate-900 dark:text-slate-100"
+            valueClassName="text-cf-title"
           />
           <DashboardMetricTile
             label="待审批金额"
@@ -290,7 +290,7 @@ export const DashboardTab: React.FC = () => {
         <DashboardSection
           title="优先处理"
           aside={(
-            <div className="text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-xs text-cf-subtle">
               客户 {customers.length} / 商机 {opportunities.length} / 回款 {totalReceivableCount}
             </div>
           )}
@@ -312,7 +312,7 @@ export const DashboardTab: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
+            <div className="p-4 text-sm text-cf-muted">
               当前没有需要首页优先升级处理的事项。
             </div>
           )}
@@ -321,7 +321,7 @@ export const DashboardTab: React.FC = () => {
         <DashboardSection
           title="风险与协同"
           aside={(
-            <div className="text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-xs text-cf-subtle">
               风险 {riskAndTodoCount} / 待办 {dashboard.crossModuleTodos.length}
             </div>
           )}
@@ -342,7 +342,7 @@ export const DashboardTab: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
+            <div className="p-4 text-sm text-cf-muted">
               当前没有跨模块风险或待办。
             </div>
           )}
@@ -352,7 +352,7 @@ export const DashboardTab: React.FC = () => {
       <DashboardSection
         title="成交推进"
         aside={(
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-cf-subtle">
             商务谈判 {Number(negotiationColumn?.count || 0)} 个 / {formatDashboardCurrency(negotiationColumn?.totalAmount)}
           </div>
         )}
@@ -381,7 +381,7 @@ export const DashboardTab: React.FC = () => {
               <div className="admin-crm-stalled-date">预计签约 {formatDashboardDate(item.expectedSignDate)}</div>
             </div>
           )) : (
-            <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
+            <div className="p-4 text-sm text-cf-muted">
               当前没有阶段停滞商机。
             </div>
           )}

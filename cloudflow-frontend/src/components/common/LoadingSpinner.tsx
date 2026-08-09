@@ -19,9 +19,9 @@ const sizeClassMap: Record<LoadingSpinnerSize, string> = {
 
 const colorClassMap: Record<LoadingSpinnerColor, string> = {
   primary: 'text-cyan-500 dark:text-cyan-300',
-  secondary: 'text-slate-500 dark:text-slate-400',
+  secondary: 'text-cf-subtle',
   white: 'text-white',
-  gray: 'text-slate-400 dark:text-slate-500',
+  gray: 'text-cf-faint',
 };
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({

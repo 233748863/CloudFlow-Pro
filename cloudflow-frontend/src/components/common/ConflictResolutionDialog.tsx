@@ -65,21 +65,21 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
         </>
       )}
     >
-      <div className="p-4 border border-slate-200 bg-[var(--cf-surface-muted)] text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+      <div className="p-4 border border-slate-200 bg-[var(--cf-surface-muted)] text-sm text-cf-muted dark:border-slate-800 dark:bg-slate-900/70">
         <p>{message}</p>
-        <p className="mt-2 font-medium text-slate-900 dark:text-slate-100">资源名称：{resourceName}</p>
+        <p className="mt-2 font-medium text-cf-title">资源名称：{resourceName}</p>
       </div>
 
       <div className="admin-dialog-stack">
-        <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">请选择解决方式</Label>
+        <Label className="text-sm font-medium text-cf-body">请选择解决方式</Label>
         {availableStrategies.map((strategy) => (
           <label
             key={strategy}
             className={`p-4 flex items-start gap-3 border text-left transition-colors ${
-              selectedStrategy === strategy
-                ? 'border-cyan-300 bg-[var(--cf-surface-muted)] dark:border-cyan-900/60 dark:bg-slate-900/70'
-                : 'border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900/60'
-            }`}
+ selectedStrategy === strategy
+ ? 'border-cyan-300 bg-[var(--cf-surface-muted)] dark:border-cyan-900/60 dark:bg-slate-900/70'
+ : 'border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900/60'
+ }`}
           >
             <input
               type="radio"
@@ -90,10 +90,10 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
               className="mt-1 h-4 w-4 text-cyan-600 focus:ring-cyan-500/20"
             />
             <div className="min-w-0">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              <div className="text-sm font-medium text-cf-title">
                 {strategyLabels[strategy]}
               </div>
-              <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-0.5 text-xs text-cf-subtle">
                 {strategyDescriptions[strategy]}
               </div>
             </div>
@@ -103,7 +103,7 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
 
       {selectedStrategy === 'rename' ? (
         <div className="admin-dialog-field">
-          <Label htmlFor="newName" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+          <Label htmlFor="newName" className="text-sm font-medium text-cf-body">
             新名称
           </Label>
           <Input

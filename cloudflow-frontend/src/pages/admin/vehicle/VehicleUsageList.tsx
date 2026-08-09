@@ -61,6 +61,7 @@ import {
 import { expenseClaimApi } from '@/services/api/expense';
 import type { UserBrief } from '@/types/workflow';
 import { useAuth } from '@/context/AuthContext';
+import './admin-vehicle.css';
 
 interface TableStateRowProps {
   colSpan: number;
@@ -105,12 +106,12 @@ const USAGE_STATUS: Record<string, { label: string; className: string; icon: Rea
   },
   '4': {
     label: '已完成',
-    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
+    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-body dark:border-slate-700 dark:bg-slate-900',
     icon: <CheckCircle size={14} />,
   },
   '5': {
     label: '已取消',
-    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-subtle dark:border-slate-700 dark:bg-slate-900',
     icon: <Ban size={14} />,
   },
 };
@@ -131,7 +132,7 @@ const EXPENSE_TYPES: Record<string, { label: string; icon: React.ReactNode; colo
   '3': { label: '停车费', icon: <ParkingCircle size={14} />, color: 'text-violet-600 dark:text-violet-300' },
   '4': { label: '维修保养', icon: <Wrench size={14} />, color: 'text-amber-600 dark:text-amber-300' },
   '5': { label: '保险', icon: <Shield size={14} />, color: 'text-emerald-600 dark:text-emerald-300' },
-  '6': { label: '其他', icon: <MoreHorizontal size={14} />, color: 'text-slate-600 dark:text-slate-300' },
+  '6': { label: '其他', icon: <MoreHorizontal size={14} />, color: 'text-cf-muted' },
 };
 
 const EXPENSE_TYPE_OPTIONS = [
@@ -167,8 +168,8 @@ const TableStateRow: React.FC<TableStateRowProps> = ({ colSpan, title, descripti
         <div className="admin-source-stat-icon mb-3">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon || <Car className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+        <div className="text-sm font-medium text-cf-title">{title}</div>
+        {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
       </div>
     </td>
   </tr>
@@ -195,7 +196,7 @@ const DetailSection: React.FC<{ title: string; children: React.ReactNode }> = ({
 const UsageStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const config = USAGE_STATUS[status] || {
     label: '未知',
-    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900',
     icon: null,
   };
 
@@ -211,7 +212,7 @@ const ExpenseTypeBadge: React.FC<{ expenseType: string }> = ({ expenseType }) =>
   const config = EXPENSE_TYPES[expenseType] || {
     label: '未知',
     icon: <MoreHorizontal size={14} />,
-    color: 'text-slate-600 dark:text-slate-300',
+    color: 'text-cf-muted',
   };
 
   return <span className={cn('inline-flex items-center gap-1.5 text-sm', config.color)}>{config.icon}{config.label}</span>;
@@ -498,7 +499,7 @@ const VehicleUsageList: React.FC = () => {
   }), [usages]);
 
   const expenseTypeSummary = useMemo(() => Object.entries(stats?.byType || {}).map(([type, amount]) => {
-    const config = EXPENSE_TYPES[type] || { label: '未知', icon: <MoreHorizontal size={14} />, color: 'text-slate-600 dark:text-slate-300' };
+    const config = EXPENSE_TYPES[type] || { label: '未知', icon: <MoreHorizontal size={14} />, color: 'text-cf-muted' };
     return { type, amount: amount as number, ...config };
   }), [stats]);
 
@@ -532,8 +533,8 @@ const VehicleUsageList: React.FC = () => {
     <div className="divide-y divide-slate-200 dark:divide-slate-800">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">用车记录</div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-sm font-medium text-cf-title">用车记录</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-cf-subtle">
             <span>状态 {currentStatusLabel}</span>
             <span>待审批 {usagePrimaryActions.pending}</span>
             <span>待派车 {usagePrimaryActions.approved}</span>
@@ -541,10 +542,10 @@ const VehicleUsageList: React.FC = () => {
             <span>已完成 {usagePrimaryActions.completed}</span>
           </div>
         </div>
-        <div className="text-xs text-slate-400 dark:text-slate-500">共 {usageTotal} 条</div>
+        <div className="text-xs text-cf-faint">共 {usageTotal} 条</div>
       </div>
       <div className="admin-horizontal-scroll">
-        <table className="unity-data-table admin-source-table admin-vehicle-usage-table min-w-[1200px]">
+        <table className="unity-data-table admin-source-table admin-vehicle-usage-table min-w-[1200px] cf-freeze-edges">
           <thead>
             <tr>
               <th>车辆</th>
@@ -565,38 +566,38 @@ const VehicleUsageList: React.FC = () => {
               usages.map((usage) => (
                 <tr key={usage.usageId}>
                   <td className="align-top">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{usage.vehiclePlate || `车辆#${usage.vehicleId}`}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">申请单 #{usage.usageId}</div>
+                    <div className="text-sm font-semibold text-cf-title">{usage.vehiclePlate || `车辆#${usage.vehicleId}`}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">申请单 #{usage.usageId}</div>
                   </td>
                   <td className="align-top text-sm">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{usage.applicantName || `用户${usage.applicantId}`}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="font-medium text-cf-title">{usage.applicantName || `用户${usage.applicantId}`}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">
                       司机 {usage.driverName || (usage.driverMode === 0 ? '自驾' : '-')}
                     </div>
                   </td>
-                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">
+                  <td className="align-top text-sm text-cf-muted">
                     <div>{formatDateTime(usage.startTime)}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">至 {formatDateTime(usage.endTime)}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">派车 {formatDateTime(usage.dispatchTime)}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">至 {formatDateTime(usage.endTime)}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">派车 {formatDateTime(usage.dispatchTime)}</div>
                   </td>
-                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{usage.destination || '-'}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{usage.reason || '-'}</div>
+                  <td className="align-top text-sm text-cf-muted">
+                    <div className="font-medium text-cf-title">{usage.destination || '-'}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">{usage.reason || '-'}</div>
                   </td>
-                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">
+                  <td className="align-top text-sm text-cf-muted">
                     <div>起 {renderText(usage.startMileage)} km / 终 {renderText(usage.endMileage)} km</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">单次费用 {formatCurrency(usage.totalExpenseAmount)}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">里程 {usage.tripDistance != null ? `${usage.tripDistance} km` : '-'}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">单次费用 {formatCurrency(usage.totalExpenseAmount)}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">里程 {usage.tripDistance != null ? `${usage.tripDistance} km` : '-'}</div>
                   </td>
                   <td className="align-top"><UsageStatusBadge status={usage.status || '0'} /></td>
                   <td className="align-top">
                     <div className="admin-users-row-actions">
-                      <button type="button" title="详情" onClick={() => handleViewDetail(usage)}><Eye size={15} /></button>
-                      {usage.status === '0' && hasPermission('oa:vehicle:approve') ? <button type="button" title="审批" onClick={() => handleOpenApprove(usage)}><CheckCircle size={15} /></button> : null}
-                      {usage.status === '1' && hasPermission('oa:vehicle:dispatch') ? <button type="button" title="派车" onClick={() => handleOpenDispatch(usage)}><UserCog size={15} /></button> : null}
-                      {usage.status === '3' && hasPermission('oa:vehicle:return') ? <button type="button" title="归还" onClick={() => handleOpenReturn(usage)}><Send size={15} /></button> : null}
-                      {['3', '4'].includes(usage.status || '') && hasPermission('oa:vehicle:expense:add') ? <button type="button" title="录费" onClick={() => handleOpenExpense(usage)}><DollarSign size={15} /></button> : null}
-                      {usage.status === '0' && hasPermission('oa:vehicle:cancel') ? <button type="button" className="danger" title="取消" onClick={() => openCancelConfirm(usage)}><Ban size={15} /></button> : null}
+                      <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => handleViewDetail(usage)}><Eye size={15} /></button>
+                      {usage.status === '0' && hasPermission('oa:vehicle:approve') ? <button type="button" data-tooltip="审批" aria-label="审批" onClick={() => handleOpenApprove(usage)}><CheckCircle size={15} /></button> : null}
+                      {usage.status === '1' && hasPermission('oa:vehicle:dispatch') ? <button type="button" data-tooltip="派车" aria-label="派车" onClick={() => handleOpenDispatch(usage)}><UserCog size={15} /></button> : null}
+                      {usage.status === '3' && hasPermission('oa:vehicle:return') ? <button type="button" data-tooltip="归还" aria-label="归还" onClick={() => handleOpenReturn(usage)}><Send size={15} /></button> : null}
+                      {['3', '4'].includes(usage.status || '') && hasPermission('oa:vehicle:expense:add') ? <button type="button" data-tooltip="录费" aria-label="录费" onClick={() => handleOpenExpense(usage)}><DollarSign size={15} /></button> : null}
+                      {usage.status === '0' && hasPermission('oa:vehicle:cancel') ? <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => openCancelConfirm(usage)}><Ban size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
@@ -612,15 +613,15 @@ const VehicleUsageList: React.FC = () => {
     <div className="divide-y divide-slate-200 dark:divide-slate-800">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">费用明细</div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-sm font-medium text-cf-title">费用明细</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-cf-subtle">
             <span>时间 {expenseDateSummary}</span>
             <span>本月 {formatCurrency(stats?.monthlyAmount)}</span>
             <span>上月 {formatCurrency(stats?.lastMonthAmount)}</span>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="text-xs text-slate-400 dark:text-slate-500">已选 {selectedExpenseIds.length} 条</div>
+          <div className="text-xs text-cf-faint">已选 {selectedExpenseIds.length} 条</div>
           <Button size="sm" variant="outline" onClick={() => void handleConvertExpenses()} disabled={selectedExpenseIds.length === 0 || actionLoading}>
             转报销
           </Button>
@@ -667,14 +668,14 @@ const VehicleUsageList: React.FC = () => {
                     />
                   </td>
                   <td className="align-top">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{expense.vehiclePlate || `车辆#${expense.vehicleId}`}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">申请 #{expense.usageId || '-'}</div>
+                    <div className="text-sm font-semibold text-cf-title">{expense.vehiclePlate || `车辆#${expense.vehicleId}`}</div>
+                    <div className="mt-1 text-xs text-cf-subtle">申请 #{expense.usageId || '-'}</div>
                   </td>
                   <td className="align-top"><ExpenseTypeBadge expenseType={expense.expenseType} /></td>
-                  <td className="align-top text-sm font-medium text-slate-900 dark:text-slate-100">{formatCurrency(expense.amount)}</td>
-                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">{expense.expenseDate || '-'}</td>
-                  <td className="align-top text-sm text-slate-600 dark:text-slate-300">{expense.description || '-'}</td>
-                  <td className="align-top text-xs text-slate-500 dark:text-slate-400">{renderText(expense.createTime)}</td>
+                  <td className="align-top text-sm font-medium text-cf-title">{formatCurrency(expense.amount)}</td>
+                  <td className="align-top text-sm text-cf-muted">{expense.expenseDate || '-'}</td>
+                  <td className="align-top text-sm text-cf-muted">{expense.description || '-'}</td>
+                  <td className="align-top text-xs text-cf-subtle">{renderText(expense.createTime)}</td>
                 </tr>
               ))
             )}
@@ -686,7 +687,7 @@ const VehicleUsageList: React.FC = () => {
           {expenseTypeSummary.map((item) => (
             <div key={item.type} className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
               <div className={cn('inline-flex items-center gap-1.5 text-sm font-medium', item.color)}>{item.icon}{item.label}</div>
-              <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(item.amount)}</div>
+              <div className="mt-2 text-lg font-semibold text-cf-title">{formatCurrency(item.amount)}</div>
             </div>
           ))}
         </div>
@@ -811,8 +812,8 @@ const VehicleUsageList: React.FC = () => {
           <>
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">{currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`}</div>
-                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <div className="text-base font-semibold text-cf-title">{currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`}</div>
+                <div className="mt-1 text-sm text-cf-subtle">
                   申请人 {currentUsage.applicantName || `用户${currentUsage.applicantId}`} / 司机 {currentUsage.driverName || (currentUsage.driverMode === 0 ? '自驾' : '-')}
                 </div>
               </div>
@@ -853,7 +854,7 @@ const VehicleUsageList: React.FC = () => {
             </DetailSection>
 
             <DetailSection title="用车事由">
-              <div className="px-4 py-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{currentUsage.reason || '-'}</div>
+              <div className="px-4 py-4 text-sm leading-6 text-cf-muted">{currentUsage.reason || '-'}</div>
             </DetailSection>
           </>
         ) : null}

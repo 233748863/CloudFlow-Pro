@@ -1,0 +1,239 @@
+/* 从 index.css 拆分而来：workflow-create
+   由 WorkflowCreate.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .workflow-create-page {
+      gap: 0;
+    }
+
+  .workflow-create-layout {
+      gap: 0.875rem;
+    }
+
+  .workflow-create-command {
+      align-items: flex-start;
+    }
+
+  .workflow-create-guidebar {
+      justify-content: flex-start;
+    }
+
+  .workflow-create-guide {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.375rem;
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.35;
+    }
+
+  .workflow-create-guide strong {
+      color: #334155;
+      font-weight: 700;
+    }
+
+  .workflow-create-guide span {
+      overflow-wrap: anywhere;
+    }
+
+  .workflow-create-workbench {
+      min-height: 0;
+      flex: 1 1 0%;
+    }
+
+  .workflow-create-workbench-shell {
+      display: flex;
+      min-height: 0;
+      min-width: 60rem;
+      flex-direction: column;
+      background: transparent;
+    }
+
+  .workflow-create-workbench-head {
+      flex: 0 0 auto;
+      border-bottom: 1px solid var(--cf-border);
+      background: var(--cf-surface-strong);
+      padding: 0.875rem 1rem;
+    }
+
+  .workflow-create-option-list {
+      display: grid;
+      min-width: 0;
+    }
+
+  .workflow-create-option {
+      position: relative;
+      display: grid;
+      min-width: 0;
+      grid-template-columns: minmax(18rem, 1fr) minmax(18rem, 0.95fr) minmax(15rem, 0.75fr) auto;
+      align-items: center;
+      gap: 1rem;
+      border-bottom: 1px solid var(--cf-border);
+      background: var(--cf-surface-strong);
+      padding: 1rem;
+    }
+
+  .workflow-create-option:last-child {
+      border-bottom: 0;
+    }
+
+  .workflow-create-option-accent {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 0.25rem;
+    }
+
+  .workflow-create-option-main {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.875rem;
+      padding-left: 0.375rem;
+    }
+
+  .workflow-create-option-icon {
+      display: inline-flex;
+      width: 2.5rem;
+      height: 2.5rem;
+      flex: 0 0 2.5rem;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+    }
+
+  .workflow-create-option-copy {
+      min-width: 0;
+    }
+
+  .workflow-create-option-copy h3 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 0.9375rem;
+      font-weight: 750;
+      line-height: 1.25;
+    }
+
+  .workflow-create-option-copy p {
+      margin: 0.25rem 0 0;
+      color: #334155;
+      font-size: 0.8125rem;
+      font-weight: 650;
+    }
+
+  .workflow-create-option-copy span {
+      display: block;
+      margin-top: 0.375rem;
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.5;
+    }
+
+  .workflow-create-detail-grid {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.5rem;
+      margin: 0;
+    }
+
+  .workflow-create-detail-grid dt {
+      color: #94a3b8;
+      font-size: 0.6875rem;
+      font-weight: 650;
+    }
+
+  .workflow-create-detail-grid dd {
+      margin: 0.25rem 0 0;
+      overflow: hidden;
+      color: #334155;
+      font-size: 0.8125rem;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .workflow-create-checklist {
+      display: grid;
+      min-width: 0;
+      gap: 0.375rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+  .workflow-create-checklist li {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.375rem;
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+  .workflow-create-checklist svg {
+      flex: 0 0 auto;
+      color: #94a3b8;
+    }
+
+  .workflow-create-checklist span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .workflow-create-option-action {
+      min-width: 9.5rem;
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+  .workflow-create-reviewbar {
+      flex: 0 0 auto;
+      align-items: flex-start;
+      margin: 1rem;
+    }
+
+  .workflow-create-reviewitem {
+      min-width: 0;
+      flex: 1 1 12rem;
+    }
+
+  .workflow-create-reviewitem span {
+      display: block;
+      color: #334155;
+      font-size: 0.75rem;
+      font-weight: 750;
+      line-height: 1.35;
+    }
+
+  .workflow-create-reviewitem p {
+      margin: 0.25rem 0 0;
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.5;
+    }
+
+  .workflow-create-direct {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+}
+
+@layer components {
+  @media (max-width: 1180px) {
+    .workflow-create-option {
+          grid-template-columns: 1fr;
+          align-items: stretch;
+        }
+
+    .workflow-create-option-action {
+          width: 100%;
+        }
+  }
+}

@@ -10,6 +10,7 @@ import { contactApi, Contact, DeptNode } from '../services/api/contact';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
+import './ContactPage.css';
 
 const PAGE_SIZE = 20;
 
@@ -26,8 +27,8 @@ const ContactEmptyState: React.FC<{
     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {loading ? <Search className="h-4 w-4" /> : icon || <Users className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
+    {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
   </div>
 );
 
@@ -45,8 +46,8 @@ const DetailRow: React.FC<{
   value: React.ReactNode;
 }> = ({ label, value }) => (
   <div className="border-b border-slate-200 pb-3 dark:border-slate-800">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value}</div>
   </div>
 );
 
@@ -137,7 +138,7 @@ const TreeNode: React.FC<{
           )}
         </button>
         <Building2 size={13} className="admin-contact-tree-icon" />
-        <span className="admin-contact-tree-label" title={node.dept_name}>
+        <span className="admin-contact-tree-label" data-tooltip={node.dept_name}>
           {node.dept_name}
         </span>
         {childCount > 0 ? (
@@ -240,7 +241,7 @@ const DeptTreePanel: React.FC<{
           <span>部门筛选</span>
         </div>
         <div className="relative">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cf-faint" />
           <Input
             className="h-9 rounded-md pl-8 text-sm"
             type="search"
@@ -267,7 +268,7 @@ const DeptTreePanel: React.FC<{
 
       <div className="admin-contact-tree-list">
         {deptTree.length === 0 ? (
-          <div className="px-3 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+          <div className="px-3 py-6 text-center text-xs text-cf-faint">
             暂无部门数据
           </div>
         ) : (
@@ -471,10 +472,10 @@ export const ContactPage: React.FC = () => {
       <div className="admin-contact-main">
         <div className="admin-contact-main-head">
           <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            <div className="truncate text-sm font-medium text-cf-title">
               {selectedDept?.dept_name || '全部成员'}
             </div>
-            <div className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+            <div className="text-[11px] tabular-nums text-cf-faint">
               {total} 条 · 卡片视图
             </div>
           </div>
@@ -511,7 +512,7 @@ export const ContactPage: React.FC = () => {
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      <span className="truncate text-sm font-semibold text-cf-title">
                         {contact.nick_name}
                       </span>
                       <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-cyan-100 bg-[#effbfe] px-2 py-0.5 text-[11px] font-medium text-[#0d95b5] opacity-0 transition-opacity group-hover:opacity-100 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
@@ -519,19 +520,19 @@ export const ContactPage: React.FC = () => {
                         查看
                       </span>
                     </div>
-                    <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                    <div className="mt-0.5 truncate text-xs text-cf-subtle">
                       {contact.dept_name || '未分配部门'}
-                      {contact.post_name ? <span className="text-slate-400 dark:text-slate-500"> · {contact.post_name}</span> : null}
+                      {contact.post_name ? <span className="text-cf-faint"> · {contact.post_name}</span> : null}
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 grid gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mt-3 grid gap-1.5 text-xs text-cf-subtle">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">电话</span>
+                    <span className="text-[10px] text-cf-faint">电话</span>
                     <span className="truncate">{contact.phonenumber || '-'}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">邮箱</span>
+                    <span className="text-[10px] text-cf-faint">邮箱</span>
                     <span className="truncate">{contact.email || '-'}</span>
                   </div>
                 </div>
@@ -587,8 +588,8 @@ export const ContactPage: React.FC = () => {
                 alt=""
               />
               <div className="min-w-0">
-                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">{selectedUser.nick_name}</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400">
+                <div className="text-base font-semibold text-cf-title">{selectedUser.nick_name}</div>
+                <div className="text-sm text-cf-subtle">
                   {selectedUser.dept_name || '-'} / {selectedUser.post_name || '员工'}
                 </div>
               </div>

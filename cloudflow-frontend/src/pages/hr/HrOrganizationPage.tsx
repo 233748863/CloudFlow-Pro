@@ -25,6 +25,7 @@ import { flattenDeptTree, formatDateValue, idFallbackLabel, normalizeRows, optio
 import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 import { useDict } from '@/hooks/useDict';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import './admin-hr.css';
 
 const familyDefault = (): HrRecord => ({
   familyCode: `FAM${Date.now()}`,

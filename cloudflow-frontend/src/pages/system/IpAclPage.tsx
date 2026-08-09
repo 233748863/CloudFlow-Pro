@@ -63,7 +63,7 @@ const STATUS_BADGE: Record<IpAclStatus, string> = {
   ACTIVE:
     'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200',
   INACTIVE:
-    'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400',
+    'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-subtle dark:border-slate-700 dark:bg-slate-900/40',
 };
 
 const MODE_BADGE: Record<IpAclMode, string> = {
@@ -83,9 +83,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -457,11 +457,11 @@ export const IpAclPage = () => {
             ) : (
               rules.map((rule) => (
                 <tr key={rule.id}>
-                  <td className="text-sm text-slate-500 dark:text-slate-400">
+                  <td className="text-sm text-cf-subtle">
                     {rule.id}
                   </td>
                   <td>
-                    <span className="inline-block max-w-[130px] truncate font-mono text-xs text-slate-900 dark:text-slate-100">
+                    <span className="inline-block max-w-[130px] truncate font-mono text-xs text-cf-title">
                       {rule.ruleCode}
                     </span>
                   </td>
@@ -469,12 +469,12 @@ export const IpAclPage = () => {
                     <span className="inline-block max-w-[130px] truncate">{rule.ruleName}</span>
                   </td>
                   <td>
-                    <span className="inline-block max-w-[120px] truncate font-mono text-xs text-slate-700 dark:text-slate-200">
+                    <span className="inline-block max-w-[120px] truncate font-mono text-xs text-cf-body">
                       {rule.ipPattern}
                     </span>
                   </td>
                   <td>
-                    <span className="text-xs text-slate-600 dark:text-slate-300">
+                    <span className="text-xs text-cf-muted">
                       {rule.ruleType}
                     </span>
                   </td>
@@ -490,7 +490,7 @@ export const IpAclPage = () => {
                   </td>
                   <td className="text-center">{rule.priority}</td>
                   <td>
-                    <span className="inline-block whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
+                    <span className="inline-block whitespace-nowrap text-xs text-cf-subtle">
                       {formatDateTimeDisplay(rule.expireAt)}
                     </span>
                   </td>
@@ -508,14 +508,14 @@ export const IpAclPage = () => {
                     <div className="admin-users-row-actions">
                       <button
                         type="button"
-                        title={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'}
+                        data-tooltip={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'} aria-label={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'}
                         onClick={() => handleToggle(rule)}
                       >
                         <Power size={15} />
                       </button>
                       <button
                         type="button"
-                        title="编辑规则"
+                        data-tooltip="编辑规则" aria-label="编辑规则"
                         onClick={() => handleOpenModal(rule)}
                       >
                         <Edit size={15} />
@@ -523,7 +523,7 @@ export const IpAclPage = () => {
                       <button
                         type="button"
                         className="danger"
-                        title="删除规则"
+                        data-tooltip="删除规则" aria-label="删除规则"
                         onClick={() => setPendingDelete(rule)}
                       >
                         <Trash2 size={15} />
@@ -642,7 +642,7 @@ export const IpAclPage = () => {
                       : '例如 203.0.113.7'
                 }
               />
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{ruleTypeTip}</p>
+              <p className="mt-1 text-xs text-cf-subtle">{ruleTypeTip}</p>
             </div>
             <div className="admin-dialog-field">
               <Label>优先级 (数小先匹配)</Label>

@@ -47,9 +47,9 @@ export const HrInlineState: React.FC<HrInlineStateProps> = ({
     <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon || <Inbox className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-1.5 text-xs leading-5 text-cf-subtle">{description}</div>
     ) : null}
     {actions ? <div className="mt-4">{actions}</div> : null}
   </div>
@@ -104,10 +104,10 @@ export const HrDialogSection: React.FC<HrDialogSectionProps> = ({
 
 export const HrDetailField: React.FC<HrDetailFieldProps> = ({ label, value, className }) => (
   <div className={cn('min-w-0', className)}>
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+    <div className="text-[11px] font-medium text-cf-faint">
       {label}
     </div>
-    <div className="mt-1.5 break-words text-sm text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="mt-1.5 break-words text-sm text-cf-title">{value}</div>
   </div>
 );
 

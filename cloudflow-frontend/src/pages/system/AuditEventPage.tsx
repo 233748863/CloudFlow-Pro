@@ -46,7 +46,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
   <tr className="hover:bg-transparent dark:hover:bg-transparent">
     <td colSpan={colSpan} className="px-4 py-10 text-center">
       {loading ? <LoadingSpinner size="lg" className="mx-auto mb-3" /> : null}
-      <div className="text-sm text-slate-500 dark:text-slate-400">{title}</div>
+      <div className="text-sm text-cf-subtle">{title}</div>
     </td>
   </tr>
 );
@@ -295,7 +295,7 @@ export const AuditEventPage = () => {
             ) : rows.map((event) => (
               <tr key={event.id}>
                 <td>
-                  <div className="flex items-center gap-2 font-medium text-slate-900 dark:text-slate-100">
+                  <div className="flex items-center gap-2 font-medium text-cf-title">
                     <FileClock size={15} className="text-[#0d95b5]" />
                     {event.title || event.eventType}
                   </div>
@@ -309,13 +309,13 @@ export const AuditEventPage = () => {
                 <td>{event.operatorName || 'system'}</td>
                 <td className="whitespace-nowrap">{formatDateTime(event.eventTime)}</td>
                 <td>
-                  <div className="max-w-[320px] truncate text-sm text-slate-500 dark:text-slate-400" title={event.content}>
+                  <div className="max-w-[320px] truncate text-sm text-cf-subtle" data-tooltip={event.content}>
                     {event.content || '-'}
                   </div>
                 </td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="查看详情" onClick={() => setDetail(event)}>
+                    <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetail(event)}>
                       <Eye size={15} />
                     </button>
                   </div>
@@ -357,10 +357,10 @@ export const AuditEventPage = () => {
         {detail ? (
           <div className="admin-dialog-stack">
             <div className="grid gap-3 text-sm md:grid-cols-2">
-              <div><span className="text-slate-400">业务：</span>{detail.businessType}#{detail.businessId}</div>
-              <div><span className="text-slate-400">事件：</span>{detail.eventType}</div>
-              <div><span className="text-slate-400">操作人：</span>{detail.operatorName || 'system'}</div>
-              <div><span className="text-slate-400">时间：</span>{formatDateTime(detail.eventTime)}</div>
+              <div><span className="text-cf-faint">业务：</span>{detail.businessType}#{detail.businessId}</div>
+              <div><span className="text-cf-faint">事件：</span>{detail.eventType}</div>
+              <div><span className="text-cf-faint">操作人：</span>{detail.operatorName || 'system'}</div>
+              <div><span className="text-cf-faint">时间：</span>{formatDateTime(detail.eventTime)}</div>
             </div>
             <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
               {detail.content || '-'}

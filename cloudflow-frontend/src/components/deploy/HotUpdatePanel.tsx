@@ -58,9 +58,9 @@ const SurfaceBlock: React.FC<{
   <InnerTableSurface className={className} wrapperClassName={cn('p-0', wrapperClassName)}>
     <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-semibold text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-1 text-xs leading-5 text-cf-subtle">{description}</div>
         ) : null}
       </div>
       {aside ? <div className="flex items-center gap-2">{aside}</div> : null}
@@ -201,7 +201,7 @@ export const HotUpdatePanel: React.FC = () => {
           <div className="admin-source-content-grid">
             <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
               <div className="admin-dialog-field">
-                <Label htmlFor="hotupdate-process-key" className="text-slate-700 dark:text-slate-200">
+                <Label htmlFor="hotupdate-process-key" className="text-cf-body">
                   流程 Key
                 </Label>
                 <Input
@@ -213,18 +213,18 @@ export const HotUpdatePanel: React.FC = () => {
                   }}
                   placeholder="如 purchase_request 或 leave_apply"
                 />
-                <div className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+                <div className="text-xs leading-5 text-cf-subtle">
                   使用流程定义唯一 Key 作为热更新目标。
                 </div>
               </div>
 
               <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">当前模式</div>
+                <div className="text-[11px] text-cf-subtle">当前模式</div>
                 <div className={`mt-1 flex items-center gap-2 text-sm font-semibold ${modeMeta.accentClassName}`}>
                   {modeMeta.icon}
                   {modeMeta.label}
                 </div>
-                <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                <div className="mt-1 text-xs leading-5 text-cf-subtle">
                   {modeMeta.summary}
                 </div>
               </div>
@@ -336,14 +336,14 @@ export const HotUpdatePanel: React.FC = () => {
                   return (
                     <tr key={item.instanceId}>
                       <td className="align-top">
-                        <div className="font-medium text-slate-900 dark:text-slate-100">
+                        <div className="font-medium text-cf-title">
                           {item.processNo || item.instanceId.slice(0, 8)}
                         </div>
-                        <div className="mt-1 font-mono text-xs text-slate-400 dark:text-slate-500">
+                        <div className="mt-1 font-mono text-xs text-cf-faint">
                           {item.instanceId}
                         </div>
                       </td>
-                      <td className="align-top text-slate-600 dark:text-slate-300">
+                      <td className="align-top text-cf-muted">
                         {item.currentNodeTitle || item.currentNodeKey || '-'}
                       </td>
                       <td className="align-top">
@@ -354,7 +354,7 @@ export const HotUpdatePanel: React.FC = () => {
                           {statusMeta.label}
                         </span>
                       </td>
-                      <td className="align-top text-slate-500 dark:text-slate-400">
+                      <td className="align-top text-cf-subtle">
                         {item.reason || '-'}
                       </td>
                     </tr>
@@ -363,7 +363,7 @@ export const HotUpdatePanel: React.FC = () => {
               </tbody>
             </table>
           ) : (
-            <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+            <div className="px-5 py-10 text-center text-sm text-cf-subtle">
               先执行影响分析，再查看实例结果。
             </div>
           )}
@@ -394,10 +394,10 @@ export const HotUpdatePanel: React.FC = () => {
                     ) : (
                       <AlertTriangle size={16} className="text-rose-600 dark:text-rose-300" />
                     )}
-                    <span className="text-slate-900 dark:text-slate-100">{result.message || '分析完成'}</span>
+                    <span className="text-cf-title">{result.message || '分析完成'}</span>
                   </div>
                   {result.fromVersion > 0 ? (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="mt-2 flex items-center gap-2 text-xs text-cf-subtle">
                       <span>版本迁移</span>
                       <span className="badge badge-gray">
                         V{result.fromVersion}
@@ -426,7 +426,7 @@ export const HotUpdatePanel: React.FC = () => {
                     label="已跳过"
                     value={result.skippedCount}
                     icon={<Clock3 size={16} />}
-                    toneClassName="bg-[var(--cf-surface-muted)] text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    toneClassName="bg-[var(--cf-surface-muted)] text-cf-body dark:bg-slate-800"
                   />
                   <SummaryMiniCard
                     label="失败"
@@ -457,7 +457,7 @@ export const HotUpdatePanel: React.FC = () => {
                 ) : null}
               </>
             ) : (
-              <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+              <div className="px-5 py-10 text-center text-sm text-cf-subtle">
                 先输入流程 Key 并选择迁移模式。
               </div>
             )}
@@ -472,7 +472,7 @@ export const HotUpdatePanel: React.FC = () => {
           contentClassName="p-0"
         >
           {historyLoading ? (
-            <div className="flex items-center justify-center gap-2 px-5 py-6 text-sm text-slate-500 dark:text-slate-400">
+            <div className="flex items-center justify-center gap-2 px-5 py-6 text-sm text-cf-subtle">
               <Loader2 size={16} className="animate-spin" />
               正在加载历史记录
             </div>
@@ -491,11 +491,11 @@ export const HotUpdatePanel: React.FC = () => {
                   const summary = getHotUpdateRecordSummary(record);
                   return (
                     <tr key={record.id}>
-                      <td className="font-medium text-slate-900 dark:text-slate-100">{summary.title}</td>
+                      <td className="font-medium text-cf-title">{summary.title}</td>
                       <td>{summary.modeLabel}</td>
                       <td>
                         <div>{summary.executedAt}</div>
-                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">执行人 {record.executedBy || '-'}</div>
+                        <div className="mt-1 text-xs text-cf-subtle">执行人 {record.executedBy || '-'}</div>
                       </td>
                       <td>
                         <div className="flex flex-wrap gap-2 text-xs">
@@ -514,7 +514,7 @@ export const HotUpdatePanel: React.FC = () => {
               </tbody>
             </table>
           ) : (
-            <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+            <div className="px-5 py-10 text-center text-sm text-cf-subtle">
               暂无热更新记录。
             </div>
           )}

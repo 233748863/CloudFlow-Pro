@@ -12,6 +12,7 @@ import { VersionRollbackManagement } from '@/components/deploy/VersionRollbackMa
 import { DeployStatistics } from '@/components/deploy/DeployStatistics';
 import { HotUpdatePanel } from '@/components/deploy/HotUpdatePanel';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import '../styles/features/admin-deploy.css';
 
 type DeployTabKey = 'windows' | 'approvals' | 'rollback' | 'hotupdate' | 'statistics';
 

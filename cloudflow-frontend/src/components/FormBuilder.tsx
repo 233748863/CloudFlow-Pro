@@ -178,7 +178,7 @@ const PreviewControl: React.FC<{ field: FormField }> = ({ field }) => {
       POSITION: '搜索并选择职位',
     };
     return (
-      <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-500">
+      <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-cf-faint dark:border-slate-800 dark:bg-slate-900/70">
         {placeholderMap[field.type] || '请选择'}
       </div>
     );
@@ -190,7 +190,7 @@ const PreviewControl: React.FC<{ field: FormField }> = ({ field }) => {
 
   if (field.type === 'SELECT') {
     return (
-      <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-500">
+      <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-sm text-cf-faint dark:border-slate-800 dark:bg-slate-900/70">
         请选择
       </div>
     );
@@ -263,7 +263,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
                 <Icon size={12} />
                 {FIELD_TYPES.find((item) => item.type === field.type)?.label || field.type}
               </span>
-              <span className="text-xs text-slate-400 dark:text-slate-500">字段 {index + 1}</span>
+              <span className="text-xs text-cf-faint">字段 {index + 1}</span>
             </div>
 
             <Button
@@ -271,7 +271,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
               variant="ghost"
               size="icon"
               onClick={() => onRemove(field.id)}
-              className="!h-7 !w-7 !rounded-md !p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
+              className="!h-7 !w-7 !rounded-md !p-0 text-cf-faint hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
               aria-label="删除字段"
               title="删除字段"
             >
@@ -282,7 +282,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           <Input
             value={field.label}
             onChange={(e) => onUpdate(field.id, { label: e.target.value })}
-            className="h-9 border-none bg-transparent px-0 text-sm font-medium text-slate-800 shadow-none placeholder:text-slate-300 focus-visible:ring-0 dark:text-slate-100"
+            className="h-9 border-none bg-transparent px-0 text-sm font-medium text-cf-title shadow-none placeholder:text-slate-300 focus-visible:ring-0"
             placeholder="字段标题"
           />
 
@@ -291,7 +291,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           {field.type === 'SELECT' ? (
             <div className="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-slate-500 dark:text-slate-400">选项</span>
+                <span className="text-xs text-cf-subtle">选项</span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -329,7 +329,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
                           const newOptions = (field.options || []).filter((_, i) => i !== idx);
                           onUpdate(field.id, { options: newOptions });
                         }}
-                        className="!h-7 !w-7 !rounded-md !p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
+                        className="!h-7 !w-7 !rounded-md !p-0 text-cf-faint hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
                         aria-label="删除选项"
                         title="删除选项"
                       >
@@ -346,7 +346,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
             <div className="grid gap-3 border-t border-slate-200 pt-3 dark:border-slate-800">
               <div className="grid gap-2 md:grid-cols-2">
                 <div>
-                  <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">显示名称字段</div>
+                  <div className="mb-1 text-xs text-cf-subtle">显示名称字段</div>
                   <Input
                     value={field.displayFieldId || ''}
                     onChange={(e) => onUpdate(field.id, { displayFieldId: e.target.value.trim() || undefined })}
@@ -356,7 +356,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
                 </div>
                 {field.type === 'POSITION' ? (
                   <div>
-                    <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">按部门字段筛选</div>
+                    <div className="mb-1 text-xs text-cf-subtle">按部门字段筛选</div>
                     <Input
                       value={field.filterByDeptFieldId || ''}
                       onChange={(e) => onUpdate(field.id, { filterByDeptFieldId: e.target.value.trim() || undefined })}
@@ -369,7 +369,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
 
               <div className="grid gap-2">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-slate-500 dark:text-slate-400">选中后自动填充</span>
+                  <span className="text-xs text-cf-subtle">选中后自动填充</span>
                   <Button
                     type="button"
                     variant="ghost"
@@ -419,7 +419,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
                           const next = (field.fillMappings || []).filter((_, i) => i !== idx);
                           onUpdate(field.id, { fillMappings: next });
                         }}
-                        className="!h-7 !w-7 !rounded-md !p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
+                        className="!h-7 !w-7 !rounded-md !p-0 text-cf-faint hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
                         aria-label="删除填充规则"
                         title="删除填充规则"
                       >
@@ -435,7 +435,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           {(field.type === 'TEXT' || field.type === 'NUMBER') ? (
             <div className="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800 md:grid-cols-2">
               <div>
-                <div className="mb-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mb-1 flex items-center gap-1 text-xs text-cf-subtle">
                   <Code size={12} />
                   正则表达式
                 </div>
@@ -447,7 +447,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
                 />
               </div>
               <div>
-                <div className="mb-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mb-1 flex items-center gap-1 text-xs text-cf-subtle">
                   <AlertCircle size={12} />
                   错误提示
                 </div>
@@ -462,12 +462,12 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           ) : null}
 
           <div className="flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
-            <span className="text-xs text-slate-500 dark:text-slate-400">必填项</span>
+            <span className="text-xs text-cf-subtle">必填项</span>
             <Switch checked={field.required} onCheckedChange={(checked) => onUpdate(field.id, { required: checked })} />
           </div>
 
           <div className="flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
-            <span className="text-xs text-slate-500 dark:text-slate-400">只读展示</span>
+            <span className="text-xs text-cf-subtle">只读展示</span>
             <Switch checked={Boolean(field.readonly)} onCheckedChange={(checked) => onUpdate(field.id, { readonly: checked || undefined })} />
           </div>
         </div>
@@ -522,15 +522,15 @@ const FormPreview: React.FC<{
     <div className="card admin-source-panel no-padding overflow-hidden">
       <div className="p-4 admin-source-section-head flex items-center justify-between">
         <div>
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{formName}</div>
-          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">预览填写，不会写入真实数据。</div>
+          <div className="text-sm font-medium text-cf-title">{formName}</div>
+          <div className="mt-1 text-xs text-cf-subtle">预览填写，不会写入真实数据。</div>
         </div>
         <Button
           type="button"
           variant="ghost"
           size="icon"
           onClick={onCancel}
-          className="!h-8 !w-8 !rounded-md !p-0 text-slate-400 hover:bg-[var(--cf-surface-muted)] hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          className="!h-8 !w-8 !rounded-md !p-0 text-cf-faint hover:bg-[var(--cf-surface-muted)] hover:text-cf-muted dark:hover:bg-slate-800"
           aria-label="关闭预览"
           title="关闭预览"
         >
@@ -667,7 +667,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
     <div className="form-builder-shell flex h-full min-w-0 flex-col xl:flex-row">
       <section className="form-builder-palette flex w-full shrink-0 flex-col p-3 xl:w-[13rem]">
         <div className="border-b border-slate-200 pb-3 dark:border-slate-800">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">组件库</div>
+          <div className="text-sm font-medium text-cf-title">组件库</div>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-1">
@@ -679,7 +679,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
                 type="button"
                 variant="outline"
                 onClick={() => addField(item.type)}
-                className="w-full !justify-start gap-3 border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2.5 text-left text-sm text-slate-700 shadow-none hover:border-cyan-200 hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-cyan-900 dark:hover:bg-slate-900"
+                className="w-full !justify-start gap-3 border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-2.5 text-left text-sm text-cf-body shadow-none hover:border-cyan-200 hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-900 dark:hover:bg-slate-900"
               >
                 <span className="admin-source-stat-icon !h-7 !w-7 !flex-none text-cyan-600 dark:text-cyan-300">
                   <Icon size={15} />
@@ -696,12 +696,12 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
           <Input
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
-            className="h-9 w-full border-none bg-transparent px-0 text-sm font-medium text-slate-900 shadow-none placeholder:text-slate-400 focus-visible:ring-0 sm:w-72 dark:text-slate-100 dark:placeholder:text-slate-500"
+            className="h-9 w-full border-none bg-transparent px-0 text-sm font-medium text-cf-title shadow-none placeholder:text-cf-faint focus-visible:ring-0 sm:w-72"
             placeholder="请输入表单名称"
           />
 
           <div className="ml-auto flex flex-wrap items-center gap-3">
-            <span className="text-xs text-slate-500 dark:text-slate-400">字段 {fields.length}</span>
+            <span className="text-xs text-cf-subtle">字段 {fields.length}</span>
             <Button
               variant="outline"
               onClick={() => {
@@ -725,10 +725,10 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
               {previewData ? (
                 <div className="card admin-source-panel no-padding overflow-hidden">
                   <div className="p-4 admin-source-section-head">
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">模拟提交结果</div>
+                    <div className="text-sm font-medium text-cf-title">模拟提交结果</div>
                   </div>
                   <div className="grid gap-4 p-4">
-                    <pre className="max-h-80 overflow-auto bg-[var(--cf-surface-muted)] p-4 text-sm text-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
+                    <pre className="max-h-80 overflow-auto bg-[var(--cf-surface-muted)] p-4 text-sm text-cf-body dark:bg-slate-900/70">
                       {JSON.stringify(previewData, null, 2)}
                     </pre>
                     <div className="flex flex-wrap gap-2">
@@ -746,7 +746,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
                   </div>
                 </div>
               ) : fields.length === 0 ? (
-                <div className="px-4 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
+                <div className="px-4 py-10 text-center text-sm text-cf-faint">
                   先添加字段，再预览填写。
                 </div>
               ) : (
@@ -764,7 +764,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
           ) : (
             <div className="admin-source-content-grid mx-auto max-w-3xl">
               {fields.length === 0 ? (
-                <div className="px-4 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
+                <div className="px-4 py-10 text-center text-sm text-cf-faint">
                   从组件库添加字段。
                 </div>
               ) : null}

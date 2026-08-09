@@ -50,6 +50,7 @@ import { formatDateTimeDisplay, toBackendDateString } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import './admin-meeting.css';
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
@@ -66,7 +67,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
       </div>
     </td>
   </tr>
@@ -457,33 +458,33 @@ const MeetingMinutesPage: React.FC = () => {
                 <td>{row.location || '-'}</td>
                 <td>
                   <span className="inline-flex items-center gap-1">
-                    <ClipboardList className="h-3.5 w-3.5 text-slate-400" />
+                    <ClipboardList className="h-3.5 w-3.5 text-cf-faint" />
                     {decisionCounts[idx]} 项
                   </span>
                 </td>
                 <td>{getStatusBadge(row.status)}</td>
-                <td className="text-xs text-slate-400 dark:text-slate-500">{formatTableDateTime(row.updateTime || row.createTime)}</td>
+                <td className="text-xs text-cf-faint">{formatTableDateTime(row.updateTime || row.createTime)}</td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="查看" aria-label="查看会议纪要" onClick={() => void openDetail(row)}>
+                    <button type="button" data-tooltip="查看" aria-label="查看会议纪要" onClick={() => void openDetail(row)}>
                       <FileText size={15} />
                     </button>
                     {canEdit && row.status === 'DRAFT' ? (
                       <>
-                        <button type="button" title="编辑" aria-label="编辑会议纪要" onClick={() => openEdit(row)}>
+                        <button type="button" data-tooltip="编辑" aria-label="编辑会议纪要" onClick={() => openEdit(row)}>
                           <RefreshCw size={15} />
                         </button>
-                        <button type="button" title="确认纪要" aria-label="确认纪要" onClick={() => setPendingConfirmRow(row)}>
+                        <button type="button" data-tooltip="确认纪要" aria-label="确认纪要" onClick={() => setPendingConfirmRow(row)}>
                           <CheckCheck size={15} />
                         </button>
                       </>
                     ) : null}
                     {canEdit ? (
                       <>
-                        <button type="button" title="派发决议" aria-label="派发决议" onClick={() => setPendingDispatch(row)}>
+                        <button type="button" data-tooltip="派发决议" aria-label="派发决议" onClick={() => setPendingDispatch(row)}>
                           <Send size={15} />
                         </button>
-                        <button type="button" className="danger" title="删除" aria-label="删除会议纪要" onClick={() => setPendingDelete(row)}>
+                        <button type="button" className="danger" data-tooltip="删除" aria-label="删除会议纪要" onClick={() => setPendingDelete(row)}>
                           <Trash2 size={15} />
                         </button>
                       </>
@@ -692,13 +693,13 @@ const MeetingMinutesPage: React.FC = () => {
                 ['创建时间', formatDateTimeDisplay(detail.createTime)],
               ].map(([label, value]) => (
                 <div key={label} className="border-b border-slate-200 pb-3 dark:border-slate-800">
-                  <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-                <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+                  <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+                <div className="mt-1.5 text-sm leading-6 text-cf-title">{value || '-'}</div>
               </div>
             ))}
             </div>
             <MinutesSurface title="纪要内容" description="会议正文记录">
-              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{detail.minutesContent}</div>
+              <div className="whitespace-pre-wrap text-sm leading-6 text-cf-muted">{detail.minutesContent}</div>
             </MinutesSurface>
             <MinutesSurface
               title={`决议项 (${detailDecisions.length})`}
@@ -716,17 +717,17 @@ const MeetingMinutesPage: React.FC = () => {
                   {detailDecisions.map((d, idx) => (
                     <li key={idx} className="admin-meeting-minutes-decision-item">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-slate-900 dark:text-slate-100">{d.title || '-'}</span>
+                        <span className="font-medium text-cf-title">{d.title || '-'}</span>
                         {d.workTaskId ? (
                           <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
                             已派发 #{d.workTaskId}
                           </span>
                         ) : null}
                       </div>
-                      <div className="mt-1 text-xs text-slate-400">
+                      <div className="mt-1 text-xs text-cf-faint">
                         责任人 {d.ownerName || '-'} · 截止 {d.dueDate || '-'}
                       </div>
-                      {d.remark ? <div className="mt-1 text-xs text-slate-400">{d.remark}</div> : null}
+                      {d.remark ? <div className="mt-1 text-xs text-cf-faint">{d.remark}</div> : null}
                     </li>
                   ))}
                 </ul>
@@ -753,12 +754,12 @@ const MeetingMinutesPage: React.FC = () => {
                   {attendance.map((a) => (
                     <li key={a.id} className="admin-meeting-minutes-attendance-item">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-900 dark:text-slate-100">{a.userName || '-'}</span>
+                        <span className="font-medium text-cf-title">{a.userName || '-'}</span>
                         <DictBadge dictType="oa_meeting_attend_status" value={String(a.attendStatus || 'NOT_CHECKED')} />
                         {a.checkInTime ? (
-                          <span className="text-xs text-slate-400">{formatDateTimeDisplay(a.checkInTime)}</span>
+                          <span className="text-xs text-cf-faint">{formatDateTimeDisplay(a.checkInTime)}</span>
                         ) : null}
-                        {a.remark ? <span className="text-xs text-slate-400">· {a.remark}</span> : null}
+                        {a.remark ? <span className="text-xs text-cf-faint">· {a.remark}</span> : null}
                       </div>
                       {canEdit ? (
                         <div className="flex items-center gap-1">

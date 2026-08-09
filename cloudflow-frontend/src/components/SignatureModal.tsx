@@ -176,7 +176,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                   >
                     {mode === 'add' ? '加签说明' : '减签说明'}
                   </div>
-                  <div className="text-xs leading-6 text-slate-600 dark:text-slate-300">
+                  <div className="text-xs leading-6 text-cf-muted">
                     {mode === 'add'
                       ? '仅支持会签节点，且只有当前任务处理人可以执行加签。'
                       : '仅支持会签节点，任务处理人或管理员可减签，至少保留 1 名审批人。'}
@@ -186,15 +186,15 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
             </div>
 
             <div className="p-4">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">选择人员</div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="text-sm font-semibold text-cf-title">选择人员</div>
+              <div className="mt-1 text-xs text-cf-subtle">
                 支持按姓名或账号搜索可选审批人。
               </div>
 
               <div className="mt-4 relative">
                 <Search
                   size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint"
                 />
                 <Input
                   value={searchKeyword}
@@ -230,7 +230,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                           {user.avatar ? (
                             <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-md object-cover" />
                           ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-sm font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-sm font-semibold text-cf-muted dark:bg-slate-900">
                               {user.name?.slice(0, 1) || 'U'}
                             </div>
                           )}
@@ -240,12 +240,12 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                                 'truncate font-medium',
                                 active
                                   ? 'text-cyan-700 dark:text-cyan-200'
-                                  : 'text-slate-900 dark:text-slate-100',
+                                  : 'text-cf-title',
                               )}
                             >
                               {user.name}
                             </div>
-                            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            <div className="mt-1 text-xs text-cf-subtle">
                               {user.username ? `@${user.username}` : user.email || '暂无账号信息'}
                             </div>
                           </div>
@@ -260,8 +260,8 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
             <div className="p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">操作说明</div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="text-sm font-semibold text-cf-title">操作说明</div>
+                  <div className="mt-1 text-xs text-cf-subtle">
                     该说明会写入审批记录，建议明确说明原因和目标。
                   </div>
                 </div>

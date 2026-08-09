@@ -207,7 +207,7 @@ export const HrPointAccountPage: React.FC = () => {
 
   const pageTable = (
     <InnerTableSurface className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-100">
+      <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-cf-title dark:border-slate-800">
         积分流水{account?.id ? ` · 账户 #${account.id}` : ''}
       </div>
       <table className="unity-data-table admin-source-table min-w-[920px]">
@@ -225,19 +225,19 @@ export const HrPointAccountPage: React.FC = () => {
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={7} className="py-10 text-center text-sm text-slate-400">
+              <td colSpan={7} className="py-10 text-center text-sm text-cf-faint">
                 <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
               </td>
             </tr>
           ) : txns.length === 0 ? (
             <tr>
-              <td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无流水</td>
+              <td colSpan={7} className="py-10 text-center text-sm text-cf-faint">暂无流水</td>
             </tr>
           ) : (
             txns.map((row) => (
               <tr key={row.id}>
                 <td className="font-mono text-xs">{row.txnNo}</td>
-                <td className="text-sm"><span className={row.direction === 'IN' ? 'text-emerald-600' : row.direction === 'OUT' ? 'text-rose-600' : 'text-slate-500'}><DictLabel dictType="hr_point_direction" value={row.direction} fallback="-" /></span></td>
+                <td className="text-sm"><span className={row.direction === 'IN' ? 'text-emerald-600' : row.direction === 'OUT' ? 'text-rose-600' : 'text-cf-subtle'}><DictLabel dictType="hr_point_direction" value={row.direction} fallback="-" /></span></td>
                 <td className="text-xs"><DictLabel dictType="hr_point_source" value={row.sourceType} fallback="-" />{row.sourceId ? ` #${row.sourceId}` : ''}</td>
                 <td className="text-sm">{row.direction === 'OUT' ? '-' : '+'}{Number(row.points ?? 0).toLocaleString()}</td>
                 <td className="text-sm">{Number(row.balanceAfter ?? 0).toLocaleString()}</td>

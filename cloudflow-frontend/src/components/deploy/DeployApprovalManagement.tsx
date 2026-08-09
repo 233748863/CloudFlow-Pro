@@ -28,6 +28,7 @@ import {
   listMySubmittedApprovals,
   listPendingApprovals,
 } from '@/services/api/deployEnhancement';
+import '../../styles/features/admin-deploy.css';
 
 const STATUS_CONFIG: Record<
   string,
@@ -53,7 +54,7 @@ const STATUS_CONFIG: Record<
   },
   CANCELLED: {
     className:
-      'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+      'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900',
     icon: X,
   },
 };
@@ -74,13 +75,13 @@ const InlineState: React.FC<{
 }> = ({ title, description, icon, loading = false }) => (
   <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
     {loading ? (
-      <RefreshCw className="mb-3 h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
+      <RefreshCw className="mb-3 h-5 w-5 animate-spin text-cf-faint" />
     ) : icon ? (
-      <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div>
+      <div className="mb-3 text-cf-faint">{icon}</div>
     ) : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 max-w-md text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 max-w-md text-xs leading-6 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -274,12 +275,12 @@ export const DeployApprovalManagement: React.FC = () => {
                     <td className="align-top">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          <span className="truncate text-sm font-semibold text-cf-title">
                             {activeView === 'pending' ? '待处理审批' : '已提交审批'} · {approval.processDefId}
                           </span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500">#{approval.id}</span>
+                          <span className="text-xs text-cf-faint">#{approval.id}</span>
                         </div>
-                        <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        <div className="mt-1 text-sm text-cf-subtle">
                           {approval.deployId ? `部署 ID ${approval.deployId}` : '未绑定部署 ID'}
                           <span className="mx-2 text-slate-300 dark:text-slate-700">/</span>
                           申请人 ID {approval.submitterId}
@@ -298,7 +299,7 @@ export const DeployApprovalManagement: React.FC = () => {
                           {statusDict.getLabel(approval.approvalStatus)}
                         </span>
                         <div className="mt-2">
-                          <div className="flex items-center justify-between gap-3 text-xs text-slate-400 dark:text-slate-500">
+                          <div className="flex items-center justify-between gap-3 text-xs text-cf-faint">
                             <span>步骤进度</span>
                             <span>
                               {approval.currentStep} / {approval.totalSteps}
@@ -313,7 +314,7 @@ export const DeployApprovalManagement: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="align-top text-sm text-slate-600 dark:text-slate-300">
+                    <td className="align-top text-sm text-cf-muted">
                       <div>提交时间 · {approval.submitTime}</div>
                       <div className="mt-1">完成时间 · {approval.completeTime || '处理中'}</div>
                     </td>
@@ -396,8 +397,8 @@ export const DeployApprovalManagement: React.FC = () => {
 
             <InnerTableSurface wrapperClassName="p-0">
               <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">审批步骤</div>
-                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <div className="text-sm font-semibold text-cf-title">审批步骤</div>
+                <div className="mt-1 text-sm text-cf-subtle">
                   按顺序展示每个审批节点的状态、审批模式和处理意见。
                 </div>
               </div>
@@ -424,7 +425,7 @@ export const DeployApprovalManagement: React.FC = () => {
                           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                             <div className="grid gap-3">
                               <div className="flex flex-wrap items-center gap-2">
-                                <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                                <div className="text-sm font-semibold text-cf-title">
                                   步骤 {step.stepNo} · {step.stepName}
                                 </div>
                                 <span
@@ -438,7 +439,7 @@ export const DeployApprovalManagement: React.FC = () => {
                                 </span>
                               </div>
 
-                              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-cf-faint">
                                 <span className="inline-flex items-center gap-1">
                                   <ApproverIcon className="h-3.5 w-3.5" />
                                   {approverTypeDict.getLabel(step.approverType)}
@@ -448,14 +449,14 @@ export const DeployApprovalManagement: React.FC = () => {
                               </div>
                             </div>
 
-                            <div className="text-xs text-slate-400 dark:text-slate-500">
+                            <div className="text-xs text-cf-faint">
                               {step.approvalTime ? `处理时间：${step.approvalTime}` : '尚未处理'}
                             </div>
                           </div>
 
                           {step.approvalComment ? (
-                            <div className="mt-4 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                              <div className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
+                            <div className="mt-4 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-cf-muted dark:border-slate-800 dark:bg-slate-900/70">
+                              <div className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-cf-faint">
                                 <MessageSquare className="h-3.5 w-3.5" />
                                 审批意见
                               </div>
@@ -519,7 +520,7 @@ export const DeployApprovalManagement: React.FC = () => {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <label className="mb-2 block text-sm font-semibold text-cf-body">
                 审批意见
                 {approveModal.action === 'REJECT' ? (
                   <span className="text-rose-500">（建议填写）</span>

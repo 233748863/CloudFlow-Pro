@@ -1,0 +1,61 @@
+/* 从 index.css 拆分而来：admin-config
+   由 ConfigList.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-config-filter-grid {
+      grid-template-columns: minmax(18rem, 1fr) minmax(13rem, 16rem) minmax(9rem, 10rem) minmax(11rem, 13rem) auto;
+    }
+}
+
+.admin-config-filter-grid {
+  grid-template-columns: minmax(16rem, 1fr) minmax(11rem, 13rem) minmax(8.5rem, 9.5rem) minmax(9rem, 10.5rem) auto;
+}
+
+.admin-config-table th:nth-child(1),
+.admin-config-table td:nth-child(1) {
+  width: 6%;
+}
+
+.admin-config-table th:nth-child(2),
+.admin-config-table td:nth-child(2) {
+  width: 21%;
+}
+
+.admin-config-table th:nth-child(3),
+.admin-config-table td:nth-child(3) {
+  width: 21%;
+}
+
+.admin-config-table th:nth-child(4),
+.admin-config-table td:nth-child(4) {
+  width: 16%;
+}
+
+.admin-config-table th:nth-child(5),
+.admin-config-table td:nth-child(5),
+.admin-config-table th:nth-child(6),
+.admin-config-table td:nth-child(6) {
+  width: 8%;
+}
+
+.admin-config-table th:nth-child(7),
+.admin-config-table td:nth-child(7) {
+  width: 10%;
+}
+
+.admin-config-table th:nth-child(8),
+.admin-config-table td:nth-child(8) {
+  width: 10%;
+}
+
+.admin-config-table .admin-config-actions-col {
+  width: 112px;
+  min-width: 112px;
+}
+
+.admin-config-value {
+  max-width: 100%;
+  color: #475569;
+  font-size: 13px;
+}

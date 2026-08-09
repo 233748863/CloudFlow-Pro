@@ -33,7 +33,7 @@ const GRADE_TONE: Record<string, string> = {
   S: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-900/40',
   A: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/40',
   B: 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-300 dark:border-cyan-900/40',
-  C: 'bg-[var(--cf-surface-muted)] text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
+  C: 'bg-[var(--cf-surface-muted)] text-cf-body border-slate-200 dark:bg-slate-800 dark:border-slate-700',
 };
 
 const MODE_TONE: Record<string, string> = {
@@ -169,7 +169,7 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
               <span>配置等级配额和拦截模式，各等级合计需为 100%</span>
             </div>
             <div className="admin-users-toolbar-actions">
-              <Plus className="h-4 w-4 text-slate-400" />
+              <Plus className="h-4 w-4 text-cf-faint" />
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2 p-4 md:grid-cols-3">
@@ -217,7 +217,7 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
                       )
                     }
                   />
-                  <span className="text-xs text-slate-500 dark:text-slate-400">%</span>
+                  <span className="text-xs text-cf-subtle">%</span>
                 </div>
               ))}
             </div>
@@ -251,7 +251,7 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
                 const mode = String(row.enforceMode || '').toUpperCase();
                 return (
                   <tr key={row.id}>
-                    <td className="font-medium text-slate-700 dark:text-slate-200">{row.ruleName}</td>
+                    <td className="font-medium text-cf-body">{row.ruleName}</td>
                     <td>
                       <div className="flex flex-wrap items-center gap-1.5">
                         {(row.distribution || []).map((d: any) => (
@@ -278,13 +278,13 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
                       </span>
                     </td>
                     <td>
-                      <span className="inline-flex items-center rounded-md bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                      <span className="inline-flex items-center rounded-md bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs font-medium text-cf-body dark:bg-slate-800">
                         {STATUS_LABEL[String(row.status || '').toUpperCase()] || '-'}
                       </span>
                     </td>
                     <td>
                       <div className="admin-users-row-actions">
-                        <button type="button" className="danger" title="删除" onClick={() => void handleRemove(row.id || 0)}>
+                        <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => void handleRemove(row.id || 0)}>
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -295,7 +295,7 @@ export const HrPerformanceDistributionPanel = ({ open, objectiveId, onClose }: P
               {rules.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="admin-settings-empty">
-                    <div className="flex flex-col items-center gap-2 py-10 text-slate-400 dark:text-slate-500">
+                    <div className="flex flex-col items-center gap-2 py-10 text-cf-faint">
                       <ListChecks className="h-8 w-8 opacity-50" />
                       <span className="text-sm">暂无分布规则，使用上方表单新增</span>
                     </div>

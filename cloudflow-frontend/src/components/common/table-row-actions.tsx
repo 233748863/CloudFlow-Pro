@@ -105,7 +105,7 @@ const DEFAULT_ACTION_PRESETS: Record<ActionSemanticKey, ActionPreset> = {
 
 const toneClassMap: Record<TableRowActionTone, string> = {
   primary: 'text-cyan-700 hover:bg-cyan-50 hover:text-cyan-800 dark:text-cyan-300 dark:hover:bg-cyan-950/40 dark:hover:text-cyan-100',
-  neutral: 'text-slate-600 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+  neutral: 'text-cf-muted hover:bg-[var(--cf-surface-muted)] hover:text-cf-title dark:hover:bg-slate-800',
   success: 'text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-100',
   warning: 'text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/40 dark:hover:text-amber-100',
   danger: 'text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-100',
@@ -404,7 +404,7 @@ function ActionOverflowMenu({ actions, label, compact = false, iconOnly = false 
             : compact
             ? 'h-8 min-w-0 gap-1 rounded-md px-2.5 text-xs font-medium'
             : 'h-auto min-w-[3.5rem] flex-col gap-0.5 rounded-md px-2 py-1.5 text-[11px] font-medium',
-          'border-0 text-slate-600 shadow-none hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+          'border-0 text-cf-muted shadow-none hover:bg-[var(--cf-surface-muted)] hover:text-cf-title dark:hover:bg-slate-800',
         )}
         title={label}
         aria-label={label}

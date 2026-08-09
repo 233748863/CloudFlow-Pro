@@ -16,7 +16,7 @@ export const AnnouncementPopup: React.FC = () => {
       open={Boolean(currentPopup)}
       title={currentPopup?.title || '公告'}
       description={currentPopup ? (
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-cf-subtle">
           <span className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-2.5 py-1 font-medium text-white">
             <span className="h-2 w-2 rounded-sm bg-cyan-100" />
             未读

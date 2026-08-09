@@ -86,7 +86,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
         <div className="admin-source-stat-icon mb-3">
           <Clock3 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
       </div>
     </td>
   </tr>
@@ -301,9 +301,9 @@ export const BorrowManagementPage: React.FC = () => {
               return (
                 <div key={item.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
                   <div className="flex h-20 w-full items-end justify-center rounded-md bg-[var(--cf-surface-muted)] px-1 dark:bg-slate-900">
-                    <div className="w-full max-w-8 rounded-t-md bg-cyan-500" style={{ height }} title={`${item.date} ${totalCount} 次`} />
+                    <div className="w-full max-w-8 rounded-t-md bg-cyan-500" style={{ height }} data-tooltip={`${item.date} ${totalCount} 次`} />
                   </div>
-                  <span className="w-full truncate text-center text-[11px] text-slate-400">{item.date.slice(5)}</span>
+                  <span className="w-full truncate text-center text-[11px] text-cf-faint">{item.date.slice(5)}</span>
                 </div>
               );
             })}
@@ -314,15 +314,15 @@ export const BorrowManagementPage: React.FC = () => {
             {(stats?.resourceUsage || []).slice(0, 5).map((item) => (
               <div key={`${item.businessType}-${item.resourceId}`} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-3 text-xs">
-                  <span className="truncate text-slate-600 dark:text-slate-300">{item.resourceName || '-'}</span>
-                  <span className="text-slate-400">{item.count} 次</span>
+                  <span className="truncate text-cf-muted">{item.resourceName || '-'}</span>
+                  <span className="text-cf-faint">{item.count} 次</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-md bg-[var(--cf-surface-muted)] dark:bg-slate-900">
                   <div className="h-full rounded-md bg-emerald-500" style={{ width: `${Math.max(8, (item.count / maxUsage) * 100)}%` }} />
                 </div>
               </div>
             ))}
-            {!stats?.resourceUsage?.length ? <div className="py-6 text-center text-sm text-slate-400">暂无排行数据</div> : null}
+            {!stats?.resourceUsage?.length ? <div className="py-6 text-center text-sm text-cf-faint">暂无排行数据</div> : null}
           </div>
         </DialogPanel>
       </div>
@@ -364,7 +364,7 @@ export const BorrowManagementPage: React.FC = () => {
 
   const pageTable = (
     <InnerTableSurface className="admin-borrow-management-table-panel">
-      <table className="unity-data-table admin-source-table admin-seal-license-table min-w-[1080px]">
+      <table className="unity-data-table admin-source-table admin-seal-license-table min-w-[1080px] cf-freeze-edges">
           <thead>
             <tr>
               <th>类型 / 编号</th>
@@ -384,8 +384,8 @@ export const BorrowManagementPage: React.FC = () => {
             ) : rows.map((item) => (
               <tr key={`${item.kind}-${item.id}`}>
                 <td>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{item.kind === 'SEAL' ? '用印' : '证照'}</div>
-                  <div className="mt-1 text-xs text-slate-400">{item.no || '-'}</div>
+                  <div className="font-medium text-cf-title">{item.kind === 'SEAL' ? '用印' : '证照'}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{item.no || '-'}</div>
                   {item.contractNo ? <div className="mt-1 text-xs text-cyan-600 dark:text-cyan-300">{item.contractNo}</div> : null}
                 </td>
                 <td>{item.resourceName || '-'}</td>
@@ -393,15 +393,15 @@ export const BorrowManagementPage: React.FC = () => {
                 <td className="max-w-xs truncate">{item.purpose || '-'}</td>
                 <td>
                   <div>{formatDateTimeDisplay(item.actualBorrowTime)}</div>
-                  <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(item.expectedReturnTime)}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{formatDateTimeDisplay(item.expectedReturnTime)}</div>
                 </td>
                 <td>{getStatusBadge(item.status)}</td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="详情" onClick={() => void openDetail(item)}><Eye size={15} /></button>
-                    {item.status === 'APPROVED' && hasPermission('oa:borrow:confirm') ? <button type="button" title="借出" onClick={() => openAction(item, 'borrow')}><CheckCircle2 size={15} /></button> : null}
-                    {(item.status === 'BORROWED' || item.status === 'OVERDUE') && hasPermission('oa:borrow:return') ? <button type="button" title="归还" onClick={() => openAction(item, 'return')}><RotateCcw size={15} /></button> : null}
-                    {(item.status === 'BORROWED' || item.status === 'OVERDUE') && hasPermission('oa:borrow:remind') ? <button type="button" title="催还" onClick={() => openAction(item, 'remind')}><Bell size={15} /></button> : null}
+                    <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDetail(item)}><Eye size={15} /></button>
+                    {item.status === 'APPROVED' && hasPermission('oa:borrow:confirm') ? <button type="button" data-tooltip="借出" aria-label="借出" onClick={() => openAction(item, 'borrow')}><CheckCircle2 size={15} /></button> : null}
+                    {(item.status === 'BORROWED' || item.status === 'OVERDUE') && hasPermission('oa:borrow:return') ? <button type="button" data-tooltip="归还" aria-label="归还" onClick={() => openAction(item, 'return')}><RotateCcw size={15} /></button> : null}
+                    {(item.status === 'BORROWED' || item.status === 'OVERDUE') && hasPermission('oa:borrow:remind') ? <button type="button" data-tooltip="催还" aria-label="催还" onClick={() => openAction(item, 'remind')}><Bell size={15} /></button> : null}
                   </div>
                 </td>
               </tr>
@@ -448,9 +448,9 @@ export const BorrowManagementPage: React.FC = () => {
         )}
       >
         <div className="admin-dialog-stack">
-          <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-            <div className="font-medium text-slate-900 dark:text-slate-100">{actionTarget?.resourceName || '-'}</div>
-            <div className="mt-1 text-xs text-slate-400">{actionTarget?.applicantName || '-'} / {actionTarget?.no || '-'}</div>
+          <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-3 text-sm text-cf-muted dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="font-medium text-cf-title">{actionTarget?.resourceName || '-'}</div>
+            <div className="mt-1 text-xs text-cf-faint">{actionTarget?.applicantName || '-'} / {actionTarget?.no || '-'}</div>
           </div>
           <div className="admin-dialog-field">
             <Label>备注</Label>
@@ -475,7 +475,7 @@ export const BorrowManagementPage: React.FC = () => {
         footer={<Button variant="outline" onClick={() => setDetailTarget(null)}>关闭</Button>}
       >
         {detailLoading ? (
-          <div className="flex items-center justify-center py-12 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-center py-12 text-sm text-cf-subtle">
             <Clock3 className="mr-2 h-4 w-4 animate-spin" />
             正在加载借还详情...
           </div>
@@ -487,15 +487,15 @@ export const BorrowManagementPage: React.FC = () => {
                   {handoverLogs.map((log) => (
                     <div key={log.id} className="border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-3 dark:border-slate-800 dark:bg-slate-950">
                       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                        <span className="font-medium text-slate-900 dark:text-slate-100">{log.actionType === 'BORROW' ? '借出' : '归还'}</span>
-                        <span className="text-xs text-slate-400">{formatDateTimeDisplay(log.actionTime)}</span>
+                        <span className="font-medium text-cf-title">{log.actionType === 'BORROW' ? '借出' : '归还'}</span>
+                        <span className="text-xs text-cf-faint">{formatDateTimeDisplay(log.actionTime)}</span>
                       </div>
-                      <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{log.operatorName || '-'} / {log.remark || '-'}</div>
+                      <div className="mt-1 text-sm text-cf-muted">{log.operatorName || '-'} / {log.remark || '-'}</div>
                       {getAttachmentList(log.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={log.attachmentUrl} compact /></div> : null}
                     </div>
                   ))}
                 </div>
-              ) : <div className="py-6 text-center text-sm text-slate-400">暂无交接日志</div>}
+              ) : <div className="py-6 text-center text-sm text-cf-faint">暂无交接日志</div>}
             </DialogPanel>
             <DialogPanel title="催还记录" description="自动和手动提醒记录">
               {reminderLogs.length ? (
@@ -503,14 +503,14 @@ export const BorrowManagementPage: React.FC = () => {
                   {reminderLogs.map((log) => (
                     <div key={log.id} className="border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-950">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium text-slate-900 dark:text-slate-100">{log.reminderType === 'AUTO' ? '自动催还' : '手动催还'}</span>
-                        <span className="text-xs text-slate-400">{formatDateTimeDisplay(log.reminderTime)}</span>
+                        <span className="font-medium text-cf-title">{log.reminderType === 'AUTO' ? '自动催还' : '手动催还'}</span>
+                        <span className="text-xs text-cf-faint">{formatDateTimeDisplay(log.reminderTime)}</span>
                       </div>
-                      <div className="mt-1 text-slate-600 dark:text-slate-300">{log.reminderContent || '-'}</div>
+                      <div className="mt-1 text-cf-muted">{log.reminderContent || '-'}</div>
                     </div>
                   ))}
                 </div>
-              ) : <div className="py-6 text-center text-sm text-slate-400">暂无催还记录</div>}
+              ) : <div className="py-6 text-center text-sm text-cf-faint">暂无催还记录</div>}
             </DialogPanel>
             <DialogPanel title="关联风险" description="合同或业务关联风险">
               {riskLogs.length ? (
@@ -518,14 +518,14 @@ export const BorrowManagementPage: React.FC = () => {
                   {riskLogs.map((risk) => (
                     <div key={risk.id} className="border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-950">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium text-slate-900 dark:text-slate-100">{risk.riskName}</span>
-                        <span className="text-xs text-slate-400">{risk.riskLevel} / {risk.riskStatus}</span>
+                        <span className="font-medium text-cf-title">{risk.riskName}</span>
+                        <span className="text-xs text-cf-faint">{risk.riskLevel} / {risk.riskStatus}</span>
                       </div>
-                      <div className="mt-1 text-slate-600 dark:text-slate-300">{risk.handleRemark || risk.riskCode || '-'}</div>
+                      <div className="mt-1 text-cf-muted">{risk.handleRemark || risk.riskCode || '-'}</div>
                     </div>
                   ))}
                 </div>
-              ) : <div className="py-6 text-center text-sm text-slate-400">暂无关联风险</div>}
+              ) : <div className="py-6 text-center text-sm text-cf-faint">暂无关联风险</div>}
             </DialogPanel>
           </div>
         )}

@@ -87,9 +87,9 @@ export const AnnouncementBell: React.FC = () => {
       <button
         type="button"
         onClick={openModal}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-[var(--cf-surface-muted)] dark:text-slate-400 dark:hover:bg-slate-800 ${
-          unreadCount > 0 ? 'text-cyan-600 dark:text-cyan-400' : ''
-        }`}
+        className={`relative flex h-9 w-9 items-center justify-center rounded-md text-cf-muted transition-colors hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-800 ${
+ unreadCount > 0 ? 'text-cyan-600 dark:text-cyan-400' : ''
+ }`}
         aria-label="公告"
       >
         <Bell size={18} />
@@ -134,8 +134,8 @@ export const AnnouncementBell: React.FC = () => {
                       <div
                         key={item.announcementId}
                         className={`group relative flex min-h-[72px] items-center gap-4 border-b border-slate-200 px-6 py-4 transition-colors hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:hover:bg-slate-900/70 ${
-                          !item.isRead ? 'bg-cyan-50/30 dark:bg-cyan-950/10' : ''
-                        }`}
+ !item.isRead ? 'bg-cyan-50/30 dark:bg-cyan-950/10' : ''
+ }`}
                         onClick={() => void openDetail(item)}
                       >
                         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center">
@@ -144,7 +144,7 @@ export const AnnouncementBell: React.FC = () => {
                               <Info className="h-5 w-5" strokeWidth={2.5} />
                             </div>
                           ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-slate-400 dark:bg-slate-900 dark:text-slate-500">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-cf-faint dark:bg-slate-900">
                               <Check className="h-5 w-5" />
                             </div>
                           )}
@@ -152,11 +152,11 @@ export const AnnouncementBell: React.FC = () => {
 
                         <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
                           <div className="min-w-0 flex-1">
-                            <h3 className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                            <h3 className="truncate text-sm font-medium text-cf-title">
                               {item.title}
                             </h3>
                             <div className="mt-1 flex items-center gap-2">
-                              <time className="text-xs text-slate-500 dark:text-slate-400">
+                              <time className="text-xs text-cf-subtle">
                                 {formatAnnouncementRelativeTime(item.publishTime || item.createTime)}
                               </time>
                               {!item.isRead ? (
@@ -169,7 +169,7 @@ export const AnnouncementBell: React.FC = () => {
                           </div>
 
                           <div className="flex-shrink-0">
-                            <ChevronRight className="h-5 w-5 text-slate-400 transition-transform group-hover:translate-x-1 dark:text-slate-600" />
+                            <ChevronRight className="h-5 w-5 text-cf-faint transition-transform group-hover:translate-x-1" />
                           </div>
                         </div>
 
@@ -183,14 +183,14 @@ export const AnnouncementBell: React.FC = () => {
                   <div className="flex flex-col items-center justify-center py-10">
                     <div className="relative mb-4">
                       <div className="flex h-20 w-20 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
-                        <Inbox size={28} className="text-slate-400 dark:text-slate-500" />
+                        <Inbox size={28} className="text-cf-faint" />
                       </div>
                       <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-md bg-cyan-600 text-white">
                         <Check className="h-3.5 w-3.5" />
                       </div>
                     </div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">暂无公告</p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">暂时没有任何系统公告</p>
+                    <p className="text-sm font-medium text-cf-title">暂无公告</p>
+                    <p className="mt-1 text-xs text-cf-subtle">暂时没有任何系统公告</p>
                   </div>
                 )}
               </div>

@@ -171,13 +171,13 @@ export const TaskList: React.FC<TaskListProps> = ({
             <div className="flex flex-col gap-3 px-4 py-4 lg:grid lg:grid-cols-[minmax(0,1.9fr)_200px_160px_auto] lg:items-center">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <div className="truncate text-sm font-medium text-cf-title">
                     {task.workflowName}
                   </div>
                   {getStatusBadge(task)}
                 </div>
 
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cf-subtle">
                   <span>节点 {task.nodeName || '-'}</span>
                   <span>申请人 {task.applicantName || '-'}</span>
                   <span>创建 {formatDate(task.createdTime)}</span>
@@ -190,22 +190,22 @@ export const TaskList: React.FC<TaskListProps> = ({
                 </div>
 
                 {summaryText ? (
-                  <div className="mt-2 truncate text-xs text-slate-500 dark:text-slate-400">
+                  <div className="mt-2 truncate text-xs text-cf-subtle">
                     {summaryText}
                   </div>
                 ) : null}
               </div>
 
-              <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
+              <div className="space-y-1 text-xs text-cf-subtle lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
                 <div>当前处理人</div>
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                <div className="text-sm font-medium text-cf-title">
                   {task.assigneeName || task.assigneeId || '待认领'}
                 </div>
               </div>
 
-              <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
+              <div className="space-y-1 text-xs text-cf-subtle lg:border-l lg:border-slate-200 lg:pl-6 dark:lg:border-slate-800">
                 <div>流程进度</div>
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                <div className="text-sm font-medium text-cf-title">
                   {progressText}
                 </div>
               </div>
@@ -233,7 +233,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                   <div className="admin-users-row-actions">
                     <button
                       type="button"
-                      title={actionLabel}
+                      data-tooltip={actionLabel}
                       aria-label={actionLabel}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -245,7 +245,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                     {canRecall ? (
                       <button
                         type="button"
-                        title="撤回"
+                        data-tooltip="撤回"
                         aria-label="撤回"
                         onClick={(event) => {
                           event.stopPropagation();

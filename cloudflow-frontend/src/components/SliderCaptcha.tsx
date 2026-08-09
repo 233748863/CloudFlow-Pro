@@ -303,7 +303,7 @@ export const SliderCaptcha = ({
         ? 'text-rose-600 dark:text-rose-400'
         : status === 'verifying'
           ? 'text-[var(--cf-primary-600)] dark:text-[var(--cf-primary-300)]'
-          : 'text-slate-500 dark:text-slate-400';
+          : 'text-cf-subtle';
 
   const trackProgressClass =
     status === 'success'
@@ -321,7 +321,7 @@ export const SliderCaptcha = ({
         ? 'border-rose-500 bg-rose-500 text-white shadow-sm'
         : isDragging || status === 'verifying'
           ? 'border-[var(--cf-primary-500)] bg-[var(--cf-primary-500)] text-white shadow-sm'
-          : 'border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:border-[var(--cf-primary-400)] hover:text-[var(--cf-primary-600)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-[var(--cf-primary-400)] dark:hover:text-[var(--cf-primary-300)]';
+          : 'border-slate-200 bg-cf-surface-1 text-cf-subtle shadow-sm transition-colors hover:border-[var(--cf-primary-400)] hover:text-[var(--cf-primary-600)] dark:border-slate-700 dark:hover:border-[var(--cf-primary-400)] dark:hover:text-[var(--cf-primary-300)]';
 
   const trackText = loadError
     ? '加载失败，请先重新加载'
@@ -333,7 +333,7 @@ export const SliderCaptcha = ({
     <div ref={containerRef} className="w-full">
       <div className="w-full" style={{ maxWidth: width }}>
         <div
-          className="relative overflow-hidden rounded-[4px] border border-slate-200 bg-white/95 py-0 shadow-[0_10px_28px_rgba(0,0,0,0.09)] backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/95"
+          className="relative overflow-hidden rounded-[4px] border border-slate-200 bg-cf-surface-1/95 py-0 shadow-[0_10px_28px_rgba(0,0,0,0.09)] backdrop-blur-md dark:border-slate-700 /95"
         >
           {/* 拼图区 */}
           <div
@@ -342,12 +342,12 @@ export const SliderCaptcha = ({
           >
             <button
               type="button"
-              className="no-min-size absolute right-2 top-2 z-20 inline-flex h-8 w-8 items-center justify-center rounded-[4px] border border-white/60 bg-white/80 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-colors hover:text-[var(--cf-primary-600)] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600/60 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:text-[var(--cf-primary-300)]"
+              className="no-min-size absolute right-2 top-2 z-20 inline-flex h-8 w-8 items-center justify-center rounded-[4px] border border-white/60 bg-cf-surface-1/80 text-cf-subtle shadow-[0_1px_2px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-colors hover:text-[var(--cf-primary-600)] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600/60 /80 dark:hover:text-[var(--cf-primary-300)]"
               onClick={() => {
                 void fetchCaptcha();
               }}
               disabled={loading || status === 'verifying'}
-              title="刷新验证码"
+              data-tooltip="刷新验证码" aria-label="刷新验证码"
             >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             </button>
@@ -391,17 +391,17 @@ export const SliderCaptcha = ({
             />
 
             {loading ? (
-              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-white/88 text-sm text-slate-500 backdrop-blur-sm dark:bg-slate-950/88 dark:text-slate-400">
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-cf-surface-1/88 text-sm text-cf-subtle backdrop-blur-sm /88">
                 <Loader2 size={18} className="animate-spin text-[var(--cf-primary-500)]" />
                 <span>正在加载拼图…</span>
               </div>
             ) : null}
 
             {loadError ? (
-              <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/90 p-4 backdrop-blur-sm dark:bg-slate-950/88">
-                <div className="w-full max-w-[15rem] rounded-[4px] border border-rose-200 bg-white p-4 text-center shadow-[0_10px_28px_rgba(0,0,0,0.09)] dark:border-rose-900/50 dark:bg-slate-900">
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-cf-surface-1/90 p-4 backdrop-blur-sm /88">
+                <div className="w-full max-w-[15rem] rounded-[4px] border border-rose-200 bg-cf-surface-1 p-4 text-center shadow-[0_10px_28px_rgba(0,0,0,0.09)] dark:border-rose-900/50">
                   <CircleAlert size={18} className="mx-auto text-rose-500" />
-                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  <p className="mt-3 text-sm leading-6 text-cf-muted">
                     {loadError}
                   </p>
                   <button
@@ -420,7 +420,7 @@ export const SliderCaptcha = ({
           </div>
 
           {/* 溶合滑道:主色细线分隔 + 内嵌 */}
-          <div className="relative border-t border-slate-200 bg-white/70 px-3 py-3 dark:border-slate-700/70 dark:bg-slate-800/40">
+          <div className="relative border-t border-slate-200 bg-cf-surface-1/70 px-3 py-3 dark:border-slate-700/70 /40">
             <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
               <div className={cn('inline-flex min-w-0 items-center gap-2 text-[13px] font-medium', statusToneClass)}>
                 {status === 'verifying' ? (
@@ -434,7 +434,7 @@ export const SliderCaptcha = ({
                 )}
                 <span className="truncate">{STATUS_META[status].label}</span>
               </div>
-              <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
+              <span className="shrink-0 text-[11px] text-cf-faint">
                 {loadError ? '需要重新加载' : STATUS_META[status].assist}
               </span>
             </div>
@@ -442,7 +442,7 @@ export const SliderCaptcha = ({
             <div
               ref={trackRef}
               className={cn(
-                'relative h-10 overflow-hidden rounded-[4px] border bg-white transition-colors focus:outline-none dark:bg-slate-900/80',
+                'relative h-10 overflow-hidden rounded-[4px] border bg-cf-surface-1 transition-colors focus:outline-none /80',
                 status === 'success'
                   ? 'border-emerald-300 dark:border-emerald-800/50'
                   : status === 'fail'

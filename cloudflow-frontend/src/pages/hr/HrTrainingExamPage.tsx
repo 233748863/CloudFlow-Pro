@@ -101,7 +101,7 @@ const QuestionBankTab: React.FC = () => {
                   <td>{row.difficulty ?? '-'}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                      <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(row)}>
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -211,10 +211,10 @@ const PaperTab: React.FC = () => {
                   <td>{getExamPaperStatusLabel(row.status)}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="开始作答" onClick={() => void handleStartAttempt(row.id)}>
+                      <button type="button" data-tooltip="开始作答" aria-label="开始作答" onClick={() => void handleStartAttempt(row.id)}>
                         <Play size={15} />
                       </button>
-                      <button type="button" className="danger" title="删除" onClick={() => setDeleteTarget(row)}>
+                      <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(row)}>
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -328,7 +328,7 @@ const AttemptTab: React.FC<{ mine: boolean }> = ({ mine }) => {
                   <td><DictLabel dictType="hr_exam_attempt_status" value={row.status} fallback="-" /></td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="查看" onClick={() => void handleView(row.id)}>
+                      <button type="button" data-tooltip="查看" aria-label="查看" onClick={() => void handleView(row.id)}>
                         <Eye size={15} />
                       </button>
                     </div>

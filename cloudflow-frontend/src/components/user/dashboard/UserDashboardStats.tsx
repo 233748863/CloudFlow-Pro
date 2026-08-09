@@ -9,6 +9,7 @@ import {
   ScanSearch,
   TimerReset,
 } from 'lucide-react';
+import '../../../styles/features/dashboard-stat.css';
 
 export interface UserDashboardStatsData {
   pendingCount: number;

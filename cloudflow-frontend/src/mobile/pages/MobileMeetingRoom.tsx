@@ -111,7 +111,7 @@ export const MobileMeetingRoom: React.FC = () => {
       case 'maintenance':
         return 'bg-orange-100 text-orange-600 border-orange-200';
       default:
-        return 'bg-slate-100 text-slate-600 border-slate-200';
+        return 'bg-cf-surface-3 text-cf-muted border-slate-200';
     }
   };
 
@@ -203,7 +203,7 @@ export const MobileMeetingRoom: React.FC = () => {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <Loader2 className="animate-spin text-[#0d95b5] mx-auto mb-3" size={32} />
-          <p className="text-sm text-slate-500">加载会议室...</p>
+          <p className="text-sm text-cf-subtle">加载会议室...</p>
         </div>
       </div>
     );
@@ -220,17 +220,17 @@ export const MobileMeetingRoom: React.FC = () => {
             className="p-1 -ml-1"
             aria-label="返回"
           >
-            <ChevronLeft size={24} className="text-slate-600" />
+            <ChevronLeft size={24} className="text-cf-muted" />
           </button>
-          <h1 className="text-lg font-semibold text-slate-900 flex-1">预订会议室</h1>
+          <h1 className="text-lg font-semibold text-cf-title flex-1">预订会议室</h1>
         </div>
 
         {/* Form */}
         <div className="p-4 space-y-4">
           {/* 会议室信息 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <h3 className="font-semibold text-slate-900 mb-2">{selectedRoom.name}</h3>
-            <div className="space-y-2 text-sm text-slate-600">
+            <h3 className="font-semibold text-cf-title mb-2">{selectedRoom.name}</h3>
+            <div className="space-y-2 text-sm text-cf-muted">
               <div className="flex items-center gap-2">
                 <MapPin size={14} />
                 <span>{selectedRoom.location}</span>
@@ -254,7 +254,7 @@ export const MobileMeetingRoom: React.FC = () => {
 
           {/* 日期选择 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-cf-body mb-2">
               <Calendar size={16} className="inline mr-1" />
               预订日期
             </label>
@@ -269,13 +269,13 @@ export const MobileMeetingRoom: React.FC = () => {
 
           {/* 时间选择 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-cf-body mb-2">
               <Clock size={16} className="inline mr-1" />
               使用时间
             </label>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">开始时间</label>
+                <label className="text-xs text-cf-subtle mb-1 block">开始时间</label>
                 <DatePicker
                   type="time"
                   value={bookingForm.startTime}
@@ -284,7 +284,7 @@ export const MobileMeetingRoom: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">结束时间</label>
+                <label className="text-xs text-cf-subtle mb-1 block">结束时间</label>
                 <DatePicker
                   type="time"
                   value={bookingForm.endTime}
@@ -297,7 +297,7 @@ export const MobileMeetingRoom: React.FC = () => {
 
           {/* 会议主题 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-cf-body mb-2">
               会议主题 <span className="text-red-500">*</span>
             </label>
             <input
@@ -311,7 +311,7 @@ export const MobileMeetingRoom: React.FC = () => {
 
           {/* 参会人数 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-cf-body mb-2">
               <Users size={16} className="inline mr-1" />
               参会人数
             </label>
@@ -323,7 +323,7 @@ export const MobileMeetingRoom: React.FC = () => {
               max={selectedRoom.capacity}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5]"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-cf-subtle mt-1">
               该会议室最多容纳 {selectedRoom.capacity} 人
             </p>
           </div>
@@ -381,15 +381,15 @@ export const MobileMeetingRoom: React.FC = () => {
           className="p-1 -ml-1"
           aria-label="返回"
         >
-          <ChevronLeft size={24} className="text-slate-600" />
+          <ChevronLeft size={24} className="text-cf-muted" />
         </button>
-        <h1 className="text-lg font-semibold text-slate-900 flex-1">会议室预订</h1>
+        <h1 className="text-lg font-semibold text-cf-title flex-1">会议室预订</h1>
       </div>
 
       {/* Search */}
       <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3">
         <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
           <input
             type="text"
             value={searchQuery}
@@ -417,8 +417,8 @@ export const MobileMeetingRoom: React.FC = () => {
             >
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h3 className="font-semibold text-slate-900">{room.name}</h3>
-                  <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
+                  <h3 className="font-semibold text-cf-title">{room.name}</h3>
+                  <div className="flex items-center gap-1 text-sm text-cf-subtle mt-1">
                     <MapPin size={14} />
                     <span>{room.location}</span>
                   </div>
@@ -430,7 +430,7 @@ export const MobileMeetingRoom: React.FC = () => {
                 </span>
               </div>
 
-              <div className="flex items-center gap-4 text-sm text-slate-600 mb-2">
+              <div className="flex items-center gap-4 text-sm text-cf-muted mb-2">
                 <div className="flex items-center gap-1">
                   <Users size={14} />
                   <span>{room.capacity}人</span>
@@ -441,7 +441,7 @@ export const MobileMeetingRoom: React.FC = () => {
                 {room.facilities.map(facility => (
                   <span
                     key={facility}
-                    className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded"
+                    className="text-xs bg-cf-surface-3 text-cf-muted px-2 py-0.5 rounded"
                   >
                     {facility}
                   </span>
@@ -452,7 +452,7 @@ export const MobileMeetingRoom: React.FC = () => {
         ) : (
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-12 text-center">
             <MapPin size={48} className="text-slate-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">未找到符合条件的会议室</p>
+            <p className="text-sm text-cf-subtle">未找到符合条件的会议室</p>
           </div>
         )}
       </div>

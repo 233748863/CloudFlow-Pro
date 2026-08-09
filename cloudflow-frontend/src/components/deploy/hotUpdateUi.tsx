@@ -33,7 +33,7 @@ export const HOT_UPDATE_MODE_OPTIONS: Array<{
     icon: <ShieldCheck size={18} />,
     accentClassName: 'text-emerald-600 dark:text-emerald-300',
     cardClassName:
-      'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-800 data-[active=true]:border-emerald-500 data-[active=true]:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:data-[active=true]:border-emerald-600 dark:data-[active=true]:bg-emerald-950/20',
+      'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-title data-[active=true]:border-emerald-500 data-[active=true]:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:data-[active=true]:border-emerald-600 dark:data-[active=true]:bg-emerald-950/20',
   },
   {
     value: 'FORCE',
@@ -44,7 +44,7 @@ export const HOT_UPDATE_MODE_OPTIONS: Array<{
     icon: <Zap size={18} />,
     accentClassName: 'text-amber-600 dark:text-amber-300',
     cardClassName:
-      'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-800 data-[active=true]:border-amber-500 data-[active=true]:bg-amber-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:data-[active=true]:border-amber-600 dark:data-[active=true]:bg-amber-950/20',
+      'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-title data-[active=true]:border-amber-500 data-[active=true]:bg-amber-50 dark:border-slate-800 dark:bg-slate-950 dark:data-[active=true]:border-amber-600 dark:data-[active=true]:bg-amber-950/20',
   },
   {
     value: 'RESTART',
@@ -55,7 +55,7 @@ export const HOT_UPDATE_MODE_OPTIONS: Array<{
     icon: <Siren size={18} />,
     accentClassName: 'text-rose-600 dark:text-rose-300',
     cardClassName:
-      'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-800 data-[active=true]:border-rose-500 data-[active=true]:bg-rose-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:data-[active=true]:border-rose-600 dark:data-[active=true]:bg-rose-950/20',
+      'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-title data-[active=true]:border-rose-500 data-[active=true]:bg-rose-50 dark:border-slate-800 dark:bg-slate-950 dark:data-[active=true]:border-rose-600 dark:data-[active=true]:bg-rose-950/20',
   },
 ];
 
@@ -77,7 +77,7 @@ export const getHotUpdateStatusMeta = (status: HotUpdateStatus) => {
         label: '已跳过',
         icon: <Clock3 size={14} />,
         className:
-          'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+          'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900',
       };
     case 'FAILED':
       return {
@@ -98,7 +98,7 @@ export const getHotUpdateStatusMeta = (status: HotUpdateStatus) => {
         label: '未知状态',
         icon: <Clock3 size={14} />,
         className:
-          'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+          'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900',
       };
   }
 };

@@ -67,11 +67,11 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
         </Button>
       )}
     >
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 pb-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 pb-3 text-xs text-cf-subtle dark:border-slate-800">
+        <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-xs text-cf-muted dark:border-slate-800 dark:bg-slate-950">
           <span className="font-medium">已启用项目</span>
-          <span className="font-semibold text-slate-900 dark:text-slate-100">{enabledSalaryItems.length}</span>
-          <span className="text-slate-400 dark:text-slate-500">/ 总数 {salaryItems.length}</span>
+          <span className="font-semibold text-cf-title">{enabledSalaryItems.length}</span>
+          <span className="text-cf-faint">/ 总数 {salaryItems.length}</span>
         </div>
         <span>命中现薪联动 {linkedSalaryItems.length}</span>
         <span>孤立项目 {orphanSalaryItems.length}</span>
@@ -96,10 +96,10 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
               return (
                 <tr key={item.id}>
                   <td className="min-w-[160px]">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.itemName}</div>
+                    <div className="font-medium text-cf-title">{item.itemName}</div>
                     {item.formula && String(item.formula).trim() && (
                       <div className="mt-2">
-                        <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                        <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                           带公式
                         </span>
                       </div>
@@ -107,14 +107,14 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
                   </td>
                   <td className="min-w-[180px]">{item.itemCode}</td>
                   <td className="min-w-[140px]">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{itemTypeLabel(item.itemType) || '-'}</div>
-                    <div className="mt-1 text-xs text-slate-400">{itemCategoryLabel(item.category) || '-'}</div>
+                    <div className="font-medium text-cf-title">{itemTypeLabel(item.itemType) || '-'}</div>
+                    <div className="mt-1 text-xs text-cf-faint">{itemCategoryLabel(item.category) || '-'}</div>
                   </td>
                   <td className="min-w-[180px]">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">
+                    <div className="font-medium text-cf-title">
                       {usage?.structureIds.size || 0} 套结构 / {usage?.activeEmployeeIds.size || 0} 名员工
                     </div>
-                    <div className="mt-1 text-xs text-slate-400">
+                    <div className="mt-1 text-xs text-cf-faint">
                       {usage?.structureIds.size
                         ? [
                           usage?.activeArchiveCount ? `ACTIVE ${usage.activeArchiveCount}` : '',
@@ -124,8 +124,8 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
                     </div>
                   </td>
                   <td className="min-w-[120px]">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.isTaxable ? '参与计税' : '不参与计税'}</div>
-                    <div className="mt-1 text-xs text-slate-400">
+                    <div className="font-medium text-cf-title">{item.isTaxable ? '参与计税' : '不参与计税'}</div>
+                    <div className="mt-1 text-xs text-cf-faint">
                       {Number(item.status ?? 1) === 0 && usage?.structureIds.size
                         ? '禁用引用'
                         : usage?.structureIds.size
@@ -135,13 +135,13 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
                   </td>
                   <td className="w-[132px]">
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑" onClick={() => openItemEditDialog(item)}>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openItemEditDialog(item)}>
                         <Edit size={15} />
                       </button>
                       <button
                         type="button"
                         className="danger"
-                        title="删除"
+                        data-tooltip="删除" aria-label="删除"
                         disabled={actionLoading}
                         onClick={() => void handleDeleteItem(item)}
                       >
@@ -235,8 +235,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
         <div className="admin-dialog-subsection">
           <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">结构选择</div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">先选择薪资结构，再查看关联员工与项目。</div>
+              <div className="text-sm font-semibold text-cf-title">结构选择</div>
+              <div className="mt-1 text-xs text-cf-subtle">先选择薪资结构，再查看关联员工与项目。</div>
             </div>
             <span className="badge badge-gray">共 {salaryStructures.length} 个结构</span>
           </div>
@@ -255,8 +255,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                   )}
                   onClick={() => setSelectedStructureId(String(item.id))}
                 >
-                  <div className="truncate font-semibold text-slate-900 dark:text-slate-100">{item.structureName}</div>
-                  <div className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{item.structureCode}</div>
+                  <div className="truncate font-semibold text-cf-title">{item.structureName}</div>
+                  <div className="mt-1 truncate text-xs text-cf-faint">{item.structureCode}</div>
                   <div className={`mt-3 inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${structureStatusClass(item.status)}`}>
                     {item.statusDesc || (item.status === 1 ? '启用' : '禁用')}
                   </div>
@@ -268,7 +268,7 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
 
         <div className="min-w-0">
           {!structureDetail && !structureDetailLoading && (
-            <div className="border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-12 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/40">
+            <div className="border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-12 text-center text-sm text-cf-subtle dark:border-slate-800 dark:bg-slate-950/40">
               选择一个薪资结构查看详情。
             </div>
           )}
@@ -277,18 +277,18 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
             <div className="admin-source-content-grid">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500">结构名称</div>
-                  <div className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">{structureDetail.structureName}</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{structureDetail.structureCode}</div>
+                  <div className="text-xs text-cf-faint">结构名称</div>
+                  <div className="mt-2 text-xl font-semibold text-cf-title">{structureDetail.structureName}</div>
+                  <div className="mt-1 text-sm text-cf-subtle">{structureDetail.structureCode}</div>
                 </div>
                 <div className="admin-users-row-actions">
-                  <button type="button" title="编辑结构" onClick={() => void openStructureEditDialog(structureDetail.id)}>
+                  <button type="button" data-tooltip="编辑结构" aria-label="编辑结构" onClick={() => void openStructureEditDialog(structureDetail.id)}>
                     <Edit size={15} />
                   </button>
                   <button
                     type="button"
                     className="danger"
-                    title="删除结构"
+                    data-tooltip="删除结构" aria-label="删除结构"
                     disabled={actionLoading}
                     onClick={() => void handleDeleteStructure(structureDetail)}
                   >
@@ -329,12 +329,12 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                 <DetailRow
                   label="结构说明"
                   value={structureDetail.description || '-'}
-                  valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+                  valueClassName="max-w-[72%] text-left text-cf-muted"
                 />
                 <DetailRow
                   label="在岗员工"
                   value={structureLinkedEmployeeIds.length ? `${structureLinkedEmployeeIds.length} 名` : '-'}
-                  valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+                  valueClassName="max-w-[72%] text-left text-cf-muted"
                 />
                 <DetailRow
                   label="删除限制"
@@ -346,8 +346,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                   valueClassName={cn(
                     'max-w-[72%] text-left',
                     selectedStructureDeleteDiagnostics?.riskItems.length
-                      ? 'text-slate-600 dark:text-slate-300'
-                      : 'text-slate-600 dark:text-slate-300',
+                      ? 'text-cf-muted'
+                      : 'text-cf-muted',
                   )}
                 />
               </div>
@@ -362,8 +362,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
 
               <div className="table-scroll-container admin-inner-table-surface max-h-[360px]">
                 <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-4 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="font-semibold text-slate-900 dark:text-slate-100">关联现薪样本</div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500">
+                  <div className="font-semibold text-cf-title">关联现薪样本</div>
+                  <div className="text-xs text-cf-faint">
                     共 {structureLinkedEmployeeRows.length} 条 / {structureLinkedEmployeeIds.length} 名员工
                     {structureLinkedSalaryStats.count ? ` / 最高 ${formatCurrency(structureLinkedSalaryStats.max)}` : ''}
                   </div>
@@ -383,8 +383,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                       {structureLinkedEmployeeRows.map((item) => (
                         <tr key={item.id}>
                           <td className="min-w-[160px]">
-                            <div className="font-medium text-slate-900 dark:text-slate-100">{item.employeeName || `员工 #${item.employeeId}`}</div>
-                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.employeeNo || '-'}</div>
+                            <div className="font-medium text-cf-title">{item.employeeName || `员工 #${item.employeeId}`}</div>
+                            <div className="mt-1 text-xs text-cf-faint">{item.employeeNo || '-'}</div>
                           </td>
                           <td className="min-w-[120px]">{employeeMap.get(item.employeeId)?.deptName || '-'}</td>
                           <td className="whitespace-nowrap">{formatCurrency(item.totalSalary)}</td>
@@ -392,11 +392,11 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                             <div className="whitespace-nowrap">{toDateInputValue(item.effectiveDate) || '-'}</div>
                             <div className="mt-1 flex flex-wrap gap-2">
                               {isFutureDate(item.effectiveDate) ? (
-                                <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                                <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                                   未来生效
                                 </span>
                               ) : (
-                                <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                                <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                                   已生效
                                 </span>
                               )}
@@ -405,7 +405,7 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                           <td className="w-[112px]">
                             <div className="flex justify-end">
                               <div className="admin-users-row-actions">
-                                <button type="button" title="查看现薪" onClick={() => focusEmployeeWorkspace(item.employeeId)}>
+                                <button type="button" data-tooltip="查看现薪" aria-label="查看现薪" onClick={() => focusEmployeeWorkspace(item.employeeId)}>
                                   <Eye size={15} />
                                 </button>
                               </div>
@@ -421,8 +421,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
 
               <div className="table-scroll-container admin-inner-table-surface max-h-[320px]">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <div className="font-semibold text-slate-900 dark:text-slate-100">关联项目</div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500">{structureDetail.items?.length || 0} 个</div>
+                  <div className="font-semibold text-cf-title">关联项目</div>
+                  <div className="text-xs text-cf-faint">{structureDetail.items?.length || 0} 个</div>
                 </div>
                 <div className="admin-horizontal-scroll">
                   <table className="unity-data-table admin-source-table min-w-[680px]">
@@ -439,13 +439,13 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                       {structureDetail.items?.map((item: any) => (
                         <tr key={item.id}>
                           <td className="min-w-[180px]">
-                            <div className="font-medium text-slate-900 dark:text-slate-100">{item.itemName}</div>
-                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.itemCode}</div>
+                            <div className="font-medium text-cf-title">{item.itemName}</div>
+                            <div className="mt-1 text-xs text-cf-faint">{item.itemCode}</div>
                           </td>
                           <td className="min-w-[120px]">{itemCategoryLabel(item.category) || '-'}</td>
                           <td className="min-w-[140px]">
                             <div>{itemTypeLabel(item.itemType) || '-'}</div>
-                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                            <div className="mt-1 text-xs text-cf-faint">
                               {item.formula && String(item.formula).trim() ? '已配公式' : '手工录入'}
                             </div>
                           </td>
@@ -453,8 +453,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                             <span className={cn(
                               'inline-flex rounded-md border px-2 py-0.5 text-xs font-medium',
                               item.isTaxable
-                                ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
-                                : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+                                ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72'
+                                : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72',
                             )}>
                               {item.isTaxable ? '计税' : '不计税'}
                             </span>
@@ -463,8 +463,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                             <span className={cn(
                               'inline-flex rounded-md border px-2 py-0.5 text-xs font-medium',
                               Number(item.status ?? 1) === 1
-                                ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
-                                : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+                                ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72'
+                                : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72',
                             )}>
                               {Number(item.status ?? 1) === 1 ? '启用' : '禁用'}
                             </span>
@@ -580,7 +580,7 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
       <div className="mt-4 overflow-hidden border border-slate-200 dark:border-slate-800">
         <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">序列覆盖</div>
+            <div className="text-sm font-medium text-cf-title">序列覆盖</div>
           </div>
           {pendingGradeLevels.length > 0 ? (
             <Button variant="outline" size="sm" onClick={() => openGradeDialog(pendingGradeLevels[0].id)}>
@@ -595,8 +595,8 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
               <div key={item.series} className="px-4 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.series} 序列</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="text-sm font-medium text-cf-title">{item.series} 序列</div>
+                    <div className="mt-1 text-xs text-cf-subtle">
                       {item.configured}/{item.total} 个职级已配薪级
                     </div>
                   </div>
@@ -604,7 +604,7 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
                     {item.coverage}%
                   </div>
                 </div>
-                <div className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                <div className="mt-2 text-xs leading-5 text-cf-muted">
                   {item.missing
                     ? item.configured === 0
                       ? '未配置'
@@ -613,16 +613,16 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
                 </div>
               </div>
             )) : (
-              <div className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+              <div className="px-4 py-10 text-center text-sm text-cf-subtle">
                 无职级序列
               </div>
             )}
           </div>
 
           <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">待配置职级</div>
+            <div className="text-sm font-medium text-cf-title">待配置职级</div>
             {pendingGradeLevels.length > 0 ? (
-              <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+              <div className="mt-1 text-xs leading-6 text-cf-subtle">
                 {pendingGradeLevels.length} 个
               </div>
             ) : null}
@@ -632,14 +632,14 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
                   <button
                     key={level.id}
                     type="button"
-                    className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-xs text-slate-700 transition hover:border-slate-300 hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+                    className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1.5 text-xs text-cf-body transition hover:border-slate-300 hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 dark:hover:bg-slate-900"
                     onClick={() => openGradeDialog(level.id)}
                   >
                     {[level.levelCode, level.levelName].filter(Boolean).join(' / ')}
                   </button>
                 ))}
                 {pendingGradeLevels.length > 10 ? (
-                  <div className="rounded-md border border-transparent px-1 py-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="rounded-md border border-transparent px-1 py-1.5 text-xs text-cf-subtle">
                     +{pendingGradeLevels.length - 10}
                   </div>
                 ) : null}
@@ -672,8 +672,8 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
               return (
                 <tr key={item.id} className={rowClassName}>
                   <td>
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.levelName || '-'}</div>
-                    <div className="text-xs text-slate-400">
+                    <div className="font-medium text-cf-title">{item.levelName || '-'}</div>
+                    <div className="text-xs text-cf-faint">
                       {[item.levelCode, jobLevelMap.get(item.levelId)?.levelSeries ? `${jobLevelMap.get(item.levelId)?.levelSeries} 序列` : ''].filter(Boolean).join(' / ') || '-'}
                     </div>
                   </td>
@@ -687,25 +687,25 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
                         {rowIssues.map((issue: any) => (
                           <span
                             key={issue.key}
-                            className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                            className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72"
                           >
                             {issue.label}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-sm text-slate-400">-</span>
+                      <span className="text-sm text-cf-faint">-</span>
                     )}
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑" onClick={() => openGradeEditDialog(item)}>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openGradeEditDialog(item)}>
                         <Edit size={15} />
                       </button>
                       <button
                         type="button"
                         className="danger"
-                        title="删除"
+                        data-tooltip="删除" aria-label="删除"
                         disabled={actionLoading}
                         onClick={() => void handleDeleteGrade(item)}
                       >
@@ -880,12 +880,12 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
           value={currentEmployeeRecord
             ? currentSelectedEmployeeLabel || '当前员工'
             : '-'}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
         <DetailRow
           label="样本状态"
           value={`ACTIVE ${activeLinkedInsuranceSchemes.length} / 待补 ${unusedInsuranceSchemes.length} / 历史 ${expiredOnlyInsuranceSchemes.length}`}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
       </div>
 
@@ -935,14 +935,14 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
               return (
                 <tr key={item.id} className={rowClassName}>
                   <td>
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.schemeName}</div>
-                    <div className="text-xs text-slate-400">{item.city || '-'}</div>
+                    <div className="font-medium text-cf-title">{item.schemeName}</div>
+                    <div className="text-xs text-cf-faint">{item.city || '-'}</div>
                     {rowIssues.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {rowIssues.map((issue) => (
                           <span
                             key={`${item.id}-${issue.label}`}
-                            className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                            className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72"
                           >
                             {issue.label}
                           </span>
@@ -952,23 +952,23 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
                   </td>
                   <td>
                     <div>{formatCurrency(item.baseMin)} - {formatCurrency(item.baseMax)}</div>
-                    <div className="mt-1 text-xs text-slate-400">{item.baseRule || '-'}</div>
+                    <div className="mt-1 text-xs text-cf-faint">{item.baseRule || '-'}</div>
                   </td>
                   <td>
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{formatPercent(companyRate)}</div>
+                    <div className="font-medium text-cf-title">{formatPercent(companyRate)}</div>
                   </td>
                   <td>
-                    <div className="font-medium text-slate-900 dark:text-slate-100">{formatPercent(personalRate)}</div>
+                    <div className="font-medium text-cf-title">{formatPercent(personalRate)}</div>
                   </td>
                   <td>
                     {usage?.recordCount ? (
                       <div>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">
+                        <div className="font-medium text-cf-title">
                           {usage.activeRecordCount
                             ? `${usage.activeRecordCount} 条 ACTIVE 台账 / ${usage.activeEmployeeIds.size} 名员工`
                             : '-'}
                         </div>
-                        <div className="mt-1 text-xs text-slate-400">
+                        <div className="mt-1 text-xs text-cf-faint">
                           {[
                             usage.futureRecordCount ? `未来 ${usage.futureRecordCount}` : '',
                             usage.expiredRecordCount ? `历史 ${usage.expiredRecordCount}` : '',
@@ -976,7 +976,7 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <span className="text-sm text-slate-400">-</span>
+                      <span className="text-sm text-cf-faint">-</span>
                     )}
                   </td>
                   <td>
@@ -987,12 +987,12 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="编辑" onClick={() => openInsuranceSchemeEditDialog(item)}>
+                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openInsuranceSchemeEditDialog(item)}>
                         <Edit size={15} />
                       </button>
                       <button
                         type="button"
-                        title="分配"
+                        data-tooltip="分配" aria-label="分配"
                         disabled={quickAssignDisabled}
                         onClick={() => openInsuranceAssignDialogWithScheme(item)}
                       >

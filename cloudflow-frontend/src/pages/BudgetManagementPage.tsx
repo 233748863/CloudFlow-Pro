@@ -12,6 +12,7 @@ import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger,
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './BudgetManagementPage.css';
 
 type BudgetDialog =
   | { type: 'plan'; item?: BudgetPlan | null }
@@ -21,7 +22,7 @@ type BudgetDialog =
   | { type: 'adjustment-detail'; item: BudgetAdjustment }
   | null;
 
-const fieldLabelClassName = 'text-xs font-medium text-slate-500 dark:text-slate-400';
+const fieldLabelClassName = 'text-xs font-medium text-cf-subtle';
 
 const emptyPlanLine: BudgetLine = {
   subjectCode: '',
@@ -390,24 +391,24 @@ export default function BudgetManagementPage() {
                 <tr key={item.budgetId}>
                   <td>
                     <strong>{item.budgetName}</strong>
-                    <div className="text-xs text-slate-500">{item.budgetNo || '-'} / {targetTypeDict.getLabel(item.targetType || 'DEPT') || '-'}</div>
-                    <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || '-'}</div>
+                    <div className="text-xs text-cf-subtle">{item.budgetNo || '-'} / {targetTypeDict.getLabel(item.targetType || 'DEPT') || '-'}</div>
+                    <div className="mt-1 text-xs text-cf-faint">{budgetStatusDict.getLabel(item.status || 'DRAFT') || '-'}</div>
                   </td>
                   <td>
                     <div>{formatMoney(item.totalAmount)}</div>
-                    <div className="text-xs text-slate-500">占用 {formatMoney(item.reservedAmount)} / 实际 {formatMoney(item.actualAmount)}</div>
-                    <div className="mt-1 text-xs text-slate-400">可用 {formatMoney(item.availableAmount)}</div>
+                    <div className="text-xs text-cf-subtle">占用 {formatMoney(item.reservedAmount)} / 实际 {formatMoney(item.actualAmount)}</div>
+                    <div className="mt-1 text-xs text-cf-faint">可用 {formatMoney(item.availableAmount)}</div>
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="详情" aria-label="详情" onClick={() => void openDialog({ type: 'plan-detail', item })}><Eye size={15} /></button>
-                      {(item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:budget:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'plan', item })}><Edit size={15} /></button> : null}
-                      {(item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:budget:submit') ? <button type="button" title="提交" aria-label="提交" onClick={() => setConfirm({ type: 'plan-submit', item })}><Send size={15} /></button> : null}
+                      <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDialog({ type: 'plan-detail', item })}><Eye size={15} /></button>
+                      {(item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:budget:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'plan', item })}><Edit size={15} /></button> : null}
+                      {(item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:budget:submit') ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => setConfirm({ type: 'plan-submit', item })}><Send size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
               ))}
-              {!plans.length ? <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-slate-500">暂无预算主表</td></tr> : null}
+              {!plans.length ? <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-cf-subtle">暂无预算主表</td></tr> : null}
             </tbody>
           </table>
       </BudgetSurface>
@@ -420,20 +421,20 @@ export default function BudgetManagementPage() {
                 <tr key={item.subjectId}>
                   <td>
                     <strong>{item.subjectName}</strong>
-                    <div className="text-xs text-slate-500">{item.subjectCode}</div>
+                    <div className="text-xs text-cf-subtle">{item.subjectCode}</div>
                   </td>
                   <td>
                     <div>{item.subjectType || '-'}</div>
-                    <div className="text-xs text-slate-500">{item.enabled === 1 ? '启用' : '停用'}</div>
+                    <div className="text-xs text-cf-subtle">{item.enabled === 1 ? '启用' : '停用'}</div>
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
-                      {hasPermission('oa:budget:subject') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'subject', item })}><Edit size={15} /></button> : null}
+                      {hasPermission('oa:budget:subject') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'subject', item })}><Edit size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
               ))}
-              {!subjects.length ? <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-slate-500">暂无预算科目</td></tr> : null}
+              {!subjects.length ? <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-cf-subtle">暂无预算科目</td></tr> : null}
             </tbody>
           </table>
       </BudgetSurface>
@@ -446,19 +447,19 @@ export default function BudgetManagementPage() {
                 <tr key={item.adjustmentId}>
                   <td>
                     <strong>{item.adjustmentNo}</strong>
-                    <div className="text-xs text-slate-500">{item.subjectName || item.subjectCode || '-'}</div>
-                    <div className="mt-1 text-xs text-slate-400">{budgetStatusDict.getLabel(item.status || 'DRAFT') || '-'}</div>
+                    <div className="text-xs text-cf-subtle">{item.subjectName || item.subjectCode || '-'}</div>
+                    <div className="mt-1 text-xs text-cf-faint">{budgetStatusDict.getLabel(item.status || 'DRAFT') || '-'}</div>
                   </td>
                   <td>{formatMoney(item.changeAmount)}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="详情" aria-label="详情" onClick={() => void openDialog({ type: 'adjustment-detail', item })}><Eye size={15} /></button>
-                      {(item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:budget:adjustment') ? <button type="button" title="提交" aria-label="提交" onClick={() => setConfirm({ type: 'adjustment-submit', item })}><Send size={15} /></button> : null}
+                      <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDialog({ type: 'adjustment-detail', item })}><Eye size={15} /></button>
+                      {(item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:budget:adjustment') ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => setConfirm({ type: 'adjustment-submit', item })}><Send size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
               ))}
-              {!adjustments.length ? <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-slate-500">暂无预算调整</td></tr> : null}
+              {!adjustments.length ? <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-cf-subtle">暂无预算调整</td></tr> : null}
             </tbody>
           </table>
       </BudgetSurface>
@@ -498,7 +499,7 @@ export default function BudgetManagementPage() {
                   <div><span>负责人</span><strong>{planDetail.ownerName || '-'}</strong></div>
                   <div><span>可用余额</span><strong>{formatMoney(planSummary.availableAmount)}</strong></div>
                 </div>
-                <div className="mt-3 text-xs text-slate-500">
+                <div className="mt-3 text-xs text-cf-subtle">
                   阈值 = 预警 {formatPercent(planSummary.warningThreshold)} / 告警 {formatPercent(planSummary.alertThreshold)} / 拦截 {formatPercent(planSummary.blockThreshold)}
                 </div>
               </BudgetPanel>
@@ -508,7 +509,7 @@ export default function BudgetManagementPage() {
                   {(planDetail.lines || []).map((line, index) => (
                     <div key={`${line.lineId || line.subjectCode || 'line'}-${index}`} className="admin-budget-line-row">
                       <div>{line.subjectCode || '-'} / {line.subjectName || '-'}</div>
-                      <div className="text-xs text-slate-500">预算 {formatMoney(line.amount)} / 占用 {formatMoney(line.reservedAmount)} / 实际 {formatMoney(line.actualAmount)} / 可用 {formatMoney(line.availableAmount)}</div>
+                      <div className="text-xs text-cf-subtle">预算 {formatMoney(line.amount)} / 占用 {formatMoney(line.reservedAmount)} / 实际 {formatMoney(line.actualAmount)} / 可用 {formatMoney(line.availableAmount)}</div>
                     </div>
                   ))}
                 </div>
@@ -532,7 +533,7 @@ export default function BudgetManagementPage() {
                       <tr key={item.ledgerId}>
                         <td>
                           <div>{item.businessType || '-'}</div>
-                          <div className="text-xs text-slate-500">{item.businessNo || item.businessId || '-'}</div>
+                          <div className="text-xs text-cf-subtle">{item.businessNo || item.businessId || '-'}</div>
                         </td>
                         <td>{item.subjectName || item.subjectCode || '-'}</td>
                         <td>{operationTypeDict.getLabel(item.operationType || '') || '-'}</td>
@@ -541,7 +542,7 @@ export default function BudgetManagementPage() {
                         <td>{item.remark || '-'}</td>
                       </tr>
                     )) : (
-                      <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">暂无执行台账，当前预算还没有被业务单据占用或核销。</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-cf-subtle">暂无执行台账，当前预算还没有被业务单据占用或核销。</td></tr>
                     )}
                   </tbody>
                 </table>

@@ -49,6 +49,7 @@ import {
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './PurchaseRequestPage.css';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'payment';
@@ -103,7 +104,7 @@ const InlineState: React.FC<{ title: string; icon?: React.ReactNode; className?:
       <div className="admin-source-stat-icon mb-3">
         {icon || <ShoppingCart className="h-4 w-4" />}
       </div>
-      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+      <div className="text-sm font-medium text-cf-title">{title}</div>
     </div>
   </div>
 );
@@ -138,8 +139,8 @@ const DetailRows: React.FC<{ children: React.ReactNode; className?: string }> = 
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="admin-purchase-detail-item">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value || '-'}</div>
   </div>
 );
 
@@ -532,38 +533,38 @@ export const PurchaseRequestPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">正在加载采购申请...</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-cf-subtle">正在加载采购申请...</td></tr>
                   ) : purchases.length === 0 ? (
-                    <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">暂无采购申请</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-cf-subtle">暂无采购申请</td></tr>
                   ) : purchases.map((item) => (
                     <tr key={item.id}>
                       <td>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.purchaseNo || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(item.createTime)}</div>
+                        <div className="font-medium text-cf-title">{item.purchaseNo || '-'}</div>
+                        <div className="mt-1 text-xs text-cf-faint">{formatDateTimeDisplay(item.createTime)}</div>
                       </td>
                       <td>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.supplierName || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{item.supplierContact || item.supplierPhone || '-'}</div>
+                        <div className="font-medium text-cf-title">{item.supplierName || '-'}</div>
+                        <div className="mt-1 text-xs text-cf-faint">{item.supplierContact || item.supplierPhone || '-'}</div>
                       </td>
                       <td>
                         <div>{item.userName || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{item.deptName || '-'}</div>
+                        <div className="mt-1 text-xs text-cf-faint">{item.deptName || '-'}</div>
                       </td>
                       <td>
                         <div>{formatAmount(item.totalAmount)}</div>
-                        <div className="mt-1 text-xs text-slate-400">{item.expectedDate || '-'}</div>
+                        <div className="mt-1 text-xs text-cf-faint">{item.expectedDate || '-'}</div>
                       </td>
                       <td><div className="max-w-xs truncate">{item.reason || '-'}</div></td>
                       <td>{getStatusBadge(item.status)}</td>
                       <td>{getPaymentStatusBadge(item.paymentStatus)}</td>
                       <td>
                         <div className="admin-users-row-actions">
-                          <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item)}><Eye size={15} /></button>
-                          {item.status === 'DRAFT' ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
-                          {item.status === 'DRAFT' ? <button type="button" title="提交" aria-label="提交" onClick={() => setConfirmState({ type: 'submit', id: item.id!, title: '提交采购申请', message: '提交后将进入采购审批流程。', confirmText: '提交' })}><Send size={15} /></button> : null}
-                          {canProcess(item.status) ? <button type="button" title="入库" aria-label="入库" onClick={() => void openReceipt(item)}><PackageCheck size={15} /></button> : null}
-                          {canProcess(item.status) && !item.paymentRequestId ? <button type="button" title="付款" aria-label="付款" onClick={() => setConfirmState({ type: 'payment', id: item.id!, title: '生成付款申请', message: '将基于当前采购单创建付款申请草稿。', confirmText: '生成' })}><CreditCard size={15} /></button> : null}
-                          {item.status === 'DRAFT' ? <button type="button" title="删除" aria-label="删除" onClick={() => setConfirmState({ type: 'delete', id: item.id!, title: '删除采购申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true })}><Trash2 size={15} /></button> : null}
+                          <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void handleView(item)}><Eye size={15} /></button>
+                          {item.status === 'DRAFT' ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                          {item.status === 'DRAFT' ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => setConfirmState({ type: 'submit', id: item.id!, title: '提交采购申请', message: '提交后将进入采购审批流程。', confirmText: '提交' })}><Send size={15} /></button> : null}
+                          {canProcess(item.status) ? <button type="button" data-tooltip="入库" aria-label="入库" onClick={() => void openReceipt(item)}><PackageCheck size={15} /></button> : null}
+                          {canProcess(item.status) && !item.paymentRequestId ? <button type="button" data-tooltip="付款" aria-label="付款" onClick={() => setConfirmState({ type: 'payment', id: item.id!, title: '生成付款申请', message: '将基于当前采购单创建付款申请草稿。', confirmText: '生成' })}><CreditCard size={15} /></button> : null}
+                          {item.status === 'DRAFT' ? <button type="button" data-tooltip="删除" aria-label="删除" onClick={() => setConfirmState({ type: 'delete', id: item.id!, title: '删除采购申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true })}><Trash2 size={15} /></button> : null}
                         </div>
                       </td>
                     </tr>
@@ -744,7 +745,7 @@ export const PurchaseRequestPage: React.FC = () => {
               <article key={`${index}-${item.id || 'draft'}`} className="admin-purchase-item-card">
                 <div className="admin-purchase-item-grid">
                     <div className="admin-dialog-field">
-                      <Label className="text-xs text-slate-500">耗材</Label>
+                      <Label className="text-xs text-cf-subtle">耗材</Label>
                       <Select value={item.consumableId ? String(item.consumableId) : ''} onValueChange={(value) => updateItem(index, 'consumableId', Number(value))}>
                         <SelectTrigger className="h-10"><SelectValue placeholder="请选择耗材" /></SelectTrigger>
                         <SelectContent>
@@ -757,7 +758,7 @@ export const PurchaseRequestPage: React.FC = () => {
                       </Select>
                     </div>
                     <div className="admin-dialog-field">
-                      <Label className="text-xs text-slate-500">预算科目</Label>
+                      <Label className="text-xs text-cf-subtle">预算科目</Label>
                       <Select value={item.budgetSubjectCode || 'NONE'} onValueChange={(value) => {
                         const subject = budgetSubjectOptions.find((option) => option.subjectCode === value);
                         const next = [...(formData.items || [])];
@@ -780,15 +781,15 @@ export const PurchaseRequestPage: React.FC = () => {
                       </Select>
                     </div>
                     <div className="admin-dialog-field">
-                      <Label className="text-xs text-slate-500">数量</Label>
+                      <Label className="text-xs text-cf-subtle">数量</Label>
                       <Input className="h-10" type="number" min="1" value={item.quantity || ''} onChange={(event) => updateItem(index, 'quantity', parseInt(event.target.value, 10) || 0)} />
                     </div>
                     <div className="admin-dialog-field">
-                      <Label className="text-xs text-slate-500">单价</Label>
+                      <Label className="text-xs text-cf-subtle">单价</Label>
                       <Input className="h-10" type="number" min="0" step="0.01" value={item.unitPrice || ''} onChange={(event) => updateItem(index, 'unitPrice', parseFloat(event.target.value) || 0)} />
                     </div>
                     <div className="admin-dialog-field">
-                      <Label className="text-xs text-slate-500">金额</Label>
+                      <Label className="text-xs text-cf-subtle">金额</Label>
                       <Input className="h-10" value={formatAmount(Number(item.quantity || 0) * Number(item.unitPrice || 0))} disabled />
                     </div>
                     <div className="admin-purchase-item-actions">
@@ -805,7 +806,7 @@ export const PurchaseRequestPage: React.FC = () => {
                       </Button>
                     </div>
                 </div>
-                <div className="mt-2 text-xs text-slate-500">
+                <div className="mt-2 text-xs text-cf-subtle">
                   {item.consumableName || '-'} {item.model ? ` / ${item.model}` : ''} {item.unit ? ` / ${item.unit}` : ''}
                 </div>
               </article>
@@ -814,7 +815,7 @@ export const PurchaseRequestPage: React.FC = () => {
 
           <DialogPanel title="附件">
             <div className="admin-dialog-field">
-              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">附件文件</Label>
+              <Label className="text-xs font-medium text-cf-subtle">附件文件</Label>
               <FileUpload
                 value={formData.attachmentUrl || ''}
                 onChange={(urls) => setFormData((prev) => ({ ...prev, attachmentUrl: urls }))}
@@ -856,7 +857,7 @@ export const PurchaseRequestPage: React.FC = () => {
               <DetailRow label="更新时间" value={formatDateTimeDisplay(detailPurchase.updateTime)} />
             </DetailRows>
             <PurchasePanel title="采购事由">
-              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{detailPurchase.reason || '-'}</div>
+              <div className="whitespace-pre-wrap text-sm leading-6 text-cf-muted">{detailPurchase.reason || '-'}</div>
             </PurchasePanel>
             <PurchasePanel title="采购明细">
               {detailPurchase.items?.length ? (
@@ -864,11 +865,11 @@ export const PurchaseRequestPage: React.FC = () => {
                   <table className="unity-data-table admin-source-table min-w-[760px]">
                     <thead>
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">耗材</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">数量</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">单价</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">金额</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">已入库</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-cf-subtle">耗材</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-cf-subtle">数量</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-cf-subtle">单价</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-cf-subtle">金额</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-cf-subtle">已入库</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -920,10 +921,10 @@ export const PurchaseRequestPage: React.FC = () => {
                 <table className="unity-data-table admin-source-table min-w-[720px]">
                   <thead>
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">耗材</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">申请数量</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">已入库</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">本次入库</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-cf-subtle">耗材</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-cf-subtle">申请数量</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-cf-subtle">已入库</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-cf-subtle">本次入库</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -931,9 +932,9 @@ export const PurchaseRequestPage: React.FC = () => {
                       const remain = getReceivableQuantity(item);
                       return (
                         <tr key={item.id}>
-                          <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">{item.consumableName || '-'}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{item.quantity} {item.unit || ''}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{item.receivedQuantity || 0}</td>
+                          <td className="px-4 py-3 text-sm text-cf-title">{item.consumableName || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-cf-muted">{item.quantity} {item.unit || ''}</td>
+                          <td className="px-4 py-3 text-sm text-cf-muted">{item.receivedQuantity || 0}</td>
                           <td className="px-4 py-3">
                             <Input
                               className="h-10 max-w-[160px]"
@@ -947,7 +948,7 @@ export const PurchaseRequestPage: React.FC = () => {
                                 [item.id!]: Math.min(remain, parseInt(event.target.value, 10) || 0),
                               }))}
                             />
-                            <div className="mt-1 text-xs text-slate-400">
+                            <div className="mt-1 text-xs text-cf-faint">
                               {remain > 0 ? `剩余可入库 ${remain}${item.unit || ''}` : '已全部入库'}
                             </div>
                           </td>
@@ -960,7 +961,7 @@ export const PurchaseRequestPage: React.FC = () => {
           </PurchasePanel>
           <DialogPanel title="入库备注">
             <div className="admin-dialog-field">
-              <Label className="text-xs font-medium text-slate-500 dark:text-slate-400">备注内容</Label>
+              <Label className="text-xs font-medium text-cf-subtle">备注内容</Label>
               <Textarea className="min-h-[90px] resize-none" value={receiptRemark} onChange={(event) => setReceiptRemark(event.target.value)} />
             </div>
           </DialogPanel>

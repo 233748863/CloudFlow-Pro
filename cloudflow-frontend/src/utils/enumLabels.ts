@@ -255,7 +255,7 @@ export interface StatusMeta {
 
 const STATUS_META_FALLBACK: StatusMeta = {
   label: '-',
-  tone: 'bg-slate-50 text-slate-600',
+  tone: 'bg-cf-surface-2 text-cf-muted',
 };
 
 const buildStatusMeta = (
@@ -286,8 +286,8 @@ export const getInvoiceDirectionLabel = (dir?: string | null): string =>
 export const CERTIFICATE_STATUS_META: Record<string, StatusMeta> = {
   DRAFT: {
     label: '草稿',
-    tone: 'bg-slate-50 text-slate-600',
-    fullClass: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+    tone: 'bg-cf-surface-2 text-cf-muted',
+    fullClass: 'border-slate-200 bg-cf-surface-2 text-cf-body dark:border-slate-800',
     colorName: 'slate',
   },
   PENDING: {
@@ -322,8 +322,8 @@ export const CERTIFICATE_STATUS_META: Record<string, StatusMeta> = {
   },
   CANCELLED: {
     label: '已取消',
-    tone: 'bg-slate-100 text-slate-500',
-    fullClass: 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
+    tone: 'bg-cf-surface-3 text-cf-subtle',
+    fullClass: 'border-slate-200 bg-cf-surface-3 text-cf-muted dark:border-slate-800',
     colorName: 'slate',
   },
 };

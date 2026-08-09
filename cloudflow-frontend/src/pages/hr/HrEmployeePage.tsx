@@ -78,7 +78,7 @@ const InlineState = ({
     <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       <Users className="h-4 w-4" />
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
   </div>
 );
 
@@ -450,12 +450,12 @@ export const HrEmployeePage: React.FC = () => {
               <div className="flex min-h-0 min-w-0 flex-col">
                 <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="text-sm font-semibold text-cf-title">员工列表</div>
+                    <div className="mt-1 text-xs text-cf-subtle">
                       共 {summary.total} 人，当前页 {summary.pageCount} 人
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-cf-subtle">
                     <span>试用 {summary.probationCount}</span>
                     <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-800" />
                     <span>正式 {summary.regularCount}</span>
@@ -489,22 +489,22 @@ export const HrEmployeePage: React.FC = () => {
         
                             return (
                               <tr key={item.id}>
-                                <td className="font-medium text-slate-900 dark:text-slate-100">
+                                <td className="font-medium text-cf-title">
                                   {item.employeeNo}
                                 </td>
                                 <td>
-                                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                  <div className="text-sm font-medium text-cf-title">
                                     {item.name}
                                   </div>
-                                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                  <div className="mt-1 text-xs text-cf-subtle">
                                     {employeeMeta}
                                   </div>
                                 </td>
                                 <td>
-                                  <div className="text-sm text-slate-900 dark:text-slate-100">
+                                  <div className="text-sm text-cf-title">
                                     {organizationMeta}
                                   </div>
-                                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                  <div className="mt-1 text-xs text-cf-subtle">
                                     {positionMeta}
                                   </div>
                                 </td>
@@ -526,10 +526,10 @@ export const HrEmployeePage: React.FC = () => {
                                 <td>
                                   <div onClick={(event) => event.stopPropagation()}>
                                     <div className="admin-users-row-actions">
-                                      <button type="button" title="详情" onClick={() => void handleViewDetail(item.id)}>
+                                      <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void handleViewDetail(item.id)}>
                                         <Eye size={15} />
                                       </button>
-                                      <button type="button" title="编辑" onClick={() => void handleEdit(item.id)}>
+                                      <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id)}>
                                         <Pencil size={15} />
                                       </button>
                                     </div>
@@ -591,7 +591,7 @@ export const HrEmployeePage: React.FC = () => {
           {!editingId ? (
             <DialogSection title="创建方式">
               <div className="admin-dialog-field max-w-md">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工档案生成方式</Label>
+                <Label className="text-sm font-semibold text-cf-body">员工档案生成方式</Label>
                 <Select
                   value={creationMode}
                   onValueChange={(value) => setCreationMode(normalizeCreateMode(value))}
@@ -604,7 +604,7 @@ export const HrEmployeePage: React.FC = () => {
                     <SelectItem value="WORKFLOW">审批通过后创建</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+                <span className="text-xs leading-5 text-cf-subtle">
                   {creationMode === 'WORKFLOW'
                     ? '提交后进入入职审批，审批通过前不会生成员工档案。'
                     : '保存后立即生成员工档案。'}
@@ -615,7 +615,7 @@ export const HrEmployeePage: React.FC = () => {
           <DialogSection title="基础信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">工号</Label>
+                <Label className="text-sm font-semibold text-cf-body">工号</Label>
                 <Input
                   value={form.employeeNo}
                   disabled={Boolean(editingId)}
@@ -626,7 +626,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">姓名</Label>
+                <Label className="text-sm font-semibold text-cf-body">姓名</Label>
                 <Input
                   value={form.name}
                   onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
@@ -634,7 +634,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">性别</Label>
+                <Label className="text-sm font-semibold text-cf-body">性别</Label>
                 <Select
                   value={form.gender}
                   onValueChange={(value) => setForm((prev) => ({ ...prev, gender: value }))}
@@ -649,7 +649,7 @@ export const HrEmployeePage: React.FC = () => {
                 </Select>
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工状态</Label>
+                <Label className="text-sm font-semibold text-cf-body">员工状态</Label>
                 <DictSelect
                   dictType="employee_status"
                   value={form.employeeStatus}
@@ -660,7 +660,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工类型</Label>
+                <Label className="text-sm font-semibold text-cf-body">员工类型</Label>
                 <DictSelect
                   dictType="employee_type"
                   value={form.employeeType}
@@ -671,7 +671,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">出生日期</Label>
+                <Label className="text-sm font-semibold text-cf-body">出生日期</Label>
                 <DatePicker
                   type="date"
                   value={form.birthDate || ''}
@@ -686,7 +686,7 @@ export const HrEmployeePage: React.FC = () => {
           <DialogSection title="联系方式与时间">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">手机号</Label>
+                <Label className="text-sm font-semibold text-cf-body">手机号</Label>
                 <Input
                   value={form.phone || ''}
                   onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
@@ -694,7 +694,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">邮箱</Label>
+                <Label className="text-sm font-semibold text-cf-body">邮箱</Label>
                 <Input
                   value={form.email || ''}
                   onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
@@ -702,7 +702,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">入职日期</Label>
+                <Label className="text-sm font-semibold text-cf-body">入职日期</Label>
                 <DatePicker
                   type="date"
                   value={form.hireDate || ''}
@@ -712,7 +712,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">转正日期</Label>
+                <Label className="text-sm font-semibold text-cf-body">转正日期</Label>
                 <DatePicker
                   type="date"
                   value={form.regularDate || ''}
@@ -722,7 +722,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">离职日期</Label>
+                <Label className="text-sm font-semibold text-cf-body">离职日期</Label>
                 <DatePicker
                   type="date"
                   value={form.resignDate || ''}
@@ -737,7 +737,7 @@ export const HrEmployeePage: React.FC = () => {
           <DialogSection title="组织与岗位">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">部门</Label>
+                <Label className="text-sm font-semibold text-cf-body">部门</Label>
                 <DeptSelector
                   single
                   allowClear
@@ -747,7 +747,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">岗位</Label>
+                <Label className="text-sm font-semibold text-cf-body">岗位</Label>
                 <PostSelector
                   single
                   allowClear
@@ -757,7 +757,7 @@ export const HrEmployeePage: React.FC = () => {
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
+                <Label className="text-sm font-semibold text-cf-body">职位</Label>
                 <PositionSelector
                   single
                   allowClear

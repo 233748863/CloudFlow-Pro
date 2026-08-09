@@ -11,8 +11,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/common';
+import './UserDashboardCharts.css';
+import '../../../styles/features/dashboard-chart.css';
 
-type DashboardTone = 'cyan' | 'emerald' | 'amber' | 'slate';
+/**
+ * 图表分类色槽。取值是 index.css 里 `--cf-chart-1..8` 的槽位号，
+ * 不是颜色名 —— 那套色板亮暗两套取值不同（槽 2 亮色是橙、槽 3 是紫），
+ * 继续叫 'emerald' / 'amber' 会变成误导。
+ *
+ * 槽位**按固定顺序分配、不循环**：第 9 个系列不是再生成一个色，
+ * 而是并进「其它」或改用分面。
+ */
+export type ChartSlot = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 type TrendSeriesKey = keyof Pick<
   UserDashboardTrendPoint,
   'tasks' | 'applications' | 'announcements' | 'schedules'
@@ -22,7 +32,7 @@ export interface UserDashboardDistributionItem {
   label: string;
   count: number;
   description: string;
-  tone: DashboardTone;
+  slot: ChartSlot;
 }
 
 export interface UserDashboardTrendPoint {
@@ -47,45 +57,21 @@ interface UserDashboardChartsProps {
   onRefresh: () => void;
 }
 
-const toneStyles: Record<
-  DashboardTone,
-  { solid: string; soft: string; text: string; stroke: string; fill: string }
-> = {
-  cyan: {
-    solid: '#0d95b5',
-    soft: 'bg-[#d8f3fa] dark:bg-cyan-950/30',
-    text: 'text-[#0b7894] dark:text-cyan-200',
-    stroke: '#0d95b5',
-    fill: 'rgba(13, 149, 181, 0.12)',
-  },
-  emerald: {
-    solid: '#10b981',
-    soft: 'bg-emerald-100 dark:bg-emerald-950/30',
-    text: 'text-emerald-700 dark:text-emerald-200',
-    stroke: '#10b981',
-    fill: 'rgba(16, 185, 129, 0.12)',
-  },
-  amber: {
-    solid: '#f59e0b',
-    soft: 'bg-amber-100 dark:bg-amber-950/30',
-    text: 'text-amber-700 dark:text-amber-200',
-    stroke: '#f59e0b',
-    fill: 'rgba(245, 158, 11, 0.12)',
-  },
-  slate: {
-    solid: '#64748b',
-    soft: 'bg-slate-200 dark:bg-slate-800',
-    text: 'text-slate-700 dark:text-slate-200',
-    stroke: '#64748b',
-    fill: 'rgba(100, 116, 139, 0.12)',
-  },
-};
+/** 槽位 → 描边/实心色。走 CSS 变量，亮暗切换由 index.css 负责，这里不判断主题。 */
+function slotColor(slot: ChartSlot): string {
+  return `var(--cf-chart-${slot})`;
+}
 
-const seriesMeta: Array<{ key: TrendSeriesKey; label: string; tone: DashboardTone }> = [
-  { key: 'tasks', label: '待办审批', tone: 'cyan' },
-  { key: 'applications', label: '我的申请', tone: 'emerald' },
-  { key: 'announcements', label: '公告提醒', tone: 'amber' },
-  { key: 'schedules', label: '日程安排', tone: 'slate' },
+/** 槽位 → 面积填充色（同色 12% 不透明度，与改造前的 rgba(...,0.12) 等价）。 */
+function slotFill(slot: ChartSlot): string {
+  return `color-mix(in srgb, var(--cf-chart-${slot}), transparent 88%)`;
+}
+
+const seriesMeta: Array<{ key: TrendSeriesKey; label: string; slot: ChartSlot }> = [
+  { key: 'tasks', label: '待办审批', slot: 1 },
+  { key: 'applications', label: '我的申请', slot: 2 },
+  { key: 'announcements', label: '公告提醒', slot: 3 },
+  { key: 'schedules', label: '日程安排', slot: 4 },
 ];
 
 const DONUT_SIZE = 176;
@@ -168,7 +154,7 @@ const DistributionCard: React.FC<{
 
       <div className="dashboard-chart-heading">
         <h3 className="inline-flex items-center gap-2">
-          <PieChart size={18} className="text-slate-400 dark:text-slate-500" />
+          <PieChart size={18} className="text-cf-faint" />
           工作负载分布
         </h3>
         <span>{items.length} types</span>
@@ -231,7 +217,6 @@ const DistributionCard: React.FC<{
                     return null;
                   }
 
-                  const tone = toneStyles[segment.tone];
                   const active = hoveredIndex === index;
 
                   return (
@@ -245,7 +230,7 @@ const DistributionCard: React.FC<{
                         segment.endAngle,
                       )}
                       fill="none"
-                      stroke={tone.solid}
+                      stroke={slotColor(segment.slot)}
                       strokeWidth={active ? DONUT_STROKE_WIDTH + 4 : DONUT_STROKE_WIDTH}
                       strokeLinecap="butt"
                       style={{
@@ -260,13 +245,13 @@ const DistributionCard: React.FC<{
               </svg>
 
               <div className="absolute inset-[22px] flex flex-col items-center justify-center rounded-full border border-slate-200 bg-[var(--cf-surface-strong)] text-center dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                <div className="text-[11px] font-medium text-cf-faint">
                   总计
                 </div>
-                <div className="mt-2 text-[1.75rem] font-semibold leading-none text-slate-900 dark:text-slate-100">
+                <div className="mt-2 text-[1.75rem] font-semibold leading-none text-cf-title">
                   {total}
                 </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mt-1 text-xs text-cf-subtle">
                   命中事项
                 </div>
               </div>
@@ -274,8 +259,6 @@ const DistributionCard: React.FC<{
 
           <div className="dashboard-model-list">
             {segments.map((item, index) => {
-              const tone = toneStyles[item.tone];
-
               return (
                 <div
                   key={item.label}
@@ -285,10 +268,10 @@ const DistributionCard: React.FC<{
                 >
                   <span
                     className="dashboard-model-dot"
-                    style={{ backgroundColor: tone.solid }}
+                    style={{ backgroundColor: slotColor(item.slot) }}
                   />
                   <div className="min-w-0 flex-1">
-                    <p title={item.label}>{item.label}</p>
+                    <p data-tooltip={item.label}>{item.label}</p>
                     <span>{item.description}</span>
                   </div>
                   <strong>{item.count} / {item.percentage}%</strong>
@@ -366,16 +349,16 @@ const TrendCard: React.FC<{
 
       <div className="dashboard-chart-heading">
         <h3 className="inline-flex items-center gap-2">
-          <TrendingUp size={18} className="text-slate-400 dark:text-slate-500" />
+          <TrendingUp size={18} className="text-cf-faint" />
           协同趋势
         </h3>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-cf-subtle">
           {seriesMeta.map((item) => (
             <span key={item.key} className="inline-flex items-center gap-1.5">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{ backgroundColor: toneStyles[item.tone].solid }}
+                style={{ backgroundColor: slotColor(item.slot) }}
               />
               {item.label}
             </span>
@@ -412,7 +395,7 @@ const TrendCard: React.FC<{
                     <span className="inline-flex items-center gap-1.5 text-slate-200">
                       <span
                         className="inline-block h-2 w-2 rounded-sm"
-                        style={{ backgroundColor: toneStyles[series.tone].solid }}
+                        style={{ backgroundColor: slotColor(series.slot) }}
                       />
                       {series.label}
                     </span>
@@ -446,7 +429,7 @@ const TrendCard: React.FC<{
                     textAnchor="end"
                     fontSize={10}
                     fill="currentColor"
-                    className="text-slate-400 dark:text-slate-500"
+                    className="text-cf-faint"
                   >
                     {value}
                   </text>
@@ -457,12 +440,12 @@ const TrendCard: React.FC<{
             {seriesMeta.map((series, index) => (
               <g key={series.key}>
                 {index === 0 ? (
-                  <path d={areaPath(series.key)} fill={toneStyles[series.tone].fill} />
+                  <path d={areaPath(series.key)} fill={slotFill(series.slot)} />
                 ) : null}
                 <path
                   d={linePath(series.key)}
                   fill="none"
-                  stroke={toneStyles[series.tone].stroke}
+                  stroke={slotColor(series.slot)}
                   strokeWidth={2}
                 />
                 {trend.map((item, pointIndex) => (
@@ -471,7 +454,7 @@ const TrendCard: React.FC<{
                     cx={x(pointIndex)}
                     cy={y(item[series.key])}
                     r={2.75}
-                    fill={toneStyles[series.tone].stroke}
+                    fill={slotColor(series.slot)}
                   />
                 ))}
               </g>
@@ -504,7 +487,7 @@ const TrendCard: React.FC<{
                       cx={x(activeIndex)}
                       cy={y(activePoint[series.key])}
                       r={3.5}
-                      fill={toneStyles[series.tone].stroke}
+                      fill={slotColor(series.slot)}
                     />
                   </g>
                 ))
@@ -519,7 +502,7 @@ const TrendCard: React.FC<{
                   textAnchor="middle"
                   fontSize={10}
                   fill="currentColor"
-                  className="text-slate-400 dark:text-slate-500"
+                  className="text-cf-faint"
                 >
                   {item.shortLabel}
                 </text>

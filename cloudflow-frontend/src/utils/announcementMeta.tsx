@@ -19,7 +19,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
   [AnnouncementType.NOTIFICATION]: <Bell size={16} className="text-cyan-500" />,
 };
 
-const FALLBACK_CLASS = 'bg-slate-100 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700';
+const FALLBACK_CLASS = 'bg-cf-surface-3 text-cf-muted ring-1 ring-slate-200 dark:ring-slate-700';
 
 const resolveClassName = (item: DictItem | undefined): string => item?.fullClass ?? FALLBACK_CLASS;
 

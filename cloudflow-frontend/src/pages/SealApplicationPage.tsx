@@ -50,7 +50,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
         <div className="admin-source-stat-icon mb-3">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
       </div>
     </td>
   </tr>
@@ -309,21 +309,21 @@ export const SealApplicationPage: React.FC = () => {
             ) : rows.map((item) => (
               <tr key={item.id}>
                 <td>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{item.applicationNo || '-'}</div>
-                  <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(item.createTime)}</div>
+                  <div className="font-medium text-cf-title">{item.applicationNo || '-'}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{formatDateTimeDisplay(item.createTime)}</div>
                 </td>
                 <td>{item.sealName || '-'}</td>
                 <td>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{item.documentName || '-'}</div>
-                  <div className="mt-1 text-xs text-slate-400">{sceneDict.getLabel(String(item.useScene ?? '')) || '-'}</div>
+                  <div className="font-medium text-cf-title">{item.documentName || '-'}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{sceneDict.getLabel(String(item.useScene ?? '')) || '-'}</div>
                 </td>
                 <td>
                   <div>{item.userName || '-'}</div>
-                  <div className="mt-1 text-xs text-slate-400">{item.deptName || '-'}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{item.deptName || '-'}</div>
                 </td>
                 <td>
                   <div>{formatDateTimeDisplay(item.expectedBorrowTime)}</div>
-                  <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(item.expectedReturnTime)}</div>
+                  <div className="mt-1 text-xs text-cf-faint">{formatDateTimeDisplay(item.expectedReturnTime)}</div>
                 </td>
                 <td>
                   {getAttachmentList(item.attachmentUrl).length ? `${getAttachmentList(item.attachmentUrl).length} 个` : '-'}
@@ -331,11 +331,11 @@ export const SealApplicationPage: React.FC = () => {
                 <td>{getStatusBadge(item.status)}</td>
                 <td>
                   <div className="admin-users-row-actions">
-                    <button type="button" title="详情" onClick={() => void openDetail(item)}><Eye size={15} /></button>
-                    {item.status === 'DRAFT' && hasPermission('oa:seal:edit') ? <button type="button" title="编辑" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
-                    {item.status === 'DRAFT' && hasPermission('oa:seal:submit') ? <button type="button" title="提交" onClick={() => setConfirmState({ type: 'submit', id: item.id!, title: '提交用印申请', message: '提交后将进入用印审批流程。', confirmText: '提交' })}><Send size={15} /></button> : null}
-                    {item.status === 'PENDING' && hasPermission('oa:seal:cancel') ? <button type="button" title="取消" onClick={() => setConfirmState({ type: 'cancel', id: item.id!, title: '取消用印申请', message: '取消后该申请不再继续审批。', confirmText: '取消' })}><XCircle size={15} /></button> : null}
-                    {item.status === 'DRAFT' && hasPermission('oa:seal:remove') ? <button type="button" className="danger" title="删除" onClick={() => setConfirmState({ type: 'delete', id: item.id!, title: '删除用印申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true })}><Trash2 size={15} /></button> : null}
+                    <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDetail(item)}><Eye size={15} /></button>
+                    {item.status === 'DRAFT' && hasPermission('oa:seal:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
+                    {item.status === 'DRAFT' && hasPermission('oa:seal:submit') ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => setConfirmState({ type: 'submit', id: item.id!, title: '提交用印申请', message: '提交后将进入用印审批流程。', confirmText: '提交' })}><Send size={15} /></button> : null}
+                    {item.status === 'PENDING' && hasPermission('oa:seal:cancel') ? <button type="button" data-tooltip="取消" aria-label="取消" onClick={() => setConfirmState({ type: 'cancel', id: item.id!, title: '取消用印申请', message: '取消后该申请不再继续审批。', confirmText: '取消' })}><XCircle size={15} /></button> : null}
+                    {item.status === 'DRAFT' && hasPermission('oa:seal:remove') ? <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setConfirmState({ type: 'delete', id: item.id!, title: '删除用印申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true })}><Trash2 size={15} /></button> : null}
                   </div>
                 </td>
               </tr>
@@ -437,7 +437,7 @@ export const SealApplicationPage: React.FC = () => {
         footer={<Button variant="outline" onClick={() => setDetailApplication(null)}>关闭</Button>}
       >
         {detailLoading ? (
-          <div className="flex items-center justify-center py-12 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-center py-12 text-sm text-cf-subtle">
             <Clock3 className="mr-2 h-4 w-4 animate-spin" />
             正在加载用印详情...
           </div>
@@ -457,8 +457,8 @@ export const SealApplicationPage: React.FC = () => {
                 ['实际归还', formatDateTimeDisplay(detailApplication.actualReturnTime)],
               ].map(([label, value]) => (
                 <div key={label} className="border-b border-slate-200 pb-3 dark:border-slate-800">
-                  <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-                  <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+                  <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+                  <div className="mt-1.5 text-sm leading-6 text-cf-title">{value || '-'}</div>
                 </div>
               ))}
             </div>
@@ -468,7 +468,7 @@ export const SealApplicationPage: React.FC = () => {
                   <h3>用印用途</h3>
                 </div>
               </div>
-              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{detailApplication.purpose || '-'}</div>
+              <div className="whitespace-pre-wrap text-sm leading-6 text-cf-muted">{detailApplication.purpose || '-'}</div>
             </section>
             <section className="card admin-source-panel">
               <div className="admin-source-panel-head">
@@ -493,12 +493,12 @@ export const SealApplicationPage: React.FC = () => {
                       <div className="grid gap-2">
                         {contractRisks.slice(0, 5).map((risk) => (
                           <div key={risk.id} className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
-                            <div className="font-medium text-slate-900 dark:text-slate-100">{risk.riskName}</div>
-                            <div className="mt-1 text-xs text-slate-400">{risk.riskLevel} / {risk.riskStatus}</div>
+                            <div className="font-medium text-cf-title">{risk.riskName}</div>
+                            <div className="mt-1 text-xs text-cf-faint">{risk.riskLevel} / {risk.riskStatus}</div>
                           </div>
                         ))}
                       </div>
-                    ) : <div className="py-6 text-center text-sm text-slate-400">暂无风险记录</div>}
+                    ) : <div className="py-6 text-center text-sm text-cf-faint">暂无风险记录</div>}
                   </div>
                 </section>
                 <section className="card admin-source-panel">
@@ -513,14 +513,14 @@ export const SealApplicationPage: React.FC = () => {
                         {contractTimeline.slice(-5).reverse().map((event) => (
                           <div key={event.id} className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
                             <div className="flex items-center justify-between gap-3">
-                              <span className="font-medium text-slate-900 dark:text-slate-100">{event.eventTitle}</span>
-                              <span className="text-xs text-slate-400">{formatDateTimeDisplay(event.eventTime)}</span>
+                              <span className="font-medium text-cf-title">{event.eventTitle}</span>
+                              <span className="text-xs text-cf-faint">{formatDateTimeDisplay(event.eventTime)}</span>
                             </div>
-                            <div className="mt-1 text-xs text-slate-400">{event.eventContent || '-'}</div>
+                            <div className="mt-1 text-xs text-cf-faint">{event.eventContent || '-'}</div>
                           </div>
                         ))}
                       </div>
-                    ) : <div className="py-6 text-center text-sm text-slate-400">暂无链路事件</div>}
+                    ) : <div className="py-6 text-center text-sm text-cf-faint">暂无链路事件</div>}
                   </div>
                 </section>
               </div>

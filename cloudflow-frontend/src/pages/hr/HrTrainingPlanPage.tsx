@@ -252,22 +252,22 @@ export const HrTrainingPlanPage: React.FC = () => {
                           <td>
                             <div className="admin-users-row-actions">
                               {canEdit ? (
-                                <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
+                                <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm(row); setOpen(true); }}>
                                   <Pencil size={15} />
                                 </button>
                               ) : null}
                               {canEdit && row.status === 'DRAFT' ? (
-                                <button type="button" title="发布" onClick={() => void handleAction(row, 'approve')}>
+                                <button type="button" data-tooltip="发布" aria-label="发布" onClick={() => void handleAction(row, 'approve')}>
                                   <Send size={15} />
                                 </button>
                               ) : null}
                               {canEdit && row.status === 'PUBLISHED' ? (
-                                <button type="button" title="归档" onClick={() => void handleAction(row, 'archive')}>
+                                <button type="button" data-tooltip="归档" aria-label="归档" onClick={() => void handleAction(row, 'archive')}>
                                   <Archive size={15} />
                                 </button>
                               ) : null}
                               {canRemove ? (
-                                <button type="button" className="danger" title="删除" onClick={() => setPendingDelete(row)}>
+                                <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setPendingDelete(row)}>
                                   <Trash2 size={15} />
                                 </button>
                               ) : null}

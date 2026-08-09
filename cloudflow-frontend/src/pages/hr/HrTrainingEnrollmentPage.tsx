@@ -131,7 +131,7 @@ const EnrollmentList: React.FC<{ mine: boolean }> = ({ mine }) => {
                 <tr key={row.id}>
                   <td>
                     <div>{row.courseName || `课程#${row.courseId ?? '-'}`}</div>
-                    <small className="text-slate-500">{row.sessionNo || `班次#${row.sessionId}`}</small>
+                    <small className="text-cf-subtle">{row.sessionNo || `班次#${row.sessionId}`}</small>
                   </td>
                   <td><span className="badge badge-gray">{row.enrollType === 'SELF' ? '自报' : '指派'}</span></td>
                   <td><DictLabel dictType="hr_enroll_status" value={String(row.status ?? '')} fallback="-" /></td>
@@ -141,17 +141,17 @@ const EnrollmentList: React.FC<{ mine: boolean }> = ({ mine }) => {
                   <td>
                     <div className="admin-users-row-actions">
                       {row.status === 'APPROVED' && !row.checkInTime ? (
-                        <button type="button" title="签到" onClick={() => void handleCheckIn(row.id)}>
+                        <button type="button" data-tooltip="签到" aria-label="签到" onClick={() => void handleCheckIn(row.id)}>
                           <Check size={15} />
                         </button>
                       ) : null}
                       {row.status === 'APPROVED' && row.checkInTime && row.completionStatus !== 'PASSED' ? (
-                        <button type="button" title="完成" onClick={() => void handleComplete(row.id)}>
+                        <button type="button" data-tooltip="完成" aria-label="完成" onClick={() => void handleComplete(row.id)}>
                           <Check size={15} />
                         </button>
                       ) : null}
                       {row.status === 'PENDING' || row.status === 'APPROVED' ? (
-                        <button type="button" className="danger" title="取消" onClick={() => void handleCancel(row.id)}>
+                        <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => void handleCancel(row.id)}>
                           <Ban size={15} />
                         </button>
                       ) : null}

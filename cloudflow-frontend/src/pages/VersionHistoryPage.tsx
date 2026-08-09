@@ -36,11 +36,11 @@ const InvalidState: React.FC<{ onBack: () => void }> = ({ onBack }) => (
       table={(
         <InnerTableSurface>
           <div className="px-6 py-9 text-center">
-            <div className="admin-source-stat-icon mx-auto mb-3 flex h-10 w-10 items-center justify-center text-slate-400 dark:text-slate-500">
+            <div className="admin-source-stat-icon mx-auto mb-3 flex h-10 w-10 items-center justify-center text-cf-faint">
               <History className="h-5 w-5" />
             </div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">无效的流程 ID</div>
-            <div className="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">未能从当前地址中识别流程编号。</div>
+            <div className="text-sm font-medium text-cf-title">无效的流程 ID</div>
+            <div className="mt-1.5 text-xs leading-6 text-cf-subtle">未能从当前地址中识别流程编号。</div>
           </div>
         </InnerTableSurface>
       )}

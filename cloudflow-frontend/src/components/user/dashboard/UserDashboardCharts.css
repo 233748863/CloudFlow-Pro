@@ -1,0 +1,96 @@
+/* 从 index.css 拆分而来：dashboard-model
+   由 UserDashboardCharts.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .dashboard-model-chart {
+      display: grid;
+      grid-template-columns: 11.875rem minmax(0, 1fr);
+      align-items: center;
+      gap: 1.375rem;
+    }
+
+  .dashboard-model-list {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+  .dashboard-model-row {
+      display: flex;
+      min-height: 3rem;
+      min-width: 0;
+      align-items: center;
+      gap: 0.625rem;
+      border-top: 1px solid rgba(15, 23, 42, 0.06);
+      padding: 0.5rem 0;
+    }
+
+  .dashboard-model-dot {
+      width: 0.5625rem;
+      height: 0.5625rem;
+      flex: 0 0 0.5625rem;
+      border-radius: 999px;
+    }
+
+  .dashboard-model-row p {
+      margin: 0;
+      overflow: hidden;
+      color: #0a0a0a;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .dashboard-model-row span {
+      display: block;
+      margin-top: 0.25rem;
+      overflow: hidden;
+      color: #737373;
+      font-size: 0.75rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .dashboard-model-row strong {
+      color: #059669;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+}
+
+@layer components {
+  @media (max-width: 760px) {
+    .dashboard-model-chart {
+          grid-template-columns: 1fr;
+          justify-items: center;
+        }
+
+    .dashboard-model-list {
+          width: 100%;
+        }
+
+    .dashboard-model-row p,
+        .dashboard-model-row span {
+          overflow: visible;
+          text-overflow: clip;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+  }
+}
+
+@media (min-width: 768px) {
+  .dashboard-model-row {
+      gap: 0.625rem;
+      padding: 0.5rem 0;
+    }
+
+  .dashboard-model-chart {
+      grid-template-columns: 9.75rem minmax(0, 1fr);
+      gap: 1rem;
+    }
+}

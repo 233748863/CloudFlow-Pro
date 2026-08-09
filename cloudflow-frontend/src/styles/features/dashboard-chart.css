@@ -1,0 +1,133 @@
+/* 从 index.css 拆分而来：dashboard-chart
+   由 Dashboard.tsx, UserDashboardCharts.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .dashboard-chart-suite {
+      display: grid;
+      min-width: 0;
+      gap: 1.125rem;
+    }
+
+  .dashboard-chart-filter-grid {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      flex-wrap: wrap;
+      align-items: end;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+  .dashboard-chart-date-grid {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.625rem;
+    }
+
+  .dashboard-chart-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+  .dashboard-chart-surface {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.75rem;
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      padding: 1.5rem 1.375rem;
+    }
+
+  .dashboard-chart-card {
+      position: relative;
+      min-height: 19.75rem;
+      min-width: 0;
+      overflow: hidden;
+      padding: 0;
+    }
+
+  .dashboard-chart-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1.125rem;
+    }
+
+  .dashboard-chart-heading h2,
+    .dashboard-chart-heading h3 {
+      margin: 0;
+      color: #0a0a0a;
+      font-size: 0.9375rem;
+      font-weight: 600;
+    }
+
+  .dashboard-chart-heading span {
+      color: #737373;
+      font-size: 0.75rem;
+    }
+}
+
+@layer components {
+  @media (min-width: 1024px) {
+    .dashboard-chart-surface {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        }
+
+    .dashboard-chart-card {
+          border-right: 1px solid rgba(15, 23, 42, 0.06);
+          padding-right: 1.25rem;
+        }
+  }
+}
+
+@layer components {
+  @media (max-width: 1180px) {
+    .dashboard-chart-filter-grid,
+        .dashboard-chart-grid {
+          grid-template-columns: 1fr;
+        }
+
+    .dashboard-chart-actions {
+          justify-content: flex-start;
+        }
+  }
+}
+
+@layer components {
+  @media (max-width: 760px) {
+    .dashboard-chart-date-grid {
+          grid-template-columns: 1fr;
+        }
+  }
+}
+
+@media (min-width: 768px) {
+  .dashboard-chart-heading {
+      margin-bottom: 0.75rem;
+    }
+
+  .dashboard-chart-heading h3 {
+      font-size: 0.9375rem;
+      line-height: 1.25rem;
+    }
+
+  .dashboard-chart-surface {
+      gap: 0.875rem;
+    }
+
+  .dashboard-chart-surface {
+      gap: 0.875rem;
+      padding: 1rem;
+    }
+
+  .dashboard-chart-card {
+      min-height: 15.5rem;
+    }
+}

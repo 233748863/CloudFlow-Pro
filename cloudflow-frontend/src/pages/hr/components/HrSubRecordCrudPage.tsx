@@ -202,7 +202,7 @@ export function HrSubRecordCrudPage<T extends { id: number }, F>({
             key={action.key ?? `${action.label}-${index}`}
             type={action.type ?? 'button'}
             className={isDangerAction(action) ? 'danger' : undefined}
-            title={action.tooltip ?? action.title ?? action.label}
+            data-tooltip={action.tooltip ?? action.title ?? action.label}
             aria-label={action.tooltip ?? action.title ?? action.label}
             disabled={action.disabled}
             onClick={action.onClick}

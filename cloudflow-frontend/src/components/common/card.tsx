@@ -12,7 +12,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'card text-slate-950 dark:text-slate-100',
+      'card text-cf-title',
       interactive && 'admin-option-surface',
       className,
     )}
@@ -41,7 +41,7 @@ const CardTitle = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn('text-[15px] font-semibold leading-tight text-slate-900 dark:text-slate-100', className)}
+    className={cn('text-[15px] font-semibold leading-tight text-cf-title', className)}
     {...props}
   />
 ));
@@ -54,7 +54,7 @@ const CardDescription = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <p
     ref={ref}
-    className={cn('text-xs leading-5 text-slate-500 dark:text-slate-400', className)}
+    className={cn('text-xs leading-5 text-cf-subtle', className)}
     {...props}
   />
 ));

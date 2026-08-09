@@ -82,13 +82,13 @@ export const DEFAULT_COMMON_TAGS = [
 ];
 
 export const FILTER_CHIP_CLASS_NAME =
-  "inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-sm text-slate-700 shadow-none transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-cyan-900/70 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200";
+  "inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-sm text-cf-body shadow-none transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-900/70 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200";
 
 export const PREVIEW_META_LABEL_CLASS_NAME =
-  "text-[10px] font-bold text-slate-400";
+  "text-[10px] font-bold text-cf-faint";
 
 export const PREVIEW_SECTION_HEADER_CLASS_NAME =
-  "border-b border-slate-100 px-5 py-3 text-[11px] font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400";
+  "border-b border-slate-100 px-5 py-3 text-[11px] font-bold text-cf-subtle dark:border-slate-800";
 
 export const NODE_TYPE_LABELS: Record<string, string> = {
   START: "开始",

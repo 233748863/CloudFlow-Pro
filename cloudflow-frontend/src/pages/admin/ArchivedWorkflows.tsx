@@ -23,6 +23,7 @@ import {
   restoreWorkflows,
 } from '../../services/api/workflow';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
+import '../../styles/features/admin-workflow.css';
 
 interface ArchivedWorkflow {
   id: string;
@@ -498,7 +499,7 @@ export const ArchivedWorkflows: React.FC = () => {
                     <span className="admin-workflow-archive-muted">{formatDateTime(workflow.archivedAt)}</span>
                   </td>
                   <td>
-                    <span className="admin-workflow-archive-reason" title={workflow.archiveReason || '-'}>
+                    <span className="admin-workflow-archive-reason" data-tooltip={workflow.archiveReason || '-'}>
                       {workflow.archiveReason || '-'}
                     </span>
                   </td>
@@ -509,8 +510,8 @@ export const ArchivedWorkflows: React.FC = () => {
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="恢复" aria-label="恢复" onClick={() => void handleRestore([workflow.workflowId])} disabled={restoring || !workflow.canRestore || !canBatchRestore}><RotateCcw size={15} /></button>
-                      <button type="button" title="删除" aria-label="删除" onClick={() => openDeleteDialog([workflow.workflowId])} disabled={deleting || !canPermanentDelete}><Trash2 size={15} /></button>
+                      <button type="button" data-tooltip="恢复" aria-label="恢复" onClick={() => void handleRestore([workflow.workflowId])} disabled={restoring || !workflow.canRestore || !canBatchRestore}><RotateCcw size={15} /></button>
+                      <button type="button" data-tooltip="删除" aria-label="删除" onClick={() => openDeleteDialog([workflow.workflowId])} disabled={deleting || !canPermanentDelete}><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>

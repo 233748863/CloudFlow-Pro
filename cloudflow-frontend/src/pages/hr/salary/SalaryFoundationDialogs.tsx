@@ -124,12 +124,12 @@ export const SalaryItemDialog: React.FC<DialogProps> = ({ components, viewModel 
           value={itemFormDiagnostics.usage
             ? `${itemFormDiagnostics.usage.structureIds.size} 套结构 / ${itemFormDiagnostics.usage.activeEmployeeIds.size} 名员工 / ${itemFormDiagnostics.usage.activeArchiveCount} 条在岗档案${itemFormDiagnostics.usage.futureArchiveCount ? ` / 未来 ${itemFormDiagnostics.usage.futureArchiveCount} 条` : ''}`
             : '当前项目还没有被结构引用'}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
         <DetailRow
           label="当前口径"
           value={`${itemCategoryLabel(itemForm.category)} / ${itemTypeLabel(itemForm.itemType)} / ${itemForm.isTaxable ? '参与计税' : '不参与计税'}${itemForm.formula?.trim() ? ' / 已配公式' : ''}`}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
       </div>
 
@@ -218,10 +218,10 @@ export const SalaryStructureDialog: React.FC<DialogProps> = ({ components, viewM
                       className={cn(
                         'flex items-start justify-between gap-3 bg-[var(--cf-surface-strong)] px-3 py-3 text-left text-sm transition dark:bg-slate-950/72',
                         selected
-                          ? 'text-slate-900 dark:text-slate-100'
+                          ? 'text-cf-title'
                           : disabled
-                            ? 'cursor-not-allowed text-slate-400 dark:text-slate-500'
-                            : 'text-slate-700 hover:bg-[var(--cf-surface-muted)] dark:text-slate-200 dark:hover:bg-slate-900',
+                            ? 'cursor-not-allowed text-cf-faint'
+                            : 'text-cf-body hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900',
                       )}
                       onClick={() => setStructureForm((prev: any) => ({
                         ...prev,
@@ -232,7 +232,7 @@ export const SalaryStructureDialog: React.FC<DialogProps> = ({ components, viewM
                     >
                       <div className="min-w-0">
                         <div className="truncate font-medium">{item.itemName}</div>
-                        <div className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500">
+                        <div className="mt-1 truncate text-xs text-cf-faint">
                           {[item.itemCode, itemCategoryLabel(item.category), itemTypeLabel(item.itemType)].filter(Boolean).join(' / ')}
                         </div>
                       </div>
@@ -240,18 +240,18 @@ export const SalaryStructureDialog: React.FC<DialogProps> = ({ components, viewM
                         <span className={cn(
                           'inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium',
                           item.isTaxable
-                            ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
-                            : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+                            ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72'
+                            : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72',
                         )}>
                           {item.isTaxable ? '计税' : '不计税'}
                         </span>
                         <span className={cn(
                           'inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium',
                           selected
-                            ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
+                            ? 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72'
                             : disabled
-                              ? 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500'
-                              : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
+                              ? 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-faint dark:border-slate-800 dark:bg-slate-900'
+                              : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-950/72',
                         )}>
                           {selected ? '已选' : item.status === 1 ? '可选' : '禁用'}
                         </span>
@@ -262,7 +262,7 @@ export const SalaryStructureDialog: React.FC<DialogProps> = ({ components, viewM
               </div>
             </div>
           ) : (
-            <div className="mt-3 border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/40">
+            <div className="mt-3 border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-6 text-center text-sm text-cf-subtle dark:border-slate-800 dark:bg-slate-950/40">
               当前还没有可关联的薪资项目。
             </div>
           )}
@@ -273,14 +273,14 @@ export const SalaryStructureDialog: React.FC<DialogProps> = ({ components, viewM
         <DetailRow
           label="已选项目"
           value={`${structureFormDiagnostics.selectedItems.length} 个 / 计税 ${structureFormDiagnostics.taxableItems.length} 个 / 浮动 ${structureFormDiagnostics.variableItems.length} 个`}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
         <DetailRow
           label="历史命中"
           value={structureFormDiagnostics.activeUsage
             ? `${structureFormDiagnostics.activeUsage.employeeIds.size} 名员工 / ${structureFormDiagnostics.activeUsage.futureCount} 条未来生效`
             : '当前结构还没有在岗样本命中'}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
       </div>
 
@@ -371,12 +371,12 @@ export const SalaryGradeDialog: React.FC<DialogProps> = ({ components, viewModel
           value={gradeFormDiagnostics.selectedLevel
             ? [gradeFormDiagnostics.selectedLevel.levelCode, gradeFormDiagnostics.selectedLevel.levelName].filter(Boolean).join(' / ')
             : '请选择职级'}
-          valueClassName="max-w-[72%] text-left text-slate-900 dark:text-slate-100"
+          valueClassName="max-w-[72%] text-left text-cf-title"
         />
         <DetailRow
           label="覆盖变化"
           value={`${gradeFormDiagnostics.currentCoverageRate}% → ${gradeFormDiagnostics.nextCoverageRate}% / 序列 ${gradeFormDiagnostics.nextSeriesConfiguredCount}/${gradeFormDiagnostics.seriesTotal}`}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
         <DetailRow
           label="相邻薪级"
@@ -388,7 +388,7 @@ export const SalaryGradeDialog: React.FC<DialogProps> = ({ components, viewModel
               ? `下一级 ${formatCurrency(gradeFormDiagnostics.nextGrade.minSalary)} - ${formatCurrency(gradeFormDiagnostics.nextGrade.maxSalary)}`
               : '下一级暂无样本',
           ].join(' / ')}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
       </div>
 
@@ -499,7 +499,7 @@ export const InsuranceSchemeDialog: React.FC<DialogProps> = ({ components, viewM
       </div>
 
       <div className="mt-6">
-        <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">缴纳比例</div>
+        <div className="mb-3 text-sm font-medium text-cf-title">缴纳比例</div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -535,14 +535,14 @@ export const InsuranceSchemeDialog: React.FC<DialogProps> = ({ components, viewM
         <DetailRow
           label="比例合计"
           value={`${formatPercent(insuranceSchemeFormDiagnostics.totalRate)} / 公司 ${formatPercent(insuranceSchemeFormDiagnostics.companyTotalRate)} / 个人 ${formatPercent(insuranceSchemeFormDiagnostics.personalTotalRate)}`}
-          valueClassName="max-w-[72%] text-left text-slate-900 dark:text-slate-100"
+          valueClassName="max-w-[72%] text-left text-cf-title"
         />
         <DetailRow
           label="台账命中"
           value={insuranceSchemeFormDiagnostics.usage
             ? `ACTIVE ${insuranceSchemeFormDiagnostics.usage.activeRecordCount} 条 / 在岗 ${insuranceSchemeFormDiagnostics.usage.activeEmployeeIds.size} 人 / 未来生效 ${insuranceSchemeFormDiagnostics.usage.futureRecordCount} 条`
             : '-'}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+          valueClassName="max-w-[72%] text-left text-cf-muted"
         />
       </div>
 

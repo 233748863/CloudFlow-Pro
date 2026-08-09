@@ -322,7 +322,7 @@ export const SelectValue = ({ placeholder }: { placeholder?: string }) => {
     <span
       className={cn(
         'select-value min-w-0 flex-1 truncate',
-        hasValue ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500',
+        hasValue ? 'text-cf-title' : 'text-cf-faint',
       )}
     >
       {displayValue}
@@ -442,7 +442,7 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
       ref={dropdownRef}
       role="listbox"
       className={cn(
-        'select-dropdown-portal fixed z-[160] overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-900 shadow-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:shadow-none',
+        'select-dropdown-portal fixed z-[160] overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-cf-title shadow-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none',
         className,
       )}
       style={{
@@ -456,7 +456,7 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
     >
       {searchable ? (
         <div className="select-search">
-          <Search size={16} className="shrink-0 text-slate-400" />
+          <Search size={16} className="shrink-0 text-cf-faint" />
           <input
             ref={searchInputRef}
             className="select-search-input cf-control"
@@ -511,7 +511,7 @@ export const SelectItem: SelectItemComponent = ({ children, value, label, classN
         disabled && 'select-option-disabled cursor-not-allowed opacity-40',
         isSelected
           ? 'select-option-selected cf-option-active'
-          : 'text-slate-700 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white',
+          : 'text-cf-body hover:bg-[var(--cf-surface-muted)] hover:text-cf-title dark:hover:bg-slate-800',
         className,
       )}
       onClick={() => {

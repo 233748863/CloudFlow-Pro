@@ -395,7 +395,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
       <WorkspaceSectionCard title="在岗薪资档案">
         <div className="admin-source-content-grid">
           <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
             <Input
               className="pl-10"
               placeholder="搜索员工工号、姓名、薪资结构"
@@ -446,7 +446,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
             </Select>
           </div>
 
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3 text-sm text-cf-muted dark:border-slate-800">
             <div>
               在岗现薪 {workingEmployeeSalaries.length} 条
               {salaryKeyword.trim() ? ` / 筛后 ${filteredEmployeeSalaries.length} 条` : ''}
@@ -465,7 +465,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 pb-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 pb-3 text-xs text-cf-subtle dark:border-slate-800">
             {futureEffectiveEmployeeSalaries.length > 0 && (
               <span>
                 未来生效 {futureEffectiveEmployeeSalaries.length} 条
@@ -497,25 +497,25 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      <div className="text-sm font-semibold text-cf-title">
                         {item.employeeName || `员工 #${item.employeeId}`}
                       </div>
-                      <div className="mt-1 text-xs text-slate-400">
+                      <div className="mt-1 text-xs text-cf-faint">
                         {[item.employeeNo, item.structureName].filter(Boolean).join(' / ')}
                       </div>
                     </div>
                       <div className="flex flex-wrap justify-end gap-2">
                         {isFutureDate(item.effectiveDate) && (
-                          <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                          <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-900/60">
                             未来生效
                           </span>
                         )}
-                        <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                        <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-900/60">
                           {salaryArchiveStatusLabel(item.status, item.statusDesc) || '-'}
                         </span>
                       </div>
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                  <div className="mt-3 flex items-center justify-between text-xs text-cf-subtle">
                     <span>{formatCurrency(item.totalSalary)}</span>
                     <span>生效 {toDateInputValue(item.effectiveDate) || '-'}</span>
                   </div>
@@ -575,12 +575,12 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                 || (latestEmployeeAdjustment && !latestEmployeeAdjustmentMatchedCurrentSalary && !latestEmployeeAdjustmentMatchedArchive)) && (
                 <div className="flex flex-wrap gap-2">
                   {currentEmployeeFutureEffective && (
-                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                       ACTIVE 未来生效
                     </span>
                   )}
                   {!currentEmployeeFutureEffective && latestEmployeeAdjustment && latestEmployeeAdjustmentMatchedCurrentSalary && (
-                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                       调薪已对齐
                     </span>
                   )}
@@ -588,7 +588,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                     && latestEmployeeAdjustment
                     && !latestEmployeeAdjustmentMatchedCurrentSalary
                     && latestEmployeeAdjustmentMatchedArchive && (
-                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                       已落档 #{latestEmployeeAdjustmentMatchedArchive.id}
                     </span>
                   )}
@@ -596,7 +596,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                     && latestEmployeeAdjustment
                     && !latestEmployeeAdjustmentMatchedCurrentSalary
                     && !latestEmployeeAdjustmentMatchedArchive && (
-                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                       调薪待落档
                     </span>
                   )}
@@ -616,7 +616,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                   <tbody>
                     {(employeeSalaryDetail?.items || []).map((item: any) => (
                       <tr key={item.itemId}>
-                        <td className="font-medium text-slate-900 dark:text-slate-100">{item.itemName || `项目 ${item.itemId}`}</td>
+                        <td className="font-medium text-cf-title">{item.itemName || `项目 ${item.itemId}`}</td>
                         <td>{item.itemCode || '-'}</td>
                         <td>{itemCategoryLabel(item.category)}</td>
                         <td>{formatCurrency(item.amount)}</td>
@@ -689,8 +689,8 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                     {sortedEmployeeSalaryHistory.map((item: any) => (
                       <tr key={item.id}>
                         <td>
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.structureName || '-'}</div>
-                          <div className="mt-1 text-xs text-slate-400">
+                          <div className="font-medium text-cf-title">{item.structureName || '-'}</div>
+                          <div className="mt-1 text-xs text-cf-faint">
                             {[item.structureCode, item.employeeNo].filter(Boolean).join(' / ') || '-'}
                           </div>
                         </td>
@@ -699,14 +699,14 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                           <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
                           <div className="mt-1 flex flex-wrap gap-2">
                             {isFutureDate(item.effectiveDate) && (
-                              <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                              <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                                 未来生效
                               </span>
                             )}
                             {latestEmployeeAdjustment
                               && (toDateInputValue(item.effectiveDate) || '') === (toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '')
                               && normalizeAmount(item.totalSalary) === normalizeAmount(latestEmployeeAdjustment.afterTotal) && (
-                              <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                              <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2 py-0.5 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                                 对应最近调薪
                               </span>
                             )}
@@ -771,7 +771,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
             <div className="admin-source-content-grid">
               {!hasInsuranceProfile && !employeeCompensationLoading && (
                 <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                     未分配社保方案
                   </span>
                 </div>
@@ -793,13 +793,13 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                 <div className="salary-primary-panel">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">五险一金拆分</div>
-                      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      <div className="font-semibold text-cf-title">五险一金拆分</div>
+                      <div className="mt-1 text-sm text-cf-subtle">
                         {employeeInsuranceDetail?.schemeName || '未分配方案'}
                         {employeeInsuranceDetail?.city ? ` / ${employeeInsuranceDetail.city}` : ''}
                       </div>
                     </div>
-                    <div className="text-right text-xs text-slate-400">
+                    <div className="text-right text-xs text-cf-faint">
                       {hasInsuranceProfile ? (
                         <>
                           <div>台账 {formatCurrency(insuranceReferenceBase)}</div>
@@ -818,7 +818,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
 
                   {insuranceBaseMismatch && (
                     <div className="mb-4 flex flex-wrap gap-2">
-                      <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                      <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                         台账 / 测算基数不同
                       </span>
                     </div>
@@ -842,7 +842,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
 
                           return (
                             <tr key={row.key}>
-                              <td className="font-medium text-slate-900 dark:text-slate-100">{row.label}</td>
+                              <td className="font-medium text-cf-title">{row.label}</td>
                               <td>{row.personal != null ? formatCurrency(personal) : '-'}</td>
                               <td>{row.company != null ? formatCurrency(company) : '-'}</td>
                               <td>{(row.personal != null || row.company != null) ? formatCurrency(total) : '-'}</td>
@@ -860,8 +860,8 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                 <div className="overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-4">
                     <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">个税与专项扣除</div>
-                      <div className="mt-1 text-xs text-slate-400">
+                      <div className="font-semibold text-cf-title">个税与专项扣除</div>
+                      <div className="mt-1 text-xs text-cf-faint">
                         {currentTaxConfig ? `${toDateInputValue(currentTaxConfig.effectiveDate) || '-'} / ${taxReferencePeriod}` : taxReferencePeriod}
                       </div>
                     </div>
@@ -889,8 +889,8 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                   </div>
 
                   <div className="flex items-center justify-between px-4 py-3">
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">专项扣除明细</div>
-                    <div className="text-xs text-slate-400">{taxReferencePeriod}</div>
+                    <div className="text-sm font-medium text-cf-title">专项扣除明细</div>
+                    <div className="text-xs text-cf-faint">{taxReferencePeriod}</div>
                   </div>
 
                   <InnerTableSurface className="admin-inner-table-flush">
@@ -906,15 +906,15 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                         {sortedEmployeeTaxDeductions.map((item: any) => (
                           <tr key={item.id}>
                             <td>
-                              <div className="font-medium text-slate-900 dark:text-slate-100">
+                              <div className="font-medium text-cf-title">
                                 {deductionTypeLabel?.(item.deductionType) || '-'}
                               </div>
-                              <div className="mt-1 text-xs text-slate-400">{compactTaxDeductionRemark(item.remark)}</div>
+                              <div className="mt-1 text-xs text-cf-faint">{compactTaxDeductionRemark(item.remark)}</div>
                             </td>
                             <td>{formatCurrency(item.amount)}</td>
                             <td>
                               <div>{toDateInputValue(item.startDate) || '-'}</div>
-                              <div className="mt-1 text-xs text-slate-400">
+                              <div className="mt-1 text-xs text-cf-faint">
                                 截止 {toDateInputValue(item.endDate) || '长期有效'}
                               </div>
                             </td>
@@ -1010,8 +1010,8 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                       return (
                         <tr key={item.id} className={rowClassName}>
                           <td>
-                            <div className="font-medium text-slate-900 dark:text-slate-100">{item.schemeName || '-'}</div>
-                            <div className="mt-1 text-xs text-slate-400">{item.city || '未填写城市'}</div>
+                            <div className="font-medium text-cf-title">{item.schemeName || '-'}</div>
+                            <div className="mt-1 text-xs text-cf-faint">{item.city || '未填写城市'}</div>
                           </td>
                           <td>{formatCurrency(item.base)}</td>
                           <td>{toDateInputValue(item.effectiveDate) || '-'}</td>
@@ -1026,14 +1026,14 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                                 {rowIssues.map((issue: any) => (
                                   <span
                                     key={issue.key}
-                                    className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                                    className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72"
                                   >
                                     {issue.label}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-sm text-slate-400">-</span>
+                              <span className="text-sm text-cf-faint">-</span>
                             )}
                           </td>
                           <td>{toDateInputValue(item.updateTime || item.createTime) || '-'}</td>
@@ -1047,7 +1047,7 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                 </table>
               </InnerTableSurface>
 
-              <div className="flex flex-col gap-3 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col gap-3 text-sm text-cf-subtle md:flex-row md:items-center md:justify-between">
                 <div>
                   共 {employeeInsuranceLedgerPage?.total ?? 0} 条，第 {employeeInsuranceLedgerPage?.current ?? 1} / {Math.max(Number(employeeInsuranceLedgerPage?.pages ?? 1), 1)} 页
                 </div>
@@ -1132,17 +1132,17 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                           onClick={() => openAdjustmentFromHistory(item.id)}
                         >
                           <td>
-                            <div className="font-medium text-slate-900 dark:text-slate-100">{item.applicationNo}</div>
-                            <div className="mt-1 text-xs text-slate-400">
+                            <div className="font-medium text-cf-title">{item.applicationNo}</div>
+                            <div className="mt-1 text-xs text-cf-faint">
                               {item.adjustmentReason || '-'}
                             </div>
                           </td>
                           <td>{adjustmentTypeLabel(item.adjustmentType)}</td>
                           <td>
-                            <div className="font-medium text-slate-900 dark:text-slate-100">
+                            <div className="font-medium text-cf-title">
                               {formatCurrency(item.beforeTotal)} → {formatCurrency(item.afterTotal)}
                             </div>
-                            <div className="mt-1 text-xs text-slate-500">
+                            <div className="mt-1 text-xs text-cf-subtle">
                               {amount >= 0 ? '+' : ''}
                               {formatCurrency(item.adjustmentAmount)}
                               {Number.isFinite(Number(item.adjustmentRate))
@@ -1162,19 +1162,19 @@ export const SalaryEmployeesSection: React.FC<SectionProps> = ({ components, vie
                                 {rowIssues.map((issue: any) => (
                                   <span
                                     key={issue.key}
-                                    className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                                    className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72"
                                   >
                                     {issue.label}
                                   </span>
                                 ))}
                                 {matchedArchive && (
-                                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                                     档案 #{matchedArchive.id}
                                   </span>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-sm text-slate-400">-</span>
+                              <span className="text-sm text-cf-faint">-</span>
                             )}
                           </td>
                         </tr>
@@ -1265,7 +1265,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
       <WorkspaceSectionCard title="调薪申请列表">
         <div className="admin-source-content-grid">
           <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
             <Input
               className="pl-10"
               placeholder="搜索申请单号、员工姓名、工号"
@@ -1327,8 +1327,8 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
-            <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3 text-sm text-cf-muted dark:border-slate-800">
+            <div className="text-xs text-cf-subtle">
               {currentEmployeeRecord ? currentSelectedEmployeeLabel : '未锁定员工'}
             </div>
             <Button
@@ -1344,7 +1344,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
             </Button>
           </div>
 
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3 text-sm text-cf-muted dark:border-slate-800">
             <div>
               调薪单 {salaryAdjustments.length} 条
               {currentAdjustmentFilterEmployee ? ` / ${buildEmployeeLabel(currentAdjustmentFilterEmployee)}` : ''}
@@ -1366,7 +1366,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 pb-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 pb-3 text-xs text-cf-subtle dark:border-slate-800">
             <span>已落现薪 {adjustmentListDiagnostics.matchedCurrentCount}</span>
             <span>过期 {adjustmentListDiagnostics.pendingPastDueCount}</span>
             <span>现薪未追平 {adjustmentListDiagnostics.currentMismatchCount}</span>
@@ -1401,9 +1401,9 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.applicationNo}</div>
-                      <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{item.employeeName || `员工 #${item.employeeId}`}</div>
-                      <div className="mt-1 text-xs text-slate-400">
+                      <div className="text-sm font-semibold text-cf-title">{item.applicationNo}</div>
+                      <div className="mt-1 text-sm text-cf-muted">{item.employeeName || `员工 #${item.employeeId}`}</div>
+                      <div className="mt-1 text-xs text-cf-faint">
                         {[item.employeeNo, adjustmentTypeLabel(item.adjustmentType)].filter(Boolean).join(' / ')}
                       </div>
                     </div>
@@ -1411,7 +1411,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                       {adjustmentStatusLabel(item.status)}
                     </span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                  <div className="mt-3 flex items-center justify-between text-xs text-cf-subtle">
                     <span>{formatCurrency(item.afterTotal)}</span>
                     <span>生效 {toDateInputValue(item.effectiveDate) || '-'}</span>
                   </div>
@@ -1420,7 +1420,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                       {rowIssues.map((issue: any) => (
                         <span
                           key={issue.key}
-                          className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
+                          className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72"
                         >
                           {issue.label}
                         </span>
@@ -1519,10 +1519,10 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
               {adjustmentActionDiagnostics && (
                 <div className="salary-primary-panel salary-primary-panel-compact">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">
+                    <div className="font-semibold text-cf-title">
                       {adjustmentActionDiagnostics.canRun ? `${adjustmentActionDiagnostics.actionLabel}校验` : '流程动作'}
                     </div>
-                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+                    <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950/72">
                       {adjustmentActionDiagnostics.riskSummary.label}
                     </span>
                   </div>
@@ -1535,7 +1535,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
 
               <div className="salary-primary-panel salary-primary-panel-compact">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="font-semibold text-slate-900 dark:text-slate-100">闭环</div>
+                  <div className="font-semibold text-cf-title">闭环</div>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
@@ -1557,7 +1557,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                 </div>
 
                 {adjustmentEmployeeSalaryLoading ? (
-                  <div className="mt-4 border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-12 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/40">
+                  <div className="mt-4 border border-dashed border-slate-200 bg-[var(--cf-surface-muted)] px-4 py-12 text-center text-sm text-cf-subtle dark:border-slate-800 dark:bg-slate-950/40">
                     正在读取调薪对应员工的现薪与档案历史...
                   </div>
                 ) : (
@@ -1610,7 +1610,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                         value={adjustmentMatchedArchive
                           ? `#${adjustmentMatchedArchive.id} / ${salaryArchiveStatusLabel(adjustmentMatchedArchive.status, adjustmentMatchedArchive.statusDesc)}`
                           : '未命中目标档案'}
-                        valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+                        valueClassName="max-w-[72%] text-left text-cf-muted"
                       />
                       {adjustmentEmployeeSalaryDetail && adjustmentCurrentTotalDelta != null ? (
                         <DetailRow
@@ -1618,7 +1618,7 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
                           value={adjustmentCurrentTotalDelta === 0
                             ? '一致'
                             : `${adjustmentCurrentTotalDelta > 0 ? '高于' : '低于'} ${formatCurrency(Math.abs(adjustmentCurrentTotalDelta))}`}
-                          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+                          valueClassName="max-w-[72%] text-left text-cf-muted"
                         />
                       ) : null}
                     </div>
@@ -1627,8 +1627,8 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
               </div>
 
               <div className="salary-primary-panel salary-primary-panel-compact">
-                <div className="text-xs text-slate-400">调薪原因</div>
-                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-300">
+                <div className="text-xs text-cf-faint">调薪原因</div>
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-cf-body">
                   {adjustmentDetail.adjustmentReason || '-'}
                 </div>
               </div>

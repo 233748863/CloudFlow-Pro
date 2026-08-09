@@ -120,7 +120,7 @@ const DeptTreePicker: React.FC<{
           <button
             type="button"
             onClick={() => toggleExpand(node.deptId)}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-[var(--cf-surface-strong)] hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-950 dark:hover:text-slate-300"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-cf-faint hover:bg-[var(--cf-surface-strong)] hover:text-cf-muted dark:hover:bg-slate-950"
           >
             {hasChildren ? (
               isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
@@ -142,7 +142,7 @@ const DeptTreePicker: React.FC<{
             {isSelected ? <Check size={11} strokeWidth={3} /> : null}
           </button>
 
-          <Building2 size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
+          <Building2 size={14} className="shrink-0 text-cf-faint" />
           <span
             className="flex-1 truncate text-sm font-medium select-none"
             onClick={() => toggleExpand(node.deptId)}
@@ -187,7 +187,7 @@ const DeptTreePicker: React.FC<{
 
       <div className="admin-targeting-picker-section p-3">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
           <Input
             type="text"
             className="h-10 rounded-md pl-9 text-sm"
@@ -206,7 +206,7 @@ const DeptTreePicker: React.FC<{
         )}
       </div>
 
-      <div className="admin-targeting-picker-section px-4 py-2 text-xs text-slate-500 dark:text-slate-400">
+      <div className="admin-targeting-picker-section px-4 py-2 text-xs text-cf-subtle">
         已选择 <span className="font-medium text-cyan-600 dark:text-cyan-200">{selectedDepts.length}</span> 个部门
       </div>
     </InnerTableSurface>
@@ -291,7 +291,7 @@ const RoleListPicker: React.FC<{
 
       <div className="admin-targeting-picker-section p-3">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
           <Input
             type="text"
             className="h-10 rounded-md pl-9 text-sm"
@@ -334,7 +334,7 @@ const RoleListPicker: React.FC<{
                 >
                   {isSelected ? <Check size={11} strokeWidth={3} /> : null}
                 </button>
-                <Shield size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                <Shield size={14} className="shrink-0 text-cf-faint" />
                 <span className="flex-1 truncate text-sm font-medium select-none">
                   {role.roleName || role.name}
                 </span>
@@ -344,7 +344,7 @@ const RoleListPicker: React.FC<{
         )}
       </div>
 
-      <div className="admin-targeting-picker-section px-4 py-2 text-xs text-slate-500 dark:text-slate-400">
+      <div className="admin-targeting-picker-section px-4 py-2 text-xs text-cf-subtle">
         已选择 <span className="font-medium text-cyan-600 dark:text-cyan-200">{selectedRoles.length}</span> 个角色
       </div>
     </InnerTableSurface>
@@ -394,13 +394,13 @@ export const AnnouncementTargetingEditor: React.FC<AnnouncementTargetingEditorPr
             {activeCard.icon}
           </span>
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">发布范围</div>
-            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-sm font-semibold text-cf-title">发布范围</div>
+            <div className="mt-1 truncate text-xs text-cf-subtle">
               {activeCard.title} · {statusText}
             </div>
           </div>
         </div>
-        <span className="shrink-0 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+        <span className="shrink-0 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-950">
           {statusText}
         </span>
       </div>
@@ -426,14 +426,14 @@ export const AnnouncementTargetingEditor: React.FC<AnnouncementTargetingEditorPr
                   'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border',
                   active
                     ? 'border-cyan-200 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200'
-                    : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400',
+                    : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-subtle dark:border-slate-800 dark:bg-slate-950',
                 )}
               >
                 {card.icon}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{card.title}</div>
-                <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{card.description}</div>
+                <div className="text-sm font-medium text-cf-title">{card.title}</div>
+                <div className="mt-0.5 text-xs text-cf-subtle">{card.description}</div>
               </div>
               <span
                 className={cn(

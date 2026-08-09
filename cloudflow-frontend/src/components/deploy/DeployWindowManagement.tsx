@@ -49,7 +49,7 @@ const emptyFormData: DeployWindow = {
   description: '',
 };
 
-const fieldLabelClassName = 'mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200';
+const fieldLabelClassName = 'mb-2 block text-sm font-medium text-cf-body';
 
 const getWindowTypeLabel = (type: DeployWindow['windowType']) =>
   WINDOW_TYPES.find((item) => item.value === type)?.label || WINDOW_TYPES[0].label;
@@ -81,10 +81,10 @@ const InlineState: React.FC<{
   loading?: boolean;
 }> = ({ title, description, loading = false }) => (
   <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-    {loading ? <Clock3 className="mb-3 h-5 w-5 text-slate-400 dark:text-slate-500" /> : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {loading ? <Clock3 className="mb-3 h-5 w-5 text-cf-faint" /> : null}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">
         {description}
       </div>
     ) : null}
@@ -126,10 +126,10 @@ const DetailRow: React.FC<{
       alignStart ? 'sm:items-start' : 'sm:items-center',
     )}
   >
-    <div className="w-20 flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">{label}</div>
+    <div className="w-20 flex-shrink-0 text-xs text-cf-subtle">{label}</div>
     <div
       className={cn(
-        'min-w-0 flex-1 text-sm text-slate-700 dark:text-slate-200',
+        'min-w-0 flex-1 text-sm text-cf-body',
         alignStart ? '' : 'sm:text-right',
       )}
     >
@@ -330,12 +330,12 @@ export const DeployWindowManagement: React.FC = () => {
                   <tr key={window.id} className={!window.isEnabled ? 'bg-[var(--cf-surface-muted)] dark:bg-slate-900/40' : undefined}>
                     <td>
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                        <div className="truncate text-sm font-medium text-cf-title">
                           {window.windowName}
                         </div>
                         <div
-                          className="mt-1 truncate text-xs leading-5 text-slate-500 dark:text-slate-400"
-                          title={window.description?.trim() || undefined}
+                          className="mt-1 truncate text-xs leading-5 text-cf-subtle"
+                          data-tooltip={window.description?.trim() || undefined}
                         >
                           {window.description?.trim() || '-'}
                         </div>
@@ -343,25 +343,25 @@ export const DeployWindowManagement: React.FC = () => {
                     </td>
                     <td>{getWindowTypeLabel(window.windowType)}</td>
                     <td className="whitespace-nowrap">{window.startTime} - {window.endTime}</td>
-                    <td className="max-w-[180px] whitespace-normal text-slate-600 dark:text-slate-300">
+                    <td className="max-w-[180px] whitespace-normal text-cf-muted">
                       {getScheduleLabel(window)}
                     </td>
                     <td><span className={`badge ${window.isEnabled ? 'badge-success' : 'badge-gray'}`}>{window.isEnabled ? '启用' : '禁用'}</span></td>
                     <td>
                       <div className="admin-users-row-actions justify-end">
-                        <button type="button" title="编辑窗口" aria-label="编辑窗口" onClick={() => handleEdit(window)}>
+                        <button type="button" data-tooltip="编辑窗口" aria-label="编辑窗口" onClick={() => handleEdit(window)}>
                           <Edit2 size={15} />
                         </button>
                         <button
                           className={window.isEnabled ? 'danger' : undefined}
                           type="button"
-                          title={window.isEnabled ? '禁用窗口' : '启用窗口'}
+                          data-tooltip={window.isEnabled ? '禁用窗口' : '启用窗口'}
                           aria-label={window.isEnabled ? '禁用窗口' : '启用窗口'}
                           onClick={() => handleToggle(window.id, window.isEnabled)}
                         >
                           {window.isEnabled ? <PowerOff size={15} /> : <Power size={15} />}
                         </button>
-                        <button className="danger" type="button" title="删除窗口" aria-label="删除窗口" onClick={() => setDeleteTarget(window)}>
+                        <button className="danger" type="button" data-tooltip="删除窗口" aria-label="删除窗口" onClick={() => setDeleteTarget(window)}>
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -429,7 +429,7 @@ export const DeployWindowManagement: React.FC = () => {
 
             <div>
               <label className={fieldLabelClassName}>启用状态</label>
-              <label className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+              <label className="flex items-center gap-3 text-sm text-cf-muted">
                 <input
                   type="checkbox"
                   checked={formData.isEnabled}
@@ -498,7 +498,7 @@ export const DeployWindowManagement: React.FC = () => {
                         'h-10 rounded-md px-3 text-sm transition-colors',
                         selected
                           ? 'bg-[color:var(--cf-primary-50)] text-[color:var(--cf-primary-700)] border border-[color:var(--cf-primary-200)] dark:bg-cyan-950/40 dark:text-cyan-100 dark:border-cyan-800'
-                          : 'text-slate-500 border border-slate-200 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-400 dark:border-slate-800 dark:hover:bg-slate-900 dark:hover:text-slate-100',
+                          : 'text-cf-subtle border border-slate-200 hover:bg-[var(--cf-surface-muted)] hover:text-cf-title dark:border-slate-800 dark:hover:bg-slate-900',
                       )}
                     >
                       {day.label}

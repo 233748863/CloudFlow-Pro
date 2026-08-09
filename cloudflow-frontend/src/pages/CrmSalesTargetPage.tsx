@@ -218,9 +218,9 @@ export default function CrmSalesTargetPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={10} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-slate-500">正在加载销售目标...</span></td></tr>
+                  <tr><td colSpan={10} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-cf-subtle">正在加载销售目标...</span></td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-slate-500"><Goal className="mx-auto mb-3 h-4 w-4" />暂无销售目标</td></tr>
+                  <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-cf-subtle"><Goal className="mx-auto mb-3 h-4 w-4" />暂无销售目标</td></tr>
                 ) : rows.map((row) => (
                   <tr key={row.salesTargetId}>
                     <td className="font-mono text-xs">{row.targetNo || '-'}</td>
@@ -232,7 +232,7 @@ export default function CrmSalesTargetPage() {
                     <td className="text-right tabular-nums">{Number(row.completionRate || 0).toFixed(2)}%</td>
                     <td className="text-right tabular-nums">{formatCurrency(row.gapAmount)}</td>
                     <td>{formatDateTimeDisplay(row.updateTime) || '-'}</td>
-                    <td><div className="admin-users-row-actions"><button type="button" title="编辑目标" onClick={() => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }}><Gauge size={15} /></button><button type="button" className="danger" title="删除目标" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
+                    <td><div className="admin-users-row-actions"><button type="button" data-tooltip="编辑目标" aria-label="编辑目标" onClick={() => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }}><Gauge size={15} /></button><button type="button" className="danger" data-tooltip="删除目标" aria-label="删除目标" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
                   </tr>
                 ))}
               </tbody>

@@ -284,7 +284,7 @@ export const HrTalentDevelopmentPage: React.FC = () => {
                           <td>
                             <div className="admin-users-row-actions">
                               {canEdit ? (
-                                <button type="button" title="编辑" onClick={() => {
+                                <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => {
                                   setEditingId(row.id);
                                   setForm({
                                     employeeId: String(row.employeeId),
@@ -302,12 +302,12 @@ export const HrTalentDevelopmentPage: React.FC = () => {
                                 </button>
                               ) : null}
                               {canEdit && (row.status === 'PLANNED' || row.status === 'ONGOING') ? (
-                                <button type="button" title="完成回填" onClick={() => { setCompleteAction(row); setCompleteForm({ evaluationScore: '', evaluationNotes: '' }); }}>
+                                <button type="button" data-tooltip="完成回填" aria-label="完成回填" onClick={() => { setCompleteAction(row); setCompleteForm({ evaluationScore: '', evaluationNotes: '' }); }}>
                                   <CheckCircle2 size={15} />
                                 </button>
                               ) : null}
                               {canRemove ? (
-                                <button type="button" className="danger" title="删除" onClick={() => setDeleteId(row.id)}>
+                                <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteId(row.id)}>
                                   <Trash2 size={15} />
                                 </button>
                               ) : null}

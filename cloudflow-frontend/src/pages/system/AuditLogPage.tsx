@@ -11,7 +11,7 @@ import {
   getAuditLogPage,
   SysAuditLog,
 } from '@/services/api/log';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, Pagination, Table, TableScrollArea } from '@/components/common';
 import {
   Button,
   DatePicker,
@@ -40,9 +40,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -62,7 +62,7 @@ const AuditDetailDialog: React.FC<{ log: SysAuditLog | null; onClose: () => void
     maxWidthClassName="max-w-4xl"
     headerAside={
       log ? (
-        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-700 dark:bg-slate-900/70">
           变更字段：{log.auditField || '-'}
         </span>
       ) : null
@@ -77,8 +77,8 @@ const AuditDetailDialog: React.FC<{ log: SysAuditLog | null; onClose: () => void
             { label: '操作时间', value: log.createTime || '-' },
           ].map((item) => (
             <div key={item.label} className="border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800">
-              <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{item.label}</div>
-              <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">{item.value}</div>
+              <div className="text-xs font-medium text-cf-faint">{item.label}</div>
+              <div className="mt-2 text-sm text-cf-title">{item.value}</div>
             </div>
           ))}
         </div>
@@ -86,24 +86,24 @@ const AuditDetailDialog: React.FC<{ log: SysAuditLog | null; onClose: () => void
         <div className="card overflow-hidden">
           <div className="grid grid-cols-[minmax(0,1fr)_56px_minmax(0,1fr)]">
             <div className="bg-[var(--cf-surface-muted)] dark:bg-slate-900/40">
-              <div className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
+              <div className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-cf-muted dark:border-slate-800">
                 变更前
               </div>
-              <div className="min-h-[160px] p-4 text-sm leading-7 text-slate-700 dark:text-slate-200">
-                {log.beforeVal || <span className="italic text-slate-400 dark:text-slate-500">（空）</span>}
+              <div className="min-h-[160px] p-4 text-sm leading-7 text-cf-body">
+                {log.beforeVal || <span className="italic text-cf-faint">（空）</span>}
               </div>
             </div>
 
             <div className="flex items-center justify-center border-x border-slate-200 bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-900/70">
-              <ArrowLeftRight size={18} className="text-slate-400 dark:text-slate-500" />
+              <ArrowLeftRight size={18} className="text-cf-faint" />
             </div>
 
             <div className="bg-[var(--cf-surface-muted)] dark:bg-slate-900/40">
-              <div className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
+              <div className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-cf-muted dark:border-slate-800">
                 变更后
               </div>
-              <div className="min-h-[160px] p-4 text-sm leading-7 text-slate-700 dark:text-slate-200">
-                {log.afterVal || <span className="italic text-slate-400 dark:text-slate-500">（空）</span>}
+              <div className="min-h-[160px] p-4 text-sm leading-7 text-cf-body">
+                {log.afterVal || <span className="italic text-cf-faint">（空）</span>}
               </div>
             </div>
           </div>
@@ -380,8 +380,15 @@ export const AuditLogPage: React.FC = () => {
             </section>
           )}
           table={(
-            <InnerTableSurface className="admin-audit-log-table-panel">
-              <table className="unity-data-table admin-source-table admin-audit-log-table min-w-[1080px]">
+            <InnerTableSurface className="admin-audit-log-table-panel" disableScrollWrapper>
+              <TableScrollArea aria-label="审计日志表格">
+                <Table
+                  disableScrollWrapper
+                  stickyHeader
+                  pinnedColumns={{ left: 1, right: 1 }}
+                  className="admin-source-table admin-audit-log-table min-w-[1080px]"
+                  style={{ minWidth: 1080 }}
+                >
                   <thead>
                     <tr>
                       <th className="w-10">
@@ -420,18 +427,18 @@ export const AuditLogPage: React.FC = () => {
                             />
                           </td>
                           <td>
-                            <strong className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            <strong className="text-sm font-medium text-cf-title">
                               {item.auditName || '-'}
                             </strong>
                           </td>
                           <td>{item.auditField || '-'}</td>
                           <td>
-                            <div className="max-w-[220px] truncate text-slate-500 dark:text-slate-400" title={item.beforeVal || ''}>
+                            <div className="max-w-[220px] truncate text-cf-subtle" data-tooltip={item.beforeVal || ''}>
                               {item.beforeVal || '（空）'}
                             </div>
                           </td>
                           <td>
-                            <div className="max-w-[220px] truncate text-slate-500 dark:text-slate-400" title={item.afterVal || ''}>
+                            <div className="max-w-[220px] truncate text-cf-subtle" data-tooltip={item.afterVal || ''}>
                               {item.afterVal || '（空）'}
                             </div>
                           </td>
@@ -439,13 +446,13 @@ export const AuditLogPage: React.FC = () => {
                           <td className="whitespace-nowrap">{item.createTime || '-'}</td>
                           <td>
                             <div className="admin-users-row-actions">
-                              <button type="button" title="查看详情" onClick={() => void handleViewDetail(item.auditId)}>
+                              <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => void handleViewDetail(item.auditId)}>
                                 <Eye size={15} />
                               </button>
                               <button
                                 type="button"
                                 className="danger"
-                                title="删除日志"
+                                data-tooltip="删除日志" aria-label="删除日志"
                                 onClick={() => setPendingDeleteIds([item.auditId])}
                               >
                                 <Trash2 size={15} />
@@ -456,7 +463,8 @@ export const AuditLogPage: React.FC = () => {
                       ))
                     )}
                   </tbody>
-              </table>
+                </Table>
+              </TableScrollArea>
             </InnerTableSurface>
           )}
           pagination={total > 0 ? (

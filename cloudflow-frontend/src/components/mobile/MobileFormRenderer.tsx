@@ -115,20 +115,20 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
     const displayValue = getFieldDisplayValue(field, formData, val);
 
     const inputClassName = `w-full px-3 py-2.5 text-base border rounded-lg focus:outline-none transition-colors ${
-      hasError
-        ? 'border-red-300 bg-red-50 focus:border-red-500 dark:border-red-900 dark:bg-red-950/30'
-        : 'border-slate-200 bg-[var(--cf-surface-strong)] focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15 dark:border-slate-700'
-    } ${readOnly ? 'bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-300' : 'text-[var(--cf-text)]'}`;
+ hasError
+ ? 'border-red-300 bg-red-50 focus:border-red-500 dark:border-red-900 dark:bg-red-950/30'
+ : 'border-slate-200 bg-[var(--cf-surface-strong)] focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15 dark:border-slate-700'
+ } ${readOnly ? 'bg-cf-surface-2 text-cf-muted ' : 'text-[var(--cf-text)]'}`;
 
     if (isReadonlyField) {
       return (
         <div key={field.id} id={`mobile-field-${field.id}`} className="mb-4">
-          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+          <label className="mb-1.5 block text-sm font-medium text-cf-body">
             {field.label}
             {field.required && <span className="text-red-500 ml-1">*</span>}
           </label>
-          <div className="min-h-[44px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-base text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            {displayValue || <span className="text-slate-400">未填写</span>}
+          <div className="min-h-[44px] rounded-lg border border-slate-200 bg-cf-surface-2 px-3 py-2.5 text-base text-cf-muted dark:border-slate-700">
+            {displayValue || <span className="text-cf-faint">未填写</span>}
           </div>
           {hasError && (
             <div className="flex items-center gap-1 mt-1.5 text-red-500 text-xs">
@@ -142,7 +142,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
 
     return (
       <div key={field.id} id={`mobile-field-${field.id}`} className="mb-4">
-        <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+        <label className="mb-1.5 block text-sm font-medium text-cf-body">
           {field.label}
           {field.required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -274,9 +274,9 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
       {onBack && (
         <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
           <button onClick={onBack} className="p-1">
-            <ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" />
+            <ArrowLeft size={20} className="text-cf-muted" />
           </button>
-          <h2 className="flex-1 truncate text-base font-semibold text-slate-800 dark:text-slate-100">
+          <h2 className="flex-1 truncate text-base font-semibold text-cf-title">
             {title || formDef.name || '表单'}
           </h2>
         </div>
@@ -286,7 +286,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
         <div className="px-4 py-4">
           {formDef.fields.length === 0 ? (
-            <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">表单无字段</div>
+            <div className="py-8 text-center text-sm text-cf-subtle">表单无字段</div>
           ) : (
             formDef.fields.map(renderField)
           )}

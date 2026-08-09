@@ -1,0 +1,126 @@
+/* 从 index.css 拆分而来：admin-budget
+   由 BudgetManagementPage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-budget-board {
+      min-width: 0;
+      align-items: stretch;
+    }
+
+  .admin-budget-surface {
+      min-width: 0;
+      min-height: 0;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-budget-surface-head {
+      display: flex;
+      min-width: 0;
+      flex-shrink: 0;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.875rem;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 1rem;
+    }
+
+  .admin-budget-surface-head strong {
+      display: block;
+      color: #0f172a;
+      font-size: 0.875rem;
+      font-weight: 650;
+    }
+
+  .admin-budget-surface-head span {
+      display: block;
+      margin-top: 0.125rem;
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+  .admin-budget-surface-action {
+      flex-shrink: 0;
+    }
+
+  .admin-budget-surface-body {
+      min-width: 0;
+      min-height: 0;
+      padding: 1rem;
+    }
+
+  .admin-budget-table-panel {
+      height: 100%;
+    }
+
+  .admin-budget-table-body {
+      flex: 1 1 0%;
+      overflow: auto;
+      padding: 0;
+      scrollbar-gutter: stable;
+    }
+
+  .admin-budget-table {
+      min-width: 100% !important;
+      table-layout: fixed;
+    }
+
+  .admin-budget-table th,
+    .admin-budget-table td {
+      overflow-wrap: anywhere;
+    }
+
+  .admin-budget-table th:last-child,
+    .admin-budget-table td:last-child {
+      width: 7rem;
+    }
+
+  .admin-budget-line-row,
+    .admin-budget-note,
+    .admin-budget-threshold-cell {
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-budget-line-row {
+      padding: 0.75rem;
+      color: #334155;
+      font-size: 0.875rem;
+    }
+
+  .admin-budget-line-grid {
+      display: grid;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+  .admin-budget-note {
+      padding: 1rem;
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.5;
+    }
+
+  .admin-budget-threshold-cell {
+      min-height: 2.5rem;
+      padding: 0.6875rem 0.75rem;
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.2;
+    }
+
+  .admin-budget-line-editor {
+      display: grid;
+      gap: 0.75rem;
+    }
+}
+
+@layer components {
+  @media (min-width: 768px) {
+    .admin-budget-line-grid {
+          grid-template-columns: minmax(11rem, 1.1fr) minmax(12rem, 1fr) minmax(8rem, 0.7fr) minmax(13rem, 1fr) auto;
+        }
+  }
+}

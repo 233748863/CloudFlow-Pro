@@ -36,10 +36,10 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
         onClick={onClick}
         className={cn(
           `group flex w-full items-start gap-3 border-b border-slate-200 px-4 py-4 text-left transition-colors dark:border-slate-800 ${
-            unread
-              ? 'bg-[var(--cf-surface-muted)] hover:bg-[var(--cf-surface-strong)] dark:bg-slate-900/70 dark:hover:bg-slate-900'
-              : 'bg-[var(--cf-surface-strong)] hover:bg-[var(--cf-surface-muted)] dark:bg-slate-950 dark:hover:bg-slate-900/70'
-          }`,
+ unread
+ ? 'bg-[var(--cf-surface-muted)] hover:bg-[var(--cf-surface-strong)] dark:bg-slate-900/70 dark:hover:bg-slate-900'
+ : 'bg-[var(--cf-surface-strong)] hover:bg-[var(--cf-surface-muted)] dark:bg-slate-950 dark:hover:bg-slate-900/70'
+ }`,
           className,
         )}
       >
@@ -48,7 +48,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
             'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border',
             unread
               ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/80 dark:bg-cyan-950/30 dark:text-cyan-200'
-              : 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
+              : 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-faint dark:border-slate-800 dark:bg-slate-900',
           )}
         >
           {unread ? typeMeta.icon : <CheckCircle2 size={16} />}
@@ -79,22 +79,22 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
               </div>
 
               <div className="mt-2 flex items-start justify-between gap-3">
-                <h3 className="min-w-0 flex-1 text-sm font-semibold leading-6 text-slate-900 dark:text-slate-100">
+                <h3 className="min-w-0 flex-1 text-sm font-semibold leading-6 text-cf-title">
                   <span className="line-clamp-1">{announcement.title}</span>
                 </h3>
-                <time className="shrink-0 text-xs text-slate-400 dark:text-slate-500">{timeText}</time>
+                <time className="shrink-0 text-xs text-cf-faint">{timeText}</time>
               </div>
 
-              <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <p className="mt-1 line-clamp-2 text-sm leading-6 text-cf-subtle">
                 {excerpt}
               </p>
 
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-cf-subtle">
                 <span>{announcement.isRead ? '已读' : '待处理'}</span>
               </div>
             </div>
 
-            <ChevronRight className="mt-1 h-4 w-4 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300" />
+            <ChevronRight className="mt-1 h-4 w-4 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-cf-subtle" />
           </div>
         </div>
       </button>
@@ -155,22 +155,22 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
           <h3
             className={cn(
               'line-clamp-2 text-sm font-semibold leading-6',
-              unread ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200',
+              unread ? 'text-cf-title' : 'text-cf-body',
             )}
           >
             {announcement.title}
           </h3>
 
-          <p className="mt-2 line-clamp-3 flex-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="mt-2 line-clamp-3 flex-1 text-sm leading-6 text-cf-subtle">
             {excerpt}
           </p>
 
-          <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-400 dark:text-slate-500">
+          <div className="mt-3 flex items-center justify-between gap-2 text-xs text-cf-faint">
             <span className="inline-flex items-center gap-1">
               {unread ? (
                 <Bell size={12} className="text-cyan-500 dark:text-cyan-400" />
               ) : (
-                <CheckCircle2 size={12} className="text-slate-400 dark:text-slate-500" />
+                <CheckCircle2 size={12} className="text-cf-faint" />
               )}
               {announcement.isRead ? '已读' : '待处理'}
             </span>
@@ -187,10 +187,10 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
       onClick={onClick}
       className={cn(
         `group relative flex w-full items-start gap-4 overflow-hidden rounded-md border px-4 py-4 text-left transition-colors ${
-          unread
-            ? 'border-cyan-200 bg-[var(--cf-surface-strong)] shadow-none hover:border-cyan-300 hover:bg-[var(--cf-surface-muted)] dark:border-cyan-900 dark:bg-slate-950 dark:hover:bg-slate-900'
-            : 'border-slate-200 bg-[var(--cf-surface-strong)] shadow-none hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900'
-        }`,
+ unread
+ ? 'border-cyan-200 bg-[var(--cf-surface-strong)] shadow-none hover:border-cyan-300 hover:bg-[var(--cf-surface-muted)] dark:border-cyan-900 dark:bg-slate-950 dark:hover:bg-slate-900'
+ : 'border-slate-200 bg-[var(--cf-surface-strong)] shadow-none hover:bg-[var(--cf-surface-muted)] dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900'
+ }`,
         className,
       )}
     >
@@ -201,7 +201,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
           'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border',
           unread
             ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
-            : 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
+            : 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-faint dark:border-slate-800 dark:bg-slate-900',
         )}
       >
         {unread ? <Bell size={18} /> : <CheckCircle2 size={18} />}
@@ -223,7 +223,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
               未读
             </span>
           ) : null}
-          <span className="ml-auto shrink-0 text-xs text-slate-400 dark:text-slate-500">
+          <span className="ml-auto shrink-0 text-xs text-cf-faint">
             {timeText}
           </span>
         </div>
@@ -232,19 +232,19 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
           className={cn(
             'mt-3 line-clamp-1 text-base',
             unread
-              ? 'font-semibold text-slate-900 dark:text-slate-100'
-              : 'font-medium text-slate-700 dark:text-slate-200',
+              ? 'font-semibold text-cf-title'
+              : 'font-medium text-cf-body',
           )}
         >
           {announcement.title}
         </h3>
 
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+        <p className="mt-2 line-clamp-2 text-sm leading-6 text-cf-subtle">
           {excerpt}
         </p>
       </div>
 
-      <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300" />
+      <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-cf-subtle" />
     </button>
   );
 };

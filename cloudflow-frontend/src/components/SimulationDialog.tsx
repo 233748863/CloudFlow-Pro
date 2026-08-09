@@ -35,9 +35,9 @@ interface SimulationDialogProps {
 const getNodeStatusMeta = (detail: SimulationNodeDetail) => {
   if (!detail.reached) {
     return {
-      icon: <XCircle size={14} className="text-slate-400 dark:text-slate-500" />,
+      icon: <XCircle size={14} className="text-cf-faint" />,
       badgeClassName:
-        'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+        'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900',
       badgeLabel: '未到达',
     };
   }
@@ -188,7 +188,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
             )}
           >
             <div className="p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-cf-title">
                 <FileJson size={16} />
                 模拟变量 JSON
               </div>
@@ -198,22 +198,22 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                 className="min-h-[220px] resize-none font-mono text-[13px] leading-6"
                 placeholder='{"amount": 5000, "department": "finance"}'
               />
-              <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              <div className="mt-2 text-xs leading-5 text-cf-subtle">
                 变量 = 流程条件节点解析时可读取的键值对。示例：金额审批流可传入 `amount`、`department`、`urgent`。
               </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                <div className="text-sm font-semibold text-cf-title">
                   模拟所有分支
                 </div>
-                <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                <div className="mt-1 text-xs leading-5 text-cf-subtle">
                   开启后跳过条件真假限制，用于检查整张流程图是否存在不可达或异常闭环。
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span className="text-xs font-medium text-cf-subtle">
                   {simulateAll ? '已开启' : '按真实条件'}
                 </span>
                 <Switch checked={simulateAll} onCheckedChange={setSimulateAll} />
@@ -249,11 +249,11 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                     ) : (
                       <XCircle size={16} className="text-rose-600 dark:text-rose-300" />
                     )}
-                    <span className="text-slate-900 dark:text-slate-100">
+                    <span className="text-cf-title">
                       {result.success ? '模拟通过' : '存在错误'}
                     </span>
                   </div>
-                  <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  <div className="mt-2 text-xs leading-5 text-cf-subtle">
                     总节点 {result.totalNodes} · 可达 {result.reachableNodes} · 不可达 {result.unreachableNodes.length}
                   </div>
                 </div>
@@ -288,7 +288,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
 
                 {result.unreachableNodes.length > 0 ? (
                   <div className="bg-[var(--cf-surface-muted)] px-4 py-4 dark:bg-slate-900/70">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">不可达节点</div>
+                    <div className="text-sm font-semibold text-cf-title">不可达节点</div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {result.unreachableNodes.map((nodeId) => (
                         <span
@@ -303,7 +303,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                 ) : null}
               </>
             ) : (
-              <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+              <div className="px-5 py-10 text-center text-sm text-cf-subtle">
                 暂无模拟结果。
               </div>
             )}
@@ -332,7 +332,7 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                     </React.Fragment>
                   ))}
                 </div>
-                <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mt-3 text-xs text-cf-subtle">
                   终止类型：{path.terminationType}
                 </div>
               </div>
@@ -367,14 +367,14 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                         className="transition-colors"
                       >
                         <td className="align-top">
-                          <div className={detail.reached ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}>
+                          <div className={detail.reached ? 'text-cf-title' : 'text-cf-faint'}>
                             {detail.title || detail.nodeId}
                           </div>
-                          <div className="mt-1 text-xs font-mono text-slate-400 dark:text-slate-500">
+                          <div className="mt-1 text-xs font-mono text-cf-faint">
                             {detail.nodeId}
                           </div>
                         </td>
-                        <td className="align-top text-slate-600 dark:text-slate-300">
+                        <td className="align-top text-cf-muted">
                           {detail.nodeType}
                         </td>
                         <td className="align-top">
@@ -385,14 +385,14 @@ export const SimulationDialog: React.FC<SimulationDialogProps> = ({
                             {statusMeta.badgeLabel}
                           </span>
                         </td>
-                        <td className="align-top text-slate-500 dark:text-slate-400">
+                        <td className="align-top text-cf-subtle">
                           {detail.conditionResult === null || detail.conditionResult === undefined
                             ? '-'
                             : detail.conditionResult
                               ? '条件满足'
                               : '条件不满足'}
                         </td>
-                        <td className="align-top text-slate-500 dark:text-slate-400">
+                        <td className="align-top text-cf-subtle">
                           {detail.resolvedAssignees.length > 0
                             ? detail.resolvedAssignees.join(', ')
                             : '-'}

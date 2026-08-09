@@ -47,7 +47,6 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                packagePath.startsWith('@google/') ||
                 packagePath.startsWith('marked/') ||
                 packagePath.startsWith('dompurify/')
               ) {
@@ -74,7 +73,19 @@ export default defineConfig(({ mode }) => {
           'X-Frame-Options': 'SAMEORIGIN',
           'X-Content-Type-Options': 'nosniff',
           'X-XSS-Protection': '1; mode=block',
-          // 'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' ws: wss: http: https:;"
+          // 开发态 CSP：Vite HMR 需要 unsafe-inline / unsafe-eval，故此处相对宽松。
+          // 生产环境的 CSP 由网关 / Nginx 下发，需去掉 unsafe-eval 并收紧 connect-src。
+          'Content-Security-Policy': [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob: https:",
+            "font-src 'self' data:",
+            "connect-src 'self' ws: wss: http: https:",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "frame-ancestors 'self'"
+          ].join('; ')
         },
         proxy: {
           '/api': {
@@ -127,10 +138,6 @@ export default defineConfig(({ mode }) => {
           }
         })] : [])
       ],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, './src'),

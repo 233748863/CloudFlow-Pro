@@ -1,0 +1,117 @@
+/* 从 index.css 拆分而来：admin-attendance
+   由 AttendanceRule.tsx, AttendanceCheckIn.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-attendance-rule-workspace,
+    .admin-attendance-workbench {
+      min-width: 0;
+      min-height: 0;
+    }
+
+  .admin-attendance-rule-workspace {
+      display: flex;
+      flex-direction: column;
+      min-height: 38rem;
+    }
+
+  .admin-attendance-workbench {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+  .admin-attendance-tabs {
+      display: flex;
+      min-height: 0;
+      flex: 1 1 0%;
+      flex-direction: column;
+      gap: 1rem;
+      overflow: hidden;
+    }
+
+  .admin-attendance-tab {
+      margin-top: 0;
+      flex: 1 1 0%;
+      overflow: auto;
+      padding-right: 0.125rem;
+      scrollbar-gutter: stable;
+    }
+
+  .admin-attendance-field {
+      display: grid;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+
+  .admin-attendance-surface {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-attendance-surface-head {
+      display: flex;
+      min-width: 0;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.875rem;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 0.875rem 1rem;
+    }
+
+  .admin-attendance-surface-head strong {
+      display: block;
+      color: #0f172a;
+      font-size: 0.875rem;
+      font-weight: 650;
+    }
+
+  .admin-attendance-surface-body {
+      min-width: 0;
+      min-height: 0;
+      padding: 1rem;
+    }
+
+  .admin-attendance-control-shell,
+    .admin-attendance-list-row,
+    .admin-attendance-empty {
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-attendance-control-shell {
+      display: flex;
+      min-height: 2.75rem;
+      align-items: center;
+      padding: 0 1rem;
+    }
+
+  .admin-attendance-list-panel {
+      display: grid;
+      min-width: 0;
+      gap: 0.5rem;
+    }
+
+  .admin-attendance-list-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+    }
+
+  .admin-attendance-empty {
+      border-style: dashed;
+      background: var(--cf-surface-muted);
+      padding: 1.5rem 1rem;
+      color: #64748b;
+      font-size: 0.875rem;
+      text-align: center;
+    }
+}

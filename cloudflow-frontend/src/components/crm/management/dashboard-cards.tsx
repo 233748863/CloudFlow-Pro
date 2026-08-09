@@ -8,7 +8,7 @@ export const DashboardMetricTile = ({
   label,
   value,
   hint,
-  valueClassName = 'text-slate-900 dark:text-slate-100',
+  valueClassName = 'text-cf-title',
 }: {
   label: string;
   value: React.ReactNode;
@@ -16,9 +16,9 @@ export const DashboardMetricTile = ({
   valueClassName?: string;
 }) => (
   <div className="p-4">
-    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+    <div className="text-xs font-medium text-cf-subtle">{label}</div>
     <div className={`mt-2 text-xl font-semibold tabular-nums ${valueClassName}`}>{value}</div>
-    {hint ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
+    {hint ? <div className="mt-1 text-xs text-cf-subtle">{hint}</div> : null}
   </div>
 );
 
@@ -32,9 +32,9 @@ export const DashboardFocusItem = ({
   meta?: string;
 }) => (
   <div className="p-4">
-    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
-    <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {meta ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{meta}</div> : null}
+    <div className="text-xs font-medium text-cf-subtle">{label}</div>
+    <div className="mt-2 text-sm font-medium text-cf-title">{title}</div>
+    {meta ? <div className="mt-1 text-xs text-cf-subtle">{meta}</div> : null}
   </div>
 );
 
@@ -162,10 +162,10 @@ export const DashboardStageCard = ({
   <div className={`admin-crm-stage-cell${emphasis ? ' is-emphasis' : ''}`}>
     <div className="admin-crm-row-label">{label}</div>
     <div className="mt-2 flex items-end justify-between gap-3">
-      <div className={`text-xl font-semibold tabular-nums ${emphasis ? 'text-cyan-700 dark:text-cyan-200' : 'text-slate-900 dark:text-slate-100'}`}>
+      <div className={`text-xl font-semibold tabular-nums ${emphasis ? 'text-cyan-700 dark:text-cyan-200' : 'text-cf-title '}`}>
         {count}
       </div>
-      <div className="text-xs text-slate-500 dark:text-slate-400">{formatDashboardCurrency(amount)}</div>
+      <div className="text-xs text-cf-subtle">{formatDashboardCurrency(amount)}</div>
     </div>
   </div>
 );

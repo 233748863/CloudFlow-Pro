@@ -28,6 +28,7 @@ import {
 import { addMenu, deleteMenu, getMenuList, updateMenu, type SysMenu } from '../../services/api/auth';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './MenuList.css';
 
 type MenuNode = Omit<SysMenu, 'menuId' | 'parentId' | 'menuType' | 'menuName' | 'orderNum' | 'status' | 'children'> & {
   menuId: number;
@@ -83,7 +84,7 @@ const menuTypeMeta: Record<
     label: '按钮',
     icon: <File size={14} />,
     className:
-      'border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300',
+      'border border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-700 dark:bg-slate-950',
   },
 };
 
@@ -102,9 +103,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+          <p className="mt-2 text-sm text-cf-subtle">{description}</p>
         ) : null}
       </div>
     </td>
@@ -441,7 +442,7 @@ export const MenuList = () => {
                   {node.perms}
                 </code>
               ) : (
-                <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+                <span className="text-sm text-cf-faint">-</span>
               )}
             </td>
 
@@ -470,13 +471,13 @@ export const MenuList = () => {
 
             <td className="text-right">
               <div className="admin-users-row-actions">
-                <button type="button" title="编辑菜单" onClick={() => handleOpenModal(node)}>
+                <button type="button" data-tooltip="编辑菜单" aria-label="编辑菜单" onClick={() => handleOpenModal(node)}>
                   <Edit size={15} />
                 </button>
                 {node.menuType !== 'F' ? (
                   <button
                     type="button"
-                    title="新增子节点"
+                    data-tooltip="新增子节点" aria-label="新增子节点"
                     onClick={() => handleOpenModal(undefined, node.menuId)}
                   >
                     <Plus size={15} />
@@ -485,7 +486,7 @@ export const MenuList = () => {
                 <button
                   type="button"
                   className="danger"
-                  title="删除菜单"
+                  data-tooltip="删除菜单" aria-label="删除菜单"
                   onClick={() => setPendingDeleteMenu(node)}
                 >
                   <Trash2 size={15} />

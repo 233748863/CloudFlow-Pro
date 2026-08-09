@@ -50,9 +50,9 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
       {/* 顶部导航栏 */}
       <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
         <button onClick={onBack} className="p-1">
-          <ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" />
+          <ArrowLeft size={20} className="text-cf-muted" />
         </button>
-        <h2 className="flex-1 truncate text-base font-semibold text-slate-800 dark:text-slate-100">
+        <h2 className="flex-1 truncate text-base font-semibold text-cf-title">
           {task.workflowName || task.nodeName || '任务详情'}
         </h2>
         <span className={`px-2 py-0.5 text-xs rounded-md ${
@@ -71,18 +71,18 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
         {/* 基本信息 */}
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-slate-500 dark:text-slate-400">申请人</span>
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{task.applicantName || '-'}</span>
+            <span className="text-sm text-cf-subtle">申请人</span>
+            <span className="text-sm font-medium text-cf-title">{task.applicantName || '-'}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-slate-500 dark:text-slate-400">创建时间</span>
-            <span className="text-sm text-slate-600 dark:text-slate-300">
+            <span className="text-sm text-cf-subtle">创建时间</span>
+            <span className="text-sm text-cf-muted">
               {task.createdTime ? new Date(task.createdTime).toLocaleString('zh-CN') : '-'}
             </span>
           </div>
           {task.dueDate && (
             <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-500 dark:text-slate-400">截止时间</span>
+              <span className="text-sm text-cf-subtle">截止时间</span>
               <span className="text-sm text-red-600 dark:text-red-300">
                 {new Date(task.dueDate).toLocaleString('zh-CN')}
               </span>
@@ -93,12 +93,12 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
         {/* 表单数据 */}
         {task.formData && Object.keys(task.formData).length > 0 && (
           <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
-            <h3 className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-200">表单信息</h3>
+            <h3 className="mb-3 text-sm font-medium text-cf-body">表单信息</h3>
             <div className="space-y-2">
               {Object.entries(task.formData).map(([key, value]) => (
                 <div key={key} className="flex justify-between items-start">
-                  <span className="shrink-0 text-sm text-slate-500 dark:text-slate-400">{key}</span>
-                  <span className="ml-4 text-right text-sm text-slate-800 dark:text-slate-100">
+                  <span className="shrink-0 text-sm text-cf-subtle">{key}</span>
+                  <span className="ml-4 text-right text-sm text-cf-title">
                     {String(value || '-')}
                   </span>
                 </div>
@@ -110,7 +110,7 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
         {/* 审批意见 */}
         {showCommentBox && (
           <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
-            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">审批意见</label>
+            <label className="mb-2 block text-sm font-medium text-cf-body">审批意见</label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -128,7 +128,7 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
           {!showCommentBox && (
             <button
               onClick={() => setShowCommentBox(true)}
-              className="mb-3 flex w-full items-center justify-center gap-1 rounded-lg border border-slate-300 py-2 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300"
+              className="mb-3 flex w-full items-center justify-center gap-1 rounded-lg border border-slate-300 py-2 text-sm text-cf-muted dark:border-slate-700"
             >
               <MessageSquare size={14} />
               添加审批意见

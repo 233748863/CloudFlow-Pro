@@ -282,15 +282,15 @@ export const HrTalentPoolPage: React.FC = () => {
                           <td>
                             <div className="admin-users-row-actions">
                               {canEdit ? (
-                                <button type="button" title="编辑" onClick={() => { setEditingId(row.id); setForm({ poolNo: row.poolNo, poolName: row.poolName, poolType: row.poolType, description: row.description ?? '' }); setOpen(true); }}>
+                                <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => { setEditingId(row.id); setForm({ poolNo: row.poolNo, poolName: row.poolName, poolType: row.poolType, description: row.description ?? '' }); setOpen(true); }}>
                                   <Pencil size={15} />
                                 </button>
                               ) : null}
-                              <button type="button" title="成员" onClick={() => void openMembers(row)}>
+                              <button type="button" data-tooltip="成员" aria-label="成员" onClick={() => void openMembers(row)}>
                                 <Users size={15} />
                               </button>
                               {canRemove ? (
-                                <button type="button" className="danger" title="删除" onClick={() => setDeleteId(row.id)}>
+                                <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteId(row.id)}>
                                   <Trash2 size={15} />
                                 </button>
                               ) : null}
@@ -367,7 +367,7 @@ export const HrTalentPoolPage: React.FC = () => {
                       <td>{m.joinedReviewId ?? '-'}</td>
                       <td>
                         <div className="admin-users-row-actions">
-                          <button type="button" title="退出" onClick={() => void handleExit(m)}>
+                          <button type="button" data-tooltip="退出" aria-label="退出" onClick={() => void handleExit(m)}>
                             <UserMinus size={15} />
                           </button>
                         </div>

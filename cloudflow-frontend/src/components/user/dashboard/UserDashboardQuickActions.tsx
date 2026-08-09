@@ -36,15 +36,15 @@ export const UserDashboardQuickActions: React.FC<UserDashboardQuickActionsProps>
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            <p className="text-sm font-medium text-cf-title">
               {action.label}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-cf-subtle">
               {action.description}
             </p>
           </div>
 
-          <ArrowRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5 dark:text-slate-500" />
+          <ArrowRight className="h-4 w-4 text-cf-faint transition-transform group-hover:translate-x-0.5" />
         </button>
       ))}
     </div>

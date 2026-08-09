@@ -27,7 +27,7 @@ export const StageTimeline: React.FC<StageTimelineProps> = ({ steps, labels, dic
         const reached = currentIdx >= idx;
         return (
           <React.Fragment key={s}>
-            <div className={`rounded-md px-2 py-0.5 text-[10px] ${reached ? cls.dot : 'bg-[var(--cf-surface-muted)] text-slate-400'}`}>
+            <div className={`rounded-md px-2 py-0.5 text-[10px] ${reached ? cls.dot : 'bg-[var(--cf-surface-muted)] text-cf-faint'}`}>
               {resolveLabel(s)}
             </div>
             {idx < steps.length - 1 && (

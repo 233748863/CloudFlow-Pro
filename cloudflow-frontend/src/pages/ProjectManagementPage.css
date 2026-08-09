@@ -1,0 +1,181 @@
+/* 从 index.css 拆分而来：admin-project
+   由 ProjectManagementPage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-project-detail-dialog-body {
+      display: flex;
+      min-height: 0;
+    }
+
+  .admin-project-detail-shell {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      height: min(680px, calc(90vh - 8.5rem));
+      min-height: 420px;
+    }
+
+  .admin-project-detail-tabs {
+      display: flex;
+      min-height: 0;
+      flex-direction: column;
+      gap: 1rem;
+      overflow: hidden;
+    }
+
+  .admin-project-detail-tabbar {
+      flex: 0 0 auto;
+    }
+
+  .admin-project-detail-tab {
+      margin-top: 0;
+      flex: 1 1 0%;
+      overflow: auto;
+      padding-right: 0.125rem;
+      scrollbar-gutter: stable;
+    }
+
+  .admin-project-gantt-rows {
+      display: grid;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+
+  .admin-project-detail-panel {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+      box-shadow: none;
+    }
+
+  .admin-project-detail-panel-head {
+      display: flex;
+      min-height: 3.25rem;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 0 1rem;
+    }
+
+  .admin-project-detail-panel-head h3 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+  .admin-project-detail-panel-body {
+      min-width: 0;
+      padding: 1rem;
+    }
+
+  .admin-project-detail-stack {
+      display: grid;
+      min-width: 0;
+      gap: 0.75rem;
+    }
+
+  .admin-project-detail-metric strong {
+      overflow: visible;
+      font-size: 1.25rem;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+
+  .admin-project-cost-track {
+      height: 0.5rem;
+      width: 100%;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e2e8f0;
+    }
+
+  .admin-project-cost-track-fill {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: #0d95b5;
+      transition: width 0.3s ease;
+    }
+
+  .admin-project-cost-bar {
+      display: flex;
+      height: 0.75rem;
+      width: 100%;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e2e8f0;
+    }
+
+  .admin-project-cost-bar span {
+      height: 100%;
+    }
+
+  .admin-project-cost-dot {
+      display: inline-block;
+      width: 0.625rem;
+      height: 0.625rem;
+      border-radius: 999px;
+    }
+
+  .admin-project-detail-note {
+      min-width: 0;
+      border: 1px solid #d8f3fa;
+      border-radius: 0.5rem;
+      background: rgba(13, 149, 181, 0.07);
+      color: #0b7894;
+      padding: 0.75rem 0.875rem;
+      font-size: 0.75rem;
+      line-height: 1.5;
+    }
+
+  .admin-project-detail-row {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border: 1px solid #eef2f7;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+      padding: 0.75rem;
+    }
+
+  .admin-project-detail-row > div:first-child {
+      min-width: 0;
+    }
+
+  .admin-project-gantt-row {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid #eef2f7;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+      padding: 0.5rem 0;
+    }
+}
+
+@layer components {
+  @media (max-width: 760px) {
+    .admin-project-detail-panel-head {
+          min-height: 0;
+          align-items: flex-start;
+          padding: 0.875rem 1rem;
+        }
+
+    .admin-project-detail-row {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+    .admin-project-gantt-row {
+          grid-template-columns: 1fr !important;
+        }
+  }
+}

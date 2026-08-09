@@ -34,10 +34,10 @@ const CategoryTree: React.FC<{
             className="w-full justify-start"
             style={{ paddingLeft: `${level * 16 + 12}px` }}
           >
-            <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
+            <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-cf-faint" />
             <span className="flex-1 truncate text-left">{node.name}</span>
             {Number(node.templateCount || 0) > 0 ? (
-              <span className="ml-2 text-xs text-slate-500">
+              <span className="ml-2 text-xs text-cf-subtle">
                 {node.templateCount}
               </span>
             ) : null}
@@ -69,7 +69,7 @@ export const TemplateLibrarySidebar: React.FC<TemplateLibrarySidebarProps> = ({
   <section className="template-library-sidebar flex h-full min-h-0 flex-col overflow-hidden">
     <InnerTableSurface className="flex min-h-0 flex-1 flex-col" wrapperClassName="flex min-h-0 flex-1 flex-col p-0">
       <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-        <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">{TEXT.categoryNavigation}</div>
+        <div className="text-sm font-semibold text-cf-title">{TEXT.categoryNavigation}</div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -80,9 +80,9 @@ export const TemplateLibrarySidebar: React.FC<TemplateLibrarySidebarProps> = ({
           onClick={() => onCategoryChange("")}
           className="w-full justify-start"
         >
-          <Layers3 className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
+          <Layers3 className="mr-2 h-4 w-4 shrink-0 text-cf-faint" />
           <span className="flex-1 text-left">{TEXT.allTemplates}</span>
-          <span className="ml-2 text-xs text-slate-500">{total}</span>
+          <span className="ml-2 text-xs text-cf-subtle">{total}</span>
         </SideNavItem>
 
         {categories.length > 0 ? (
@@ -94,7 +94,7 @@ export const TemplateLibrarySidebar: React.FC<TemplateLibrarySidebarProps> = ({
             />
           </div>
         ) : (
-          <div className="px-4 py-6 text-center text-sm text-slate-400">
+          <div className="px-4 py-6 text-center text-sm text-cf-faint">
             {TEXT.noCategoryDesc}
           </div>
         )}
@@ -102,7 +102,7 @@ export const TemplateLibrarySidebar: React.FC<TemplateLibrarySidebarProps> = ({
 
       <div className="border-t border-slate-200 dark:border-slate-800">
         <div className="admin-source-section-head border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-          <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">{TEXT.commonTags}</div>
+          <div className="text-sm font-semibold text-cf-title">{TEXT.commonTags}</div>
         </div>
 
         <div className="flex flex-wrap gap-2 p-3">

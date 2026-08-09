@@ -33,12 +33,12 @@ const StatusPanel: React.FC<{
   <section className="admin-source-page">
     <InnerTableSurface wrapperClassName="p-0">
       <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-        <div className="admin-source-stat-icon text-slate-500 dark:text-slate-300">
+        <div className="admin-source-stat-icon text-cf-subtle">
           {icon}
         </div>
-        <div className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="mt-4 text-lg font-semibold text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-sm leading-6 text-cf-subtle">{description}</div>
         ) : null}
         {actions ? <div className="mt-5 flex justify-center gap-3">{actions}</div> : null}
       </div>
@@ -256,7 +256,7 @@ export const FormDesign = () => {
                 <SelectItem key={form.id} value={form.id} label={form.name}>
                   <span className="flex w-full items-center justify-between gap-3">
                     <span className="truncate">{form.name}</span>
-                    <span className="text-xs text-slate-400">{form.fields.length} 字段</span>
+                    <span className="text-xs text-cf-faint">{form.fields.length} 字段</span>
                   </span>
                 </SelectItem>
               ))}

@@ -96,10 +96,10 @@ const InlineState: React.FC<InlineStateProps> = ({
   className,
 }) => (
   <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
+    <div className="admin-source-stat-icon mb-3 text-cf-faint">
       {icon || <ClipboardCheck className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
   </div>
 );
 
@@ -112,10 +112,10 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
   <tr className="hover:bg-transparent">
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="admin-source-stat-icon mb-3 text-slate-400 dark:text-slate-500">
+        <div className="admin-source-stat-icon mb-3 text-cf-faint">
           {loading ? <ClipboardCheck className="h-4 w-4" /> : icon || <ClipboardCheck className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
       </div>
     </td>
   </tr>
@@ -482,10 +482,10 @@ export const AttendanceSupplementPage: React.FC = () => {
                   <td>{getStatusBadge(item.status || 'MISSING')}</td>
                   <td>
                     <div className="admin-users-row-actions">
-                      <button type="button" title="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
-                      {item.status === 'MISSING' && !selfServiceLocked ? <button type="button" title="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
-                      {item.status === 'MISSING' && !selfServiceLocked ? <button type="button" title="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
-                      {item.status === 'MISSING' && !selfServiceLocked ? <button type="button" className="danger" title="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
+                      <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void handleView(item.id!)}><Eye size={15} /></button>
+                      {item.status === 'MISSING' && !selfServiceLocked ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEdit(item.id!)}><Edit size={15} /></button> : null}
+                      {item.status === 'MISSING' && !selfServiceLocked ? <button type="button" data-tooltip="提交" aria-label="提交" onClick={() => openSubmitConfirm(item.id!)}><Send size={15} /></button> : null}
+                      {item.status === 'MISSING' && !selfServiceLocked ? <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => openDeleteConfirm(item.id!)}><Trash2 size={15} /></button> : null}
                     </div>
                   </td>
                 </tr>
@@ -615,7 +615,7 @@ export const AttendanceSupplementPage: React.FC = () => {
             </div>
 
             <SupplementPanel title="补录原因">
-              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-cf-muted">
                 {detailRecord.reason || '-'}
               </div>
             </SupplementPanel>

@@ -218,9 +218,9 @@ export default function CrmLeadPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-slate-500">正在加载线索数据...</span></td></tr>
+                  <tr><td colSpan={8} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-cf-subtle">正在加载线索数据...</span></td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500"><Target className="mx-auto mb-3 h-4 w-4" />暂无线索</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-cf-subtle"><Target className="mx-auto mb-3 h-4 w-4" />暂无线索</td></tr>
                 ) : (
                   rows.map((row) => (
                     <tr key={row.leadId}>
@@ -233,10 +233,10 @@ export default function CrmLeadPage() {
                       <td>{formatDateTimeDisplay(row.nextFollowUpTime) || '-'}</td>
                       <td>
                         <div className="admin-users-row-actions">
-                          {row.convertedCustomerId ? <button type="button" title="查看客户工作台" onClick={() => navigate(`/office/crm/customer/${row.convertedCustomerId}`)}><Eye size={15} /></button> : null}
-                          <button type="button" title="编辑线索" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><UserRound size={15} /></button>
-                          {!row.convertedCustomerId && row.status !== 'CONVERTED' ? <button type="button" title="转为客户" onClick={() => setConfirmConvert(row)}><Target size={15} /></button> : null}
-                          <button type="button" className="danger" title="删除线索" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button>
+                          {row.convertedCustomerId ? <button type="button" data-tooltip="查看客户工作台" aria-label="查看客户工作台" onClick={() => navigate(`/office/crm/customer/${row.convertedCustomerId}`)}><Eye size={15} /></button> : null}
+                          <button type="button" data-tooltip="编辑线索" aria-label="编辑线索" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><UserRound size={15} /></button>
+                          {!row.convertedCustomerId && row.status !== 'CONVERTED' ? <button type="button" data-tooltip="转为客户" aria-label="转为客户" onClick={() => setConfirmConvert(row)}><Target size={15} /></button> : null}
+                          <button type="button" className="danger" data-tooltip="删除线索" aria-label="删除线索" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button>
                         </div>
                       </td>
                     </tr>

@@ -39,6 +39,7 @@ export {
   TableCell,
   TableCaption,
 } from './table';
+export * from './TableScrollArea';
 
 export { BaseDialog } from './BaseDialog';
 export { ModalOverlay } from './ModalOverlay';
@@ -46,6 +47,11 @@ export { ConfirmDialog } from './ConfirmDialog';
 export * from './ConflictResolutionDialog';
 export * from './BusinessTimeline';
 export * from './date-picker';
+export * from './DateRangePicker';
+export * from './DefaultAvatar';
+export * from './AmountInput';
+export * from './AutoRefreshButton';
+export * from './NavigationProgress';
 export * from './DictBadge';
 export * from './DictLabel';
 export * from './DictSelect';
@@ -54,6 +60,8 @@ export * from './ErrorBoundary';
 export { FilterChip } from './filter-chip';
 export * from './form-layout';
 export { LoadingSpinner } from './LoadingSpinner';
+export { Tooltip, TooltipLayer } from './Tooltip';
+export type { TooltipProps, TooltipPlacement } from './Tooltip';
 export { PageLoading } from './PageLoading';
 export { ResultPage } from './ResultPage';
 export type { ResultStatus } from './ResultPage';

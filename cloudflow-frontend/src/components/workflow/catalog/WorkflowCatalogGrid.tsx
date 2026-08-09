@@ -63,15 +63,15 @@ export const WorkflowCatalogGrid: React.FC<WorkflowCatalogGridProps> = ({
                   <div className="admin-source-stat-icon bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200">
                     {getWorkflowCatalogIcon(workflow)}
                   </div>
-                  <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                  <span className="text-xs font-medium text-cf-faint">
                     v{workflow.version || 1}
                   </span>
                 </div>
 
-                <div className="mt-4 text-base font-semibold text-slate-900 transition-colors group-hover:text-cyan-600 dark:text-slate-100 dark:group-hover:text-cyan-200">
+                <div className="mt-4 text-base font-semibold text-cf-title transition-colors group-hover:text-cyan-600 dark:group-hover:text-cyan-200">
                   {workflow.name}
                 </div>
-                <div className="mt-2 line-clamp-2 min-h-[42px] text-sm leading-6 text-slate-500 dark:text-slate-400">
+                <div className="mt-2 line-clamp-2 min-h-[42px] text-sm leading-6 text-cf-subtle">
                   {workflow.description || '当前流程暂未补充说明，可直接发起或联系管理员完善流程描述。'}
                 </div>
 
@@ -89,10 +89,10 @@ export const WorkflowCatalogGrid: React.FC<WorkflowCatalogGridProps> = ({
 
                 <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
                   <div className="min-w-0">
-                    <div className="truncate text-xs font-medium text-slate-400 dark:text-slate-500">
+                    <div className="truncate text-xs font-medium text-cf-faint">
                       Key: {workflow.key}
                     </div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="mt-1 text-xs text-cf-subtle">
                       {workflow.formId ? '支持直接拉起表单' : '尚未配置发起表单'}
                     </div>
                   </div>

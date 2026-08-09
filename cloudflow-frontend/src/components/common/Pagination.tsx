@@ -76,16 +76,16 @@ export const Pagination: React.FC<PaginationProps> = ({
       </div>
 
       <div className="pagination-desktop hidden w-full items-center justify-between gap-4 sm:flex">
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          显示 <span className="font-medium text-slate-900 dark:text-slate-100">{fromItem}</span>{' '}
-          至 <span className="font-medium text-slate-900 dark:text-slate-100">{toItem}</span>{' '}
-          共 <span className="font-medium text-slate-900 dark:text-slate-100">{total}</span> 条结果
+        <p className="text-sm text-cf-muted">
+          显示 <span className="font-medium text-cf-title">{fromItem}</span>{' '}
+          至 <span className="font-medium text-cf-title">{toItem}</span>{' '}
+          共 <span className="font-medium text-cf-title">{total}</span> 条结果
         </p>
 
         <div className="pagination-actions flex items-center gap-2">
           {showPageSizeSelector ? (
             <>
-              <span className="text-sm text-slate-600 dark:text-slate-300">每页:</span>
+              <span className="text-sm text-cf-muted">每页:</span>
               <div className="unity-select">
                 <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
                   <SelectTrigger>
@@ -158,7 +158,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
           {showJump ? (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600 dark:text-slate-300">跳至</span>
+              <span className="text-sm text-cf-muted">跳至</span>
               <input
                 value={jumpPage}
                 type="number"

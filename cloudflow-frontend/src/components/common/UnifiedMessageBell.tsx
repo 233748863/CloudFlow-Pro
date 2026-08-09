@@ -322,7 +322,7 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
         type="button"
         onClick={() => setIsModalOpen(true)}
         className={cn(
-          triggerClassName || 'relative flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-[var(--cf-surface-muted)] dark:text-slate-400 dark:hover:bg-slate-800',
+          triggerClassName || 'relative flex h-9 w-9 items-center justify-center rounded-md text-cf-muted transition-colors hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-800',
           totalUnreadCount > 0 && 'text-cyan-600 dark:text-cyan-400',
         )}
         aria-label="消息中心"
@@ -350,7 +350,7 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
           <button
             type="button"
             onClick={() => setSelectedNotice(null)}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 transition-colors hover:bg-[var(--cf-surface-muted)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted transition-colors hover:bg-[var(--cf-surface-muted)] dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
             aria-label="返回消息列表"
           >
             <ArrowLeft size={16} />
@@ -380,7 +380,7 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
                             'min-w-[72px] rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                             activeTab === tab.key
                               ? 'bg-cyan-600 text-white dark:bg-cyan-500'
-                              : 'text-slate-600 hover:bg-[var(--cf-surface-muted)] dark:text-slate-300 dark:hover:bg-slate-800',
+                              : 'text-cf-muted hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-800',
                           )}
                           aria-pressed={activeTab === tab.key}
                         >
@@ -400,7 +400,7 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
                   </div>
                 ) : selectedNotice ? (
                   <div className="admin-dialog-stack px-6 py-5">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-cf-subtle">
                       <span className="rounded-md bg-cyan-50 px-2.5 py-1 font-medium text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300">
                         {getNoticeTypeLabel(selectedNotice.type)}
                       </span>
@@ -408,11 +408,11 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
                       {selectedNotice.sender ? <span>发送人：{selectedNotice.sender}</span> : null}
                     </div>
 
-                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                    <h3 className="text-base font-semibold text-cf-title">
                       {selectedNotice.title}
                     </h3>
 
-                    <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-4 text-sm leading-7 text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200">
+                    <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] p-4 text-sm leading-7 text-cf-body dark:border-slate-800 dark:bg-slate-900/70">
                       <div className="whitespace-pre-wrap break-words">{selectedNotice.content || '暂无内容'}</div>
                     </div>
                   </div>
@@ -438,7 +438,7 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
                             className={cn(
                               'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md',
                               item.isRead
-                                ? 'bg-[var(--cf-surface-muted)] text-slate-400 shadow-transparent dark:bg-slate-900 dark:text-slate-500'
+                                ? 'bg-[var(--cf-surface-muted)] text-cf-faint shadow-transparent dark:bg-slate-900'
                                 : isAnnouncement
                                   ? 'bg-cyan-600 text-white'
                                   : 'bg-sky-600 text-white',
@@ -457,22 +457,22 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
-                                  <h3 className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                                  <h3 className="truncate text-sm font-medium text-cf-title">
                                     {item.title}
                                   </h3>
                                   {!item.isRead ? (
                                     <span className="inline-flex h-2 w-2 flex-shrink-0 rounded-sm bg-cyan-600" />
                                   ) : null}
                                 </div>
-                                <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
+                                <p className="mt-1 line-clamp-2 text-xs text-cf-subtle">
                                   {item.excerpt}
                                 </p>
-                                <div className="mt-2 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                                <div className="mt-2 flex items-center gap-2 text-xs text-cf-faint">
                                   <span>{typeLabel}</span>
                                   <span>{formatAnnouncementRelativeTime(item.timeText)}</span>
                                 </div>
                               </div>
-                              <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-slate-400 transition-transform group-hover:translate-x-1 dark:text-slate-600" />
+                              <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-cf-faint transition-transform group-hover:translate-x-1" />
                             </div>
                           </div>
 
@@ -491,10 +491,10 @@ export const UnifiedMessageBell: React.FC<UnifiedMessageBellProps> = ({
                 ) : (
                   <div className="flex flex-col items-center justify-center py-10">
                     <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
-                      <Inbox size={28} className="text-slate-400 dark:text-slate-500" />
+                      <Inbox size={28} className="text-cf-faint" />
                     </div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{emptyTitle}</p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{emptyDescription}</p>
+                    <p className="text-sm font-medium text-cf-title">{emptyTitle}</p>
+                    <p className="mt-1 text-xs text-cf-subtle">{emptyDescription}</p>
                   </div>
                 )}
               </div>

@@ -28,8 +28,8 @@ const InlineState: React.FC<{
     <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <CheckCheck className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
+    {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
   </div>
 );
 
@@ -120,7 +120,7 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid gap-2">
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-cf-subtle">
             {`${announcementTitle ? `${announcementTitle} · ` : ''}应读 ${statsData?.expectedCount ?? 0} 人 · 已读 ${statsData?.readCount ?? 0} 人 · 未读 ${statsData?.unreadCount ?? 0} 人`}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -150,7 +150,7 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
         </div>
 
         <div className="relative w-full lg:w-80">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
           <Input
             value={search}
             onChange={(event) => {
@@ -199,19 +199,19 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
                 <tbody>
                   {pagedUsers.map((user) => (
                     <tr key={`${view}-${user.userId}-${user.readTime || 'unknown'}`}>
-                      <td className="text-sm text-slate-600 dark:text-slate-300">
+                      <td className="text-sm text-cf-muted">
                         {user.userId}
                       </td>
-                      <td className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                      <td className="text-sm font-medium text-cf-title">
                         {user.userName || '-'}
                       </td>
-                      <td className="text-sm text-slate-700 dark:text-slate-200">
+                      <td className="text-sm text-cf-body">
                         {user.nickName || '-'}
                       </td>
-                      <td className="text-sm text-slate-500 dark:text-slate-400">
+                      <td className="text-sm text-cf-subtle">
                         {user.deptName || '-'}
                       </td>
-                      <td className="text-sm text-slate-500 dark:text-slate-400">
+                      <td className="text-sm text-cf-subtle">
                         {view === 'read'
                           ? (user.readTime ? new Date(user.readTime).toLocaleString() : '-')
                           : '未读'}

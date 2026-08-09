@@ -66,7 +66,7 @@ const NodeIcon = ({ type, title, status }: { type: string, title: string, status
   const statusClasses = {
     finished: "border-emerald-200 bg-[var(--cf-surface-strong)] text-emerald-600 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-200",
     active: "border-cyan-300 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-800 dark:bg-slate-950 dark:text-cyan-200",
-    pending: "border-slate-200 bg-[var(--cf-surface-strong)] text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500"
+    pending: "border-slate-200 bg-[var(--cf-surface-strong)] text-cf-faint dark:border-slate-800 dark:bg-slate-950"
   };
 
   return (
@@ -93,7 +93,7 @@ const getActionStyle = (action: string) => {
   if (action.includes('转办') || action.includes('委托')) return map['DELEGATE'];
   if (action.includes('驳回') || action.includes('退回')) return map['RETURN'];
   if (action.includes('发起') || action.includes('提交')) return map['START'];
-  return map[action] || { label: action, color: 'text-slate-700 dark:text-slate-200', bgColor: 'bg-[var(--cf-surface-muted)] dark:bg-slate-900' };
+  return map[action] || { label: action, color: 'text-cf-body', bgColor: 'bg-[var(--cf-surface-muted)] dark:bg-slate-900' };
 };
 
 // 格式化时间
@@ -341,13 +341,13 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
           <NodeIcon type={nodeType} title={nodeTitle} status={status} />
 
           <div className={`mt-2 max-w-[140px] rounded-md border px-3 py-1.5 text-center text-xs font-medium transition-colors
-             ${status === 'active' ? 'bg-[var(--cf-surface-strong)] border-cyan-300 text-cyan-700' :
-               status === 'finished' ? 'bg-[var(--cf-surface-strong)] border-emerald-200 text-emerald-700' :
-               'bg-[var(--cf-surface-strong)] border-slate-200 text-slate-500'}
-             ${status === 'active' ? 'dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200' :
-               status === 'finished' ? 'dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200' :
-               'dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400'}
-          `}>
+ ${status === 'active' ? 'bg-[var(--cf-surface-strong)] border-cyan-300 text-cyan-700' :
+ status === 'finished' ? 'bg-[var(--cf-surface-strong)] border-emerald-200 text-emerald-700' :
+ 'bg-[var(--cf-surface-strong)] border-slate-200 text-cf-subtle'}
+ ${status === 'active' ? 'dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200' :
+ status === 'finished' ? 'dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200' :
+ 'dark:border-slate-800 dark:bg-slate-950 '}
+ `}>
             {nodeTitle}
             {nodeHistory && (
               <div className="mt-0.5 text-[9px] opacity-75">
@@ -368,7 +368,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                   void handleUrge(nodeActive.taskId!, nodeTitle);
                 }}
                 className="absolute -right-8 top-0 rounded-md border border-amber-200 bg-[var(--cf-surface-strong)] p-1 text-amber-600 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:bg-slate-950 dark:text-amber-200 dark:hover:bg-amber-950/30"
-                title="催办"
+                data-tooltip="催办" aria-label="催办"
               >
                   <BellRing size={12}/>
               </button>
@@ -415,7 +415,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
     // 如果没有任何数据
     if (historyItems.length === 0 && activeItems.length === 0) {
       return (
-        <div className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        <div className="py-6 text-center text-sm text-cf-subtle">
           暂无审批记录
         </div>
       );
@@ -440,7 +440,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
               <div className="flex-1 pb-4">
                 <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-3.5 py-3 dark:border-slate-800 dark:bg-slate-950">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{item.nodeName}</span>
+                    <span className="text-sm font-semibold text-cf-title">{item.nodeName}</span>
                     <span className={`rounded-md border border-current/15 px-1.5 py-0.5 text-[10px] font-medium ${actionStyle.bgColor} ${actionStyle.color}`}>
                       {actionStyle.label}
                     </span>
@@ -450,7 +450,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                       </span>
                     )}
                   </div>
-                  <div className="space-y-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="space-y-0.5 text-xs text-cf-subtle">
                     <div className="flex items-center gap-2">
                       <User size={11} className="text-cyan-500" />
                       <span>{item.operatorName || '系统'}</span>
@@ -464,8 +464,8 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                     )}
                     {item.comment && (
                       <div className="mt-1 flex items-start gap-2">
-                        <MessageSquare size={11} className="mt-0.5 flex-shrink-0 text-slate-400 dark:text-slate-500" />
-                          <span className="rounded border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-[11px] leading-relaxed text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                        <MessageSquare size={11} className="mt-0.5 flex-shrink-0 text-cf-faint" />
+                          <span className="rounded border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-1 text-[11px] leading-relaxed text-cf-muted dark:border-slate-800 dark:bg-slate-900">
                           {item.comment}
                         </span>
                       </div>
@@ -473,7 +473,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                     {item.duration && (
                       <div className="flex items-center gap-2">
                         <Clock size={11} className="text-cyan-500" />
-                        <span className="text-slate-400 dark:text-slate-500">耗时 {item.duration}</span>
+                        <span className="text-cf-faint">耗时 {item.duration}</span>
                       </div>
                     )}
                   </div>
@@ -501,7 +501,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                     处理中
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-xs text-cf-subtle">
                   <User size={11} className="text-cyan-500" />
                   <span>待处理: {item.assigneeName || (item.assigneeId ? String(item.assigneeId) : '待认领')}</span>
                   {item.createTime && (
@@ -523,7 +523,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
     return (
       <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-10 dark:border-slate-800 dark:bg-slate-950">
         <div className="h-8 w-8 animate-spin rounded-md border-b-2 border-cyan-600 dark:border-cyan-300"></div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">加载流程轨迹中...</p>
+        <p className="text-sm text-cf-subtle">加载流程轨迹中...</p>
       </div>
     );
   }
@@ -549,7 +549,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
     <div className="admin-dialog-stack">
       {/* 审批记录时间线 - 默认展示 */}
       <div className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-4 dark:border-slate-800 dark:bg-slate-950">
-        <h4 className="mb-4 text-xs font-bold text-slate-500 dark:text-slate-400">审批记录</h4>
+        <h4 className="mb-4 text-xs font-bold text-cf-subtle">审批记录</h4>
         {renderTimeline()}
       </div>
 
@@ -558,7 +558,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
         <div className="overflow-hidden rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950">
           <button
             onClick={() => setDiagramExpanded(!diagramExpanded)}
-            className="flex w-full items-center justify-between bg-[var(--cf-surface-muted)] px-4 py-3 text-xs font-medium text-slate-500 transition-colors hover:bg-[var(--cf-surface-strong)] dark:bg-slate-900/70 dark:text-slate-400 dark:hover:bg-slate-950"
+            className="flex w-full items-center justify-between bg-[var(--cf-surface-muted)] px-4 py-3 text-xs font-medium text-cf-subtle transition-colors hover:bg-[var(--cf-surface-strong)] dark:bg-slate-900/70 dark:hover:bg-slate-950"
           >
             <span className="flex items-center gap-1.5">
               <GitMerge size={13} />

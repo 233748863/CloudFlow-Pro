@@ -7,6 +7,8 @@ import { getMyBenefitSummary, type HrBenefitMineSummary } from '@/services/api/h
 import { formatDateTimeValue, formatMoneyValue } from '../hrShared';
 import { DictLabel } from '@/components/common/DictLabel';
 import { TablePageLayout, InnerTableSurface } from '@/components/layout/TablePageLayout';
+import './HrBenefitMinePage.css';
+import '../../../styles/features/admin-recruitment.css';
 
 export const HrBenefitMinePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -132,11 +134,11 @@ export const HrBenefitMinePage: React.FC = () => {
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={6} className="py-10 text-center text-sm text-slate-400">加载中...</td>
+              <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">加载中...</td>
             </tr>
           ) : ledgerRows.length === 0 ? (
             <tr>
-              <td colSpan={6} className="py-10 text-center text-sm text-slate-400">暂无福利明细</td>
+              <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">暂无福利明细</td>
             </tr>
           ) : (
             ledgerRows.map((row) => (

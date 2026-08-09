@@ -83,7 +83,7 @@ export const CustomTitleBar: React.FC = () => {
         <div className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-md border border-cyan-100/80 bg-[var(--cf-surface-strong)] shadow-none dark:border-cyan-950/40 dark:bg-slate-900">
           <img src="/icon.svg" alt="CloudFlow Pro" className="h-4 w-4 object-contain" />
         </div>
-        <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
+        <span className="text-[13px] font-semibold text-cf-body">
           CloudFlow Pro
         </span>
       </div>
@@ -96,7 +96,7 @@ export const CustomTitleBar: React.FC = () => {
             'cf-titlebar-btn',
             'hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-800',
           )}
-          title="最小化"
+          data-tooltip="最小化" aria-label="最小化"
         >
           <Minus size={14} strokeWidth={2.5} />
         </button>
@@ -108,7 +108,7 @@ export const CustomTitleBar: React.FC = () => {
             'cf-titlebar-btn',
             'hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-800',
           )}
-          title={isMaximized ? '还原' : '最大化'}
+          data-tooltip={isMaximized ? '还原' : '最大化'} aria-label={isMaximized ? '还原' : '最大化'}
         >
           {isMaximized ? (
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -127,7 +127,7 @@ export const CustomTitleBar: React.FC = () => {
             'cf-titlebar-btn',
             'hover:bg-red-500 hover:text-white dark:hover:bg-red-600',
           )}
-          title="关闭"
+          data-tooltip="关闭" aria-label="关闭"
         >
           <X size={16} strokeWidth={2} />
         </button>

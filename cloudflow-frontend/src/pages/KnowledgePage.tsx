@@ -56,6 +56,7 @@ import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attac
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import './KnowledgePage.css';
 
 type ViewMode = 'library' | 'mine' | 'manage';
 
@@ -90,8 +91,8 @@ const InlineState: React.FC<{
     <div className="admin-source-stat-icon mb-3">
       {icon || <Inbox className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? <div className="mt-2 max-w-md text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+    <div className="text-sm font-medium text-cf-title">{title}</div>
+    {description ? <div className="mt-2 max-w-md text-xs leading-6 text-cf-subtle">{description}</div> : null}
   </div>
 );
 
@@ -108,8 +109,8 @@ const TableStateRow: React.FC<{
         <div className="admin-source-stat-icon mb-3">
           {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : icon || <BookOpenText className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+        <div className="text-sm font-medium text-cf-title">{title}</div>
+        {description ? <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div> : null}
       </div>
     </td>
   </tr>
@@ -140,7 +141,7 @@ const StatusBadge: React.FC<{ status?: string }> = ({ status }) => (
 const AttachmentLinks: React.FC<{ value?: string }> = ({ value }) => {
   const files = normalizeAttachmentUrls(value);
   if (!files.length) {
-    return <span className="text-sm text-slate-400">无附件</span>;
+    return <span className="text-sm text-cf-faint">无附件</span>;
   }
   return (
     <div className="flex flex-wrap gap-2">
@@ -703,7 +704,7 @@ const KnowledgePage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => void openDetail(item)}
-                    className="truncate text-left text-sm font-medium text-slate-900 hover:text-cyan-700 dark:text-slate-100 dark:hover:text-cyan-200"
+                    className="truncate text-left text-sm font-medium text-cf-title hover:text-cyan-700 dark:hover:text-cyan-200"
                   >
                     {item.title || '-'}
                   </button>
@@ -715,21 +716,21 @@ const KnowledgePage: React.FC = () => {
               </div>
             </td>
             <td>
-              <div className="font-medium text-slate-900 dark:text-slate-100">{item.category || '-'}</div>
-              <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              <div className="font-medium text-cf-title">{item.category || '-'}</div>
+              <div className="mt-1 text-xs text-cf-faint">
                 {item.scopeType ? formatScopeDisplay(item) : '-'}
               </div>
             </td>
             <td>
-              <div className="font-medium text-slate-900 dark:text-slate-100">{item.submitterName || '-'}</div>
-              <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.deptName || '-'}</div>
+              <div className="font-medium text-cf-title">{item.submitterName || '-'}</div>
+              <div className="mt-1 text-xs text-cf-faint">{item.deptName || '-'}</div>
             </td>
             <td className="max-w-sm truncate">
               {item.summary || '-'}
             </td>
             <td>
-              <div className="font-medium text-slate-900 dark:text-slate-100">{item.readCount || 0}</div>
-              <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              <div className="font-medium text-cf-title">{item.readCount || 0}</div>
+              <div className="mt-1 text-xs text-cf-faint">
                 {viewMode === 'library' ? (item.isRead ? '已读' : '未读') : '已读人数'}
               </div>
             </td>
@@ -738,36 +739,36 @@ const KnowledgePage: React.FC = () => {
             </td>
             <td>
               <div className="admin-users-row-actions">
-                <button type="button" title="详情" aria-label="查看详情" onClick={() => void openDetail(item)}>
+                <button type="button" data-tooltip="详情" aria-label="查看详情" onClick={() => void openDetail(item)}>
                   <Eye size={15} />
                 </button>
                 {(viewMode === 'mine' || viewMode === 'manage') && (item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:knowledge:edit') ? (
-                  <button type="button" title="编辑" aria-label="编辑文档" onClick={() => openEdit(item)}>
+                  <button type="button" data-tooltip="编辑" aria-label="编辑文档" onClick={() => openEdit(item)}>
                     <Pencil size={15} />
                   </button>
                 ) : null}
                 {(viewMode === 'mine' || viewMode === 'manage') && (item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:knowledge:submit') ? (
-                  <button type="button" title="提交" aria-label="提交文档" onClick={() => openSubmitConfirm(item)}>
+                  <button type="button" data-tooltip="提交" aria-label="提交文档" onClick={() => openSubmitConfirm(item)}>
                     <Send size={15} />
                   </button>
                 ) : null}
                 {viewMode === 'mine' && item.status === 'PENDING' && hasPermission('oa:knowledge:recall') ? (
-                  <button type="button" title="撤回" aria-label="撤回文档" onClick={() => openRecallConfirm(item)}>
+                  <button type="button" data-tooltip="撤回" aria-label="撤回文档" onClick={() => openRecallConfirm(item)}>
                     <RotateCcw size={15} />
                   </button>
                 ) : null}
                 {viewMode === 'manage' && hasPermission('oa:knowledge:manage') ? (
-                  <button type="button" title="阅读统计" aria-label="阅读统计" onClick={() => void openReadStats(item)}>
+                  <button type="button" data-tooltip="阅读统计" aria-label="阅读统计" onClick={() => void openReadStats(item)}>
                     <Shield size={15} />
                   </button>
                 ) : null}
                 {(viewMode === 'mine' || viewMode === 'manage') ? (
-                  <button type="button" title="版本历史" aria-label="版本历史" onClick={() => void openVersions(item)}>
+                  <button type="button" data-tooltip="版本历史" aria-label="版本历史" onClick={() => void openVersions(item)}>
                     <RotateCcw size={15} />
                   </button>
                 ) : null}
                 {(viewMode === 'mine' || viewMode === 'manage') && item.status !== 'PENDING' && hasPermission('oa:knowledge:remove') ? (
-                  <button type="button" className="danger" title="删除" aria-label="删除文档" onClick={() => openDeleteConfirm(item)}>
+                  <button type="button" className="danger" data-tooltip="删除" aria-label="删除文档" onClick={() => openDeleteConfirm(item)}>
                     <Trash2 size={15} />
                   </button>
                 ) : null}
@@ -869,7 +870,7 @@ const KnowledgePage: React.FC = () => {
           <div className="admin-dialog-stack min-h-0 flex-1 overflow-y-auto pr-1">
             {!formData.documentId ? (
               <div className="admin-dialog-subsection flex flex-wrap items-center justify-between gap-3 text-xs">
-                <span className="text-slate-500 dark:text-slate-400">不知道怎么开头？</span>
+                <span className="text-cf-subtle">不知道怎么开头？</span>
                 <Button size="sm" variant="outline" onClick={() => void openTemplatePicker()}>
                   <FileText className="mr-1 h-3.5 w-3.5" />从模板开始
                 </Button>
@@ -926,11 +927,11 @@ const KnowledgePage: React.FC = () => {
         footer={<Button variant="outline" onClick={() => setTemplatePickerOpen(false)}>取消</Button>}
       >
           {templatesLoading ? (
-            <div className="flex items-center justify-center py-10 text-sm text-slate-400">
+            <div className="flex items-center justify-center py-10 text-sm text-cf-faint">
               <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />加载模板中...
             </div>
           ) : templates.length === 0 ? (
-            <div className="py-10 text-center text-sm text-slate-400">暂无可用模板</div>
+            <div className="py-10 text-center text-sm text-cf-faint">暂无可用模板</div>
           ) : (
             <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
               {templates.map((tpl) => (
@@ -941,15 +942,15 @@ const KnowledgePage: React.FC = () => {
                   className="cf-side-link cf-side-link-sm w-full cursor-pointer px-4 py-3 text-left"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tpl.templateName}</div>
-                    <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    <div className="text-sm font-semibold text-cf-title">{tpl.templateName}</div>
+                    <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-0.5 text-xs text-cf-subtle dark:bg-slate-800">
                       {tpl.category}
                     </span>
                   </div>
                   {tpl.summary ? (
-                    <div className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{tpl.summary}</div>
+                    <div className="mt-1 line-clamp-2 text-xs text-cf-subtle">{tpl.summary}</div>
                   ) : null}
-                  <div className="mt-1 text-xs text-slate-400">使用次数 {tpl.usageCount ?? 0}</div>
+                  <div className="mt-1 text-xs text-cf-faint">使用次数 {tpl.usageCount ?? 0}</div>
                 </button>
               ))}
             </div>
@@ -965,7 +966,7 @@ const KnowledgePage: React.FC = () => {
       >
           {detail ? (
             <>
-              <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex flex-wrap gap-2 text-xs text-cf-subtle">
                 <StatusBadge status={detail.status} />
                 <span className="admin-users-filter-count">{detail.category}</span>
                 <span className="admin-users-filter-count">{formatScopeDisplay(detail)}</span>
@@ -977,7 +978,7 @@ const KnowledgePage: React.FC = () => {
                 dangerouslySetInnerHTML={{ __html: renderAnnouncementHtml(detail.content) }}
               />
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-900 dark:text-slate-100">附件</div>
+                <div className="mb-2 text-sm font-medium text-cf-title">附件</div>
                 <AttachmentLinks value={detail.attachmentUrl} />
               </div>
             </>
@@ -992,15 +993,15 @@ const KnowledgePage: React.FC = () => {
       >
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="admin-knowledge-stat-box">
-              <div className="text-xs text-slate-500 dark:text-slate-400">应读</div>
-              <div className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{readStats?.expectedCount ?? 0}</div>
+              <div className="text-xs text-cf-subtle">应读</div>
+              <div className="mt-1 text-lg font-semibold text-cf-title">{readStats?.expectedCount ?? 0}</div>
             </div>
             <div className="admin-knowledge-stat-box">
-              <div className="text-xs text-slate-500 dark:text-slate-400">已读</div>
+              <div className="text-xs text-cf-subtle">已读</div>
               <div className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-300">{readStats?.readCount || 0}</div>
             </div>
             <div className="admin-knowledge-stat-box">
-              <div className="text-xs text-slate-500 dark:text-slate-400">未读</div>
+              <div className="text-xs text-cf-subtle">未读</div>
               <div className="mt-1 text-lg font-semibold text-amber-600 dark:text-amber-300">{readStats?.unreadCount ?? 0}</div>
             </div>
           </div>
@@ -1009,8 +1010,8 @@ const KnowledgePage: React.FC = () => {
                 {readStats?.readUsers?.length ? (
                   readStats.readUsers.map((item) => (
                     <div key={item.id} className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 text-sm last:border-b-0 dark:border-slate-800">
-                      <span className="truncate text-slate-900 dark:text-slate-100">{item.userName || item.userId}</span>
-                      <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{item.readTime || '-'}</span>
+                      <span className="truncate text-cf-title">{item.userName || item.userId}</span>
+                      <span className="shrink-0 text-xs text-cf-subtle">{item.readTime || '-'}</span>
                     </div>
                   ))
                 ) : (
@@ -1021,8 +1022,8 @@ const KnowledgePage: React.FC = () => {
                 {readStats?.unreadUsers?.length ? (
                   readStats.unreadUsers.map((item) => (
                     <div key={item.userId} className="border-b border-slate-200 px-4 py-3 text-sm last:border-b-0 dark:border-slate-800">
-                      <div className="font-medium text-slate-900 dark:text-slate-100">{item.userName || item.userId}</div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.deptName || '-'}</div>
+                      <div className="font-medium text-cf-title">{item.userName || item.userId}</div>
+                      <div className="mt-1 text-xs text-cf-subtle">{item.deptName || '-'}</div>
                     </div>
                   ))
                 ) : (
@@ -1046,7 +1047,7 @@ const KnowledgePage: React.FC = () => {
               <InlineState title="暂无版本快照" />
             ) : (
               <>
-                <div className="admin-dialog-subsection flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                <div className="admin-dialog-subsection flex flex-wrap items-center gap-2 text-xs text-cf-muted">
                   <span>对比：</span>
                   <Select value={diffFrom != null ? String(diffFrom) : ''} onValueChange={(v) => setDiffFrom(Number(v))}>
                     <SelectTrigger className="h-8 w-32">
@@ -1080,8 +1081,8 @@ const KnowledgePage: React.FC = () => {
                   {versions.map((v) => (
                     <div key={v.versionNo} className="flex items-center justify-between border-b border-slate-200 px-4 py-2 text-sm last:border-b-0 dark:border-slate-800">
                       <div className="flex flex-col">
-                        <div className="font-medium text-slate-900 dark:text-slate-100">v{v.versionNo} · {v.title || '-'}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                        <div className="font-medium text-cf-title">v{v.versionNo} · {v.title || '-'}</div>
+                        <div className="text-xs text-cf-subtle">
                           {v.operatorName || '-'} · {v.publishTime || v.createTime || '-'} · {v.changeSummary || '无变更说明'}
                         </div>
                       </div>
@@ -1109,10 +1110,10 @@ const KnowledgePage: React.FC = () => {
                               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200'
                               : line.type === 'DEL'
                                 ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-200'
-                                : 'text-slate-600 dark:text-slate-300'
+                                : 'text-cf-muted'
                           }
                         >
-                          {line.type === 'ADD' ? '+ ' : line.type === 'DEL' ? '- ' : '  '}
+                          {line.type === 'ADD' ? '+ ' : line.type === 'DEL' ? '-' : '  '}
                           {line.text}
                         </div>
                       ))}

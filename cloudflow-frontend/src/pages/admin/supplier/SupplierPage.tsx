@@ -237,28 +237,28 @@ const SupplierPage: React.FC = () => {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">正在加载供应商...</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-cf-subtle">正在加载供应商...</td></tr>
                 ) : suppliers.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">暂无供应商</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-cf-subtle">暂无供应商</td></tr>
                 ) : suppliers.map((item) => (
                   <tr key={item.supplierId}>
                     <td>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">{item.supplierName}</div>
-                      <div className="mt-1 text-xs text-slate-400">{item.createTime || '-'}</div>
+                      <div className="font-medium text-cf-title">{item.supplierName}</div>
+                      <div className="mt-1 text-xs text-cf-faint">{item.createTime || '-'}</div>
                     </td>
                     <td>
                       <div>{item.contactName || '-'}</div>
-                      <div className="mt-1 text-xs text-slate-400">{item.contactPhone || '-'}</div>
+                      <div className="mt-1 text-xs text-cf-faint">{item.contactPhone || '-'}</div>
                     </td>
                     <td>
                       <div>{item.bankName || '-'}</div>
-                      <div className="mt-1 text-xs text-slate-400">{item.bankAccount || '-'}</div>
+                      <div className="mt-1 text-xs text-cf-faint">{item.bankAccount || '-'}</div>
                     </td>
                     <td>{statusBadge(item.status)}</td>
                     <td>
                       <div className="admin-users-row-actions">
-                        {hasPermission('oa:supplier:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
-                        {hasPermission('oa:supplier:remove') ? <button type="button" title="删除" aria-label="删除" onClick={() => setDeleteId(item.supplierId!)}><Trash2 size={15} /></button> : null}
+                        {hasPermission('oa:supplier:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
+                        {hasPermission('oa:supplier:remove') ? <button type="button" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteId(item.supplierId!)}><Trash2 size={15} /></button> : null}
                       </div>
                     </td>
                   </tr>

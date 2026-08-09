@@ -1,0 +1,357 @@
+/* 从 index.css 拆分而来：workflow-monitor
+   由 WorkflowMonitor.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .workflow-monitor-top {
+      display: grid;
+      min-width: 0;
+      gap: 1rem;
+    }
+
+  .workflow-monitor-header {
+      align-items: flex-start;
+    }
+
+  .workflow-monitor-header-actions {
+      align-items: center;
+    }
+
+  .workflow-monitor-switch {
+      display: inline-flex;
+      min-height: 2.5rem;
+      align-items: center;
+      gap: 0.625rem;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+      color: #334155;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 650;
+    }
+
+  .workflow-monitor-statusbar {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.875rem;
+      padding: 0.875rem 1rem;
+    }
+
+  .workflow-monitor-statusbar-main,
+    .workflow-monitor-statusbar-meta {
+      display: flex;
+      min-width: 0;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.625rem 0.875rem;
+      color: #64748b;
+      font-size: 0.8125rem;
+    }
+
+  .workflow-monitor-statusbar strong {
+      color: #0f172a;
+      font-weight: 750;
+    }
+
+  .workflow-monitor-workbench {
+      display: grid;
+      min-height: 0;
+      flex: 1 1 0%;
+      gap: 1rem;
+      overflow: auto;
+      padding-bottom: 0.125rem;
+      scrollbar-gutter: stable;
+    }
+
+  .workflow-monitor-overview-grid,
+    .workflow-monitor-alert-grid {
+      display: grid;
+      min-width: 0;
+      gap: 1rem;
+    }
+
+  .workflow-monitor-overview-grid {
+      grid-template-columns: minmax(0, 1.35fr) minmax(22rem, 0.65fr);
+    }
+
+  .workflow-monitor-alert-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+  .workflow-monitor-panel {
+      height: auto;
+      min-height: 0;
+    }
+
+  .workflow-monitor-panel-head {
+      display: flex;
+      min-height: 3.875rem;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 0.875rem 1rem;
+    }
+
+  .workflow-monitor-panel-head h3 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 1rem;
+      font-weight: 750;
+      line-height: 1.25;
+    }
+
+  .workflow-monitor-panel-head span {
+      display: block;
+      margin-top: 0.25rem;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      line-height: 1.35;
+    }
+
+  .workflow-monitor-panel-meta {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+  .workflow-monitor-trend-grid {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: repeat(7, minmax(4.5rem, 1fr));
+      gap: 0.625rem;
+      padding: 1rem 1rem 0.875rem;
+      overflow-x: auto;
+    }
+
+  .workflow-monitor-trend-day {
+      display: grid;
+      min-width: 0;
+      gap: 0.375rem;
+    }
+
+  .workflow-monitor-trend-bars {
+      display: flex;
+      height: 9rem;
+      min-width: 0;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 0.25rem;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 0 0.25rem 0.375rem;
+    }
+
+  .workflow-monitor-trend-bar {
+      display: block;
+      width: 0.5rem;
+      min-height: 0.5rem;
+      border-radius: 999px 999px 0 0;
+      background: #0d95b5;
+    }
+
+  .workflow-monitor-trend-date,
+    .workflow-monitor-trend-count {
+      overflow: hidden;
+      color: #64748b;
+      font-size: 0.75rem;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .workflow-monitor-trend-count {
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+  .workflow-monitor-trend-legend {
+      display: flex;
+      min-width: 0;
+      flex-wrap: wrap;
+      gap: 0.625rem;
+      border-top: 1px solid var(--cf-border);
+      padding: 0.75rem 1rem;
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+  .workflow-monitor-trend-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+  .workflow-monitor-trend-legend i {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 999px;
+      background: #0d95b5;
+    }
+
+  .workflow-monitor-health-list {
+      display: grid;
+      min-width: 0;
+      gap: 0.875rem;
+      padding: 1rem;
+    }
+
+  .workflow-monitor-health-row {
+      display: grid;
+      min-width: 0;
+      gap: 0.5rem;
+    }
+
+  .workflow-monitor-health-row > div:first-child {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+  .workflow-monitor-health-row strong {
+      color: #334155;
+      font-size: 0.8125rem;
+      font-weight: 700;
+    }
+
+  .workflow-monitor-health-row span {
+      color: #0f172a;
+      font-size: 0.8125rem;
+      font-weight: 750;
+    }
+
+  .workflow-monitor-progress {
+      height: 0.5rem;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e2e8f0;
+    }
+
+  .workflow-monitor-progress i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: #0d95b5;
+    }
+
+  .workflow-monitor-health-footer {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border-top: 1px solid var(--cf-border);
+    }
+
+  .workflow-monitor-health-footer > div {
+      display: grid;
+      min-width: 0;
+      gap: 0.25rem;
+      border-right: 1px solid var(--cf-border);
+      padding: 0.875rem 1rem;
+    }
+
+  .workflow-monitor-health-footer > div:last-child {
+      border-right: 0;
+    }
+
+  .workflow-monitor-health-footer svg {
+      color: #0d95b5;
+    }
+
+  .workflow-monitor-health-footer span {
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+  .workflow-monitor-health-footer strong {
+      overflow: hidden;
+      color: #0f172a;
+      font-size: 0.875rem;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .workflow-monitor-table-wrap {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow: auto;
+    }
+
+  .workflow-monitor-alert-table {
+      min-width: 46rem;
+    }
+
+  .workflow-monitor-alert-table th,
+    .workflow-monitor-alert-table td {
+      padding: 0.75rem 1rem;
+    }
+
+  .workflow-monitor-name-cell {
+      display: grid;
+      min-width: 0;
+      gap: 0.125rem;
+    }
+
+  .workflow-monitor-name-cell strong {
+      overflow: hidden;
+      color: #0f172a;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .workflow-monitor-name-cell span {
+      overflow: hidden;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .workflow-monitor-clamp {
+      display: block;
+      max-width: 16rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+  .workflow-monitor-empty {
+      display: grid;
+      min-height: 14rem;
+      place-items: center;
+      align-content: center;
+      gap: 0.625rem;
+      padding: 2rem 1rem;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+  .workflow-monitor-empty span,
+    .workflow-monitor-empty svg {
+      color: #94a3b8;
+    }
+
+  .workflow-monitor-empty strong {
+      color: #0f172a;
+      font-size: 0.875rem;
+      font-weight: 750;
+    }
+
+  .workflow-monitor-empty p {
+      max-width: 22rem;
+      margin: 0;
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.5;
+    }
+
+  .workflow-monitor-badge-danger {
+      background: rgb(254 226 226 / 0.92);
+      color: rgb(220 38 38);
+    }
+}

@@ -24,6 +24,7 @@ import {
 } from '../../services/api/workflow';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 import { cn } from '@/utils/cn';
+import '../../styles/features/admin-workflow.css';
 
 type FileStatus =
   | 'pending'

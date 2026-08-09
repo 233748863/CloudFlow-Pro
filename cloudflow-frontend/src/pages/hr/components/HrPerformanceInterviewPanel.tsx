@@ -135,11 +135,11 @@ export const HrPerformanceInterviewPanel = ({ open, resultId, employeeId, employ
         )}
       >
         {loading ? (
-          <div className="py-10 text-center text-sm text-slate-400">
+          <div className="py-10 text-center text-sm text-cf-faint">
             <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
           </div>
         ) : list.length === 0 ? (
-          <div className="py-10 text-center text-sm text-slate-400">暂无面谈记录</div>
+          <div className="py-10 text-center text-sm text-cf-faint">暂无面谈记录</div>
         ) : (
           <InnerTableSurface>
             <div className="admin-source-section-head border-b border-slate-200 p-4 dark:border-slate-800">
@@ -163,41 +163,41 @@ export const HrPerformanceInterviewPanel = ({ open, resultId, employeeId, employ
                   {list.map((item) => (
                     <tr key={item.id}>
                       <td>
-                        <div className="font-medium text-slate-700 dark:text-slate-200">{item.interviewTime || '-'}</div>
-                        <div className="text-xs text-slate-500">{item.location || '-'}</div>
+                        <div className="font-medium text-cf-body">{item.interviewTime || '-'}</div>
+                        <div className="text-xs text-cf-subtle">{item.location || '-'}</div>
                       </td>
                       <td>
                         <DictBadge dictType="hr_perf_interview_status" value={String(item.status || 'DRAFT')} />
                       </td>
                       <td>
-                        <div className="text-sm text-slate-700 dark:text-slate-200">{item.interviewerName || '-'}</div>
-                        <div className="text-xs text-slate-500">HR：{item.hrWitnessName || '-'}</div>
+                        <div className="text-sm text-cf-body">{item.interviewerName || '-'}</div>
+                        <div className="text-xs text-cf-subtle">HR：{item.hrWitnessName || '-'}</div>
                       </td>
                       <td className="max-w-[260px]">
-                        <div className="line-clamp-2 whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-300">
+                        <div className="line-clamp-2 whitespace-pre-wrap text-xs text-cf-muted">
                           {item.consensus || '-'}
                         </div>
                       </td>
                       <td className="max-w-[260px]">
-                        <div className="line-clamp-2 whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-300">
+                        <div className="line-clamp-2 whitespace-pre-wrap text-xs text-cf-muted">
                           {item.improvements || '-'}
                         </div>
                       </td>
                       <td>
                         {item.status === 'DRAFT' ? (
                           <div className="admin-users-row-actions">
-                            <button type="button" title="编辑" onClick={() => startEdit(item)} disabled={submitting}>
+                            <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => startEdit(item)} disabled={submitting}>
                               <Edit size={15} />
                             </button>
-                            <button type="button" title="确认" onClick={() => item.id && void handleConfirm(item.id)} disabled={submitting}>
+                            <button type="button" data-tooltip="确认" aria-label="确认" onClick={() => item.id && void handleConfirm(item.id)} disabled={submitting}>
                               <Check size={15} />
                             </button>
-                            <button type="button" className="danger" title="删除" onClick={() => setPendingDelete(item)} disabled={submitting}>
+                            <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => setPendingDelete(item)} disabled={submitting}>
                               <Trash2 size={15} />
                             </button>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400">-</span>
+                          <span className="text-xs text-cf-faint">-</span>
                         )}
                       </td>
                     </tr>

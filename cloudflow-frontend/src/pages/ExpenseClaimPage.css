@@ -1,0 +1,96 @@
+/* 从 index.css 拆分而来：admin-expense
+   由 ExpenseClaimPage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-expense-detail-grid {
+      display: grid;
+      min-width: 0;
+      gap: 0.875rem 1.5rem;
+    }
+
+  .admin-expense-detail-panel {
+      contain: layout;
+      overflow: visible;
+    }
+
+  .admin-expense-detail-dialog {
+      height: min(90vh, 52rem);
+    }
+
+  .admin-expense-detail-dialog-body {
+      padding-bottom: 1.25rem !important;
+    }
+
+  .admin-expense-detail-dialog-footer {
+      position: relative;
+      z-index: 5;
+    }
+
+  .admin-expense-detail-item {
+      min-width: 0;
+      border-bottom: 1px solid var(--cf-border);
+      min-height: 3.25rem;
+      padding-bottom: 0.5rem;
+    }
+
+  .admin-expense-detail-item > div:last-child {
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+  .admin-expense-item-list {
+      display: grid;
+      min-width: 0;
+      gap: 0.875rem;
+    }
+
+  .admin-expense-item-card {
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-muted);
+      padding: 1rem;
+    }
+
+  .admin-expense-item-grid {
+      display: grid;
+      min-width: 0;
+      gap: 0.75rem;
+    }
+
+  .admin-expense-item-grid > * {
+      min-width: 0;
+    }
+
+  .admin-expense-item-actions {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+    }
+}
+
+@layer components {
+  @media (min-width: 768px) {
+    .admin-expense-detail-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+    .admin-expense-detail-item-wide {
+          grid-column: 1 / -1;
+        }
+
+    .admin-expense-item-grid {
+          grid-template-columns: minmax(9rem, 1fr) minmax(7.5rem, 0.75fr) minmax(9rem, 0.9fr) minmax(10rem, 1.2fr) 2.5rem;
+          align-items: end;
+        }
+  }
+}
+
+@layer components {
+  @media (min-width: 1024px) {
+    .admin-expense-detail-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+  }
+}

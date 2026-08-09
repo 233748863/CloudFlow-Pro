@@ -1,0 +1,104 @@
+/* 从 index.css 拆分而来：admin-vehicle
+   由 VehicleUsageList.tsx, VehicleList.tsx, VehicleBooking.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-vehicle-filter-grid {
+      grid-template-columns: minmax(20rem, 1fr) minmax(10rem, 12rem) auto;
+    }
+
+  .admin-vehicle-usage-filter-grid {
+      grid-template-columns: auto minmax(10rem, 12rem) minmax(8rem, 10rem) minmax(8rem, 10rem) minmax(10rem, 12rem) minmax(10rem, 12rem) auto;
+    }
+
+  .admin-vehicle-booking-filter-grid {
+      display: flex;
+      flex-wrap: wrap;
+      width: 100%;
+      min-width: 0;
+      align-items: end;
+      gap: 0.75rem;
+    }
+
+  .admin-vehicle-booking-filter-grid > label {
+      flex: 0 1 14rem;
+      min-width: 0;
+    }
+
+  .admin-vehicle-booking-filter-grid > label:first-child {
+      flex: 1 1 20rem;
+      min-width: min(20rem, 100%);
+    }
+
+  .admin-vehicle-booking-surface {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-vehicle-booking-surface-head {
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 1rem;
+    }
+
+  .admin-vehicle-booking-surface-head strong {
+      display: block;
+      color: #0f172a;
+      font-size: 0.875rem;
+      font-weight: 650;
+    }
+
+  .admin-vehicle-booking-surface-head span {
+      display: block;
+      margin-top: 0.125rem;
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+  .admin-vehicle-booking-surface-body {
+      min-width: 0;
+      min-height: 0;
+      padding: 1rem;
+    }
+
+  .admin-vehicle-booking-summary-body {
+      padding: 0;
+    }
+
+  .admin-vehicle-booking-selected,
+    .admin-vehicle-booking-warning {
+      min-width: 0;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+      padding: 1rem;
+    }
+
+  .admin-vehicle-booking-selected {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+  .admin-vehicle-booking-warning {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #fff1f2;
+      color: #e11d48;
+      font-size: 0.875rem;
+    }
+}
+
+@layer components {
+  @media (max-width: 760px) {
+    .admin-vehicle-booking-filter-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+  }
+}

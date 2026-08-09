@@ -103,7 +103,7 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
   return (
     <div className="table-scroll-container admin-inner-table-surface admin-source-panel no-padding">
       <div className="p-4 admin-source-section-head flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             value={filterEventType}
@@ -158,15 +158,15 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
                 </div>
                 <div className="min-w-0 flex-1 px-3 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    <div className="truncate text-sm font-medium text-cf-title">
                       {event.title || event.eventType}
                     </div>
-                    <div className="text-xs text-slate-400">{formatDateTime(event.eventTime)}</div>
+                    <div className="text-xs text-cf-faint">{formatDateTime(event.eventTime)}</div>
                   </div>
-                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  <div className="mt-1 text-sm text-cf-muted">
                     {event.content || '-'}
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-cf-faint">
                     <span>{event.operatorName || 'system'}</span>
                     <span className="h-1 w-1 rounded-sm bg-slate-300 dark:bg-slate-700" />
                     <span>{event.businessType}#{event.businessId}</span>
@@ -193,14 +193,14 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
                         <div className="admin-dialog-field">
                           {diff.changedFields.map((field) => (
                             <div key={field.field} className="grid gap-2 text-xs md:grid-cols-[150px_1fr_1fr]">
-                              <div className="font-mono text-slate-500">{field.field}</div>
-                              <div className="rounded bg-[var(--cf-surface-muted)] px-2 py-1 text-slate-500 dark:bg-slate-900">{String(field.beforeValue ?? '-')}</div>
+                              <div className="font-mono text-cf-subtle">{field.field}</div>
+                              <div className="rounded bg-[var(--cf-surface-muted)] px-2 py-1 text-cf-subtle dark:bg-slate-900">{String(field.beforeValue ?? '-')}</div>
                               <div className="rounded bg-emerald-50 px-2 py-1 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200">{String(field.afterValue ?? '-')}</div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-xs text-slate-400">无字段差异</div>
+                        <div className="text-xs text-cf-faint">无字段差异</div>
                       )}
                     </div>
                   ) : null}
@@ -210,7 +210,7 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
           })}
         </div>
       ) : (
-        <div className="py-6 text-center text-sm text-slate-400">暂无链路事件</div>
+        <div className="py-6 text-center text-sm text-cf-faint">暂无链路事件</div>
       )}
     </div>
   );

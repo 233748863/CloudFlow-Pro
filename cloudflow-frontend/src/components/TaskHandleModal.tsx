@@ -121,9 +121,9 @@ const TaskModalPanel = ({
     )}
   >
     <div className="flex flex-col gap-1">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+      <div className="text-sm font-semibold text-cf-title">{title}</div>
       {description ? (
-        <div className="text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+        <div className="text-xs leading-5 text-cf-subtle">{description}</div>
       ) : null}
     </div>
     <div className="mt-4">{children}</div>
@@ -142,10 +142,10 @@ const TaskField = ({
   valueClassName?: string;
 }) => (
   <div className={cn('space-y-1', className)}>
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+    <div className="text-[11px] font-medium text-cf-faint">
       {label}
     </div>
-    <div className={cn('break-words text-sm text-slate-900 dark:text-slate-100', valueClassName)}>
+    <div className={cn('break-words text-sm text-cf-title', valueClassName)}>
       {value}
     </div>
   </div>
@@ -162,11 +162,11 @@ const TaskEmptyBlock = ({
 }) => (
   <div className="rounded-md border border-dashed border-slate-200 px-4 py-10 text-center dark:border-slate-800">
     {loading ? <LoadingSpinner size="sm" className="mx-auto" /> : null}
-    <div className={cn('text-sm font-medium text-slate-700 dark:text-slate-200', loading && 'mt-3')}>
+    <div className={cn('text-sm font-medium text-cf-body', loading && 'mt-3')}>
       {title}
     </div>
     {description ? (
-      <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-1 text-xs leading-5 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -212,7 +212,7 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
                 ? 'border-emerald-200 bg-[var(--cf-surface-strong)] text-emerald-700 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-200'
                 : isActive
                   ? 'border-cyan-200 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200'
-                  : 'border-slate-200 bg-[var(--cf-surface-strong)] text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500',
+                  : 'border-slate-200 bg-[var(--cf-surface-strong)] text-cf-faint dark:border-slate-700 dark:bg-slate-950',
             )}
           >
             {step.nodeType === 'PARALLEL' ? <GitBranch size={11} /> : <GitMerge size={11} />}
@@ -224,7 +224,7 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
                 ? 'font-semibold text-cyan-700 dark:text-cyan-200'
                 : isCompleted
                   ? 'text-emerald-700 dark:text-emerald-200'
-                  : 'text-slate-400 dark:text-slate-500',
+                  : 'text-cf-faint',
             )}
           >
             {step.nodeTitle}
@@ -254,12 +254,12 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
                                 ? 'font-semibold text-cyan-700 dark:text-cyan-200'
                                 : branchCompleted
                                   ? 'text-emerald-700 dark:text-emerald-200'
-                                  : 'text-slate-400 dark:text-slate-500',
+                                  : 'text-cf-faint',
                             )}
                           >
                             {branchStep.nodeTitle}
                           </span>
-                          <span className="mt-0.5 line-clamp-1 text-center text-[7px] text-slate-400 dark:text-slate-500">
+                          <span className="mt-0.5 line-clamp-1 text-center text-[7px] text-cf-faint">
                             {branchCompleted && branchStep.operatorName
                               ? branchStep.operatorName
                               : branchStep.approverDescription}
@@ -303,7 +303,7 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
               ? 'font-semibold text-cyan-700 dark:text-cyan-200'
               : isCompleted
                 ? 'text-emerald-700 dark:text-emerald-200'
-                : 'text-slate-400 dark:text-slate-500',
+                : 'text-cf-faint',
           )}
         >
           {step.nodeTitle}
@@ -315,7 +315,7 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
               ? 'text-cyan-600 dark:text-cyan-300'
               : isCompleted
                 ? 'text-emerald-600 dark:text-emerald-300'
-                : 'text-slate-400 dark:text-slate-500',
+                : 'text-cf-faint',
           )}
         >
           {isCompleted && step.operatorName ? step.operatorName : step.approverDescription}
@@ -333,7 +333,7 @@ const renderStepNode = (step: StepDetail, index: number, total: number) => {
           </TaskModalBadge>
         ) : null}
         {!step.signType && step.approverUsers && step.approverUsers.length > 1 ? (
-          <span className="mt-1 flex items-center gap-0.5 text-[7px] text-slate-400 dark:text-slate-500">
+          <span className="mt-1 flex items-center gap-0.5 text-[7px] text-cf-faint">
             <Users size={8} />
             {step.approverUsers.length} 人
           </span>
@@ -477,7 +477,7 @@ export const TaskHandleModal = ({
     label: task.status,
     icon: null,
     className:
-      'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+      'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-body dark:border-slate-800 dark:bg-slate-900',
   };
   const showAllButtons = !task.buttonPermissions || task.buttonPermissions.length === 0;
   const hasBtn = (code: string) => showAllButtons || task.buttonPermissions!.includes(code);
@@ -720,7 +720,7 @@ export const TaskHandleModal = ({
                             'flex w-full items-center gap-3 px-4 py-3 text-left transition first:pt-0 last:pb-0',
                             rejectTargetNode === node.key
                               ? 'rounded-md border border-cyan-200 bg-[var(--cf-surface-strong)] text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200'
-                              : 'text-slate-700 hover:bg-[var(--cf-surface-muted)] dark:text-slate-200 dark:hover:bg-slate-900/60',
+                              : 'text-cf-body hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-900/60',
                           )}
                         >
                           <CornerUpLeft
@@ -728,7 +728,7 @@ export const TaskHandleModal = ({
                             className={cn(
                               rejectTargetNode === node.key
                                 ? 'text-cyan-700 dark:text-cyan-200'
-                                : 'text-slate-400 dark:text-slate-500',
+                                : 'text-cf-faint',
                             )}
                           />
                           <span className="font-medium">{node.name}</span>
@@ -792,7 +792,7 @@ export const TaskHandleModal = ({
                             {user.avatar ? (
                               <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-md object-cover" />
                             ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-sm font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--cf-surface-muted)] text-sm font-semibold text-cf-muted dark:bg-slate-900">
                                 {user.name?.slice(0, 1) || 'U'}
                               </div>
                             )}
@@ -802,12 +802,12 @@ export const TaskHandleModal = ({
                                   'truncate font-medium',
                                   active
                                     ? 'text-cyan-700 dark:text-cyan-200'
-                                    : 'text-slate-900 dark:text-slate-100',
+                                    : 'text-cf-title',
                                 )}
                               >
                                 {user.name}
                               </div>
-                              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              <div className="mt-1 text-xs text-cf-subtle">
                                 {user.username ? `@${user.username}` : user.email || '暂无账号信息'}
                               </div>
                             </div>
@@ -832,7 +832,7 @@ export const TaskHandleModal = ({
                 <TaskModalPanel title="基本信息" description="查看当前任务的节点状态、摘要和责任信息。">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">
-                      <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                      <div className="text-base font-semibold text-cf-title">
                         {task.workflowName}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -840,12 +840,12 @@ export const TaskHandleModal = ({
                           {statusMeta.icon}
                           {statusMeta.label}
                         </TaskModalBadge>
-                        <TaskModalBadge className="border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                        <TaskModalBadge className="border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-800 dark:bg-slate-900">
                           当前节点 {task.nodeName || task.currentNodeName || '-'}
                         </TaskModalBadge>
                       </div>
                       {summaryParts.length > 0 ? (
-                        <div className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                        <div className="mt-3 text-xs leading-5 text-cf-subtle">
                           {summaryParts.join(' · ')}
                         </div>
                       ) : null}
@@ -884,7 +884,7 @@ export const TaskHandleModal = ({
                       </div>
 
                       <div>
-                        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center justify-between text-xs text-cf-subtle">
                           <span>完成度</span>
                           <span>{progressRate}%</span>
                         </div>
@@ -901,14 +901,14 @@ export const TaskHandleModal = ({
                             )}
                           </div>
                         ) : (
-                          <div className="mt-4 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                          <div className="mt-4 flex items-center gap-1 text-[11px] text-cf-subtle">
                             {task.previousNodeName ? (
                               <span className="truncate max-w-[40%]">
                                 {task.previousOperatorName || task.previousNodeName}
                               </span>
                             ) : null}
                             <ChevronRight size={12} />
-                            <span className="truncate font-medium text-slate-900 dark:text-slate-100">
+                            <span className="truncate font-medium text-cf-title">
                               {task.nodeName || task.currentNodeName || '当前'}
                             </span>
                             {task.nextNodeName ? (
@@ -983,14 +983,14 @@ export const TaskHandleModal = ({
                               className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <div className="min-w-0 flex items-center gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-subtle dark:border-slate-800 dark:bg-slate-900">
                                   <FileText size={15} />
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                                  <div className="truncate text-sm font-medium text-cf-title">
                                     {file.name}
                                   </div>
-                                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                  <div className="mt-1 text-xs text-cf-subtle">
                                     {file.isImg ? '图片附件' : '文件附件'}
                                   </div>
                                 </div>
@@ -1028,19 +1028,19 @@ export const TaskHandleModal = ({
                           {task.logs.map((log, index) => (
                             <div key={`${log.time}-${index}`} className="py-3 first:pt-0 last:pb-0">
                               <div className="flex items-start justify-between gap-3">
-                                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                <div className="text-sm font-medium text-cf-title">
                                   {log.operator}
-                                  <span className="font-normal text-slate-500 dark:text-slate-400">
+                                  <span className="font-normal text-cf-subtle">
                                     {' '}
                                     · {log.action}
                                   </span>
                                 </div>
-                                <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                                <div className="text-[11px] text-cf-faint">
                                   {log.time}
                                 </div>
                               </div>
                               {log.comment ? (
-                                <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                                <div className="mt-1 text-xs leading-5 text-cf-subtle">
                                   {log.comment}
                                 </div>
                               ) : null}
@@ -1146,7 +1146,7 @@ export const TaskHandleModal = ({
                   </TaskModalPanel>
                 ) : viewOnly ? (
                   <TaskModalPanel title="说明">
-                    <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    <div className="text-sm leading-6 text-cf-subtle">
                       当前页面来自“我的申请”，仅支持查看详情和流程轨迹。
                     </div>
                   </TaskModalPanel>

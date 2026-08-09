@@ -120,7 +120,7 @@ export const HrEssContractPage: React.FC = () => {
           table={
             <div className="admin-source-content-grid">
               <InnerTableSurface>
-                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-100">我的合同</div>
+                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-cf-title dark:border-slate-800">我的合同</div>
                 <div className="admin-horizontal-scroll">
                   <table className="unity-data-table admin-source-table min-w-[820px]">
                     <thead>
@@ -136,13 +136,13 @@ export const HrEssContractPage: React.FC = () => {
                     <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-sm text-slate-400">
+                        <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">
                           <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
                         </td>
                       </tr>
                     ) : contracts.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-sm text-slate-400">暂无合同</td>
+                        <td colSpan={6} className="py-10 text-center text-sm text-cf-faint">暂无合同</td>
                       </tr>
                     ) : (
                       contracts.map((row: any) => (
@@ -155,7 +155,7 @@ export const HrEssContractPage: React.FC = () => {
                           <td>
                             <div className="admin-users-row-actions">
                               {canRequestSign(row) ? (
-                                <button type="button" title="发起签署" aria-label="发起签署" onClick={() => void handleRequestSign(row.id)}><Send size={15} /></button>
+                                <button type="button" data-tooltip="发起签署" aria-label="发起签署" onClick={() => void handleRequestSign(row.id)}><Send size={15} /></button>
                               ) : null}
                             </div>
                           </td>
@@ -168,7 +168,7 @@ export const HrEssContractPage: React.FC = () => {
               </InnerTableSurface>
         
               <InnerTableSurface>
-                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-100">签署流转记录</div>
+                <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-cf-title dark:border-slate-800">签署流转记录</div>
                 <div className="admin-horizontal-scroll">
                   <table className="unity-data-table admin-source-table min-w-[900px]">
                     <thead>
@@ -185,13 +185,13 @@ export const HrEssContractPage: React.FC = () => {
                     <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={7} className="py-10 text-center text-sm text-slate-400">
+                        <td colSpan={7} className="py-10 text-center text-sm text-cf-faint">
                           <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
                         </td>
                       </tr>
                     ) : signatures.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-10 text-center text-sm text-slate-400">暂无签署记录</td>
+                        <td colSpan={7} className="py-10 text-center text-sm text-cf-faint">暂无签署记录</td>
                       </tr>
                     ) : (
                       signatures.map((row) => (
@@ -205,7 +205,7 @@ export const HrEssContractPage: React.FC = () => {
                           <td>
                             <div className="admin-users-row-actions">
                               {hasWorkflowStatus(row.signStatus, 'PENDING') ? (
-                                <button type="button" className="danger" title="取消" aria-label="取消" onClick={() => void handleCancel(row.id)}><XCircle size={15} /></button>
+                                <button type="button" className="danger" data-tooltip="取消" aria-label="取消" onClick={() => void handleCancel(row.id)}><XCircle size={15} /></button>
                               ) : null}
                             </div>
                           </td>

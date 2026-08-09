@@ -59,6 +59,7 @@ import {
 } from '@/services/api/hr';
 import { normalizeRows, toDateInputValue } from './hrShared';
 import { normalizeAttachmentUrls } from '@/utils/attachment';
+import './admin-hr.css';
 
 type WorkspaceTab = 'contracts' | 'documents' | 'contacts';
 type SaveKind = WorkspaceTab | null;
@@ -179,7 +180,7 @@ const AttachmentLinks = ({
         </a>
       ))}
       {attachmentList.length > 2 ? (
-        <span className="text-xs text-slate-500 dark:text-slate-400">{`+${attachmentList.length - 2}`}</span>
+        <span className="text-xs text-cf-subtle">{`+${attachmentList.length - 2}`}</span>
       ) : null}
     </div>
   );
@@ -190,7 +191,7 @@ const canDeleteContract = (contract?: EmployeeContract | null) =>
 
 // 合同状态样式委托后端字典 contract_status；未命中保留页面历史 slate fallback
 
-const CONTRACT_STATUS_FALLBACK_TONE = 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+const CONTRACT_STATUS_FALLBACK_TONE = 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-body dark:border-slate-800 dark:bg-slate-900';
 
 const InlineState = ({
   title,
@@ -205,7 +206,7 @@ const InlineState = ({
     <div className="admin-source-stat-icon mb-3 h-10 w-10 border border-cyan-100 bg-[#effbfe] text-[#0d95b5] dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
       {icon || <Users className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
   </div>
 );
 
@@ -256,8 +257,8 @@ const DetailField = ({
   value: string;
 }) => (
   <div className="min-w-0">
-    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{label}</div>
-    <div className="mt-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="text-[11px] font-medium text-cf-subtle">{label}</div>
+    <div className="mt-1 truncate text-sm font-medium text-cf-title">{value}</div>
   </div>
 );
 
@@ -271,11 +272,11 @@ const ArchiveCardField = ({
   icon?: React.ReactNode;
 }) => (
   <div className="admin-hr-archive-field">
-    <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+    <div className="flex items-center gap-1.5 text-[11px] font-medium text-cf-subtle">
       {icon}
       <span>{label}</span>
     </div>
-    <div className="mt-2 break-words text-sm font-medium leading-5 text-slate-900 dark:text-slate-100">
+    <div className="mt-2 break-words text-sm font-medium leading-5 text-cf-title">
       {value}
     </div>
   </div>
@@ -300,7 +301,7 @@ const contractRemainingTone = (contract: EmployeeContract) => {
     return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
   }
 
-  return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+  return 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-800 dark:bg-slate-900';
 };
 
 const contractRemainingLabel = (contract: EmployeeContract) => {
@@ -335,7 +336,7 @@ const getDateRemainingDays = (value?: string | null) => {
 const documentExpiryTone = (document: EmployeeDocument) => {
   const remainingDays = getDateRemainingDays(document.expiryDate);
   if (remainingDays == null) {
-    return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+    return 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-800 dark:bg-slate-900';
   }
   if (remainingDays < 0) {
     return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
@@ -371,7 +372,7 @@ const contactPriorityTone = (priority?: number | null) => {
   if (priority === 2) {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
   }
-  return 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+  return 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-800 dark:bg-slate-900';
 };
 
 const contactPriorityLabel = (priority?: number | null) =>
@@ -932,8 +933,8 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
             <TabsContent value="contracts" className="mt-0 flex min-h-0 flex-1 flex-col">
               <div className="admin-hr-archive-toolbar">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  <FileText className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <div className="flex items-center gap-2 text-sm font-semibold text-cf-title">
+                  <FileText className="h-4 w-4 text-cf-faint" />
                   合同档案
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -983,7 +984,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                 <span className="inline-flex rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-slate-800 dark:text-slate-100">
                                   {contractTypeDict.getLabel(String(item.contractType ?? '')) || '-'}
                                 </span>
-                                <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
+                                <div className="break-all text-base font-semibold text-cf-title">
                                   {item.contractNo}
                                 </div>
                               </div>
@@ -1005,7 +1006,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                   {contractRemainingLabel(item)}
                                 </span>
                                 {item.duration != null ? (
-                                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-900">
                                     {`${item.duration} \u4e2a\u6708`}
                                   </span>
                                 ) : null}
@@ -1013,13 +1014,13 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             </div>
 
                             <div className="admin-users-row-actions">
-                              <button type="button" title="编辑" onClick={() => void handleEditContract(item.id)}>
+                              <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEditContract(item.id)}>
                                 <Edit3 size={15} />
                               </button>
                               <button
                                 type="button"
                                 className="danger"
-                                title="删除"
+                                data-tooltip="删除" aria-label="删除"
                                 disabled={!canDeleteContract(item)}
                                 onClick={() => requestDeleteContract(item)}
                               >
@@ -1061,8 +1062,8 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
             <TabsContent value="documents" className="mt-0 flex min-h-0 flex-1 flex-col">
               <div className="admin-hr-archive-toolbar">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  <ShieldCheck className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <div className="flex items-center gap-2 text-sm font-semibold text-cf-title">
+                  <ShieldCheck className="h-4 w-4 text-cf-faint" />
                   证件档案
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1115,7 +1116,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                   <span className="inline-flex rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-slate-800 dark:text-slate-100">
                                     {documentTypeDict.getLabel(String(item.documentType ?? '')) || '-'}
                                   </span>
-                                  <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
+                                  <div className="break-all text-base font-semibold text-cf-title">
                                     {item.documentNo}
                                   </div>
                                 </div>
@@ -1128,17 +1129,17 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                   >
                                     {documentExpiryLabel(item)}
                                   </span>
-                                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                  <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-900">
                                     {attachmentCount ? `${attachmentCount} 个附件` : '无附件'}
                                   </span>
                                 </div>
                               </div>
 
                               <div className="admin-users-row-actions">
-                                <button type="button" title="编辑" onClick={() => void handleEditDocument(item.id)}>
+                                <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEditDocument(item.id)}>
                                   <Edit3 size={15} />
                                 </button>
-                                <button type="button" className="danger" title="删除" onClick={() => requestDeleteDocument(item)}>
+                                <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => requestDeleteDocument(item)}>
                                   <Trash2 size={15} />
                                 </button>
                               </div>
@@ -1177,8 +1178,8 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
             <TabsContent value="contacts" className="mt-0 flex min-h-0 flex-1 flex-col">
               <div className="admin-hr-archive-toolbar">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  <Phone className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <div className="flex items-center gap-2 text-sm font-semibold text-cf-title">
+                  <Phone className="h-4 w-4 text-cf-faint" />
                   紧急联系人
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1228,7 +1229,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                 <span className="inline-flex rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-slate-800 dark:text-slate-100">
                                   {relationshipDict.getLabel(String(item.relationship ?? '')) || '-'}
                                 </span>
-                                <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
+                                <div className="break-all text-base font-semibold text-cf-title">
                                   {item.contactName}
                                 </div>
                               </div>
@@ -1241,17 +1242,17 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                                 >
                                   {contactPriorityLabel(item.priority)}
                                 </span>
-                                <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                <span className="inline-flex rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-medium text-cf-muted dark:border-slate-800 dark:bg-slate-900">
                                   {item.phone}
                                 </span>
                               </div>
                             </div>
 
                             <div className="admin-users-row-actions">
-                              <button type="button" title="编辑" onClick={() => void handleEditContact(item.id)}>
+                              <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void handleEditContact(item.id)}>
                                 <Edit3 size={15} />
                               </button>
-                              <button type="button" className="danger" title="删除" onClick={() => requestDeleteContact(item)}>
+                              <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => requestDeleteContact(item)}>
                                 <Trash2 size={15} />
                               </button>
                             </div>
@@ -1311,7 +1312,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         <DialogSection title="基础信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同类型</Label>
+                <Label className="text-sm font-semibold text-cf-body">合同类型</Label>
                 <Select
                   value={contractForm.contractType}
                   onValueChange={(value) =>
@@ -1329,7 +1330,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </Select>
               </div>
               <div className="admin-dialog-field md:col-span-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同编号</Label>
+                <Label className="text-sm font-semibold text-cf-body">合同编号</Label>
                 <Input
                   value={contractForm.contractNo}
                   onChange={(event) =>
@@ -1339,7 +1340,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同状态</Label>
+                <Label className="text-sm font-semibold text-cf-body">合同状态</Label>
                 <Select
                   value={contractForm.status}
                   onValueChange={(value) =>
@@ -1362,7 +1363,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
           <DialogSection title="时间与附件">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">签订日期</Label>
+                <Label className="text-sm font-semibold text-cf-body">签订日期</Label>
                 <DatePicker
                   type="date"
                   value={contractForm.signDate}
@@ -1373,7 +1374,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">开始日期</Label>
+                <Label className="text-sm font-semibold text-cf-body">开始日期</Label>
                 <DatePicker
                   type="date"
                   value={contractForm.startDate}
@@ -1384,7 +1385,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">结束日期</Label>
+                <Label className="text-sm font-semibold text-cf-body">结束日期</Label>
                 <DatePicker
                   type="date"
                   value={contractForm.endDate}
@@ -1395,7 +1396,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同期限（月）</Label>
+                <Label className="text-sm font-semibold text-cf-body">合同期限（月）</Label>
                 <Input
                   type="number"
                   min="0"
@@ -1407,7 +1408,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field xl:col-span-4">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同附件</Label>
+                <Label className="text-sm font-semibold text-cf-body">合同附件</Label>
                 <FileUpload
                   value={contractForm.attachmentValue}
                   onChange={(value) =>
@@ -1440,7 +1441,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         <DialogSection title="证件信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">证件类型</Label>
+                <Label className="text-sm font-semibold text-cf-body">证件类型</Label>
                 <Select
                   value={documentForm.documentType}
                   onValueChange={(value) =>
@@ -1458,7 +1459,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </Select>
               </div>
               <div className="admin-dialog-field md:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">证件号码</Label>
+                <Label className="text-sm font-semibold text-cf-body">证件号码</Label>
                 <Input
                   value={documentForm.documentNo}
                   onChange={(event) =>
@@ -1468,7 +1469,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">签发日期</Label>
+                <Label className="text-sm font-semibold text-cf-body">签发日期</Label>
                 <DatePicker
                   type="date"
                   value={documentForm.issueDate}
@@ -1479,7 +1480,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">有效期至</Label>
+                <Label className="text-sm font-semibold text-cf-body">有效期至</Label>
                 <DatePicker
                   type="date"
                   value={documentForm.expiryDate}
@@ -1490,7 +1491,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field xl:col-span-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">扫描件</Label>
+                <Label className="text-sm font-semibold text-cf-body">扫描件</Label>
                 <FileUpload
                   value={documentForm.attachmentValue}
                   onChange={(value) =>
@@ -1523,7 +1524,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         <DialogSection title="联系人信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">联系人姓名</Label>
+                <Label className="text-sm font-semibold text-cf-body">联系人姓名</Label>
                 <Input
                   value={contactForm.contactName}
                   onChange={(event) =>
@@ -1533,7 +1534,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">关系</Label>
+                <Label className="text-sm font-semibold text-cf-body">关系</Label>
                 <Select
                   value={contactForm.relationship}
                   onValueChange={(value) =>
@@ -1551,7 +1552,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </Select>
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">联系电话</Label>
+                <Label className="text-sm font-semibold text-cf-body">联系电话</Label>
                 <Input
                   value={contactForm.phone}
                   onChange={(event) =>
@@ -1561,7 +1562,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="admin-dialog-field">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">优先级</Label>
+                <Label className="text-sm font-semibold text-cf-body">优先级</Label>
                 <Select
                   value={contactForm.priority}
                   onValueChange={(value) =>
@@ -1578,7 +1579,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </Select>
               </div>
               <div className="admin-dialog-field xl:col-span-4">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">联系地址</Label>
+                <Label className="text-sm font-semibold text-cf-body">联系地址</Label>
                 <Input
                   value={contactForm.address}
                   onChange={(event) =>

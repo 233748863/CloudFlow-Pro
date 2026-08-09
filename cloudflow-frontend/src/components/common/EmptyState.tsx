@@ -44,7 +44,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     </div>
     <h3 className="empty-state-title text-lg">{title}</h3>
     {(description || message) ? (
-      <p className="empty-state-description mt-2 text-slate-500 dark:text-slate-400">
+      <p className="empty-state-description mt-2 text-cf-subtle">
         {description || message}
       </p>
     ) : null}

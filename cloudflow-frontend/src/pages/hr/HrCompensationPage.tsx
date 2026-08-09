@@ -50,6 +50,7 @@ import { HrCrudPanel, HrFormField, renderStatus } from './HrDomainWorkspace';
 import HrCompensationSimulatePanel from './components/HrCompensationSimulatePanel';
 import { useDict } from '@/hooks/useDict';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import './admin-hr.css';
 
 const componentDefault = (): HrRecord => ({
   itemCode: `COMP${Date.now()}`,

@@ -36,15 +36,15 @@ export const QuoteTab: React.FC = () => {
             <td>{item.contractNo || '-'}</td>
             <td>
               <div className="admin-users-row-actions">
-                <button type="button" title="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
-                <button type="button" title="编辑报价" onClick={() => openDialog({ type: 'quote', item })}><Handshake size={15} /></button>
-                {item.status === 'DRAFT' || item.status === 'REJECTED' ? <button type="button" title="提交提审" onClick={() => setConfirm({ action: 'submitQuote', item })}><Send size={15} /></button> : null}
-                {item.status === 'APPROVED' || item.status === 'DRAFT' || item.status === 'REJECTED' ? <button type="button" title="发送报价" onClick={() => setConfirm({ action: 'sendQuote', item })}><Send size={15} /></button> : null}
-                {item.status === 'APPROVED' || item.status === 'SENT' ? <button type="button" title="接受报价" onClick={() => setConfirm({ action: 'acceptQuote', item })}><RefreshCcw size={15} /></button> : null}
-                {item.status !== 'ACCEPTED' && item.status !== 'EXPIRED' ? <button type="button" title="标记过期" onClick={() => setConfirm({ action: 'expireQuote', item })}><TriangleAlert size={15} /></button> : null}
+                <button type="button" data-tooltip="客户360" aria-label="客户360" onClick={() => openCustomerWorkspace(item.customerId)}><Eye size={15} /></button>
+                <button type="button" data-tooltip="编辑报价" aria-label="编辑报价" onClick={() => openDialog({ type: 'quote', item })}><Handshake size={15} /></button>
+                {item.status === 'DRAFT' || item.status === 'REJECTED' ? <button type="button" data-tooltip="提交提审" aria-label="提交提审" onClick={() => setConfirm({ action: 'submitQuote', item })}><Send size={15} /></button> : null}
+                {item.status === 'APPROVED' || item.status === 'DRAFT' || item.status === 'REJECTED' ? <button type="button" data-tooltip="发送报价" aria-label="发送报价" onClick={() => setConfirm({ action: 'sendQuote', item })}><Send size={15} /></button> : null}
+                {item.status === 'APPROVED' || item.status === 'SENT' ? <button type="button" data-tooltip="接受报价" aria-label="接受报价" onClick={() => setConfirm({ action: 'acceptQuote', item })}><RefreshCcw size={15} /></button> : null}
+                {item.status !== 'ACCEPTED' && item.status !== 'EXPIRED' ? <button type="button" data-tooltip="标记过期" aria-label="标记过期" onClick={() => setConfirm({ action: 'expireQuote', item })}><TriangleAlert size={15} /></button> : null}
                 <button
                   type="button"
-                  title="转合同"
+                  data-tooltip="转合同" aria-label="转合同"
                   onClick={async () => {
                       try {
                         const contractId = await crmApi.createContractDraft(item.quoteId!);

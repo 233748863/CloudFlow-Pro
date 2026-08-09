@@ -57,13 +57,13 @@ const getAvatarText = (item: OnlineUserItem) =>
 const getSessionStatusClassName = (item: OnlineUserItem) =>
   item.currentLogin
     ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
-    : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
+    : 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900/70';
 
 const getRemainingClassName = (seconds?: number) => {
-  if (seconds == null) return 'text-slate-500 dark:text-slate-400';
+  if (seconds == null) return 'text-cf-subtle';
   if (seconds <= 0) return 'text-rose-600 dark:text-rose-300';
   if (seconds <= 1800) return 'text-amber-600 dark:text-amber-300';
-  return 'text-slate-600 dark:text-slate-300';
+  return 'text-cf-muted';
 };
 
 const checkboxClassName =
@@ -79,9 +79,9 @@ const TableStateRow: React.FC<{
     <td colSpan={colSpan} className="px-4 py-10">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">
             {description}
           </div>
         ) : null}
@@ -417,7 +417,7 @@ export const OnlineUserPage: React.FC = () => {
                   <td>{item.deptName || '-'}</td>
                   <td>
                     <span className="inline-flex items-center gap-2">
-                      <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
+                      <Building2 size={14} className="text-cf-faint" />
                       {item.tenantId ?? '-'}
                     </span>
                   </td>
@@ -443,7 +443,7 @@ export const OnlineUserPage: React.FC = () => {
                       <button
                         type="button"
                         className="danger"
-                        title="强制下线"
+                        data-tooltip="强制下线" aria-label="强制下线"
                         disabled={Boolean(item.currentLogin)}
                         onClick={() => handleForceLogout([item.token])}
                       >

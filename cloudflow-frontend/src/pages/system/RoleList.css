@@ -1,0 +1,235 @@
+/* 从 index.css 拆分而来：admin-roles
+   由 RoleList.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .admin-roles-filter-grid {
+      grid-template-columns: minmax(20rem, 1fr) minmax(14rem, 18rem) auto;
+    }
+}
+
+.admin-roles-page {
+  gap: 24px;
+}
+
+.admin-roles-filter-grid {
+  grid-template-columns: minmax(360px, 1fr) minmax(150px, 180px) auto;
+}
+
+.admin-roles-table {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.admin-roles-table th,
+.admin-roles-table td,
+.admin-roles-mutex-table th,
+.admin-roles-mutex-table td {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-roles-table th:nth-child(1),
+.admin-roles-table td:nth-child(1) {
+  width: 6%;
+}
+
+.admin-roles-table th:nth-child(2),
+.admin-roles-table td:nth-child(2) {
+  width: 20%;
+}
+
+.admin-roles-table th:nth-child(3),
+.admin-roles-table td:nth-child(3) {
+  width: 15%;
+}
+
+.admin-roles-table th:nth-child(4),
+.admin-roles-table td:nth-child(4) {
+  width: 14%;
+}
+
+.admin-roles-table th:nth-child(5),
+.admin-roles-table td:nth-child(5) {
+  width: 8%;
+}
+
+.admin-roles-table th:nth-child(6),
+.admin-roles-table td:nth-child(6) {
+  width: 14%;
+}
+
+.admin-roles-table th:nth-child(7),
+.admin-roles-table td:nth-child(7) {
+  width: 10%;
+}
+
+.admin-roles-table th:nth-child(8),
+.admin-roles-table td:nth-child(8) {
+  width: 13%;
+}
+
+.admin-roles-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-roles-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: #eafbff;
+  color: #0d95b5;
+}
+
+.admin-roles-name strong,
+.admin-roles-name small {
+  display: block;
+  overflow: hidden;
+  max-width: 180px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-roles-name strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 740;
+}
+
+.admin-roles-name small {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.admin-roles-code,
+.admin-roles-order {
+  color: #64748b;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.admin-roles-tenant {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.admin-roles-tenant svg {
+  flex: 0 0 auto;
+  color: #94a3b8;
+}
+
+.admin-roles-tenant span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-roles-form-grid {
+  gap: 16px;
+}
+
+.admin-roles-permission-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 14px;
+}
+
+.admin-roles-permission-grid > .admin-roles-tree-card:only-child {
+  grid-column: 1 / -1;
+}
+
+.admin-roles-tree-card {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 14px;
+}
+
+.admin-roles-tree-panel {
+  min-height: 180px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.admin-roles-menu-tree {
+  max-height: 420px;
+}
+
+.admin-roles-tree-panel label {
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.admin-roles-tree-panel label:hover {
+  border-color: #e5e7eb;
+  background: #f8fafc;
+}
+
+.admin-roles-tree-panel input[type="checkbox"] {
+  border-radius: 4px;
+}
+
+.admin-roles-mutex-dialog {
+  gap: 14px;
+}
+
+.admin-roles-mutex-head {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px;
+}
+
+.admin-roles-mutex-body {
+  padding: 16px;
+}
+
+.admin-roles-mutex-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.admin-roles-mutex-table {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.admin-roles-mutex-table th:nth-child(1),
+.admin-roles-mutex-table td:nth-child(1),
+.admin-roles-mutex-table th:nth-child(2),
+.admin-roles-mutex-table td:nth-child(2) {
+  width: 34%;
+}
+
+.admin-roles-mutex-table th:nth-child(3),
+.admin-roles-mutex-table td:nth-child(3) {
+  width: 22%;
+}
+
+.admin-roles-mutex-table th:nth-child(4),
+.admin-roles-mutex-table td:nth-child(4) {
+  width: 10%;
+}

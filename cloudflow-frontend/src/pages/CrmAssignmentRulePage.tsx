@@ -207,9 +207,9 @@ export default function CrmAssignmentRulePage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-slate-500">正在加载分配规则...</span></td></tr>
+                  <tr><td colSpan={8} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-cf-subtle">正在加载分配规则...</span></td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500"><ListOrdered className="mx-auto mb-3 h-4 w-4" />暂无分配规则</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-cf-subtle"><ListOrdered className="mx-auto mb-3 h-4 w-4" />暂无分配规则</td></tr>
                 ) : (
                   rows.map((row) => (
                     <tr key={row.ruleId}>
@@ -226,8 +226,8 @@ export default function CrmAssignmentRulePage() {
                       <td>{formatDateTimeDisplay(row.updateTime) || '-'}</td>
                       <td>
                         <div className="admin-users-row-actions">
-                          <button type="button" title="编辑规则" onClick={() => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }}><Settings2 size={15} /></button>
-                          <button type="button" className="danger" title="删除规则" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button>
+                          <button type="button" data-tooltip="编辑规则" aria-label="编辑规则" onClick={() => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }}><Settings2 size={15} /></button>
+                          <button type="button" className="danger" data-tooltip="删除规则" aria-label="删除规则" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button>
                         </div>
                       </td>
                     </tr>

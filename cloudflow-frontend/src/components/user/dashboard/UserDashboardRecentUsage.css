@@ -1,0 +1,53 @@
+/* 从 index.css 拆分而来：recent-usage
+   由 UserDashboardRecentUsage.tsx import，
+   随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
+
+@layer components {
+  .recent-usage-header span {
+      color: #737373;
+      font-size: 0.75rem;
+    }
+
+  .recent-usage-body {
+      padding: 0.5rem 1.25rem 0.875rem;
+    }
+
+  .recent-usage-row {
+      display: flex;
+      min-height: 4.5rem;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+      color: #0a0a0a;
+      transition: background-color 0.18s ease;
+    }
+
+  .recent-usage-row:last-child {
+      border-bottom: 0;
+    }
+
+  .recent-usage-left {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+  .recent-usage-icon {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+
+  .recent-usage-cost {
+      flex: 0 0 auto;
+      text-align: right;
+    }
+
+  .recent-usage-cost p {
+      margin: 0 0 0.25rem;
+      color: #0f172a;
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+}

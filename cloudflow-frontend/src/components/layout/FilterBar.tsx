@@ -42,7 +42,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ search, filters, stats, ac
     <div className="flex flex-1 flex-wrap items-center gap-3">
       {search ? (
         <div className={cn('relative', search.widthClassName ?? 'w-full sm:w-[260px]')}>
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
           <Input
             className="h-10 pl-9"
             value={search.value}

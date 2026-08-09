@@ -41,14 +41,14 @@ export const MobileLayout: React.FC = () => {
               <tab.icon
                 size={24}
                 className={`mb-1 transition-colors ${
-                  isActive ? 'text-[#0d95b5]' : 'text-slate-400'
-                }`}
+ isActive ? 'text-[#0d95b5]' : 'text-cf-faint'
+ }`}
                 aria-hidden="true"
               />
               <span
                 className={`text-[10px] font-medium ${
-                  isActive ? 'text-[#0d95b5]' : 'text-slate-500'
-                }`}
+ isActive ? 'text-[#0d95b5]' : 'text-cf-subtle'
+ }`}
               >
                 {tab.label}
               </span>

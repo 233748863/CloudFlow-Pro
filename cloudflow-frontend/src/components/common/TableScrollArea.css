@@ -1,0 +1,106 @@
+.table-scroll-container .cf-table-scroll-area.table-wrapper,
+.admin-inner-table-surface .cf-table-scroll-area.table-wrapper,
+.cf-table-scroll-area.table-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: auto;
+  isolation: isolate;
+  scrollbar-gutter: stable;
+}
+
+.cf-table-scroll-area:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--cf-primary-500, #0d95b5) 72%, transparent);
+  outline-offset: -2px;
+}
+
+.cf-table-scroll-area .cf-table-sticky {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.cf-table-scroll-area .cf-table-sticky-header > thead {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: var(--cf-table-sticky-head-bg, #f6f8fa);
+}
+
+.cf-table-scroll-area .cf-table-sticky-header > thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 31;
+  background-color: var(--cf-table-sticky-head-bg, #f6f8fa);
+}
+
+.cf-table-scroll-area .cf-table-sticky > thead > tr > [data-cf-pin] {
+  z-index: 40;
+  background-color: var(--cf-table-sticky-head-bg, #f6f8fa);
+}
+
+.cf-table-scroll-area .cf-table-sticky > tbody > tr > [data-cf-pin],
+.cf-table-scroll-area .cf-table-sticky > tfoot > tr > [data-cf-pin] {
+  z-index: 20;
+  background-color: var(--cf-table-sticky-bg, #ffffff);
+}
+
+.cf-table-scroll-area .cf-table-sticky > tbody > tr:hover > [data-cf-pin] {
+  background-color: var(--cf-table-sticky-hover-bg, #eef2f6);
+}
+
+.cf-table-scroll-area .cf-table-sticky > tbody > tr[data-state='selected'] > [data-cf-pin] {
+  background-color: var(--cf-table-sticky-selected-bg, #ecfeff);
+}
+
+html.dark .cf-table-scroll-area .cf-table-sticky-header > thead,
+html.dark .cf-table-scroll-area .cf-table-sticky-header > thead > tr > th,
+html.dark .cf-table-scroll-area .cf-table-sticky > thead > tr > [data-cf-pin] {
+  background-color: var(--cf-table-sticky-head-bg, #16203a);
+}
+
+html.dark .cf-table-scroll-area .cf-table-sticky > tbody > tr > [data-cf-pin],
+html.dark .cf-table-scroll-area .cf-table-sticky > tfoot > tr > [data-cf-pin] {
+  background-color: var(--cf-table-sticky-bg, #0f172a);
+}
+
+.cf-table-scroll-area.is-scrollable .cf-table-sticky [data-cf-pin-edge='left']::after,
+.cf-table-scroll-area.is-scrollable .cf-freeze-first tr > :first-child::after,
+.cf-table-scroll-area.is-scrollable .cf-freeze-edges tr > :first-child::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  transform: translateX(100%);
+  background: linear-gradient(to right, rgb(15 23 42 / 0.1), transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.cf-table-scroll-area.is-scrollable .cf-table-sticky [data-cf-pin-edge='right']::before,
+.cf-table-scroll-area.is-scrollable .cf-freeze-last tr > :last-child::before,
+.cf-table-scroll-area.is-scrollable .cf-freeze-edges tr > :last-child::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 10px;
+  transform: translateX(-100%);
+  background: linear-gradient(to left, rgb(15 23 42 / 0.1), transparent);
+  content: '';
+  pointer-events: none;
+}
+
+html.dark .cf-table-scroll-area.is-scrollable .cf-table-sticky [data-cf-pin-edge='left']::after,
+html.dark .cf-table-scroll-area.is-scrollable .cf-freeze-first tr > :first-child::after,
+html.dark .cf-table-scroll-area.is-scrollable .cf-freeze-edges tr > :first-child::after {
+  background: linear-gradient(to right, rgb(0 0 0 / 0.28), transparent);
+}
+
+html.dark .cf-table-scroll-area.is-scrollable .cf-table-sticky [data-cf-pin-edge='right']::before,
+html.dark .cf-table-scroll-area.is-scrollable .cf-freeze-last tr > :last-child::before,
+html.dark .cf-table-scroll-area.is-scrollable .cf-freeze-edges tr > :last-child::before {
+  background: linear-gradient(to left, rgb(0 0 0 / 0.28), transparent);
+}

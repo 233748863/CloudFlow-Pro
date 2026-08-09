@@ -48,12 +48,12 @@ export const UserDashboardTodoPanel: React.FC<UserDashboardTodoPanelProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="badge badge-primary">{item.sourceLabel || '联动待办'}</span>
-                  {item.status ? <span className="text-xs text-slate-500 dark:text-slate-400">{getTodoStatusLabel(item.status)}</span> : null}
+                  {item.status ? <span className="text-xs text-cf-subtle">{getTodoStatusLabel(item.status)}</span> : null}
                 </div>
-                <p className="mt-2 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{item.title}</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.description || '待继续推进'}</p>
+                <p className="mt-2 truncate text-sm font-medium text-cf-title">{item.title}</p>
+                <p className="mt-1 text-xs text-cf-subtle">{item.description || '待继续推进'}</p>
               </div>
-              <ArrowRight size={14} className="ml-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 dark:text-slate-500" />
+              <ArrowRight size={14} className="ml-4 shrink-0 text-cf-faint transition-transform group-hover:translate-x-0.5" />
             </button>
           ))}
         </div>

@@ -13,6 +13,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useFrozenColumns } from '@/hooks/useFrozenColumns';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog, Pagination } from '@/components/common';
 import {
@@ -95,7 +96,7 @@ interface OrgStructureProps {
 // 工具函数
 // ============================================================
 
-const fieldLabelClassName = 'mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400';
+const fieldLabelClassName = 'mb-1 block text-[11px] font-medium text-cf-subtle';
 
 const createDeptForm = (defaultParentId = 0): DeptFormState => ({
   parentId: defaultParentId,
@@ -191,11 +192,11 @@ const InlineState: React.FC<{
     {loading ? (
       <div className="mb-3 h-4 w-4 animate-spin rounded-md border-2 border-slate-400 border-t-transparent dark:border-slate-500" />
     ) : icon ? (
-      <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div>
+      <div className="mb-3 text-cf-faint">{icon}</div>
     ) : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -304,7 +305,7 @@ const DepartmentPickerList: React.FC<{
   return (
     <div className="grid gap-3">
       <div className="relative">
-        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
         <Input
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
@@ -328,7 +329,7 @@ const DepartmentPickerList: React.FC<{
                   onClick={() => onChange(dept.deptId)}
                   style={{ paddingLeft: `${level * 18 + 12}px` }}
                 >
-                  <Building2 size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                  <Building2 size={14} className="shrink-0 text-cf-faint" />
                   <span className="truncate">{dept.deptName}</span>
                   <span className={cn('ml-auto rounded-md px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(dept.status || '0'))}>
                     {(dept.status || '0') === '0' ? '正常' : '停用'}
@@ -397,21 +398,21 @@ const DeptNode: React.FC<{
             'flex h-9 w-full items-center gap-1.5 border border-transparent px-2 text-left transition-all duration-300',
             isSelected
               ? 'border-[#b8e7f1] bg-[#effbfe] text-[#0b7894] shadow-none dark:border-[#0d95b5]/40 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
-              : 'text-slate-600 hover:bg-[var(--cf-surface-muted)] hover:text-slate-900 dark:text-slate-300 dark:hover:border-slate-800/50 dark:hover:bg-slate-900/40 dark:hover:text-slate-100',
+              : 'text-cf-muted hover:bg-[var(--cf-surface-muted)] hover:text-cf-title dark:hover:border-slate-800/50 dark:hover:bg-slate-900/40',
           )}
           style={{ paddingLeft: `${level * 18 + 8}px` }}
         >
           <button
             type="button"
             disabled={!hasChildren}
-            title={hasChildren ? (expanded ? '收起部门' : '展开部门') : undefined}
+            data-tooltip={hasChildren ? (expanded ? '收起部门' : '展开部门') : undefined}
             aria-label={hasChildren ? (expanded ? '收起部门' : '展开部门') : undefined}
             onClick={(event) => {
               event.stopPropagation();
               onToggle(dept.deptId);
             }}
             className={cn(
-              'flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-800',
+              'flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-cf-faint transition hover:bg-[var(--cf-surface-muted)] dark:hover:bg-slate-800',
               hasChildren ? 'cursor-pointer' : 'cursor-default disabled:opacity-100',
             )}
           >
@@ -421,14 +422,14 @@ const DeptNode: React.FC<{
           <button
             type="button"
             onClick={() => onSelect(dept)}
-            title={dept.deptName}
+            data-tooltip={dept.deptName} aria-label={dept.deptName}
             className="flex min-w-0 flex-1 items-center gap-2 text-left"
           >
             <span className={cn(
               'flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs',
               isSelected
                 ? 'border-[#b8e7f1] bg-[var(--cf-surface-strong)] text-[#0d95b5] dark:border-[#0d95b5]/40 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
-                : 'border-slate-200 bg-[var(--cf-surface-muted)] text-slate-400 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-500',
+                : 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-faint dark:border-slate-800 dark:bg-slate-900/50',
             )}>
               <Building2 size={13} />
             </span>
@@ -454,7 +455,7 @@ const DeptNode: React.FC<{
                 event.stopPropagation();
                 onAddChild(dept);
               }}
-              className="!h-5 !w-5 !rounded-md !p-0 text-slate-400 hover:bg-[#effbfe] hover:text-[#0d95b5] dark:text-slate-400 dark:hover:bg-[#0d95b5]/15"
+              className="!h-5 !w-5 !rounded-md !p-0 text-cf-faint hover:bg-[#effbfe] hover:text-[#0d95b5] dark:hover:bg-[#0d95b5]/15"
             >
               <Plus size={12} />
             </Button>
@@ -468,7 +469,7 @@ const DeptNode: React.FC<{
                 event.stopPropagation();
                 onEdit(dept);
               }}
-              className="!h-5 !w-5 !rounded-md !p-0 text-slate-400 hover:bg-[var(--cf-surface-muted)] hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              className="!h-5 !w-5 !rounded-md !p-0 text-cf-faint hover:bg-[var(--cf-surface-muted)] hover:text-cf-title dark:hover:bg-slate-800"
             >
               <Edit3 size={12} />
             </Button>
@@ -677,14 +678,14 @@ const UserDetailDialog: React.FC<{
       {user ? (
         <div className="admin-dialog-stack">
           <div className="flex items-center gap-4 border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-4 dark:border-slate-800 dark:bg-slate-900/60">
-            <div className="flex h-14 w-14 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-lg font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+            <div className="flex h-14 w-14 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-lg font-semibold text-cf-body dark:border-slate-800 dark:bg-slate-900">
                 {(user.nickName || user.userName || '?')[0]}
               </div>
               <div className="min-w-0">
-                <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <div className="text-lg font-semibold text-cf-title">
                   {user.nickName || user.userName}
                 </div>
-                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">用户 ID {user.userId}</div>
+                <div className="mt-1 text-sm text-cf-subtle">用户 ID {user.userId}</div>
               </div>
             </div>
 
@@ -692,12 +693,12 @@ const UserDetailDialog: React.FC<{
             <div className="grid gap-0 md:grid-cols-2">
               {fields.map((field) => (
                 <div key={field.label} className="border-b border-slate-200 px-4 py-3 even:md:border-l dark:border-slate-800 dark:even:md:border-slate-800">
-                  <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                  <div className="text-[11px] font-semibold text-cf-faint">
                     {field.label}
                   </div>
-                  <div className="mt-1.5 text-sm text-slate-900 dark:text-slate-100">
+                  <div className="mt-1.5 text-sm text-cf-title">
                     {field.type === 'role' && field.value !== '-' ? (
-                      <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                      <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-body dark:border-slate-800 dark:bg-slate-900">
                         {field.value}
                       </span>
                     ) : field.type === 'status' ? (
@@ -767,23 +768,23 @@ const ChangeDeptDialog: React.FC<{
         <div className="admin-dialog-stack">
           <div className="admin-dialog-stack">
             <div className="flex items-center gap-3 border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm font-semibold text-cf-body dark:border-slate-800 dark:bg-slate-900">
                 {(user.nickName || user.userName || '?')[0]}
               </div>
               <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user.nickName || user.userName}</div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">当前部门 {user.deptName || '-'}</div>
+                <div className="text-sm font-semibold text-cf-title">{user.nickName || user.userName}</div>
+                <div className="mt-1 text-xs text-cf-subtle">当前部门 {user.deptName || '-'}</div>
               </div>
             </div>
 
             <div className="border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-              <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+              <div className="text-[11px] font-semibold text-cf-faint">
                 目标部门
               </div>
-              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <div className="mt-2 text-sm font-semibold text-cf-title">
                 {targetDept?.deptName || '未选择'}
               </div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-1 text-xs text-cf-subtle">
                 {targetDept?.leader ? `负责人 ${targetDept.leader}` : '从部门列表选择目标部门'}
               </div>
             </div>
@@ -856,25 +857,25 @@ const MigrateDeptDialog: React.FC<{
         <div className="admin-dialog-stack">
           <div className="admin-dialog-stack">
             <div className="border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-              <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+              <div className="text-[11px] font-semibold text-cf-faint">
                 源部门
               </div>
-              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <div className="mt-2 text-sm font-semibold text-cf-title">
                 {sourceDept.deptName}
               </div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-1 text-xs text-cf-subtle">
                 迁移后该部门下现有成员将整体移动到目标部门。
               </div>
             </div>
 
             <div className="border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-              <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+              <div className="text-[11px] font-semibold text-cf-faint">
                 目标部门
               </div>
-              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <div className="mt-2 text-sm font-semibold text-cf-title">
                 {targetDept?.deptName || '未选择'}
               </div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-1 text-xs text-cf-subtle">
                 {targetDept?.leader ? `负责人 ${targetDept.leader}` : '从部门列表选择目标部门'}
               </div>
             </div>
@@ -902,6 +903,8 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
   refreshSignal = 0,
   onStatsChange,
 }) => {
+  // 成员表 8 列、min-w-1100px，横向滚动时冻结「用户」与「操作」两列
+  const memberTableRef = useFrozenColumns<HTMLTableElement>({ left: 1, right: 1 });
   const [deptTree, setDeptTree] = useState<DeptItem[]>([]);
   const [deptLoading, setDeptLoading] = useState(true);
   const [deptError, setDeptError] = useState<string | null>(null);
@@ -1149,7 +1152,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
       {/* 部门目录 */}
       <div className="card admin-source-panel no-padding overflow-hidden flex min-h-0 flex-col xl:h-full">
         <div className="p-4 admin-source-section-head flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
-          <div className="text-sm font-bold text-slate-900 dark:text-slate-100">部门目录</div>
+          <div className="text-sm font-bold text-cf-title">部门目录</div>
           <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs font-semibold" onClick={() => openCreateDeptDialog(0)}>
             <Plus size={14} className="mr-1 text-[#0d95b5] dark:text-[#d8f3fa]" />
             新增根部门
@@ -1158,7 +1161,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
         <div className="p-4 flex min-h-0 flex-1 flex-col">
           <div className="admin-dialog-stack !flex min-h-0 flex-1 flex-col">
             <div className="relative flex-shrink-0">
-              <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+              <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-cf-faint" />
               <Input
                 value={deptSearch}
                 onChange={(event) => setDeptSearch(event.target.value)}
@@ -1174,20 +1177,20 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                 'flex w-full items-center gap-3 border px-3 py-3 text-left transition-all duration-300 flex-shrink-0',
                 selectedDeptId === null
                   ? 'border-[#b8e7f1] bg-[#effbfe] text-[#0b7894] shadow-none dark:border-[#0d95b5]/40 dark:bg-[#0d95b5]/15 dark:text-[#d8f3fa]'
-                : 'admin-option-surface border-slate-200 bg-[var(--cf-surface-strong)] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+                : 'admin-option-surface border-slate-200 bg-[var(--cf-surface-strong)] text-cf-muted dark:border-slate-800 dark:bg-slate-900',
               )}
             >
               <span className={cn(
                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors",
                 selectedDeptId === null
                   ? "border-[#b8e7f1] bg-[var(--cf-surface-strong)] text-[#0d95b5] dark:border-[#0d95b5]/40 dark:bg-[#0d95b5]/15"
-                  : "border-slate-200 bg-[var(--cf-surface-muted)] text-slate-400 dark:border-slate-800 dark:bg-slate-900/50"
+                  : "border-slate-200 bg-[var(--cf-surface-muted)] text-cf-faint dark:border-slate-800 dark:bg-slate-900/50"
               )}>
                 <Building2 size={17} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold">全组织成员</span>
-                <span className="mt-0.5 block text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                <span className="mt-0.5 block text-[10px] font-medium text-cf-subtle">
                   {totalDepartments} 部门 / {activeDepartments} 正常运行
                 </span>
               </span>
@@ -1195,7 +1198,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
 
             <div className="overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900 flex min-h-0 flex-1 flex-col">
               <div className="admin-source-section-head flex items-center justify-between border-b border-slate-200 px-3 py-2.5 dark:border-slate-800 bg-[var(--cf-surface-strong)] dark:bg-slate-900 flex-shrink-0">
-                <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                <div className="text-[11px] font-bold text-cf-faint">
                   {deptSearch ? `搜索到 ${filteredDepartments} 个结果` : `部门层级树`}
                 </div>
                 <div className="flex items-center gap-1">
@@ -1203,7 +1206,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                     全部展开
                   </Button>
                   <div className="w-px h-2.5 bg-slate-200 dark:bg-slate-800" />
-                  <Button type="button" variant="ghost" size="sm" onClick={collapseAllDepartments} className="!h-5 !rounded-md !px-2 !py-0.5 !text-[10px] !font-bold !text-slate-500 shadow-none hover:bg-[var(--cf-surface-muted)] dark:!text-slate-400 dark:hover:bg-slate-900/40">
+                  <Button type="button" variant="ghost" size="sm" onClick={collapseAllDepartments} className="!h-5 !rounded-md !px-2 !py-0.5 !text-[10px] !font-bold !text-cf-subtle shadow-none hover:bg-[var(--cf-surface-muted)] dark:!text-cf-faint dark:hover:bg-slate-900/40">
                     全部折叠
                   </Button>
                 </div>
@@ -1246,21 +1249,21 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             {selectedDept ? (
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  <h3 className="text-base font-bold text-cf-title">
                     {selectedDept.deptName}
                   </h3>
                   <span className={cn('rounded-md px-2 py-0.5 text-[10px] font-medium scale-90 origin-left', getStatusBadgeClassName(selectedDept.status || '0'))}>
                     {(selectedDept.status || '0') === '0' ? '正常' : '停用'}
                   </span>
                 </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  包含 {countDeptChildren(selectedDept)} 个子部门 · 负责人: <span className="font-semibold text-slate-700 dark:text-slate-200">{selectedDept.leader || '未指定'}</span> {selectedDept.phone ? `· 电话: ${selectedDept.phone}` : ''}
+                <div className="mt-1 text-xs text-cf-subtle font-medium">
+                  包含 {countDeptChildren(selectedDept)} 个子部门 · 负责人: <span className="font-semibold text-cf-body">{selectedDept.leader || '未指定'}</span> {selectedDept.phone ? `· 电话: ${selectedDept.phone}` : ''}
                 </div>
               </div>
             ) : (
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">组织成员全览</h3>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium">展示全组织架构下的所有成员数据</p>
+                <h3 className="text-base font-bold text-cf-title">组织成员全览</h3>
+                <p className="mt-1 text-xs text-cf-subtle font-medium">展示全组织架构下的所有成员数据</p>
               </div>
             )}
           </div>
@@ -1290,7 +1293,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
           <div className="overflow-hidden border border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-900 flex flex-col">
             <div className="admin-source-section-head flex flex-col gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800 xl:flex-row xl:items-center xl:justify-between bg-[var(--cf-surface-strong)] dark:bg-slate-900 flex-shrink-0">
               <div className="relative min-w-0 flex-1 max-w-md">
-                <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-cf-faint" />
                 <Input
                   value={userSearch}
                   onChange={(event) => setUserSearch(event.target.value)}
@@ -1300,7 +1303,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
               </div>
               <div className="flex items-center gap-3">
                 {userSearch ? (
-                  <Button variant="ghost" size="sm" className="text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" onClick={() => setUserSearch('')}>
+                  <Button variant="ghost" size="sm" className="text-xs text-cf-subtle hover:text-cf-title" onClick={() => setUserSearch('')}>
                     清空搜索
                   </Button>
                 ) : null}
@@ -1312,7 +1315,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             </div>
 
             <div className="admin-horizontal-scroll flex-shrink-0">
-              <table className="unity-data-table admin-source-table min-w-[1100px]">
+              <table ref={memberTableRef} className="unity-data-table admin-source-table min-w-[1100px]">
                 <thead>
                   <tr>
                     <th>用户</th>
@@ -1341,29 +1344,29 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                       <tr key={user.userId}>
                         <td>
                           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] text-sm font-semibold text-cf-body dark:border-slate-800 dark:bg-slate-900">
                               {(user.nickName || user.userName || '?')[0]}
                             </div>
                             <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              <div className="truncate text-sm font-semibold text-cf-title">
                                 {user.nickName || '-'}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="text-sm text-slate-700 dark:text-slate-200">{user.userName}</td>
-                        <td className="text-sm text-slate-600 dark:text-slate-300">{user.deptName || '-'}</td>
-                        <td className="text-sm text-slate-600 dark:text-slate-300">{user.phonenumber || '-'}</td>
-                        <td className="max-w-[220px] truncate text-sm text-slate-500 dark:text-slate-400" title={user.email || '-'}>
+                        <td className="text-sm text-cf-body">{user.userName}</td>
+                        <td className="text-sm text-cf-muted">{user.deptName || '-'}</td>
+                        <td className="text-sm text-cf-muted">{user.phonenumber || '-'}</td>
+                        <td className="max-w-[220px] truncate text-sm text-cf-subtle" data-tooltip={user.email || '-'}>
                           {user.email || '-'}
                         </td>
                         <td>
                           {user.role ? (
-                            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                            <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-2.5 py-1 text-xs font-medium text-cf-body dark:border-slate-800 dark:bg-slate-900">
                               {user.role}
                             </span>
                           ) : (
-                            <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+                            <span className="text-sm text-cf-faint">-</span>
                           )}
                         </td>
                         <td>
@@ -1375,7 +1378,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                           <div className="admin-users-row-actions">
                             <button
                               type="button"
-                              title="详情"
+                              data-tooltip="详情"
                               aria-label="详情"
                               onClick={() => setDetailUser(user)}
                             >
@@ -1383,7 +1386,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                             </button>
                             <button
                               type="button"
-                              title="调岗"
+                              data-tooltip="调岗"
                               aria-label="调岗"
                               onClick={() => setChangeDeptUser(user)}
                             >
@@ -1392,7 +1395,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                             <button
                               type="button"
                               className="danger"
-                              title="删除"
+                              data-tooltip="删除"
                               aria-label="删除"
                               onClick={() => setPendingDeleteUser(user)}
                             >

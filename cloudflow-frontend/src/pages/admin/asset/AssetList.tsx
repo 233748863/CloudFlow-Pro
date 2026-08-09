@@ -118,9 +118,9 @@ const InlineState: React.FC<InlineStateProps> = ({
     <div className="admin-source-stat-icon mb-3">
       {icon || <Package className="h-4 w-4" />}
     </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="text-sm font-medium text-cf-title">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
     ) : null}
   </div>
 );
@@ -138,9 +138,9 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
         <div className="admin-source-stat-icon mb-3">
           {loading ? <RotateCcw className="h-4 w-4 animate-spin" /> : icon || <Package className="h-4 w-4" />}
         </div>
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-sm font-medium text-cf-title">{title}</div>
         {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+          <div className="mt-2 text-xs leading-6 text-cf-subtle">{description}</div>
         ) : null}
       </div>
     </td>
@@ -171,8 +171,8 @@ const DialogPanel: React.FC<{
 
 const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
   <div className="admin-asset-detail-item">
-    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+    <div className="text-[11px] font-medium text-cf-faint">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-cf-title">{value || '-'}</div>
   </div>
 );
 
@@ -744,13 +744,13 @@ const AssetList: React.FC = () => {
                       <tr key={asset.assetId}>
                         <td>
                           <div>{asset.assetCode || '-'}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+ <div className="mt-1 text-xs text-cf-faint">
                             {asset.purchaseDate || '-'}
                           </div>
                         </td>
                         <td>
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{asset.name}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+ <div className="font-medium text-cf-title">{asset.name}</div>
+ <div className="mt-1 text-xs text-cf-faint">
                             {[asset.category || '-', asset.model || '-'].join(' / ')}
                           </div>
                         </td>
@@ -758,17 +758,17 @@ const AssetList: React.FC = () => {
                           {getStatusBadge(asset.status)}
                         </td>
                         <td>
-                          <div className="font-medium text-slate-900 dark:text-slate-100">{formatAmount(asset.price)}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+ <div className="font-medium text-cf-title">{formatAmount(asset.price)}</div>
+ <div className="mt-1 text-xs text-cf-faint">
                             {asset.location || '-'}
                           </div>
                         </td>
                         <td>
                           <div className="admin-users-row-actions">
-                            <button type="button" title="详情" aria-label="详情" onClick={() => handleShowDetail(asset)}><Eye size={15} /></button>
-                            {hasPermission('oa:asset:edit') ? <button type="button" title="编辑" aria-label="编辑" onClick={() => handleEdit(asset)}><Edit size={15} /></button> : null}
-                            {asset.status === '1' && hasPermission('oa:asset:borrow') ? <button type="button" title="领用" aria-label="领用" onClick={() => openBorrowDialog(asset)}><UserCheck size={15} /></button> : null}
-                            {asset.status === '2' && hasPermission('oa:asset:return') ? <button type="button" title="归还" aria-label="归还" onClick={() => openReturnConfirm(asset)}><RotateCcw size={15} /></button> : null}
+                            <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => handleShowDetail(asset)}><Eye size={15} /></button>
+                            {hasPermission('oa:asset:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => handleEdit(asset)}><Edit size={15} /></button> : null}
+                            {asset.status === '1' && hasPermission('oa:asset:borrow') ? <button type="button" data-tooltip="领用" aria-label="领用" onClick={() => openBorrowDialog(asset)}><UserCheck size={15} /></button> : null}
+                            {asset.status === '2' && hasPermission('oa:asset:return') ? <button type="button" data-tooltip="归还" aria-label="归还" onClick={() => openReturnConfirm(asset)}><RotateCcw size={15} /></button> : null}
                           </div>
                         </td>
                       </tr>
@@ -993,29 +993,29 @@ const AssetList: React.FC = () => {
         {qrAsset?.assetId ? (
           <div className="admin-dialog-stack py-1">
             <DialogPanel title="资产信息">
-              <div className="font-medium text-slate-900 dark:text-slate-100">{qrAsset.name}</div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{qrAsset.assetCode || '-'}</div>
+ <div className="font-medium text-cf-title">{qrAsset.name}</div>
+ <div className="mt-1 text-xs text-cf-subtle">{qrAsset.assetCode || '-'}</div>
             </DialogPanel>
             <DialogPanel title="二维码标签" bodyClassName="flex flex-col items-center justify-center gap-4">
               {qrCodeLoading ? (
-                <div className="flex h-52 w-52 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 dark:border-slate-800 dark:bg-slate-950">
-                  <RotateCcw className="h-5 w-5 animate-spin text-slate-400" />
+ <div className="flex h-52 w-52 items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 dark:border-slate-800 dark:bg-slate-950">
+ <RotateCcw className="h-5 w-5 animate-spin text-cf-faint" />
                 </div>
               ) : qrCodeError ? (
                 <InlineState
                   title="二维码加载失败"
                   description={qrCodeError}
                   icon={<QrCode className="h-4 w-4" />}
-                  className="h-52 w-52 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-4 dark:border-slate-800 dark:bg-slate-950"
+ className="h-52 w-52 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-4 dark:border-slate-800 dark:bg-slate-950"
                 />
               ) : qrCodeUrl ? (
                 <img
                   src={qrCodeUrl}
                   alt="资产二维码"
-                  className="h-52 w-52 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 dark:border-slate-800 dark:bg-slate-950"
+ className="h-52 w-52 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-3 dark:border-slate-800 dark:bg-slate-950"
                 />
               ) : null}
-              <div className="text-sm text-slate-500 dark:text-slate-400">
+ <div className="text-sm text-cf-subtle">
                 {qrAsset.assetCode || '-'}
               </div>
             </DialogPanel>
@@ -1045,16 +1045,16 @@ const AssetList: React.FC = () => {
                 className="admin-asset-log-item"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-                    <History className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+ <div className="flex items-center gap-2 text-sm font-medium text-cf-title">
+ <History className="h-4 w-4 text-cf-faint" />
                     <span>{log.type || '资产变动'}</span>
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
+ <div className="text-xs text-cf-subtle">
                     {log.createTime || '-'}
                   </div>
                 </div>
                 {log.remark ? (
-                  <div className="mt-2 pl-6 text-sm leading-6 text-slate-600 dark:text-slate-300">
+ <div className="mt-2 pl-6 text-sm leading-6 text-cf-muted">
                     {log.remark}
                   </div>
                 ) : null}
