@@ -43,6 +43,7 @@ import {
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './OvertimeApplicationPage.css';
 
 interface InlineStateProps {
   title: string;
@@ -653,8 +654,9 @@ export const OvertimeApplicationPage: React.FC = () => {
         title={detailRecord?.applicationNo || '加班详情'}
         onClose={closeDetailDialog}
         width="wide"
+        panelClassName="max-h-[92vh]"
         headerAside={detailRecord ? getStatusBadge(detailRecord.status || 'DRAFT') : null}
-        bodyClassName="admin-dialog-stack"
+        bodyClassName="admin-dialog-stack admin-overtime-detail-dialog-body"
         footer={(
           <Button variant="outline" onClick={closeDetailDialog}>
             关闭
@@ -665,7 +667,7 @@ export const OvertimeApplicationPage: React.FC = () => {
           <InlineState title="正在加载加班详情..." className="py-12" />
         ) : (
           <>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="admin-overtime-detail-grid grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <DetailField label="申请单号" value={renderDetailValue(detailRecord.applicationNo)} />
               <DetailField label="申请人" value={renderDetailValue(detailRecord.employeeName)} />
               <DetailField label="加班类型" value={typeDict.getLabel(detailRecord.overtimeType || '') || '-'} />

@@ -19,6 +19,11 @@
     }
 
   .admin-expense-detail-dialog-body {
+      min-height: 0;
+      max-height: calc(90vh - 8rem);
+      overflow-y: auto !important;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
       padding-bottom: 1.25rem !important;
     }
 
@@ -32,6 +37,22 @@
       border-bottom: 1px solid var(--cf-border);
       min-height: 3.25rem;
       padding-bottom: 0.5rem;
+    }
+
+  .admin-expense-detail-grid {
+      grid-auto-rows: minmax(4.5rem, auto);
+    }
+
+  .admin-expense-detail-dialog-body .admin-expense-detail-panel {
+      height: auto;
+      max-height: none;
+      contain: none;
+    }
+
+  .admin-expense-detail-dialog-body > .admin-inner-table-surface {
+      height: auto;
+      max-height: none;
+      overflow: visible;
     }
 
   .admin-expense-detail-item > div:last-child {

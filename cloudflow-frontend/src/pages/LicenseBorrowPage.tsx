@@ -15,6 +15,7 @@ import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './LicenseBorrowPage.css';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'cancel';
@@ -388,8 +389,9 @@ export const LicenseBorrowPage: React.FC = () => {
         title={detailBorrow?.borrowNo || '证照借用详情'}
         onClose={() => setDetailBorrow(null)}
         width="wide"
+        panelClassName="max-h-[92vh]"
         headerAside={detailBorrow && !detailLoading ? getStatusBadge(detailBorrow.status) : null}
-        bodyClassName="admin-dialog-stack"
+        bodyClassName="admin-dialog-stack admin-license-borrow-detail-dialog-body"
         footer={<Button variant="outline" onClick={() => setDetailBorrow(null)}>关闭</Button>}
       >
         {detailLoading ? (
@@ -398,8 +400,8 @@ export const LicenseBorrowPage: React.FC = () => {
             正在加载证照借用详情...
           </div>
         ) : detailBorrow ? (
-          <div className="admin-dialog-stack">
-            <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="admin-license-borrow-detail-stack">
+            <div className="admin-license-borrow-detail-grid grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
               {[
                 ['证照', detailBorrow.licenseName],
                 ['申请人', detailBorrow.userName],

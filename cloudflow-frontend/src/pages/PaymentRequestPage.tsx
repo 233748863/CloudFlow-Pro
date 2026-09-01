@@ -32,6 +32,7 @@ import {
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './PaymentRequestPage.css';
 
 interface ConfirmState {
   type: 'delete' | 'submit' | 'pay';
@@ -776,8 +777,9 @@ export const PaymentRequestPage: React.FC = () => {
         title={detailPayment?.paymentNo || '付款申请详情'}
         onClose={closeDetailDialog}
         width="wide"
+        panelClassName="max-h-[92vh]"
         headerAside={detailPayment && !detailLoading ? getStatusBadge(detailPayment.status) : null}
-        bodyClassName="admin-dialog-stack"
+        bodyClassName="admin-dialog-stack admin-payment-detail-dialog-body"
         footer={(
           <Button variant="outline" onClick={closeDetailDialog}>
             关闭

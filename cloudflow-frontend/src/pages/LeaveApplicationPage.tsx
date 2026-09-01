@@ -43,6 +43,7 @@ import {
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import './LeaveApplicationPage.css';
 
 interface LeaveApplicationDraftForm {
   leaveTypeId?: number;
@@ -797,8 +798,9 @@ export const LeaveApplicationPage: React.FC = () => {
         title={detailRecord?.applicationNo || '请假详情'}
         onClose={closeDetailDialog}
         width="wide"
+        panelClassName="max-h-[92vh]"
         headerAside={detailRecord ? getStatusBadge(detailRecord.status || 'DRAFT') : null}
-        bodyClassName="admin-dialog-stack"
+        bodyClassName="admin-dialog-stack admin-leave-detail-dialog-body"
         footer={(
           <Button variant="outline" onClick={closeDetailDialog}>
             关闭
@@ -809,7 +811,7 @@ export const LeaveApplicationPage: React.FC = () => {
           <InlineState title="正在加载请假详情..." className="py-12" />
         ) : (
           <>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="admin-leave-detail-grid grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <DetailField label="申请单号" value={renderDetailValue(detailRecord.applicationNo)} />
               <DetailField label="申请人" value={renderDetailValue(detailRecord.employeeName)} />
               <DetailField label="请假类型" value={renderDetailValue(detailRecord.leaveTypeName)} />
