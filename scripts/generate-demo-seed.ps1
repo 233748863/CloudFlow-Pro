@@ -441,6 +441,7 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     if ($table -eq 'sys_role' -and $name -eq 'data_scope') { return "IF(r.n=0,'1','3')" }
     if ($table -eq 'sys_role' -and $name -eq 'ds_type') { return 'IF(r.n=0,0,3)' }
     if ($table -eq 'sys_menu' -and $name -eq 'status') { return "'1'" }
+    if ($table -eq 'oa_meeting_room' -and $name -eq 'status') { return "'1'" }
     if ($table -eq 'sys_user_totp' -and $name -eq 'secret_ciphertext') { return "'DEMO_DISABLED'" }
     if ($table -eq 'sys_user_totp' -and $name -eq 'enabled') { return '0' }
     if ($table -eq 'sys_user_totp' -and $name -in @('enabled_at','last_used_step')) { return 'NULL' }
