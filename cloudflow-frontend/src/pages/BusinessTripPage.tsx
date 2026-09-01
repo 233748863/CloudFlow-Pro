@@ -159,15 +159,37 @@ const DialogPanel: React.FC<{
   </section>
 );
 
+const DetailSection: React.FC<{
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, actions, children, className, bodyClassName }) => (
+  <section className={joinClass('admin-business-trip-detail-section', className)}>
+    {title || description || actions ? (
+      <header className="admin-business-trip-detail-section-head">
+        <div className="min-w-0">
+          {title ? <strong>{title}</strong> : null}
+          {description ? <span>{description}</span> : null}
+        </div>
+        {actions ? <div className="admin-business-trip-detail-section-actions">{actions}</div> : null}
+      </header>
+    ) : null}
+    <div className={joinClass('admin-business-trip-detail-section-body', bodyClassName)}>{children}</div>
+  </section>
+);
+
 const DetailRows: React.FC<{
   children: React.ReactNode;
   className?: string;
   title?: string;
   description?: string;
 }> = ({ children, className, title = '基础信息', description }) => (
-  <DialogPanel title={title} description={description} bodyClassName={joinClass('admin-business-trip-detail-grid', className)}>
+  <DetailSection title={title} description={description} bodyClassName={joinClass('admin-business-trip-detail-grid', className)}>
     {children}
-  </DialogPanel>
+  </DetailSection>
 );
 
 const DetailRow: React.FC<{
@@ -885,7 +907,8 @@ export const BusinessTripPage: React.FC = () => {
         onClose={closeDetailDialog}
         width="wide"
         headerAside={detailTrip ? getStatusBadge(detailTrip.status) : null}
-        bodyClassName="admin-dialog-stack"
+        panelClassName="max-h-[92vh]"
+        bodyClassName="admin-business-trip-detail-dialog-body"
         footer={(
           <>
             {detailTrip?.status === 'PENDING' ? (
@@ -925,13 +948,13 @@ export const BusinessTripPage: React.FC = () => {
               <DetailRow label="创建时间" value={formatDateTimeDisplay(detailTrip.createTime)} />
             </DetailRows>
 
-            <DialogPanel title="出差事由">
+            <DetailSection title="出差事由">
               <div className="whitespace-pre-wrap text-sm leading-6 text-cf-muted">
                 {detailTrip.reason || '-'}
               </div>
-            </DialogPanel>
+            </DetailSection>
 
-            <DialogPanel title="附件">
+            <DetailSection title="附件">
               {getAttachmentList(detailTrip.attachmentUrl).length ? (
                 <div className="admin-dialog-link-list">
                   {getAttachmentList(detailTrip.attachmentUrl).map((url) => {
@@ -953,9 +976,9 @@ export const BusinessTripPage: React.FC = () => {
               ) : (
                 <InlineState title="暂无附件" className="py-5" icon={<Paperclip className="h-4 w-4" />} />
               )}
-            </DialogPanel>
+            </DetailSection>
 
-            <DialogPanel
+            <DetailSection
               title="流程轨迹"
               actions={detailTrip.instanceId ? (
                 <div className="text-xs text-cf-subtle">{detailTrip.instanceId}</div>
@@ -966,7 +989,7 @@ export const BusinessTripPage: React.FC = () => {
               ) : (
                 <InlineState title="暂无流程轨迹" className="py-6" />
               )}
-            </DialogPanel>
+            </DetailSection>
           </>
         ) : null}
       </BaseDialog>
