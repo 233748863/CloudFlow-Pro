@@ -7,6 +7,7 @@
       display: grid;
       min-width: 0;
       gap: 0.875rem 1.5rem;
+      grid-auto-rows: minmax(4.5rem, auto);
     }
 
   .admin-business-trip-detail-item {
@@ -17,13 +18,6 @@
 
   .admin-business-trip-detail-item > div:last-child {
       overflow-wrap: anywhere;
-    }
-
-  .admin-business-trip-detail-dialog-body {
-      display: grid;
-      min-height: 0;
-      gap: 1rem;
-      overflow-y: auto !important;
     }
 
   .admin-business-trip-detail-section {

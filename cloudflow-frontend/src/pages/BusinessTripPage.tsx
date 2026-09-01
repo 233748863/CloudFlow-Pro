@@ -908,7 +908,7 @@ export const BusinessTripPage: React.FC = () => {
         width="wide"
         headerAside={detailTrip ? getStatusBadge(detailTrip.status) : null}
         panelClassName="max-h-[92vh]"
-        bodyClassName="admin-business-trip-detail-dialog-body"
+        bodyClassName="admin-dialog-stack"
         footer={(
           <>
             {detailTrip?.status === 'PENDING' ? (

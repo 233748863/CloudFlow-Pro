@@ -58,6 +58,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   const hasCustomBodyOverflow = Boolean(
     bodyClassName && /(^|\s)!?overflow(?:-[xy])?-(auto|scroll|hidden|clip)(\s|$)/.test(bodyClassName),
   );
+  const useDefaultScrollBody = !hasCustomBodyOverflow;
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -143,6 +144,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
           className={cn(
             'modal-body p-4 cf-dialog-body min-h-0 flex-1 overscroll-contain',
             bodyClassName,
+            useDefaultScrollBody && 'cf-dialog-scroll-body',
             !hasCustomBodyOverflow && '!overflow-y-auto',
           )}
         >
