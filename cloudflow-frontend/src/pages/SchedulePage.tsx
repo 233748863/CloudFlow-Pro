@@ -131,6 +131,19 @@ const EVENT_TYPE_META: Record<
   },
 };
 
+const DEFAULT_EVENT_TYPE: ScheduleEventType = 'PERSONAL';
+
+// API 数据可能来自旧种子或手工录入，运行时不能假设 type 一定满足 TS 联合类型。
+const normalizeScheduleEventType = (value: unknown): ScheduleEventType => {
+  if (typeof value !== 'string') return DEFAULT_EVENT_TYPE;
+  const normalized = value.trim().toUpperCase();
+  return normalized === 'MEETING' || normalized === 'WORK' || normalized === 'PERSONAL'
+    ? normalized
+    : DEFAULT_EVENT_TYPE;
+};
+
+const getEventTypeMeta = (value: unknown) => EVENT_TYPE_META[normalizeScheduleEventType(value)];
+
 const VIEW_OPTIONS: Array<{ value: CalendarViewMode; label: string }> = [
   { value: 'dayGridMonth', label: '月' },
   { value: 'timeGridWeek', label: '周' },
@@ -361,7 +374,7 @@ const getEventSearchText = (event: ScheduleCalendarEvent) =>
     event.extendedProps.originalTitle,
     event.extendedProps.description,
     event.extendedProps.roomName,
-    EVENT_TYPE_META[event.extendedProps.type].label,
+    getEventTypeMeta(event.extendedProps.type).label,
   ]
     .filter(Boolean)
     .join(' ')
@@ -557,7 +570,8 @@ export const SchedulePage = () => {
       const eventList = Array.isArray(response) ? response : [];
       setEvents(
         eventList.map(item => {
-          const meta = EVENT_TYPE_META[item.type];
+          const type = normalizeScheduleEventType(item?.type);
+          const meta = getEventTypeMeta(type);
           return {
             id: String(item.eventId),
             title: item.title,
@@ -567,11 +581,11 @@ export const SchedulePage = () => {
             backgroundColor: meta.color,
             borderColor: meta.color,
             display: 'block',
-            classNames: ['cf-event', `cf-event--${item.type.toLowerCase()}`],
+            classNames: ['cf-event', `cf-event--${type.toLowerCase()}`],
             extendedProps: {
               originalTitle: item.title,
               description: item.description,
-              type: item.type,
+              type,
               roomId: item.roomId,
               roomName: getRoomName(item.roomId, rooms),
               startTime: item.startTime,
@@ -843,7 +857,7 @@ export const SchedulePage = () => {
   const tableScopeLabel =
     TABLE_FILTER_SCOPE_OPTIONS.find(option => option.value === tableFilters.scope)?.label || '全部时间';
   const tableTypeLabel =
-    tableFilters.type === 'ALL' ? '全部类型' : EVENT_TYPE_META[tableFilters.type].label;
+    tableFilters.type === 'ALL' ? '全部类型' : getEventTypeMeta(tableFilters.type).label;
 
   useEffect(() => {
     if (tablePageNum > tableTotalPages) {
@@ -1005,8 +1019,8 @@ export const SchedulePage = () => {
                     key={type}
                     className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900"
                   >
-                    <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: EVENT_TYPE_META[type].color }} />
-                    {EVENT_TYPE_META[type].label}
+                    <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: getEventTypeMeta(type).color }} />
+                    {getEventTypeMeta(type).label}
                   </span>
                 ))}
               </div>
@@ -1215,7 +1229,8 @@ export const SchedulePage = () => {
                   select={handleDateSelect}
                   eventClick={handleEventClick}
                   eventContent={(eventInfo: EventContentArg) => {
-                    const type = eventInfo.event.extendedProps.type as ScheduleEventType;
+                    const type = normalizeScheduleEventType(eventInfo.event.extendedProps.type);
+                    const meta = getEventTypeMeta(type);
                     const title = eventInfo.event.extendedProps.originalTitle || eventInfo.event.title;
                     const roomName = eventInfo.event.extendedProps.roomName as string | undefined;
 
@@ -1235,7 +1250,7 @@ export const SchedulePage = () => {
                     return (
                       <div className="px-2 py-1 text-white">
                         <div className="truncate text-[11px] font-medium text-white/80">
-                          {eventInfo.timeText || EVENT_TYPE_META[type].label}
+                          {eventInfo.timeText || meta.label}
                         </div>
                         <div className="truncate text-xs font-semibold leading-5">{title}</div>
                         {roomName ? <div className="truncate text-[10px] text-white/75">{roomName}</div> : null}
@@ -1350,7 +1365,7 @@ export const SchedulePage = () => {
                     />
                   ) : (
                     tablePageEvents.map(event => {
-                      const meta = EVENT_TYPE_META[event.extendedProps.type];
+                      const meta = getEventTypeMeta(event.extendedProps.type);
                       const statusMeta = getEventTimingMeta(event, now);
                       const description = event.extendedProps.description?.trim();
 
@@ -1673,8 +1688,8 @@ export const SchedulePage = () => {
           <div className="admin-dialog-stack">
             <DialogPanel title="状态标签" description="当前类型和时间状态">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${EVENT_TYPE_META[selectedEvent.type].badgeClass}`}>
-                  {EVENT_TYPE_META[selectedEvent.type].label}
+                <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${getEventTypeMeta(selectedEvent.type).badgeClass}`}>
+                  {getEventTypeMeta(selectedEvent.type).label}
                 </span>
                 {selectedEventTimingMeta ? (
                   <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${selectedEventTimingMeta.badgeClass}`}>

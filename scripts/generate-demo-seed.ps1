@@ -447,6 +447,35 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     if ($name -eq 'deleted') { return '0' }
     if ($name -match '(?i)^(enabled|is_enabled|required|active)$') { return '1' }
 
+    if ($table -eq 'oa_schedule_event') {
+        $scheduleTypeOffset = 'MOD(t.n+r.n,3)'
+        $scheduleDayOffset = 'MOD(t.n*7+r.n,31)-15'
+        $scheduleDate = "DATE_ADD(CURDATE(), INTERVAL ($scheduleDayOffset) DAY)"
+        $scheduleStart = "DATE_ADD($scheduleDate, INTERVAL (8+MOD(r.n,9)) HOUR)"
+        $scheduleAllDay = "($scheduleTypeOffset=2 AND MOD(r.n,5)=0)"
+        switch ($name) {
+            'title' {
+                return "CASE $scheduleTypeOffset WHEN 0 THEN $(Get-CatalogExpression @('周经营例会','项目进度评审会','客户方案沟通会','产品需求评审会','交付风险协调会','月度预算复盘会','供应商服务评审会','信息安全专题会','人才发展评审会','季度目标复盘会') 'r.n') WHEN 1 THEN $(Get-CatalogExpression @('整理项目交付清单','编制客户解决方案','复核月度经营数据','完成产品迭代验收','更新合同履约台账','准备管理层汇报材料','跟进客户上线事项','核对采购到货进度','完成系统巡检','提交项目周报') 'r.n') ELSE $(Get-CatalogExpression @('年度健康体检','驾驶证到期提醒','家庭事务安排','个人学习计划','出行行程提醒','证件办理预约','培训课程学习','个人资料整理','生日纪念提醒','健身训练安排') 'r.n') END"
+            }
+            'description' {
+                return "CASE $scheduleTypeOffset WHEN 0 THEN '请参会人员提前准备议题材料，并在会议结束后确认责任人与完成时间。' WHEN 1 THEN '按计划完成当前工作事项，及时更新进度、交付物和风险记录。' ELSE '个人日程提醒，请根据实际安排确认时间并按时完成。' END"
+            }
+            'start_time' { return "IF($scheduleAllDay,$scheduleDate,$scheduleStart)" }
+            'end_time' { return "IF($scheduleAllDay,DATE_ADD($scheduleDate, INTERVAL 1 DAY),DATE_ADD($scheduleStart, INTERVAL (1+MOD(r.n,3)) HOUR))" }
+            'is_all_day' { return "IF($scheduleAllDay,1,0)" }
+            'type' { return "ELT($scheduleTypeOffset+1,'MEETING','WORK','PERSONAL')" }
+            'room_id' {
+                $roomExpression = Get-TargetIdExpression 'oa_meeting_room' $indexes $definitionMap
+                return "IF($scheduleTypeOffset=0,$roomExpression,NULL)"
+            }
+            'attendees' {
+                $creatorExpression = Get-TargetIdExpression 'sys_user' $indexes $definitionMap
+                $nextAttendeeExpression = Get-NumericIdExpression $indexes['sys_user'] 't.n' 'MOD(r.n+1,50)'
+                return "JSON_ARRAY($creatorExpression,$nextAttendeeExpression)"
+            }
+        }
+    }
+
     $target = Get-TargetTable $name
     if ($table -like 'oa_knowledge_*' -and $name -eq 'document_id') { $target = 'oa_knowledge_document' }
     if ($target -and $definition.Primary.Count -gt 1) {
