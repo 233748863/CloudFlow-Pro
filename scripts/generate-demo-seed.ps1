@@ -450,11 +450,12 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
 
     if ($table -eq 'oa_schedule_event') {
         $scheduleTypeOffset = 'MOD(t.n+r.n,3)'
-        # 日程必须从导入日之后开始，保证首次打开当前月份时能看到 Demo 安排。
-        $scheduleDayOffset = '1+MOD(t.n*7+r.n,45)'
+        # 每个租户保留 5 条导入日安排，其中会议记录会在会议室页显示为今日预订。
+        $scheduleIsToday = '(MOD(t.n+r.n,10)=0)'
+        $scheduleDayOffset = "IF($scheduleIsToday,0,1+MOD(t.n*7+r.n,45))"
         $scheduleDate = "DATE_ADD(CURDATE(), INTERVAL ($scheduleDayOffset) DAY)"
-        $scheduleStart = "DATE_ADD($scheduleDate, INTERVAL (8+MOD(r.n,9)) HOUR)"
-        $scheduleAllDay = "($scheduleTypeOffset=2 AND MOD(r.n,5)=0)"
+        $scheduleStart = "IF($scheduleIsToday,DATE_ADD(CURRENT_TIMESTAMP, INTERVAL (1+MOD(r.n,4)) HOUR),DATE_ADD($scheduleDate, INTERVAL (8+MOD(r.n,9)) HOUR))"
+        $scheduleAllDay = "($scheduleTypeOffset=2 AND MOD(r.n,5)=0 AND NOT $scheduleIsToday)"
         switch ($name) {
             'title' {
                 return "CASE $scheduleTypeOffset WHEN 0 THEN $(Get-CatalogExpression @('周经营例会','项目进度评审会','客户方案沟通会','产品需求评审会','交付风险协调会','月度预算复盘会','供应商服务评审会','信息安全专题会','人才发展评审会','季度目标复盘会') 'r.n') WHEN 1 THEN $(Get-CatalogExpression @('整理项目交付清单','编制客户解决方案','复核月度经营数据','完成产品迭代验收','更新合同履约台账','准备管理层汇报材料','跟进客户上线事项','核对采购到货进度','完成系统巡检','提交项目周报') 'r.n') ELSE $(Get-CatalogExpression @('年度健康体检','驾驶证到期提醒','家庭事务安排','个人学习计划','出行行程提醒','证件办理预约','培训课程学习','个人资料整理','生日纪念提醒','健身训练安排') 'r.n') END"
