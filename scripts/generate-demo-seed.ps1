@@ -470,9 +470,10 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
                 return "IF($scheduleTypeOffset=0,$roomExpression,NULL)"
             }
             'attendees' {
+                $adminExpression = Get-NumericIdExpression $indexes['sys_user'] 't.n' '0'
                 $creatorExpression = Get-TargetIdExpression 'sys_user' $indexes $definitionMap
                 $nextAttendeeExpression = Get-NumericIdExpression $indexes['sys_user'] 't.n' 'MOD(r.n+1,50)'
-                return "JSON_ARRAY($creatorExpression,$nextAttendeeExpression)"
+                return "JSON_ARRAY($adminExpression,$creatorExpression,$nextAttendeeExpression)"
             }
         }
     }
