@@ -448,6 +448,22 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     if ($name -eq 'deleted') { return '0' }
     if ($name -match '(?i)^(enabled|is_enabled|required|active)$') { return '1' }
 
+    if ($table -eq 'oa_announcement') {
+        switch ($name) {
+            'title' { return "ELT(MOD(r.n,10)+1,'关于季度经营复盘与行动项的通知','产品版本迭代发布公告','客户交付质量专项提醒','中秋节办公安排通知','信息安全合规检查公告','年度培训计划发布通知','供应商准入规范更新','员工福利政策调整说明','系统升级维护公告','本月优秀团队表彰通报')" }
+            'content' { return "CONCAT('请各部门结合本租户经营安排及时查看并落实。',$(Get-TenantFieldExpression 'Name'),'将持续跟进执行情况，相关问题请联系行政管理部。')" }
+            'type' { return "ELT(MOD(r.n,3)+1,'1','2','3')" }
+            'scope_type' { return "'ALL'" }
+            'scope_value' { return 'NULL' }
+            'status' { return "'1'" }
+            'priority' { return "ELT(MOD(r.n,3)+1,'L','M','H')" }
+            'publish_time' { return 'CURRENT_TIMESTAMP' }
+            'expire_time' { return 'DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 90 DAY)' }
+            'create_time' { return 'CURRENT_TIMESTAMP' }
+            'update_time' { return 'CURRENT_TIMESTAMP' }
+        }
+    }
+
     if ($table -eq 'oa_schedule_event') {
         $scheduleTypeOffset = 'MOD(t.n+r.n,3)'
         # 每个租户保留 5 条导入日安排，其中会议记录会在会议室页显示为今日预订。
