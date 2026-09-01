@@ -169,8 +169,8 @@ public class SysUserServiceImpl implements ISysUserService {
             }
         }
 
-        // 管理员拥有所有权限
-        if (user.getUserId() != null && user.getUserId() == 1L) {
+        // 多租户管理员的 userId 各不相同，以 roleKey=admin 作为统一管理员身份。
+        if (roleKeys.contains("admin") || (user.getUserId() != null && user.getUserId() == 1L)) {
             permissions.add("*:*:*");
         }
 

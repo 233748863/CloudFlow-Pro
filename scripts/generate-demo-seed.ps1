@@ -298,6 +298,8 @@ function Get-TextExpression($definition, $column) {
     if ($table -eq 'sys_dict_type' -and $name -eq 'dict_name') { return Get-DictNameExpression }
     if ($table -eq 'sys_user' -and $name -eq 'user_name') { return "IF(r.n=0,'admin',CONCAT('demo_u',LPAD(r.n+1,2,'0')))" }
     if ($table -eq 'hr_employee' -and $name -eq 'name') { return Get-PersonExpression }
+    if ($table -eq 'sys_role' -and $name -eq 'role_name') { return "IF(r.n=0,'超级管理员',$(Get-PostExpression))" }
+    if ($table -eq 'sys_role' -and $name -eq 'role_key') { return "IF(r.n=0,'admin',CONCAT('business_role_',LPAD(r.n+1,2,'0')))" }
     if ($name -eq 'password') { return Quote-Sql $demoPassword }
     if ($name -eq 'pwd_reset_required') { return "'0'" }
     if ($name -match '(?i)(email)$') { return "CONCAT('user',LPAD(r.n+1,2,'0'),'@',$(Get-TenantFieldExpression 'Code'),'.cn')" }
@@ -436,6 +438,9 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     if ($name -eq 'tenant_id') { return "($tenantBase + t.n)" }
     if ($table -eq 'sys_tenant' -and $name -eq 'user_limit') { return '100' }
     if ($table -eq 'sys_tenant' -and $name -eq 'storage_limit') { return '10240' }
+    if ($table -eq 'sys_role' -and $name -eq 'data_scope') { return "IF(r.n=0,'1','3')" }
+    if ($table -eq 'sys_role' -and $name -eq 'ds_type') { return 'IF(r.n=0,0,3)' }
+    if ($table -eq 'sys_menu' -and $name -eq 'status') { return "'1'" }
     if ($table -eq 'sys_user_totp' -and $name -eq 'secret_ciphertext') { return "'DEMO_DISABLED'" }
     if ($table -eq 'sys_user_totp' -and $name -eq 'enabled') { return '0' }
     if ($table -eq 'sys_user_totp' -and $name -in @('enabled_at','last_used_step')) { return 'NULL' }
@@ -597,6 +602,9 @@ try {
             $writer.WriteLine('SELECT ' + ($expressions -join ',') + ' FROM demo_seed_tenants t CROSS JOIN demo_seed_rows r;')
         }
     }
+    $adminRoleExpression = Get-NumericIdExpression $indexes['sys_role'] 't.n' '0'
+    $writer.WriteLine('INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id,menu_id,tenant_id)')
+    $writer.WriteLine("SELECT $adminRoleExpression,m.menu_id,$tenantBase+t.n FROM demo_seed_tenants t CROSS JOIN cloud_flow_db.sys_menu m WHERE m.status='0' AND m.menu_id NOT BETWEEN 3000 AND 3049;")
     $writer.WriteLine('DROP TEMPORARY TABLE demo_seed_tenants;')
     $writer.WriteLine('DROP TEMPORARY TABLE demo_seed_rows;')
     $writer.WriteLine('SET UNIQUE_CHECKS=1;')
