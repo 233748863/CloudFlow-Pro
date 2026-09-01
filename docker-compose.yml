@@ -32,6 +32,8 @@ services:
       - ./cloudflow-backend/DB/03.cloudflow-hr.sql:/docker-entrypoint-initdb.d/03.cloudflow-hr.sql:ro
       - ./cloudflow-backend/DB/04.cloudflow-oa.sql:/docker-entrypoint-initdb.d/04.cloudflow-oa.sql:ro
       - ./cloudflow-backend/DB/05.cloudflow-crm.sql:/docker-entrypoint-initdb.d/05.cloudflow-crm.sql:ro
+      - ./cloudflow-backend/DB/06.cloudflow-business-seed.sql:/docker-entrypoint-initdb.d/06.cloudflow-business-seed.sql:ro
+      - ./cloudflow-backend/DB/07.cloudflow-demo-seed.sql:/docker-entrypoint-initdb.d/07.cloudflow-demo-seed.sql:ro
       - ./scripts/check-db-init.sh:/docker-entrypoint-initdb.d/99-check-init.sh:ro
     # MySQL 核心参数，修改后 docker compose restart mysql 即可生效
     command: >

@@ -139,10 +139,13 @@ CloudFlow Pro/
 | `03.cloudflow-hr.sql` | HR 组织、人事、考勤、薪酬、绩效、招聘、审计 | 37 |
 | `04.cloudflow-oa.sql` | OA、行政、资产、车辆、费用、合同、印章、证照、访客、知识库 | 53 |
 | `05.cloudflow-crm.sql` | CRM 微服务结构表：客户、联系人、商机、报价、回款、续约、工单 | 17 |
-| `06.cloudflow-business-seed.sql` | 初始化菜单、账号、流程模板、权限统一收口与演示业务数据 | 0 |
+| `06.cloudflow-business-seed.sql` | 初始化菜单、账号、流程模板、权限统一收口与基础演示数据 | 0 |
+| `07.cloudflow-demo-seed.sql` | 50 个行业租户的全量 Demo 数据（每张表每租户至少 50 条） | 0 |
 | `99.cloudflow-clear-all.sql` | 清理业务数据 | 0 |
 
-执行 `06.cloudflow-business-seed.sql` 后可使用以下账号登录，密码均为 `123456`：`admin`、`li`、`wang`、`zhao`、`zhang`。
+执行 `06.cloudflow-business-seed.sql` 后可使用以下账号登录，密码均为 `123456`：`admin`、`li`、`wang`、`zhao`、`zhang`。继续执行 `07.cloudflow-demo-seed.sql` 后会生成 50 个启用租户，每个租户均可使用 `admin / 123456` 登录；其余演示账号为 `demo_u02` 至 `demo_u50`，密码同为 `123456`。
+
+`07.cloudflow-demo-seed.sql` 由 `scripts/generate-demo-seed.ps1` 根据 01～05 的实际表结构生成；表结构调整后应重新运行该生成器，不要直接手工维护生成文件。
 
 ## 🚀 本地快速启动
 
@@ -168,6 +171,7 @@ Get-Content .\cloudflow-backend\DB\03.cloudflow-hr.sql | mysql -u root -p cloud_
 Get-Content .\cloudflow-backend\DB\04.cloudflow-oa.sql | mysql -u root -p cloud_flow_db
 Get-Content .\cloudflow-backend\DB\05.cloudflow-crm.sql | mysql -u root -p cloud_flow_db
 Get-Content .\cloudflow-backend\DB\06.cloudflow-business-seed.sql | mysql -u root -p cloud_flow_db
+Get-Content .\cloudflow-backend\DB\07.cloudflow-demo-seed.sql | mysql -u root -p cloud_flow_db
 ```
 
 Bash 示例：
@@ -180,6 +184,7 @@ mysql -u root -p cloud_flow_db < cloudflow-backend/DB/03.cloudflow-hr.sql
 mysql -u root -p cloud_flow_db < cloudflow-backend/DB/04.cloudflow-oa.sql
 mysql -u root -p cloud_flow_db < cloudflow-backend/DB/05.cloudflow-crm.sql
 mysql -u root -p cloud_flow_db < cloudflow-backend/DB/06.cloudflow-business-seed.sql
+mysql -u root -p cloud_flow_db < cloudflow-backend/DB/07.cloudflow-demo-seed.sql
 ```
 
 ### 📤 3. 推送 Nacos 配置
@@ -269,7 +274,7 @@ docker compose up -d
 docker compose ps
 ```
 
-当前 Compose 文件已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、CRM、HR、Prometheus、Grafana、前端；首次启动会导入 `01` 至 `04` 号结构脚本，并执行关键表校验。容器部署的变量注入链为 `.env -> docker compose environment -> Spring/Nacos 占位符`，应用容器统一从 `DB_USERNAME`、`DB_PASSWORD`、`REDIS_PASSWORD`、`NACOS_PASSWORD` 读取真实值。
+当前 Compose 文件已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、CRM、HR、Prometheus、Grafana、前端；首次启动会按顺序导入 `01` 至 `07` 号数据库脚本，并执行关键表、租户和 Demo 数据校验。容器部署的变量注入链为 `.env -> docker compose environment -> Spring/Nacos 占位符`，应用容器统一从 `DB_USERNAME`、`DB_PASSWORD`、`REDIS_PASSWORD`、`NACOS_PASSWORD` 读取真实值。
 
 Docker 访问入口：
 
