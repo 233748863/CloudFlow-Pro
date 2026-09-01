@@ -131,10 +131,32 @@ const DialogPanel: React.FC<{
   </section>
 );
 
+const PurchaseDetailSection: React.FC<{
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}> = ({ title, description, actions, children, className, bodyClassName }) => (
+  <section className={['admin-purchase-detail-section', className].filter(Boolean).join(' ')}>
+    {title || description || actions ? (
+      <header className="admin-purchase-detail-section-head">
+        <div className="min-w-0">
+          {title ? <strong>{title}</strong> : null}
+          {description ? <span>{description}</span> : null}
+        </div>
+        {actions ? <div className="admin-purchase-detail-section-actions">{actions}</div> : null}
+      </header>
+    ) : null}
+    <div className={['admin-purchase-detail-section-body', bodyClassName].filter(Boolean).join(' ')}>{children}</div>
+  </section>
+);
+
 const DetailRows: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <DialogPanel title="基础信息" bodyClassName={['admin-purchase-detail-grid', className].filter(Boolean).join(' ')}>
+  <PurchaseDetailSection title="基础信息" bodyClassName={['admin-purchase-detail-grid', className].filter(Boolean).join(' ')}>
     {children}
-  </DialogPanel>
+  </PurchaseDetailSection>
 );
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
@@ -832,7 +854,8 @@ export const PurchaseRequestPage: React.FC = () => {
         onClose={() => setDetailPurchase(null)}
         width="wide"
         headerAside={detailPurchase && !detailLoading ? getStatusBadge(detailPurchase.status) : null}
-        bodyClassName="admin-dialog-stack"
+        panelClassName="max-h-[92vh]"
+        bodyClassName="admin-dialog-stack admin-purchase-detail-dialog-body"
         footer={<Button variant="outline" onClick={() => setDetailPurchase(null)}>关闭</Button>}
       >
         {detailLoading ? (
@@ -856,10 +879,10 @@ export const PurchaseRequestPage: React.FC = () => {
               <DetailRow label="创建时间" value={formatDateTimeDisplay(detailPurchase.createTime)} />
               <DetailRow label="更新时间" value={formatDateTimeDisplay(detailPurchase.updateTime)} />
             </DetailRows>
-            <PurchasePanel title="采购事由">
+            <PurchaseDetailSection title="采购事由">
               <div className="whitespace-pre-wrap text-sm leading-6 text-cf-muted">{detailPurchase.reason || '-'}</div>
-            </PurchasePanel>
-            <PurchasePanel title="采购明细">
+            </PurchaseDetailSection>
+            <PurchaseDetailSection title="采购明细">
               {detailPurchase.items?.length ? (
                 <InnerTableSurface>
                   <table className="unity-data-table admin-source-table min-w-[760px]">
@@ -886,8 +909,8 @@ export const PurchaseRequestPage: React.FC = () => {
                   </table>
                 </InnerTableSurface>
               ) : <InlineState title="暂无采购明细" className="py-6" />}
-            </PurchasePanel>
-            <PurchasePanel title="附件">
+            </PurchaseDetailSection>
+            <PurchaseDetailSection title="附件">
               {getAttachmentList(detailPurchase.attachmentUrl).length ? (
                 <div className="admin-dialog-link-list">
                   {getAttachmentList(detailPurchase.attachmentUrl).map((url) => (
@@ -898,7 +921,7 @@ export const PurchaseRequestPage: React.FC = () => {
                   ))}
                 </div>
               ) : <InlineState title="暂无附件" className="py-5" icon={<Paperclip className="h-4 w-4" />} />}
-            </PurchasePanel>
+            </PurchaseDetailSection>
           </>
         ) : null}
       </BaseDialog>

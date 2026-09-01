@@ -7,6 +7,7 @@
       display: grid;
       min-width: 0;
       gap: 0.875rem 1.5rem;
+      grid-auto-rows: minmax(4.5rem, auto);
     }
 
   .admin-purchase-detail-item {
@@ -17,6 +18,62 @@
 
   .admin-purchase-detail-item > div:last-child {
       overflow-wrap: anywhere;
+    }
+
+  .admin-purchase-detail-dialog-body {
+      display: grid;
+      min-height: 0;
+      max-height: calc(92vh - 8rem);
+      gap: 1rem;
+      overflow-y: auto !important;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+  .admin-purchase-detail-section {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--cf-border);
+      border-radius: 0.5rem;
+      background: var(--cf-surface-strong);
+    }
+
+  .admin-purchase-detail-section-head {
+      display: flex;
+      min-width: 0;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid var(--cf-border);
+      padding: 0.75rem 1rem;
+    }
+
+  .admin-purchase-detail-section-head strong {
+      display: block;
+      color: var(--cf-title);
+      font-size: 0.875rem;
+      font-weight: 650;
+      line-height: 1.5;
+    }
+
+  .admin-purchase-detail-section-head span {
+      display: block;
+      margin-top: 0.125rem;
+      color: var(--cf-subtle);
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+
+  .admin-purchase-detail-section-actions {
+      min-width: 0;
+      max-width: 55%;
+      overflow-wrap: anywhere;
+      text-align: right;
+    }
+
+  .admin-purchase-detail-section-body {
+      min-width: 0;
+      padding: 1rem;
     }
 
   .admin-purchase-item-list {
@@ -69,4 +126,20 @@
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
   }
+}
+
+@media (max-width: 640px) {
+  .admin-purchase-detail-section-head {
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+
+  .admin-purchase-detail-section-actions {
+      max-width: 100%;
+      text-align: left;
+    }
+}
+
+html.dark .admin-purchase-detail-section {
+  background: var(--cf-surface-strong);
 }
