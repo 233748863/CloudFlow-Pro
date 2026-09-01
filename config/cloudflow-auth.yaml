@@ -56,7 +56,7 @@ cloudflow:
   profile: /data/cloudflow/profile
   auth:
     totp:
-      enabled: ${CLOUDFLOW_TOTP_ENABLED:true}
+      enabled: ${CLOUDFLOW_TOTP_ENABLED:false}
       encryption-key: ${TOTP_ENCRYPTION_KEY:}
       # 轮换旧密钥：逗号分隔，只用于解密历史密文。
       # 轮换步骤：当前 key 挪进这里 → encryption-key 换新值 → 全量重新加密后清空。

@@ -71,15 +71,17 @@ public class TotpService {
     }
 
     public TotpStatusVO getStatus(Long userId, Long tenantId) {
+        boolean featureEnabled = properties.isEnabled() && secretCipher.isAvailable();
         SysUserTotp record = findRecord(userId, tenantId);
         return new TotpStatusVO(
-                secretCipher.isAvailable(),
-                record != null && Integer.valueOf(1).equals(record.getEnabled()),
+                featureEnabled,
+                featureEnabled && record != null && Integer.valueOf(1).equals(record.getEnabled()),
                 record != null ? record.getEnabledAt() : null
         );
     }
 
     public TotpSetupVO beginSetup(SysUser user) {
+        assertFeatureEnabled();
         secretCipher.assertAvailable();
         SysUserTotp existing = findRecord(user.getUserId(), user.getTenantId());
         if (existing != null && Integer.valueOf(1).equals(existing.getEnabled())) {
@@ -124,6 +126,7 @@ public class TotpService {
     }
 
     public LocalDateTime enable(SysUser user, String code) {
+        assertFeatureEnabled();
         SysUserTotp record = requireRecord(user.getUserId(), user.getTenantId());
         if (Integer.valueOf(1).equals(record.getEnabled())) {
             throw new ServiceException("双因素认证已启用", ErrorCodeConstants.CONFLICT);
@@ -152,11 +155,15 @@ public class TotpService {
     }
 
     public boolean isEnabled(Long userId, Long tenantId) {
+        if (!properties.isEnabled()) {
+            return false;
+        }
         SysUserTotp record = findRecord(userId, tenantId);
         return record != null && Integer.valueOf(1).equals(record.getEnabled());
     }
 
     public boolean verifyLoginCode(Long userId, Long tenantId, String code) {
+        assertFeatureEnabled();
         SysUserTotp record = requireRecord(userId, tenantId);
         if (!Integer.valueOf(1).equals(record.getEnabled())) {
             return false;
@@ -167,6 +174,7 @@ public class TotpService {
     }
 
     public String issueLoginChallenge(SysUser user, String legalReleaseCode, long startedAt) {
+        assertFeatureEnabled();
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
@@ -191,6 +199,7 @@ public class TotpService {
     }
 
     public PendingLoginChallenge requireLoginChallenge(String token) {
+        assertFeatureEnabled();
         if (!StringUtils.hasText(token) || !token.matches("[A-Za-z0-9_-]{40,64}")) {
             throw new ServiceException("登录验证已过期，请重新登录", ErrorCodeConstants.BAD_REQUEST);
         }
@@ -305,6 +314,12 @@ public class TotpService {
             throw new ServiceException("请先设置双因素认证", ErrorCodeConstants.CONFLICT);
         }
         return record;
+    }
+
+    private void assertFeatureEnabled() {
+        if (!properties.isEnabled()) {
+            throw new ServiceException("双因素认证功能未开启", ErrorCodeConstants.CONFLICT);
+        }
     }
 
     private String buildOtpAuthUri(SysUser user, String secret) {

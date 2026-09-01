@@ -326,6 +326,7 @@ npm run build:tauri
 - 前端默认把 `/api` 和 `/ws` 代理到 `VITE_API_BASE_URL`，未设置时为 `http://localhost:9000`。
 - `GEMINI_API_KEY` 用于前端 AI 代码生成能力，通过 Vite `define` 注入。
 - 后端优先读取 Nacos 配置，本地 `application.yml` 是后备配置。
+- 双因素认证通过 `CLOUDFLOW_TOTP_ENABLED` 控制，Demo/开发环境默认 `false`；生产环境启用时设为 `true`，并同时配置 64 位十六进制 `TOTP_ENCRYPTION_KEY`。
 - `config/*.yaml` 和部分 `application.yml` 中存在开发环境地址和默认密码，公开部署前必须改为环境变量、Nacos 密文或独立密钥管理。
 
 ## 📖 API 文档

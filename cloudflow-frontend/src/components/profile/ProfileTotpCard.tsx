@@ -65,7 +65,7 @@ export const ProfileTotpCard: React.FC = () => {
         </div>
       ) : !status.featureEnabled ? (
         <div className="profile-totp-card-actions">
-          <p>管理员尚未配置双因素认证加密密钥。</p>
+          <p>当前环境未开放双因素认证。</p>
           <Button type="button" variant="outline" disabled>功能未开放</Button>
         </div>
       ) : status.enabled ? (

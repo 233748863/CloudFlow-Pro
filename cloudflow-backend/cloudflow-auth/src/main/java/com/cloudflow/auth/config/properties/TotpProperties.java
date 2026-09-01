@@ -10,7 +10,7 @@ import java.util.List;
 @ConfigurationProperties(prefix = "cloudflow.auth.totp")
 public class TotpProperties {
 
-    private boolean enabled = true;
+    private boolean enabled = false;
     private String encryptionKey = "";
     /**
      * 轮换前的历史密钥，只用于解密旧密文，新密文一律用 encryptionKey 加密。

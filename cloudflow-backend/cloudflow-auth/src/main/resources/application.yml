@@ -38,7 +38,7 @@ cloudflow:
   profile: /data/cloudflow/profile
   auth:
     totp:
-      enabled: ${CLOUDFLOW_TOTP_ENABLED:true}
+      enabled: ${CLOUDFLOW_TOTP_ENABLED:false}
       encryption-key: ${TOTP_ENCRYPTION_KEY:}
       # 轮换旧密钥：逗号分隔，只用于解密历史密文
       previous-encryption-keys: ${TOTP_PREVIOUS_ENCRYPTION_KEYS:}

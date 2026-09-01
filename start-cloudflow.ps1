@@ -338,6 +338,7 @@ function Initialize-LocalEnvironment {
     Set-ProcessEnvDefault -Name "NACOS_USERNAME" -Value "nacos"
     Set-ProcessEnvDefault -Name "NACOS_PASSWORD" -Value "nacos"
     Set-ProcessEnvDefault -Name "CLOUDFLOW_ENCRYPT_ENABLED" -Value "false"
+    Set-ProcessEnvDefault -Name "CLOUDFLOW_TOTP_ENABLED" -Value "false"
     Set-ProcessEnvDefault -Name "LOG_LEVEL_APP" -Value "INFO"
     Set-ProcessEnvDefault -Name "LOG_LEVEL_MAPPER" -Value "WARN"
     Set-ProcessEnvDefault -Name "MYBATIS_LOG_IMPL" -Value "org.apache.ibatis.logging.nologging.NoLoggingImpl"
