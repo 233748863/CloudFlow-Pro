@@ -464,6 +464,22 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
         }
     }
 
+    if ($table -eq 'oa_knowledge_document') {
+        switch ($name) {
+            'title' { return "ELT(MOD(r.n,10)+1,'产品版本发布说明','客户实施交付指南','财务报销制度','人事入职手册','项目风险管理规范','信息安全操作手册','供应商准入流程','数据报表使用指南','培训课程资料','年度经营复盘报告')" }
+            'category' { return "ELT(MOD(r.n,6)+1,'制度流程','产品知识','客户案例','项目交付','行业研究','培训资料')" }
+            'scope_type' { return "'ALL'" }
+            'scope_value' { return 'NULL' }
+            'status' { return "ELT(MOD(r.n,4)+1,'DRAFT','PENDING','PUBLISHED','REJECTED')" }
+            'submitter_id' { return Get-TargetIdExpression 'sys_user' $indexes $definitionMap }
+            'submitter_name' { return Get-PersonExpression }
+            'submit_time' { return 'CURRENT_TIMESTAMP' }
+            'publish_time' { return 'CURRENT_TIMESTAMP' }
+            'create_time' { return 'CURRENT_TIMESTAMP' }
+            'update_time' { return 'CURRENT_TIMESTAMP' }
+        }
+    }
+
     if ($table -eq 'oa_meeting_minutes') {
         # 纪要只关联会议类型日程，避免把工作/个人事项误标为会议纪要。
         $minutesEventRow = '(MOD(3-MOD(t.n,3),3)+3*MOD(r.n,16))'

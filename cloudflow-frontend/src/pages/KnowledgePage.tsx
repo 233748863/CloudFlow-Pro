@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   BookOpenText,
   CheckCheck,
+  Clock3,
   Eye,
   FileText,
+  Globe2,
   Inbox,
   ListFilter,
   LoaderCircle,
@@ -15,6 +17,7 @@ import {
   Send,
   Shield,
   Trash2,
+  UserRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import FileUpload from '@/components/FileUpload';
@@ -70,7 +73,20 @@ interface ConfirmState {
   versionNo?: number;
 }
 
-const categories = ['行政制度', '办公指南', '财务制度', '人事制度', '项目规范', '其他'];
+const categories = [
+  '制度流程',
+  '产品知识',
+  '客户案例',
+  '项目交付',
+  '行业研究',
+  '培训资料',
+  '行政制度',
+  '办公指南',
+  '财务制度',
+  '人事制度',
+  '项目规范',
+  '其他',
+];
 
 const createEmptyForm = (): KnowledgeDocument => ({
   title: '',
@@ -291,7 +307,8 @@ const KnowledgePage: React.FC = () => {
     const values = parseScopeValues(document.scopeValue);
     const nameMap = document.scopeType === 'DEPT' ? deptNameMap : roleNameMap;
     const names = values.map((value) => nameMap.get(value) || value);
-    return names.length ? `${scopeDict.getLabel(document.scopeType)}：${names.join('、')}` : scopeDict.getLabel(document.scopeType);
+    const scopeLabel = scopeDict.getLabel(document.scopeType) || '定向可见';
+    return names.length ? `${scopeLabel}：${names.join('、')}` : scopeLabel;
   };
 
   const fetchData = async () => {
@@ -960,18 +977,41 @@ const KnowledgePage: React.FC = () => {
       <BaseDialog
         open={detailOpen}
         title={detail?.title || '文档详情'}
+        description={detail ? (
+          <div className="admin-knowledge-detail-description">
+            <div className="admin-knowledge-detail-badges" aria-label="文档标签">
+              <StatusBadge status={detail.status} />
+              <span className="admin-knowledge-detail-badge admin-knowledge-detail-badge--category" title={detail.category || '未分类'}>
+                <BookOpenText aria-hidden="true" />
+                <span className="admin-knowledge-detail-badge-text">{detail.category || '未分类'}</span>
+              </span>
+              <span className="admin-knowledge-detail-badge admin-knowledge-detail-badge--scope" title={formatScopeDisplay(detail)}>
+                <Globe2 aria-hidden="true" />
+                <span className="admin-knowledge-detail-badge-text">{formatScopeDisplay(detail)}</span>
+              </span>
+              <span className="admin-knowledge-detail-badge admin-knowledge-detail-badge--submitter" title={`提交人：${detail.submitterName || '-'}`}>
+                <UserRound aria-hidden="true" />
+                <span className="admin-knowledge-detail-badge-text">提交人：{detail.submitterName || '-'}</span>
+              </span>
+            </div>
+            <div className="admin-knowledge-detail-meta">
+              <span>
+                <Clock3 aria-hidden="true" />
+                <time>{formatDateTimeDisplay(detail.publishTime || detail.createTime)}</time>
+              </span>
+              <span>
+                <Eye aria-hidden="true" />
+                {detail.isRead ? '已读' : '未读'}
+              </span>
+            </div>
+          </div>
+        ) : undefined}
         onClose={() => setDetailOpen(false)}
         width="wide"
         maxWidthClassName="sm:max-w-4xl"
       >
           {detail ? (
-            <>
-              <div className="flex flex-wrap gap-2 text-xs text-cf-subtle">
-                <StatusBadge status={detail.status} />
-                <span className="admin-users-filter-count">{detail.category}</span>
-                <span className="admin-users-filter-count">{formatScopeDisplay(detail)}</span>
-                <span className="admin-users-filter-count">提交人：{detail.submitterName || '-'}</span>
-              </div>
+            <div className="admin-knowledge-detail-content">
               {detail.summary ? <p className="admin-knowledge-note">{detail.summary}</p> : null}
               <div
                 className="admin-knowledge-article prose prose-slate max-w-none text-sm leading-7 dark:prose-invert"
@@ -981,7 +1021,7 @@ const KnowledgePage: React.FC = () => {
                 <div className="mb-2 text-sm font-medium text-cf-title">附件</div>
                 <AttachmentLinks value={detail.attachmentUrl} />
               </div>
-            </>
+            </div>
           ) : null}
       </BaseDialog>
 
