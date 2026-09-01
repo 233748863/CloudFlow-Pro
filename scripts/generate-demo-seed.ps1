@@ -449,7 +449,8 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
 
     if ($table -eq 'oa_schedule_event') {
         $scheduleTypeOffset = 'MOD(t.n+r.n,3)'
-        $scheduleDayOffset = 'MOD(t.n*7+r.n,31)-15'
+        # 日程必须从导入日之后开始，保证首次打开当前月份时能看到 Demo 安排。
+        $scheduleDayOffset = '1+MOD(t.n*7+r.n,45)'
         $scheduleDate = "DATE_ADD(CURDATE(), INTERVAL ($scheduleDayOffset) DAY)"
         $scheduleStart = "DATE_ADD($scheduleDate, INTERVAL (8+MOD(r.n,9)) HOUR)"
         $scheduleAllDay = "($scheduleTypeOffset=2 AND MOD(r.n,5)=0)"
@@ -506,11 +507,11 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     if ($type -match 'json') { return "JSON_OBJECT('source','demo50','tenantId',$tenantBase+t.n,'table','$table','row',r.n+1,'label','全链路演示数据')" }
     if ($type -match '(datetime|timestamp)') {
         if ($name -match '(?i)(end|expire|expiry|deadline|due|renew|next|effective|return)') { return 'DATE_ADD(CURRENT_TIMESTAMP, INTERVAL MOD(r.n,90)+1 DAY)' }
-        return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL MOD(t.n*50+r.n,365)+1 DAY)'
+        return 'DATE_ADD(CURRENT_TIMESTAMP, INTERVAL MOD(t.n*50+r.n,365)+1 DAY)'
     }
     if ($type -match '^date') {
         if ($name -match '(?i)(end|expire|expiry|deadline|due|renew|next|effective|return)') { return 'DATE_ADD(CURDATE(), INTERVAL MOD(r.n,90)+1 DAY)' }
-        return 'DATE_SUB(CURDATE(), INTERVAL MOD(t.n*50+r.n,365)+1 DAY)'
+        return 'DATE_ADD(CURDATE(), INTERVAL MOD(t.n*50+r.n,365)+1 DAY)'
     }
     if ($type -match '^time') { return "MAKETIME(9+MOD(r.n,8),MOD(r.n*7,60),0)" }
     if ($type -match '(decimal|numeric|double|float)') {
@@ -532,6 +533,7 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
 
 function Get-DeletePredicate($definition, [hashtable]$indexes) {
     $table = $definition.Table
+    # 系统审计和日志表由数据库触发器保护为不可删除，只追加新的 Demo 留痕记录。
     if ($table -in @('sys_log','sys_audit_log','wf_audit_log')) { return '1=0' }
     if ($table -eq 'sys_tenant') { return "tenant_id BETWEEN $($tenantBase + 1) AND $tenantLast" }
     if ($table -eq 'sys_menu') { return 'menu_id BETWEEN 3000 AND 3049' }
