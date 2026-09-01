@@ -464,6 +464,30 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
         }
     }
 
+    if ($table -eq 'oa_meeting_minutes') {
+        # 纪要只关联会议类型日程，避免把工作/个人事项误标为会议纪要。
+        $minutesEventRow = '(MOD(3-MOD(t.n,3),3)+3*MOD(r.n,16))'
+        $minutesToday = "(MOD(t.n+$minutesEventRow,10)=0)"
+        $minutesDayOffset = "IF($minutesToday,0,1+MOD(t.n*7+$minutesEventRow,45))"
+        $minutesDate = "DATE_ADD(CURDATE(), INTERVAL ($minutesDayOffset) DAY)"
+        $minutesStart = "IF($minutesToday,DATE_ADD(CURRENT_TIMESTAMP, INTERVAL (1+MOD($minutesEventRow,4)) HOUR),DATE_ADD($minutesDate, INTERVAL (8+MOD($minutesEventRow,9)) HOUR))"
+        switch ($name) {
+            'meeting_id' { return Get-NumericIdExpression $indexes['oa_schedule_event'] 't.n' $minutesEventRow }
+            'meeting_time' { return $minutesStart }
+            'room_id' { return Get-NumericIdExpression $indexes['oa_meeting_room'] 't.n' $minutesEventRow }
+            'location' { return Get-CatalogExpression $roomNames $minutesEventRow }
+            'organizer_id' { return Get-TargetIdExpression 'sys_user' $indexes $definitionMap }
+            'organizer_name' { return Get-PersonExpression }
+            'schedule_event_id' { return Get-NumericIdExpression $indexes['oa_schedule_event'] 't.n' $minutesEventRow }
+            'decisions' {
+                $ownerId = Get-TargetIdExpression 'sys_user' $indexes $definitionMap
+                return "JSON_ARRAY(JSON_OBJECT('title','确认会议行动项与交付节点','ownerId',$ownerId,'ownerName',$(Get-PersonExpression),'dueDate',DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 30 DAY),'%Y-%m-%d'),'status','PENDING'))"
+            }
+            'status' { return "IF(MOD(r.n,4)=0,'CONFIRMED','DRAFT')" }
+            'confirmed_time' { return "IF(MOD(r.n,4)=0,CURRENT_TIMESTAMP,NULL)" }
+        }
+    }
+
     if ($table -eq 'oa_schedule_event') {
         $scheduleTypeOffset = 'MOD(t.n+r.n,3)'
         # 每个租户保留 5 条导入日安排，其中会议记录会在会议室页显示为今日预订。
@@ -606,6 +630,14 @@ try {
     $writer.WriteLine('SET FOREIGN_KEY_CHECKS=0;')
     $writer.WriteLine('SET UNIQUE_CHECKS=0;')
     $writer.WriteLine('USE cloud_flow_db;')
+    $writer.WriteLine("SET @cloudflow_schema_sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_meeting_minutes' AND column_name='room_id'), 'SELECT 1', 'ALTER TABLE oa_meeting_minutes ADD COLUMN room_id VARCHAR(64) DEFAULT NULL AFTER meeting_time');")
+    $writer.WriteLine('PREPARE cloudflow_schema_stmt FROM @cloudflow_schema_sql;')
+    $writer.WriteLine('EXECUTE cloudflow_schema_stmt;')
+    $writer.WriteLine('DEALLOCATE PREPARE cloudflow_schema_stmt;')
+    $writer.WriteLine("SET @cloudflow_schema_sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_meeting_minutes' AND column_name='schedule_event_id'), 'SELECT 1', 'ALTER TABLE oa_meeting_minutes ADD COLUMN schedule_event_id BIGINT(20) DEFAULT NULL AFTER organizer_name');")
+    $writer.WriteLine('PREPARE cloudflow_schema_stmt FROM @cloudflow_schema_sql;')
+    $writer.WriteLine('EXECUTE cloudflow_schema_stmt;')
+    $writer.WriteLine('DEALLOCATE PREPARE cloudflow_schema_stmt;')
     $writer.WriteLine('DROP TEMPORARY TABLE IF EXISTS demo_seed_tenants;')
     $writer.WriteLine('DROP TEMPORARY TABLE IF EXISTS demo_seed_rows;')
     $writer.WriteLine('CREATE TEMPORARY TABLE demo_seed_tenants (n INT NOT NULL PRIMARY KEY);')
