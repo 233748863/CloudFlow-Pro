@@ -53,11 +53,14 @@
       height: 100%;
     }
 
+  /* 不设 scrollbar-gutter：面板外层布局链（.table-page-layout-surface /
+     .layout-section-scrollable）都是 height: auto，本元素拿不到确定高度，
+     纵向永远不溢出，stable 只会为不存在的滚动条常驻预留 8px。
+     叠上 .table-wrapper 那层就是 17px，表格右边缘贴不到面板右边缘。 */
   .admin-budget-table-body {
       flex: 1 1 0%;
       overflow: auto;
       padding: 0;
-      scrollbar-gutter: stable;
     }
 
   .admin-budget-table {

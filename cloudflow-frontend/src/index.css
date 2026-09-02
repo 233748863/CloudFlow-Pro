@@ -1796,13 +1796,20 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     box-shadow: none;
   }
 
+  /* 这里不能用 scrollbar-gutter: stable。
+     overflow-x: auto + overflow-y: visible 时，按规范 visible 会被计算成 auto
+     （一轴非 visible 则另一轴的 visible 提升为 auto），本元素于是成了纵向滚动
+     容器。但它没有高度约束（布局链上 .table-page-layout-surface /
+     .layout-section-scrollable 都是 height: auto），纵向永远不会溢出，
+     stable 就为一个不可能出现的纵向滚动条常驻预留 8px，表格右边缘贴不到面板
+     右边缘。预算看板那种 wrapper + body 双层结构会叠成 17px 空白带。
+     横轴真会滚，其滚动条按需占位，不受影响。 */
   .table-scroll-container .table-wrapper {
     flex: 0 1 auto;
     min-width: 0;
     max-width: 100%;
     overflow-x: auto;
     overflow-y: visible;
-    scrollbar-gutter: stable;
     background: inherit;
   }
 
@@ -9345,12 +9352,12 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     box-shadow: none;
   }
 
+  /* 同 1799 行：不设 scrollbar-gutter，避免为不可能出现的纵向滚动条常驻留白。 */
   .table-scroll-container .table-wrapper {
     flex: 0 1 auto;
     min-width: 0;
     overflow-x: auto;
     overflow-y: visible;
-    scrollbar-gutter: stable;
   }
 
   .table-scroll-container table {
@@ -10167,6 +10174,8 @@ html.dark .admin-source-search-field input {
   box-shadow: none;
 }
 
+/* 同 1799 行：不设 scrollbar-gutter，避免为不可能出现的纵向滚动条常驻留白。
+   这条是三处同源定义里位置最靠后的，漏改会把前两处的修复覆盖回去。 */
 .table-scroll-container .table-wrapper,
 .admin-inner-table-surface .table-wrapper {
   flex: 0 1 auto;
@@ -10175,7 +10184,6 @@ html.dark .admin-source-search-field input {
   max-height: none;
   overflow-x: auto;
   overflow-y: visible;
-  scrollbar-gutter: stable;
 }
 
 .table-scroll-container table {
