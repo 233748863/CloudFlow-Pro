@@ -106,9 +106,18 @@
       line-height: 1.5;
     }
 
+  /* 高度必须跟同一行里的 Select / Input / Button 一致。
+     这些控件都是 var(--cf-density-control-height)（桌面 2.25rem = 36px），
+     原先这里写死 2.5rem 且 padding 给到 0.6875rem，实测撑出 40px：
+     11px×2 padding + 14.4px 行高 + 2px 边框 = 38.4px，再被 min-height 抬到 40。
+     行容器是 align-items: center，多出的 4px 上下各溢出 2px，看着就突兀。
+     改用 flex 居中，高度交给 min-height 决定，padding 不再参与撑高。
+     变量只在 @media (min-width: 768px) 下定义，所以带 fallback。 */
   .admin-budget-threshold-cell {
-      min-height: 2.5rem;
-      padding: 0.6875rem 0.75rem;
+      display: flex;
+      align-items: center;
+      min-height: var(--cf-density-control-height, 2.25rem);
+      padding: 0.25rem 0.75rem;
       color: #64748b;
       font-size: 0.75rem;
       line-height: 1.2;
