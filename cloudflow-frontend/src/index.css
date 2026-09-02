@@ -3443,13 +3443,6 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
 
   
 
-  .table-scroll-container .workflow-monitor-alert-table th:last-child,
-  .table-scroll-container .workflow-monitor-alert-table td:last-child {
-    position: static !important;
-    right: auto !important;
-    background: inherit !important;
-    box-shadow: none !important;
-  }
 
   
 
@@ -3920,18 +3913,6 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     border-radius: 0.375rem;
   }
 
-  /* 选择器带 .unity-data-table 是为了压过 6384 行的全局吸附规则：
-     两者特异性同为 (0,3,1) 时后者位置更靠后会胜出，这条豁免就形同虚设。 */
-  .table-scroll-container .unity-data-table.admin-business-trip-table th:last-child,
-  .table-scroll-container .unity-data-table.admin-business-trip-table td:last-child,
-  .admin-horizontal-scroll .unity-data-table.admin-business-trip-table th:last-child,
-  .admin-horizontal-scroll .unity-data-table.admin-business-trip-table td:last-child {
-    position: static;
-    right: auto;
-    z-index: auto;
-    background: transparent;
-    box-shadow: none;
-  }
 
   .admin-copy-snapshot {
     display: grid;
@@ -4060,16 +4041,6 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
 
   
 
-  .table-scroll-container .unity-data-table.admin-expense-detail-table th:last-child,
-  .table-scroll-container .unity-data-table.admin-expense-detail-table td:last-child,
-  .admin-horizontal-scroll .unity-data-table.admin-expense-detail-table th:last-child,
-  .admin-horizontal-scroll .unity-data-table.admin-expense-detail-table td:last-child {
-    position: static;
-    right: auto;
-    z-index: auto;
-    background: transparent;
-    box-shadow: none;
-  }
 
   
 
@@ -4780,13 +4751,6 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
 
   
 
-  .table-scroll-container .admin-performance-detail-table th:last-child,
-  .table-scroll-container .admin-performance-detail-table td:last-child {
-    position: static !important;
-    right: auto !important;
-    background: inherit !important;
-    box-shadow: none !important;
-  }
 
   
 
@@ -4830,26 +4794,6 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     border-radius: 0.375rem;
   }
 
-  /* 取消「操作」列的吸附处理。
-     .table-scroll-container .unity-data-table th/td:last-child 默认把末列做成
-     sticky 吸附列（不透明白底 + 左侧 1px 竖线），那是给需要横向滚动的宽表用的。
-     预算看板这三张表是 table-layout: fixed + min-width: 100%，实测 wrapper
-     606/606 永不横向滚动，吸附毫无收益，只留下两处瑕疵：一道多余的竖线，以及
-     一块不跟随行悬停/斑马纹的白色色块（其余单元格背景是透明的）。
-
-     选择器必须带上 .unity-data-table 这一级。全局吸附规则在本文件 6384 行、
-     位置比这里更靠后，若只写 .admin-budget-table 则特异性打平（0,3,1）会被它
-     压过去，规则形同虚设。 */
-  .table-scroll-container .unity-data-table.admin-budget-table th:last-child,
-  .table-scroll-container .unity-data-table.admin-budget-table td:last-child,
-  .admin-horizontal-scroll .unity-data-table.admin-budget-table th:last-child,
-  .admin-horizontal-scroll .unity-data-table.admin-budget-table td:last-child {
-    position: static;
-    right: auto;
-    z-index: auto;
-    background: transparent;
-    box-shadow: none;
-  }
 
   
 
@@ -5241,17 +5185,6 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     border-radius: 0.375rem;
   }
 
-  /* 同上，必须带 .unity-data-table 才能压过 6384 行的全局吸附规则。 */
-  .table-scroll-container .unity-data-table.admin-meeting-minutes-table th:last-child,
-  .table-scroll-container .unity-data-table.admin-meeting-minutes-table td:last-child,
-  .admin-horizontal-scroll .unity-data-table.admin-meeting-minutes-table th:last-child,
-  .admin-horizontal-scroll .unity-data-table.admin-meeting-minutes-table td:last-child {
-    position: static;
-    right: auto;
-    z-index: auto;
-    background: transparent;
-    box-shadow: none;
-  }
 
   
 
@@ -6429,6 +6362,46 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     box-shadow: none;
   }
 
+  /* ------------------------------------------------------------
+     不需要末列吸附的表，统一在这里排除 —— 唯一入口。
+
+     紧跟在上面两条吸附规则之后，靠位置取胜，因此不需要 !important，也不需要
+     多写一层 .unity-data-table 去拼特异性。
+
+     历史上是各页自己写 position: static 豁免，胜负取决于那条豁免恰好落在本
+     文件哪一行：排在吸附规则之后的靠位置赢，排在之前的得靠 !important 或多写
+     一个 .unity-data-table 提特异性。三种写法混用，且曾有 2 条因特异性打平而
+     静默失效（出差列表、会议纪要）。
+
+     新增不需要吸附的表时，只在下面的 :is() 里加一个类名，别再去别处写豁免。
+     判据：表若是 table-layout: fixed + width/min-width: 100%（永不横向滚动），
+     吸附零收益，只会留下一道多余竖线和一块不跟随行悬停的白底色块。
+     ------------------------------------------------------------ */
+  :is(.table-scroll-container, .admin-horizontal-scroll) :is(
+      .workflow-monitor-alert-table,
+      .admin-business-trip-table,
+      .admin-expense-detail-table,
+      .admin-performance-detail-table,
+      .admin-budget-table,
+      .admin-meeting-minutes-table,
+      .admin-invoice-table,
+      .admin-users-table,
+      .admin-roles-table,
+      .admin-roles-mutex-table,
+      .admin-tenants-table,
+      .admin-config-table,
+      .workflow-category-table,
+      .admin-workflow-management-table,
+      .admin-workflow-import-table,
+      .admin-workflow-archive-table
+    ) :is(th, td):last-child {
+    position: static;
+    right: auto;
+    z-index: auto;
+    background: transparent;
+    box-shadow: none;
+  }
+
   .unity-data-table tbody tr {
     transition: background-color 0.15s ease;
   }
@@ -7244,16 +7217,6 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     border-radius: 0.375rem;
   }
 
-  .table-scroll-container .admin-invoice-table th:last-child,
-  .table-scroll-container .admin-invoice-table td:last-child,
-  .admin-horizontal-scroll .admin-invoice-table th:last-child,
-  .admin-horizontal-scroll .admin-invoice-table td:last-child {
-    position: static;
-    right: auto;
-    z-index: auto;
-    background: transparent;
-    box-shadow: none;
-  }
 
   
 
@@ -10494,16 +10457,6 @@ html.dark .admin-source-search-field input {
   width: 10%;
 }
 
-.table-scroll-container .admin-users-table th:last-child,
-.table-scroll-container .admin-users-table td:last-child,
-.admin-horizontal-scroll .admin-users-table th:last-child,
-.admin-horizontal-scroll .admin-users-table td:last-child {
-  position: static;
-  right: auto;
-  z-index: auto;
-  background: transparent;
-  box-shadow: none;
-}
 
 .admin-users-identity {
   display: flex;
@@ -10710,16 +10663,6 @@ html.dark .admin-users-row-actions button {
 
 
 
-.table-scroll-container .admin-roles-table th:last-child,
-.table-scroll-container .admin-roles-table td:last-child,
-.table-scroll-container .admin-roles-mutex-table th:last-child,
-.table-scroll-container .admin-roles-mutex-table td:last-child {
-  position: static;
-  right: auto;
-  z-index: auto;
-  background: transparent;
-  box-shadow: none;
-}
 
 
 
@@ -10975,20 +10918,6 @@ html.dark .admin-roles-mutex-head {
 
 
 
-.table-scroll-container .admin-tenants-table th:last-child,
-.table-scroll-container .admin-tenants-table td:last-child,
-.table-scroll-container .admin-menus-table th:last-child,
-.table-scroll-container .admin-menus-table td:last-child,
-.table-scroll-container .admin-posts-table th:last-child,
-.table-scroll-container .admin-posts-table td:last-child,
-.table-scroll-container .admin-config-table th:last-child,
-.table-scroll-container .admin-config-table td:last-child {
-  position: static;
-  right: auto;
-  z-index: auto;
-  background: transparent;
-  box-shadow: none;
-}
 
 .admin-tenants-identity,
 .admin-posts-name,
@@ -11566,16 +11495,6 @@ html.dark .template-market-skeleton-metrics span {
 
 
 
-.table-scroll-container .workflow-category-table th:last-child,
-.table-scroll-container .workflow-category-table td:last-child,
-.admin-horizontal-scroll .workflow-category-table th:last-child,
-.admin-horizontal-scroll .workflow-category-table td:last-child {
-  position: static;
-  right: auto;
-  z-index: auto;
-  background: transparent;
-  box-shadow: none;
-}
 
 
 
@@ -11703,16 +11622,6 @@ html.dark .workflow-category-table tbody tr.is-selected td {
 
 
 
-.table-scroll-container .admin-workflow-management-table th:last-child,
-.table-scroll-container .admin-workflow-management-table td:last-child,
-.admin-horizontal-scroll .admin-workflow-management-table th:last-child,
-.admin-horizontal-scroll .admin-workflow-management-table td:last-child {
-  position: static;
-  right: auto;
-  z-index: auto;
-  background: transparent;
-  box-shadow: none;
-}
 
 
 
@@ -11896,16 +11805,6 @@ html.dark .admin-workflow-management-table tr[data-state='selected'] td {
 
 
 
-.table-scroll-container .admin-workflow-import-table th:last-child,
-.table-scroll-container .admin-workflow-import-table td:last-child,
-.admin-horizontal-scroll .admin-workflow-import-table th:last-child,
-.admin-horizontal-scroll .admin-workflow-import-table td:last-child {
-  position: static;
-  right: auto;
-  z-index: auto;
-  background: transparent;
-  box-shadow: none;
-}
 
 
 
@@ -12152,16 +12051,6 @@ html.dark .admin-workflow-import-remove:hover {
 
 
 
-.table-scroll-container .admin-workflow-archive-table th:last-child,
-.table-scroll-container .admin-workflow-archive-table td:last-child,
-.admin-horizontal-scroll .admin-workflow-archive-table th:last-child,
-.admin-horizontal-scroll .admin-workflow-archive-table td:last-child {
-  position: static;
-  right: auto;
-  z-index: auto;
-  background: transparent;
-  box-shadow: none;
-}
 
 
 
