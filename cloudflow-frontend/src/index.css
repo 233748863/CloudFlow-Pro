@@ -79,29 +79,36 @@
 
 }
 
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+@layer base {
+  /* 这组 * 通配滚动条样式是全局兜底，原本裸写在 @layer 之外，
+     于是无条件压制 @layer components 里针对具体容器的滚动条主题——
+     .cf-dialog-scroll-body 想要常显 #cbd5e1，却被这里的
+     background-color: transparent 盖成静止不可见、hover 才显通用灰。
+     归入 base 后，components 层的具体规则才能按预期覆盖兜底值。 */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
 
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-*::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: 999px;
-  transition: background-color 0.2s ease;
-}
+  *::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 999px;
+    transition: background-color 0.2s ease;
+  }
 
-*:hover::-webkit-scrollbar-thumb,
-*:focus-within::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.5);
-}
+  *:hover::-webkit-scrollbar-thumb,
+  *:focus-within::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
 
-html.dark *:hover::-webkit-scrollbar-thumb,
-html.dark *:focus-within::-webkit-scrollbar-thumb {
-  background-color: rgba(100, 116, 139, 0.55);
+  html.dark *:hover::-webkit-scrollbar-thumb,
+  html.dark *:focus-within::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 116, 139, 0.55);
+  }
 }
 
 @layer base {
@@ -10023,6 +10030,22 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     }
   }
 }
+
+/* 注意：以下到文件末尾裸写在 @layer 之外（约 3673 行，占全文件 27%）。
+   CSS 层叠里无 layer 的普通声明优先于任何 layer 内的普通声明，与特异度、
+   位置无关，所以这段会静默压制全项目 @layer components 内的规则——包括
+   各页面 CSS（由 tsx import 加载更晚、特异度更高也照样输）。
+   已知实例：.admin-invoice-metric strong 的 font-size 被此处 768px 密度块
+   盖掉而长期未生效；dashboard-stat.css、CacheMonitor.css、admin-workflow.css
+   等的部分声明同样被压制。
+
+   曾尝试直接补 @layer components 包裹，但会引入 dev/prod 不一致：
+   打包器把这段排在页面 CSS 之后，而 dev 下页面 CSS 由 tsx import 加载更晚，
+   包进 layer 后胜负改由位置决定，两个环境的位置关系恰好相反
+   （实测 .dashboard-stat 的 min-height：dev 112px / prod 72px）。
+   彻底修复需要为这段单独声明一个排在 components 之前的层
+   （如 @layer theme, base, cf-tuning, components, utilities），
+   使页面 CSS 无论物理顺序如何都能覆盖它——属独立重构，勿顺手包裹。 */
 
 .admin-source-search-field {
   display: flex;
