@@ -3920,10 +3920,12 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     border-radius: 0.375rem;
   }
 
-  .table-scroll-container .admin-business-trip-table th:last-child,
-  .table-scroll-container .admin-business-trip-table td:last-child,
-  .admin-horizontal-scroll .admin-business-trip-table th:last-child,
-  .admin-horizontal-scroll .admin-business-trip-table td:last-child {
+  /* 选择器带 .unity-data-table 是为了压过 6384 行的全局吸附规则：
+     两者特异性同为 (0,3,1) 时后者位置更靠后会胜出，这条豁免就形同虚设。 */
+  .table-scroll-container .unity-data-table.admin-business-trip-table th:last-child,
+  .table-scroll-container .unity-data-table.admin-business-trip-table td:last-child,
+  .admin-horizontal-scroll .unity-data-table.admin-business-trip-table th:last-child,
+  .admin-horizontal-scroll .unity-data-table.admin-business-trip-table td:last-child {
     position: static;
     right: auto;
     z-index: auto;
@@ -4828,6 +4830,27 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     border-radius: 0.375rem;
   }
 
+  /* 取消「操作」列的吸附处理。
+     .table-scroll-container .unity-data-table th/td:last-child 默认把末列做成
+     sticky 吸附列（不透明白底 + 左侧 1px 竖线），那是给需要横向滚动的宽表用的。
+     预算看板这三张表是 table-layout: fixed + min-width: 100%，实测 wrapper
+     606/606 永不横向滚动，吸附毫无收益，只留下两处瑕疵：一道多余的竖线，以及
+     一块不跟随行悬停/斑马纹的白色色块（其余单元格背景是透明的）。
+
+     选择器必须带上 .unity-data-table 这一级。全局吸附规则在本文件 6384 行、
+     位置比这里更靠后，若只写 .admin-budget-table 则特异性打平（0,3,1）会被它
+     压过去，规则形同虚设。 */
+  .table-scroll-container .unity-data-table.admin-budget-table th:last-child,
+  .table-scroll-container .unity-data-table.admin-budget-table td:last-child,
+  .admin-horizontal-scroll .unity-data-table.admin-budget-table th:last-child,
+  .admin-horizontal-scroll .unity-data-table.admin-budget-table td:last-child {
+    position: static;
+    right: auto;
+    z-index: auto;
+    background: transparent;
+    box-shadow: none;
+  }
+
   
 
   
@@ -5218,10 +5241,11 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     border-radius: 0.375rem;
   }
 
-  .table-scroll-container .admin-meeting-minutes-table th:last-child,
-  .table-scroll-container .admin-meeting-minutes-table td:last-child,
-  .admin-horizontal-scroll .admin-meeting-minutes-table th:last-child,
-  .admin-horizontal-scroll .admin-meeting-minutes-table td:last-child {
+  /* 同上，必须带 .unity-data-table 才能压过 6384 行的全局吸附规则。 */
+  .table-scroll-container .unity-data-table.admin-meeting-minutes-table th:last-child,
+  .table-scroll-container .unity-data-table.admin-meeting-minutes-table td:last-child,
+  .admin-horizontal-scroll .unity-data-table.admin-meeting-minutes-table th:last-child,
+  .admin-horizontal-scroll .unity-data-table.admin-meeting-minutes-table td:last-child {
     position: static;
     right: auto;
     z-index: auto;
