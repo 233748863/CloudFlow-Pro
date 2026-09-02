@@ -64,6 +64,23 @@ const PAYMENT_STATUS_META: Record<PaymentStatus, { cls: string }> = {
   CANCELLED: { cls: 'border-slate-200 bg-[var(--cf-surface-muted)] text-cf-subtle dark:border-slate-700 dark:bg-slate-900/40' },
 };
 
+// status 在库里是无约束的 varchar(20)，运行时不能假设它一定落在 TS 联合类型内。
+// 未知值取不到 meta 时，读 meta.cls 会抛 TypeError 把整个合同页打成白屏
+// （已发生：演示种子曾灌入 DRAFT/APPROVED/COMPLETED）。
+// 兜底不套用任何已知状态的颜色和文案，避免把未知值伪装成正常状态；
+// 标签直接显示原始值，方便一眼看出是数据不对而不是页面不对。
+const UNKNOWN_STATUS_CLS =
+  'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
+
+const getMilestoneStatusMeta = (status: ContractMilestoneStatus) =>
+  MILESTONE_STATUS_META[status] ?? { cls: UNKNOWN_STATUS_CLS, icon: <CircleDashed size={12} className="mr-1" /> };
+
+const getPaymentStatusMeta = (status: PaymentStatus) =>
+  PAYMENT_STATUS_META[status] ?? { cls: UNKNOWN_STATUS_CLS };
+
+// 字典查不到时 getLabel 可能回落成空串，此时显示原始状态值而不是留空。
+const statusLabel = (label: string, raw: string) => label || raw || '未知';
+
 const MILESTONE_TYPE_VALUES: ContractMilestoneType[] = ['DELIVERY', 'PAYMENT', 'ACCEPTANCE', 'OTHER'];
 const MILESTONE_STATUS_VALUES: ContractMilestoneStatus[] = ['PENDING', 'IN_PROGRESS', 'DONE', 'OVERDUE', 'CANCELLED'];
 const PAYMENT_STATUS_VALUES: PaymentStatus[] = ['PENDING', 'PAID', 'OVERDUE', 'CANCELLED'];
@@ -274,7 +291,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
           ) : (
             <ul className="admin-dialog-field">
               {milestones.map((m) => {
-                const meta = MILESTONE_STATUS_META[m.status];
+                const meta = getMilestoneStatusMeta(m.status);
                 return (
                   <li
                     key={m.id}
@@ -295,7 +312,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                           )}
                         >
                           {meta.icon}
-                          {milestoneStatusDict.getLabel(m.status)}
+                          {statusLabel(milestoneStatusDict.getLabel(m.status), m.status)}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -345,7 +362,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
           ) : (
             <ul className="admin-dialog-field">
               {payments.map((p) => {
-                const meta = PAYMENT_STATUS_META[p.status];
+                const meta = getPaymentStatusMeta(p.status);
                 return (
                   <li
                     key={p.id}
@@ -362,7 +379,7 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                             meta.cls,
                           )}
                         >
-                          {paymentStatusDict.getLabel(p.status)}
+                          {statusLabel(paymentStatusDict.getLabel(p.status), p.status)}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">

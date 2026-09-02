@@ -178,11 +178,14 @@ function Read-Schema([string]$root) {
                 $rest = $columnMatch.Groups[2].Value.Trim().TrimEnd(',')
                 $type = (($rest -split '\s+')[0]).ToLowerInvariant()
                 $lengthMatch = [regex]::Match($type, '\((\d+)')
+                # 注释是枚举列允许值的唯一权威来源，必须留下来给 Get-EnumValuesFromComment 用。
+                $commentMatch = [regex]::Match($rest, "(?i)\bCOMMENT\s+'((?:[^']|'')*)'")
                 $columns.Add([pscustomobject]@{
                     Name = $columnMatch.Groups[1].Value.ToLowerInvariant()
                     Type = $type
                     Length = if ($lengthMatch.Success) { [int]$lengthMatch.Groups[1].Value } else { 0 }
                     Auto = $rest -match '(?i)\bAUTO_INCREMENT\b'
+                    Comment = if ($commentMatch.Success) { $commentMatch.Groups[1].Value.Replace("''", "'") } else { '' }
                 })
                 if ($rest -match '(?i)\bPRIMARY\s+KEY\b') { $inlinePrimary.Add($columnMatch.Groups[1].Value.ToLowerInvariant()) }
             }
@@ -268,7 +271,34 @@ function Get-TargetIdExpression([string]$target, [hashtable]$indexes, [hashtable
     return $expression
 }
 
-function Get-StatusExpression([string]$table, [string]$column, [string]$type, [int]$length) {
+function Get-EnumValuesFromComment([string]$comment) {
+    # 从建表注释里抽出枚举允许值，例如
+    #   状态(PENDING待开始/IN_PROGRESS进行中/DONE已完成/OVERDUE已逾期/CANCELLED已取消)
+    # 抽出 PENDING/IN_PROGRESS/DONE/OVERDUE/CANCELLED。
+    # 判定条件：括号内既有分隔符（/ | 、 或 ", "）又有两个以上全大写词，
+    # 缺一不可——只看"两个大写词"会把「TOTP密钥密文（AES-GCM）」误判成 AES/GCM。
+    $values = [System.Collections.Generic.List[string]]::new()
+    if (-not $comment) { return $values.ToArray() }
+    foreach ($segmentMatch in [regex]::Matches($comment, '[（(]([^）)]*)[）)]')) {
+        $segment = $segmentMatch.Groups[1].Value
+        if ($segment -notmatch '[/|、]|,\s') { continue }
+        $tokens = @([regex]::Matches($segment, '(?<![A-Za-z0-9_])([A-Z][A-Z0-9_]{1,29})(?![A-Za-z0-9_])') |
+            ForEach-Object { $_.Groups[1].Value })
+        if ($tokens.Count -lt 2) { continue }
+        foreach ($token in $tokens) {
+            if (-not $values.Contains($token)) { $values.Add($token) }
+        }
+    }
+    return $values.ToArray()
+}
+
+function Get-EnumExpression([string[]]$values) {
+    if (-not $values -or $values.Count -eq 0) { return $null }
+    if ($values.Count -eq 1) { return (Quote-Sql $values[0]) }
+    return "ELT(MOD(r.n,$($values.Count))+1,$(Join-SqlLiterals $values))"
+}
+
+function Get-StatusExpression([string]$table, [string]$column, [string]$type, [int]$length, [string]$comment = '') {
     if ($type -match '(?i)(tinyint|smallint|mediumint|int|bigint|bit)') { return '1' }
     if (($type -match 'char|varchar') -and $length -gt 0 -and $length -le 2) { return "'0'" }
     if ($table -in @('sys_tenant','sys_user','sys_role','sys_post','sys_menu','sys_dict_type','sys_dict_data','sys_config')) { return "'0'" }
@@ -276,12 +306,22 @@ function Get-StatusExpression([string]$table, [string]$column, [string]$type, [i
     if ($table -eq 'sys_legal_document') { return "'0'" }
     if ($table -eq 'wf_task') { return "ELT(MOD(r.n,5)+1,'TODO','DONE','CANCELLED','TRANSFERRED','DONE')" }
     if ($table -eq 'wf_process_instance') { return "ELT(MOD(r.n,5)+1,'RUNNING','COMPLETED','CANCELLED','REJECTED','SUSPENDED')" }
-    if ($table -like 'wf_*') { return "ELT(MOD(r.n,5)+1,'ACTIVE','PENDING','SUCCESS','FAILED','COMPLETED')" }
     if ($table -eq 'hr_employee' -and $column -eq 'employee_status') { return "ELT(MOD(r.n,5)+1,'ACTIVE','ACTIVE','PROBATION','ON_LEAVE','ACTIVE')" }
-    if ($table -match '^hr_.*(training|exam)') { return "ELT(MOD(r.n,5)+1,'PLANNED','IN_PROGRESS','COMPLETED','APPROVED','CANCELLED')" }
-    if ($table -like 'hr_*') { return "ELT(MOD(r.n,5)+1,'ACTIVE','PENDING','APPROVED','REJECTED','COMPLETED')" }
     if ($table -eq 'crm_lead') { return "ELT(MOD(r.n,5)+1,'NEW','CONTACTED','QUALIFIED','CONVERTED','CLOSED')" }
     if ($table -eq 'crm_customer') { return "ELT(MOD(r.n,5)+1,'POTENTIAL','NORMAL','VIP','ACTIVE','DORMANT')" }
+
+    # 优先按建表注释取值。下面那些按表名前缀猜的兜底只对了一小半：
+    # 同是 hr_*，hr_offer 要 DRAFT/SENT/ACCEPTED，hr_interview 要 SCHEDULED/COMPLETED，
+    # 一句 ACTIVE/PENDING/APPROVED/REJECTED/COMPLETED 盖不住，灌出来的值前端枚举映射取不到，
+    # 页面直接白屏（实例：oa_contract_payment_schedule 灌 DRAFT/APPROVED/COMPLETED
+    # 而前端只认 PENDING/PAID/OVERDUE/CANCELLED，合同页 meta.cls 读 undefined 崩溃）。
+    $enumValues = Get-EnumValuesFromComment $comment
+    $enumExpression = Get-EnumExpression $enumValues
+    if ($enumExpression) { return $enumExpression }
+
+    if ($table -like 'wf_*') { return "ELT(MOD(r.n,5)+1,'ACTIVE','PENDING','SUCCESS','FAILED','COMPLETED')" }
+    if ($table -match '^hr_.*(training|exam)') { return "ELT(MOD(r.n,5)+1,'PLANNED','IN_PROGRESS','COMPLETED','APPROVED','CANCELLED')" }
+    if ($table -like 'hr_*') { return "ELT(MOD(r.n,5)+1,'ACTIVE','PENDING','APPROVED','REJECTED','COMPLETED')" }
     return "ELT(MOD(r.n,5)+1,'DRAFT','PENDING','APPROVED','REJECTED','COMPLETED')"
 }
 
@@ -438,6 +478,12 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     if ($name -eq 'tenant_id') { return "($tenantBase + t.n)" }
     if ($table -eq 'sys_tenant' -and $name -eq 'user_limit') { return '100' }
     if ($table -eq 'sys_tenant' -and $name -eq 'storage_limit') { return '10240' }
+    # 租户到期时间必须显式给 1 年，与 06.cloudflow-business-seed.sql 的默认租户一致。
+    # 不能落到下面按列名猜的 expire 兜底（MOD(r.n,90)+1 DAY）：sys_tenant 每租户只出一行，
+    # r.n 恒为 0 => MOD(0,90)+1 = 1 天，50 个租户全部只活 24 小时。
+    # 而 /auth/tenant/options 带 expire_time > NOW() 过滤，
+    # 灌数据当天能登录、次日登录页租户下拉全空。
+    if ($table -eq 'sys_tenant' -and $name -eq 'expire_time') { return 'DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 YEAR)' }
     if ($table -eq 'sys_role' -and $name -eq 'data_scope') { return "IF(r.n=0,'1','3')" }
     if ($table -eq 'sys_role' -and $name -eq 'ds_type') { return 'IF(r.n=0,0,3)' }
     if ($table -eq 'sys_menu' -and $name -eq 'status') { return "'1'" }
@@ -554,7 +600,7 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     if ($table -eq 'sys_menu' -and $name -eq 'parent_id') { return 'IF(r.n=0,0,3000)' }
     if ($table -eq 'sys_dept' -and $name -eq 'parent_id') { return 'IF(r.n=0,0,' + (Get-NumericIdExpression $indexes[$table] 't.n' 'r.n-1') + ')' }
     if ($table -eq 'sys_menu' -and $name -eq 'menu_type') { return "IF(r.n=0,'M',IF(r.n<25,'C','F'))" }
-    if ($name -match '(?i)(status|_status)$') { return Get-StatusExpression $table $name $type $column.Length }
+    if ($name -match '(?i)(status|_status)$') { return Get-StatusExpression $table $name $type $column.Length $column.Comment }
     if ($name -eq 'direction') { return "IF(MOD(r.n,2)=0,'IN','OUT')" }
     if ($name -eq 'mode') {
         if ($table -eq 'sys_ip_acl') { return "IF(MOD(r.n,2)=0,'BLACK','WHITE')" }
@@ -562,6 +608,20 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     }
     if ($name -eq 'gender') { return "IF(MOD(r.n,2)=0,'MALE','FEMALE')" }
     if ($name -eq 'sex') { return "IF(MOD(r.n,2)=0,'0','1')" }
+
+    # 注释里列了枚举值的字符串列，一律按注释灌。
+    # 放在类型兜底之前：*_type / result / category / use_scene / final_decision 这类列
+    # 原来一路落到 Get-TextExpression 的名称模板，被灌成
+    # 「上海云杉数字科技有限公司业务登记-001」这种中文串（实例：
+    # oa_contract_milestone.milestone_type 本该是 DELIVERY/PAYMENT/ACCEPTANCE/OTHER）。
+    # 放在 status / direction / mode / gender 之后：那几个有手工调过的分布或历史取值，不能被覆盖。
+    if ($type -match 'char|varchar') {
+        $columnEnumExpression = Get-EnumExpression (Get-EnumValuesFromComment $column.Comment)
+        if ($columnEnumExpression) {
+            if ($column.Length -gt 0) { return "LEFT($columnEnumExpression, $($column.Length))" }
+            return $columnEnumExpression
+        }
+    }
 
     if ($type -match 'json') { return "JSON_OBJECT('source','demo50','tenantId',$tenantBase+t.n,'table','$table','row',r.n+1,'label','全链路演示数据')" }
     if ($type -match '(datetime|timestamp)') {
