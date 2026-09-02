@@ -3766,10 +3766,26 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     min-width: 0;
   }
 
+  /* 弹窗内容区的纵向卡片栈。
+     这里必须锁定 grid-auto-rows: max-content，原因是 BaseDialog 的 body 是
+     flex 子项（flex: 1 1 0%），会拿到一个「确定高度」。此时 auto 行轨道的
+     最小尺寸取子项的自动最小尺寸，而卡片普遍带 overflow: hidden，自动最小
+     尺寸会退化成 0 —— Grid 于是把轨道压缩到刚好塞满 body，卡片再用自身的
+     overflow: hidden 把超出内容裁掉。结果就是内容被静默遮挡，同时
+     scrollHeight == clientHeight，body 根本没有可滚动区域。
+     用 max-content 定尺后轨道不再被压缩，内容正常溢出并交给 body 滚动。 */
+
+  /* overflow-wrap: anywhere 是为了让流程实例 ID、URL 这类不可断的长 token
+     在详情字段格子里折行。不加的话它的 min-content 宽度会超出栅格列宽，
+     文本横向溢出，body 冒出横向滚动条并把尾部字符裁掉。用 anywhere 而不是
+     break-word，因为只有 anywhere 会同时缩小 min-content，栅格列才不会被撑开。 */
   .admin-dialog-stack {
     display: grid;
     min-width: 0;
+    grid-auto-rows: max-content;
+    align-content: start;
     gap: 1rem;
+    overflow-wrap: anywhere;
   }
 
   .admin-dialog-subhead span {
