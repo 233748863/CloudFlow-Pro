@@ -2747,6 +2747,25 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     }
   }
 
+  /* 弹窗内的统计卡最多 2 列。
+     上面 >1180px 的 4 列是按视口算的，但弹窗宽度由 max-w-* 封顶、
+     与视口无关：wide 弹窗内容区只有 854px，4 列时单卡文字区仅 126px，
+     金额（如 ¥12,417.00 需 132px）放不下就被拆成两行。
+     2 列后单卡文字区 421px，现有弹窗（发票/合同/预算/HR 培训三处）
+     的卡片数都 ≤4，恰好排成整齐的 2×2。
+     窄屏交给下面 max-width: 760px 的 1 列规则，故此处只提特异度不设断点。 */
+  .admin-dialog-stack .admin-source-stat-grid,
+  .admin-dialog-stack .admin-users-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* 金额/编号是不可拆的整体，宁可溢出可见也不能断成两行造成误读。
+     .admin-dialog-stack 的 overflow-wrap: anywhere 是给长 ID 用的，
+     这里显式挡掉它对统计值的继承。 */
+  .admin-dialog-stack .admin-source-stat strong {
+    overflow-wrap: normal;
+  }
+
   .admin-source-stat {
     display: flex;
     min-width: 0;
@@ -8375,7 +8394,10 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
     }
 
     .admin-source-stat-grid,
-    .admin-users-stat-grid {
+    .admin-users-stat-grid,
+    /* 弹窗内的 2 列规则特异度更高，窄屏这里要用同样的作用域才压得住 */
+    .admin-dialog-stack .admin-source-stat-grid,
+    .admin-dialog-stack .admin-users-stat-grid {
       grid-template-columns: 1fr;
     }
 

@@ -66,13 +66,11 @@
       padding: 0.75rem;
     }
 
-  .admin-invoice-metric strong {
-      overflow: visible;
-      font-size: 1.25rem;
-      line-height: 1.25;
-      overflow-wrap: anywhere;
-      white-space: normal;
-    }
+/* 原 .admin-invoice-metric strong 已删除：font-size/line-height 被
+   index.css 的 @media (min-width: 768px) 密度块盖掉（该块在 layer 之外，
+   无 layer 样式优先于任何 layer），从未生效；overflow/white-space 是默认值；
+   仅 overflow-wrap: anywhere 生效，却正是金额被拆行的原因。
+   现由 index.css 的 .admin-dialog-stack .admin-source-stat strong 统一处理。 */
 
   .admin-invoice-table {
       width: 100% !important;
