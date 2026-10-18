@@ -10194,16 +10194,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_template_archive (
  '夜间值守改由统一值班排班看板维护，旧版申请模板不再独立使用。', 1,
  '{"status":"archived","mergedInto":"duty-schedule-board","linkedModules":["duty","ops","alert"],"note":"保留历史排班与审批记录"}', 100000);
 
-INSERT IGNORE INTO cloud_flow_db.wf_audit_log (
-  id, operation_type, target_type, target_id, target_name, operator_id, operator_name, operation_time, operation_reason,
-  operation_details, operation_result, error_message, ip_address, user_agent, tenant_id
-) VALUES
-('seed_audit_002', 'ARCHIVE', 'wf_template', 'tpl-customer-visit-legacy', '客户拜访登记旧版', '10', '孙雨澄', DATE_SUB(NOW(), INTERVAL 18 DAY),
- '客户接待流程已升级为访客预约与日程联动版本。', '归档旧版拜访登记模板，保留历史字段映射与恢复入口。', 'SUCCESS', NULL, '10.10.0.41',
- 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36', 100000),
-('seed_audit_003', 'ARCHIVE', 'wf_template', 'tpl-ops-night-duty-legacy', '夜间值守申请旧版', '14', '唐志远', DATE_SUB(NOW(), INTERVAL 12 DAY),
- '运维值守改由统一排班看板和短信提醒管理。', '归档旧版夜间值守申请模板，避免与当前值班排班模块重复。', 'SUCCESS', NULL, '10.10.0.43',
- 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36', 100000);
+-- 旧版模板已退役；移除两条无对应模板的过期审计种子。
+-- 审计表保留永久防改/防删触发器，不在后续演示整理阶段改写审计记录。
 
 -- =========================================================
 -- 八点四、项目管理 / 预算管理初始化 / 演示数据

@@ -1199,6 +1199,9 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     }
     $hExpression = Get-HEnhancementDemoExpression $definition $column $indexes $definitionMap
     if ($null -ne $hExpression) { return $hExpression }
+    if (-not $scopedGeneration -and $connectedExpressions.ContainsKey("$table.$name")) {
+        return $connectedExpressions["$table.$name"]
+    }
     $platformExpression = Get-PlatformFoundationDemoExpression $definition $name $indexes
     if ($null -ne $platformExpression) { return $platformExpression }
     $oaOperationsExpression = Get-OaOperationsDemoExpression $definition $column $indexes $definitionMap
@@ -1804,6 +1807,14 @@ foreach ($tableName in $Tables) {
     if (-not $definitionMap.ContainsKey($tableName)) { throw "Unknown table: $tableName" }
 }
 $scopedGeneration = $Tables.Count -gt 0
+$connectedExpressions = @{}
+if (-not $scopedGeneration) {
+    $env:PYTHONIOENCODING = 'utf-8'
+    $linkJson = & python (Join-Path $PSScriptRoot 'demo_seed_completion.py') --json
+    if ($LASTEXITCODE -ne 0) { throw 'Connected demo relationship generation failed.' }
+    $linkObject = ($linkJson -join "`n") | ConvertFrom-Json
+    foreach ($property in $linkObject.PSObject.Properties) { $connectedExpressions[$property.Name] = $property.Value }
+}
 $selectedDefinitions = @($definitions | Where-Object { -not $scopedGeneration -or $_.Table -in $Tables })
 if ($scopedGeneration -and -not $ValidateOnly) {
     $fullSeedPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\cloudflow-backend\DB\07.cloudflow-demo-seed.sql'))
@@ -1842,7 +1853,11 @@ try {
     $tenantTableCount = @($selectedDefinitions | Where-Object HasTenant).Count
     $globalTableCount = $selectedDefinitions.Count - $tenantTableCount
     $writer.WriteLine("-- Generic seeds: $tenantTableCount tenant tables receive $RowsPerTenant rows per tenant; $globalTableCount global tables receive $RowsPerTenant rows total.")
-    $writer.WriteLine('-- H foundations add three disabled overtime types per active tenant; drafts, approvals, settlements and inventory events require real service operations.')
+    if (-not $scopedGeneration) {
+        $writer.WriteLine('-- Fresh development database only: run once after 01-06; never rerun on live business data.')
+        $writer.WriteLine('-- Connected fixtures cover operational tables; external integrations and generated jobs stay disabled.')
+    }
+    $writer.WriteLine('-- H foundations add three disabled overtime types per active tenant; fixture rows do not prove real service operations.')
     $writer.WriteLine('SET NAMES utf8mb4;')
     $writer.WriteLine('SET FOREIGN_KEY_CHECKS=0;')
     $writer.WriteLine('SET UNIQUE_CHECKS=1;')
@@ -1967,6 +1982,8 @@ DROP TEMPORARY TABLE crm_deal_demo_seed_guard;
     $writer.WriteLine('')
     foreach ($definition in $insertOrder) {
         $table = $definition.Table
+        # Every calendar receives the official template at the completion stage.
+        if (-not $scopedGeneration -and $table -eq 'sys_holiday_date') { continue }
         if ($table -eq 'sys_tenant') {
             $columns = @($definition.Columns | Where-Object { -not $_.Auto -or $definition.Primary -contains $_.Name })
             $expressions = @()
@@ -2024,6 +2041,11 @@ DROP TEMPORARY TABLE crm_deal_demo_seed_guard;
     if (-not $scopedGeneration -or 'hr_candidate' -in $Tables) {
         $writer.WriteLine('INSERT INTO cloud_flow_db.hr_recruitment_identity (tenant_id, identity_type, identity_hash, candidate_id, create_by, update_by)')
         $writer.WriteLine("SELECT candidate.tenant_id, 'EMAIL', SHA2(CONCAT(candidate.tenant_id, ':EMAIL:', LOWER(TRIM(candidate.email))), 256), candidate.id, 'seed', 'seed' FROM cloud_flow_db.hr_candidate candidate WHERE candidate.tenant_id BETWEEN $tenantBase AND $tenantLast AND candidate.email IS NOT NULL AND TRIM(candidate.email) <> '' AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.hr_recruitment_identity identity_row WHERE identity_row.tenant_id = candidate.tenant_id AND identity_row.identity_type = 'EMAIL' AND identity_row.identity_hash = SHA2(CONCAT(candidate.tenant_id, ':EMAIL:', LOWER(TRIM(candidate.email))), 256));")
+    }
+    if (-not $scopedGeneration) {
+        $completion = & python (Join-Path $PSScriptRoot 'demo_seed_completion.py')
+        if ($LASTEXITCODE -ne 0) { throw 'Connected operational fixture generation failed.' }
+        $writer.WriteLine(($completion -join "`n"))
     }
     $writer.WriteLine('DROP TEMPORARY TABLE demo_seed_tenants;')
     $writer.WriteLine('DROP TEMPORARY TABLE demo_seed_rows;')
