@@ -1,0 +1,32 @@
+-- ${table.functionName} 建表骨架（请在评审后执行）
+DROP TABLE IF EXISTS ${table.tableName};
+CREATE TABLE ${table.tableName} (
+#foreach($column in $ddlColumns)
+  ${column.columnName} ${column.columnType}#if($column.incrementFlag == 1) AUTO_INCREMENT#end#if($column.requiredFlag == 1) NOT NULL#end COMMENT '${column.escapedColumnComment}',
+#end
+#if($table.tenantFieldFlag == 1)
+  tenant_id BIGINT(20) DEFAULT 100000 COMMENT '租户ID',
+#end
+#if($table.logicDeleteFlag == 1)
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+#end
+#if($table.versionFieldFlag == 1)
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+#end
+#if($hasCreateBy)
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+#end
+#if($hasCreateTime)
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+#end
+#if($hasUpdateBy)
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+#end
+#if($hasUpdateTime)
+  update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+#end
+  PRIMARY KEY (${pkColumn.columnName})
+#if($table.tenantFieldFlag == 1)
+  ,KEY idx_${table.businessName}_tenant (tenant_id)
+#end
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='${table.escapedFunctionName}';

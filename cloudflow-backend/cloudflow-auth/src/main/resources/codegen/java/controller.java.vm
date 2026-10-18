@@ -1,0 +1,108 @@
+package ${table.packageName}.controller;
+
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.R;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
+import ${entityPackage}.${ClassName};
+import ${table.packageName}.service.I${ClassName}Service;
+#if($innerTemplate)
+import com.cloudflow.common.security.annotation.Inner;
+#end
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * ${table.javaDocFunctionName} Controller。
+ *
+ * @author ${table.javaDocAuthor}
+ */
+@RestController
+#if($innerTemplate)
+@RequestMapping("/inner/${table.moduleName}/${table.businessName}")
+#else
+@RequestMapping("/${table.businessName}")
+#end
+@RequiredArgsConstructor
+public class ${ClassName}Controller {
+
+#if(!$hrTypedTemplate)
+    private final I${ClassName}Service ${className}Service;
+
+#end
+#if($innerTemplate)
+    @PostMapping("/execute")
+    @Inner
+    public R<Void> execute(@RequestBody ${ClassName} entity) {
+        return R.ok();
+    }
+#elseif($hrTypedTemplate)
+    @GetMapping("/list")
+    @SaCheckPermission("${table.moduleName}:${table.businessName}:list")
+    public R<List<${ClassName}>> list() {
+        return R.ok();
+    }
+
+    @SysLog("新增${table.javaStringFunctionName}")
+    @RepeatSubmit
+    @PostMapping
+    @SaCheckPermission("${table.moduleName}:${table.businessName}:add")
+    public R<Void> add(@RequestBody ${ClassName} entity) {
+        return R.ok();
+    }
+#else
+    @GetMapping("/list")
+    @SaCheckPermission("${table.moduleName}:${table.businessName}:list")
+#if($treeTemplate)
+    public R<List<${ClassName}>> list(${ClassName} query) {
+        return R.ok(${className}Service.queryTree(query));
+    }
+#else
+    public R<IPage<${ClassName}>> list(${ClassName} query,
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
+        return R.ok(${className}Service.queryPage(query, pageNum, pageSize));
+    }
+#end
+
+    @GetMapping("/{id}")
+    @SaCheckPermission("${table.moduleName}:${table.businessName}:list")
+    public R<${ClassName}> getInfo(@PathVariable ${pkColumn.javaType} id) {
+        return R.ok(${className}Service.getById(id));
+    }
+
+#if($subTemplate)
+    @GetMapping("/{id}/children")
+    @SaCheckPermission("${table.moduleName}:${table.businessName}:list")
+    public R<List<java.util.Map<String, Object>>> children(@PathVariable ${pkColumn.javaType} id) {
+        return R.ok(${className}Service.selectSubRows(id));
+    }
+
+#end
+
+    @SysLog("新增${table.javaStringFunctionName}")
+    @RepeatSubmit
+    @PostMapping
+    @SaCheckPermission("${table.moduleName}:${table.businessName}:add")
+    public R<Void> add(@RequestBody ${ClassName} entity) {
+        return R.result(${className}Service.save(entity));
+    }
+
+    @SysLog("修改${table.javaStringFunctionName}")
+    @PutMapping
+    @SaCheckPermission("${table.moduleName}:${table.businessName}:edit")
+    public R<Void> edit(@RequestBody ${ClassName} entity) {
+        return R.result(${className}Service.updateById(entity));
+    }
+
+    @SysLog("删除${table.javaStringFunctionName}")
+    @DeleteMapping("/{ids}")
+    @SaCheckPermission("${table.moduleName}:${table.businessName}:remove")
+    public R<Void> remove(@PathVariable List<${pkColumn.javaType}> ids) {
+        return R.result(${className}Service.removeByIds(ids));
+    }
+#end
+}

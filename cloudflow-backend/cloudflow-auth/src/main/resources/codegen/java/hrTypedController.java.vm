@@ -1,0 +1,39 @@
+// 将本片段追加到 HR 对应的 *ResourceControllers.java。
+// 所在 Controller 需注入 HrTypedCrudService crudService，并导入 ${entityPackage}.${ClassName}。
+
+    @GetMapping("/${table.businessName}")
+    @SaCheckPermission("hr:${table.businessName}:list")
+    public R<java.util.List<java.util.Map<String, Object>>> list${ClassName}(
+            @RequestParam java.util.Map<String, Object> query) {
+        return R.ok(crudService.list(${ClassName}.class, query));
+    }
+
+    @GetMapping("/${table.businessName}/{id}")
+    @SaCheckPermission("hr:${table.businessName}:list")
+    public R<java.util.Map<String, Object>> get${ClassName}(@PathVariable Long id) {
+        return R.ok(crudService.get(${ClassName}.class, id));
+    }
+
+    @SysLog("新增${table.javaStringFunctionName}")
+    @RepeatSubmit
+    @PostMapping("/${table.businessName}")
+    @SaCheckPermission("hr:${table.businessName}:add")
+    public R<Long> create${ClassName}(@RequestBody ${ClassName} payload) {
+        return R.ok(crudService.create(${ClassName}.class, payload));
+    }
+
+    @SysLog("修改${table.javaStringFunctionName}")
+    @PutMapping("/${table.businessName}/{id}")
+    @SaCheckPermission("hr:${table.businessName}:edit")
+    public R<Void> update${ClassName}(@PathVariable Long id, @RequestBody ${ClassName} payload) {
+        crudService.update(${ClassName}.class, id, payload);
+        return R.ok();
+    }
+
+    @SysLog("删除${table.javaStringFunctionName}")
+    @DeleteMapping("/${table.businessName}/{id}")
+    @SaCheckPermission("hr:${table.businessName}:remove")
+    public R<Void> delete${ClassName}(@PathVariable Long id) {
+        crudService.delete(${ClassName}.class, id);
+        return R.ok();
+    }

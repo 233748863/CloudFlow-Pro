@@ -1,0 +1,21 @@
+package ${table.packageName}.service;
+
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import ${entityPackage}.${ClassName};
+import java.util.List;
+import java.util.Map;
+
+/**
+ * ${table.javaDocFunctionName} Service。
+ */
+public interface I${ClassName}Service extends IService<${ClassName}> {
+#if($treeTemplate)
+    List<${ClassName}> queryTree(${ClassName} query);
+#else
+    IPage<${ClassName}> queryPage(${ClassName} query, int pageNum, int pageSize);
+#end
+#if($subTemplate)
+    List<Map<String, Object>> selectSubRows(${pkColumn.javaType} parentId);
+#end
+}

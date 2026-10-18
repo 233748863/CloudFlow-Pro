@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.report.SysReportDatasetMapper">
+    <select id="registered" resultType="com.cloudflow.auth.domain.report.SysReportDataset">
+        SELECT * FROM sys_report_dataset WHERE tenant_id = #{tenantId} ORDER BY dataset_id
+    </select>
+    <select id="byCode" resultType="com.cloudflow.auth.domain.report.SysReportDataset">
+        SELECT * FROM sys_report_dataset WHERE tenant_id = #{tenantId} AND dataset_code = #{code}
+    </select>
+    <select id="byId" resultType="com.cloudflow.auth.domain.report.SysReportDataset">
+        SELECT * FROM sys_report_dataset WHERE tenant_id = #{tenantId} AND dataset_id = #{id}
+    </select>
+    <insert id="registerMissing">
+        INSERT INTO sys_report_dataset (tenant_id, dataset_code, dataset_name, module, mapper_method, field_meta,
+            default_filters, tenant_isolated_flag, data_scope_flag, permission_code, status, remark, deleted, version, create_by, update_by)
+        VALUES (#{record.tenantId}, #{record.datasetCode}, #{record.datasetName}, #{record.module}, #{record.mapperMethod},
+            #{record.fieldMeta}, #{record.defaultFilters}, 1, 1, #{record.permissionCode}, 'ACTIVE', #{record.remark}, 0, 0, 'report-registry', 'report-registry')
+        ON DUPLICATE KEY UPDATE dataset_id = dataset_id
+    </insert>
+</mapper>

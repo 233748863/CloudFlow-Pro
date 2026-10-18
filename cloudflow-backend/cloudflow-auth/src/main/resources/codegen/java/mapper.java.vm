@@ -1,0 +1,21 @@
+package ${table.packageName}.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import ${entityPackage}.${ClassName};
+import org.apache.ibatis.annotations.Mapper;
+#if($subTemplate)
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+import java.util.Map;
+#end
+
+/**
+ * ${table.javaDocFunctionName} Mapper。
+ */
+@Mapper
+public interface ${ClassName}Mapper extends BaseMapper<${ClassName}> {
+#if($subTemplate)
+    List<Map<String, Object>> selectSubRows(@Param("parentId") ${pkColumn.javaType} parentId);
+#end
+}

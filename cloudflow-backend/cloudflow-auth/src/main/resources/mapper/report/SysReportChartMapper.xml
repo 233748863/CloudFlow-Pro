@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.report.SysReportChartMapper">
+    <sql id="visibleScope">
+        tenant_id = #{tenantId} AND deleted = 0
+        AND (owner_id = #{viewerId} OR share_scope = 'TENANT'
+            OR (share_scope = 'DEPT' AND owner_dept_id = #{departmentId}))
+    </sql>
+    <select id="visible" resultType="com.cloudflow.auth.domain.report.SysReportChart">
+        SELECT * FROM sys_report_chart WHERE <include refid="visibleScope"/> ORDER BY update_time DESC, chart_id DESC
+    </select>
+    <select id="visibleById" resultType="com.cloudflow.auth.domain.report.SysReportChart">
+        SELECT * FROM sys_report_chart WHERE <include refid="visibleScope"/> AND chart_id = #{id}
+    </select>
+    <select id="lockById" resultType="com.cloudflow.auth.domain.report.SysReportChart">
+        SELECT * FROM sys_report_chart WHERE tenant_id = #{tenantId} AND chart_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <update id="writeDefinition">
+        UPDATE sys_report_chart SET dataset_id = #{record.datasetId}, chart_name = #{record.chartName}, chart_type = #{record.chartType},
+            dimensions = #{record.dimensions}, measures = #{record.measures}, filters = #{record.filters},
+            sort_config = #{record.sortConfig}, limit_rows = #{record.limitRows}, style_config = #{record.styleConfig},
+            version = version + 1, update_by = #{record.updateBy}, update_time = CURRENT_TIMESTAMP
+        WHERE tenant_id = #{record.tenantId} AND chart_id = #{record.chartId} AND owner_id = #{record.ownerId}
+            AND deleted = 0 AND version = #{expectedVersion}
+    </update>
+    <update id="writeSharing">
+        UPDATE sys_report_chart SET share_scope = #{scope}, version = version + 1, update_by = #{actor}, update_time = CURRENT_TIMESTAMP
+        WHERE tenant_id = #{tenantId} AND chart_id = #{id} AND owner_id = #{ownerId} AND version = #{version} AND deleted = 0
+    </update>
+    <update id="removeDefinition">
+        UPDATE sys_report_chart SET deleted = 1, version = version + 1, update_by = #{actor}, update_time = CURRENT_TIMESTAMP
+        WHERE tenant_id = #{tenantId} AND chart_id = #{id} AND owner_id = #{ownerId} AND version = #{version} AND deleted = 0
+    </update>
+    <select id="referenceCount" resultType="long">
+        SELECT COUNT(*) FROM sys_report_dashboard_item item
+        INNER JOIN sys_report_dashboard dashboard ON dashboard.dashboard_id = item.dashboard_id AND dashboard.tenant_id = item.tenant_id
+        WHERE item.tenant_id = #{tenantId} AND item.chart_id = #{id} AND dashboard.deleted = 0
+    </select>
+</mapper>

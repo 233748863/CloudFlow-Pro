@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="${table.packageName}.mapper.${ClassName}Mapper">
+    <resultMap id="BaseResultMap" type="${entityPackage}.${ClassName}">
+#foreach($column in $columns)
+#if($column.pkFlag == 1)
+        <id column="${column.columnName}" property="${column.javaField}" />
+#else
+        <result column="${column.columnName}" property="${column.javaField}" />
+#end
+#end
+    </resultMap>
+
+    <!-- 仅放置确有业务需要的自定义查询；标准 CRUD 使用 BaseMapper。 -->
+#if($subTemplate)
+    <select id="selectSubRows" resultType="java.util.LinkedHashMap">
+        SELECT *
+        FROM ${table.subTableName}
+        WHERE ${table.subTableFk} = #{parentId}
+    </select>
+#end
+</mapper>

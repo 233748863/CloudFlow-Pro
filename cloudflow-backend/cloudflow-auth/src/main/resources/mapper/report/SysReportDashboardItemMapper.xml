@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.report.SysReportDashboardItemMapper">
+    <select id="forDashboard" resultType="com.cloudflow.auth.domain.report.SysReportDashboardItem">
+        SELECT * FROM sys_report_dashboard_item WHERE tenant_id = #{tenantId} AND dashboard_id = #{dashboardId}
+        ORDER BY grid_y, grid_x, item_id
+    </select>
+    <delete id="clearLayout">
+        DELETE FROM sys_report_dashboard_item WHERE tenant_id = #{tenantId} AND dashboard_id = #{dashboardId}
+    </delete>
+</mapper>

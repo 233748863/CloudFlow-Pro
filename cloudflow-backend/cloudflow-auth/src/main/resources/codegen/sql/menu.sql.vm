@@ -1,0 +1,51 @@
+-- ${table.escapedFunctionName} 菜单与权限初始化片段
+-- 菜单 ID 由 sys_menu 自增主键安全分配；执行前仍需按当前批次规则检查保留段位。
+-- 权限码：${table.moduleName}:${table.businessName}:list/add/edit/remove
+INSERT INTO sys_menu
+  (menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+   menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+SELECT '${table.escapedFunctionName}', ${table.parentMenuId}, 1, '${table.businessName}', NULL, NULL, 0, 0,
+       'C', '0', '0', '${table.moduleName}:${table.businessName}:list', '#',
+       'admin', NOW(), '', NULL, '${table.escapedFunctionName}'
+FROM DUAL
+WHERE NOT EXISTS (
+  SELECT 1 FROM sys_menu
+   WHERE parent_id = ${table.parentMenuId}
+     AND path = '${table.businessName}'
+     AND menu_type = 'C'
+);
+
+SET @cf_codegen_menu_id = (
+  SELECT MIN(menu_id) FROM sys_menu
+   WHERE parent_id = ${table.parentMenuId}
+     AND path = '${table.businessName}'
+     AND menu_type = 'C'
+);
+
+INSERT INTO sys_menu
+  (menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+   menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+SELECT button_name, @cf_codegen_menu_id, order_num, '', NULL, NULL, 0, 0,
+       'F', '1', '0', perms, '#', 'admin', NOW(), '', NULL, button_name
+FROM (
+  SELECT '查询${table.escapedFunctionName}' AS button_name, 1 AS order_num,
+         '${table.moduleName}:${table.businessName}:list' AS perms
+  UNION ALL SELECT '查看${table.escapedFunctionName}', 2, '${table.moduleName}:${table.businessName}:list'
+  UNION ALL SELECT '新增${table.escapedFunctionName}', 3, '${table.moduleName}:${table.businessName}:add'
+  UNION ALL SELECT '修改${table.escapedFunctionName}', 4, '${table.moduleName}:${table.businessName}:edit'
+  UNION ALL SELECT '删除${table.escapedFunctionName}', 5, '${table.moduleName}:${table.businessName}:remove'
+) buttons
+WHERE NOT EXISTS (
+  SELECT 1 FROM sys_menu existing
+   WHERE existing.parent_id = @cf_codegen_menu_id
+     AND existing.menu_name = buttons.button_name
+     AND existing.menu_type = 'F'
+);
+
+-- 为各租户的管理员角色授予菜单及五个按钮。
+INSERT IGNORE INTO sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id
+FROM sys_role role
+JOIN sys_menu menu
+  ON menu.menu_id = @cf_codegen_menu_id OR menu.parent_id = @cf_codegen_menu_id
+WHERE role.role_key = 'admin' AND role.deleted = 0;

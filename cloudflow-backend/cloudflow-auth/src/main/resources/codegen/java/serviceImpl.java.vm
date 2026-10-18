@@ -1,0 +1,117 @@
+package ${table.packageName}.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import ${entityPackage}.${ClassName};
+import ${table.packageName}.mapper.${ClassName}Mapper;
+import ${table.packageName}.service.I${ClassName}Service;
+import com.cloudflow.common.core.context.UserContext;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * ${table.javaDocFunctionName} Service 实现。
+ * 标准查询使用 MyBatis-Plus 条件构造器，不拼接 SQL 字符串。
+ */
+@Service
+public class ${ClassName}ServiceImpl extends ServiceImpl<${ClassName}Mapper, ${ClassName}>
+        implements I${ClassName}Service {
+
+    @Override
+#if($treeTemplate)
+    public List<${ClassName}> queryTree(${ClassName} query) {
+#else
+    public IPage<${ClassName}> queryPage(${ClassName} query, int pageNum, int pageSize) {
+#end
+        LambdaQueryWrapper<${ClassName}> wrapper = new LambdaQueryWrapper<>();
+#if($table.tenantFieldFlag == 1)
+        Long tenantId = UserContext.getTenantId() == null ? 100000L : UserContext.getTenantId();
+        wrapper.eq(${ClassName}::getTenantId, tenantId);
+#end
+#foreach($column in $queryColumns)
+#if($column.queryType == 'BETWEEN')
+        wrapper.between(query != null && query.getBegin${column.capJavaField}() != null
+                        && query.getEnd${column.capJavaField}() != null,
+                ${ClassName}::get${column.capJavaField},
+                query == null ? null : query.getBegin${column.capJavaField}(),
+                query == null ? null : query.getEnd${column.capJavaField}());
+#elseif($column.queryType == 'IN')
+        wrapper.in(query != null && query.get${column.capJavaField}List() != null
+                        && !query.get${column.capJavaField}List().isEmpty(),
+                ${ClassName}::get${column.capJavaField},
+                query == null ? java.util.List.of() : query.get${column.capJavaField}List());
+#elseif($column.javaType == 'String')
+#if($column.queryType == 'LIKE')
+        wrapper.like(query != null && StringUtils.hasText(query.get${column.capJavaField}()),
+                ${ClassName}::get${column.capJavaField}, query == null ? null : query.get${column.capJavaField}());
+#elseif($column.queryType == 'NE')
+        wrapper.ne(query != null && StringUtils.hasText(query.get${column.capJavaField}()),
+                ${ClassName}::get${column.capJavaField}, query == null ? null : query.get${column.capJavaField}());
+#else
+        wrapper.eq(query != null && StringUtils.hasText(query.get${column.capJavaField}()),
+                ${ClassName}::get${column.capJavaField}, query == null ? null : query.get${column.capJavaField}());
+#end
+#else
+#if($column.queryType == 'NE')
+        wrapper.ne(query != null && query.get${column.capJavaField}() != null,
+                ${ClassName}::get${column.capJavaField}, query == null ? null : query.get${column.capJavaField}());
+#elseif($column.queryType == 'GT')
+        wrapper.gt(query != null && query.get${column.capJavaField}() != null,
+                ${ClassName}::get${column.capJavaField}, query == null ? null : query.get${column.capJavaField}());
+#elseif($column.queryType == 'GE')
+        wrapper.ge(query != null && query.get${column.capJavaField}() != null,
+                ${ClassName}::get${column.capJavaField}, query == null ? null : query.get${column.capJavaField}());
+#elseif($column.queryType == 'LT')
+        wrapper.lt(query != null && query.get${column.capJavaField}() != null,
+                ${ClassName}::get${column.capJavaField}, query == null ? null : query.get${column.capJavaField}());
+#elseif($column.queryType == 'LE')
+        wrapper.le(query != null && query.get${column.capJavaField}() != null,
+                ${ClassName}::get${column.capJavaField}, query == null ? null : query.get${column.capJavaField}());
+#else
+        wrapper.eq(query != null && query.get${column.capJavaField}() != null,
+                ${ClassName}::get${column.capJavaField}, query == null ? null : query.get${column.capJavaField}());
+#end
+#end
+#end
+#if($treeParentColumn)
+        wrapper.orderByAsc(${ClassName}::get${treeParentColumn.capJavaField});
+#end
+#if($treeNameColumn)
+        wrapper.orderByAsc(${ClassName}::get${treeNameColumn.capJavaField});
+#end
+        wrapper.orderByDesc(${ClassName}::get${pkColumn.capJavaField});
+#if($treeTemplate)
+        List<${ClassName}> nodes = list(wrapper);
+        Map<${pkColumn.javaType}, ${ClassName}> byId = new LinkedHashMap<>();
+        for (${ClassName} node : nodes) {
+            byId.put(node.get${pkColumn.capJavaField}(), node);
+        }
+        List<${ClassName}> roots = new ArrayList<>();
+        for (${ClassName} node : nodes) {
+            ${ClassName} parent = byId.get(node.get${treeParentColumn.capJavaField}());
+            if (parent == null || parent == node) {
+                roots.add(node);
+            } else {
+                parent.getChildren().add(node);
+            }
+        }
+        return roots;
+#else
+        return page(new Page<>(Math.max(1, pageNum), Math.max(1, Math.min(200, pageSize))), wrapper);
+#end
+    }
+
+#if($subTemplate)
+    @Override
+    public List<Map<String, Object>> selectSubRows(${pkColumn.javaType} parentId) {
+        return baseMapper.selectSubRows(parentId);
+    }
+#end
+}
