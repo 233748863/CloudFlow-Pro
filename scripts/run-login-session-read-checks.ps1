@@ -1,0 +1,44 @@
+param([Parameter(Mandatory=$true)][ValidatePattern('^r[1-9][0-9]*$')][string]$Round,
+    [Parameter(Mandatory=$true)][ValidatePattern('^r[1-9][0-9]*$')][string]$BackendRound)
+$ErrorActionPreference='Stop'
+. 'D:\CloudFlowPro\.cloudflow-runtime\use-data-drive.ps1'
+$Root='D:\CloudFlowPro'
+$Run=Join-Path $Root '.cloudflow-runtime/batch-g-integration/9799534e1a3a47b5958330f14ae16dc7'
+$Evidence=Join-Path $Root '.cloudflow-runtime/full-prd-20260915/approved-runtime'
+$Output=Join-Path $Evidence "login-session-read-checks-20261006-$Round"
+if(Test-Path -LiteralPath $Output){throw 'Retain prior identity checks'}
+[IO.Directory]::CreateDirectory($Output)|Out-Null
+$Inputs=@(Get-Content -LiteralPath (Join-Path $Evidence "h3-portal-finance-20261002-backend-$BackendRound-inputs.json") -Raw|ConvertFrom-Json)
+foreach($Name in @('scripts/run-login-session-read-checks.ps1','scripts/verify-hr-settlement-foundation.ps1','scripts/hr-checks/LoginSessionReadChecks.java')){
+    $Inputs+=[pscustomobject]@{Path=$Name;Hash=(Get-FileHash -LiteralPath (Join-Path $Root $Name)).Hash}
+}
+$BinaryPaths=@()
+foreach($Module in @('cloudflow-service-hr','cloudflow-service-oa')){
+    $ModuleRoot=Join-Path $Root "cloudflow-backend/$Module"
+    $ClasspathFile=Join-Path $ModuleRoot 'target/report-classpath.txt'
+    $BinaryPaths+=$ClasspathFile
+    $Entries=@((Join-Path $ModuleRoot 'target/classes'))+(Get-Content -LiteralPath $ClasspathFile -Raw).Trim().Split([IO.Path]::PathSeparator)
+    foreach($Entry in $Entries){
+        if([IO.Path]::GetPathRoot([IO.Path]::GetFullPath($Entry)) -ne 'D:\'){throw 'Dependency outside data drive'}
+        if(Test-Path -LiteralPath $Entry -PathType Container){$BinaryPaths+=@(Get-ChildItem -LiteralPath $Entry -Recurse -File|ForEach-Object FullName)}else{$BinaryPaths+=$Entry}
+    }
+}
+$Binaries=@($BinaryPaths|Sort-Object -Unique|ForEach-Object{[pscustomobject]@{Path=$_;Hash=(Get-FileHash -LiteralPath $_).Hash}})
+function Assert-Inputs {
+    foreach($Item in $Inputs){if((Get-FileHash -LiteralPath (Join-Path $Root $Item.Path)).Hash -ne $Item.Hash){throw 'Identity source changed'}}
+    foreach($Item in $Binaries){if((Get-FileHash -LiteralPath $Item.Path).Hash -ne $Item.Hash){throw 'Identity compiled dependency changed'}}
+}
+Assert-Inputs
+$Inputs|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $Output 'inputs.json') -Encoding utf8NoBOM
+$Binaries|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $Output 'binary-inputs.json') -Encoding utf8NoBOM
+& scripts/verify-hr-settlement-foundation.ps1 -StatePath (Join-Path $Run 'state.json') -LoginSessionRead *> (Join-Path $Output 'live.log')
+$RunExit=$LASTEXITCODE
+Assert-Inputs
+$Log=Get-Content -LiteralPath (Join-Path $Output 'live.log') -Raw
+$Match=[regex]::Match($Log,'LOGIN_SESSION_READ: checks=(\d+); actual_mysql=true; actual_service=true; production_tenant_interceptor=true; session_parses=0; normal_queries_filtered=true; committed_revision=true')
+if($RunExit -ne 0 -or -not $Match.Success){throw 'Identity read verification failed; original evidence retained'}
+if(-not $Log.Contains('owned_schema_remaining=0; runtime_tables=374; shared_redis_flush=false; production_modified=false')){throw 'Scratch cleanup evidence missing'}
+$Result=[pscustomobject]@{Passed=$true;Checks=[int]$Match.Groups[1].Value;BackendRound=$BackendRound;SourceInputs=$Inputs.Count;BinaryInputs=$Binaries.Count;InputChanges=0;ActualDatabase=$true;ActualService=$true;SessionParses=0;NormalQueriesFiltered=$true;CommittedRevision=$true;ScratchCleaned=$true}
+$Result|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $Output 'result.json') -Encoding utf8NoBOM
+Get-Content -LiteralPath (Join-Path $Output 'live.log')|Where-Object {$_ -match '^LOGIN_SESSION_READ:|^H2_SETTLEMENT_FOUNDATION_DATABASE_CLEANUP:'}
+"LOGIN_SESSION_READ_INPUTS: files=$($Inputs.Count); binaries=$($Binaries.Count); changed=0; exit=0"

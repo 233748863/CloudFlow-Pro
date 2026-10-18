@@ -1,0 +1,144 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import path from 'node:path';
+import fs from 'node:fs/promises';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const frontend = path.join(root, 'cloudflow-frontend');
+const requireFrontend = createRequire(path.join(frontend, 'package.json'));
+const requireBrowser = createRequire(path.join(process.env.CLOUDFLOW_PLAYWRIGHT_HOME || path.join(root, '.cloudflow-runtime', 'playwright'), 'package.json'));
+const { createServer } = await import(pathToFileURL(requireFrontend.resolve('vite')).href);
+const { chromium } = requireBrowser('playwright-core');
+const server = await createServer({ root: frontend, configFile: path.join(frontend, 'vite.config.ts'), logLevel: 'error', server: { host: '127.0.0.1', port: 4197, strictPort: true, fs: { allow: [root] } } });
+let browser;
+const checks = [];
+const errors = [];
+const check = (name, condition) => { assert.ok(condition, name); checks.push(name); };
+const waitValue = async (page, selector, value) => page.waitForFunction(({ selector, value }) => document.querySelector(selector)?.textContent === value, { selector, value });
+const rectangle = (locator) => locator.evaluate((element) => { const box = element.getBoundingClientRect(); return { width: box.width, height: box.height }; });
+
+try {
+  await server.listen();
+  const origin = 'http://127.0.0.1:4197';
+  browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: 'block' });
+  await context.routeWebSocket('**/*', (socket) => socket.close());
+  await context.route('**/*', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.origin !== origin || !['GET', 'HEAD'].includes(request.method()) || url.pathname.startsWith('/api/')) return route.abort();
+    if (url.pathname === '/foundation-check') {
+      const entry = `/@fs/${path.join(root, 'scripts/platform-checks/MobileFoundationCheck.tsx').replaceAll('\\', '/')}`;
+      return route.fulfill({ contentType: 'text/html', body: `<html lang="zh-CN"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><script type="module">import RefreshRuntime from '/@react-refresh';RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true;</script></head><body style="color:var(--cf-text)"><div id="root"></div><script type="module" src="${entry}"></script></body></html>` });
+    }
+    return route.continue();
+  });
+  const page = await context.newPage();
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(`${origin}/foundation-check`);
+  await waitValue(page, '#breakpoint', 'desktop');
+  check('桌面保留原生表格', await page.locator('table').evaluate((element) => getComputedStyle(element).display === 'table'));
+  await page.getByRole('button', { name: '检查引用', exact: true }).click();
+  await waitValue(page, '#ref-tag', 'TABLE');
+  check('转发引用保持为TABLE', true);
+  await page.waitForSelector('table [data-cf-pin]');
+  check('桌面冻结列生效', await page.locator('table [data-cf-pin]').count() > 0);
+  for (const [width, breakpoint] of [[1024, 'desktop'], [1023, 'tablet'], [640, 'tablet'], [639, 'mobile'], [375, 'mobile'], [320, 'mobile']]) {
+    await page.setViewportSize({ width, height: 900 });
+    await waitValue(page, '#breakpoint', breakpoint);
+    check(`断点${width}px=${breakpoint}`, true);
+  }
+  check('320px页面无水平溢出', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  check('手机逐行转换卡片', await page.locator('tbody tr.cf-mobile-list-card').count() === 3);
+  check('保留表头字段标签', await page.locator('tbody tr').first().locator('td').nth(1).getAttribute('data-cf-mobile-label') === '姓名');
+  check('跨列提示不伪造字段标签', await page.getByText('跨列提示', { exact: true }).getAttribute('data-cf-mobile-label') === '');
+  await page.getByRole('button', { name: '全选', exact: true }).click();
+  await page.getByRole('button', { name: '处理张三', exact: true }).click();
+  await waitValue(page, '#row-count', '2');
+  check('手机保留表头和行操作', true);
+  check('手机复选框触控目标44px', (await rectangle(page.getByRole('checkbox', { name: '选择张三' }))).width >= 44 && (await rectangle(page.getByRole('checkbox', { name: '选择张三' }))).height >= 44);
+  check('手机翻页触控高度44px', (await rectangle(page.getByRole('button', { name: '下一页', exact: true }))).height >= 44);
+  await page.getByRole('button', { name: '下一页', exact: true }).click();
+  check('手机分页显示当前位置', await page.getByText('2 / 3 页', { exact: true }).isVisible());
+  await page.getByRole('combobox', { name: '选择人员', exact: true }).click();
+  let panel = page.getByRole('dialog', { name: '选择人员', exact: true });
+  check('选择器手机全屏', (await rectangle(panel.locator('.cf-dialog-panel'))).width === 320 && (await rectangle(panel.locator('.cf-dialog-panel'))).height === 900);
+  await panel.getByRole('searchbox').fill('李');
+  await panel.getByRole('option', { name: /李四/ }).click();
+  await panel.getByRole('button', { name: '完成选择' }).click();
+  await waitValue(page, '#selected', 'second');
+  check('选择器过滤与多选状态生效', true);
+  await page.getByRole('button', { name: '打开基础弹窗', exact: true }).click();
+  const baseDialog = page.getByRole('dialog', { name: '基础弹窗', exact: true });
+  await baseDialog.getByRole('combobox', { name: '弹窗内人员' }).click();
+  await page.getByRole('dialog', { name: '弹窗内人员', exact: true }).waitFor();
+  await page.keyboard.press('Escape');
+  check('Escape仅关闭最上层弹窗', await baseDialog.isVisible() && await page.getByRole('dialog', { name: '弹窗内人员', exact: true }).count() === 0);
+  check('嵌套弹窗保留滚动锁', await page.evaluate(() => document.body.getAttribute('data-cf-scroll-lock-count') === '1' && getComputedStyle(document.body).overflowY === 'hidden'));
+  await page.keyboard.press('Escape');
+  await baseDialog.waitFor({ state: 'detached' });
+  check('弹窗关闭后恢复滚动', await page.evaluate(() => !document.body.hasAttribute('data-cf-scroll-lock-count') && getComputedStyle(document.body).overflowY !== 'hidden'));
+  check('弹窗关闭后恢复焦点', await page.getByRole('button', { name: '打开基础弹窗', exact: true }).evaluate((element) => element === document.activeElement));
+  await page.getByRole('button', { name: '打开基础对话框', exact: true }).click();
+  panel = page.getByRole('dialog').filter({ has: page.getByText('基础对话框', { exact: true }) });
+  check('基础对话框手机全屏', (await rectangle(panel.locator('.cf-dialog-panel'))).width === 320);
+  await panel.getByRole('button', { name: '关闭', exact: true }).click();
+  await page.getByRole('button', { name: '选择日期区间', exact: true }).click();
+  panel = page.getByRole('dialog', { name: '日期区间', exact: true });
+  check('日期第一步仅显示开始日期', await panel.locator('input[type="date"]').count() === 1 && await panel.getByLabel('开始日期', { exact: true }).isVisible());
+  await panel.getByLabel('开始日期', { exact: true }).fill('2026-09-01');
+  await panel.getByRole('button', { name: '下一步' }).click();
+  await panel.getByLabel('结束日期', { exact: true }).fill('2026-08-31');
+  check('日期拒绝反向区间', await panel.getByRole('button', { name: '应用', exact: true }).isDisabled());
+  await panel.getByLabel('结束日期', { exact: true }).fill('2026-09-11');
+  await panel.getByRole('button', { name: '应用', exact: true }).click();
+  await waitValue(page, '#range', '2026-09-01/2026-09-11');
+  check('分步日期选择保存成功', true);
+  check('标签支持水平滚动', await page.getByRole('tablist').evaluate((element) => element.scrollWidth > element.clientWidth && getComputedStyle(element).overflowX === 'auto'));
+  await page.getByRole('tab').first().focus();
+  await page.keyboard.press('ArrowRight');
+  check('标签支持键盘切换', await page.getByRole('tab').nth(1).getAttribute('aria-selected') === 'true');
+  await page.getByRole('button', { name: '打开筛选', exact: true }).click();
+  await page.getByRole('button', { name: '查看结果', exact: true }).click();
+  await waitValue(page, '#ref-tag', '筛选已应用');
+  check('筛选抽屉执行回调', true);
+  await page.getByRole('button', { name: '打开操作面板', exact: true }).click();
+  await page.getByRole('button', { name: '异步执行', exact: true }).click();
+  await waitValue(page, '#action-count', '1');
+  check('操作面板等待异步完成', await page.getByRole('dialog').count() === 0);
+  const navigation = page.getByRole('navigation', { name: '移动端主导航', exact: true });
+  check('底部四项导航与未读数', await navigation.getByRole('link').count() === 4 && await navigation.getByText('99+', { exact: true }).isVisible());
+  await page.getByRole('button', { name: '导航', exact: true }).click();
+  panel = page.getByRole('dialog', { name: '主导航', exact: true });
+  check('侧栏抽屉不超出屏幕', (await rectangle(panel.locator('.cf-side-nav-drawer'))).width <= 320);
+  await panel.getByRole('button', { name: '关闭导航', exact: true }).click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await waitValue(page, '#breakpoint', 'desktop');
+  check('放宽窗口恢复桌面表格', await page.locator('table').evaluate((element) => getComputedStyle(element).display === 'table'));
+  await page.getByRole('button', { name: '选择日期区间', exact: true }).click();
+  panel = page.getByRole('dialog', { name: '日期区间', exact: true });
+  check('桌面保留双日期输入', await panel.locator('input[type="date"]').count() === 2 && (await rectangle(panel)).width <= 352);
+  await page.keyboard.press('Escape');
+  check('页面无运行时异常', errors.length === 0);
+  const output = path.join(root, '.cloudflow-runtime', 'batch-g-ui');
+  await fs.mkdir(output, { recursive: true });
+  for (const [theme, width] of [['light', 375], ['dark', 375], ['light', 1440]]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.evaluate((theme) => document.documentElement.classList.toggle('dark', theme === 'dark'), theme);
+    await page.waitForFunction(() => !document.body.classList.contains('modal-open'));
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: path.join(output, `${theme}-${width}.png`), fullPage: true, animations: 'disabled' });
+  }
+  await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ checks, errors }, null, 2));
+  console.log(`批次G移动公共组件：${checks.length}项浏览器检查通过。`);
+} catch (error) {
+  const output = path.join(root, '.cloudflow-runtime', 'batch-g-ui');
+  await fs.mkdir(output, { recursive: true });
+  await browser?.contexts()[0]?.pages()[0]?.screenshot({ path: path.join(output, 'failed.png'), fullPage: true });
+  await fs.writeFile(path.join(output, 'failed.json'), JSON.stringify({ checks, errors, failure: error.message }, null, 2));
+  throw error;
+} finally {
+  await browser?.close();
+  await server.close();
+}
