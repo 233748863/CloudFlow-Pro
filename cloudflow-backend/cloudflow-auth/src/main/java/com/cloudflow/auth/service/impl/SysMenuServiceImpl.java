@@ -7,8 +7,11 @@ import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.audit.annotation.HighRiskAction;
 import com.cloudflow.common.core.constant.CacheConstants;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.permission.TenantPermissionPolicy.Entitlement;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.common.redis.lock.DistributedLock;
+import com.cloudflow.common.security.service.CurrentPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -32,6 +35,9 @@ public class SysMenuServiceImpl implements ISysMenuService {
 
     @Autowired
     private SysMenuMapper menuMapper;
+
+    @Autowired
+    private CurrentPermissionService currentPermissions;
 
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
@@ -73,21 +79,47 @@ public class SysMenuServiceImpl implements ISysMenuService {
             wrapper.eq(SysMenu::getStatus, menu.getStatus());
         }
         wrapper.orderByAsc(SysMenu::getParentId, SysMenu::getOrderNum);
-        return menuMapper.selectList(wrapper);
+        return permittedMenus(menuMapper.selectList(wrapper));
     }
 
     @Override
-    @DistributedLock(key = "'cache:user:menus:' + #userId", waitMs = 500, leaseMs = 10000)
-    @Cacheable(value = CacheConstants.USER_MENUS, key = "#userId", unless = "#result.isEmpty()")
     public List<SysMenu> selectMenuTreeByUserId(Long userId) {
         if (SecurityUtils.isAdmin(userId)) {
             LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<>();
             wrapper.in(SysMenu::getMenuType, "M", "C");
             wrapper.eq(SysMenu::getStatus, "0");
             wrapper.orderByAsc(SysMenu::getParentId, SysMenu::getOrderNum);
-            return getChildPerms(menuMapper.selectList(wrapper), 0);
+            return getChildPerms(permittedTreeMenus(menuMapper.selectList(wrapper), userId), 0);
         }
-        return getChildPerms(menuMapper.selectMenuTreeByUserId(userId), 0);
+        return getChildPerms(permittedTreeMenus(menuMapper.selectMenuTreeByUserId(userId), userId), 0);
+    }
+
+    private List<SysMenu> permittedMenus(List<SysMenu> menus) {
+        Entitlement entitlement = currentPermissions.current(UserContext.getTenantId());
+        return entitlement.restricted() ? menus.stream().filter(menu -> entitlement.menuIds().contains(menu.getMenuId())).toList() : menus;
+    }
+
+    private List<SysMenu> permittedTreeMenus(List<SysMenu> menus, Long userId) {
+        Entitlement entitlement = currentPermissions.current(UserContext.getTenantId());
+        if (!entitlement.restricted()) return menus;
+        Set<Long> allowed = new HashSet<>(entitlement.menuIds());
+        Set<String> control = com.cloudflow.common.core.permission.PermissionIntersection.retain(UserContext.getPermissions(),
+                currentPermissions.controlPermissions(userId, UserContext.getTenantId()));
+        java.util.Map<Long, SysMenu> indexed = menus.stream().collect(java.util.stream.Collectors.toMap(SysMenu::getMenuId, menu -> menu));
+        for (SysMenu menu : menus) {
+            if (menu.getPerms() == null || java.util.Arrays.stream(menu.getPerms().split(",")).map(String::trim).noneMatch(control::contains)) continue;
+            Set<Long> ancestors = new HashSet<>();
+            SysMenu node = menu;
+            boolean valid = true;
+            while (node != null) {
+                if (!ancestors.add(node.getMenuId()) || !"0".equals(node.getStatus())) { valid = false; break; }
+                if (Long.valueOf(0).equals(node.getParentId())) break;
+                node = indexed.get(node.getParentId());
+                if (node == null) valid = false;
+            }
+            if (valid) allowed.addAll(ancestors);
+        }
+        return menus.stream().filter(menu -> allowed.contains(menu.getMenuId())).toList();
     }
 
     @Override

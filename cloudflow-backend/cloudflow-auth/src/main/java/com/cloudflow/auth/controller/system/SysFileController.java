@@ -30,11 +30,7 @@ public class SysFileController {
     @RepeatSubmit
     @SaCheckPermission("system:file:upload")
     public R<SysFile> upload(@RequestParam("file") MultipartFile file) {
-        try {
-            return R.ok(sysFileService.uploadFile(file));
-        } catch (Exception e) {
-            return R.fail(e.getMessage());
-        }
+        return R.ok(sysFileService.uploadFile(file));
     }
 
     @GetMapping("/list")
@@ -57,6 +53,12 @@ public class SysFileController {
             return R.fail("当前用户未绑定租户");
         }
         return R.ok(sysTenantService.getTenantStorageSummary(tenantId));
+    }
+
+    @GetMapping("/{fileId}/content")
+    @SaCheckPermission("system:file:list")
+    public void content(@PathVariable Long fileId, HttpServletResponse response) {
+        sysFileService.accessFileById(fileId, response);
     }
 
     @PostMapping("/storage/refresh")

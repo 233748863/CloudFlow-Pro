@@ -25,6 +25,11 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class OssFileStorageService implements FileStorageService {
 
+    @Override
+    public java.io.InputStream open(String filePath) {
+        return getClient().open(filePath);
+    }
+
     private final AuthOssProperties authOssProperties;
     private final FileStorageProperties fileStorageProperties;
 
@@ -34,14 +39,21 @@ public class OssFileStorageService implements FileStorageService {
     }
 
     @Override
+    public String getBucket() {
+        return authOssProperties.getBucketName();
+    }
+
+    @Override
     public StoredFileInfo store(FileUploadUtils.ValidatedFile file) throws Exception {
         OssClient client = getClient();
         String suffix = "." + file.extension();
-        UploadResult uploadResult = client.uploadSuffix(file.file().getInputStream(), suffix, file.file().getSize(), file.contentType());
-        return StoredFileInfo.builder()
-            .filePath(uploadResult.getFilename())
-            .persistedUrl(uploadResult.getUrl())
-            .build();
+        try (java.io.InputStream input = file.file().getInputStream()) {
+            UploadResult uploadResult = client.uploadSuffix(input, suffix, file.file().getSize(), file.contentType());
+            return StoredFileInfo.builder()
+                .filePath(uploadResult.getFilename())
+                .persistedUrl(uploadResult.getFilename())
+                .build();
+        }
     }
 
     @Override
@@ -60,8 +72,8 @@ public class OssFileStorageService implements FileStorageService {
         OssClient client = getClient();
         if (client.getAccessPolicy() == AccessPolicyType.PRIVATE) {
             int expireMinutes = fileStorageProperties.getPresignedExpireMinutes() == null
-                ? 30
-                : Math.max(fileStorageProperties.getPresignedExpireMinutes(), 1);
+                ? 5
+                : Math.min(60, Math.max(fileStorageProperties.getPresignedExpireMinutes(), 1));
             return client.getPresignedUrl(filePath, Duration.ofMinutes(expireMinutes));
         }
         return client.getUrl() + "/" + filePath;
@@ -71,16 +83,26 @@ public class OssFileStorageService implements FileStorageService {
         if (!Boolean.TRUE.equals(authOssProperties.getEnabled())) {
             throw new IllegalStateException("OSS 存储未启用，请先开启 cloudflow.oss.enabled 配置");
         }
+        authOssProperties.requirePrivateAccess();
         validateRequiredConfig();
         OssFactory.register(authOssProperties.getConfigKey(), authOssProperties);
         OssFactory.setDefaultConfigKey(authOssProperties.getConfigKey());
         return OssFactory.instance(authOssProperties.getConfigKey());
     }
 
+    @Override
+    public String resolveSignedUrl(String filePath, int seconds) {
+        if (StrUtil.isBlank(filePath) || seconds < 1 || seconds > 3600) {
+            throw new IllegalArgumentException("文件路径或签名有效期无效");
+        }
+        return getClient().getPresignedUrl(filePath, Duration.ofSeconds(seconds));
+    }
+
     /**
      * 校验创建 OSS 客户端所需的关键配置。
      */
-    private void validateRequiredConfig() {
+    public void validateRequiredConfig() {
+        authOssProperties.requirePrivateAccess();
         if (StrUtil.hasBlank(
             authOssProperties.getEndpoint(),
             authOssProperties.getAccessKey(),

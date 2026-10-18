@@ -90,6 +90,7 @@ public class UserDataScopeService {
         }
         UserDataScopeSnapshot snapshot = calculateSnapshot(userId, user.getDeptId());
         snapshot.setTenantId(user.getTenantId());
+        snapshot.setUserVersion(user.getVersion());
         userDataScopeStore.save(snapshot);
         return snapshot;
     }

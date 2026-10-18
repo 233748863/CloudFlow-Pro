@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.ObservabilityMapper">
+    <select id="frontendTrace" resultType="com.cloudflow.auth.domain.vo.ObservabilityModels$FrontendEntry">
+        SELECT id, trace_id, message, stack, component_stack, context, url, level, user_name, create_time
+        FROM oa_frontend_error_log
+        WHERE tenant_id = #{tenantId} AND trace_id = #{traceId}
+        ORDER BY create_time, id
+    </select>
+    <select id="slowTop" resultType="com.cloudflow.auth.domain.vo.ObservabilityModels$SlowEndpoint">
+        SELECT service_name, request_method, request_url, COUNT(*) AS request_count,
+               SUM(slow_flag) AS slow_count, ROUND(AVG(duration_ms), 2) AS average_duration,
+               MAX(duration_ms) AS maximum_duration
+        FROM sys_log
+        WHERE tenant_id = #{tenantId} AND create_time &gt;= #{from} AND create_time &lt; #{to}
+          AND duration_ms IS NOT NULL AND request_url IS NOT NULL
+        GROUP BY service_name, request_method, request_url
+        HAVING SUM(slow_flag) &gt; 0
+        <choose>
+            <when test="sort == 'volume'">ORDER BY request_count DESC, average_duration DESC</when>
+            <otherwise>ORDER BY average_duration DESC, request_count DESC</otherwise>
+        </choose>
+        LIMIT 20
+    </select>
+    <select id="errorTrend" resultType="com.cloudflow.auth.domain.vo.ObservabilityModels$ErrorTrend">
+        SELECT DATE_FORMAT(occur_time, '%Y-%m-%d') AS date, COUNT(*) AS error_count
+        FROM sys_api_error_log
+        WHERE tenant_id = #{tenantId} AND occur_time &gt;= #{from} AND occur_time &lt; #{to}
+        GROUP BY DATE_FORMAT(occur_time, '%Y-%m-%d') ORDER BY date
+    </select>
+    <update id="processError">
+        UPDATE sys_api_error_log
+        SET process_status = #{status}, process_by = #{userName}, process_time = CURRENT_TIMESTAMP, process_remark = #{remark}
+        WHERE tenant_id = #{tenantId} AND error_id = #{errorId} AND process_status = #{expectedStatus}
+    </update>
+</mapper>

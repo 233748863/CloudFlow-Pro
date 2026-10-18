@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.SysUserMapper">
+    <update id="recordLogin">
+        UPDATE sys_user SET login_ip = #{ip}, login_date = #{time}
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND version = #{version} AND deleted = 0 AND status = '0'
+    </update>
+    <select id="selectUserOptions" resultType="com.cloudflow.auth.domain.vo.SysUserOptionVO">
+        SELECT account.user_id AS userId, COALESCE(NULLIF(account.nick_name, ''), account.user_name) AS nickName,
+               account.dept_id AS deptId, department.dept_name AS deptName
+        FROM sys_user account
+        LEFT JOIN sys_dept department ON department.dept_id = account.dept_id
+             AND department.tenant_id = account.tenant_id AND department.deleted = 0 AND department.status = '0'
+        WHERE account.tenant_id = #{tenantId} AND account.deleted = 0 AND account.status = '0'
+        ORDER BY account.user_id
+    </select>
+    <select id="selectHolidayReminderUserIds" resultType="java.lang.Long">
+        SELECT account.user_id
+        FROM sys_user account
+        WHERE account.tenant_id = #{tenantId} AND account.deleted = 0 AND account.status = '0'
+          AND account.user_id &gt; #{afterUserId}
+          AND EXISTS (
+              SELECT 1 FROM sys_user_role membership
+              JOIN sys_role role ON role.role_id = membership.role_id
+                   AND role.tenant_id = membership.tenant_id
+                   AND role.status = '0' AND role.deleted = 0 AND role.role_key IN ('admin', 'hr')
+              WHERE membership.tenant_id = account.tenant_id AND membership.user_id = account.user_id
+          )
+        ORDER BY account.user_id
+        LIMIT #{limit}
+    </select>
+</mapper>

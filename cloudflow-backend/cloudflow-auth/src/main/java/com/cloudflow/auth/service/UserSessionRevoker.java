@@ -15,6 +15,7 @@ public class UserSessionRevoker {
     private final TokenService tokenService;
     private final SysUserMapper sysUserMapper;
     private final UserDataScopeService userDataScopeService;
+    private final com.cloudflow.auth.oauth2.OAuthRevocations oauthRevocations;
 
     public int revokeByUserId(Long userId) {
         if (userId == null) {
@@ -22,6 +23,7 @@ public class UserSessionRevoker {
         }
         SysUser user = sysUserMapper.selectById(userId);
         if (user != null) {
+            oauthRevocations.forUser(user.getTenantId(), userId);
             userDataScopeService.clear(user.getTenantId(), userId);
         }
         List<String> tokens = tokenService.getTokenValueListByLoginId(userId);

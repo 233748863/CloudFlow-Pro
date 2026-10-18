@@ -8,6 +8,10 @@ import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.SysUserRole;
 import com.cloudflow.auth.domain.SysUserPost;
 import com.cloudflow.auth.domain.dto.UserInfo;
+import com.cloudflow.auth.domain.vo.SysUserOptionVO;
+import com.cloudflow.auth.domain.vo.PasswordResetAuditSnapshot;
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.auth.mapper.SysDeptMapper;
 import com.cloudflow.auth.mapper.SysRoleMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
@@ -22,7 +26,7 @@ import com.cloudflow.auth.service.PasswordPolicyService;
 import com.cloudflow.auth.service.RoleMutexService;
 import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.auth.service.UserDataScopeService;
-import com.cloudflow.auth.service.ISysTenantService;
+import com.cloudflow.common.tenant.quota.TenantQuotaService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.event.PasswordResetByAdminEvent;
@@ -34,6 +38,8 @@ import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.security.UserDeletionGuardRegistry;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
 import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.event.outbox.OutboxEvent;
+import com.cloudflow.common.event.outbox.OutboxEventMapper;
 import com.cloudflow.common.core.utils.IpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -88,7 +94,7 @@ public class SysUserServiceImpl implements ISysUserService {
     private ISysMenuService sysMenuService;
 
     @Autowired
-    private ISysTenantService tenantService;
+    private TenantQuotaService tenantQuotas;
 
     @Autowired
     private PasswordService passwordService;
@@ -113,6 +119,9 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Autowired
     private OutboxPublisher outboxPublisher;
+
+    @Autowired
+    private OutboxEventMapper outboxEventMapper;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -193,6 +202,16 @@ public class SysUserServiceImpl implements ISysUserService {
     @CacheEvict(value = CacheConstants.USER_DETAILS, key = "#tenantId + ':' + #username")
     public void evictUserInfoCache(String username, Long tenantId) {
         // Cache eviction only.
+    }
+
+    @Override
+    public PageResult<SysUserOptionVO> selectUserOptions(PageQuery page) {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null || tenantId <= 0 || UserContext.getUserId() == null) {
+            throw new ServiceException("读取同事列表需要有效登录身份", ErrorCodeConstants.UNAUTHORIZED);
+        }
+        if (page.getPageNum() == null || page.getPageNum() < 1) page.setPageNum(1);
+        return PageResult.build(sysUserMapper.selectUserOptions(page.build(), tenantId));
     }
 
     @Override
@@ -283,6 +302,7 @@ public class SysUserServiceImpl implements ISysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int insertUser(SysUser user) {
+        validateNickname(user.getNickName());
         user.setCreateTime(LocalDateTime.now());
 
         Long tenantId = UserContext.getTenantId();
@@ -290,11 +310,8 @@ public class SysUserServiceImpl implements ISysUserService {
             user.setTenantId(tenantId);
         }
 
-        // 新增用户前先检查租户配额，避免超额写入后再回滚造成脏数据
         Long targetTenantId = user.getTenantId();
-        if (targetTenantId != null && tenantService.isUserLimitReached(targetTenantId)) {
-            throw new IllegalStateException("当前租户用户数已达上限，无法新增用户");
-        }
+        tenantQuotas.requireUserCapacity(targetTenantId);
         roleMutexService.assertNoConflict(user.getRoleIds(), targetTenantId);
 
         boolean forcePasswordChange = false;
@@ -337,6 +354,7 @@ public class SysUserServiceImpl implements ISysUserService {
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
     public int updateUser(SysUser user) {
+        validateNickname(user.getNickName());
         SysUser persisted = sysUserMapper.selectById(user.getUserId());
         Long tenantId = UserContext.getTenantId();
         if (tenantId != null) {
@@ -373,6 +391,12 @@ public class SysUserServiceImpl implements ISysUserService {
         revokeSessionIfNeeded(persisted, user);
 
         return rows;
+    }
+
+    private void validateNickname(String nickname) {
+        if (nickname != null && nickname.length() > 100) {
+            throw new ServiceException("用户昵称不能超过100字符", ErrorCodeConstants.BAD_REQUEST);
+        }
     }
 
     private void insertUserRole(SysUser user) {
@@ -458,6 +482,30 @@ public class SysUserServiceImpl implements ISysUserService {
         return selectUserById(userId);
     }
 
+    /** 不读取密码；每次真实重置发布的唯一事件使重复重置也有审计依据。 */
+    public PasswordResetAuditSnapshot selectCredentialAuditSnapshot(Long userId) {
+        Long tenantId = UserContext.getTenantId();
+        LambdaQueryWrapper<SysUser> userQuery = new LambdaQueryWrapper<SysUser>()
+                .select(SysUser::getUserId, SysUser::getTenantId, SysUser::getPwdResetRequired)
+                .eq(SysUser::getUserId, userId)
+                .eq(tenantId != null, SysUser::getTenantId, tenantId);
+        SysUser user = sysUserMapper.selectOne(userQuery);
+        if (user == null) {
+            return null;
+        }
+        LambdaQueryWrapper<OutboxEvent> eventQuery = new LambdaQueryWrapper<OutboxEvent>()
+                .select(OutboxEvent::getEventId)
+                .eq(OutboxEvent::getTenantId, user.getTenantId())
+                .eq(OutboxEvent::getAggregateType, "cloudflow-auth")
+                .eq(OutboxEvent::getAggregateId, userId)
+                .eq(OutboxEvent::getEventType, "PASSWORD_RESET_BY_ADMIN")
+                .orderByDesc(OutboxEvent::getId);
+        List<OutboxEvent> events = outboxEventMapper.selectPage(new Page<>(1, 1, false), eventQuery).getRecords();
+        String resetEventId = events.isEmpty() ? null : events.get(0).getEventId();
+        return new PasswordResetAuditSnapshot(user.getUserId(), user.getTenantId(),
+                ForcePasswordChangeService.REQUIRED.equals(user.getPwdResetRequired()), resetEventId);
+    }
+
     private void assertDeletionAllowed(Long userId) {
         List<String> blockingRefs = userDeletionGuardRegistry.findBlockingReferences(userId);
         if (!blockingRefs.isEmpty()) {
@@ -507,7 +555,8 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Override
     @HighRiskAction
-    @Audit(name = "重置用户密码", highRisk = true)
+    @Audit(name = "重置用户密码", highRisk = true, diff = true,
+            spel = "#target.selectCredentialAuditSnapshot(#p0)")
     @Transactional(rollbackFor = Exception.class)
     public int resetPwd(Long userId, String password) {
         Long tenantId = UserContext.getTenantId();

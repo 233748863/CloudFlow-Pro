@@ -15,6 +15,10 @@ import com.cloudflow.auth.service.UserSessionRevoker;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.audit.annotation.HighRiskAction;
 import com.cloudflow.common.core.constant.CacheConstants;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.exception.ServiceException;
+import com.cloudflow.common.core.permission.TenantPermissionPolicy.Entitlement;
+import com.cloudflow.common.security.service.CurrentPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -53,6 +57,9 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Autowired
     private RoleMutexService roleMutexService;
+
+    @Autowired
+    private CurrentPermissionService currentPermissions;
 
     @Override
     public List<SysRole> selectRoleList(SysRole role) {
@@ -100,6 +107,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     @Transactional
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
     public int insertRole(SysRole role) {
+        role.setTenantId(requireCurrentTenant());
         int rows = roleMapper.insert(role);
         insertRoleMenu(role);
         // 注意：@CacheEvict 会自动清除缓存，不需要手动调用 clearMenuCache()
@@ -112,6 +120,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     @Transactional
     @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
     public int updateRole(SysRole role) {
+        role.setTenantId(requireStoredRole(role.getRoleId()).getTenantId());
         int rows = roleMapper.updateById(role);
         // 清除旧的角色-菜单关联
         LambdaQueryWrapper<SysRoleMenu> wrapper = new LambdaQueryWrapper<>();
@@ -126,16 +135,35 @@ public class SysRoleServiceImpl implements ISysRoleService {
     }
 
     public void insertRoleMenu(SysRole role) {
+        SysRole stored = requireStoredRole(role.getRoleId());
         Long[] menuIds = role.getMenuIds();
         if (menuIds != null && menuIds.length > 0) {
+            Entitlement entitlement = currentPermissions.current(stored.getTenantId());
+            for (Long menuId : menuIds) {
+                if (menuId == null || menuId <= 0 || entitlement.restricted() && !entitlement.menuIds().contains(menuId)) {
+                    throw new ServiceException("角色授权包含租户套餐未开放的功能", 403);
+                }
+            }
             for (Long menuId : menuIds) {
                 SysRoleMenu rm = new SysRoleMenu();
                 rm.setRoleId(role.getRoleId());
                 rm.setMenuId(menuId);
-                rm.setTenantId(role.getTenantId());
+                rm.setTenantId(stored.getTenantId());
                 roleMenuMapper.insert(rm);
             }
         }
+    }
+
+    private Long requireCurrentTenant() {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null || tenantId <= 0) throw new ServiceException("当前租户信息无效", 403);
+        return tenantId;
+    }
+
+    private SysRole requireStoredRole(Long roleId) {
+        SysRole stored = roleId == null ? null : roleMapper.selectById(roleId);
+        if (stored == null || !requireCurrentTenant().equals(stored.getTenantId())) throw new ServiceException("当前租户无此角色", 403);
+        return stored;
     }
 
     private void fillRoleMenuIds(List<SysRole> roles) {

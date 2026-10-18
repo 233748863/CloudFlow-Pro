@@ -1,14 +1,18 @@
 package com.cloudflow.auth.service;
 
 import com.cloudflow.auth.domain.SysUser;
-import com.cloudflow.common.core.event.SystemNoticeDispatchEvent;
-import com.cloudflow.common.event.core.BusinessEventEnvelope;
-import com.cloudflow.common.event.outbox.OutboxPublisher;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.cloudflow.common.message.api.MessageReceiver;
+import com.cloudflow.common.message.api.MessageSendRequest;
+import com.cloudflow.common.message.api.MessageSender;
+import com.cloudflow.common.message.constant.MessageCategory;
+import com.cloudflow.common.message.constant.MessageChannelType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -17,8 +21,7 @@ public class LoginRiskNoticeService {
 
     private static final String SYSTEM_SENDER = "auth-system";
 
-    private final OutboxPublisher outboxPublisher;
-    private final ObjectMapper objectMapper;
+    private final MessageSender messageSender;
 
     public void notifyIfLocationChanged(SysUser user, UserLoginHistoryService.LoginRiskContext context) {
         if (user == null || user.getUserId() == null) {
@@ -40,27 +43,22 @@ public class LoginRiskNoticeService {
         }
 
         try {
-            SystemNoticeDispatchEvent event = new SystemNoticeDispatchEvent();
-            event.setTenantId(user.getTenantId());
-            event.setRecipientId(user.getUserId());
-            event.setTitle("登录环境变化提醒");
-            event.setContent("检测到您的账号登录地区发生变化。上次登录地区：" + safeLocation(context.previousLocation())
+            String content = "检测到您的账号登录地区发生变化。上次登录地区：" + safeLocation(context.previousLocation())
                     + "，本次登录地区：" + safeLocation(context.currentLocation())
                     + "。上次登录IP：" + context.previousIp()
                     + "，本次登录IP：" + context.currentIp()
-                    + "。如非本人操作，请立即修改密码并联系管理员。");
-            event.setType("1");
-            event.setSenderId(null);
-            event.setSenderName(SYSTEM_SENDER);
-
-            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
-                    .eventType("SYSTEM_NOTICE_DISPATCH")
-                    .sourceModule("cloudflow-auth")
-                    .sourceId(user.getUserId())
-                    .tenantId(user.getTenantId())
-                    .payload(objectMapper.writeValueAsString(event))
-                    .build();
-            outboxPublisher.publish(envelope);
+                    + "。如非本人操作，请立即修改密码并联系管理员。";
+            messageSender.send(MessageSendRequest.builder()
+                    .channelTypes(List.of(MessageChannelType.INTERNAL))
+                    .receivers(List.of(MessageReceiver.ofUser(user.getUserId())))
+                    .params(Map.of("senderName", SYSTEM_SENDER))
+                    .category(MessageCategory.SYSTEM)
+                    .bizType("SYS_LOGIN_RISK")
+                    .bizId(String.valueOf(user.getUserId()))
+                    .forceSend(true)
+                    .title("登录环境变化提醒")
+                    .content(content)
+                    .build());
         } catch (Exception e) {
             log.warn("发送登录环境变化提醒失败, userId={}", user.getUserId(), e);
         }

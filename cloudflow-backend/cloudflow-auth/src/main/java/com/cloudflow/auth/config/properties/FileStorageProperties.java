@@ -27,7 +27,7 @@ public class FileStorageProperties {
     /**
      * 私有 OSS 预签名访问地址有效期，单位分钟。
      */
-    private Integer presignedExpireMinutes = 30;
+    private Integer presignedExpireMinutes = 5;
 
     public String getType() {
         return type;

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.SysFileMapper">
+    <select id="lockReusableId" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT MIN(file_id) FROM sys_file WHERE tenant_id = #{tenantId} AND deleted = 0 AND file_hash = #{hash}
+            AND file_size = #{size} AND storage_type = #{storageType}
+        <choose>
+            <when test="configId != null">AND config_id = #{configId}</when>
+            <otherwise>AND config_id IS NULL</otherwise>
+        </choose>
+        FOR UPDATE
+    </select>
+    <select id="portalUpload" resultType="com.cloudflow.auth.domain.SysFile">
+        SELECT * FROM sys_file WHERE tenant_id = #{tenantId} AND portal_owner_id = #{portalUserId}
+            AND remark = CONCAT('portal-upload:', #{requestKey}) ORDER BY file_id LIMIT 1
+    </select>
+    <select id="lockPortalFile" resultType="com.cloudflow.auth.domain.SysFile" useCache="false" flushCache="true">
+        SELECT * FROM sys_file WHERE tenant_id = #{tenantId} AND file_id = #{fileId} FOR UPDATE
+    </select>
+    <select id="portalTicketFile" resultType="com.cloudflow.auth.domain.SysFile">
+        SELECT files.* FROM sys_file files
+        JOIN crm_service_ticket ticket ON ticket.tenant_id = files.tenant_id AND CAST(ticket.ticket_id AS CHAR) = files.biz_id
+        JOIN crm_customer customer ON customer.tenant_id = ticket.tenant_id AND customer.customer_id = ticket.customer_id
+        WHERE files.tenant_id = #{tenantId} AND ticket.ticket_id = #{ticketId} AND files.file_id = #{fileId}
+            AND ticket.deleted = 0 AND customer.deleted = 0 AND files.deleted = 0 AND files.access_type = 'PRIVATE'
+            AND files.biz_type = 'CRM_PORTAL_TICKET' AND files.portal_owner_id IS NOT NULL
+    </select>
+    <select id="selectOwnedUnboundReference" resultType="com.cloudflow.auth.domain.SysFile">
+        SELECT * FROM sys_file
+        WHERE tenant_id = #{tenantId} AND create_by = #{username} AND deleted = 0
+          AND portal_owner_id IS NULL
+          AND (biz_type IS NULL OR biz_type = '')
+          AND (file_type IS NULL OR file_type NOT IN
+            <foreach collection="privateTypes" item="privateType" open="(" close=")" separator=",">#{privateType}</foreach>)
+          AND (CAST(file_path AS BINARY) = CAST(#{reference} AS BINARY)
+            OR CAST(url AS BINARY) = CAST(#{reference} AS BINARY))
+        ORDER BY file_id
+        LIMIT 1
+    </select>
+    <select id="selectPreviewReference" resultType="com.cloudflow.auth.domain.SysFile">
+        SELECT * FROM sys_file
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND portal_owner_id IS NULL
+          AND (biz_type IS NULL OR biz_type = '')
+          AND (CAST(file_path AS BINARY) = CAST(#{reference} AS BINARY)
+            OR CAST(url AS BINARY) = CAST(#{reference} AS BINARY))
+        <if test="fileId != null">AND file_id = #{fileId}</if>
+        ORDER BY file_id LIMIT 1
+    </select>
+    <select id="countPhysicalStorage" resultType="java.util.HashMap">
+        SELECT physical.tenant_id, SUM(physical.object_size) AS total_bytes
+        FROM (
+            SELECT tenant_id, MAX(COALESCE(file_size, 0)) AS object_size
+            FROM sys_file
+            WHERE deleted = 0 AND tenant_id IN
+            <foreach collection="tenantIds" item="tenantId" open="(" close=")" separator=",">#{tenantId}</foreach>
+            GROUP BY tenant_id, storage_type, config_id, CAST(COALESCE(NULLIF(file_path, ''), CAST(file_id AS CHAR)) AS BINARY)
+        ) physical
+        GROUP BY physical.tenant_id
+    </select>
+    <update id="updateReferenceCount">
+        UPDATE sys_file SET ref_count = #{count}
+        WHERE tenant_id = #{file.tenantId} AND deleted = 0
+          AND storage_type = #{file.storageType} AND CAST(file_path AS BINARY) = CAST(#{file.filePath} AS BINARY)
+        <choose>
+            <when test="file.configId != null">AND config_id = #{file.configId}</when>
+            <otherwise>AND config_id IS NULL</otherwise>
+        </choose>
+    </update>
+    <select id="countReferences" resultType="long" useCache="false" flushCache="true">
+        SELECT COUNT(*) FROM sys_file
+        WHERE tenant_id = #{file.tenantId} AND deleted = 0
+          AND storage_type = #{file.storageType} AND CAST(file_path AS BINARY) = CAST(#{file.filePath} AS BINARY)
+        <choose>
+            <when test="file.configId != null">AND config_id = #{file.configId}</when>
+            <otherwise>AND config_id IS NULL</otherwise>
+        </choose>
+        FOR UPDATE
+    </select>
+</mapper>

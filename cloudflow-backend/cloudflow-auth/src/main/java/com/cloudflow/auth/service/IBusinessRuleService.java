@@ -31,5 +31,7 @@ public interface IBusinessRuleService extends IService<BusinessRule> {
 
     Page<BusinessRuleHitRecord> queryHitRecords(String ruleCode, String businessType, String hitResult, Integer pageNum, Integer pageSize);
 
+    Page<BusinessRuleHitRecord> queryHitRecords(String ruleCode, String businessType, String hitResult, Integer pageNum, Integer pageSize, boolean deduplicate);
+
     boolean recordHit(BusinessRuleHitRecord record);
 }

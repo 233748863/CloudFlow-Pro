@@ -18,8 +18,14 @@ public class SysRoleMutex {
 
     private Long tenantId;
 
+    /**
+     * 同 VehicleFuelLog.fuelPer100km：MyBatis-Plus 驼峰转下划线不在字母与数字之间断词，
+     * roleId1 会被推成 role_id1，而建表列是 role_id_1，必须显式指定。
+     */
+    @TableField("role_id_1")
     private Long roleId1;
 
+    @TableField("role_id_2")
     private Long roleId2;
 
     @TableField(fill = FieldFill.INSERT)

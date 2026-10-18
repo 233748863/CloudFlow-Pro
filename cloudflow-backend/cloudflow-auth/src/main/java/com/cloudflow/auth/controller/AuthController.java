@@ -28,11 +28,9 @@ import com.cloudflow.auth.service.ILoginLogService;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.auth.service.ILegalAgreementService;
 import com.cloudflow.auth.service.ForcePasswordChangeService;
-import com.cloudflow.auth.service.LoginRiskNoticeService;
-import com.cloudflow.auth.service.UserLoginHistoryService;
+import com.cloudflow.auth.service.LoginCompletionService;
 import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.auth.service.TotpService;
-import com.cloudflow.common.core.context.UserDataScopeSnapshot;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.exception.ServiceException;
@@ -70,6 +68,9 @@ public class AuthController {
     private TokenService tokenService;
 
     @Autowired
+    private com.cloudflow.common.security.service.CurrentPermissionService currentPermissions;
+
+    @Autowired
     private SysUserMapper sysUserMapper;
 
     @Autowired
@@ -88,7 +89,7 @@ public class AuthController {
     private com.cloudflow.auth.service.CaptchaService captchaService;
 
     @Autowired
-    private com.cloudflow.auth.mapper.SysDeptMapper sysDeptMapper;
+    private LoginCompletionService loginCompletionService;
 
     @Autowired
     private com.cloudflow.auth.mapper.SysUserRoleMapper sysUserRoleMapper;
@@ -119,12 +120,6 @@ public class AuthController {
 
     @Autowired
     private UserDataScopeService userDataScopeService;
-
-    @Autowired
-    private LoginRiskNoticeService loginRiskNoticeService;
-
-    @Autowired
-    private UserLoginHistoryService userLoginHistoryService;
 
     @Autowired
     private com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
@@ -281,7 +276,7 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        TotpService.PendingLoginChallenge challenge = totpService.requireLoginChallenge(trimValue(form.getTempToken()));
+        TotpService.PendingLoginChallenge challenge = totpService.claimLoginChallenge(trimValue(form.getTempToken()));
         TotpService.LoginChallengePayload payload = challenge.payload();
         SysUser user = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>()
@@ -297,8 +292,6 @@ public class AuthController {
             throw new ServiceException("账号已被限制登录,请联系管理员", ErrorCodeConstants.FORBIDDEN);
         }
         if (!totpService.verifyLoginCode(user.getUserId(), user.getTenantId(), form.getCode())) {
-            // 失败也消费掉临时凭证：否则单个凭证可在 TTL 内被反复用来枚举 6 位码
-            totpService.discardLoginChallenge(challenge);
             // 接入账号级锁定，与密码错误路径保持一致的防护强度
             loginLockService.recordFailure(user.getUserName(), user.getTenantId());
             loginLogService.recordLoginFailure(
@@ -311,7 +304,6 @@ public class AuthController {
             return R.fail("验证码错误，请重新登录后重试");
         }
 
-        totpService.consumeLoginChallenge(challenge);
         return completeLogin(user, tenant, payload.legalReleaseCode(), request, response, payload.startedAt());
     }
 
@@ -400,23 +392,25 @@ public class AuthController {
         String rawToken = resolveRawToken(request);
         Map<String, Object> userMap = requireLoginUser(rawToken);
 
-        Long userId = toLong(userMap.get("userId"));
-        String username = extractUsername(userMap, userId);
+        Long userId = requireUserId(userMap);
         Long tokenTenantId = toLong(userMap.get("tenantId"));
-
-        UserInfo userInfo = TenantBroker.applyWithoutTenant(ignored ->
-                StringUtils.hasText(username) && tokenTenantId != null
-                        ? sysUserService.findUserInfo(username, tokenTenantId)
-                        : null
-        );
-        if (userInfo == null) {
+        SysUser latestUser = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
+        if (latestUser == null || !Objects.equals(latestUser.getUserId(), userId)
+                || latestUser.getTenantId() == null || tokenTenantId == null
+                || !"0".equals(latestUser.getStatus()) || !Integer.valueOf(0).equals(latestUser.getDeleted())) {
             throw new ServiceException("用户信息不存在", ErrorCodeConstants.UNAUTHORIZED);
         }
 
-        SysUser cachedUser = userInfo.getSysUser();
-        SysUser latestUser = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(cachedUser.getUserId()));
-        if (latestUser == null) {
+        UserInfo userInfo = TenantBroker.applyAs(latestUser.getTenantId(), accountTenantId ->
+                sysUserService.findUserInfo(latestUser.getUserName(), accountTenantId));
+        if (userInfo == null || userInfo.getSysUser() == null
+                || !Objects.equals(userInfo.getSysUser().getUserId(), userId)
+                || !Objects.equals(userInfo.getSysUser().getTenantId(), latestUser.getTenantId())) {
             throw new ServiceException("用户信息不存在", ErrorCodeConstants.UNAUTHORIZED);
+        }
+        if (!Objects.equals(tokenTenantId, latestUser.getTenantId())
+                && (!hasAdminRole(userMap.get("roles")) || !hasAdminRole(userInfo.getRoles()))) {
+            throw new ServiceException("只有超级管理员才能切换租户", ErrorCodeConstants.FORBIDDEN);
         }
         boolean forcePasswordChange = forcePasswordChangeService.isRequired(latestUser);
 
@@ -452,7 +446,8 @@ public class AuthController {
         Map<String, Object> data = new HashMap<>();
         data.put("user", user);
         data.put("roles", resolveStringCollection(userMap.get("roles"), userInfo.getRoles()));
-        data.put("permissions", resolveStringCollection(userMap.get("permissions"), userInfo.getPermissions()));
+        data.put("permissions", currentPermissions.internalPermissions(userId, tenantId,
+                resolveStringCollection(userMap.get("permissions"), userInfo.getPermissions())));
         data.put("forcePasswordChange", forcePasswordChange);
 
         setAuthCookie(request, response, rawToken);
@@ -622,65 +617,7 @@ public class AuthController {
             HttpServletResponse response,
             long startAt
     ) {
-        UserInfo userInfo = sysUserService.findUserInfo(user.getUserName(), tenant.getTenantId());
-        if (userInfo == null) {
-            loginLogService.recordLoginFailure(
-                    user.getUserName(),
-                    user.getTenantId(),
-                    request,
-                    "用户信息异常",
-                    System.currentTimeMillis() - startAt
-            );
-            return R.fail("用户信息异常");
-        }
-
-        String loginIp = getClientIp(request);
-        LocalDateTime loginTime = LocalDateTime.now();
-        UserLoginHistoryService.LoginRiskContext loginRiskContext = userLoginHistoryService.recordLogin(user, loginIp, loginTime);
-        user.setLoginIp(loginIp);
-        user.setLoginDate(loginTime);
-        sysUserMapper.updateById(user);
-        loginRiskNoticeService.notifyIfLocationChanged(user, loginRiskContext);
-        loginLockService.clearFailures(user.getUserName(), tenant.getTenantId());
-
-        Map<String, Object> loginUser = new HashMap<>();
-        loginUser.put("userId", user.getUserId());
-        loginUser.put("username", user.getUserName());
-        loginUser.put("nickName", user.getNickName());
-        loginUser.put("deptId", user.getDeptId());
-        if (user.getDeptId() != null) {
-            com.cloudflow.auth.domain.SysDept dept = sysDeptMapper.selectById(user.getDeptId());
-            loginUser.put("deptName", dept != null ? dept.getDeptName() : null);
-        }
-        loginUser.put("tenantId", user.getTenantId());
-        loginUser.put("tenantCode", tenant.getTenantCode());
-        loginUser.put("tenantName", tenant.getTenantName());
-        loginUser.put("avatar", user.getAvatar());
-        loginUser.put("roles", userInfo.getRoles());
-        loginUser.put("permissions", userInfo.getPermissions());
-        boolean forcePasswordChange = forcePasswordChangeService.isRequired(user);
-        loginUser.put("forcePasswordChange", forcePasswordChange);
-
-        UserDataScopeSnapshot dataScopeSnapshot = userDataScopeService.refresh(user.getUserId());
-        if (dataScopeSnapshot != null) {
-            loginUser.put("dsType", dataScopeSnapshot.getDsType());
-            loginUser.put("dsDeptIds", dataScopeSnapshot.getDsDeptIds());
-        }
-
-        String token = tokenService.createToken(loginUser);
-        loginLogService.recordLoginSuccess(
-                user.getUserName(),
-                user.getTenantId(),
-                request,
-                System.currentTimeMillis() - startAt
-        );
-        setAuthCookie(request, response, token);
-        legalAgreementService.recordConsent(user, legalReleaseCode, request, "LOGIN");
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("token", token);
-        result.put("forcePasswordChange", forcePasswordChange);
-        return R.ok(DynamicMapVO.from(result));
+        return loginCompletionService.completeLogin(user, tenant, legalReleaseCode, request, response, startAt);
     }
 
     private void verifyCurrentPassword(SysUser user, String password) {
@@ -835,26 +772,17 @@ public class AuthController {
         return null;
     }
 
-    private String extractUsername(Map<String, Object> userMap, Long userId) {
-        Object usernameValue = userMap.get("username");
-        if (usernameValue != null && StringUtils.hasText(String.valueOf(usernameValue))) {
-            return String.valueOf(usernameValue);
-        }
-        if (userId == null) {
-            return null;
-        }
-        SysUser dbUser = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
-        return dbUser != null ? dbUser.getUserName() : null;
-    }
-
     private Long resolveTenantId(Map<String, Object> userMap, SysUser cachedUser) {
         Long tenantId = toLong(userMap.get("tenantId"));
         return tenantId != null ? tenantId : cachedUser.getTenantId();
     }
 
     private Long resolveDeptId(Map<String, Object> userMap, SysUser cachedUser) {
-        Long deptId = toLong(userMap.get("deptId"));
-        return deptId != null ? deptId : cachedUser.getDeptId();
+        if (userMap.containsKey("deptId")) {
+            return toLong(userMap.get("deptId"));
+        }
+        return Objects.equals(toLong(userMap.get("tenantId")), cachedUser.getTenantId())
+                ? cachedUser.getDeptId() : null;
     }
 
     private String resolveTenantName(Map<String, Object> userMap, Long tenantId) {
@@ -903,14 +831,7 @@ public class AuthController {
     @RateLimiter(key = "auth:switch-tenant", time = 60, count = 20, limitType = LimitType.USER)
     public R<DynamicMapVO> switchTenant(@RequestBody SwitchTenantDTO dto, HttpServletRequest request, HttpServletResponse response) {
         String rawToken = resolveRawToken(request);
-        Map<String, Object> userMap = tokenService.verifyToken(rawToken);
-        if (userMap == null) {
-            throw new ServiceException("Token已过期或无效", ErrorCodeConstants.UNAUTHORIZED);
-        }
-
-        if (!hasAdminRole(userMap.get("roles"))) {
-            throw new ServiceException("只有超级管理员才能切换租户", ErrorCodeConstants.FORBIDDEN);
-        }
+        Map<String, Object> userMap = requireTenantSwitchUser(request);
 
         Long targetTenantId = dto.getTenantId();
         if (targetTenantId == null) {
@@ -947,6 +868,49 @@ public class AuthController {
 
         return R.ok(DynamicMapVO.from(result));
     }
+
+    @GetMapping("/tenant/switch-options")
+    @SaCheckPermission("system:tenant:switch")
+    @RateLimiter(key = "auth:tenant-switch-options", time = 60, count = 60, limitType = LimitType.USER)
+    public R<SwitchTenantPage> tenantSwitchOptions(@RequestParam(defaultValue = "1") long current,
+            @RequestParam(defaultValue = "20") long size, @RequestParam(defaultValue = "") String keyword,
+            HttpServletRequest request) {
+        requireTenantSwitchUser(request);
+        String search = keyword == null ? "" : keyword.trim();
+        if (current < 1 || current > 1000000 || size < 1 || size > 50 || search.length() > 50) {
+            throw new ServiceException("租户查询参数无效", ErrorCodeConstants.BAD_REQUEST);
+        }
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysTenant> page = TenantBroker.applyWithoutTenant(ignored ->
+                sysTenantService.page(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(current, size),
+                        new LambdaQueryWrapper<SysTenant>().select(SysTenant::getTenantId, SysTenant::getTenantCode, SysTenant::getTenantName)
+                                .eq(SysTenant::getDeleted, 0).eq(SysTenant::getStatus, "0")
+                                .and(filter -> filter.isNull(SysTenant::getExpireTime).or().gt(SysTenant::getExpireTime, LocalDateTime.now()))
+                                .and(!search.isEmpty(), filter -> filter.like(SysTenant::getTenantName, search).or().like(SysTenant::getTenantCode, search))
+                                .orderByAsc(SysTenant::getTenantName).orderByAsc(SysTenant::getTenantId)));
+        return R.ok(new SwitchTenantPage(page.getRecords().stream()
+                .map(tenant -> new SwitchTenantOption(tenant.getTenantId(), tenant.getTenantCode(), tenant.getTenantName())).toList(),
+                page.getTotal(), page.getCurrent(), page.getSize()));
+    }
+
+    private Map<String, Object> requireTenantSwitchUser(HttpServletRequest request) {
+        Map<String, Object> userMap = requireLoginUser(request);
+        Long userId = requireUserId(userMap);
+        if (!hasAdminRole(userMap.get("roles"))) throw new ServiceException("只有超级管理员才能切换租户", ErrorCodeConstants.FORBIDDEN);
+        SysUser account = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
+        if (account == null || !Objects.equals(userId, account.getUserId()) || account.getTenantId() == null
+                || !"0".equals(account.getStatus()) || !Integer.valueOf(0).equals(account.getDeleted())) {
+            throw new ServiceException("用户信息不存在", ErrorCodeConstants.UNAUTHORIZED);
+        }
+        UserInfo current = TenantBroker.applyAs(account.getTenantId(), tenantId -> sysUserService.findUserInfo(account.getUserName(), tenantId));
+        if (current == null || current.getSysUser() == null || !Objects.equals(current.getSysUser().getUserId(), userId)
+                || !Objects.equals(current.getSysUser().getTenantId(), account.getTenantId()) || !hasAdminRole(current.getRoles())) {
+            throw new ServiceException("当前账号已无租户切换资格", ErrorCodeConstants.FORBIDDEN);
+        }
+        return new HashMap<>(userMap);
+    }
+
+    public record SwitchTenantOption(Long tenantId, String tenantCode, String tenantName) { }
+    public record SwitchTenantPage(List<SwitchTenantOption> records, long total, long current, long size) { }
 
     private boolean hasAdminRole(Object rolesObj) {
         if (rolesObj instanceof Collection<?> roles) {

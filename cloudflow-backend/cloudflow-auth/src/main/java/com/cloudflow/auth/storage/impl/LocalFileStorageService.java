@@ -10,6 +10,10 @@ import com.cloudflow.common.core.utils.file.FileUploadUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import com.cloudflow.auth.storage.FileStorageRules;
 
 /**
  * 本地文件存储实现。
@@ -48,5 +52,10 @@ public class LocalFileStorageService implements FileStorageService {
     @Override
     public String resolveUrl(String filePath) {
         return StrUtil.blankToDefault(filePath, "");
+    }
+
+    @Override
+    public InputStream open(String filePath) throws IOException {
+        return Files.newInputStream(FileStorageRules.localFile(filePath));
     }
 }

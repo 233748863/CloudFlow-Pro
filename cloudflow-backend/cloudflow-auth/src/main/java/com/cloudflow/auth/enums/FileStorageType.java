@@ -8,13 +8,19 @@ import cn.hutool.core.util.StrUtil;
  * 说明：
  * 1. LOCAL 表示文件存储在应用本地磁盘目录。
  * 2. OSS 通过 common-oss 统一接入 S3 兼容对象存储。
- * 3. 未配置或无法识别时默认回退到 LOCAL。
+ * 3. 未配置时使用 LOCAL，未知配置拒绝启动。
  */
 public enum FileStorageType {
 
     LOCAL,
 
-    OSS;
+    OSS,
+
+    MINIO,
+
+    S3,
+
+    COS;
 
     /**
      * 根据配置值解析存储类型。
@@ -29,6 +35,6 @@ public enum FileStorageType {
                 return item;
             }
         }
-        return LOCAL;
+        throw new IllegalArgumentException("不支持的文件存储类型");
     }
 }

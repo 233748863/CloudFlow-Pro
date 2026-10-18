@@ -1,11 +1,15 @@
 package com.cloudflow.auth.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.dto.ResetPasswordDTO;
+import com.cloudflow.auth.domain.vo.SysUserOptionVO;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.auth.service.PasswordPolicyService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
@@ -24,6 +28,13 @@ public class SysUserController {
 
     @Autowired
     private PasswordPolicyService passwordPolicyService;
+
+    @GetMapping("/options")
+    @SaCheckLogin
+    @SaCheckPermission("system:lookup:read")
+    public R<PageResult<SysUserOptionVO>> options(PageQuery page) {
+        return R.ok(sysUserService.selectUserOptions(page));
+    }
 
     /**
      * 获取用户列表

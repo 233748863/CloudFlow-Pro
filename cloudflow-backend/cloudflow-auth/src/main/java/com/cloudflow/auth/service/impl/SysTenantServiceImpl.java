@@ -195,14 +195,8 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
         }
 
         return executeWithoutTenant(() -> {
-            QueryWrapper<SysFile> wrapper = new QueryWrapper<>();
-            wrapper.select("tenant_id", "SUM(file_size) AS total_bytes")
-                .in("tenant_id", normalizedTenantIds)
-                .eq("deleted", 0)
-                .groupBy("tenant_id");
-
             Map<Long, Long> usedBytesMap = new HashMap<>();
-            for (Map<String, Object> row : sysFileMapper.selectMaps(wrapper)) {
+            for (Map<String, Object> row : sysFileMapper.countPhysicalStorage(normalizedTenantIds)) {
                 Long tenantId = toLong(row.get("tenant_id"));
                 Long totalBytes = toLong(row.get("total_bytes"));
                 if (tenantId != null) {

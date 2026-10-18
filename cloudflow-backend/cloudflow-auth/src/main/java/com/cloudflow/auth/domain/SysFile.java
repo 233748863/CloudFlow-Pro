@@ -30,6 +30,16 @@ public class SysFile {
      */
     private String storageType;
 
+    private Long configId;
+    private String fileHash;
+    private String bucket;
+    private String objectKey;
+    private String accessType;
+    private String bizType;
+    private String bizId;
+    private Long portalOwnerId;
+    private Integer refCount;
+
     private Long fileSize;
 
     private String fileType;

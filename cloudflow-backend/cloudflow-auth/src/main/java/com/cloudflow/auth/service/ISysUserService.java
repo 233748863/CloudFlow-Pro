@@ -2,9 +2,13 @@ package com.cloudflow.auth.service;
 
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.dto.UserInfo;
+import com.cloudflow.auth.domain.vo.SysUserOptionVO;
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
 import java.util.List;
 
 public interface ISysUserService {
+    PageResult<SysUserOptionVO> selectUserOptions(PageQuery page);
     List<SysUser> selectUserList(SysUser user);
     SysUser selectUserById(Long userId);
     SysUser selectUserByUserName(String userName);

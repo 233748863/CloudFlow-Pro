@@ -1,13 +1,18 @@
 package com.cloudflow.auth.service;
 
 import com.cloudflow.auth.domain.SysUser;
-import com.cloudflow.common.core.event.SystemNoticeDispatchEvent;
-import com.cloudflow.common.event.core.BusinessEventEnvelope;
-import com.cloudflow.common.event.outbox.OutboxPublisher;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.message.api.MessageReceiver;
+import com.cloudflow.common.message.api.MessageSendRequest;
+import com.cloudflow.common.message.api.MessageSender;
+import com.cloudflow.common.message.constant.MessageCategory;
+import com.cloudflow.common.message.constant.MessageChannelType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * 账号安全设置变更提醒。
@@ -22,10 +27,10 @@ public class SecurityChangeNoticeService {
 
     private static final String SYSTEM_SENDER = "auth-system";
 
-    private final OutboxPublisher outboxPublisher;
-    private final ObjectMapper objectMapper;
+    private final MessageSender messageSender;
 
     /** 关闭双因素认证：账号防护等级下降，必须通知本人 */
+    @Audit(name = "发送双因素认证关闭提醒", highRisk = true)
     public void notifyTotpDisabled(SysUser user) {
         dispatch(
                 user,
@@ -50,23 +55,17 @@ public class SecurityChangeNoticeService {
             return;
         }
         try {
-            SystemNoticeDispatchEvent event = new SystemNoticeDispatchEvent();
-            event.setTenantId(user.getTenantId());
-            event.setRecipientId(user.getUserId());
-            event.setTitle(title);
-            event.setContent(content);
-            event.setType("1");
-            event.setSenderId(null);
-            event.setSenderName(SYSTEM_SENDER);
-
-            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
-                    .eventType("SYSTEM_NOTICE_DISPATCH")
-                    .sourceModule("cloudflow-auth")
-                    .sourceId(user.getUserId())
-                    .tenantId(user.getTenantId())
-                    .payload(objectMapper.writeValueAsString(event))
-                    .build();
-            outboxPublisher.publish(envelope);
+            messageSender.send(MessageSendRequest.builder()
+                    .channelTypes(List.of(MessageChannelType.INTERNAL))
+                    .receivers(List.of(MessageReceiver.ofUser(user.getUserId())))
+                    .params(Map.of("senderName", SYSTEM_SENDER))
+                    .category(MessageCategory.SYSTEM)
+                    .bizType("SYS_SECURITY_CHANGE")
+                    .bizId(String.valueOf(user.getUserId()))
+                    .forceSend(true)
+                    .title(title)
+                    .content(content)
+                    .build());
         } catch (Exception e) {
             // 通知失败不能反过来让安全操作本身失败
             log.warn("发送账号安全变更提醒失败, userId={}, title={}", user.getUserId(), title, e);

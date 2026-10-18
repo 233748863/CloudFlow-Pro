@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.TenantPackageMapper">
+    <select id="catalog" resultType="com.cloudflow.auth.domain.SysMenu">
+        SELECT * FROM sys_menu ORDER BY menu_id
+    </select>
+    <select id="page" resultType="com.cloudflow.auth.domain.SysTenantPackage">
+        SELECT * FROM sys_tenant_package WHERE tenant_id = #{platformId} AND deleted = 0
+        ORDER BY sort_no, package_id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM sys_tenant_package WHERE tenant_id = #{platformId} AND deleted = 0
+    </select>
+    <select id="findPackage" resultType="com.cloudflow.auth.domain.SysTenantPackage">
+        SELECT * FROM sys_tenant_package WHERE tenant_id = #{platformId} AND package_id = #{packageId} AND deleted = 0
+    </select>
+    <select id="lockPackage" resultType="com.cloudflow.auth.domain.SysTenantPackage">
+        SELECT * FROM sys_tenant_package WHERE tenant_id = #{platformId} AND package_id = #{packageId} AND deleted = 0 FOR UPDATE
+    </select>
+    <insert id="insertPackage" useGeneratedKeys="true" keyProperty="packageId">
+        INSERT INTO sys_tenant_package (tenant_id, package_code, package_name, menu_ids, max_users, max_storage_mb,
+            enabled_modules, price, billing_cycle, sort_no, status, remark, deleted, version, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{packageCode}, #{packageName}, #{menuIds}, #{maxUsers}, #{maxStorageMb}, #{enabledModules},
+            #{price}, #{billingCycle}, #{sortNo}, #{status}, #{remark}, 0, 0, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <update id="updatePackage">
+        UPDATE sys_tenant_package SET package_code = #{packageCode}, package_name = #{packageName}, menu_ids = #{menuIds}, max_users = #{maxUsers},
+            max_storage_mb = #{maxStorageMb}, enabled_modules = #{enabledModules}, price = #{price}, billing_cycle = #{billingCycle},
+            sort_no = #{sortNo}, status = #{status}, remark = #{remark}, version = version + 1, update_by = #{updateBy}, update_time = #{updateTime}
+        WHERE tenant_id = #{tenantId} AND package_id = #{packageId} AND deleted = 0 AND version = #{version}
+    </update>
+    <select id="tenant" resultType="com.cloudflow.auth.domain.SysTenant">
+        SELECT * FROM sys_tenant WHERE tenant_id = #{tenantId} AND deleted = 0
+    </select>
+    <select id="lockTenant" resultType="com.cloudflow.auth.domain.SysTenant">
+        SELECT * FROM sys_tenant WHERE tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <update id="applyTenant">
+        UPDATE sys_tenant SET package_id = #{entity.packageId}, package_version = #{entity.packageVersion},
+            package_override = #{entity.packageOverride}, effective_menu_ids = #{entity.effectiveMenuIds},
+            user_limit = #{entity.userLimit}, storage_limit = #{entity.storageLimit}, version = version + 1,
+            update_by = #{entity.updateBy}, update_time = #{entity.updateTime}
+        WHERE tenant_id = #{entity.tenantId} AND deleted = 0 AND version = #{expectedVersion} AND package_id = #{expectedPackageId}
+    </update>
+    <select id="tenantNameCount" resultType="long">
+        SELECT COUNT(*) FROM sys_tenant WHERE tenant_name = #{tenantName} AND deleted = 0
+        <if test="excludeTenantId != null">AND tenant_id != #{excludeTenantId}</if>
+    </select>
+    <insert id="insertTenant" useGeneratedKeys="true" keyProperty="tenantId">
+        INSERT INTO sys_tenant (tenant_code, tenant_name, contact_name, contact_phone, contact_email, allowed_email_domains,
+            domain, status, expire_time, user_limit, storage_limit, storage_used, package_id, package_version, package_override,
+            effective_menu_ids, deleted, version, create_by, create_time, update_by, update_time, remark)
+        VALUES (#{tenantCode}, #{tenantName}, #{contactName}, #{contactPhone}, #{contactEmail}, #{allowedEmailDomains},
+            #{domain}, #{status}, #{expireTime}, #{userLimit}, #{storageLimit}, 0, #{packageId}, #{packageVersion}, #{packageOverride},
+            #{effectiveMenuIds}, 0, 0, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}, #{remark})
+    </insert>
+    <update id="updateTenant">
+        UPDATE sys_tenant SET tenant_code = #{tenantCode}, tenant_name = #{tenantName}, contact_name = #{contactName},
+            contact_phone = #{contactPhone}, contact_email = #{contactEmail}, allowed_email_domains = #{allowedEmailDomains},
+            domain = #{domain}, status = #{status}, expire_time = #{expireTime}, user_limit = #{userLimit}, storage_limit = #{storageLimit},
+            package_id = #{packageId}, package_version = #{packageVersion}, package_override = #{packageOverride}, effective_menu_ids = #{effectiveMenuIds},
+            version = version + 1, update_by = #{updateBy}, update_time = #{updateTime}, remark = #{remark}
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND version = #{version}
+    </update>
+    <insert id="insertSync" useGeneratedKeys="true" keyProperty="syncId">
+        INSERT INTO sys_tenant_package_sync (tenant_id, package_id, package_version, target_tenant_ids, preview_hash,
+            preview_expire_time, requested_by, confirmed_time, status, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{packageId}, #{packageVersion}, #{targetTenantIds}, #{previewHash}, #{previewExpireTime},
+            #{requestedBy}, #{confirmedTime}, #{status}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <insert id="insertItem" useGeneratedKeys="true" keyProperty="itemId">
+        INSERT INTO sys_tenant_package_sync_item (tenant_id, sync_id, target_tenant_id, expected_version, before_snapshot,
+            proposed_snapshot, status, error_code, applied_time, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{syncId}, #{targetTenantId}, #{expectedVersion}, #{beforeSnapshot}, #{proposedSnapshot},
+            #{status}, #{errorCode}, #{appliedTime}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <select id="findSync" resultType="com.cloudflow.auth.domain.SysTenantPackageSync">
+        SELECT * FROM sys_tenant_package_sync WHERE tenant_id = #{platformId} AND sync_id = #{syncId}
+    </select>
+    <select id="lockSync" resultType="com.cloudflow.auth.domain.SysTenantPackageSync">
+        SELECT * FROM sys_tenant_package_sync WHERE tenant_id = #{platformId} AND sync_id = #{syncId} FOR UPDATE
+    </select>
+    <select id="items" resultType="com.cloudflow.auth.domain.SysTenantPackageSyncItem">
+        SELECT * FROM sys_tenant_package_sync_item WHERE tenant_id = #{platformId} AND sync_id = #{syncId} ORDER BY target_tenant_id
+    </select>
+    <select id="lockItem" resultType="com.cloudflow.auth.domain.SysTenantPackageSyncItem">
+        SELECT * FROM sys_tenant_package_sync_item WHERE tenant_id = #{platformId} AND sync_id = #{syncId} AND item_id = #{itemId} FOR UPDATE
+    </select>
+    <update id="updateSync">
+        UPDATE sys_tenant_package_sync SET confirmed_time = #{confirmedTime}, status = #{status}, update_by = #{updateBy}, update_time = #{updateTime}
+        WHERE tenant_id = #{tenantId} AND sync_id = #{syncId}
+    </update>
+    <update id="updateItem">
+        UPDATE sys_tenant_package_sync_item SET status = #{status}, error_code = #{errorCode}, applied_time = #{appliedTime},
+            update_by = #{updateBy}, update_time = #{updateTime}
+        WHERE tenant_id = #{tenantId} AND sync_id = #{syncId} AND item_id = #{itemId} AND status != 'APPLIED'
+    </update>
+</mapper>

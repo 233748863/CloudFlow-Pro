@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller.system;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysDictData;
 import com.cloudflow.auth.domain.SysDictVersion;
@@ -33,10 +34,18 @@ public class SysDictDataController {
 
     /** 根据字典类型查询字典数据列表 */
     @GetMapping("/type/{dictType}")
-    @SaCheckPermission("system:dict:list")
-    public R<List<SysDictData>> dictType(@PathVariable("dictType") String dictType) {
-        return R.ok(sysDictTypeService.selectDictDataByType(dictType));
+    @SaCheckLogin
+    @SaCheckPermission("system:lookup:read")
+    public R<List<DictionaryOption>> dictType(@PathVariable("dictType") String dictType) {
+        return R.ok(sysDictTypeService.selectDictDataByType(dictType).stream()
+                .filter(item -> "0".equals(item.getStatus()))
+                .map(item -> new DictionaryOption(item.getDictType(), item.getDictLabel(), item.getDictValue(),
+                        item.getDictSort(), item.getCssClass(), item.getListClass(), item.getIsDefault(), item.getStatus()))
+                .toList());
     }
+
+    public record DictionaryOption(String dictType, String dictLabel, String dictValue, Integer dictSort,
+            String cssClass, String listClass, String isDefault, String status) { }
 
     /** 查询字典数据列表（管理页面用，包含停用的） */
     @GetMapping("/list")

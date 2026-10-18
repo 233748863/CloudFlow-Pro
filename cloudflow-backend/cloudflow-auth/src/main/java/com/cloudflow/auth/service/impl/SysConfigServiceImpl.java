@@ -6,6 +6,7 @@ import com.cloudflow.auth.domain.SysConfig;
 import com.cloudflow.auth.mapper.SysConfigMapper;
 import com.cloudflow.auth.service.ISysConfigService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.redis.config.SysConfigChangeEvent;
 import com.cloudflow.common.redis.config.SysConfigChangePublisher;
 import com.cloudflow.common.redis.core.SysConfigHelper;
@@ -97,8 +98,13 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
 
     @Override
     public boolean checkConfigKeyUnique(SysConfig config) {
+        SysConfig persisted = config.getConfigId() == null ? null : this.getById(config.getConfigId());
+        if (config.getConfigId() != null && persisted == null) return false;
+        Long tenantId = persisted == null ? UserContext.getTenantId() : persisted.getTenantId();
+        if (tenantId == null || config.getTenantId() != null && !tenantId.equals(config.getTenantId())) return false;
+        config.setTenantId(tenantId);
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysConfig::getConfigKey, config.getConfigKey());
+        wrapper.eq(SysConfig::getConfigKey, config.getConfigKey()).eq(SysConfig::getTenantId, tenantId);
         if (config.getConfigId() != null) {
             wrapper.ne(SysConfig::getConfigId, config.getConfigId());
         }

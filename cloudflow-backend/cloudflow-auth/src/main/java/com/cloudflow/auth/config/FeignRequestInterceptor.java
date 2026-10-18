@@ -1,22 +1,22 @@
 package com.cloudflow.auth.config;
 
-import cn.dev33.satoken.stp.StpUtil;
 import com.cloudflow.common.core.constant.SecurityConstants;
 import com.cloudflow.common.core.context.UserContext;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
+import java.util.concurrent.ExecutorService;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cloud.circuitbreaker.resilience4j.Resilience4JCircuitBreakerFactory;
+import org.springframework.cloud.client.circuitbreaker.Customizer;
+import org.springframework.context.annotation.Bean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.util.StringUtils;
 
 /**
  * Auth Feign 请求拦截器。
  * 统一透传内部调用头、租户和当前登录态，供 HR / OA 等内部接口校验来源服务。
  */
-@Slf4j
 @Component
 public class FeignRequestInterceptor implements RequestInterceptor {
 
@@ -29,8 +29,16 @@ public class FeignRequestInterceptor implements RequestInterceptor {
         this.applicationName = applicationName;
     }
 
+    @Bean
+    public Customizer<Resilience4JCircuitBreakerFactory> feignCircuitBreakerContext(
+            @Qualifier("feignContextExecutor") ExecutorService executor) {
+        return factory -> factory.configureExecutorService(executor);
+    }
+
     @Override
     public void apply(RequestTemplate template) {
+        template.removeHeader(com.cloudflow.common.core.context.TraceContext.HEADER);
+        template.header(com.cloudflow.common.core.context.TraceContext.HEADER, com.cloudflow.common.core.context.TraceContext.currentOrCreate());
         template.header(SecurityConstants.INNER_CALL_HEADER, SecurityConstants.INNER_CALL_VALUE);
         template.header(SecurityConstants.FROM_SERVICE_HEADER, applicationName);
 
@@ -39,25 +47,21 @@ public class FeignRequestInterceptor implements RequestInterceptor {
             template.header(SecurityConstants.TENANT_ID_HEADER, String.valueOf(tenantId));
         }
 
-        try {
-            if (StpUtil.isLogin()) {
-                template.header(USER_ID_HEADER, String.valueOf(StpUtil.getLoginIdAsLong()));
-            }
-        } catch (Exception e) {
-            log.debug("Auth Feign 透传用户 ID 失败: {}", e.getMessage());
+        if (template.path().equals("/inner/workflow/im-callback/complete") || template.path().equals("/inner/workflow/im-todo/project")
+                || template.path().equals("/inner/workflow/im-todo/scan") || template.path().equals("/inner/workflow/im-todo/status")) {
+            template.removeHeader(AUTHORIZATION_HEADER);
+            template.removeHeader("Cookie");
+            template.removeHeader(USER_ID_HEADER);
+            return;
         }
 
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes == null) {
-            return;
+        Long userId = UserContext.getUserId();
+        if (userId != null) {
+            template.header(USER_ID_HEADER, String.valueOf(userId));
         }
-        HttpServletRequest request = attributes.getRequest();
-        if (request == null) {
-            return;
-        }
-        String token = request.getHeader(AUTHORIZATION_HEADER);
-        if (token != null && !token.isEmpty()) {
-            template.header(AUTHORIZATION_HEADER, token);
+        String token = UserContext.getAuthToken();
+        if (StringUtils.hasText(token)) {
+            template.header(AUTHORIZATION_HEADER, "Bearer " + token);
         }
     }
 }

@@ -3,7 +3,9 @@ package com.cloudflow.auth.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.auth.domain.SysConfig;
 import com.cloudflow.auth.service.ISysConfigService;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
@@ -23,6 +26,10 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 @RequestMapping("/system/config")
 @RequiredArgsConstructor
 public class SysConfigController {
+
+    private static final Set<String> CLIENT_CONFIG_KEYS = Set.of("sys.page.defaultPageSize",
+            "sys.upload.maxFileSize", "sys.upload.allowedTypes", "sys.visitor.workflowEnabled",
+            "sys.hr.employee.defaultCreateMode");
 
     private final ISysConfigService sysConfigService;
 
@@ -61,6 +68,16 @@ public class SysConfigController {
     @GetMapping("/configKey/{configKey}")
     @SaCheckPermission("system:config:query")
     public R<String> getConfigKey(@PathVariable String configKey) {
+        return R.ok(sysConfigService.selectConfigByKey(configKey));
+    }
+
+    @GetMapping("/client/{configKey}")
+    @SaCheckLogin
+    @SaCheckPermission("system:lookup:read")
+    public R<String> getClientConfig(@PathVariable String configKey) {
+        if (!CLIENT_CONFIG_KEYS.contains(configKey)) {
+            throw new ServiceException("该参数不向客户端公开", 403);
+        }
         return R.ok(sysConfigService.selectConfigByKey(configKey));
     }
 

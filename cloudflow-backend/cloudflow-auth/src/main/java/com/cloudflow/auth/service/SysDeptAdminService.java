@@ -1,6 +1,7 @@
 package com.cloudflow.auth.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.mapper.SysDeptMapper;
@@ -9,10 +10,12 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.exception.ServiceException;
+import com.cloudflow.common.holiday.api.HolidayCalendarService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -24,6 +27,49 @@ public class SysDeptAdminService {
     private final SysDeptMapper sysDeptMapper;
     private final SysUserMapper sysUserMapper;
     private final UserDataScopeService userDataScopeService;
+    private final HolidayCalendarService holidayCalendarService;
+
+    @Transactional(rollbackFor = Exception.class)
+    public boolean addDept(SysDept dept) {
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("缺少租户上下文，不能新增部门", ErrorCodeConstants.BAD_REQUEST);
+        }
+        dept.setTenantId(tenantId);
+        dept.setDeleted(0);
+        dept.setVersion(0);
+        if (dept.getHolidayCalendarId() != null) {
+            holidayCalendarService.getDateType(dept.getHolidayCalendarId(), LocalDate.now());
+        }
+        if (sysDeptMapper.insert(dept) != 1) {
+            throw new ServiceException("部门新增失败，请刷新后重试", ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
+        holidayCalendarService.invalidateAssignments();
+        return true;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateDept(SysDept dept) {
+        SysDept current = requireDept(dept.getDeptId());
+        dept.setTenantId(current.getTenantId());
+        if (dept.getVersion() == null) {
+            dept.setVersion(current.getVersion());
+        }
+        if (dept.getHolidayCalendarId() != null
+                && !Objects.equals(dept.getHolidayCalendarId(), current.getHolidayCalendarId())) {
+            holidayCalendarService.getDateType(dept.getHolidayCalendarId(), LocalDate.now());
+        }
+        LambdaUpdateWrapper<SysDept> changes = new LambdaUpdateWrapper<SysDept>()
+                .eq(SysDept::getDeptId, current.getDeptId())
+                .eq(SysDept::getTenantId, current.getTenantId())
+                .set(dept.isHolidayCalendarIdSpecified() && dept.getHolidayCalendarId() == null,
+                        SysDept::getHolidayCalendarId, null);
+        if (sysDeptMapper.update(dept, changes) != 1) {
+            throw new ServiceException("部门已被其他操作修改，请刷新后重试", ErrorCodeConstants.CONCURRENT_MODIFICATION);
+        }
+        holidayCalendarService.invalidateAssignments();
+        return true;
+    }
 
     @Audit(name = "部门迁移", highRisk = true)
     @Transactional(rollbackFor = Exception.class)
@@ -89,6 +135,7 @@ public class SysDeptAdminService {
         boolean success = sysDeptMapper.deleteById(deptId) > 0;
         if (success) {
             userDataScopeService.refreshByDeptId(deptId);
+            holidayCalendarService.invalidateAssignments();
         }
         return success;
     }

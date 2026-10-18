@@ -1,22 +1,28 @@
 package com.cloudflow.auth.event.consumer;
 
 import com.cloudflow.common.core.event.PasswordResetByAdminEvent;
-import com.cloudflow.common.core.event.SystemNoticeDispatchEvent;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
-import com.cloudflow.common.event.outbox.OutboxPublisher;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.cloudflow.common.message.api.MessageReceiver;
+import com.cloudflow.common.message.api.MessageSendRequest;
+import com.cloudflow.common.message.api.MessageSender;
+import com.cloudflow.common.message.constant.MessageCategory;
+import com.cloudflow.common.message.constant.MessageChannelType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class PasswordResetByAdminEventConsumer implements BusinessEventConsumer {
 
-    private final ObjectMapper objectMapper;
-    private final OutboxPublisher outboxPublisher;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final MessageSender messageSender;
 
     @Override
     public String eventType() {
@@ -31,23 +37,20 @@ public class PasswordResetByAdminEventConsumer implements BusinessEventConsumer 
             return;
         }
 
-        SystemNoticeDispatchEvent noticeEvent = new SystemNoticeDispatchEvent();
-        noticeEvent.setTenantId(event.getTenantId());
-        noticeEvent.setRecipientId(event.getUserId());
-        noticeEvent.setTitle("密码已被管理员重置");
-        noticeEvent.setContent(buildContent(event));
-        noticeEvent.setType("1");
-        noticeEvent.setSenderId(event.getOperatorId());
-        noticeEvent.setSenderName(event.getOperatorName());
-
-        BusinessEventEnvelope noticeEnvelope = BusinessEventEnvelope.builder()
-                .eventType("SYSTEM_NOTICE_DISPATCH")
-                .sourceModule("cloudflow-auth")
-                .sourceId(event.getUserId())
-                .tenantId(event.getTenantId())
-                .payload(objectMapper.writeValueAsString(noticeEvent))
-                .build();
-        outboxPublisher.publish(noticeEnvelope);
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("senderId", event.getOperatorId());
+        params.put("senderName", event.getOperatorName());
+        messageSender.send(MessageSendRequest.builder()
+                .channelTypes(List.of(MessageChannelType.INTERNAL))
+                .receivers(List.of(MessageReceiver.ofUser(event.getUserId())))
+                .params(params)
+                .category(MessageCategory.SYSTEM)
+                .bizType("PASSWORD_RESET_BY_ADMIN")
+                .bizId(String.valueOf(event.getUserId()))
+                .forceSend(true)
+                .title("密码已被管理员重置")
+                .content(buildContent(event))
+                .build());
     }
 
     private String buildContent(PasswordResetByAdminEvent event) {

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.SysFileConfigMapper">
+    <select id="countCode" resultType="long">
+        SELECT COUNT(*) FROM sys_file_config
+        WHERE tenant_id = #{tenantId} AND config_code = #{configCode}
+        <if test="configId != null">AND config_id != #{configId}</if>
+    </select>
+    <select id="lockTenant" resultType="java.lang.Long">
+        SELECT tenant_id FROM sys_tenant WHERE tenant_id = #{tenantId} FOR UPDATE
+    </select>
+    <update id="clearMaster">
+        UPDATE sys_file_config
+        SET master_flag = 0, version = version + 1, update_time = CURRENT_TIMESTAMP
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND master_flag = 1
+        <if test="configId != null">AND config_id != #{configId}</if>
+    </update>
+</mapper>

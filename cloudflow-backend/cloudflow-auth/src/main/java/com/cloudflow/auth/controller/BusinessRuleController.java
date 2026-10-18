@@ -119,12 +119,13 @@ public class BusinessRuleController {
                                                      @RequestParam(required = false) String businessType,
                                                      @RequestParam(required = false) String hitResult,
                                                      @RequestParam(defaultValue = "1") Integer pageNum,
-                                                     @RequestParam(defaultValue = "10") Integer pageSize) {
-        return R.ok(businessRuleService.queryHitRecords(ruleCode, businessType, hitResult, pageNum, pageSize));
+                                                     @RequestParam(defaultValue = "10") Integer pageSize,
+                                                     @RequestParam(defaultValue = "false") boolean deduplicate) {
+        return R.ok(businessRuleService.queryHitRecords(ruleCode, businessType, hitResult, pageNum, pageSize, deduplicate));
     }
 
     @PostMapping("/hit-records")
-    @RepeatSubmit
+    @RepeatSubmit.Disabled
     @SaCheckPermission("system:rule:edit")
     public R<Void> recordHit(@RequestBody BusinessRuleHitRecord record) {
         return R.result(businessRuleService.recordHit(record));

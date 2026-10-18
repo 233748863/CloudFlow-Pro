@@ -13,6 +13,24 @@ spring:
       - optional:nacos:${spring.application.name}.yaml?refresh=true
       - optional:nacos:cloudflow-common.yaml?refresh=true
   cloud:
+    openfeign:
+      client:
+        config:
+          jobAuthExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
+          jobWorkflowExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
+          jobOaExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
+          jobCrmExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
+          jobHrExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
     nacos:
       server-addr: ${NACOS_SERVER:127.0.0.1:8848}
       username: ${NACOS_USERNAME:}
@@ -34,6 +52,33 @@ spring:
       database: 0
 
 cloudflow:
+  import:
+    enabled: true
+    retention-days: 30
+    # Comma-separated bizType list, e.g. EMPLOYEE. Empty keeps originals for retention-days.
+    delete-original-after-import: ${CLOUDFLOW_IMPORT_DELETE_ORIGINAL_AFTER_IMPORT:}
+  job:
+    internal-auth:
+      keys:
+        cloudflow-auth: ${CLOUDFLOW_JOB_AUTH_KEY:}
+        cloudflow-service-hr: ${CLOUDFLOW_JOB_HR_KEY:}
+        cloudflow-service-oa: ${CLOUDFLOW_JOB_OA_KEY:}
+        cloudflow-service-crm: ${CLOUDFLOW_JOB_CRM_KEY:}
+        cloudflow-service-workflow: ${CLOUDFLOW_JOB_WORKFLOW_KEY:}
+    service-endpoints: true
+    auth-url: ${CLOUDFLOW_JOB_AUTH_URL:}
+    report-enabled: true
+  codegen:
+    enabled: ${CLOUDFLOW_CODEGEN_ENABLED:false}
+  portal:
+    enabled: ${CLOUDFLOW_PORTAL_ENABLED:false}
+    public-url: ${CLOUDFLOW_PORTAL_PUBLIC_URL:}
+  message:
+    secret-key: ${CLOUDFLOW_MESSAGE_SECRET_KEY:}
+    receiver-expand-limit: 500
+    sms:
+      daily-limit: 10
+      expire-minutes: 5
   # 本地文件存储根目录
   profile: /data/cloudflow/profile
   auth:
@@ -65,7 +110,7 @@ cloudflow:
     bucket-name: cloudflow
     region: us-east-1
     is-https: N
-    access-policy: 1
+    access-policy: "0"
     prefix: upload
     domain:
 

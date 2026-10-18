@@ -218,6 +218,8 @@ public class RemoteAuthController {
             return R.fail("用户不存在");
         }
 
+        // 读取到的是已编码密码；停用不属于密码修改，不能重新校验或编码该值。
+        existing.setPassword(null);
         existing.setStatus("1");
         sysUserService.updateUser(existing);
         return R.ok();

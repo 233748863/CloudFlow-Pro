@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.BusinessRuleHitRecordMapper">
+    <select id="selectDeduplicatedPage" resultType="com.cloudflow.auth.domain.BusinessRuleHitRecord">
+        SELECT hit.id, hit.tenant_id, hit.rule_code, hit.business_type, hit.business_id,
+               hit.threshold_value, hit.actual_value, hit.effect, hit.hit_result, hit.created_time
+        FROM sys_business_rule_hit_record hit
+        WHERE (hit.business_id IS NULL OR NOT EXISTS (
+            SELECT 1 FROM sys_business_rule_hit_record newer
+            WHERE newer.tenant_id = hit.tenant_id AND newer.rule_code = hit.rule_code
+              AND newer.business_type = hit.business_type AND newer.business_id = hit.business_id
+              AND (newer.created_time &gt; hit.created_time
+                   OR ((newer.created_time = hit.created_time
+                        OR (newer.created_time IS NULL AND hit.created_time IS NULL)) AND newer.id &gt; hit.id)
+                   OR (hit.created_time IS NULL AND newer.created_time IS NOT NULL))
+        ))
+        <if test="ruleCode != null and ruleCode != ''">
+            AND hit.rule_code LIKE CONCAT('%', #{ruleCode}, '%')
+        </if>
+        <if test="businessType != null and businessType != ''">
+            AND hit.business_type = #{businessType}
+        </if>
+        <if test="hitResult != null and hitResult != ''">
+            AND hit.hit_result = #{hitResult}
+        </if>
+        ORDER BY hit.created_time DESC, hit.id DESC
+    </select>
+</mapper>

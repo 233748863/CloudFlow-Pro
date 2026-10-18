@@ -9,6 +9,7 @@ import com.cloudflow.auth.service.SysDeptAdminService;
 import com.cloudflow.auth.service.UserDataScopeService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
+import com.cloudflow.common.log.annotation.SysLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -113,6 +114,7 @@ public class SysDeptController {
      */
     @PostMapping
     @RepeatSubmit
+    @SysLog("新增部门")
     @SaCheckPermission("system:dept:add")
     public R<Boolean> add(@RequestBody SysDept dept) {
         // 设置ancestors
@@ -128,7 +130,7 @@ public class SysDeptController {
         if (dept.getStatus() == null) {
             dept.setStatus("0");
         }
-        boolean success = sysDeptMapper.insert(dept) > 0;
+        boolean success = sysDeptAdminService.addDept(dept);
         if (success) {
             userDataScopeService.refreshByDeptId(dept.getDeptId());
         }
@@ -140,6 +142,7 @@ public class SysDeptController {
      */
     @PutMapping
     @RepeatSubmit
+    @SysLog("修改部门")
     @SaCheckPermission("system:dept:edit")
     public R<Boolean> edit(@RequestBody SysDept dept) {
         // 更新ancestors
@@ -151,7 +154,7 @@ public class SysDeptController {
         } else {
             dept.setAncestors("0");
         }
-        boolean success = sysDeptMapper.updateById(dept) > 0;
+        boolean success = sysDeptAdminService.updateDept(dept);
         if (success) {
             userDataScopeService.refreshByDeptId(dept.getDeptId());
             if (dept.getParentId() != null) {

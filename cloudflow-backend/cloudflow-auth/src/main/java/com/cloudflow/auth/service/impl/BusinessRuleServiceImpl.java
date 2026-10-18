@@ -187,6 +187,15 @@ public class BusinessRuleServiceImpl extends ServiceImpl<BusinessRuleMapper, Bus
 
     @Override
     public Page<BusinessRuleHitRecord> queryHitRecords(String ruleCode, String businessType, String hitResult, Integer pageNum, Integer pageSize) {
+        return queryHitRecords(ruleCode, businessType, hitResult, pageNum, pageSize, false);
+    }
+
+    @Override
+    public Page<BusinessRuleHitRecord> queryHitRecords(String ruleCode, String businessType, String hitResult, Integer pageNum, Integer pageSize, boolean deduplicate) {
+        if (deduplicate) {
+            return hitRecordMapper.selectDeduplicatedPage(new Page<>(pageNum == null ? 1 : pageNum, pageSize == null ? 10 : pageSize),
+                    ruleCode, trimUpper(businessType), trimUpper(hitResult));
+        }
         LambdaQueryWrapper<BusinessRuleHitRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StringUtils.hasText(ruleCode), BusinessRuleHitRecord::getRuleCode, ruleCode)
                 .eq(StringUtils.hasText(businessType), BusinessRuleHitRecord::getBusinessType, trimUpper(businessType))

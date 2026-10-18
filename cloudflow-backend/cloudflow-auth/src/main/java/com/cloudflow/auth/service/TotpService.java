@@ -147,7 +147,8 @@ public class TotpService {
         return enabledAt;
     }
 
-    @Audit(name = "禁用双因素认证", highRisk = true)
+    @Audit(name = "禁用双因素认证", highRisk = true,
+            spel = "#target.getStatus(#p0.userId, #p0.tenantId)")
     public void disable(SysUser user) {
         SysUserTotp record = requireRecord(user.getUserId(), user.getTenantId());
         TenantBroker.applyWithoutTenant(ignored -> totpMapper.deleteById(record.getId()));
@@ -158,6 +159,10 @@ public class TotpService {
         if (!properties.isEnabled()) {
             return false;
         }
+        return requiresLoginVerification(userId, tenantId);
+    }
+
+    public boolean requiresLoginVerification(Long userId, Long tenantId) {
         SysUserTotp record = findRecord(userId, tenantId);
         return record != null && Integer.valueOf(1).equals(record.getEnabled());
     }
@@ -225,6 +230,12 @@ public class TotpService {
         if (!Long.valueOf(1L).equals(consumed)) {
             throw new ServiceException("登录验证已过期，请重新登录", ErrorCodeConstants.BAD_REQUEST);
         }
+    }
+
+    public PendingLoginChallenge claimLoginChallenge(String token) {
+        PendingLoginChallenge challenge = requireLoginChallenge(token);
+        consumeLoginChallenge(challenge);
+        return challenge;
     }
 
     /**
