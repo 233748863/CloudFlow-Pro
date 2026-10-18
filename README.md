@@ -147,6 +147,8 @@ CloudFlow Pro/
 
 `07.cloudflow-demo-seed.sql` 由 `scripts/generate-demo-seed.ps1` 根据 01～05 的实际表结构生成；表结构调整后应重新运行该生成器，不要直接手工维护生成文件。
 
+仅重建指定业务表时，可使用 `./scripts/generate-demo-seed.ps1 -Tables wf_task_attachment,wf_task_delegation -OutputPath ./selected-demo-seed.sql` 生成这些表的演示数据；主键编号仍按完整表结构计算，对未重建表的引用在导入时按租户读取现有记录。指定表时必须使用独立输出文件，脚本拒绝覆盖完整的 07 文件，且不会修改未选中的表或菜单授权；完整初始化仍使用不带 `-Tables` 的生成命令。
+
 ## 🚀 本地快速启动
 
 ### ✅ 1. 环境要求

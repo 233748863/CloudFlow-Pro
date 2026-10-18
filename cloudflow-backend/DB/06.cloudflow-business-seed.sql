@@ -10,6 +10,39 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 USE cloud_flow_db;
 
+SELECT menu_id, menu_name, perms FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1950 AND 1969;
+CREATE TEMPORARY TABLE cloudflow_h4_menu_guard (guard_id TINYINT NOT NULL PRIMARY KEY);
+INSERT INTO cloudflow_h4_menu_guard (guard_id) VALUES (1);
+INSERT INTO cloudflow_h4_menu_guard (guard_id)
+SELECT 1 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1950 AND 1969 LIMIT 1;
+DROP TEMPORARY TABLE cloudflow_h4_menu_guard;
+
+SELECT menu_id, menu_name, perms FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1400 AND 1449;
+DROP TEMPORARY TABLE IF EXISTS cloudflow_batch_c_menu_range_guard;
+CREATE TEMPORARY TABLE cloudflow_batch_c_menu_range_guard (guard_id TINYINT NOT NULL PRIMARY KEY);
+INSERT INTO cloudflow_batch_c_menu_range_guard (guard_id) VALUES (1);
+INSERT INTO cloudflow_batch_c_menu_range_guard (guard_id)
+SELECT 1 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1400 AND 1449 LIMIT 1;
+DROP TEMPORARY TABLE cloudflow_batch_c_menu_range_guard;
+
+-- 批次 A menu_id 落库前置防线：必须返回 0 行，且检测到占用时在任何种子写入前失败。
+SELECT menu_id, menu_name, perms
+FROM cloud_flow_db.sys_menu
+WHERE menu_id BETWEEN 1300 AND 1349;
+
+DROP TEMPORARY TABLE IF EXISTS cloudflow_batch_a_menu_range_guard;
+CREATE TEMPORARY TABLE cloudflow_batch_a_menu_range_guard (
+  guard_id TINYINT NOT NULL,
+  PRIMARY KEY (guard_id)
+);
+INSERT INTO cloudflow_batch_a_menu_range_guard (guard_id) VALUES (1);
+INSERT INTO cloudflow_batch_a_menu_range_guard (guard_id)
+SELECT 1
+FROM cloud_flow_db.sys_menu
+WHERE menu_id BETWEEN 1300 AND 1349
+LIMIT 1;
+DROP TEMPORARY TABLE cloudflow_batch_a_menu_range_guard;
+
 -- Cross-database routing:
 -- cloud_flow_db -> sys_ / wf_ / workflow_ / biz_
 -- cloud_flow_db -> hr_
@@ -101,6 +134,12 @@ WHERE dept_id BETWEEN 100 AND 119;
 DELETE FROM cloud_flow_db.sys_tenant
 WHERE tenant_id = 100000;
 
+-- 存量通知字典先迁移到统一消息分类，再执行本脚本的确定性重建。
+-- 先迁数据，避免旧类型被清理后留下悬空的 wf_notice_type 明细。
+UPDATE cloud_flow_db.sys_dict_data
+   SET dict_type = 'sys_message_category'
+ WHERE dict_type = 'wf_notice_type';
+
 DELETE FROM cloud_flow_db.sys_dict_data
 WHERE dict_type IN (
   'sys_user_sex',
@@ -108,7 +147,7 @@ WHERE dict_type IN (
   'sys_yes_no',
   'sys_currency',
   'sys_file_type',
-  'wf_notice_type',
+  'sys_message_category',
   'oa_approval_status',
   'hr_leave_type',
   'hr_overtime_type',
@@ -137,7 +176,7 @@ WHERE dict_type IN (
   'sys_yes_no',
   'sys_currency',
   'sys_file_type',
-  'wf_notice_type',
+  'sys_message_category',
   'oa_approval_status',
   'hr_leave_type',
   'hr_overtime_type',
@@ -158,6 +197,12 @@ WHERE dict_type IN (
   'workflow_definition_status',
   'sys_audit_action_risk_level'
 );
+
+-- 上面的删除已释放目标唯一键；保留旧字典主键并完成类型改名。
+UPDATE cloud_flow_db.sys_dict_type
+   SET dict_type = 'sys_message_category',
+       dict_name = '消息分类'
+ WHERE dict_type = 'wf_notice_type';
 
 DELETE FROM cloud_flow_db.sys_dict_change_approval
 WHERE tenant_id = 100000
@@ -358,18 +403,10 @@ DELETE FROM cloud_flow_db.wf_transaction_message
 WHERE message_id LIKE 'demo_msg_%'
    OR message_id LIKE 'seed_msg_%';
 
-DELETE FROM cloud_flow_db.wf_notification_log
-WHERE log_id LIKE 'demo_notice_%'
-   OR log_id LIKE 'seed_notice_%';
-
 DELETE FROM cloud_flow_db.wf_urge_effect
 WHERE task_id LIKE 'demo_task_%'
    OR task_id LIKE 'hotdemo_task_%'
    OR task_id LIKE 'seed_task_%';
-
-DELETE FROM cloud_flow_db.wf_notification_config
-WHERE config_id LIKE 'demo_notify_%'
-   OR config_id LIKE 'seed_notify_%';
 
 DELETE FROM cloud_flow_db.wf_hot_update_record
 WHERE executed_by = 'seed.hotupdate';
@@ -391,9 +428,6 @@ WHERE id LIKE 'demo_%'
 DELETE FROM cloud_flow_db.wf_template
 WHERE id LIKE 'demo_%'
    OR id LIKE 'seed_%';
-
-DELETE FROM cloud_flow_db.wf_notice
-WHERE notice_id BETWEEN 9900 AND 9999;
 
 DELETE FROM cloud_flow_db.oa_announcement_read
 WHERE announcement_id BETWEEN 9600 AND 9999;
@@ -499,13 +533,13 @@ WHERE risk_id BETWEEN 9301 AND 9399
 DELETE FROM cloud_flow_db.oa_project_dependency
 WHERE dependency_id BETWEEN 9301 AND 9399
    OR project_id BETWEEN 9301 AND 9399
-   OR predecessor_id BETWEEN 9301 AND 9399
-   OR successor_id BETWEEN 9301 AND 9399;
+   OR predecessor_task_id BETWEEN 165001 AND 165007
+   OR successor_task_id BETWEEN 165001 AND 165007;
 
-DELETE FROM cloud_flow_db.oa_project_milestone
-WHERE milestone_id BETWEEN 9301 AND 9399
+DELETE FROM cloud_flow_db.oa_project_task
+WHERE task_id BETWEEN 165001 AND 165007
    OR project_id BETWEEN 9301 AND 9399
-   OR milestone_code IN ('MS202605080001', 'MS202605080002', 'MS202605080003');
+   OR task_no IN ('MS202605080001', 'MS202605080002', 'MS202605080003');
 
 DELETE FROM cloud_flow_db.oa_project_member
 WHERE id BETWEEN 9301 AND 9399
@@ -585,9 +619,6 @@ DELETE FROM cloud_flow_db.oa_invoice
 WHERE invoice_id BETWEEN 8801 AND 8899
    OR (tenant_id = 100000 AND invoice_code IN ('OUT20260508A', 'OUT20260508B', 'OUT20260508C', 'IN20260508A', 'IN20260508B', 'IN20260508C'))
    OR external_bill_no IN ('CRM-INV-8801', 'CRM-INV-8802', 'CRM-INV-8803', 'OA-INV-8804', 'OA-INV-8805', 'OA-INV-8806');
-
-DELETE FROM cloud_flow_db.wf_notice
-WHERE notice_id BETWEEN 9060 AND 9069;
 
 -- =========================================================
 -- 一、公共基础种子数据（迁移自 01.cloudflow-common.sql）
@@ -686,18 +717,18 @@ INSERT IGNORE INTO cloud_flow_db.sys_user_role VALUES(9, 5, 100000);
 -- ═══════════════════════════════════════════════════
 -- 一级目录（M类型）
 -- ═══════════════════════════════════════════════════
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(1,   '工作台',     0, 1, 'workspace',     NULL, NULL, 0, 0, 'M', '0', '0', '', 'LayoutDashboard', 'admin', NOW(), '', null, '工作台目录');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(1,   '工作台',     0, 1, '/workspace',     NULL, NULL, 0, 0, 'M', '0', '0', '', 'LayoutDashboard', 'admin', NOW(), '', null, '工作台目录');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(2,   '办公协同',   0, 2, 'office',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'Briefcase',       'admin', NOW(), '', null, '办公协同目录');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(2,   '办公协同',   0, 2, '/office',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'Briefcase',       'admin', NOW(), '', null, '办公协同目录');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(3,   '流程中心',   0, 3, 'process',       NULL, NULL, 0, 0, 'M', '0', '0', '', 'GitMerge',        'admin', NOW(), '', null, '流程中心目录');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(3,   '流程中心',   0, 3, '/process',       NULL, NULL, 0, 0, 'M', '0', '0', '', 'GitMerge',        'admin', NOW(), '', null, '流程中心目录');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(4,   '流程管理',   0, 4, 'workflow-mgmt', NULL, NULL, 0, 0, 'M', '0', '0', '', 'Settings',        'admin', NOW(), '', null, '流程管理目录');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(4,   '流程管理',   0, 4, '/workflow-mgmt', NULL, NULL, 0, 0, 'M', '0', '0', '', 'Settings',        'admin', NOW(), '', null, '流程管理目录');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(5,   '行政管理',   0, 5, 'admin-mgmt',    NULL, NULL, 0, 0, 'M', '0', '0', '', 'Building2',       'admin', NOW(), '', null, '行政管理目录');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(5,   '行政管理',   0, 5, '/admin-mgmt',    NULL, NULL, 0, 0, 'M', '0', '0', '', 'Building2',       'admin', NOW(), '', null, '行政管理目录');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(6,   '系统管理',   0, 6, 'system',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'Wrench',          'admin', NOW(), '', null, '系统管理目录');
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(8,   '客户经营',   0, 8, 'crm',           NULL, NULL, 0, 0, 'M', '0', '0', '', 'Handshake',       'admin', NOW(), '', null, 'CRM客户经营目录');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(6,   '系统管理',   0, 6, '/system',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'Wrench',          'admin', NOW(), '', null, '系统管理目录');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(8,   '客户经营',   0, 8, '/crm',           NULL, NULL, 0, 0, 'M', '0', '0', '', 'Handshake',       'admin', NOW(), '', null, 'CRM客户经营目录');
 
 -- ═══════════════════════════════════════════════════
 -- 二级菜单（C类型）
@@ -709,13 +740,13 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(101, '我的日程',   1, 2, '/schedule',            'pages/SchedulePage',           NULL, 0, 0, 'C', '0', '0', 'oa:schedule:list',        'Calendar',        'admin', NOW(), '', null, '我的日程');
 
 -- 办公协同 (parent_id=2)
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(202, '日常办公',   2, 1, 'collaboration',       NULL, NULL, 0, 0, 'M', '0', '0', '', 'BriefcaseBusiness', 'admin', NOW(), '', null, '会议、公告、通讯录与知识库分组');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(202, '日常办公',   2, 1, '/collaboration',       NULL, NULL, 0, 0, 'M', '0', '0', '', 'BriefcaseBusiness', 'admin', NOW(), '', null, '会议、公告、通讯录与知识库分组');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(203, '行政申请',   2, 2, 'applications',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'ClipboardCheck',   'admin', NOW(), '', null, '出差、采购、用印与证照申请分组');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(203, '行政申请',   2, 2, '/applications',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'ClipboardCheck',   'admin', NOW(), '', null, '出差、采购、用印与证照申请分组');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(204, '财务管理',   2, 3, 'finance',             NULL, NULL, 0, 0, 'M', '0', '0', '', 'WalletCards',      'admin', NOW(), '', null, '报销、付款、预算与发票分组');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(204, '财务管理',   2, 3, '/finance',             NULL, NULL, 0, 0, 'M', '0', '0', '', 'WalletCards',      'admin', NOW(), '', null, '报销、付款、预算与发票分组');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(277, '项目合同',   2, 4, 'projects-contracts',  NULL, NULL, 0, 0, 'M', '0', '0', '', 'FolderKanban',    'admin', NOW(), '', null, '项目、合同与阈值分组');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(277, '项目合同',   2, 4, '/projects-contracts',  NULL, NULL, 0, 0, 'M', '0', '0', '', 'FolderKanban',    'admin', NOW(), '', null, '项目、合同与阈值分组');
 
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(200, '会议室',     202, 1, '/meeting-room',        'pages/MeetingRoomPage',        NULL, 0, 0, 'C', '0', '0', 'oa:meeting-room:list',  'Monitor',         'admin', NOW(), '', null, '会议室管理');
 
@@ -782,7 +813,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_
 
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(603, '文件管理',   6, 4, '/system/files',       'pages/system/FileList',        NULL, 0, 0, 'C', '0', '0', 'system:file:list',           'FileArchive',     'admin', NOW(), '', null, '文件管理');
 
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(604, '源码生成',   6, 5, '/code',               'pages/CodeGeneration',         NULL, 0, 0, 'C', '0', '0', 'system:code:list',           'Code',            'admin', NOW(), '', null, '源码生成');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(604, '流程代码生成', 6, 5, '/code',               'pages/CodeGeneration',         NULL, 0, 0, 'C', '0', '0', 'system:code:list',           'Code',            'admin', NOW(), '', null, '读已发布流程定义生成 Java/SQL（与 1330 表结构代码生成是两回事）');
 
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(605, '租户管理',   6, 6, '/system/tenant',      'pages/system/TenantList',      NULL, 0, 0, 'C', '0', '0', 'system:tenant:list',         'Building2',       'admin', NOW(), '', null, '租户管理');
 
@@ -1444,7 +1475,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(4, 700, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(4, 701, 100000);
 
 -- HR 菜单
-INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(7,   '人力资源',   0, 7, 'hr',                     NULL,                         NULL, 0, 0, 'M', '0', '0', '',                         'Users',           'admin', NOW(), '', NULL, '人力资源目录');
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(7,   '人力资源',   0, 7, '/hr',                     NULL,                         NULL, 0, 0, 'M', '0', '0', '',                         'Users',           'admin', NOW(), '', NULL, '人力资源目录');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(720, 'HR工作台',   7, 1, '/hr/dashboard',          'pages/hr/HrDashboardPage',   NULL, 0, 0, 'C', '0', '0', 'hr:dashboard:view',        'LayoutDashboard', 'admin', NOW(), '', NULL, 'HR工作台');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(721, '员工档案',   7, 2, '/hr/employees',          'pages/hr/HrEmployeePage',    NULL, 0, 0, 'C', '0', '0', 'hr:employees:list',       'Users',           'admin', NOW(), '', NULL, '员工主数据');
 INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES(722, '组织编制',   7, 3, '/hr/organization',       'pages/hr/HrOrganizationPage',NULL, 0, 0, 'C', '0', '0', 'hr:organization:list',    'Layers3',         'admin', NOW(), '', NULL, '职位族、职级、职位与编制');
@@ -2499,6 +2530,13 @@ FROM cloud_flow_db.sys_role_menu rm
 JOIN cloud_flow_db.sys_menu child ON child.parent_id = 727 AND child.menu_id IN (944, 945, 946)
 WHERE rm.menu_id = 727;
 
+-- 已有证明自助入口同时具备本人查看、下载和撤销能力；服务端继续校验员工归属。
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 730 AND child.menu_id IN (1015, 1016)
+WHERE rm.tenant_id = 100000 AND rm.menu_id = 730;
+
 -- HR-P1-4 考勤申诉 766 一级展示，授权跟随 725 考勤休假; OA-P1-2 会议纪要 280 展示挂在日常办公，授权跟随 OA 根目录(menu_id=2)
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
 SELECT rm.role_id, 766, rm.tenant_id
@@ -2585,7 +2623,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remar
 ('是否', 'sys_yes_no', '系统是否列表'),
 ('币种', 'sys_currency', '财务与CRM金额字段币种枚举'),
 ('文件类型', 'sys_file_type', '文件管理筛选分类'),
-('通知类型', 'wf_notice_type', '通知类型列表'),
+('消息分类', 'sys_message_category', '统一消息分类列表'),
 ('审批状态', 'oa_approval_status', 'OA审批状态'),
 ('请假类型', 'hr_leave_type', '请假类型列表'),
 ('加班类型', 'hr_overtime_type', '加班类型列表'),
@@ -2641,10 +2679,13 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (8, '视频', 'FILE_CATEGORY_VIDEO', 'sys_file_type', 'primary'),
 (9, '音频', 'FILE_CATEGORY_AUDIO', 'sys_file_type', 'info');
 
--- 通知类型
+-- 消息分类
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
-(1, '通知', '1', 'wf_notice_type', 'warning'),
-(2, '公告', '2', 'wf_notice_type', 'success');
+(1, '待办', 'TODO', 'sys_message_category', 'warning'),
+(2, '抄送', 'CC', 'sys_message_category', 'primary'),
+(3, '公告', 'ANNOUNCEMENT', 'sys_message_category', 'success'),
+(4, '系统', 'SYSTEM', 'sys_message_category', 'info'),
+(5, '业务提醒', 'BIZ_REMINDER', 'sys_message_category', 'warning');
 
 -- 审批状态
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
@@ -2666,7 +2707,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 -- 加班类型
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '工作日加班', 'WORKDAY', 'hr_overtime_type', 'default'),
-(2, '周末加班', 'WEEKEND', 'hr_overtime_type', 'warning'),
+(2, '休息日加班', 'REST_DAY', 'hr_overtime_type', 'warning'),
 (3, '节假日加班', 'HOLIDAY', 'hr_overtime_type', 'danger');
 
 -- 出差状态
@@ -2790,10 +2831,17 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (1, '草稿',   'DRAFT',      'workflow_status', 'default', '草稿'),
 (2, '审批中', 'RUNNING',    'workflow_status', 'info',    '审批中'),
 (3, '已暂停', 'PAUSED',     'workflow_status', 'warning', '已暂停'),
-(4, '已完成', 'COMPLETED',  'workflow_status', 'success', '已完成'),
+(4, '已通过', 'PASSED',     'workflow_status', 'success', '人工通过结束'),
 (5, '已驳回', 'REJECTED',   'workflow_status', 'danger',  '已驳回'),
 (6, '已撤销', 'CANCELLED',  'workflow_status', 'default', '已撤销'),
-(7, '已终止', 'TERMINATED', 'workflow_status', 'danger',  '已终止');
+(7, '已终止', 'TERMINATED', 'workflow_status', 'danger',  '已终止'),
+(8, '自动通过', 'AUTO_PASSED', 'workflow_status', 'success', '自动处理后通过结束'),
+(9, '已作废', 'INVALIDATED', 'workflow_status', 'danger', '管理员作废'),
+(10, '审批人已撤回', 'WITHDRAWN', 'workflow_status', 'warning', '重新等待审批'),
+(11, '已回退', 'TASK_BACK', 'workflow_status', 'warning', '驳回到上游节点'),
+(12, '重新提交', 'RESTARTED', 'workflow_status', 'info', '发起人修改后提交'),
+(13, '等待外部处理', 'PENDING', 'workflow_status', 'warning', '等待定时或外部触发'),
+(14, '执行异常', 'FAILED', 'workflow_status', 'danger', '执行失败待处理');
 
 -- 工作流定义状态（设计态）
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
@@ -2925,7 +2973,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remar
 ('HR培训形式', 'hr_training_mode', '线上/线下/混合'),
 ('HR培训班次状态', 'hr_training_session_status', '计划/报名/进行/完成/取消'),
 ('HR培训计划类型', 'hr_training_plan_type', '年度/季度/部门/临时'),
-('HR发布状态', 'hr_publish_status', '草稿/已发布/已归档/已驳回（通用）'),
+('HR发布状态', 'hr_publish_status', '草稿/审批中/已发布/已归档/已驳回（通用）'),
 ('HR招聘需求状态', 'hr_recruit_request_status', '草稿/审批/招聘/完成/取消'),
 ('HR候选人状态', 'hr_candidate_status', '简历到录用流转'),
 ('HR面试轮次', 'hr_interview_round', '初试/复试/终面'),
@@ -3028,7 +3076,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remar
 ('OA风险告警状态', 'oa_risk_alert_status', '未处理/处理中/关闭/忽略'),
 ('OA风险告警来源', 'oa_risk_alert_source', '规则/人工'),
 ('OA风险业务类型', 'oa_risk_business_type', '合同/用印/车辆'),
-('资产状态', 'asset_status', '闲置/在用/维修/报废'),
+('资产状态', 'asset_status', '闲置/在用/维修/报废/丢失'),
 ('OA业务规则动作', 'oa_business_rule_effect', '拦截/告警/预警/放行'),
 ('OA规则命中结果', 'oa_business_rule_hit_result', '通过/拒绝/拦截/告警/预警/放行'),
 ('OA发布审批状态', 'oa_deploy_approval_status', '待审批/通过/驳回/取消'),
@@ -3159,9 +3207,10 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (4, '临时', 'ADHOC', 'hr_training_plan_type', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '草稿', 'DRAFT', 'hr_publish_status', 'default'),
-(2, '已发布', 'PUBLISHED', 'hr_publish_status', 'success'),
-(3, '已归档', 'ARCHIVED', 'hr_publish_status', 'default'),
-(4, '已驳回', 'REJECTED', 'hr_publish_status', 'danger');
+(2, '审批中', 'IN_PROGRESS', 'hr_publish_status', 'warning'),
+(3, '已发布', 'PUBLISHED', 'hr_publish_status', 'success'),
+(4, '已归档', 'ARCHIVED', 'hr_publish_status', 'default'),
+(5, '已驳回', 'REJECTED', 'hr_publish_status', 'danger');
 
 -- HR 招聘
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
@@ -3232,7 +3281,6 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (2, '小时', 'HOUR', 'hr_leave_unit', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '请假', 'LEAVE', 'hr_attendance_request_type', 'default'),
-(2, '加班', 'OVERTIME', 'hr_attendance_request_type', 'default'),
 (3, '补录', 'SUPPLEMENT', 'hr_attendance_request_type', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '草稿', 'DRAFT', 'hr_attendance_appeal_status', 'default'),
@@ -3386,7 +3434,8 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (4, '已认定', 'DETERMINED', 'hr_work_injury_status', 'info'),
 (5, '赔偿中', 'COMPENSATING', 'hr_work_injury_status', 'warning'),
 (6, '康复中', 'REHABILITATING', 'hr_work_injury_status', 'info'),
-(7, '已关闭', 'CLOSED', 'hr_work_injury_status', 'default');
+(7, '已关闭', 'CLOSED', 'hr_work_injury_status', 'default'),
+(8, '已驳回', 'REJECTED', 'hr_work_injury_status', 'danger');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '轻伤', 'MINOR', 'hr_work_injury_level', 'success'),
 (2, '中等', 'MODERATE', 'hr_work_injury_level', 'warning'),
@@ -3704,10 +3753,12 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (2, '用印', 'SEAL', 'oa_risk_business_type', 'default'),
 (3, '车辆', 'VEHICLE', 'oa_risk_business_type', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+-- 取值域对齐建表注释 oa_asset.status「1闲置 2在用 3维修 4报废 5丢失」，原来漏了 5。
 (1, '闲置', '1', 'asset_status', 'success'),
 (2, '在用', '2', 'asset_status', 'info'),
 (3, '维修', '3', 'asset_status', 'warning'),
-(4, '报废', '4', 'asset_status', 'danger');
+(4, '报废', '4', 'asset_status', 'danger'),
+(5, '丢失', '5', 'asset_status', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '拦截', 'BLOCK', 'oa_business_rule_effect', 'danger'),
 (2, '告警', 'ALERT', 'oa_business_rule_effect', 'danger'),
@@ -3754,15 +3805,15 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (1, '草稿', 'DRAFT', 'hr_overtime_status', 'default'),
 (2, '审批中', 'APPROVING', 'hr_overtime_status', 'info'),
 (3, '已通过', 'APPROVED', 'hr_overtime_status', 'success'),
-(4, '已驳回', 'REJECTED', 'hr_overtime_status', 'danger'),
-(5, '已取消', 'CANCELLED', 'hr_overtime_status', 'default');
+(4, '已拒绝', 'REJECTED', 'hr_overtime_status', 'danger'),
+(5, '已撤回', 'CANCELLED', 'hr_overtime_status', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '工作日', 'WORKDAY', 'hr_overtime_type', 'default'),
-(2, '周末', 'WEEKEND', 'hr_overtime_type', 'default'),
+(2, '休息日', 'REST_DAY', 'hr_overtime_type', 'default'),
 (3, '节假日', 'HOLIDAY', 'hr_overtime_type', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
-(1, '加班费', 'PAYMENT', 'hr_overtime_compensation_type', 'default'),
-(2, '调休', 'TIME_OFF', 'hr_overtime_compensation_type', 'default');
+(1, '加班费', 'PAY', 'hr_overtime_compensation_type', 'default'),
+(2, '调休', 'COMPENSATORY', 'hr_overtime_compensation_type', 'default');
 INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
 (1, '草稿', 'MISSING', 'hr_attendance_supplement_status', 'default'),
 (2, '审批中', 'APPROVING', 'hr_attendance_supplement_status', 'info'),
@@ -3881,7 +3932,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(7, 100000, '系统管理-是�
 -- 文件上传配置（全局：安全策略统一管控）
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(8, 100000, '文件上传-单文件大小限制(MB)', 'sys.upload.maxFileSize',        '50',       'Y', '0', 'admin', NOW(), '', null, '单个文件上传大小限制');
 
-INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(9, 100000, '文件上传-允许的文件类型',     'sys.upload.allowedTypes',       'jpg,jpeg,png,gif,bmp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar', 'Y', '0', 'admin', NOW(), '', null, '允许上传的文件扩展名');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(9, 100000, '文件上传-允许的文件类型',     'sys.upload.allowedTypes',       'jpg,jpeg,png,gif,bmp,webp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar', 'Y', '0', 'admin', NOW(), '', null, '允许上传的文件扩展名');
 
 -- 验证码配置（全局：安全策略统一管控）
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(10, 100000, '验证码-滑块容错值(像素)',       'sys.captcha.tolerance',         '8',        'Y', '0', 'admin', NOW(), '', null, '滑块验证码允许的像素偏差范围');
@@ -4212,10 +4263,24 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(157, 100000, '网关-认证�
 -- 认证
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(118, 100000, '认证-默认头像API',              'sys.auth.avatar.apiUrl',                     'https://api.dicebear.com/7.x/avataaars/svg', 'Y', '0', 'admin', NOW(), '', null, '注册/无头像用户使用的默认头像API');
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(158, 100000, '认证-单文件上传大小上限',       'sys.auth.fileUpload.maxSize',                '10485760',  'Y', '0', 'admin', NOW(), '', null, '单文件上传大小上限,单位字节');
-INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(163, 100000, '认证-允许上传扩展名',           'sys.auth.fileUpload.allowedExtensions',      'bmp,gif,jpg,jpeg,png,doc,docx,xls,xlsx,ppt,pptx,html,htm,txt,rar,zip,gz,bz2,mp4,avi,rmvb,pdf', 'Y', '0', 'admin', NOW(), '', null, '允许上传的文件扩展名,多个值用英文逗号分隔');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(163, 100000, '认证-允许上传扩展名',           'sys.auth.fileUpload.allowedExtensions',      'bmp,gif,jpg,jpeg,png,webp,doc,docx,xls,xlsx,csv,ppt,pptx,html,htm,txt,rar,zip,gz,bz2,mp4,avi,rmvb,pdf', 'Y', '0', 'admin', NOW(), '', null, '允许上传的文件扩展名,多个值用英文逗号分隔');
+UPDATE cloud_flow_db.sys_config
+SET config_value = 'jpg,jpeg,png,gif,bmp,webp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar'
+WHERE tenant_id = 100000 AND config_key = 'sys.upload.allowedTypes'
+  AND config_value = 'jpg,jpeg,png,gif,bmp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar';
+UPDATE cloud_flow_db.sys_config
+SET config_value = 'bmp,gif,jpg,jpeg,png,webp,doc,docx,xls,xlsx,csv,ppt,pptx,html,htm,txt,rar,zip,gz,bz2,mp4,avi,rmvb,pdf'
+WHERE tenant_id = 100000 AND config_key = 'sys.auth.fileUpload.allowedExtensions'
+  AND config_value = 'bmp,gif,jpg,jpeg,png,doc,docx,xls,xlsx,csv,ppt,pptx,html,htm,txt,rar,zip,gz,bz2,mp4,avi,rmvb,pdf';
 
 -- 通用
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(119, 100000, '通用-敏感数据递归深度',         'sys.sensitive.maxRecursionDepth',            '8',         'Y', '0', 'admin', NOW(), '', null, '敏感字段脱敏递归遍历最大深度,防止循环引用');
+
+INSERT INTO cloud_flow_db.sys_config
+  (tenant_id, config_name, config_key, config_value, config_type, config_scope, create_by, create_time, remark)
+SELECT 100000, '工作流-外调URL白名单', 'workflow.trigger.url.whitelist', '', 'Y', '0', 'admin', NOW(),
+  '上线前先配置并验证现有内网调用；空值拒绝全部；域名、IP或CIDR用逗号分隔，云元数据始终禁止'
+WHERE NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_config WHERE tenant_id = 100000 AND config_key = 'workflow.trigger.url.whitelist');
 
 -- 登录条款默认发布批次与初始文案
 INSERT IGNORE INTO cloud_flow_db.sys_legal_release
@@ -4310,7 +4375,7 @@ INSERT IGNORE INTO cloud_flow_db.wf_form_definition (form_id, form_name, fields_
 ('form_reimburse', '财务报销表单', '[{"id":"f1","type":"SELECT","label":"报销类型","required":true,"options":["差旅费","招待费","办公费","团建费"]},{"id":"f2","type":"NUMBER","label":"报销金额","required":true},{"id":"f3","type":"DATE","label":"发生日期","required":true},{"id":"f4","type":"TEXTAREA","label":"费用明细说明","required":true}]', NOW()),
 ('form_payment', '对公付款申请表单', '[{"id":"p1","type":"TEXT","label":"收款方名称","required":true},{"id":"p2","type":"TEXT","label":"银行账号","required":true},{"id":"p3","type":"NUMBER","label":"付款金额","required":true},{"id":"p4","type":"TEXT","label":"合同编号","required":false}]', NOW()),
 ('form_leave', '请假申请表单', '[{"id":"l1","type":"SELECT","label":"请假类型","required":true,"options":["年假","事假","病假","婚假","产假"]},{"id":"l2","type":"DATE","label":"开始时间","required":true},{"id":"l3","type":"DATE","label":"结束时间","required":true},{"id":"l4","type":"NUMBER","label":"共计天数","required":true},{"id":"l5","type":"TEXTAREA","label":"请假事由","required":true}]', NOW()),
-('form_contract', '合同审批表单', '[{"id":"c1","type":"TEXT","label":"合同名称","required":true},{"id":"c2","type":"TEXT","label":"对方单位","required":true},{"id":"c3","type":"NUMBER","label":"合同金额","required":true},{"id":"c4","type":"SELECT","label":"合同类型","required":true,"options":["采购合同","销售合同","服务协议"]},{"id":"c5","type":"TEXTAREA","label":"主要条款摘要","required":true}]', NOW()),
+('form_contract', '合同审批表单', '[{"id":"contractName","type":"TEXT","label":"合同名称","required":true},{"id":"counterpartyName","type":"TEXT","label":"对方单位","required":true},{"id":"amount","type":"NUMBER","label":"合同金额","required":true},{"id":"contractType","type":"SELECT","label":"合同类型","required":true,"options":["PURCHASE","SALES","SERVICE","OTHER"]},{"id":"remark","type":"TEXTAREA","label":"合同备注","required":false}]', NOW()),
 ('form_recruit', '招聘申请表单', '[{"id":"r1","type":"TEXT","label":"招聘岗位","required":true},{"id":"r2","type":"NUMBER","label":"招聘人数","required":true},{"id":"r3","type":"SELECT","label":"职级","required":true,"options":["P5","P6","P7","P8"]},{"id":"r4","type":"TEXTAREA","label":"岗位职责","required":true},{"id":"r5","type":"NUMBER","label":"预算薪资（千元）","required":true}]', NOW());
 
 -- 通用流程表单定义
@@ -4360,7 +4425,7 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_n
 ('wf_attendance_appeal', '补卡/外勤审批流程', 'attendance_appeal', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_overtime_request', '加班审批流程', 'overtime_request', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交加班申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+('wf_overtime_request', '加班审批流程（审批人待核定）', 'overtime_request', 1, 'DRAFT', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交加班申请"},{"id":"responsible","type":"APPROVAL","title":"负责人审批","approverType":"VARIABLE_USER","approverValue":"responsibleApproverIds","approveSelf":"TO_DEPT_MANAGER","allowDelegate":false,"allowAddSign":false,"allowReduceSign":false},{"id":"hr","type":"APPROVAL","title":"人事审批","approverType":"VARIABLE_USER","approverValue":"hrApproverIds","approveSelf":"TO_DEPT_MANAGER","allowDelegate":false,"allowAddSign":false,"allowReduceSign":false},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root-responsible","source":"root","target":"responsible"},{"id":"responsible-hr","source":"responsible","target":"hr"},{"id":"hr-end","source":"hr","target":"end"}]}', NOW());
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_expense_claim', '报销审批流程', 'expense_claim', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交报销"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"财务审核","approverType":"ROLE","approverValue":"finance"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
@@ -4438,7 +4503,6 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id, process_n
 UPDATE cloud_flow_db.wf_process_definition
 SET form_id = CASE definition_id
   WHEN 'wf_attendance_appeal' THEN 'form_attendance_appeal'
-  WHEN 'wf_overtime_request' THEN 'form_overtime_request'
   WHEN 'wf_expense_claim' THEN 'form_expense_claim'
   WHEN 'wf_leave_request' THEN 'form_leave_request'
   WHEN 'wf_offer_approval' THEN 'form_offer_approval'
@@ -4515,8 +4579,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_instance (
 ('test_inst_002', 100000, 'biz_leave', 'wf_leave', 'BIZ_002', '张三的年假申请', 5, '张三', 'RUNNING', DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, '{"l1":"年假","l2":"2026-02-15","l3":"2026-02-20","l4":5,"l5":"春节返乡探亲"}', 'URGENT'),
 ('test_inst_003', 100000, 'biz_contract', 'wf_contract', 'BIZ_003', 'XX科技采购合同审批', 2, '李经理', 'RUNNING', DATE_SUB(NOW(), INTERVAL 12 HOUR), NULL, '{"c1":"XX科技办公设备采购合同","c2":"XX科技有限公司","c3":50000,"c4":"采购合同","c5":"采购办公电脑及相关设备"}', 'HIGH'),
 ('test_inst_004', 100000, 'biz_payment', 'wf_payment', 'BIZ_004', '合同付款申请', 3, '王财务', 'RUNNING', DATE_SUB(NOW(), INTERVAL 10 HOUR), NULL, '{"p1":"杭州云启科技有限公司","p2":"6217000012345678901","p3":30000,"p4":"HT-2026-001"}', 'NORMAL'),
-('test_inst_005', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_005', '李经理的客户招待费报销', 2, '李经理', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), '{"f1":"招待费","f2":2500,"f3":"2026-02-09","f4":"客户商务宴请"}', 'URGENT'),
-('test_inst_006', 100000, 'biz_leave', 'wf_leave', 'BIZ_006', '赵HR的病假申请', 4, '赵HR', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), '{"l1":"病假","l2":"2026-02-11","l3":"2026-02-13","l4":2,"l5":"感冒发烧需要休息"}', 'NORMAL'),
+('test_inst_005', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_005', '李经理的客户招待费报销', 2, '李经理', 'PASSED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), '{"f1":"招待费","f2":2500,"f3":"2026-02-09","f4":"客户商务宴请"}', 'URGENT'),
+('test_inst_006', 100000, 'biz_leave', 'wf_leave', 'BIZ_006', '赵HR的病假申请', 4, '赵HR', 'PASSED', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), '{"l1":"病假","l2":"2026-02-11","l3":"2026-02-13","l4":2,"l5":"感冒发烧需要休息"}', 'NORMAL'),
 ('test_inst_007', 100000, 'biz_recruit', 'wf_recruit', 'BIZ_007', '高级Java开发工程师招聘申请', 4, '赵HR', 'RUNNING', DATE_SUB(NOW(), INTERVAL 8 HOUR), NULL, '{"r1":"高级Java开发工程师","r2":2,"r3":"P7","r4":"负责核心业务系统开发","r5":35}', 'HIGH');
 
 -- 插入待办任务
@@ -7960,10 +8024,6 @@ DELETE FROM cloud_flow_db.wf_node_record WHERE instance_id IN (
   'demo_inst_003','demo_inst_005','demo_inst_011','demo_inst_012'
 );
 
-DELETE FROM cloud_flow_db.wf_notification_log WHERE related_id IN (
-  'demo_inst_003','demo_inst_005','demo_inst_011','demo_inst_012'
-);
-
 DELETE FROM cloud_flow_db.wf_urge_effect WHERE task_id IN (
   'demo_task_002','demo_task_004','demo_task_007','demo_task_011','demo_task_014'
 );
@@ -7981,8 +8041,6 @@ DELETE FROM cloud_flow_db.wf_deploy_impact WHERE id IN (98001,98002);
 DELETE FROM cloud_flow_db.wf_deploy_rollback_history WHERE id IN (98001);
 
 DELETE FROM cloud_flow_db.wf_deploy_record WHERE id IN (98001,98002);
-
-DELETE FROM cloud_flow_db.wf_notification_config WHERE config_id IN ('demo_notify_001','demo_notify_002');
 
 
 DELETE FROM cloud_flow_db.wf_template_archive WHERE id IN ('demo_archive_001');
@@ -8149,24 +8207,33 @@ INSERT IGNORE INTO cloud_flow_db.oa_work_task (
 -- -----------------------------
 -- 2.5 资产、耗材与日志
 -- -----------------------------
-INSERT IGNORE INTO cloud_flow_db.oa_asset (
-  asset_id, tenant_id, asset_code, name, category, model, status, price, purchase_date, owner_id, location, remark,
-  deleted, create_by, create_time, update_by, update_time
+INSERT IGNORE INTO cloud_flow_db.oa_asset_category (
+  category_id, tenant_id, category_code, category_name, level_path, status, create_by, create_time
 ) VALUES
-(9001, 100000, 'IT-LAP-2024-001', 'MacBook Pro 14 开发机', '笔记本电脑', 'Apple M3 Pro 36GB/1TB', '2', 18999.00, '2024-06-18', 8, '研发部工位A-12', '前端演示专用设备', '0', 'chen', DATE_SUB(NOW(), INTERVAL 200 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 5 DAY)),
-(9002, 100000, 'IT-LAP-2024-002', 'ThinkPad X1 Carbon', '笔记本电脑', 'i7/32GB/1TB', '2', 13999.00, '2024-07-01', 9, '后端组工位B-06', '后端联调与现场支持', '0', 'chen', DATE_SUB(NOW(), INTERVAL 180 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9003, 100000, 'IT-PAD-2025-001', 'iPad Pro 演示终端', '平板设备', '11英寸 512G', '1', 7999.00, '2025-01-10', NULL, 'IT资产柜 2 层', '客户接待演示备用', '0', 'chen', DATE_SUB(NOW(), INTERVAL 60 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
-(9004, 100000, 'OFF-PRJ-2023-001', '激光投影仪', '会议设备', 'EPSON CB-2255U', '2', 6599.00, '2023-10-20', 7, '客户演示中心', '绑定演示厅固定设备', '0', 'admin', DATE_SUB(NOW(), INTERVAL 400 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 10 DAY)),
-(9005, 100000, 'IT-SRV-2024-001', '应用演示服务器', '服务器', 'Dell R760 64C/256GB', '3', 46800.00, '2024-05-08', NULL, '机房 R2-08', '近期进行硬盘阵列维护', '0', 'chen', DATE_SUB(NOW(), INTERVAL 250 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 8 HOUR));
+(165001, 100000, 'F-ASSET-01', '笔记本电脑', '/165001/', 'ACTIVE', 'seed', NOW()),
+(165002, 100000, 'F-ASSET-02', '平板设备', '/165002/', 'ACTIVE', 'seed', NOW()),
+(165003, 100000, 'F-ASSET-03', '会议设备', '/165003/', 'ACTIVE', 'seed', NOW()),
+(165004, 100000, 'F-ASSET-04', '服务器', '/165004/', 'ACTIVE', 'seed', NOW()),
+(165005, 100000, 'F-ASSET-05', '手机设备', '/165005/', 'ACTIVE', 'seed', NOW()),
+(165006, 100000, 'F-ASSET-06', '移动设备', '/165006/', 'ACTIVE', 'seed', NOW());
+
+INSERT IGNORE INTO cloud_flow_db.oa_asset (
+  asset_id, tenant_id, asset_code, name, category_id, model, status, purchase_amount, purchase_date, owner_id, location, remark, deleted, create_by, create_time, update_by, update_time, net_book_value
+) VALUES
+(9001, 100000, 'IT-LAP-2024-001', 'MacBook Pro 14 开发机', 165001, 'Apple M3 Pro 36GB/1TB', 'IN_USE', 18999.00, '2024-06-18', 8, '研发部工位A-12', '前端演示专用设备', '0', 'chen', DATE_SUB(NOW(), INTERVAL 200 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 5 DAY), 18999.00),
+(9002, 100000, 'IT-LAP-2024-002', 'ThinkPad X1 Carbon', 165001, 'i7/32GB/1TB', 'IN_USE', 13999.00, '2024-07-01', 9, '后端组工位B-06', '后端联调与现场支持', '0', 'chen', DATE_SUB(NOW(), INTERVAL 180 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 1 DAY), 13999.00),
+(9003, 100000, 'IT-PAD-2025-001', 'iPad Pro 演示终端', 165002, '11英寸 512G', 'IDLE', 7999.00, '2025-01-10', NULL, 'IT资产柜 2 层', '客户接待演示备用', '0', 'chen', DATE_SUB(NOW(), INTERVAL 60 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 3 HOUR), 7999.00),
+(9004, 100000, 'OFF-PRJ-2023-001', '激光投影仪', 165003, 'EPSON CB-2255U', 'IN_USE', 6599.00, '2023-10-20', 7, '客户演示中心', '绑定演示厅固定设备', '0', 'admin', DATE_SUB(NOW(), INTERVAL 400 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 10 DAY), 6599.00),
+(9005, 100000, 'IT-SRV-2024-001', '应用演示服务器', 165004, 'Dell R760 64C/256GB', 'MAINTENANCE', 46800.00, '2024-05-08', NULL, '机房 R2-08', '近期进行硬盘阵列维护', '0', 'chen', DATE_SUB(NOW(), INTERVAL 250 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 8 HOUR), 46800.00);
 
 INSERT IGNORE INTO cloud_flow_db.oa_consumable (
   consumable_id, tenant_id, name, model, unit, quantity, low_stock_threshold, default_supplier_id, target_stock, warn_enabled, deleted, create_by, create_time, update_by, update_time
 ) VALUES
-(9001, 100000, 'A4打印纸', '70g/500张', '箱', 26, 8, 9001, 40, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 30 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9002, 100000, '黑色硒鼓', 'HP 138A', '支', 5, 6, 9002, 18, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 30 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
-(9003, 100000, '便签纸', '76x76mm', '包', 18, 5, 9001, 30, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-(9004, 100000, '工牌挂绳', '标准蓝色', '根', 42, 10, 9001, 60, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 25 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9005, 100000, '演示用 HDMI 线', '2米 4K', '根', 3, 4, 9002, 12, 1, '0', 'chen', DATE_SUB(NOW(), INTERVAL 12 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 2 HOUR));
+(9001, 100000, 'A4打印纸', '70g/500张', '箱', 0, 8, 9001, 40, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 30 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9002, 100000, '黑色硒鼓', 'HP 138A', '支', 0, 6, 9002, 18, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 30 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
+(9003, 100000, '便签纸', '76x76mm', '包', 0, 5, 9001, 30, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(9004, 100000, '工牌挂绳', '标准蓝色', '根', 0, 10, 9001, 60, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 25 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9005, 100000, '演示用 HDMI 线', '2米 4K', '根', 0, 4, 9002, 12, 1, '0', 'chen', DATE_SUB(NOW(), INTERVAL 12 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 2 HOUR));
 
 INSERT IGNORE INTO cloud_flow_db.oa_supplier (
   supplier_id, tenant_id, supplier_name, contact_name, contact_phone, bank_name, bank_account, status, deleted, create_by, create_time, update_by, update_time
@@ -8181,16 +8248,10 @@ INSERT IGNORE INTO cloud_flow_db.oa_asset_log (
 (9202, 100000, 9002, '1', '领用', 1, 7, 9, '后端现场支持设备发放', DATE_SUB(NOW(), INTERVAL 35 DAY)),
 (9203, 100000, 9003, '1', '盘点', 0, 7, NULL, '演示平板库存正常', DATE_SUB(NOW(), INTERVAL 3 DAY)),
 (9204, 100000, 9005, '1', '维修', 0, 7, NULL, 'RAID 卡异常，已送检', DATE_SUB(NOW(), INTERVAL 8 HOUR)),
-(9205, 100000, 9001, '2', '出库', -4, 1, NULL, '行政集中领用打印纸用于培训资料', DATE_SUB(NOW(), INTERVAL 6 DAY)),
-(9206, 100000, 9002, '2', '出库', -2, 7, NULL, '客户演示中心打印机更换硒鼓', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-(9207, 100000, 9005, '2', '入库', 6, 7, NULL, '补充 HDMI 线缆', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9208, 100000, 9004, '2', '盘点', 0, 1, NULL, '工牌挂绳数量正常', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
 (9209, 100000, 9003, '1', '领用', 1, 7, 5, '演示平板借用给产品经理', DATE_SUB(NOW(), INTERVAL 12 HOUR)),
 (9210, 100000, 9002, '1', '归还', -1, 7, 9, '现场支持设备归还入库', DATE_SUB(NOW(), INTERVAL 9 HOUR)),
 (9211, 100000, 9001, '1', '盘点', 0, 1, NULL, '月度资产盘点记录', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-(9212, 100000, 9004, '1', '维修', 0, 7, NULL, '投影仪灯泡更换', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9213, 100000, 9001, '2', '入库', 10, 1, NULL, '补充办公用品入库', DATE_SUB(NOW(), INTERVAL 3 DAY)),
-(9214, 100000, 9003, '2', '出库', -3, 7, NULL, '外勤现场备品领用', DATE_SUB(NOW(), INTERVAL 10 HOUR));
+(9212, 100000, 9004, '1', '维修', 0, 7, NULL, '投影仪灯泡更换', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 -- -----------------------------
 -- 2.6 车辆、用车与费用
@@ -8389,7 +8450,7 @@ INSERT IGNORE INTO cloud_flow_db.oa_duty_schedule (
  '总部办公区', '检查机房、电源、空调与办公区门禁状态', NULL, NULL, 'SCHEDULED', NULL, '节前安全巡查', '0', 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
 (9805, 100000, '客户上线支持值班', 'EMERGENCY', DATE_ADD(CURDATE(), INTERVAL 5 DAY), 'NIGHT', '20:00:00', '02:00:00', 7, '陈IT', 9, '后端测试', 105, 'IT部',
  '客户机房', '保障客户上线期间接口与数据库稳定', NULL, NULL, 'SCHEDULED', NULL, '客户上线专项保障', '0', 'admin', DATE_SUB(NOW(), INTERVAL 4 HOUR), 'admin', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
-(9806, 100000, '季度资产盘点值班', 'TEMP', DATE_ADD(CURDATE(), INTERVAL 6 DAY), 'DAY', '09:00:00', '17:00:00', 7, '陈IT', 8, '前端测试', 105, 'IT部',
+(9806, 100000, '季度资产盘点值班', 'DAILY', DATE_ADD(CURDATE(), INTERVAL 6 DAY), 'DAY', '09:00:00', '17:00:00', 7, '陈IT', 8, '前端测试', 105, 'IT部',
  '资产仓库', '完成季度资产盘点与出入库核对', NULL, NULL, 'SCHEDULED', NULL, '盘点专项任务', '0', 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR));
 
 -- -----------------------------
@@ -8582,7 +8643,7 @@ INSERT IGNORE INTO cloud_flow_db.biz_purchase_request (
   deleted, create_by, create_time, update_by, update_time
 ) VALUES
 (9003, 100000, 'demo_inst_021', 5, '张三', 'CG202605080001', 6001, '杭州云启科技有限公司', '李采购', '13800001111',
- '招商银行杭州分行', '6222020202020202020', 32000.00, DATE_ADD(NOW(), INTERVAL 2 DAY), '客户演示中心升级所需显示设备采购。', 'APPROVED',
+ '招商银行杭州分行', '6222020202020202020', 32000.00, DATE_ADD(NOW(), INTERVAL 2 DAY), '客户演示中心升级所需显示设备采购。', 'RECEIVED',
  'PAID', 9002, 'https://demo.cloudflow.local/files/purchase/cg202605080001-quote.pdf',
  101, '研发部', 9302, '苏州联拓制造上线项目', 7002, '苏州联拓制造有限公司', 'SUB-PROCUREMENT', '采购费用',
  '0', 'zhang', DATE_SUB(NOW(), INTERVAL 12 DAY), 'zhang', DATE_SUB(NOW(), INTERVAL 4 DAY));
@@ -8667,9 +8728,6 @@ WHERE instance_id LIKE 'demo_inst_%';
 DELETE FROM cloud_flow_db.wf_transaction_message
 WHERE message_id LIKE 'demo_msg_%';
 
-DELETE FROM cloud_flow_db.wf_notification_log
-WHERE log_id LIKE 'demo_notice_%';
-
 DELETE FROM cloud_flow_db.wf_urge_effect
 WHERE task_id LIKE 'demo_task_%';
 
@@ -8697,7 +8755,7 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_instance (
  'HIGH', 'PROC-DEMO-20260311-003', 101, 'zhang', 'zhang', DATE_SUB(NOW(), INTERVAL 16 HOUR), DATE_SUB(NOW(), INTERVAL 1 HOUR), '0', NULL, NULL),
 
 ('demo_inst_004', 100000, 'biz_reimburse', 'wf_reimburse', 'EXPENSE_CLAIM:9002', '王财务的办公采购报销', 3, '王财务',
- 'COMPLETED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY),
+ 'PASSED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY),
  JSON_OBJECT('claimNo','BX202603110002','amount',860.00,'category','OFFICE','deptName','财务部'),
  'NORMAL', 'PROC-DEMO-20260311-004', 102, 'wang', 'wang', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), '0', NULL, NULL),
 
@@ -8707,7 +8765,7 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_instance (
  'URGENT', 'PROC-DEMO-20260311-005', 102, 'wang', 'wang', DATE_SUB(NOW(), INTERVAL 14 HOUR), DATE_SUB(NOW(), INTERVAL 30 MINUTE), '0', NULL, NULL),
 
 ('demo_inst_006', 100000, 'biz_payment', 'wf_payment', 'PAYMENT_REQUEST:9002', '显示设备采购尾款付款申请', 3, '王财务',
- 'COMPLETED', DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY),
+ 'PASSED', DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY),
  JSON_OBJECT('paymentNo','FK202603110002','amount',32000.00,'paymentType','PURCHASE','deptName','财务部'),
  'NORMAL', 'PROC-DEMO-20260311-006', 102, 'wang', 'wang', DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), '0', NULL, NULL),
 
@@ -8812,7 +8870,7 @@ INSERT IGNORE INTO cloud_flow_db.wf_task_delegation (
   delegation_id, tenant_id, task_id, instance_id, from_user_id, from_user_name, to_user_id, to_user_name,
   delegation_type, reason, status, create_time
 ) VALUES
-('demo_delegate_001', 100000, 'demo_task_004', 'demo_inst_005', 1, 'Admin', 1, 'Admin', 'DELEGATE', '模拟展示：高额付款进入终审节点后的委托记录。', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 70 MINUTE)),
+('demo_delegate_001', 100000, 'demo_task_004', 'demo_inst_005', 2, '李经理', 1, 'Admin', 'DELEGATE', '模拟展示：高额付款进入终审节点后的委托记录。', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 70 MINUTE)),
 ('demo_delegate_002', 100000, 'demo_task_011', 'demo_inst_004', 1, 'Admin', 3, '王财务', 'TRANSFER', '历史案例：直属领导将资料核验转财务先补充。', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 7 DAY));
 
 INSERT IGNORE INTO cloud_flow_db.wf_task_add_sign (
@@ -8892,23 +8950,14 @@ INSERT IGNORE INTO cloud_flow_db.wf_transaction_message (
 ('demo_msg_004', 100000, 'WORKFLOW_NOTIFY', 'demo_inst_011', '出差申请等待部门经理审批。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 11 HOUR), DATE_SUB(NOW(), INTERVAL 11 HOUR), NULL),
 ('demo_msg_005', 100000, 'WORKFLOW_NOTIFY', 'demo_inst_012', '用车申请已提交，等待直属上级审批。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 3 HOUR), DATE_SUB(NOW(), INTERVAL 3 HOUR), NULL);
 
-INSERT IGNORE INTO cloud_flow_db.wf_notification_log (
-  log_id, tenant_id, notification_type, recipient_id, recipient_name, title, content, send_status, send_time, error_message,
-  related_type, related_id, create_time
-) VALUES
-('demo_notice_002', 100000, 'INTERNAL', 3, '王财务', '待审批：张三的杭州出差报销', '报销金额 2680.50 元，已进入财务审批节点。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 4 HOUR), NULL, 'PROCESS_INSTANCE', 'demo_inst_003', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
-('demo_notice_003', 100000, 'SMS', 1, 'Admin', '待审批：年度运维服务付款申请', '付款金额 128000 元，请尽快完成总经理审批。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 90 MINUTE), NULL, 'PROCESS_INSTANCE', 'demo_inst_005', DATE_SUB(NOW(), INTERVAL 90 MINUTE)),
-('demo_notice_004', 100000, 'INTERNAL', 2, '李经理', '待审批：杭州客户出差申请', '张三提交了杭州客户培训出差申请。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 10 HOUR), NULL, 'PROCESS_INSTANCE', 'demo_inst_011', DATE_SUB(NOW(), INTERVAL 10 HOUR)),
-('demo_notice_005', 100000, 'EMAIL', 1, 'Admin', '待审批：客户拜访用车申请', '请审批明日客户拜访派车申请。', 'PENDING', NULL, NULL, 'PROCESS_INSTANCE', 'demo_inst_012', DATE_SUB(NOW(), INTERVAL 2 HOUR));
-
 INSERT IGNORE INTO cloud_flow_db.wf_urge_effect (
-  tenant_id, task_id, urge_count, first_urge_time, last_urge_time, task_complete_time, response_seconds
+  effect_id, tenant_id, urge_id, task_id, before_duration, after_duration, effectiveness, urge_time, complete_time
 ) VALUES
-(100000, 'demo_task_002', 1, DATE_SUB(NOW(), INTERVAL 55 MINUTE), DATE_SUB(NOW(), INTERVAL 55 MINUTE), NULL, 3300),
-(100000, 'demo_task_004', 1, DATE_SUB(NOW(), INTERVAL 35 MINUTE), DATE_SUB(NOW(), INTERVAL 35 MINUTE), NULL, 2100),
-(100000, 'demo_task_007', 1, DATE_SUB(NOW(), INTERVAL 40 MINUTE), DATE_SUB(NOW(), INTERVAL 40 MINUTE), NULL, 2400),
-(100000, 'demo_task_011', 1, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), 86400),
-(100000, 'demo_task_014', 1, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), 3600);
+('demo_effect_002', 100000, 'demo_urge_002', 'demo_task_002', 3300, NULL, NULL, DATE_SUB(NOW(), INTERVAL 55 MINUTE), NULL),
+('demo_effect_004', 100000, 'demo_urge_004', 'demo_task_004', 2100, NULL, NULL, DATE_SUB(NOW(), INTERVAL 35 MINUTE), NULL),
+('demo_effect_007', 100000, 'demo_urge_007', 'demo_task_007', 2400, NULL, NULL, DATE_SUB(NOW(), INTERVAL 40 MINUTE), NULL),
+('demo_effect_011', 100000, 'demo_urge_011', 'demo_task_011', 172800, 86400, 5, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY)),
+('demo_effect_014', 100000, 'demo_urge_014', 'demo_task_014', 7200, 3600, 5, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 6 DAY), INTERVAL 1 HOUR));
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_copy (
   tenant_id, instance_id, process_def_key, title, node_id, node_name, start_user_id, start_user_name, user_id,
@@ -8922,12 +8971,6 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_copy (
  '{"tripNo":"CC202603110001","destination":"杭州","tripDays":3}', 1, DATE_SUB(NOW(), INTERVAL 45 MINUTE), DATE_SUB(NOW(), INTERVAL 10 HOUR)),
 (100000, 'demo_inst_012', 'vehicle_approval', '李经理的客户拜访用车申请', 'n1', '直属上级审批', 2, '李经理', 7,
  '{"usageId":9001,"vehicleId":9001,"destination":"浦东新区星河集团总部"}', 0, NULL, DATE_SUB(NOW(), INTERVAL 2 HOUR));
-
-INSERT IGNORE INTO cloud_flow_db.wf_notification_config (
-  config_id, tenant_id, config_name, event_type, notify_channel, template_id, recipient_type, recipient_value, enabled, create_time, update_time
-) VALUES
-('demo_notify_001', 100000, '待办生成通知', 'TASK_CREATED', 'INTERNAL', NULL, 'ROLE', 'manager', 1, DATE_SUB(NOW(), INTERVAL 20 DAY), DATE_SUB(NOW(), INTERVAL 20 DAY)),
-('demo_notify_002', 100000, '任务超时提醒', 'TASK_TIMEOUT', 'SMS', NULL, 'USER', '1', 1, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY));
 
 INSERT IGNORE INTO cloud_flow_db.wf_deploy_record (
   id, tenant_id, process_def_id, process_key, version, deploy_status, deploy_by, deployer_name, deploy_time,
@@ -8951,8 +8994,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_deploy_rollback_history (
 INSERT IGNORE INTO cloud_flow_db.wf_deploy_impact (
   id, tenant_id, deploy_id, impact_type, impact_level, impact_count, impact_detail, mitigation_plan, create_time
 ) VALUES
-(98001, 100000, 98001, 'TASK', 'MEDIUM', 12, '影响进行中报销任务 12 条', '通过批量通知提示重新提交审批', DATE_SUB(NOW(), INTERVAL 19 DAY)),
-(98002, 100000, 98002, 'PROCESS', 'LOW', 2, '回滚后重新触发流程实例 2 条', '运维窗口内执行，已通知业务方', DATE_SUB(NOW(), INTERVAL 15 DAY));
+(98001, 100000, 98001, 'PENDING_TASK', 'MEDIUM', 12, '影响进行中报销任务 12 条', '通过批量通知提示重新提交审批', DATE_SUB(NOW(), INTERVAL 19 DAY)),
+(98002, 100000, 98002, 'RUNNING_INSTANCE', 'LOW', 2, '回滚后重新触发流程实例 2 条', '运维窗口内执行，已通知业务方', DATE_SUB(NOW(), INTERVAL 15 DAY));
 
 INSERT IGNORE INTO cloud_flow_db.wf_template (
   id, name, description, category_id, tags, definition, preview_image, created_by, created_at, updated_at, usage_count, is_system, status, tenant_id
@@ -8977,17 +9020,7 @@ INSERT IGNORE INTO cloud_flow_db.wf_audit_log (
  '演示环境模板发布', '发布模板并生成初始版本', 'SUCCESS', NULL, '10.10.0.18',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36', 100000);
 
--- =========================================================
--- 五、补充系统消息（wf_notice）
--- =========================================================
-INSERT IGNORE INTO cloud_flow_db.wf_notice (
-  tenant_id, notice_title, notice_type, notice_content, sender_id, recipient_id, status,
-  create_by, create_time, update_by, update_time, remark
-) VALUES
-(100000, '流程待办提醒', '1', '您有一条待审批的高优先级付款申请，请尽快处理。', 1, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 30 MINUTE), 'admin', DATE_SUB(NOW(), INTERVAL 30 MINUTE), '演示数据-付款审批提醒'),
-(100000, '报销审批提醒', '1', '张三提交的差旅报销已进入财务审批节点。', 5, 3, '0', 'zhang', DATE_SUB(NOW(), INTERVAL 50 MINUTE), 'zhang', DATE_SUB(NOW(), INTERVAL 50 MINUTE), '演示数据-报销审批'),
-(100000, '出差申请提醒', '1', '张三的杭州客户出差申请等待部门经理审批。', 5, 2, '0', 'zhang', DATE_SUB(NOW(), INTERVAL 40 MINUTE), 'zhang', DATE_SUB(NOW(), INTERVAL 40 MINUTE), '演示数据-出差审批'),
-(100000, '用车申请提醒', '1', '明日客户拜访派车申请已提交，请确认。', 2, 1, '0', 'li', DATE_SUB(NOW(), INTERVAL 20 MINUTE), 'li', DATE_SUB(NOW(), INTERVAL 20 MINUTE), '演示数据-用车审批');
+-- 旧系统通知已统一迁移到下方 sys_message_record 种子。
 
 INSERT IGNORE INTO cloud_flow_db.sys_log (
   log_id, tenant_id, log_type, title, service_id, remote_addr, user_agent, request_uri, method, params, time, exception, create_by, create_time
@@ -9181,16 +9214,6 @@ WHERE instance_id IN (
   'seed_hr_inst_salary_001'
 );
 
-DELETE FROM cloud_flow_db.wf_notification_log
-WHERE log_id IN (
-  'seed_notice_expense_ops_001',
-  'seed_notice_payment_ops_001',
-  'seed_notice_hr_att_001',
-  'seed_notice_hr_leave_001',
-  'seed_notice_hr_prob_001',
-  'seed_notice_hr_salary_001'
-);
-
 DELETE FROM cloud_flow_db.wf_transaction_message
 WHERE message_id IN (
   'seed_msg_expense_ops_001',
@@ -9252,16 +9275,6 @@ WHERE instance_id IN (
   'seed_hr_inst_ot_001',
   'seed_hr_inst_prob_001',
   'seed_hr_inst_salary_001'
-);
-
-DELETE FROM cloud_flow_db.wf_notice
-WHERE remark IN (
-  '补充种子-上线报销审批提醒',
-  '补充种子-上线付款审批提醒',
-  '补充种子-补卡审批提醒',
-  '补充种子-调休审批提醒',
-  '补充种子-转正审批提醒',
-  '补充种子-调薪审批提醒'
 );
 
 DELETE FROM cloud_flow_db.oa_announcement_read
@@ -9472,9 +9485,6 @@ WHERE instance_id LIKE 'seed_inst_%'
 DELETE FROM cloud_flow_db.wf_transaction_message
 WHERE message_id LIKE 'seed_msg_%';
 
-DELETE FROM cloud_flow_db.wf_notification_log
-WHERE log_id LIKE 'seed_notice_%';
-
 DELETE FROM cloud_flow_db.wf_urge_effect
 WHERE task_id LIKE 'seed_task_%';
 
@@ -9500,11 +9510,11 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_instance (
   process_no, dept_id, create_by, update_by, create_time, update_time, deleted
 ) VALUES
 ('seed_inst_trip_ops_001', 100000, 'business_trip', 'wf_business_trip', 'trip_9011', '前端测试的苏州客户上线支持出差申请',
- 8, '前端测试', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 170 HOUR), DATE_SUB(NOW(), INTERVAL 146 HOUR),
+ 8, '前端测试', 'PASSED', DATE_SUB(NOW(), INTERVAL 170 HOUR), DATE_SUB(NOW(), INTERVAL 146 HOUR),
  '{"tripNo":"CC202604070011","destination":"苏州","tripDays":3,"project":"苏州智造流程上线"}', 'HIGH',
  'WF-CC202604070011', 106, 'test_fe', 'zhao', DATE_SUB(NOW(), INTERVAL 170 HOUR), DATE_SUB(NOW(), INTERVAL 146 HOUR), '0'),
 ('seed_inst_vehicle_ops_001', 100000, 'vehicle_approval', 'wf_vehicle_approval', 'vehicle_9011', '赵HR的客户接站派车申请',
- 4, '赵HR', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 50 HOUR), DATE_SUB(NOW(), INTERVAL 28 HOUR),
+ 4, '赵HR', 'PASSED', DATE_SUB(NOW(), INTERVAL 50 HOUR), DATE_SUB(NOW(), INTERVAL 28 HOUR),
  '{"usageId":9011,"vehicleId":9002,"destination":"虹桥高铁站-CloudFlow总部","passengerCount":3}', 'NORMAL',
  'WF-CAR-9011', 103, 'zhao', 'admin', DATE_SUB(NOW(), INTERVAL 50 HOUR), DATE_SUB(NOW(), INTERVAL 28 HOUR), '0'),
 ('seed_inst_expense_ops_001', 100000, 'biz_reimburse', 'wf_reimburse', 'expense_9011', '前端测试的苏州上线差旅报销',
@@ -9524,15 +9534,15 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_instance (
  '{"claimNo":"HUBX202605070002","amount":4260,"category":"TRAVEL","scenario":"incompatible"}', 'NORMAL',
  'WF-HOTUP-BX-002', 101, 'zhang', 'wang', DATE_SUB(NOW(), INTERVAL 22 HOUR), DATE_SUB(NOW(), INTERVAL 14 HOUR), '0'),
 ('seed_hr_inst_recruit_001', 100000, 'biz_recruit', 'wf_recruit', 'recruit_2011', '前端开发工程师（交付方向）招聘申请',
- 4, '赵HR', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 205 DAY), DATE_SUB(NOW(), INTERVAL 200 DAY),
+ 4, '赵HR', 'PASSED', DATE_SUB(NOW(), INTERVAL 205 DAY), DATE_SUB(NOW(), INTERVAL 200 DAY),
  '{"requestNo":"HRRQ202509140011","position":"前端开发工程师","headcount":1}', 'NORMAL',
  'WF-HRRQ202509140011', 106, 'zhao', 'admin', DATE_SUB(NOW(), INTERVAL 205 DAY), DATE_SUB(NOW(), INTERVAL 200 DAY), '0'),
 ('seed_hr_inst_offer_001', 100000, 'offer_approval', 'wf_offer_approval', 'offer_101', '林清禾 Offer 审批',
- 4, '赵HR', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 193 DAY), DATE_SUB(NOW(), INTERVAL 188 DAY),
+ 4, '赵HR', 'PASSED', DATE_SUB(NOW(), INTERVAL 193 DAY), DATE_SUB(NOW(), INTERVAL 188 DAY),
  '{"offerNo":"OFFER20250926000002","candidate":"林清禾","salary":18500}', 'NORMAL',
  'WF-OFFER20250926000002', 103, 'zhao', 'admin', DATE_SUB(NOW(), INTERVAL 193 DAY), DATE_SUB(NOW(), INTERVAL 188 DAY), '0'),
 ('seed_hr_inst_onboard_001', 100000, 'onboarding_approval', 'wf_onboarding_approval', 'onboard_5011', '林清禾入职审批',
- 4, '赵HR', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 182 DAY), DATE_SUB(NOW(), INTERVAL 175 DAY),
+ 4, '赵HR', 'PASSED', DATE_SUB(NOW(), INTERVAL 182 DAY), DATE_SUB(NOW(), INTERVAL 175 DAY),
  '{"applicationNo":"HRON202510100011","employeeName":"林清禾","dept":"前端组"}', 'NORMAL',
  'WF-HRON202510100011', 106, 'zhao', 'admin', DATE_SUB(NOW(), INTERVAL 182 DAY), DATE_SUB(NOW(), INTERVAL 175 DAY), '0'),
 ('seed_hr_inst_att_001', 100000, 'attendance_appeal', 'wf_attendance_appeal', 'attendance_9311', '前端测试的外勤补卡申请',
@@ -9543,10 +9553,6 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_instance (
  8, '前端测试', 'RUNNING', DATE_SUB(NOW(), INTERVAL 12 HOUR), NULL,
  '{"applicationNo":"QJ202604070003","leaveType":"调休","duration":4,"unit":"HOUR"}', 'NORMAL',
  'WF-QJ202604070003', 106, 'test_fe', 'zhao', DATE_SUB(NOW(), INTERVAL 12 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR), '0'),
-('seed_hr_inst_ot_001', 100000, 'overtime_request', 'wf_overtime_request', 'ot_9003', '前端测试的上线保障加班申请',
- 8, '前端测试', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 40 HOUR), DATE_SUB(NOW(), INTERVAL 34 HOUR),
- '{"applicationNo":"JB202604070003","duration":3.5,"compensationType":"TIME_OFF"}', 'NORMAL',
- 'WF-JB202604070003', 106, 'test_fe', 'zhao', DATE_SUB(NOW(), INTERVAL 40 HOUR), DATE_SUB(NOW(), INTERVAL 34 HOUR), '0'),
 ('seed_hr_inst_prob_001', 100000, 'probation_confirmation_approval', 'wf_probation_confirmation_approval', 'probation_6011', '林清禾转正审批',
  4, '赵HR', 'RUNNING', DATE_SUB(NOW(), INTERVAL 72 HOUR), NULL,
  '{"applicationNo":"HRPB202604070011","employeeName":"林清禾","stage":"试用期转正"}', 'HIGH',
@@ -9630,12 +9636,6 @@ INSERT IGNORE INTO cloud_flow_db.wf_task_history (
  8, '前端测试', 'SUBMIT', '提交 4 小时调休申请。', 90, DATE_SUB(NOW(), INTERVAL 12 HOUR)),
 ('seed_hist_hr_leave_002', 100000, 'seed_task_done_hr_leave_002', 'seed_hr_inst_leave_001', '部门经理审批', 'n1',
  2, '李经理', 'APPROVE', '项目已完成交接，同意调休并转 HR 备案。', 1800, DATE_SUB(NOW(), INTERVAL 9 HOUR)),
-('seed_hist_hr_ot_001', 100000, 'seed_task_done_hr_ot_001', 'seed_hr_inst_ot_001', '提交加班申请', 'root',
- 8, '前端测试', 'SUBMIT', '提交苏州上线保障周加班申请。', 90, DATE_SUB(NOW(), INTERVAL 40 HOUR)),
-('seed_hist_hr_ot_002', 100000, 'seed_task_done_hr_ot_002', 'seed_hr_inst_ot_001', '直属上级审批', 'n1',
- 2, '李经理', 'APPROVE', '确认上线值守记录，同意折算调休。', 2400, DATE_SUB(NOW(), INTERVAL 36 HOUR)),
-('seed_hist_hr_ot_003', 100000, 'seed_task_done_hr_ot_003', 'seed_hr_inst_ot_001', 'HR备案', 'n2',
- 4, '赵HR', 'APPROVE', '已确认加班记录并同步调休额度。', 900, DATE_SUB(NOW(), INTERVAL 34 HOUR)),
 ('seed_hist_hr_prob_001', 100000, 'seed_task_done_hr_prob_001', 'seed_hr_inst_prob_001', '提交转正申请', 'root',
  4, '赵HR', 'SUBMIT', '提交林清禾试用期转正审批。', 120, DATE_SUB(NOW(), INTERVAL 72 HOUR)),
 ('seed_hist_hr_salary_001', 100000, 'seed_task_done_hr_salary_001', 'seed_hr_inst_salary_001', '提交调薪申请', 'root',
@@ -9743,23 +9743,14 @@ INSERT IGNORE INTO cloud_flow_db.wf_transaction_message (
 ('seed_msg_hr_prob_001', 100000, 'WORKFLOW_NOTIFY', 'seed_hr_inst_prob_001', '林清禾转正申请等待总经理审批。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 5 HOUR), DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL),
 ('seed_msg_hr_salary_001', 100000, 'WORKFLOW_NOTIFY', 'seed_hr_inst_salary_001', '后端测试绩效调薪申请已提交总经理审批。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 1 HOUR), DATE_SUB(NOW(), INTERVAL 1 HOUR), NULL);
 
-INSERT IGNORE INTO cloud_flow_db.wf_notification_log (
-  log_id, tenant_id, notification_type, recipient_id, recipient_name, title, content, send_status, send_time, error_message,
-  related_type, related_id, create_time
-) VALUES
-('seed_notice_expense_ops_001', 100000, 'INTERNAL', 3, '王财务', '待审批：苏州上线差旅报销', '报销金额 4860 元，请核对票据并完成审批。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 3 HOUR), NULL, 'PROCESS_INSTANCE', 'seed_inst_expense_ops_001', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
-('seed_notice_payment_ops_001', 100000, 'SMS', 1, 'Admin', '待审批：上线保障周付款申请', '付款金额 56800 元，请尽快完成总经理审批。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 90 MINUTE), NULL, 'PROCESS_INSTANCE', 'seed_inst_payment_ops_001', DATE_SUB(NOW(), INTERVAL 90 MINUTE)),
-('seed_notice_hr_att_001', 100000, 'INTERNAL', 2, '李经理', '待审批：前端测试补卡申请', '员工在苏州客户园区提交了外勤补卡申请。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 6 HOUR), NULL, 'PROCESS_INSTANCE', 'seed_hr_inst_att_001', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
-('seed_notice_hr_leave_001', 100000, 'INTERNAL', 4, '赵HR', '待备案：前端测试调休申请', '该申请已完成部门经理审批，请完成 HR 备案。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL, 'PROCESS_INSTANCE', 'seed_hr_inst_leave_001', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-('seed_notice_hr_prob_001', 100000, 'INTERNAL', 1, 'Admin', '待审批：林清禾转正申请', '试用期评审已完成，请尽快完成转正审批。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL, 'PROCESS_INSTANCE', 'seed_hr_inst_prob_001', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
-('seed_notice_hr_salary_001', 100000, 'INTERNAL', 1, 'Admin', '待审批：后端测试绩效调薪', '建议追加绩效奖金 1000 元，请审核。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 1 HOUR), NULL, 'PROCESS_INSTANCE', 'seed_hr_inst_salary_001', DATE_SUB(NOW(), INTERVAL 1 HOUR));
+-- 旧通知日志已统一迁移到 sys_message_record。
 
 INSERT IGNORE INTO cloud_flow_db.wf_urge_effect (
-  tenant_id, task_id, urge_count, first_urge_time, last_urge_time, task_complete_time, response_seconds
+  effect_id, tenant_id, urge_id, task_id, before_duration, after_duration, effectiveness, urge_time, complete_time
 ) VALUES
-(100000, 'seed_task_expense_ops_001', 1, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL, 7200),
-(100000, 'seed_task_payment_ops_001', 1, DATE_SUB(NOW(), INTERVAL 90 MINUTE), DATE_SUB(NOW(), INTERVAL 90 MINUTE), NULL, 5400),
-(100000, 'seed_task_hr_prob_001', 1, DATE_SUB(NOW(), INTERVAL 5 HOUR), DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL, 18000);
+('seed_effect_expense_ops_001', 100000, 'seed_urge_expense_ops_001', 'seed_task_expense_ops_001', 7200, NULL, NULL, DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL),
+('seed_effect_payment_ops_001', 100000, 'seed_urge_payment_ops_001', 'seed_task_payment_ops_001', 5400, NULL, NULL, DATE_SUB(NOW(), INTERVAL 90 MINUTE), NULL),
+('seed_effect_hr_prob_001', 100000, 'seed_urge_hr_prob_001', 'seed_task_hr_prob_001', 18000, NULL, NULL, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL);
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_copy (
   tenant_id, instance_id, process_def_key, title, node_id, node_name, start_user_id, start_user_name, user_id,
@@ -9777,36 +9768,29 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_copy (
  '{"applicationNo":"SA202604070011","amount":1000.00}', 0, NULL, DATE_SUB(NOW(), INTERVAL 5 HOUR));
 
 -- =========================================================
--- 七、补充系统站内消息
+-- 七、补充统一站内消息
 -- =========================================================
 
-DELETE FROM cloud_flow_db.wf_notice
-WHERE notice_id BETWEEN 9911 AND 9916
-   OR remark IN (
-     '补充种子-上线报销审批提醒',
-     '补充种子-上线付款审批提醒',
-     '补充种子-补卡审批提醒',
-     '补充种子-调休审批提醒',
-     '补充种子-转正审批提醒',
-     '补充种子-调薪审批提醒'
-   );
+DELETE FROM cloud_flow_db.sys_message_record
+WHERE tenant_id = 100000 AND record_id BETWEEN 27000 AND 27099;
 
-INSERT IGNORE INTO cloud_flow_db.wf_notice (
-  notice_id, tenant_id, notice_title, notice_type, notice_content, sender_id, recipient_id, status,
-  create_by, create_time, update_by, update_time, remark
-) VALUES
-(9911, 100000, '上线报销审批提醒', '1', '前端测试提交的苏州上线差旅报销已进入财务总监审批，请尽快处理。', 8, 3, '0',
- 'test_fe', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'test_fe', DATE_SUB(NOW(), INTERVAL 3 HOUR), '补充种子-上线报销审批提醒'),
-(9912, 100000, '上线付款审批提醒', '1', '苏州智造上线保障周对公付款申请金额为 56800 元，当前等待总经理审批。', 3, 1, '0',
- 'wang', DATE_SUB(NOW(), INTERVAL 90 MINUTE), 'wang', DATE_SUB(NOW(), INTERVAL 90 MINUTE), '补充种子-上线付款审批提醒'),
-(9913, 100000, '补卡审批提醒', '1', '前端测试在苏州客户园区提交了外勤补卡申请，请直属上级尽快审批。', 8, 2, '0',
- 'test_fe', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'test_fe', DATE_SUB(NOW(), INTERVAL 6 HOUR), '补充种子-补卡审批提醒'),
-(9914, 100000, '调休备案提醒', '1', '前端测试申请 4 小时调休，部门经理已同意，当前等待 HR 备案。', 8, 4, '0',
- 'test_fe', DATE_SUB(NOW(), INTERVAL 2 HOUR), 'test_fe', DATE_SUB(NOW(), INTERVAL 2 HOUR), '补充种子-调休审批提醒'),
-(9915, 100000, '转正审批提醒', '1', '林清禾试用期评审材料已齐备，当前等待总经理审批转正。', 4, 1, '0',
- 'zhao', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'zhao', DATE_SUB(NOW(), INTERVAL 5 HOUR), '补充种子-转正审批提醒'),
-(9916, 100000, '调薪审批提醒', '1', '后端测试绩效调薪申请已提交，建议追加绩效奖金 1000 元。', 2, 1, '0',
- 'li', DATE_SUB(NOW(), INTERVAL 1 HOUR), 'li', DATE_SUB(NOW(), INTERVAL 1 HOUR), '补充种子-调薪审批提醒');
+INSERT IGNORE INTO cloud_flow_db.sys_message_record
+  (record_id, tenant_id, trace_id, template_code, channel_type, receiver_type, receiver_id,
+   receiver_name, title, content, message_category, biz_type, biz_id, link_url,
+   send_status, send_time, read_flag, create_by, create_time, update_by, update_time)
+VALUES
+(27000, 100000, 'seed-msg-001', 'WF_TASK_CREATED', 'INTERNAL', 'USER', 3, '王财务',
+ '上线报销审批提醒', '前端测试提交的苏州上线差旅报销已进入财务总监审批，请尽快处理。', 'TODO', 'PROCESS_INSTANCE', 'seed_inst_expense_ops_001', '/workflow/tasks', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 3 HOUR), 0, 'seed', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'seed', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
+(27001, 100000, 'seed-msg-002', 'WF_TASK_CREATED', 'INTERNAL', 'USER', 1, 'Admin',
+ '上线付款审批提醒', '苏州智造上线保障周对公付款申请金额为 56800 元，当前等待总经理审批。', 'TODO', 'PROCESS_INSTANCE', 'seed_inst_payment_ops_001', '/workflow/tasks', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 90 MINUTE), 0, 'seed', DATE_SUB(NOW(), INTERVAL 90 MINUTE), 'seed', DATE_SUB(NOW(), INTERVAL 90 MINUTE)),
+(27002, 100000, 'seed-msg-003', 'WF_TASK_CREATED', 'INTERNAL', 'USER', 2, '李经理',
+ '补卡审批提醒', '前端测试在苏州客户园区提交了外勤补卡申请，请直属上级尽快审批。', 'TODO', 'PROCESS_INSTANCE', 'seed_hr_inst_att_001', '/workflow/tasks', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 6 HOUR), 0, 'seed', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'seed', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+(27003, 100000, 'seed-msg-004', 'WF_TASK_CREATED', 'INTERNAL', 'USER', 4, '赵HR',
+ '调休备案提醒', '前端测试申请 4 小时调休，部门经理已同意，当前等待 HR 备案。', 'TODO', 'PROCESS_INSTANCE', 'seed_hr_inst_leave_001', '/workflow/tasks', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 2 HOUR), 0, 'seed', DATE_SUB(NOW(), INTERVAL 2 HOUR), 'seed', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(27004, 100000, 'seed-msg-005', 'WF_TASK_CREATED', 'INTERNAL', 'USER', 1, 'Admin',
+ '转正审批提醒', '林清禾试用期评审材料已齐备，当前等待总经理审批转正。', 'TODO', 'PROCESS_INSTANCE', 'seed_hr_inst_prob_001', '/workflow/tasks', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 5 HOUR), 0, 'seed', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'seed', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
+(27005, 100000, 'seed-msg-006', 'WF_TASK_CREATED', 'INTERNAL', 'USER', 1, 'Admin',
+ '调薪审批提醒', '后端测试绩效调薪申请已提交，建议追加绩效奖金 1000 元。', 'TODO', 'PROCESS_INSTANCE', 'seed_hr_inst_salary_001', '/workflow/tasks', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 1 HOUR), 0, 'seed', DATE_SUB(NOW(), INTERVAL 1 HOUR), 'seed', DATE_SUB(NOW(), INTERVAL 1 HOUR));
 
 -- =========================================================
 -- 六、组织基础数据扩充：部门、岗位、用户、员工
@@ -9954,22 +9938,21 @@ INSERT IGNORE INTO cloud_flow_db.oa_work_task (
  DATE_ADD(NOW(), INTERVAL 5 DAY), '["销售","路线","拜访"]', NULL, 'he_sales', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'admin', DATE_SUB(NOW(), INTERVAL 80 MINUTE), '0');
 
 INSERT IGNORE INTO cloud_flow_db.oa_asset (
-  asset_id, tenant_id, asset_code, name, category, model, status, price, purchase_date, owner_id, location, remark,
-  deleted, create_by, create_time, update_by, update_time
+  asset_id, tenant_id, asset_code, name, category_id, model, status, purchase_amount, purchase_date, owner_id, location, remark, deleted, create_by, create_time, update_by, update_time, net_book_value
 ) VALUES
-(9006, 100000, 'IT-LAP-2026-006', 'MacBook Air 产品设计机', '笔记本电脑', 'Apple M4 24GB/512GB', '2', 11299.00, '2026-02-18', 15, '产品设计组工位 P-03', '用于产品原型设计与评审演示', '0', 'chen', DATE_SUB(NOW(), INTERVAL 45 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 3 DAY)),
-(9007, 100000, 'IT-LAP-2026-007', 'Dell Latitude 交付顾问机', '笔记本电脑', 'i7/32GB/1TB', '2', 12800.00, '2026-02-20', 16, '交付一组工位 D-05', '用于客户现场实施与培训', '0', 'chen', DATE_SUB(NOW(), INTERVAL 44 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-(9008, 100000, 'IT-PHN-2026-008', 'iPhone 15 客户成功外勤机', '手机设备', '256G 黑色', '2', 6999.00, '2026-02-22', 17, '客户成功组储物柜 CS-02', '用于外勤回访与客户演示录屏', '0', 'chen', DATE_SUB(NOW(), INTERVAL 42 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9009, 100000, 'IT-LAP-2026-009', 'ThinkPad T14 销售演示机', '笔记本电脑', 'Ryzen7/32GB/1TB', '2', 10800.00, '2026-02-23', 18, '华东销售组工位 S-08', '预装重点客户演示环境', '0', 'chen', DATE_SUB(NOW(), INTERVAL 41 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 18 HOUR)),
-(9010, 100000, 'IT-LAP-2026-010', '运维巡检笔记本', '笔记本电脑', 'i7/16GB/512GB', '2', 9200.00, '2026-02-24', 19, '运维保障组值守柜 OPS-01', '用于机房巡检和告警排查', '0', 'chen', DATE_SUB(NOW(), INTERVAL 40 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 12 HOUR)),
-(9011, 100000, 'IT-MOB-2026-011', 'Android 测试机套装', '移动设备', 'Android 14 多机型', '2', 14600.00, '2026-02-25', 20, '测试组设备柜 QA-04', '覆盖主流安卓审批与访客扫码场景', '0', 'chen', DATE_SUB(NOW(), INTERVAL 39 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 8 HOUR));
+(9006, 100000, 'IT-LAP-2026-006', 'MacBook Air 产品设计机', 165001, 'Apple M4 24GB/512GB', 'IN_USE', 11299.00, '2026-02-18', 15, '产品设计组工位 P-03', '用于产品原型设计与评审演示', '0', 'chen', DATE_SUB(NOW(), INTERVAL 45 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 3 DAY), 11299.00),
+(9007, 100000, 'IT-LAP-2026-007', 'Dell Latitude 交付顾问机', 165001, 'i7/32GB/1TB', 'IN_USE', 12800.00, '2026-02-20', 16, '交付一组工位 D-05', '用于客户现场实施与培训', '0', 'chen', DATE_SUB(NOW(), INTERVAL 44 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 2 DAY), 12800.00),
+(9008, 100000, 'IT-PHN-2026-008', 'iPhone 15 客户成功外勤机', 165005, '256G 黑色', 'IN_USE', 6999.00, '2026-02-22', 17, '客户成功组储物柜 CS-02', '用于外勤回访与客户演示录屏', '0', 'chen', DATE_SUB(NOW(), INTERVAL 42 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 1 DAY), 6999.00),
+(9009, 100000, 'IT-LAP-2026-009', 'ThinkPad T14 销售演示机', 165001, 'Ryzen7/32GB/1TB', 'IN_USE', 10800.00, '2026-02-23', 18, '华东销售组工位 S-08', '预装重点客户演示环境', '0', 'chen', DATE_SUB(NOW(), INTERVAL 41 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 18 HOUR), 10800.00),
+(9010, 100000, 'IT-LAP-2026-010', '运维巡检笔记本', 165001, 'i7/16GB/512GB', 'IN_USE', 9200.00, '2026-02-24', 19, '运维保障组值守柜 OPS-01', '用于机房巡检和告警排查', '0', 'chen', DATE_SUB(NOW(), INTERVAL 40 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 12 HOUR), 9200.00),
+(9011, 100000, 'IT-MOB-2026-011', 'Android 测试机套装', 165006, 'Android 14 多机型', 'IN_USE', 14600.00, '2026-02-25', 20, '测试组设备柜 QA-04', '覆盖主流安卓审批与访客扫码场景', '0', 'chen', DATE_SUB(NOW(), INTERVAL 39 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 8 HOUR), 14600.00);
 
 INSERT IGNORE INTO cloud_flow_db.oa_consumable (
   consumable_id, tenant_id, name, model, unit, quantity, low_stock_threshold, default_supplier_id, target_stock, warn_enabled, deleted, create_by, create_time, update_by, update_time
 ) VALUES
-(9006, 100000, '白板笔', '黑蓝红三色套装', '盒', 28, 6, 9001, 40, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9007, 100000, '一次性访客胸卡', '透明硬卡套', '个', 120, 30, 9001, 160, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
-(9008, 100000, '移动电源', '20000mAh', '个', 10, 3, 9002, 20, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 15 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR));
+(9006, 100000, '白板笔', '黑蓝红三色套装', '盒', 0, 6, 9001, 40, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9007, 100000, '一次性访客胸卡', '透明硬卡套', '个', 0, 30, 9001, 160, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+(9008, 100000, '移动电源', '20000mAh', '个', 0, 3, 9002, 20, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 15 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR));
 
 INSERT IGNORE INTO cloud_flow_db.oa_asset_log (
   log_id, tenant_id, ref_id, ref_type, type, quantity_change, operator_id, target_id, remark, create_time
@@ -9979,9 +9962,7 @@ INSERT IGNORE INTO cloud_flow_db.oa_asset_log (
 (9217, 100000, 9008, '1', '领用', 1, 7, 17, '客户成功外勤手机设备发放', DATE_SUB(NOW(), INTERVAL 35 DAY)),
 (9218, 100000, 9009, '1', '领用', 1, 7, 18, '销售演示设备发放', DATE_SUB(NOW(), INTERVAL 34 DAY)),
 (9219, 100000, 9010, '1', '领用', 1, 7, 19, '运维巡检值守设备发放', DATE_SUB(NOW(), INTERVAL 33 DAY)),
-(9220, 100000, 9011, '1', '领用', 1, 7, 20, '测试组安卓回归设备发放', DATE_SUB(NOW(), INTERVAL 32 DAY)),
-(9221, 100000, 9006, '2', '出库', -6, 1, NULL, '协同周会议室与培训区补充白板笔', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-(9222, 100000, 9007, '2', '出库', -20, 1, NULL, '本周访客接待与培训活动使用胸卡', DATE_SUB(NOW(), INTERVAL 1 DAY));
+(9220, 100000, 9011, '1', '领用', 1, 7, 20, '测试组安卓回归设备发放', DATE_SUB(NOW(), INTERVAL 32 DAY));
 
 INSERT IGNORE INTO cloud_flow_db.oa_vehicle (
   vehicle_id, tenant_id, license_plate, brand, model, color, capacity, status, mileage, purchase_date, insurance_expiry, annual_inspection_expiry,
@@ -10124,16 +10105,6 @@ INSERT IGNORE INTO cloud_flow_db.biz_payment_request (
 -- 八、组织扩充后的支撑数据：编制、汇报、合同、文件、通知
 -- =========================================================
 
-DELETE FROM cloud_flow_db.wf_notification_log
-WHERE log_id IN (
-  'seed_notice_org_001',
-  'seed_notice_org_002',
-  'seed_notice_org_003',
-  'seed_notice_org_004',
-  'seed_notice_org_005',
-  'seed_notice_org_006'
-);
-
 DELETE FROM cloud_flow_db.wf_transaction_message
 WHERE message_id IN (
   'seed_msg_org_001',
@@ -10144,24 +10115,8 @@ WHERE message_id IN (
   'seed_msg_org_006'
 );
 
-DELETE FROM cloud_flow_db.wf_notification_config
-WHERE config_id IN ('seed_notify_003', 'seed_notify_004', 'seed_notify_005');
-
 DELETE FROM cloud_flow_db.wf_template_archive
 WHERE id IN ('seed_archive_001', 'seed_archive_002');
-
-DELETE FROM cloud_flow_db.wf_notice
-WHERE notice_id BETWEEN 9917 AND 9924
-   OR remark IN (
-     '组织扩充-需求评审提醒',
-     '组织扩充-交付启动会提醒',
-     '组织扩充-续约复盘提醒',
-     '组织扩充-运维演练提醒',
-     '组织扩充-测试回归提醒',
-     '组织扩充-报销归档提醒',
-     '组织扩充-JD评审提醒',
-     '组织扩充-客户接待提醒'
-   );
 
 DELETE FROM cloud_flow_db.sys_file
 WHERE file_id IN (93001,93002,93003,93004,93005,93006,93007,93008,93009,93010);
@@ -10202,13 +10157,7 @@ INSERT IGNORE INTO cloud_flow_db.sys_audit_log (
    JSON_ARRAY(JSON_OBJECT('op', 'replace', 'path', '/remark', 'from', '未归档', 'value', '已归档到交付培训资料库')),
    0, 'NORMAL', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 12 HOUR));
 
--- 8.4 通知配置、消息日志与流程抄送
-INSERT IGNORE INTO cloud_flow_db.wf_notification_config (
-  config_id, tenant_id, config_name, event_type, notify_channel, template_id, recipient_type, recipient_value, enabled, create_time, update_time
-) VALUES
-('seed_notify_003', 100000, '公告发布站内通知', 'ANNOUNCEMENT_PUBLISHED', 'INTERNAL', NULL, 'ROLE', 'manager', 1, DATE_SUB(NOW(), INTERVAL 15 DAY), DATE_SUB(NOW(), INTERVAL 15 DAY)),
-('seed_notify_004', 100000, '值班排班短信提醒', 'DUTY_SCHEDULE_CREATED', 'SMS', NULL, 'ROLE', 'employee', 1, DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 12 DAY)),
-('seed_notify_005', 100000, '会议创建参与人提醒', 'MEETING_CREATED', 'INTERNAL', NULL, 'USER', '10,11,12,13,14,20', 1, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY));
+-- 8.4 流程抄送仍由 wf_transaction_message 记录，旧通知配置已移除。
 
 INSERT IGNORE INTO cloud_flow_db.wf_transaction_message (
   message_id, tenant_id, business_type, business_id, content, status, retry_count, max_retry_count, next_retry_time, create_time, update_time, error_message
@@ -10220,16 +10169,7 @@ INSERT IGNORE INTO cloud_flow_db.wf_transaction_message (
 ('seed_msg_org_005', 100000, 'SYS_NOTICE', '9918', '交付启动会站内提醒已投递。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR), NULL),
 ('seed_msg_org_006', 100000, 'SYS_NOTICE', '9923', '解决方案架构师 JD 评审提醒等待邮件通道重试。', 'PENDING', 1, 5, DATE_ADD(NOW(), INTERVAL 15 MINUTE), DATE_SUB(NOW(), INTERVAL 20 MINUTE), DATE_SUB(NOW(), INTERVAL 10 MINUTE), '邮件通道连接抖动');
 
-INSERT IGNORE INTO cloud_flow_db.wf_notification_log (
-  log_id, tenant_id, notification_type, recipient_id, recipient_name, title, content, send_status, send_time, error_message,
-  related_type, related_id, create_time
-) VALUES
-('seed_notice_org_001', 100000, 'INTERNAL', 15, '宋清妍', '待参加：AI 表单能力评审会', '请准备新工作台需求清单和设计评审材料。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL, 'SCHEDULE_EVENT', '9513', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
-('seed_notice_org_002', 100000, 'INTERNAL', 16, '高牧', '待参加：华东交付启动会', '请携带风险清单、培训计划和客户环境核验结果。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 4 HOUR), NULL, 'SCHEDULE_EVENT', '9514', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
-('seed_notice_org_003', 100000, 'SMS', 18, '彭骁', '待参加：月度销售漏斗评审', '请提前准备二季度重点客户拜访路线。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 3 HOUR), NULL, 'SCHEDULE_EVENT', '9516', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
-('seed_notice_org_004', 100000, 'INTERNAL', 19, '许磊', '待值守：运维夜间值守', '请确认监控面板、告警链路和值班交接清单。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL, 'DUTY_SCHEDULE', '9813', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-('seed_notice_org_005', 100000, 'INTERNAL', 20, '韩悦', '待值守：测试回归值班', '请完成移动端冒烟回归并同步缺陷清单。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 90 MINUTE), NULL, 'DUTY_SCHEDULE', '9816', DATE_SUB(NOW(), INTERVAL 90 MINUTE)),
-('seed_notice_org_006', 100000, 'EMAIL', 4, '赵HR', '待评审：解决方案架构师 JD', '产品部已完成岗位职责初稿，请在今天下班前完成 HR 评审。', 'PENDING', NULL, NULL, 'WORK_TASK', '9431', DATE_SUB(NOW(), INTERVAL 30 MINUTE));
+-- 组织扩充通知已统一迁移到 sys_message_record。
 
 INSERT IGNORE INTO cloud_flow_db.wf_process_copy (
   tenant_id, instance_id, process_def_key, title, node_id, node_name, start_user_id, start_user_name, user_id,
@@ -10242,19 +10182,7 @@ INSERT IGNORE INTO cloud_flow_db.wf_process_copy (
 (100000, 'seed_inst_payment_ops_001', 'biz_payment', '苏州智造上线保障周对公付款申请', 'b2', '总经理审批', 3, '王财务', 13,
  '{"paymentNo":"FK202604070011","amount":56800.00,"project":"苏州智造上线保障周"}', 0, NULL, DATE_SUB(NOW(), INTERVAL 4 HOUR));
 
--- 8.5 站内消息与流程模板归档
-INSERT IGNORE INTO cloud_flow_db.wf_notice (
-  notice_id, tenant_id, notice_title, notice_type, notice_content, sender_id, recipient_id, status,
-  create_by, create_time, update_by, update_time, remark
-) VALUES
-(9917, 100000, '需求评审提醒', '1', 'AI 表单能力评审会将于明日上午开始，请准备新工作台需求清单。', 10, 15, '0', 'sun_pm', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'sun_pm', DATE_SUB(NOW(), INTERVAL 5 HOUR), '组织扩充-需求评审提醒'),
-(9918, 100000, '交付启动会提醒', '1', '华东交付启动会将在交付作战室举行，请携带风险清单和培训计划。', 11, 16, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 4 HOUR), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 4 HOUR), '组织扩充-交付启动会提醒'),
-(9919, 100000, '续约复盘提醒', '1', '重点客户续约复盘会已排期，请准备客户健康分层和活跃度数据。', 12, 18, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 3 HOUR), '组织扩充-续约复盘提醒'),
-(9920, 100000, '运维演练提醒', '1', '本周四晚进行运维应急演练，请提前检查告警链路和值守清单。', 14, 19, '0', 'tang_ops', DATE_SUB(NOW(), INTERVAL 2 HOUR), 'tang_ops', DATE_SUB(NOW(), INTERVAL 2 HOUR), '组织扩充-运维演练提醒'),
-(9921, 100000, '测试回归提醒', '1', '今晚需要完成移动端审批与访客二维码相关回归，请注意汇总缺陷。', 14, 20, '0', 'tang_ops', DATE_SUB(NOW(), INTERVAL 100 MINUTE), 'tang_ops', DATE_SUB(NOW(), INTERVAL 100 MINUTE), '组织扩充-测试回归提醒'),
-(9922, 100000, '报销归档提醒', '1', '苏州培训出差报销已审批通过，请核对票据并完成归档。', 16, 3, '0', 'gao_delivery', DATE_SUB(NOW(), INTERVAL 80 MINUTE), 'gao_delivery', DATE_SUB(NOW(), INTERVAL 80 MINUTE), '组织扩充-报销归档提醒'),
-(9923, 100000, 'JD评审提醒', '1', '解决方案架构师 JD 初稿已完成，请 HR 今天内反馈招聘侧修改意见。', 10, 4, '0', 'sun_pm', DATE_SUB(NOW(), INTERVAL 60 MINUTE), 'sun_pm', DATE_SUB(NOW(), INTERVAL 60 MINUTE), '组织扩充-JD评审提醒'),
-(9924, 100000, '客户接待提醒', '1', '明日有交付客户来访，请提前检查会议设备、胸卡和演示账号。', 11, 7, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 40 MINUTE), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 40 MINUTE), '组织扩充-客户接待提醒');
+-- 8.5 站内消息与流程模板归档（统一消息记录见本文件第七节）
 
 INSERT IGNORE INTO cloud_flow_db.wf_template_archive (
   id, workflow_id, workflow_name, archived_by, archived_at, archive_reason, can_restore, original_data, tenant_id
@@ -10305,16 +10233,16 @@ INSERT IGNORE INTO cloud_flow_db.oa_project_member (
 (9303, 100000, 9302, 11, '吴思远', 'PM', '交付经理', DATE_SUB(CURDATE(), INTERVAL 2 DAY), NULL, 1, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY)),
 (9304, 100000, 9302, 16, '高牧', 'CONSULTANT', '实施顾问', DATE_SUB(CURDATE(), INTERVAL 2 DAY), NULL, 1, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
-INSERT IGNORE INTO cloud_flow_db.oa_project_milestone (
-  milestone_id, tenant_id, project_id, milestone_name, milestone_code, owner_id, owner_name, planned_date, actual_date,
-  baseline_date, progress, sort_order, status, remark, deleted, create_by, create_time, update_by, update_time
+INSERT IGNORE INTO cloud_flow_db.oa_project_task (
+  task_id, tenant_id, project_id, parent_task_id, level_path, task_no, subject, is_group_flag, is_milestone_flag, status, priority, assignee_id, task_weight, progress, planned_start, planned_end, baseline_start, baseline_end, planned_hours, actual_start, actual_end, actual_hours, sort_no, description, deleted, create_by, create_time, update_by, update_time
 ) VALUES
-(9301, 100000, 9301, '续约项目启动会', 'MS202605080001', 12, '郑雅宁', DATE_SUB(CURDATE(), INTERVAL 12 DAY), DATE_SUB(CURDATE(), INTERVAL 11 DAY),
- DATE_SUB(CURDATE(), INTERVAL 14 DAY), 100.00, 1, 'COMPLETED', '启动会已完成，明确交付和回款联动节奏。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 18 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 11 DAY)),
-(9302, 100000, 9301, '接口稳定性整改', 'MS202605080002', 17, '徐珂', DATE_SUB(CURDATE(), INTERVAL 2 DAY), NULL,
- DATE_SUB(CURDATE(), INTERVAL 5 DAY), 70.00, 2, 'IN_PROGRESS', '夜间同步接口仍存在超时风险。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 10 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9303, 100000, 9302, '二期项目启动会', 'MS202605080003', 11, '吴思远', DATE_ADD(CURDATE(), INTERVAL 5 DAY), NULL,
- DATE_ADD(CURDATE(), INTERVAL 2 DAY), 10.00, 1, 'PLANNED', '待客户确认培训排期后正式启动。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 3 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
+(165001, 100000, 9301, NULL, '/165001/', 'WBS-001', '梳理续约接口问题清单', 1, 0, 'IN_PROGRESS', 2, 17, 1.00, 80.00, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 24.00, DATE_SUB(NOW(), INTERVAL 6 DAY), NULL, 19.00, 1, '汇总景曜科技续约阻塞项并形成整改清单。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 7 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(165002, 100000, 9301, 165001, '/165001/165002/', 'WBS-002', '推进首期回款核销', 0, 0, 'IN_PROGRESS', 2, 12, 1.00, 55.00, DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_ADD(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), 16.00, DATE_SUB(NOW(), INTERVAL 4 DAY), NULL, 8.00, 2, '对接财务和客户完成首期回款凭证与核销。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 5 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(165003, 100000, 9302, NULL, '/165003/', 'WBS-003', '准备二期项目启动材料', 1, 0, 'NOT_STARTED', 1, 11, 1.00, 15.00, DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 4 DAY), 12.00, NULL, NULL, 0.00, 1, '整理联拓制造二期推广启动会材料和培训计划。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(165004, 100000, 9302, 165003, '/165003/165004/', 'WBS-004', '确认客户培训账号与环境', 0, 0, 'IN_PROGRESS', 1, 16, 1.00, 35.00, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 6 DAY), 10.00, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, 3.00, 2, '启动前检查培训账号、角色与测试环境。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(165005, 100000, 9301, NULL, '/165005/', 'MS202605080001', '续约项目启动会', 0, 1, 'COMPLETED', 1, 12, 3.00, 100.00, DATE_SUB(CURDATE(), INTERVAL 12 DAY), DATE_SUB(CURDATE(), INTERVAL 12 DAY), DATE_SUB(CURDATE(), INTERVAL 14 DAY), DATE_SUB(CURDATE(), INTERVAL 14 DAY), 0.00, DATE_SUB(CURDATE(), INTERVAL 11 DAY), DATE_SUB(CURDATE(), INTERVAL 11 DAY), 0.00, 1, '启动会已完成，明确交付和回款联动节奏。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 18 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 11 DAY)),
+(165006, 100000, 9301, NULL, '/165006/', 'MS202605080002', '接口稳定性整改', 0, 1, 'IN_PROGRESS', 1, 17, 3.00, 70.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), DATE_SUB(CURDATE(), INTERVAL 2 DAY), DATE_SUB(CURDATE(), INTERVAL 5 DAY), DATE_SUB(CURDATE(), INTERVAL 5 DAY), 0.00, NULL, NULL, 0.00, 2, '夜间同步接口仍存在超时风险。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 10 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(165007, 100000, 9302, NULL, '/165007/', 'MS202605080003', '二期项目启动会', 0, 1, 'NOT_STARTED', 1, 11, 3.00, 10.00, DATE_ADD(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), 0.00, NULL, NULL, 0.00, 1, '待客户确认培训排期后正式启动。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 3 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 INSERT IGNORE INTO cloud_flow_db.oa_project_risk (
   risk_id, tenant_id, project_id, risk_code, risk_name, risk_level, status, owner_id, owner_name, trigger_source,
@@ -10326,31 +10254,18 @@ INSERT IGNORE INTO cloud_flow_db.oa_project_risk (
  '苏州联拓制造二期预算未完全锁定，可能影响启动节奏。', '交付与销售联合跟进客户预算会，提前锁定培训与现场资源。', NULL, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 4 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 INSERT IGNORE INTO cloud_flow_db.oa_work_task (
-  task_id, tenant_id, title, description, assignee_id, owner_id, dept_id, project_id, milestone_id, wbs_code,
-  priority, status, due_date, planned_start_time, planned_end_time, baseline_start_time, baseline_end_time, actual_start_time, actual_end_time, progress,
-  estimated_hours, actual_hours, tags, parent_id, sort_order, create_by, create_time, update_by, update_time, deleted
+  task_id, tenant_id, title, description, assignee_id, owner_id, dept_id, project_id, milestone_id, wbs_code, priority, status, due_date, planned_start_time, planned_end_time, baseline_start_time, baseline_end_time, actual_start_time, actual_end_time, progress, estimated_hours, actual_hours, tags, parent_id, sort_order, create_by, create_time, update_by, update_time, deleted
 ) VALUES
-(9301, 100000, '梳理续约接口问题清单', '汇总景曜科技续约阻塞项并形成整改清单。', 17, 12, 111, 9301, 9302, 'WBS-001',
- 2, 'DOING', DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), NULL, 80.00,
- 24.00, 19.00, '["接口","续约","高优"]', NULL, 1, 'zheng_cs', DATE_SUB(NOW(), INTERVAL 7 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
-(9302, 100000, '推进首期回款核销', '对接财务和客户完成首期回款凭证与核销。', 12, 12, 111, 9301, 9302, 'WBS-002',
- 2, 'DOING', DATE_ADD(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_ADD(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), NULL, 55.00,
- 16.00, 8.00, '["回款","核销"]', 9301, 2, 'zheng_cs', DATE_SUB(NOW(), INTERVAL 5 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
-(9303, 100000, '准备二期项目启动材料', '整理联拓制造二期推广启动会材料和培训计划。', 11, 11, 110, 9302, 9303, 'WBS-003',
- 1, 'TODO', DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 4 DAY), NULL, NULL, 15.00,
- 12.00, 0.00, '["启动会","培训"]', NULL, 1, 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
-(9304, 100000, '确认客户培训账号与环境', '启动前检查培训账号、角色与测试环境。', 16, 11, 110, 9302, 9303, 'WBS-004',
- 1, 'DOING', DATE_ADD(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, 35.00,
- 10.00, 3.00, '["培训","环境"]', 9303, 2, 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), '0');
+(9301, 100000, '梳理续约接口问题清单', '汇总景曜科技续约阻塞项并形成整改清单。', 17, 12, 111, 9301, 165006, 'WBS-001', 2, 'DOING', DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), NULL, 80.00, 24.00, 19.00, '["接口","续约","高优"]', NULL, 1, 'zheng_cs', DATE_SUB(NOW(), INTERVAL 7 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
+(9302, 100000, '推进首期回款核销', '对接财务和客户完成首期回款凭证与核销。', 12, 12, 111, 9301, 165006, 'WBS-002', 2, 'DOING', DATE_ADD(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_ADD(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), NULL, 55.00, 16.00, 8.00, '["回款","核销"]', 9301, 2, 'zheng_cs', DATE_SUB(NOW(), INTERVAL 5 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
+(9303, 100000, '准备二期项目启动材料', '整理联拓制造二期推广启动会材料和培训计划。', 11, 11, 110, 9302, 165007, 'WBS-003', 1, 'TODO', DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 4 DAY), NULL, NULL, 15.00, 12.00, 0.00, '["启动会","培训"]', NULL, 1, 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
+(9304, 100000, '确认客户培训账号与环境', '启动前检查培训账号、角色与测试环境。', 16, 11, 110, 9302, 165007, 'WBS-004', 1, 'DOING', DATE_ADD(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, 35.00, 10.00, 3.00, '["培训","环境"]', 9303, 2, 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), '0');
 
 INSERT IGNORE INTO cloud_flow_db.oa_project_dependency (
-  dependency_id, tenant_id, project_id, predecessor_type, predecessor_id, successor_type, successor_id, dependency_type, lag_days, remark,
-  deleted, create_by, create_time, update_by, update_time
+  dependency_id, tenant_id, project_id, predecessor_task_id, successor_task_id, dependency_type, lag_days, remark, deleted, create_by, create_time, update_by, update_time
 ) VALUES
-(9301, 100000, 9301, 'WBS', 9301, 'WBS', 9302, 'FS', 0, '接口清单梳理完成后再推进首期回款核销。',
- '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 4 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9302, 100000, 9302, 'MILESTONE', 9303, 'WBS', 9304, 'FS', 1, '项目启动会后 1 天完成培训环境准备。',
- '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
+(9301, 100000, 9301, 165001, 165002, 'FINISH_TO_START', 0, '接口清单梳理完成后再推进首期回款核销。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 4 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9302, 100000, 9302, 165007, 165004, 'FINISH_TO_START', 1, '项目启动会后 1 天完成培训环境准备。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 INSERT IGNORE INTO cloud_flow_db.oa_budget_subject (
   subject_id, tenant_id, subject_code, subject_name, parent_id, subject_type, sort_order, enabled, remark,
@@ -10556,14 +10471,7 @@ INSERT IGNORE INTO cloud_flow_db.crm_service_ticket (
 (8802, 100000, 8802, '苏州联拓制造', 'GD202605080002', '培训账号权限确认', 'LOW', 'SERVICE', 16, '高牧',
  DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), '客户培训账号需补充权限。', '已补充培训账号和菜单权限。', NULL, 'RESOLVED', '0', 'gao_delivery', DATE_SUB(NOW(), INTERVAL 6 DAY), 'gao_delivery', DATE_SUB(NOW(), INTERVAL 4 DAY));
 
-INSERT IGNORE INTO cloud_flow_db.wf_notice (
-  notice_id, tenant_id, notice_title, notice_type, notice_content, sender_id, recipient_id, status,
-  create_by, create_time, update_by, update_time, remark
-) VALUES
-(9060, 100000, '客户360联动提醒', '1', '启衡软件合同草稿已由 CRM 客户360 发起，请到 OA 合同页补齐合同金额、签约日期与审批链。', 13, 13, '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 6 DAY), 'he_sales', DATE_SUB(NOW(), INTERVAL 6 DAY), 'V4-客户360合同草稿'),
-(9061, 100000, '预算阈值提醒', '1', '苏州联拓制造上线项目预算已接近 90% 告警阈值，请在 OA 预算页查看台账并处理预算调整。', 11, 11, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), 'V4-预算超阈值'),
-(9062, 100000, '发票异常提醒', '1', '景曜科技首期回款对应销项发票仍为部分核销状态，请在 OA 发票页继续处理核销并同步客户健康度。', 12, 12, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 10 HOUR), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 10 HOUR), 'V4-发票部分核销'),
-(9063, 100000, '项目草稿待完善', '1', '景曜科技续约交付项目已回链 CRM 来源，请补齐成员、WBS 和预算上下文后继续提审。', 12, 17, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 8 HOUR), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 8 HOUR), 'V4-项目草稿待完善');
+-- 旧系统通知已迁移到统一消息记录。
 
 INSERT IGNORE INTO cloud_flow_db.crm_lead (
   lead_id, tenant_id, lead_no, lead_name, company_name, contact_name, mobile, phone, email, source, industry, status,
@@ -10761,23 +10669,16 @@ INSERT IGNORE INTO cloud_flow_db.oa_frontend_error_log (
  '10.10.3.36', 4, '赵HR', DATE_SUB(NOW(), INTERVAL 50 MINUTE), DATE_SUB(NOW(), INTERVAL 50 MINUTE));
 
 INSERT IGNORE INTO cloud_flow_db.wf_urge_effect (
-  tenant_id, task_id, urge_count, first_urge_time, last_urge_time, task_complete_time, response_seconds
+  effect_id, tenant_id, urge_id, task_id, before_duration, after_duration, effectiveness, urge_time, complete_time
 ) VALUES
-(100000, 'seed_task_hr_att_001', 1, DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR), 3600),
-(100000, 'seed_task_hr_leave_001', 2, DATE_SUB(NOW(), INTERVAL 13 HOUR), DATE_SUB(NOW(), INTERVAL 10 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR), 14400),
-(100000, 'seed_task_hr_salary_001', 1, DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR), NULL, 21600);
+('seed_effect_hr_att_001', 100000, 'seed_urge_hr_att_001', 'seed_task_hr_att_001', 7200, 3600, 5, DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+('seed_effect_hr_leave_001a', 100000, 'seed_urge_hr_leave_001a', 'seed_task_hr_leave_001', 28800, 14400, 5, DATE_SUB(NOW(), INTERVAL 13 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR)),
+('seed_effect_hr_leave_001b', 100000, 'seed_urge_hr_leave_001b', 'seed_task_hr_leave_001', 7200, 3600, 5, DATE_SUB(NOW(), INTERVAL 10 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR)),
+('seed_effect_hr_salary_001', 100000, 'seed_urge_hr_salary_001', 'seed_task_hr_salary_001', 21600, NULL, NULL, DATE_SUB(NOW(), INTERVAL 6 HOUR), NULL);
 
 -- =========================================================
 -- 十、组织扩充后的流程治理数据：模板、版本、发布、回滚、影响评估
 -- =========================================================
-
-DELETE FROM cloud_flow_db.wf_notification_log
-WHERE log_id IN (
-  'seed_notice_deploy_001',
-  'seed_notice_deploy_002',
-  'seed_notice_deploy_003',
-  'seed_notice_deploy_004'
-);
 
 DELETE FROM cloud_flow_db.wf_transaction_message
 WHERE message_id IN (
@@ -10786,18 +10687,6 @@ WHERE message_id IN (
   'seed_msg_deploy_003',
   'seed_msg_deploy_004'
 );
-
-DELETE FROM cloud_flow_db.wf_notification_config
-WHERE config_id IN ('seed_notify_006', 'seed_notify_007');
-
-DELETE FROM cloud_flow_db.wf_notice
-WHERE notice_id BETWEEN 9925 AND 9928
-   OR remark IN (
-     '组织扩充-流程发布提醒',
-     '组织扩充-流程回滚提醒',
-     '组织扩充-续约模板发布提醒',
-     '组织扩充-发布影响确认提醒'
-   );
 
 DELETE FROM cloud_flow_db.sys_file
 WHERE file_id IN (93021,93022,93023,93024);
@@ -10871,17 +10760,13 @@ INSERT IGNORE INTO cloud_flow_db.wf_deploy_rollback_history (
 INSERT IGNORE INTO cloud_flow_db.wf_deploy_impact (
   id, tenant_id, deploy_id, impact_type, impact_level, impact_count, impact_detail, mitigation_plan, create_time
 ) VALUES
-(98003, 100000, 98003, 'PROCESS', 'LOW', 4, '交付上线审批场景新增标准化流程入口 4 处。', '同步交付组培训并提供发布窗口使用说明。', DATE_SUB(NOW(), INTERVAL 14 DAY)),
-(98004, 100000, 98004, 'TASK', 'HIGH', 9, '新增测试验证审批节点后，9 条存量交付变更需补录验证结果。', '通过站内消息提醒交付组和测试组补填验证结果。', DATE_SUB(NOW(), INTERVAL 10 DAY)),
-(98005, 100000, 98005, 'PROCESS', 'MEDIUM', 9, '回滚恢复稳定审批链路，9 条进行中变更重新映射到备注补录方式。', '保留原验证内容到备注字段，并由运维人工核对。', DATE_SUB(NOW(), INTERVAL 7 DAY)),
-(98006, 100000, 98006, 'NOTICE', 'LOW', 6, '重点客户续约评审模板发布后，影响客户成功和销售通知配置 6 条。', '同步站内消息模板和财务确认节点接收人。', DATE_SUB(NOW(), INTERVAL 6 DAY)),
-(98007, 100000, 98006, 'TASK', 'MEDIUM', 3, '三条历史续约评审记录迁移到新模板进行统一追踪。', '由客户成功组在发布后一日内复核迁移结果。', DATE_SUB(NOW(), INTERVAL 6 DAY));
+(98003, 100000, 98003, 'RUNNING_INSTANCE', 'LOW', 4, '交付上线审批场景新增标准化流程入口 4 处。', '同步交付组培训并提供发布窗口使用说明。', DATE_SUB(NOW(), INTERVAL 14 DAY)),
+(98004, 100000, 98004, 'PENDING_TASK', 'HIGH', 9, '新增测试验证审批节点后，9 条存量交付变更需补录验证结果。', '通过站内消息提醒交付组和测试组补填验证结果。', DATE_SUB(NOW(), INTERVAL 10 DAY)),
+(98005, 100000, 98005, 'RUNNING_INSTANCE', 'MEDIUM', 9, '回滚恢复稳定审批链路，9 条进行中变更重新映射到备注补录方式。', '保留原验证内容到备注字段，并由运维人工核对。', DATE_SUB(NOW(), INTERVAL 7 DAY)),
+(98006, 100000, 98006, 'NODE_CHANGE', 'LOW', 6, '重点客户续约评审模板发布后，影响客户成功和销售通知配置 6 条。', '同步站内消息模板和财务确认节点接收人。', DATE_SUB(NOW(), INTERVAL 6 DAY)),
+(98007, 100000, 98006, 'PENDING_TASK', 'MEDIUM', 3, '三条历史续约评审记录迁移到新模板进行统一追踪。', '由客户成功组在发布后一日内复核迁移结果。', DATE_SUB(NOW(), INTERVAL 6 DAY));
 
-INSERT IGNORE INTO cloud_flow_db.wf_notification_config (
-  config_id, tenant_id, config_name, event_type, notify_channel, template_id, recipient_type, recipient_value, enabled, create_time, update_time
-) VALUES
-('seed_notify_006', 100000, '流程模板发布通知', 'DEPLOY_SUCCESS', 'INTERNAL', NULL, 'ROLE', 'manager', 1, DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_SUB(NOW(), INTERVAL 14 DAY)),
-('seed_notify_007', 100000, '流程模板回滚告警', 'DEPLOY_ROLLBACK', 'SMS', NULL, 'USER', '1,14', 1, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY));
+-- 流程发布通知配置统一由 sys_message_template 管理。
 
 INSERT IGNORE INTO cloud_flow_db.wf_transaction_message (
   message_id, tenant_id, business_type, business_id, content, status, retry_count, max_retry_count, next_retry_time, create_time, update_time, error_message
@@ -10891,23 +10776,9 @@ INSERT IGNORE INTO cloud_flow_db.wf_transaction_message (
 ('seed_msg_deploy_003', 100000, 'WORKFLOW_DEPLOY', '98006', '重点客户续约评审模板已发布，等待审批角色确认。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), NULL),
 ('seed_msg_deploy_004', 100000, 'WORKFLOW_NOTIFY', '98005', '回滚影响说明短信待通道重试。', 'PENDING', 1, 5, DATE_ADD(NOW(), INTERVAL 10 MINUTE), DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), '短信通道响应超时');
 
-INSERT IGNORE INTO cloud_flow_db.wf_notification_log (
-  log_id, tenant_id, notification_type, recipient_id, recipient_name, title, content, send_status, send_time, error_message,
-  related_type, related_id, create_time
-) VALUES
-('seed_notice_deploy_001', 100000, 'INTERNAL', 14, '唐志远', '发布完成：交付上线变更审批V2', '模板已发布，请关注交付组和测试组的补录验证结果。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 10 DAY), NULL, 'DEPLOY_RECORD', '98004', DATE_SUB(NOW(), INTERVAL 10 DAY)),
-('seed_notice_deploy_002', 100000, 'SMS', 1, 'Admin', '回滚完成：交付上线变更审批', '交付上线变更审批已回滚到稳定版本，请留意影响评估。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 7 DAY), NULL, 'DEPLOY_RECORD', '98005', DATE_SUB(NOW(), INTERVAL 7 DAY)),
-('seed_notice_deploy_003', 100000, 'INTERNAL', 12, '郑雅宁', '发布完成：重点客户续约评审模板', '续约评审模板已发布，请确认财务和销售审批角色配置。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 6 DAY), NULL, 'DEPLOY_RECORD', '98006', DATE_SUB(NOW(), INTERVAL 6 DAY)),
-('seed_notice_deploy_004', 100000, 'INTERNAL', 13, '何嘉树', '请确认：续约评审模板审批角色', '请核对销售复核节点的审批角色和续约客户名单映射。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 6 DAY), NULL, 'WORKFLOW_TEMPLATE', 'seed_tpl_customer_renewal_001', DATE_SUB(NOW(), INTERVAL 6 DAY));
+-- 流程发布通知记录统一迁移到 sys_message_record。
 
-INSERT IGNORE INTO cloud_flow_db.wf_notice (
-  notice_id, tenant_id, notice_title, notice_type, notice_content, sender_id, recipient_id, status,
-  create_by, create_time, update_by, update_time, remark
-) VALUES
-(9925, 100000, '流程发布提醒', '1', '交付上线变更审批V2已发布，请交付组和测试组补录测试验证结果。', 14, 11, '0', 'tang_ops', DATE_SUB(NOW(), INTERVAL 10 DAY), 'tang_ops', DATE_SUB(NOW(), INTERVAL 10 DAY), '组织扩充-流程发布提醒'),
-(9926, 100000, '流程回滚提醒', '1', '交付上线变更审批已回滚到稳定版本，请按备注方式继续补录验证结果。', 14, 1, '0', 'tang_ops', DATE_SUB(NOW(), INTERVAL 7 DAY), 'tang_ops', DATE_SUB(NOW(), INTERVAL 7 DAY), '组织扩充-流程回滚提醒'),
-(9927, 100000, '续约模板发布提醒', '1', '重点客户续约评审模板已发布，请客户成功和销售共同确认审批链路。', 12, 13, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 6 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 6 DAY), '组织扩充-续约模板发布提醒'),
-(9928, 100000, '发布影响确认提醒', '1', '请复核流程发布影响分析表，确认续约评审与交付变更模板的通知范围。', 10, 3, '0', 'sun_pm', DATE_SUB(NOW(), INTERVAL 5 DAY), 'sun_pm', DATE_SUB(NOW(), INTERVAL 5 DAY), '组织扩充-发布影响确认提醒');
+-- 旧系统通知已迁移到统一消息记录。
 
 INSERT IGNORE INTO cloud_flow_db.wf_template_archive (
   id, workflow_id, workflow_name, archived_by, archived_at, archive_reason, can_restore, original_data, tenant_id
@@ -11456,7 +11327,6 @@ DELETE FROM cloud_flow_db.wf_reconcile_alert             WHERE id BETWEEN 20000 
 DELETE FROM cloud_flow_db.wf_escalation_log              WHERE id BETWEEN 20000 AND 29999;
 DELETE FROM cloud_flow_db.wf_escalation_chain            WHERE tenant_id = 100000;
 DELETE FROM cloud_flow_db.hr_audit_log                   WHERE id BETWEEN 20000 AND 29999;
-DELETE FROM cloud_flow_db.hr_self_service_message        WHERE id BETWEEN 20000 AND 29999;
 DELETE FROM cloud_flow_db.hr_contract_signature          WHERE id BETWEEN 20000 AND 29999;
 DELETE FROM cloud_flow_db.hr_benefit_payment             WHERE id BETWEEN 20000 AND 29999;
 DELETE FROM cloud_flow_db.hr_family_member               WHERE id BETWEEN 20000 AND 29999;
@@ -11599,35 +11469,41 @@ INSERT IGNORE INTO cloud_flow_db.hr_shift (id, tenant_id, shift_code, shift_name
 (100, 100000, 'STANDARD', '标准班', '09:00:00', '18:00:00', 60, 480, '#0891b2', 1),
 (101, 100000, 'FLEX', '弹性班', '10:00:00', '19:00:00', 60, 480, '#7c3aed', 1);
 
-INSERT IGNORE INTO cloud_flow_db.hr_attendance_rule (id, tenant_id, rule_code, rule_name, rule_type, shift_id, work_days, check_methods, config_json, status) VALUES
-(100, 100000, 'STANDARD_OFFICE', '标准办公考勤', 'FIXED', 100, JSON_ARRAY(1,2,3,4,5), JSON_ARRAY('GPS','WIFI'), JSON_OBJECT('lateThreshold',15,'earlyThreshold',15,'radius',500), 1),
-(101, 100000, 'FLEX_RD', '研发弹性考勤', 'FLEXIBLE', 101, JSON_ARRAY(1,2,3,4,5), JSON_ARRAY('WIFI'), JSON_OBJECT('coreStart','10:00','coreEnd','16:00'), 1);
+INSERT IGNORE INTO cloud_flow_db.hr_attendance_rule (id, tenant_id, rule_code, rule_name, rule_type, shift_id, check_methods, config_json, status) VALUES
+(100, 100000, 'STANDARD_OFFICE', '标准办公考勤', 'FIXED', 100, JSON_ARRAY('GPS','WIFI'), JSON_OBJECT('lateThreshold',15,'earlyThreshold',15,'radius',500), 1),
+(101, 100000, 'FLEX_RD', '研发弹性考勤', 'FLEXIBLE', 101, JSON_ARRAY('WIFI'), JSON_OBJECT('coreStart','10:00','coreEnd','16:00'), 1);
 
 INSERT IGNORE INTO cloud_flow_db.hr_schedule_assignment (tenant_id, target_type, target_id, target_name, rule_id, shift_id, schedule_date, effective_start, status) VALUES
 (100000, 'DEPT', 103, '人力资源部', 100, 100, NULL, '2026-01-01', 'ACTIVE'),
 (100000, 'DEPT', 101, '研发部', 101, 101, NULL, '2026-01-01', 'ACTIVE'),
 (100000, 'EMPLOYEE', 1002, '前端测试', 101, 101, CURDATE(), NULL, 'PUBLISHED');
 
-INSERT IGNORE INTO cloud_flow_db.hr_attendance_record (tenant_id, employee_id, attendance_date, shift_id, check_type, check_time, expected_time, deviation_minutes, check_method, location, status, remark, create_by, update_by) VALUES
-(100000, 1002, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 101, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 55 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 10 HOUR, -5, 'WIFI', 'CloudFlow-Office', 'NORMAL', '弹性班签到', 'test_fe', 'test_fe'),
-(100000, 1002, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 101, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR + INTERVAL 10 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR, 10, 'WIFI', 'CloudFlow-Office', 'NORMAL', '弹性班签退', 'test_fe', 'test_fe');
+INSERT IGNORE INTO cloud_flow_db.hr_attendance_record
+ (id,tenant_id,employee_id,attendance_date,shift_id,work_minutes,expected_minutes,late_minutes,early_exit_minutes,first_checkin_time,last_checkout_time,checkin_count,date_type,status,remark,create_by,update_by)
+VALUES (1450,100000,1002,'2026-09-04',101,495,480,0,0,'2026-09-04 09:55:00','2026-09-04 19:10:00',2,'WORKDAY','NORMAL','弹性班日结论','test_fe','test_fe');
+INSERT IGNORE INTO cloud_flow_db.hr_attendance_checkin
+ (checkin_id,tenant_id,employee_id,log_type,check_time,shift_id,attendance_date,check_method,location_name,attendance_record_id,create_by)
+VALUES (1450,100000,1002,'IN','2026-09-04 09:55:00',101,'2026-09-04','WIFI','CloudFlow-Office',1450,'test_fe'),
+ (1451,100000,1002,'OUT','2026-09-04 19:10:00',101,'2026-09-04','WIFI','CloudFlow-Office',1450,'test_fe');
 
-INSERT IGNORE INTO cloud_flow_db.hr_attendance_monthly (tenant_id, employee_id, year, month, work_days, actual_days, late_times, early_times, absent_days, leave_days, overtime_hours, attendance_rate, status) VALUES
-(100000, 1002, YEAR(CURDATE()), MONTH(CURDATE()), 21, 20, 0, 0, 0, 1, 3.5, 95.24, 'CONFIRMED'),
-(100000, 1003, YEAR(CURDATE()), MONTH(CURDATE()), 21, 21, 1, 0, 0, 0, 6.0, 100.00, 'CONFIRMED');
+INSERT IGNORE INTO cloud_flow_db.hr_attendance_monthly (tenant_id,employee_id,year,month,work_days,actual_days,late_times,early_times,absent_days,leave_days,overtime_hours,attendance_rate,status)
+VALUES (100000,1002,YEAR(CURDATE()),MONTH(CURDATE()),0,0,0,0,0,0,0,0,'DRAFT'),
+ (100000,1003,YEAR(CURDATE()),MONTH(CURDATE()),0,0,0,0,0,0,0,0,'DRAFT');
 
 INSERT IGNORE INTO cloud_flow_db.hr_leave_type (id, tenant_id, leave_code, leave_name, need_quota, is_paid, unit, quota_rule, status) VALUES
 (100, 100000, 'ANNUAL', '年假', 1, 1, 'DAY', JSON_OBJECT('baseQuota',5,'maxQuota',15), 1),
 (101, 100000, 'SICK', '病假', 0, 1, 'DAY', NULL, 1),
-(102, 100000, 'COMP_TIME', '调休', 1, 1, 'HOUR', JSON_OBJECT('expiryDays',90), 1);
+(102, 100000, 'COMP_TIME', '调休', 1, 1, 'HOUR', NULL, 1);
 
-INSERT IGNORE INTO cloud_flow_db.hr_leave_quota (tenant_id, employee_id, leave_type_id, year, total_quota, used_quota, frozen_quota, available_quota, expiry_date, create_by, update_by) VALUES
-(100000, 1002, 100, YEAR(CURDATE()), 5, 1, 1, 3, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1002, 102, YEAR(CURDATE()), 16, 4, 0, 12, DATE_ADD(CURDATE(), INTERVAL 90 DAY), 'admin', 'admin');
+INSERT IGNORE INTO cloud_flow_db.hr_leave_period (period_id,tenant_id,period_name,start_date,end_date,default_flag,status)
+VALUES (100,100000,'本年度假期周期',STR_TO_DATE(CONCAT(YEAR(CURDATE()),'-01-01'),'%Y-%m-%d'),STR_TO_DATE(CONCAT(YEAR(CURDATE()),'-12-31'),'%Y-%m-%d'),1,'OPEN');
+
+INSERT IGNORE INTO cloud_flow_db.hr_leave_quota (tenant_id, employee_id, leave_type_id, period_id, total_quota, used_quota, frozen_quota, available_quota, expiry_date, create_by, update_by) VALUES
+(100000, 1002, 100, 100, 5, 1, 1, 3, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1002, 102, 100, 16, 4, 0, 12, DATE_ADD(CURDATE(), INTERVAL 90 DAY), 'admin', 'admin');
 
 INSERT IGNORE INTO cloud_flow_db.hr_time_request (tenant_id, request_no, request_type, employee_id, leave_type_id, start_time, end_time, duration, unit, reason, status, create_by, update_by) VALUES
 (100000, 'HRTM202605010001', 'LEAVE', 1002, 100, DATE_ADD(CURDATE(), INTERVAL 5 DAY) + INTERVAL 9 HOUR, DATE_ADD(CURDATE(), INTERVAL 5 DAY) + INTERVAL 18 HOUR, 1, 'DAY', '家庭事务请假', 'APPROVING', 'test_fe', 'test_fe'),
-(100000, 'HRTM202605010002', 'OVERTIME', 1003, NULL, CURDATE() + INTERVAL 19 HOUR, CURDATE() + INTERVAL 22 HOUR, 3, 'HOUR', '客户上线支持', 'APPROVED', 'test_be', 'test_be'),
 (100000, 'HRTM202605010003', 'SUPPLEMENT', 1002, NULL, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 10 HOUR, NULL, NULL, NULL, '忘记打卡补录', 'APPROVING', 'test_fe', 'test_fe');
 
 INSERT IGNORE INTO cloud_flow_db.hr_comp_component (id, tenant_id, component_code, component_name, component_type, category, taxable, sort_order, status) VALUES
@@ -12697,7 +12573,7 @@ INSERT IGNORE INTO cloud_flow_db.hr_dispute_evidence (id, tenant_id, dispute_id,
 
 
 -- =====================================================================
--- 十四、ESS 自助服务 (salary_slip/certificate_request/bank_card/family_member/benefit_payment/contract_signature/self_service_message)
+-- 十四、ESS 自助服务 (salary_slip/certificate_request/bank_card/family_member/benefit_payment/contract_signature/sys_message_record)
 --      ID 区间 24000-24999
 -- =====================================================================
 
@@ -12871,7 +12747,7 @@ INSERT IGNORE INTO cloud_flow_db.hr_contract_signature (id, tenant_id, contract_
 (24510, 100000, 1106, 'EMPLOYEE', 1037, 'E_SIGN', 'EXPIRED', NULL,                  NULL,           NULL, 'WF-SIG-006', '2025-05-31 23:59:59', '员工未签署，已过期', 'admin', 'admin'),
 (24511, 100000, 1107, 'EMPLOYEE', 1041, 'E_SIGN', 'REJECTED','2025-08-01 11:00:00', '10.10.10.115', NULL, 'WF-SIG-007', '2025-08-05 23:59:59', '员工拒签 - 薪资争议', 'admin', 'admin');
 
-INSERT IGNORE INTO cloud_flow_db.hr_self_service_message (id, tenant_id, employee_id, category, title, summary, link_url, related_id, read_flag) VALUES
+/* 旧 HR 消息示例已迁移到统一消息记录，保留原业务种子数据说明但不再执行。
 (24600, 100000, 1001, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24002', 24002, 0),
 (24601, 100000, 1001, 'BENEFIT',  '生日福利已发放',                '生日礼盒已发放至工位',    '/ess/benefit/24403',    24403, 0),
 (24602, 100000, 1001, 'CERT',     '您的在职证明已开具',            '请前往 ESS 门户下载 PDF', '/ess/cert/24100',       24100, 1),
@@ -12901,7 +12777,7 @@ INSERT IGNORE INTO cloud_flow_db.hr_self_service_message (id, tenant_id, employe
 (24626, 100000, 1041, 'CONTRACT', '您的合同被拒签',                '请联系 HR 处理',          '/ess/contract/1107',    1107,  1),
 (24627, 100000, 1001, 'LEAVE',    '您的年假余额还有 5 天',         '年底前请合理安排',        '/ess/leave/balance',    NULL,  0),
 (24628, 100000, 1022, 'CERT',     '您有 1 份离职证明草稿未提交',   '请尽快完善或丢弃',        '/ess/cert/24107',       24107, 0),
-(24629, 100000, 1011, 'TRAINING', '您已结业 TS-2025-003',          '证书已颁发',              '/ess/training/cert/20521', 20521, 1);
+(24629, 100000, 1011, 'TRAINING', '您已结业 TS-2025-003',          '证书已颁发',              '/ess/training/cert/20521', 20521, 1); */
 
 
 -- =====================================================================
@@ -12912,7 +12788,7 @@ INSERT IGNORE INTO cloud_flow_db.hr_self_service_message (id, tenant_id, employe
 --   补齐范围：
 --     1) admin 自身 ESS 全套：contract / employee_comp / leave_quota / salary_slip /
 --        certificate_request / bank_card / family_member / benefit_payment /
---        contract_signature / self_service_message
+--        contract_signature / sys_message_record
 --     2) 顺带给 1001/1003-1009 (其他绑定 sys_user 的员工) 补齐 hr_leave_quota，避免他们登录
 --        ESS 时假期余额一片空白
 --   ID 段：24060-24069 / 24108-24109 / 24215 / 24325-24327 / 24432-24435 / 24512-24513 / 24630-24634
@@ -12930,25 +12806,25 @@ INSERT IGNORE INTO cloud_flow_db.hr_employee_comp (tenant_id, employee_id, struc
 (100000, 1001, 100, 100, JSON_OBJECT('BASE',16000,'ALLOWANCE',2000,'BONUS',2000),  20000, '2025-01-01', 'ACTIVE', 'admin', 'admin');
 
 -- ---------- 14.续.3 假期余额：admin + 1001/1003-1009 共 9 员工，每人 ANNUAL+COMP_TIME ----------
-INSERT IGNORE INTO cloud_flow_db.hr_leave_quota (tenant_id, employee_id, leave_type_id, year, total_quota, used_quota, frozen_quota, available_quota, expiry_date, create_by, update_by) VALUES
-(100000, 1,    100, YEAR(CURDATE()), 15, 3, 1, 11, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1,    102, YEAR(CURDATE()), 16, 6, 0, 10, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
-(100000, 1001, 100, YEAR(CURDATE()), 10, 2, 0,  8, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1001, 102, YEAR(CURDATE()),  8, 2, 0,  6, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
-(100000, 1003, 100, YEAR(CURDATE()),  8, 1, 0,  7, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1003, 102, YEAR(CURDATE()),  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
-(100000, 1004, 100, YEAR(CURDATE()), 10, 3, 1,  6, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1004, 102, YEAR(CURDATE()),  8, 4, 0,  4, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
-(100000, 1005, 100, YEAR(CURDATE()),  7, 0, 0,  7, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1005, 102, YEAR(CURDATE()),  8, 2, 0,  6, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
-(100000, 1006, 100, YEAR(CURDATE()),  7, 1, 0,  6, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1006, 102, YEAR(CURDATE()),  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
-(100000, 1007, 100, YEAR(CURDATE()),  5, 0, 0,  5, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1007, 102, YEAR(CURDATE()),  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
-(100000, 1008, 100, YEAR(CURDATE()), 10, 5, 0,  5, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1008, 102, YEAR(CURDATE()),  8, 3, 0,  5, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
-(100000, 1009, 100, YEAR(CURDATE()),  7, 0, 0,  7, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
-(100000, 1009, 102, YEAR(CURDATE()),  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin');
+INSERT IGNORE INTO cloud_flow_db.hr_leave_quota (tenant_id, employee_id, leave_type_id, period_id, total_quota, used_quota, frozen_quota, available_quota, expiry_date, create_by, update_by) VALUES
+(100000, 1,    100, 100, 15, 3, 1, 11, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1,    102, 100, 16, 6, 0, 10, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1001, 100, 100, 10, 2, 0,  8, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1001, 102, 100,  8, 2, 0,  6, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1003, 100, 100,  8, 1, 0,  7, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1003, 102, 100,  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1004, 100, 100, 10, 3, 1,  6, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1004, 102, 100,  8, 4, 0,  4, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1005, 100, 100,  7, 0, 0,  7, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1005, 102, 100,  8, 2, 0,  6, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1006, 100, 100,  7, 1, 0,  6, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1006, 102, 100,  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1007, 100, 100,  5, 0, 0,  5, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1007, 102, 100,  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1008, 100, 100, 10, 5, 0,  5, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1008, 102, 100,  8, 3, 0,  5, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1009, 100, 100,  7, 0, 0,  7, STR_TO_DATE(CONCAT(100, '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1009, 102, 100,  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin');
 
 -- ---------- 14.续.4 admin 工资条三月 ----------
 INSERT IGNORE INTO cloud_flow_db.hr_salary_slip (id, tenant_id, employee_id, period_month, gross_total, deduction_total, net_total, tax_amount, benefit_amount, components, pay_date, status, employee_confirmed, confirmed_time, create_by, update_by) VALUES
@@ -12984,12 +12860,12 @@ INSERT IGNORE INTO cloud_flow_db.hr_contract_signature (id, tenant_id, contract_
 (24513, 100000, 1100, 'COMPANY',  1, 'E_SIGN', 'SIGNED', '2023-01-02 14:00:00', '10.10.10.002', 9300, 'WF-SIG-ADMIN', '2023-01-08 23:59:59', NULL, 'admin', 'admin');
 
 -- ---------- 14.续.10 admin 自助消息 ----------
-INSERT IGNORE INTO cloud_flow_db.hr_self_service_message (id, tenant_id, employee_id, category, title, summary, link_url, related_id, read_flag) VALUES
+/* 旧 HR 管理员消息示例已迁移到统一消息记录。
 (24630, 100000, 1, 'SLIP',     '您的 2026 年 5 月工资条已生成',  '请前往 ESS 门户确认',     '/ess/salary-slip/24062', 24062, 0),
 (24631, 100000, 1, 'CERT',     '您的在职证明已开具',             '请前往 ESS 门户下载 PDF', '/ess/cert/24108',       24108, 1),
 (24632, 100000, 1, 'CERT',     '您的收入证明已审批通过',         '审批通过，待出具',        '/ess/cert/24109',       24109, 0),
 (24633, 100000, 1, 'BENEFIT',  '中秋慰问福利已发放',             '已发放至工资卡',          '/ess/benefit/24432',    24432, 1),
-(24634, 100000, 1, 'LEAVE',    '您还有 11 天年假未使用',         '年底前请合理安排',        '/ess/leave/balance',    NULL,  0);
+(24634, 100000, 1, 'LEAVE',    '您还有 11 天年假未使用',         '年底前请合理安排',        '/ess/leave/balance',    NULL,  0); */
 
 
 -- =====================================================================
@@ -13139,8 +13015,8 @@ INSERT IGNORE INTO cloud_flow_db.wf_callback_dead_letter
 -- ---------- 15.3 工作流业务对账告警 ----------
 INSERT IGNORE INTO cloud_flow_db.wf_reconcile_alert
 (id, tenant_id, biz_module, biz_id, wf_instance_id, biz_status, wf_status, detected_at, resolved_at, resolved_by, create_time, update_time) VALUES
-(25200, 100000, 'hr',  1104, 'PI-HR-CONTRACT-2025-0050', 'RENEWING', 'COMPLETED', '2026-05-21 02:00:08', NULL, NULL, '2026-05-21 02:00:08', '2026-05-21 02:00:08'),
-(25201, 100000, 'hr',  1041, 'PI-HR-RESIGN-2025-0017',   'PENDING',  'COMPLETED', '2026-05-21 02:00:12', NULL, NULL, '2026-05-21 02:00:12', '2026-05-21 02:00:12'),
+(25200, 100000, 'hr',  1104, 'PI-HR-CONTRACT-2025-0050', 'RENEWING', 'PASSED', '2026-05-21 02:00:08', NULL, NULL, '2026-05-21 02:00:08', '2026-05-21 02:00:08'),
+(25201, 100000, 'hr',  1041, 'PI-HR-RESIGN-2025-0017',   'PENDING',  'PASSED', '2026-05-21 02:00:12', NULL, NULL, '2026-05-21 02:00:12', '2026-05-21 02:00:12'),
 (25202, 100000, 'crm', 9203, 'PI-CRM-CONTRACT-2026-0023','PENDING',  'CANCELLED', '2026-05-21 02:00:18', NULL, NULL, '2026-05-21 02:00:18', '2026-05-21 02:00:18');
 
 -- ---------- 15.4 工作流超时升级链 ----------
@@ -13310,26 +13186,26 @@ INSERT IGNORE INTO cloud_flow_db.wf_deploy_notification
 (id, tenant_id, deploy_id, notification_type, recipient_type, recipient_ids, notification_title, notification_content,
  send_status, send_time, error_message, created_time) VALUES
 (26150, 100000, 98001, 'EMAIL',   'USER', '1,2,3,4,5',     '【流程发布】财务报销流程 V3 已上线',           '财务报销流程 V3 已于 2026-05-02 16:30 上线，V3 主要变更：1) 新增金额条件分支 2) 新增加签节点。', 'SUCCESS',  '2026-05-02 16:31:00', NULL, '2026-05-02 16:30:00'),
-(26151, 100000, 98001, 'STATION', 'ROLE', '4,5',           '【流程发布】财务报销流程 V3 已上线',           '请熟悉新版本变更内容，详见钉钉公告。',                                                          'SUCCESS',  '2026-05-02 16:31:30', NULL, '2026-05-02 16:30:00'),
-(26152, 100000, 98001, 'DINGTALK','USER', '1,2',           '【流程发布】财务报销流程 V3 上线公告',         '财务报销流程 V3 已上线，请知悉。',                                                              'SUCCESS',  '2026-05-02 16:32:00', NULL, '2026-05-02 16:30:00'),
+(26151, 100000, 98001, 'WEBSOCKET', 'ROLE', '4,5',           '【流程发布】财务报销流程 V3 已上线',           '请熟悉新版本变更内容，详见站内公告。',                                                          'SUCCESS',  '2026-05-02 16:31:30', NULL, '2026-05-02 16:30:00'),
+(26152, 100000, 98001, 'WECHAT' ,'USER', '1,2',           '【流程发布】财务报销流程 V3 上线公告',         '财务报销流程 V3 已上线，请知悉。',                                                              'SUCCESS',  '2026-05-02 16:32:00', NULL, '2026-05-02 16:30:00'),
 (26153, 100000, 98002, 'EMAIL',   'USER', '1,2,3,4,5',     '【流程回滚】财务报销流程已回滚至 V2',          '由于 V3 条件分支生产异常，已于 2026-05-07 14:15 紧急回滚至 V2。受影响待办：2 条已同步处理。',  'SUCCESS',  '2026-05-07 14:16:00', NULL, '2026-05-07 14:15:00'),
-(26154, 100000, 98002, 'STATION', 'USER', '11,12,13,14,15','【流程回滚】影响待办通知',                     '您的当前进行中报销单受 V3 → V2 回滚影响，已自动适配 V2 表单。',                                'SUCCESS',  '2026-05-07 14:16:30', NULL, '2026-05-07 14:15:00'),
+(26154, 100000, 98002, 'WEBSOCKET', 'USER', '11,12,13,14,15','【流程回滚】影响待办通知',                     '您的当前进行中报销单受 V3 → V2 回滚影响，已自动适配 V2 表单。',                                'SUCCESS',  '2026-05-07 14:16:30', NULL, '2026-05-07 14:15:00'),
 (26155, 100000, 98002, 'SMS',     'USER', '2',             '【紧急】流程紧急回滚通知',                     '财务报销流程已回滚 V2，详情请查看运维群。',                                                    'SUCCESS',  '2026-05-07 14:16:30', NULL, '2026-05-07 14:15:00'),
 (26156, 100000, 98001, 'EMAIL',   'DEPT', '102',           '【流程发布】上线通知',                          '财务报销流程 V3 已上线，部门成员请知悉。',                                                      'SUCCESS',  '2026-05-02 16:33:00', NULL, '2026-05-02 16:30:00'),
 (26157, 100000, 98001, 'EMAIL',   'USER', '1',             '【流程发布】提交人确认通知',                    '您提交的 V3 发布已完成。',                                                                      'SUCCESS',  '2026-05-02 16:33:30', NULL, '2026-05-02 16:30:00'),
 (26158, 100000, 98002, 'EMAIL',   'USER', '11,12,13,14',   '【流程回滚】受影响人通知',                      '您当前进行中的报销流程已自动迁移至 V2。',                                                       'PENDING',  NULL,                  NULL, '2026-05-07 14:15:00'),
-(26159, 100000, 98001, 'STATION', 'ROLE', '100',           '【流程发布】架构师审批通过通知',                '财务报销流程 V3 架构师审批已通过。',                                                            'SUCCESS',  '2026-05-02 13:01:00', NULL, '2026-05-02 09:00:00'),
+(26159, 100000, 98001, 'WEBSOCKET', 'ROLE', '100',           '【流程发布】架构师审批通过通知',                '财务报销流程 V3 架构师审批已通过。',                                                            'SUCCESS',  '2026-05-02 13:01:00', NULL, '2026-05-02 09:00:00'),
 (26160, 100000, 98001, 'EMAIL',   'USER', '2',             '【流程发布】运维总监审批通过通知',              '财务报销流程 V3 运维总监审批已通过。',                                                          'SUCCESS',  '2026-05-02 16:30:30', NULL, '2026-05-02 09:00:00'),
-(26161, 100000, 98002, 'STATION', 'USER', '1',             '【流程回滚】回滚 checklist 完成通知',           '回滚 checklist 已完成，可进入回滚审批。',                                                       'SUCCESS',  '2026-05-07 14:11:00', NULL, '2026-05-07 14:00:00'),
+(26161, 100000, 98002, 'WEBSOCKET', 'USER', '1',             '【流程回滚】回滚 checklist 完成通知',           '回滚 checklist 已完成，可进入回滚审批。',                                                       'SUCCESS',  '2026-05-07 14:11:00', NULL, '2026-05-07 14:00:00'),
 (26162, 100000, 98001, 'EMAIL',   'USER', '5',             '【流程发布】架构师评审通知',                    '请评审 wf_reimburse V3 架构变更。',                                                             'SUCCESS',  '2026-05-02 09:10:00', NULL, '2026-05-02 09:00:00'),
 (26163, 100000, 98002, 'EMAIL',   'USER', '1',             '【流程回滚】回滚发起人通知',                    '回滚已完成，原 V3 状态可继续审计。',                                                            'SUCCESS',  '2026-05-07 14:17:00', NULL, '2026-05-07 14:15:00'),
 (26164, 100000, 98001, 'EMAIL',   'USER', '4,6,7,8',       '【流程发布】HR 部门关注通知',                   '财务报销流程 V3 已上线，影响 HR 部门员工报销操作。',                                            'SUCCESS',  '2026-05-02 16:34:00', NULL, '2026-05-02 16:30:00'),
 (26165, 100000, 98001, 'EMAIL',   'USER', '9,10',          '【流程发布】销售部门关注通知',                  '财务报销流程 V3 已上线，销售部门员工报销请关注。',                                              'SUCCESS',  '2026-05-02 16:34:30', NULL, '2026-05-02 16:30:00'),
 (26166, 100000, 98002, 'EMAIL',   'USER', '15,16',         '【流程回滚】CRM 部门通知',                      '由于 V3 回滚，CRM 报销流程已恢复 V2 行为。',                                                    'FAILED',   '2026-05-07 14:18:00', 'SMTP timeout: connection refused on mail.cloudflow.local:25', '2026-05-07 14:15:00'),
-(26167, 100000, 98001, 'DINGTALK','ROLE', '4,5',           '【流程发布】钉钉群提醒',                        '财务报销流程 V3 已上线，请在钉钉群中确认。',                                                    'SUCCESS',  '2026-05-02 16:35:00', NULL, '2026-05-02 16:30:00'),
+(26167, 100000, 98001, 'WECHAT',  'ROLE', '4,5',           '【流程发布】企业微信提醒',                     '财务报销流程 V3 已上线，请在企业微信群中确认。',                                                    'SUCCESS',  '2026-05-02 16:35:00', NULL, '2026-05-02 16:30:00'),
 (26168, 100000, 98002, 'SMS',     'USER', '1,2,3',         '【紧急】回滚 SMS 通知',                         '财务报销流程已回滚 V2，详情请查看运维群。',                                                    'SUCCESS',  '2026-05-07 14:18:30', NULL, '2026-05-07 14:15:00'),
 (26169, 100000, 98001, 'EMAIL',   'USER', '12,13,14',      '【流程发布】客户成功部通知',                    '财务报销流程 V3 已上线，请客户成功部成员关注。',                                                'SUCCESS',  '2026-05-02 16:35:30', NULL, '2026-05-02 16:30:00'),
-(26170, 100000, 98002, 'STATION', 'USER', '12,13,14',      '【流程回滚】客户成功部回滚通知',                '财务报销流程已回滚 V2，请客户成功部成员关注。',                                                'SUCCESS',  '2026-05-07 14:19:00', NULL, '2026-05-07 14:15:00'),
+(26170, 100000, 98002, 'WEBSOCKET', 'USER', '12,13,14',      '【流程回滚】客户成功部回滚通知',                '财务报销流程已回滚 V2，请客户成功部成员关注。',                                                'SUCCESS',  '2026-05-07 14:19:00', NULL, '2026-05-07 14:15:00'),
 (26171, 100000, 98001, 'EMAIL',   'USER', '17,18,19,20',   '【流程发布】研发部通知',                        '财务报销流程 V3 已上线，研发部成员请关注。',                                                    'PENDING',  NULL,                  NULL, '2026-05-02 16:30:00'),
 (26172, 100000, 98002, 'EMAIL',   'USER', '17,18,19,20',   '【流程回滚】研发部回滚通知',                    '财务报销流程已回滚 V2，研发部成员请关注。',                                                    'SUCCESS',  '2026-05-07 14:19:30', NULL, '2026-05-07 14:15:00'),
 (26173, 100000, 98001, 'EMAIL',   'DEPT', '100',           '【流程发布】公司全员公告',                      '财务报销流程 V3 已上线。',                                                                      'SUCCESS',  '2026-05-02 16:36:00', NULL, '2026-05-02 16:30:00'),
@@ -13383,7 +13259,7 @@ INSERT IGNORE INTO cloud_flow_db.oa_budget_ledger
 (26267, 100000, 9103, 9105, 'DEPT', 102, 'PAYMENT_REQUEST',  8802, 'FK202605080002', 'SUB-SERVICE',  '外包服务费', 'RESERVE',  3000.00,  12000.00,  'VALID', '财务外包付款占用',           'wang', '2026-05-21 09:00:00'),
 (26268, 100000, 9104, 9106, 'PROJECT', 9302, 'EXPENSE_CLAIM',8810, 'BX202605080010', 'SUB-DELIVERY', '交付实施费', 'RESERVE',  500.00,   500.00,    'VALID', '尾款最后占用，触发 BLOCK 阈值', 'wu_delivery', '2026-05-21 10:00:00'),
 (26269, 100000, 9101, 9101, 'DEPT', 111, 'TRAVEL_APPLY',     8811, 'CC202605080011', 'SUB-TRAVEL',   '差旅费用',   'RELEASE',  3000.00,  99400.00,  'VALID', '出差取消，释放占用',         'zheng_cs', '2026-05-21 11:00:00'),
-(26270, 100000, 9101, 9102, 'DEPT', 111, 'EXPENSE_CLAIM',    8812, 'BX202605080012', 'SUB-SERVICE',  '外包服务费', 'INVALID',  5000.00,  125000.00, 'VOID',  '原报销单驳回，台账无效化',   'wu_delivery', '2026-05-21 12:00:00'),
+(26270, 100000, 9101, 9102, 'DEPT', 111, 'EXPENSE_CLAIM',    8812, 'BX202605080012', 'SUB-SERVICE',  '外包服务费', 'RELEASE',  5000.00,  125000.00, 'VOID',  '原报销单驳回，台账无效化',   'wu_delivery', '2026-05-21 12:00:00'),
 (26271, 100000, 9102, 9103, 'PROJECT', 9301, 'TRAVEL_APPLY', 8813, 'CC202605080013', 'SUB-TRAVEL',   '差旅费用',   'RESERVE',  2000.00,  31800.00,  'VALID', '景曜验收差旅占用',           'zheng_cs', '2026-05-21 14:00:00'),
 (26272, 100000, 9103, 9105, 'DEPT', 102, 'ADJUST',           0,    'TZ202605080002', 'SUB-SERVICE',  '外包服务费', 'ADJUST',   -5000.00, 7000.00,   'VALID', '财务外包预算调减',           'admin', '2026-05-21 15:00:00'),
 (26273, 100000, 9104, 9106, 'PROJECT', 9302, 'EXPENSE_CLAIM',8814, 'BX202605080014', 'SUB-DELIVERY', '交付实施费', 'RELEASE',  500.00,   1000.00,   'VALID', '尾款释放',                   'wu_delivery', '2026-05-21 16:00:00'),
@@ -13673,3 +13549,2713 @@ VALUES
   (1, 100000, NULL,         0.00,        100000.00, 'T1', 'DEPT_MGR', 'ACTIVE', '小额合同 — 部门经理审批',         0, 'admin', NOW(), 'admin', NOW()),
   (2, 100000, NULL,    100000.00,       1000000.00, 'T2', 'VP',       'ACTIVE', '中额合同 — 副总裁审批',            0, 'admin', NOW(), 'admin', NOW()),
   (3, 100000, NULL,   1000000.00,             NULL, 'T3', 'CEO',      'ACTIVE', '大额合同 — CEO 特批',              0, 'admin', NOW(), 'admin', NOW());
+-- =========================================================
+-- 批次 A：基础设施种子（菜单、消息、集中任务与节假日日历）
+-- menu_id 只使用 1300-1349；写入前请先执行提示词第四节冲突校验 SQL。
+-- =========================================================
+
+-- 1300-1349 冲突检查已在脚本开头执行；这里禁止先删菜单掩盖冲突。
+
+INSERT IGNORE INTO cloud_flow_db.sys_menu
+  (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+   menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1300, '消息中心', 6, 20, '/message', NULL, NULL, 0, 0, 'M', '0', '0', '', 'Bell', 'admin', NOW(), '', NULL, '统一消息中心'),
+ (1301, '消息渠道', 1300, 1, '/message/channel', 'pages/system/message/Channel', NULL, 0, 0, 'C', '0', '0', 'system:message:channel:list', 'Send', 'admin', NOW(), '', NULL, '消息渠道配置'),
+ (1302, '消息模板', 1300, 2, '/message/template', 'pages/system/message/Template', NULL, 0, 0, 'C', '0', '0', 'system:message:template:list', 'FileText', 'admin', NOW(), '', NULL, '消息模板管理'),
+ (1303, '发送记录', 1300, 3, '/message/record', 'pages/system/message/Record', NULL, 0, 0, 'C', '0', '0', 'system:message:record:list', 'History', 'admin', NOW(), '', NULL, '消息发送记录'),
+ (1304, '新增渠道', 1301, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:message:channel:add', '#', 'admin', NOW(), '', NULL, '新增消息渠道'),
+ (1305, '修改渠道', 1301, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:message:channel:edit', '#', 'admin', NOW(), '', NULL, '修改消息渠道'),
+ (1306, '删除渠道', 1301, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:message:channel:remove', '#', 'admin', NOW(), '', NULL, '删除消息渠道'),
+ (1307, '新增模板', 1302, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:message:template:add', '#', 'admin', NOW(), '', NULL, '新增消息模板'),
+ (1308, '修改模板', 1302, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:message:template:edit', '#', 'admin', NOW(), '', NULL, '修改消息模板'),
+ (1309, '删除模板', 1302, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:message:template:remove', '#', 'admin', NOW(), '', NULL, '删除消息模板'),
+ (1310, '定时任务', 6, 21, '/job', 'pages/system/job/Index', NULL, 0, 0, 'C', '0', '0', 'system:job:list', 'Clock3', 'admin', NOW(), '', NULL, '集中定时任务'),
+ -- 任务日志挂在系统管理下与定时任务平级：C 型菜单自带页面，一旦有 M/C 子节点，
+ -- 前端 renderMenuNodes 会按「有子节点」渲染成纯展开行，定时任务自己的页面就永远点不开。
+ (1311, '任务日志', 6, 22, '/job/log', 'pages/system/job/Log', NULL, 0, 0, 'C', '0', '0', 'system:job:log', 'ScrollText', 'admin', NOW(), '', NULL, '任务执行日志'),
+ (1312, '重发消息', 1303, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:message:record:resend', '#', 'admin', NOW(), '', NULL, '重发消息'),
+ (1313, '新增任务', 1310, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:job:add', '#', 'admin', NOW(), '', NULL, '新增定时任务'),
+ (1314, '修改任务', 1310, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:job:edit', '#', 'admin', NOW(), '', NULL, '修改定时任务'),
+ (1315, '删除任务', 1310, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:job:remove', '#', 'admin', NOW(), '', NULL, '删除定时任务'),
+ (1316, '触发任务', 1310, 5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:job:trigger', '#', 'admin', NOW(), '', NULL, '手动触发任务'),
+ (1317, '启停任务', 1310, 6, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:job:toggle', '#', 'admin', NOW(), '', NULL, '启停定时任务'),
+ -- component 必须对应真实页面文件：磁盘上是 holiday/Calendar.tsx，原来写 holiday/Index 会 404「菜单页面未注册」。
+ (1320, '节假日日历', 6, 23, '/holiday', 'pages/system/holiday/Calendar', NULL, 0, 0, 'C', '0', '0', 'system:holiday:list', 'CalendarDays', 'admin', NOW(), '', NULL, '节假日日历管理'),
+ (1321, '新增日历', 1320, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:holiday:add', '#', 'admin', NOW(), '', NULL, '新增节假日日历'),
+ (1322, '修改日历', 1320, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:holiday:edit', '#', 'admin', NOW(), '', NULL, '修改节假日日历'),
+ (1323, '删除日历', 1320, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:holiday:remove', '#', 'admin', NOW(), '', NULL, '删除节假日日历'),
+ (1324, '导入日期', 1320, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:holiday:import', '#', 'admin', NOW(), '', NULL, '导入节假日明细'),
+ (1325, '查询日历', 1320, 5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:holiday:query', '#', 'admin', NOW(), '', NULL, '查询工作日'),
+ (1330, '表结构代码生成', 6, 24, '/codegen', 'pages/system/codegen/Index', NULL, 0, 0, 'C', '0', '0', 'system:codegen:list', 'Code2', 'admin', NOW(), '', NULL, '数据库表后端代码生成'),
+ (1331, '导入表结构', 1330, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:codegen:import', '#', 'admin', NOW(), '', NULL, '导入代码生成表结构'),
+ (1332, '修改配置', 1330, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:codegen:edit', '#', 'admin', NOW(), '', NULL, '修改代码生成配置'),
+ (1333, '预览代码', 1330, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:codegen:preview', '#', 'admin', NOW(), '', NULL, '预览生成代码'),
+ (1334, '生成代码', 1330, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:codegen:generate', '#', 'admin', NOW(), '', NULL, '生成代码'),
+ (1335, '删除配置', 1330, 5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:codegen:remove', '#', 'admin', NOW(), '', NULL, '删除代码生成配置'),
+ (1336, '我的消息', 1300, 9, '/message/mine', NULL, NULL, 0, 0, 'C', '1', '0', 'system:message:mine:list', 'Inbox', 'admin', NOW(), '', NULL, '隐藏菜单：当前用户消息'),
+ (1337, '标记已读', 1336, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:message:mine:read', '#', 'admin', NOW(), '', NULL, '标记消息已读'),
+ (1338, '消息订阅', 1300, 10, '/message/subscribe', NULL, NULL, 0, 0, 'C', '1', '0', 'system:message:subscribe:list', 'SlidersHorizontal', 'admin', NOW(), '', NULL, '隐藏菜单：消息订阅'),
+ (1339, '保存订阅', 1338, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:message:subscribe:edit', '#', 'admin', NOW(), '', NULL, '保存消息订阅');
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 1, menu_id, 100000 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1300 AND 1349;
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 2, menu_id, 100000 FROM cloud_flow_db.sys_menu
+-- MANAGER 不授予定时任务与代码生成权限（决策 A-5）。
+WHERE menu_id BETWEEN 1300 AND 1349
+   AND menu_id NOT BETWEEN 1330 AND 1335
+   AND menu_id NOT BETWEEN 1320 AND 1324
+   AND menu_id NOT IN (1310, 1311, 1313, 1314, 1315, 1316, 1317);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 4, menu_id, 100000 FROM cloud_flow_db.sys_menu WHERE menu_id = 6 OR menu_id BETWEEN 1320 AND 1324;
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT r.role_id, m.menu_id, 100000 FROM cloud_flow_db.sys_role r
+CROSS JOIN (SELECT 1336 AS menu_id UNION ALL SELECT 1337 UNION ALL SELECT 1338 UNION ALL SELECT 1339 UNION ALL SELECT 1325) m
+WHERE r.tenant_id = 100000 AND r.deleted = 0;
+
+INSERT IGNORE INTO cloud_flow_db.sys_message_channel
+  (channel_id, tenant_id, channel_type, channel_code, channel_name, provider, priority, retry_count,
+   retry_interval_sec, implemented_flag, status, deleted, version, create_by, create_time, update_by, update_time)
+VALUES
+ (100, 100000, 'INTERNAL', 'internal-default', '站内消息', 'cloudflow', 10, 3, 60, 1, 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (101, 100000, 'EMAIL', 'email-placeholder', '邮件渠道（待实现）', NULL, 20, 3, 60, 0, 'DISABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (102, 100000, 'SMS', 'sms-placeholder', '短信渠道（待实现）', NULL, 30, 3, 60, 0, 'DISABLED', 0, 0, 'seed', NOW(), 'seed', NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_message_template
+  (template_id, tenant_id, template_code, template_name, channel_type, biz_module, message_category, title_template,
+   content_template, params_declare, force_send_flag, dedupe_window_sec, link_url_template, status, deleted, version,
+   create_by, create_time, update_by, update_time)
+VALUES
+ (100, 100000, 'WF_TASK_TODO', '待办任务提醒', 'INTERNAL', 'workflow', 'TODO', '待办：${processTitle}', '您有一条待审批任务：${nodeName}', '[{"name":"processTitle","required":true},{"name":"nodeName","required":false}]', 0, 300, '/workflow/tasks', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (101, 100000, 'WF_TASK_URGE', '任务催办', 'INTERNAL', 'workflow', 'TODO', '任务催办：${processTitle}', '请尽快处理待办任务：${nodeName}', '[{"name":"processTitle","required":true}]', 0, 300, '/workflow/tasks', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (102, 100000, 'WF_TASK_TIMEOUT', '任务超时通知', 'INTERNAL', 'workflow', 'TODO', '${title}', '${content}', '[{"name":"processTitle","required":true},{"name":"title","required":true},{"name":"content","required":true}]', 0, 300, '/workflow/tasks', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (103, 100000, 'WF_PROCESS_CC', '流程抄送', 'INTERNAL', 'workflow', 'CC', '流程抄送：${processTitle}', '流程已抄送给您，请查阅。', '[{"name":"processTitle","required":true}]', 0, 300, '/workflow/copies', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (104, 100000, 'WF_PROCESS_RESULT', '流程审批结果', 'INTERNAL', 'workflow', 'BIZ_REMINDER', '审批结果：${processTitle}', '流程审批结果：${result}', '[{"name":"processTitle","required":true},{"name":"result","required":true}]', 0, 300, '/workflow/tasks', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (105, 100000, 'OA_SEAL_APPROVED', '用印审批通过', 'INTERNAL', 'oa', 'BIZ_REMINDER', '用印申请已通过', '用印申请 ${bizNo} 已审批通过。', '[]', 0, 300, '/oa/seal', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (106, 100000, 'OA_LICENSE_EXPIRY', '证照到期提醒', 'INTERNAL', 'oa', 'BIZ_REMINDER', '证照即将到期', '证照 ${licenseName} 将于 ${expiryDate} 到期。', '[]', 0, 86400, '/oa/license', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (107, 100000, 'OA_BORROW_OVERDUE', '借用超期提醒', 'INTERNAL', 'oa', 'BIZ_REMINDER', '借用已超期', '证照/资产借用 ${bizNo} 已超期，请及时归还。', '[]', 0, 86400, '/oa/license/borrow', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (108, 100000, 'HR_CONTRACT_EXPIRY', '合同到期提醒', 'INTERNAL', 'hr', 'BIZ_REMINDER', '合同到期提醒', '合同 ${contractNo} 将于 ${endDate} 到期。', '[]', 0, 86400, '/hr/ess/contract', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (109, 100000, 'CRM_FOLLOWUP_OVERDUE', '跟进逾期提醒', 'INTERNAL', 'crm', 'BIZ_REMINDER', '客户跟进逾期', '客户 ${customerName} 已超过跟进期限。', '[]', 0, 86400, '/crm/customer', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (110, 100000, 'SYS_SECURITY_CHANGE', '安全设置变更', 'INTERNAL', 'system', 'SYSTEM', '安全设置已变更', '您的账号安全设置已发生变更，如非本人操作请立即联系管理员。', '[]', 1, 0, '/system/profile', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()),
+ (111, 100000, 'SYS_LOGIN_RISK', '登录风险提醒', 'INTERNAL', 'system', 'SYSTEM', '登录风险提醒', '检测到您的账号存在异常登录风险，请及时核验。', '[]', 1, 0, '/system/login-log', 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_job_handler
+  (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time, update_by, update_time)
+VALUES
+ (100, 'auth', 'auditLogArchive', '归档审计日志', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (101, 'auth', 'dictOrphanScan', '扫描孤儿字典', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (102, 'crm', 'customerPoolRelease', '释放客户池客户', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (103, 'crm', 'quoteExpire', '处理报价过期', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (104, 'crm', 'crmDailyDispatch', 'CRM每日通知派发', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (105, 'crm', 'ticketSlaDispatch', '工单SLA通知派发', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (106, 'hr', 'employeeContractExpire', '员工合同到期提醒', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (107, 'hr', 'trainingArchiveRebuild', '重建培训归档', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (108, 'oa', 'borrowOverdueScan', '扫描借用逾期', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (109, 'oa', 'licenseExpiryScan', '扫描证照到期', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (110, 'oa', 'contractRiskScan', '扫描合同风险', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (111, 'workflow', 'processBusinessReconcile', '流程业务对账', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (112, 'workflow', 'taskReminder', '任务催办扫描', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (113, 'workflow', 'taskTimeout', '任务超时扫描', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (114, 'workflow', 'timerScan', '定时节点扫描', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (115, 'workflow', 'deadlockDetection', '死锁检测', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (116, 'workflow', 'taskTimeoutCleanup', '清理任务超时键', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (117, 'workflow', 'timerScanCleanup', '清理定时节点键', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (118, 'workflow', 'anomalyDetect', '异常死锁检测', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (119, 'workflow', 'anomalyDetectDaily', '异常数据一致性检测', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (120, 'workflow', 'timeoutDetect', '任务超时检测', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (121, 'workflow', 'timeoutDetectSecondary', '流程超时检测', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (122, 'workflow', 'txnConsistencyScan', '事务一致性扫描', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (123, 'workflow', 'txnConsistencyDaily', '事务一致性清理', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (124, 'auth', 'jobLogClean', '清理超保留期任务日志', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (125, 'auth', 'jobTimeoutInspect', '巡检回报丢失任务', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (126, 'auth', 'messageRecordArchive', '归档消息记录', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (127, 'auth', 'holidayYearlyRemind', '提醒维护次年节假日', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW()),
+ (128, 'auth', 'observabilityLogArchive', '归档访问与错误日志', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_job
+  (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression, interval_ms,
+   status, concurrent_flag, misfire_strategy, retry_count, retry_interval_sec, dispatch_retry_count,
+   dispatch_retry_interval_sec, timeout_seconds, lock_time_seconds, critical_flag, log_success_flag,
+   alarm_on_fail_flag, create_by, create_time, update_by, update_time)
+VALUES
+ (100,100000,'审计日志归档','AUTH','auth','auditLogArchive','CRON','0 0 3 1 * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (101,100000,'孤儿字典扫描','AUTH','auth','dictOrphanScan','CRON','0 0 2 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (102,100000,'客户池释放','CRM','crm','customerPoolRelease','CRON','0 0 2 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (103,100000,'报价过期处理','CRM','crm','quoteExpire','CRON','0 0 3 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (104,100000,'CRM每日通知','CRM','crm','crmDailyDispatch','CRON','0 0 9 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (105,100000,'工单SLA通知','CRM','crm','ticketSlaDispatch','CRON','0 0 * * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (106,100000,'员工合同到期','HR','hr','employeeContractExpire','CRON','0 0 4 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (107,100000,'培训归档重建','HR','hr','trainingArchiveRebuild','CRON','0 30 2 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (108,100000,'借用逾期扫描','OA','oa','borrowOverdueScan','CRON','0 0 9 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (109,100000,'证照到期扫描','OA','oa','licenseExpiryScan','CRON','0 30 9 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (110,100000,'合同风险扫描','OA','oa','contractRiskScan','CRON','0 0 9 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (111,100000,'流程业务对账','WORKFLOW','workflow','processBusinessReconcile','CRON','0 */30 * * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (112,100000,'任务催办扫描','WORKFLOW','workflow','taskReminder','FIXED_RATE',NULL,300000,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,1,0,1,'seed',NOW(),'seed',NOW()),
+ (113,100000,'任务超时扫描','WORKFLOW','workflow','taskTimeout','FIXED_RATE',NULL,300000,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,1,0,1,'seed',NOW(),'seed',NOW()),
+ (114,100000,'定时节点扫描','WORKFLOW','workflow','timerScan','FIXED_RATE',NULL,180000,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,1,0,1,'seed',NOW(),'seed',NOW()),
+ (115,100000,'死锁检测','WORKFLOW','workflow','deadlockDetection','FIXED_DELAY',NULL,600000,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,0,1,'seed',NOW(),'seed',NOW()),
+ (116,100000,'清理任务超时键','WORKFLOW','workflow','taskTimeoutCleanup','CRON','0 0 2 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (117,100000,'清理定时节点键','WORKFLOW','workflow','timerScanCleanup','CRON','0 0 3 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (118,100000,'异常死锁检测','WORKFLOW','workflow','anomalyDetect','CRON','0 */10 * * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (119,100000,'异常数据检测','WORKFLOW','workflow','anomalyDetectDaily','CRON','0 0 */6 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (120,100000,'任务超时检测','WORKFLOW','workflow','timeoutDetect','CRON','0 */5 * * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (121,100000,'流程超时检测','WORKFLOW','workflow','timeoutDetectSecondary','CRON','0 */5 * * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (122,100000,'事务一致性扫描','WORKFLOW','workflow','txnConsistencyScan','FIXED_DELAY',NULL,60000,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (123,100000,'事务一致性清理','WORKFLOW','workflow','txnConsistencyDaily','CRON','0 0 2 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (124,100000,'任务日志清理','AUTH','auth','jobLogClean','CRON','0 0 4 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (125,100000,'任务结果巡检','AUTH','auth','jobTimeoutInspect','FIXED_RATE',NULL,300000,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (126,100000,'消息记录归档','AUTH','auth','messageRecordArchive','CRON','0 30 3 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (127,100000,'次年节假日提醒','AUTH','auth','holidayYearlyRemind','CRON','0 0 10 1 11 ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,300,0,1,1,'seed',NOW(),'seed',NOW()),
+ (128,100000,'访问与错误日志归档','AUTH','auth','observabilityLogArchive','CRON','0 15 3 * * ?',NULL,'ENABLED',0,'IGNORE',0,60,3,10,1800,1800,0,1,1,'seed',NOW(),'seed',NOW());
+
+-- G3：沿用既有归档策略表；保留各业务审计策略，类型由专用保留键区分。
+INSERT IGNORE INTO cloud_flow_db.sys_audit_archive_policy
+  (biz_module, retain_days, archive_table, status, create_by, create_time) VALUES
+  ('__ACCESS_LOG__', 30, 'sys_log_archive', 'ACTIVE', 'seed', NOW()),
+  ('__API_ERROR_LOG__', 180, 'sys_api_error_log_archive', 'ACTIVE', 'seed', NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_holiday_calendar
+  (calendar_id, tenant_id, calendar_code, calendar_name, region, default_flag, weekly_rest_days,
+   work_start_time, work_end_time, lunch_start_time, lunch_end_time, status, remark, deleted, version,
+   create_by, create_time, update_by, update_time)
+VALUES (100, 100000, 'CN-2026', '中国大陆法定节假日日历 2026', '中国大陆', 1, '6,7',
+        '09:00:00', '18:00:00', '12:00:00', '13:00:00', 'ENABLED',
+        '法定节假日与调休上班日，日期以国务院公告为准', 0, 0, 'seed', NOW(), 'seed', NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_holiday_date
+  (date_id, tenant_id, calendar_id, holiday_date, date_type, holiday_name, triple_pay_flag, year_no,
+   remark, deleted, version, create_by, create_time, update_by, update_time)
+VALUES
+ -- 2026 年国务院办公厅安排（中国政府网，国办发明电〔2025〕7 号）。
+ -- 仅记录法定节假日、工作日调休及工作日上的补休日；普通周末由 weekly_rest_days 表达。
+ -- 法定节假日当天 triple_pay_flag=1；补休日/调休上班日为 0。
+ (100,100000,100,'2026-01-01','HOLIDAY','元旦',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (101,100000,100,'2026-01-02','REST','元旦',0,2026,'放假调休',0,0,'seed',NOW(),'seed',NOW()),
+ (102,100000,100,'2026-01-04','WORKDAY','元旦调休',0,2026,'调休上班日',0,0,'seed',NOW(),'seed',NOW()),
+ (103,100000,100,'2026-02-14','WORKDAY','春节调休',0,2026,'调休上班日',0,0,'seed',NOW(),'seed',NOW()),
+ (104,100000,100,'2026-02-16','HOLIDAY','春节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (105,100000,100,'2026-02-17','HOLIDAY','春节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (106,100000,100,'2026-02-18','HOLIDAY','春节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (107,100000,100,'2026-02-19','HOLIDAY','春节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (108,100000,100,'2026-02-20','REST','春节',0,2026,'放假调休',0,0,'seed',NOW(),'seed',NOW()),
+ (109,100000,100,'2026-02-23','REST','春节',0,2026,'放假调休',0,0,'seed',NOW(),'seed',NOW()),
+ (110,100000,100,'2026-02-28','WORKDAY','春节调休',0,2026,'调休上班日',0,0,'seed',NOW(),'seed',NOW()),
+ (111,100000,100,'2026-04-05','HOLIDAY','清明节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (112,100000,100,'2026-04-06','REST','清明节',0,2026,'放假',0,0,'seed',NOW(),'seed',NOW()),
+ (113,100000,100,'2026-05-01','HOLIDAY','劳动节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (114,100000,100,'2026-05-02','HOLIDAY','劳动节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (115,100000,100,'2026-05-04','REST','劳动节',0,2026,'放假调休',0,0,'seed',NOW(),'seed',NOW()),
+ (116,100000,100,'2026-05-05','REST','劳动节',0,2026,'放假调休',0,0,'seed',NOW(),'seed',NOW()),
+ (117,100000,100,'2026-05-09','WORKDAY','劳动节调休',0,2026,'调休上班日',0,0,'seed',NOW(),'seed',NOW()),
+ (118,100000,100,'2026-06-19','HOLIDAY','端午节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (119,100000,100,'2026-09-20','WORKDAY','中秋国庆调休',0,2026,'调休上班日',0,0,'seed',NOW(),'seed',NOW()),
+ (120,100000,100,'2026-09-25','HOLIDAY','中秋节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (121,100000,100,'2026-10-01','HOLIDAY','国庆节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (122,100000,100,'2026-10-02','HOLIDAY','国庆节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (123,100000,100,'2026-10-03','HOLIDAY','国庆节',1,2026,'法定节假日',0,0,'seed',NOW(),'seed',NOW()),
+ (124,100000,100,'2026-10-05','REST','国庆节',0,2026,'放假调休',0,0,'seed',NOW(),'seed',NOW()),
+ (125,100000,100,'2026-10-06','REST','国庆节',0,2026,'放假调休',0,0,'seed',NOW(),'seed',NOW()),
+ (126,100000,100,'2026-10-07','REST','国庆节',0,2026,'放假调休',0,0,'seed',NOW(),'seed',NOW()),
+ (127,100000,100,'2026-10-10','WORKDAY','国庆节调休',0,2026,'调休上班日',0,0,'seed',NOW(),'seed',NOW());
+
+UPDATE cloud_flow_db.hr_leave_quota SET frozen_quota=0,available_quota=total_quota-used_quota WHERE tenant_id=100000 AND period_id=100;
+UPDATE cloud_flow_db.hr_time_request SET status='CANCELLED' WHERE tenant_id=100000 AND request_type='LEAVE' AND status IN ('PENDING','APPROVING','SUBMITTED','APPLYING') AND process_instance_id IS NULL;
+INSERT INTO cloud_flow_db.hr_leave_ledger
+ (tenant_id,employee_id,leave_type_id,leave_period_id,transaction_type,source_biz_type,source_biz_id,leave_days,quantity_unit,from_date,to_date,remark,create_by)
+SELECT quota.tenant_id,quota.employee_id,quota.leave_type_id,quota.period_id,entry.kind,'SEED_OPENING',CAST(quota.id AS CHAR),
+ IF(entry.kind='ALLOCATION',quota.total_quota,-quota.used_quota),type.unit,period.start_date,period.end_date,'演示期初历史额度','seed'
+FROM cloud_flow_db.hr_leave_quota quota
+JOIN cloud_flow_db.hr_leave_type type ON type.id=quota.leave_type_id AND type.tenant_id=quota.tenant_id
+JOIN cloud_flow_db.hr_leave_period period ON period.period_id=quota.period_id AND period.tenant_id=quota.tenant_id
+CROSS JOIN (SELECT 'ALLOCATION' kind UNION ALL SELECT 'APPLICATION') entry
+WHERE quota.tenant_id=100000 AND quota.period_id=100
+ AND (entry.kind='ALLOCATION' OR quota.used_quota>0)
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.hr_leave_ledger existing WHERE existing.tenant_id=quota.tenant_id AND existing.source_biz_type='SEED_OPENING' AND existing.source_biz_id=CAST(quota.id AS CHAR) AND existing.transaction_type=entry.kind);
+
+INSERT IGNORE INTO cloud_flow_db.sys_menu
+  (menu_id, menu_name, parent_id, order_num, path, component, menu_type, visible, status, perms, icon, create_by, create_time)
+VALUES
+ (1450,'假期规则',7,30,'/hr/leave-rules','pages/hr/rules/HrLeaveRulesPage','C','0','0','hr:leave:list','CalendarRange','seed',NOW()),
+ (1451,'假期配置',1450,1,'',NULL,'F','1','0','hr:leave:configure','#','seed',NOW()),
+ (1452,'假期分配',1450,2,'',NULL,'F','1','0','hr:leave:assign','#','seed',NOW()),
+ (1453,'额度调整',1450,3,'',NULL,'F','1','0','hr:leave:adjust','#','seed',NOW()),
+ (1454,'考勤重算',725,10,'',NULL,'F','1','0','hr:attendance:recalculate','#','seed',NOW()),
+ (1455,'考勤人工调整',725,11,'',NULL,'F','1','0','hr:attendance:adjust','#','seed',NOW()),
+ (1456,'考勤封账',725,12,'',NULL,'F','1','0','hr:attendance:confirm','#','seed',NOW()),
+ (1457,'我的考勤',7,31,'/hr/ess/attendance','pages/hr/ess/HrEssAttendancePage','C','0','0','hr:attendance:mine','Clock','seed',NOW()),
+ (1458,'本人请假',732,10,'',NULL,'F','1','0','hr:leave:mine','#','seed',NOW()),
+ (1459,'本人工资详情',729,10,'',NULL,'F','1','0','hr:payroll:mine','#','seed',NOW()),
+ (1460,'薪资批次',7,32,'/hr/payroll','pages/hr/rules/HrPayrollPage','C','0','0','hr:payroll:list','Wallet','seed',NOW()),
+ (1461,'薪资规则配置',1460,1,'',NULL,'F','1','0','hr:payroll:configure','#','seed',NOW()),
+ (1462,'创建薪资批次',1460,2,'',NULL,'F','1','0','hr:payroll:create','#','seed',NOW()),
+ (1463,'计算薪资',1460,3,'',NULL,'F','1','0','hr:payroll:calculate','#','seed',NOW()),
+ (1464,'提交薪资',1460,4,'',NULL,'F','1','0','hr:payroll:submit','#','seed',NOW()),
+ (1465,'发放薪资',1460,5,'',NULL,'F','1','0','hr:payroll:pay','#','seed',NOW()),
+ (1466,'取消薪资批次',1460,6,'',NULL,'F','1','0','hr:payroll:cancel','#','seed',NOW()),
+ (1467,'核验专项扣除',1460,7,'',NULL,'F','1','0','hr:payroll:verify','#','seed',NOW()),
+ (1468,'工资补正',1460,8,'',NULL,'F','1','0','hr:payroll:correct','#','seed',NOW()),
+ (1469,'我的专项扣除',7,33,'/hr/ess/tax-deductions','pages/hr/ess/HrEssTaxDeductionPage','C','0','0','hr:payroll:mine','Receipt','seed',NOW()),
+ (1470,'申诉处理',7,34,'/hr/grievances','pages/hr/rules/HrGrievancePage','C','0','0','hr:grievance:manage:list','MessageSquare','seed',NOW()),
+ (1471,'处理指定申诉',1470,1,'',NULL,'F','1','0','hr:grievance:manage:handle','#','seed',NOW()),
+ (1472,'我的申诉',7,35,'/hr/ess/grievances','pages/hr/ess/HrEssGrievancePage','C','0','0','hr:grievance:mine:list','MessageCircle','seed',NOW()),
+ (1473,'提交本人申诉',1472,1,'',NULL,'F','1','0','hr:grievance:mine:create','#','seed',NOW()),
+ (1474,'更新本人申诉',1472,2,'',NULL,'F','1','0','hr:grievance:mine:update','#','seed',NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, 100000 FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.role_id IN (1,4) AND role.tenant_id=100000 AND role.deleted=0 AND menu.menu_id BETWEEN 1450 AND 1474;
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 3, menu_id, 100000 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1460 AND 1469 OR menu_id IN (7,722);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, 100000 FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id=100000 AND role.deleted=0 AND menu.menu_id IN (7,728,729,732,1457,1458,1459,1469,1470,1471,1472,1473,1474);
+
+-- 本人工资查看的既有角色同时具备确认收悉权限；确认接口仍强制校验员工本人。
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 729 AND child.menu_id = 1014
+WHERE rm.tenant_id = 100000 AND rm.menu_id = 729;
+
+INSERT IGNORE INTO cloud_flow_db.sys_config
+ (tenant_id,config_name,config_key,config_value,config_type,config_scope,create_by,create_time,remark)
+VALUES
+ (100000,'HR请假默认流程','sys.hr.leave.processKey','wf_hr_leave','Y','1','seed',NOW(),'发布后通过事务发件箱启动'),
+ (100000,'HR工资补正默认流程','sys.hr.payroll.correctionProcessKey','wf_hr_payroll_correction','Y','1','seed',NOW(),'已发放工资单只允许差额补正'),
+ (100000,'申诉受理提醒工作日','sys.hr.grievance.acceptWorkdays','3','Y','1','seed',NOW(),'按员工适用日历计算，取值1至365');
+
+INSERT IGNORE INTO cloud_flow_db.wf_process_definition
+ (definition_id,tenant_id,process_name,process_key,version,status,is_latest,model_json,create_by,create_time)
+VALUES
+ ('wf_hr_leave',100000,'HR请假审批','wf_hr_leave',1,'PUBLISHED',1,'{"nodes":[{"id":"start","type":"START","title":"提交请假"},{"id":"manager","type":"APPROVAL","title":"直属主管审批","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","REJECT"]}},{"id":"hr","type":"APPROVAL","title":"人事审批","approverType":"ROLE","approverValue":"hr","props":{"buttons":["APPROVE","REJECT"]}},{"id":"end","type":"END","title":"完成"}],"edges":[{"id":"start-manager","source":"start","target":"manager"},{"id":"manager-hr","source":"manager","target":"hr"},{"id":"hr-end","source":"hr","target":"end"}]}','seed',NOW()),
+ ('wf_hr_payroll_correction',100000,'HR工资补正审批','wf_hr_payroll_correction',1,'PUBLISHED',1,'{"nodes":[{"id":"start","type":"START","title":"提交工资补正"},{"id":"finance","type":"APPROVAL","title":"财务核验差额","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","REJECT"]}},{"id":"end","type":"END","title":"完成"}],"edges":[{"id":"start-finance","source":"start","target":"finance"},{"id":"finance-end","source":"finance","target":"end"}]}','seed',NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_message_template
+ (template_id,tenant_id,template_code,template_name,channel_type,biz_module,message_category,title_template,content_template,params_declare,force_send_flag,dedupe_window_sec,link_url_template,status,deleted,version,create_by,create_time)
+VALUES
+ (1450,100000,'HR_GRIEVANCE_NOTICE','申诉处理提醒','INTERNAL','hr','BIZ_REMINDER','${title}','请登录申诉管理查看处理进度，消息不包含申诉内容。','[{"name":"title","required":true}]',0,300,'/hr/grievances','ENABLED',0,0,'seed',NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_job_handler
+ (handler_id,service_name,handler_name,handler_desc,status,last_report_time,create_by,create_time)
+VALUES
+ (1450,'hr','hrEarnedLeaveAccrual','HR按月累积假期','ONLINE',NOW(),'seed',NOW()),
+ (1451,'hr','hrLeaveCarryForward','HR假期周期结转','ONLINE',NOW(),'seed',NOW()),
+ (1452,'hr','hrLeaveExpiry','HR结转额度过期作废','ONLINE',NOW(),'seed',NOW()),
+ (1453,'hr','hrLeaveQuotaReconcile','HR额度对账仅告警','ONLINE',NOW(),'seed',NOW()),
+ (1454,'hr','hrAttendanceDailyCalc','HR每日自动考勤生成','ONLINE',NOW(),'seed',NOW()),
+ (1455,'hr','hrAttendanceRecalcAsync','HR考勤范围重算（业务手动触发）','ONLINE',NOW(),'seed',NOW()),
+ (1456,'hr','hrPayrollBatchCalculate','HR薪资批次计算（业务手动触发）','ONLINE',NOW(),'seed',NOW()),
+ (1457,'hr','hrGrievanceAcceptanceReminder','HR申诉工作日受理提醒','ONLINE',NOW(),'seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.sys_job
+ (job_id,tenant_id,job_name,job_group,service_name,handler_name,trigger_type,cron_expression,status,concurrent_flag,misfire_strategy,retry_count,timeout_seconds,lock_time_seconds,alarm_on_fail_flag,create_by,create_time)
+VALUES
+ (1450,100000,'HR按月累积假期','HR','hr','hrEarnedLeaveAccrual','CRON','0 0 1 1 * ?','ENABLED',0,'FIRE_ONCE',0,3600,3600,1,'seed',NOW()),
+ (1451,100000,'HR假期周期结转','HR','hr','hrLeaveCarryForward','CRON','0 0 2 * * ?','ENABLED',0,'FIRE_ONCE',0,3600,3600,1,'seed',NOW()),
+ (1452,100000,'HR结转额度过期','HR','hr','hrLeaveExpiry','CRON','0 30 2 * * ?','ENABLED',0,'FIRE_ONCE',0,3600,3600,1,'seed',NOW()),
+ (1453,100000,'HR假期额度对账','HR','hr','hrLeaveQuotaReconcile','CRON','0 0 3 * * ?','ENABLED',0,'IGNORE',0,3600,3600,1,'seed',NOW()),
+ (1454,100000,'HR每日考勤生成','HR','hr','hrAttendanceDailyCalc','CRON','0 0 5 * * ?','ENABLED',0,'FIRE_ONCE',0,3600,3600,1,'seed',NOW()),
+ (1455,100000,'HR考勤范围重算','HR','hr','hrAttendanceRecalcAsync','CRON','0 0 0 1 1 ?','PAUSED',1,'IGNORE',0,3600,3600,1,'seed',NOW()),
+ (1456,100000,'HR薪资批次计算','HR','hr','hrPayrollBatchCalculate','CRON','0 0 0 1 1 ?','PAUSED',1,'IGNORE',0,3600,3600,1,'seed',NOW()),
+ (1457,100000,'HR申诉受理提醒','HR','hr','hrGrievanceAcceptanceReminder','CRON','0 0 9 * * ?','ENABLED',0,'IGNORE',0,1800,1800,1,'seed',NOW());
+
+INSERT IGNORE INTO cloud_flow_db.hr_tax_slab
+ (slab_id,tenant_id,slab_name,region,effective_from,effective_to,threshold_amount,status,remark,create_by,create_time)
+VALUES (1450,100000,'2026年度居民工资薪金累计预扣税表','CN','2026-01-01','2026-12-31',5000.00,'DRAFT','依据国家税务总局公告2018年第61号第六条及预扣率表一，2026-10-06核定；仅适用中国大陆居民普通工资薪金，由管理员或财务启用','seed',NOW());
+
+INSERT IGNORE INTO cloud_flow_db.hr_tax_slab_detail
+ (tenant_id,slab_id,level_no,from_amount,to_amount,tax_rate,quick_deduction,create_by,create_time)
+VALUES (100000,1450,1,0.00,36000.00,0.0300,0.00,'seed',NOW()),
+ (100000,1450,2,36000.00,144000.00,0.1000,2520.00,'seed',NOW()),
+ (100000,1450,3,144000.00,300000.00,0.2000,16920.00,'seed',NOW()),
+ (100000,1450,4,300000.00,420000.00,0.2500,31920.00,'seed',NOW()),
+ (100000,1450,5,420000.00,660000.00,0.3000,52920.00,'seed',NOW()),
+ (100000,1450,6,660000.00,960000.00,0.3500,85920.00,'seed',NOW()),
+ (100000,1450,7,960000.00,NULL,0.4500,181920.00,'seed',NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_dict_type (tenant_id,dict_name,dict_type,status,create_by,create_time)
+VALUES (100000,'假期台账变动类型','hr_leave_transaction_type','0','seed',NOW()),
+ (100000,'假期计量单位','hr_leave_unit','0','seed',NOW()),
+ (100000,'员工申诉类型','hr_grievance_type','0','seed',NOW()),
+ (100000,'员工申诉状态','hr_grievance_status','0','seed',NOW());
+INSERT INTO cloud_flow_db.sys_dict_data (tenant_id,dict_sort,dict_label,dict_value,dict_type,status,create_by,create_time)
+SELECT 100000, options.sort_no, options.label, options.value, options.type, '0','seed',NOW()
+FROM (
+ SELECT 1 sort_no,'额度分配' label,'ALLOCATION' value,'hr_leave_transaction_type' type
+ UNION ALL SELECT 2,'请假扣减','APPLICATION','hr_leave_transaction_type'
+ UNION ALL SELECT 3,'周期结转','CARRY_FORWARD','hr_leave_transaction_type'
+ UNION ALL SELECT 4,'额度过期','EXPIRY','hr_leave_transaction_type'
+ UNION ALL SELECT 5,'额度折现','ENCASHMENT','hr_leave_transaction_type'
+ UNION ALL SELECT 6,'额度调整','ADJUSTMENT','hr_leave_transaction_type'
+ UNION ALL SELECT 7,'调休转入','COMPENSATORY','hr_leave_transaction_type'
+ UNION ALL SELECT 8,'提交冻结','FREEZE','hr_leave_transaction_type'
+ UNION ALL SELECT 9,'释放冻结','UNFREEZE','hr_leave_transaction_type'
+ UNION ALL SELECT 1,'天','DAY','hr_leave_unit'
+ UNION ALL SELECT 2,'小时','HOUR','hr_leave_unit'
+ UNION ALL SELECT 1,'薪资','SALARY','hr_grievance_type'
+ UNION ALL SELECT 2,'绩效','PERFORMANCE','hr_grievance_type'
+ UNION ALL SELECT 3,'管理行为','MANAGEMENT','hr_grievance_type'
+ UNION ALL SELECT 4,'工作环境','WORKPLACE','hr_grievance_type'
+ UNION ALL SELECT 5,'制度','POLICY','hr_grievance_type'
+ UNION ALL SELECT 6,'其他','OTHER','hr_grievance_type'
+ UNION ALL SELECT 1,'待受理','SUBMITTED','hr_grievance_status'
+ UNION ALL SELECT 2,'已受理','ACCEPTED','hr_grievance_status'
+ UNION ALL SELECT 3,'调查中','INVESTIGATING','hr_grievance_status'
+ UNION ALL SELECT 4,'待确认结论','RESOLVED','hr_grievance_status'
+ UNION ALL SELECT 5,'已关闭','CLOSED','hr_grievance_status'
+ UNION ALL SELECT 6,'已撤回','WITHDRAWN','hr_grievance_status'
+ UNION ALL SELECT 7,'已升级劳动争议','ESCALATED','hr_grievance_status'
+) options
+WHERE NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_dict_data existing WHERE existing.tenant_id=100000 AND existing.dict_type=options.type AND existing.dict_value=options.value);
+
+
+-- BATCH_E_CUSTOMER_OPERATIONS
+INSERT IGNORE INTO cloud_flow_db.sys_menu (menu_id,menu_name,parent_id,order_num,path,component,menu_type,perms,icon,is_frame,is_cache,visible,status,create_by,create_time) VALUES
+(1550,'客户活动',8,20,'/office/crm/activity','pages/CrmActivityPage','C','crm:activity:list','CalendarDays',0,0,'0','0','seed',NOW()),
+(1551,'客户活动-新增',1550,1,'',NULL,'F','crm:activity:add','#',0,0,'0','0','seed',NOW()),
+(1552,'客户活动-维护',1550,2,'',NULL,'F','crm:activity:edit','#',0,0,'0','0','seed',NOW()),
+(1553,'客户活动-删除',1550,3,'',NULL,'F','crm:activity:remove','#',0,0,'0','0','seed',NOW()),
+(1554,'客户活动-分派',1550,4,'',NULL,'F','crm:activity:assign','#',0,0,'0','0','seed',NOW()),
+(1560,'服务等级',8,30,'/office/crm/sla','pages/CrmSlaPage','C','crm:sla:list','Timer',0,0,'0','0','seed',NOW()),
+(1561,'服务等级-维护',1560,1,'',NULL,'F','crm:sla:edit','#',0,0,'0','0','seed',NOW()),
+(1562,'服务等级-报表',1560,2,'',NULL,'F','crm:sla:report','#',0,0,'0','0','seed',NOW()),
+(1570,'丢单与竞对',8,40,'/office/crm/lost-analysis','pages/CrmLostAnalysisPage','C','crm:lost:report','TrendingDown',0,0,'0','0','seed',NOW()),
+(1571,'丢单与竞对-查询',1570,1,'',NULL,'F','crm:lost:list','#',0,0,'0','0','seed',NOW()),
+(1572,'丢单与竞对-维护',1570,2,'',NULL,'F','crm:lost:edit','#',0,0,'0','0','seed',NOW()),
+(1580,'客户信用',8,50,'/office/crm/credit','pages/CrmCreditPage','C','crm:credit:query','WalletCards',0,0,'0','0','seed',NOW()),
+(1581,'客户信用-维护',1580,1,'',NULL,'F','crm:credit:edit','#',0,0,'0','0','seed',NOW()),
+(1582,'客户信用-例外放行',1580,2,'',NULL,'F','crm:credit:bypass','#',0,0,'0','0','seed',NOW()),
+(1590,'销售区域',8,60,'/office/crm/territory','pages/CrmTerritoryPage','C','crm:territory:list','MapPin',0,0,'0','0','seed',NOW()),
+(1591,'销售区域-维护',1590,1,'',NULL,'F','crm:territory:edit','#',0,0,'0','0','seed',NOW()),
+(1592,'销售区域-删除',1590,2,'',NULL,'F','crm:territory:remove','#',0,0,'0','0','seed',NOW()),
+(1600,'线索评分规则',8,70,'/office/crm/lead-score','pages/CrmLeadScorePage','C','crm:lead-score:list','ListChecks',0,0,'0','0','seed',NOW()),
+(1601,'线索评分规则-维护',1600,1,'',NULL,'F','crm:lead-score:edit','#',0,0,'0','0','seed',NOW()),
+(1610,'营销活动',8,80,'/office/crm/campaign','pages/CrmCampaignPage','C','crm:campaign:list','Megaphone',0,0,'0','0','seed',NOW()),
+(1611,'营销活动-维护',1610,1,'',NULL,'F','crm:campaign:edit','#',0,0,'0','0','seed',NOW()),
+(1612,'营销活动-删除',1610,2,'',NULL,'F','crm:campaign:remove','#',0,0,'0','0','seed',NOW()),
+(1613,'营销活动-分派',1610,3,'',NULL,'F','crm:campaign:assign','#',0,0,'0','0','seed',NOW()),
+(1614,'营销活动-重算',1610,4,'',NULL,'F','crm:campaign:recalculate','#',0,0,'0','0','seed',NOW()),
+(1615,'营销活动-邮件发送',1610,5,'',NULL,'F','crm:campaign:send','#',0,0,'0','0','seed',NOW()),
+(1620,'营销目标名单',8,90,'/office/crm/target-list','pages/CrmTargetListPage','C','crm:target-list:list','Users',0,0,'0','0','seed',NOW()),
+(1621,'营销目标名单-维护',1620,1,'',NULL,'F','crm:target-list:edit','#',0,0,'0','0','seed',NOW()),
+(1622,'营销目标名单-删除',1620,2,'',NULL,'F','crm:target-list:remove','#',0,0,'0','0','seed',NOW()),
+(1623,'营销目标名单-分派',1620,3,'',NULL,'F','crm:target-list:assign','#',0,0,'0','0','seed',NOW()),
+(1624,'营销目标名单-导出',1620,4,'',NULL,'F','crm:target-list:export','#',0,0,'0','0','seed',NOW()),
+(1630,'客户分层分析',8,100,'/office/crm/profile-report','pages/CrmProfileReportPage','C','crm:profile:report','ChartColumn',0,0,'0','0','seed',NOW()),
+(1640,'线索资质判定',807,20,'',NULL,'F','crm:lead:qualify','#',0,0,'0','0','seed',NOW()),
+(1641,'线索评分重算',807,21,'',NULL,'F','crm:lead:score','#',0,0,'0','0','seed',NOW()),
+(1642,'线索分派',807,22,'',NULL,'F','crm:lead:assign','#',0,0,'0','0','seed',NOW()),
+(1643,'工单首次响应',805,20,'',NULL,'F','crm:ticket:respond','#',0,0,'0','0','seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id,menu_id) VALUES
+(1,1550),
+(1,1551),
+(1,1552),
+(1,1553),
+(1,1554),
+(1,1560),
+(1,1561),
+(1,1562),
+(1,1570),
+(1,1571),
+(1,1572),
+(1,1580),
+(1,1581),
+(1,1582),
+(1,1590),
+(1,1591),
+(1,1592),
+(1,1600),
+(1,1601),
+(1,1610),
+(1,1611),
+(1,1612),
+(1,1613),
+(1,1614),
+(1,1615),
+(1,1620),
+(1,1621),
+(1,1622),
+(1,1623),
+(1,1624),
+(1,1630),
+(1,1640),
+(1,1641),
+(1,1642),
+(1,1643),
+(8,1550),
+(8,1551),
+(8,1552),
+(8,1553),
+(8,1554),
+(8,1560),
+(8,1561),
+(8,1562),
+(8,1570),
+(8,1571),
+(8,1572),
+(8,1580),
+(8,1581),
+(8,1582),
+(8,1590),
+(8,1591),
+(8,1592),
+(8,1600),
+(8,1601),
+(8,1610),
+(8,1611),
+(8,1612),
+(8,1613),
+(8,1614),
+(8,1620),
+(8,1621),
+(8,1622),
+(8,1623),
+(8,1624),
+(8,1630),
+(8,1640),
+(8,1641),
+(8,1642),
+(8,1643),
+(9,1550),
+(9,1551),
+(9,1552),
+(9,1553),
+(9,1560),
+(9,1562),
+(9,1570),
+(9,1571),
+(9,1580),
+(9,1590),
+(9,1600),
+(9,1610),
+(9,1620),
+(9,1630),
+(9,1640),
+(9,1641),
+(9,1643),
+(10,1550),
+(10,1551),
+(10,1552),
+(10,1553),
+(10,1554),
+(10,1560),
+(10,1561),
+(10,1562),
+(10,1570),
+(10,1571),
+(10,1572),
+(10,1590),
+(10,1591),
+(10,1592),
+(10,1600),
+(10,1601),
+(10,1610),
+(10,1611),
+(10,1612),
+(10,1613),
+(10,1614),
+(10,1620),
+(10,1621),
+(10,1622),
+(10,1623),
+(10,1624),
+(10,1630),
+(11,1550),
+(11,1551),
+(11,1552),
+(11,1553),
+(11,1560),
+(11,1562),
+(11,1571),
+(11,1580),
+(11,1590),
+(11,1610),
+(11,1643),
+(3,1580),
+(3,1581),
+(3,1582);
+INSERT IGNORE INTO cloud_flow_db.sys_dict_type (tenant_id,dict_name,dict_type,status,create_by,create_time) VALUES
+(100000,'客户活动状态','crm_activity_status','0','seed',NOW()),
+(100000,'活动接受状态','crm_activity_acceptance_status','0','seed',NOW()),
+(100000,'客户活动类型','crm_activity_type','0','seed',NOW()),
+(100000,'工单优先级','crm_ticket_priority','0','seed',NOW()),
+(100000,'SLA默认分钟分档','crm_sla_priority_tier','0','seed',NOW()),
+(100000,'线索资质状态','crm_lead_qualification_status','0','seed',NOW()),
+(100000,'企业员工规模','crm_employee_scale','0','seed',NOW()),
+(100000,'客户细分市场','crm_market_segment','0','seed',NOW()),
+(100000,'营销活动类型','crm_campaign_type','0','seed',NOW()),
+(100000,'营销活动状态','crm_campaign_status','0','seed',NOW());
+INSERT INTO cloud_flow_db.sys_dict_data (tenant_id,dict_sort,dict_label,dict_value,dict_type,list_class,css_class,status,create_by,create_time)
+SELECT 100000,options.sort_no,options.label,options.value,options.type,options.list_class,options.css_class,'0','seed',NOW() FROM (
+SELECT 1 sort_no,'计划' label,'PLANNED' value,'crm_activity_status' type,NULL list_class,NULL css_class
+UNION ALL SELECT 2,'进行中','IN_PROGRESS','crm_activity_status',NULL,NULL
+UNION ALL SELECT 3,'已完成','COMPLETED','crm_activity_status',NULL,NULL
+UNION ALL SELECT 4,'已取消','CANCELLED','crm_activity_status',NULL,NULL
+UNION ALL SELECT 5,'未举行','NOT_HELD','crm_activity_status',NULL,NULL
+UNION ALL SELECT 1,'未回应','NONE','crm_activity_acceptance_status',NULL,NULL
+UNION ALL SELECT 2,'接受','ACCEPTED','crm_activity_acceptance_status',NULL,NULL
+UNION ALL SELECT 3,'拒绝','DECLINED','crm_activity_acceptance_status',NULL,NULL
+UNION ALL SELECT 4,'暂定','TENTATIVE','crm_activity_acceptance_status',NULL,NULL
+UNION ALL SELECT 1,'任务','TASK','crm_activity_type',NULL,NULL
+UNION ALL SELECT 2,'电话','CALL','crm_activity_type',NULL,NULL
+UNION ALL SELECT 3,'会议','MEETING','crm_activity_type',NULL,NULL
+UNION ALL SELECT 1,'P1 紧急','P1','crm_ticket_priority',NULL,NULL
+UNION ALL SELECT 2,'P2 高','P2','crm_ticket_priority',NULL,NULL
+UNION ALL SELECT 3,'P3 中','P3','crm_ticket_priority',NULL,NULL
+UNION ALL SELECT 4,'P4 低','P4','crm_ticket_priority',NULL,NULL
+UNION ALL SELECT 1,'P1 紧急','P1','crm_sla_priority_tier','60','240'
+UNION ALL SELECT 2,'P2 高','P2','crm_sla_priority_tier','240','480'
+UNION ALL SELECT 3,'P3 中','P3','crm_sla_priority_tier','480','1440'
+UNION ALL SELECT 4,'P4 低','P4','crm_sla_priority_tier','1440','4320'
+UNION ALL SELECT 1,'未评估','UNQUALIFIED','crm_lead_qualification_status',NULL,NULL
+UNION ALL SELECT 2,'评估中','QUALIFYING','crm_lead_qualification_status',NULL,NULL
+UNION ALL SELECT 3,'合格','QUALIFIED','crm_lead_qualification_status',NULL,NULL
+UNION ALL SELECT 4,'不合格','DISQUALIFIED','crm_lead_qualification_status',NULL,NULL
+UNION ALL SELECT 1,'1-10人','1-10','crm_employee_scale',NULL,NULL
+UNION ALL SELECT 2,'11-50人','11-50','crm_employee_scale',NULL,NULL
+UNION ALL SELECT 3,'51-200人','51-200','crm_employee_scale',NULL,NULL
+UNION ALL SELECT 4,'201-500人','201-500','crm_employee_scale',NULL,NULL
+UNION ALL SELECT 5,'501-1000人','501-1000','crm_employee_scale',NULL,NULL
+UNION ALL SELECT 6,'1000+人','1000+','crm_employee_scale',NULL,NULL
+UNION ALL SELECT 1,'小微企业','SMB','crm_market_segment',NULL,NULL
+UNION ALL SELECT 2,'中型企业','MID_MARKET','crm_market_segment',NULL,NULL
+UNION ALL SELECT 3,'大型企业','ENTERPRISE','crm_market_segment',NULL,NULL
+UNION ALL SELECT 4,'政府与公共机构','GOVERNMENT','crm_market_segment',NULL,NULL
+UNION ALL SELECT 1,'邮件','EMAIL','crm_campaign_type',NULL,NULL
+UNION ALL SELECT 2,'活动会议','EVENT','crm_campaign_type',NULL,NULL
+UNION ALL SELECT 3,'线上研讨','WEBINAR','crm_campaign_type',NULL,NULL
+UNION ALL SELECT 4,'展会','EXHIBITION','crm_campaign_type',NULL,NULL
+UNION ALL SELECT 5,'其他','OTHER','crm_campaign_type',NULL,NULL
+UNION ALL SELECT 1,'策划','PLANNING','crm_campaign_status',NULL,NULL
+UNION ALL SELECT 2,'进行中','ACTIVE','crm_campaign_status',NULL,NULL
+UNION ALL SELECT 3,'暂停','PAUSED','crm_campaign_status',NULL,NULL
+UNION ALL SELECT 4,'完成','COMPLETED','crm_campaign_status',NULL,NULL
+UNION ALL SELECT 5,'取消','CANCELLED','crm_campaign_status',NULL,NULL
+UNION ALL SELECT 4,'等待客户','WAITING_CUSTOMER','crm_ticket_status',NULL,NULL) options WHERE NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_dict_data existing WHERE existing.tenant_id=100000 AND existing.dict_type=options.type AND existing.dict_value=options.value);
+INSERT IGNORE INTO cloud_flow_db.sys_business_rule (tenant_id,rule_code,rule_name,module,threshold_value,effect,enabled,priority,remark,create_by,create_time) VALUES
+(100000,'crm.credit.limit','客户信用额度','CRM',0,'WARN',1,10,'比较已占用加本次金额与客户生效额度','seed',NOW()),
+(100000,'crm.credit.overdue','客户超期欠款','CRM',0,'BLOCK',1,10,'比较实时超期未回款与客户超期阈值','seed',NOW()),
+(100000,'crm.lead.qualify.required','线索转化须通过资质评估','CRM',0,'BLOCK',1,10,'合格为0，其他状态为1，可配置WARN','seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.sys_business_rule_version (tenant_id,rule_id,rule_code,version_no,threshold_value,effect,enabled,priority,remark,status,publisher_name,published_time,snapshot_json,create_by,create_time)
+SELECT tenant_id,id,rule_code,1,threshold_value,effect,enabled,priority,remark,'PUBLISHED','seed',NOW(),JSON_OBJECT('ruleCode',rule_code,'effect',effect,'thresholdValue',threshold_value,'enabled',enabled),'seed',NOW()
+FROM cloud_flow_db.sys_business_rule WHERE tenant_id=100000 AND rule_code IN ('crm.credit.limit','crm.credit.overdue','crm.lead.qualify.required');
+INSERT IGNORE INTO cloud_flow_db.sys_config (tenant_id,config_name,config_key,config_value,config_type,config_scope,create_by,create_time,remark) VALUES
+(100000,'营销归因延长天数','crm.campaign.attribution.window.days','30','Y','1','seed',NOW(),'活动结束后0至3650天内创建的线索'),
+(100000,'工单SLA消耗预警比例','crm.sla.reminder.percent','80','Y','1','seed',NOW(),'有效范围1至99，按工作分钟计算');
+INSERT IGNORE INTO cloud_flow_db.sys_message_template (template_id,tenant_id,template_code,template_name,channel_type,biz_module,message_category,title_template,content_template,params_declare,force_send_flag,dedupe_window_sec,status,deleted,version,create_by,create_time) VALUES
+(1550,100000,'CRM_ACTIVITY_REMINDER','客户活动站内提醒','INTERNAL','crm','BIZ_REMINDER','${title}','${content}','[{"name":"title","required":true},{"name":"content","required":true}]',0,0,'ENABLED',0,0,'seed',NOW()),
+(1551,100000,'CRM_ACTIVITY_REMINDER','客户活动邮件提醒','EMAIL','crm','BIZ_REMINDER','${title}','${content}','[{"name":"title","required":true},{"name":"content","required":true}]',0,0,'ENABLED',0,0,'seed',NOW()),
+(1552,100000,'CRM_SLA_NOTICE','工单SLA通知','INTERNAL','crm','BIZ_REMINDER','${title}','${content}','[{"name":"title","required":true},{"name":"content","required":true}]',0,0,'ENABLED',0,0,'seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.sys_job_handler (handler_id,service_name,handler_name,handler_desc,status,last_report_time,create_by,create_time) VALUES
+(1550,'crm','crmActivityReminder','客户活动提醒','ONLINE',NOW(),'seed',NOW()),
+(1551,'crm','crmActivityOverdue','客户任务活动逾期','ONLINE',NOW(),'seed',NOW()),
+(1552,'crm','crmSlaBreachScan','工单SLA违约扫描','ONLINE',NOW(),'seed',NOW()),
+(1553,'crm','crmCampaignRevenueRecalc','营销活动收益归因','ONLINE',NOW(),'seed',NOW()),
+(1554,'crm','crmCampaignCountAggregate','营销邮件效果对账与到期详情归档','ONLINE',NOW(),'seed',NOW()),
+(1555,'crm','crmMassEmailDispatch','按冻结名单分批提交营销邮件','ONLINE',NOW(),'seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.sys_job (job_id,tenant_id,job_name,job_group,service_name,handler_name,trigger_type,cron_expression,interval_ms,status,concurrent_flag,misfire_strategy,retry_count,timeout_seconds,lock_time_seconds,alarm_on_fail_flag,create_by,create_time) VALUES
+(1550,100000,'客户活动提醒','CRM','crm','crmActivityReminder','FIXED_RATE',NULL,300000,'ENABLED',0,'IGNORE',0,1800,1800,1,'seed',NOW()),
+(1551,100000,'客户任务活动逾期','CRM','crm','crmActivityOverdue','CRON','0 0 6 * * *',NULL,'ENABLED',0,'IGNORE',0,1800,1800,1,'seed',NOW()),
+(1552,100000,'工单SLA违约扫描','CRM','crm','crmSlaBreachScan','FIXED_RATE',NULL,600000,'ENABLED',0,'IGNORE',0,1800,1800,1,'seed',NOW()),
+(1553,100000,'营销活动收益归因','CRM','crm','crmCampaignRevenueRecalc','CRON','0 0 4 * * *',NULL,'ENABLED',0,'IGNORE',0,1800,1800,1,'seed',NOW()),
+(1554,100000,'营销邮件效果对账与到期详情归档','CRM','crm','crmCampaignCountAggregate','FIXED_DELAY',NULL,300000,'ENABLED',0,'FIRE_ONCE',0,1800,1800,1,'seed',NOW()),
+(1555,100000,'营销邮件定时与分批发送','CRM','crm','crmMassEmailDispatch','FIXED_DELAY',NULL,30000,'ENABLED',0,'FIRE_ONCE',0,240,300,1,'seed',NOW());
+
+-- crm-marketing-email-defaults:start
+INSERT INTO cloud_flow_db.sys_config
+ (tenant_id,config_name,config_key,config_value,config_type,config_scope,create_by,create_time,remark)
+SELECT tenant.tenant_id, settings.config_name, settings.config_key, settings.config_value, 'Y', '1', 'seed', NOW(), settings.remark
+FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+ SELECT '营销邮件发送开关' AS config_name, 'crm.email.sendingEnabled' AS config_key, 'false' AS config_value, '须具备有效SMTP渠道、加密密钥和公开退订域后手动启用' AS remark
+ UNION ALL SELECT '营销邮件追踪开关','crm.email.trackingEnabled','false','打开与点击观察开关；关闭时仍保留有效退订入口'
+ UNION ALL SELECT '营销邮件公开入口','crm.email.publicOrigin','','仅HTTPS域名根地址；未配置有效退订入口禁止外发'
+ UNION ALL SELECT '营销邮件目标域名','crm.email.allowedHosts','','逗号分隔精确HTTPS目标域名，不支持通配符'
+ UNION ALL SELECT '营销邮件二次确认人数','crm.email.confirmationThreshold','5000','超过此精确收件人数必须再次确认，不能绕过退订或发送限额'
+) settings
+WHERE tenant.tenant_id > 0 AND tenant.deleted=0 AND tenant.status='0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_config existing
+   WHERE existing.tenant_id=tenant.tenant_id AND existing.config_scope='1' AND existing.config_key=settings.config_key);
+INSERT INTO cloud_flow_db.sys_message_template
+ (tenant_id,template_code,template_name,channel_type,biz_module,message_category,title_template,content_template,
+  params_declare,force_send_flag,dedupe_window_sec,status,deleted,version,create_by,create_time)
+SELECT tenant.tenant_id,'CRM_MARKETING','营销活动邮件','EMAIL','crm','BIZ_REMINDER','${campaignName}',
+ '<p>${contactName}，您好：</p><p>欢迎了解${companyName}参与的${campaignName}活动。</p>',
+ '[{"name":"contactName","required":false},{"name":"companyName","required":false},{"name":"campaignName","required":true}]',
+ 0,0,'ENABLED',0,0,'seed',NOW()
+FROM cloud_flow_db.sys_tenant tenant
+WHERE tenant.tenant_id > 0 AND tenant.deleted=0 AND tenant.status='0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_message_template existing
+   WHERE existing.tenant_id=tenant.tenant_id AND existing.template_code='CRM_MARKETING' AND existing.channel_type='EMAIL' AND existing.deleted=0);
+-- crm-marketing-email-defaults:end
+INSERT IGNORE INTO cloud_flow_db.crm_territory (territory_id,tenant_id,territory_code,territory_name,parent_id,level_path,sort_no,status,deleted,version,create_by,create_time) VALUES
+(1550,100000,'CN-11','北京',0,'/1550/',1,'ACTIVE',0,0,'seed',NOW()),
+(1551,100000,'CN-12','天津',0,'/1551/',2,'ACTIVE',0,0,'seed',NOW()),
+(1552,100000,'CN-13','河北',0,'/1552/',3,'ACTIVE',0,0,'seed',NOW()),
+(1553,100000,'CN-14','山西',0,'/1553/',4,'ACTIVE',0,0,'seed',NOW()),
+(1554,100000,'CN-15','内蒙古',0,'/1554/',5,'ACTIVE',0,0,'seed',NOW()),
+(1555,100000,'CN-21','辽宁',0,'/1555/',6,'ACTIVE',0,0,'seed',NOW()),
+(1556,100000,'CN-22','吉林',0,'/1556/',7,'ACTIVE',0,0,'seed',NOW()),
+(1557,100000,'CN-23','黑龙江',0,'/1557/',8,'ACTIVE',0,0,'seed',NOW()),
+(1558,100000,'CN-31','上海',0,'/1558/',9,'ACTIVE',0,0,'seed',NOW()),
+(1559,100000,'CN-32','江苏',0,'/1559/',10,'ACTIVE',0,0,'seed',NOW()),
+(1560,100000,'CN-33','浙江',0,'/1560/',11,'ACTIVE',0,0,'seed',NOW()),
+(1561,100000,'CN-34','安徽',0,'/1561/',12,'ACTIVE',0,0,'seed',NOW()),
+(1562,100000,'CN-35','福建',0,'/1562/',13,'ACTIVE',0,0,'seed',NOW()),
+(1563,100000,'CN-36','江西',0,'/1563/',14,'ACTIVE',0,0,'seed',NOW()),
+(1564,100000,'CN-37','山东',0,'/1564/',15,'ACTIVE',0,0,'seed',NOW()),
+(1565,100000,'CN-41','河南',0,'/1565/',16,'ACTIVE',0,0,'seed',NOW()),
+(1566,100000,'CN-42','湖北',0,'/1566/',17,'ACTIVE',0,0,'seed',NOW()),
+(1567,100000,'CN-43','湖南',0,'/1567/',18,'ACTIVE',0,0,'seed',NOW()),
+(1568,100000,'CN-44','广东',0,'/1568/',19,'ACTIVE',0,0,'seed',NOW()),
+(1569,100000,'CN-45','广西',0,'/1569/',20,'ACTIVE',0,0,'seed',NOW()),
+(1570,100000,'CN-46','海南',0,'/1570/',21,'ACTIVE',0,0,'seed',NOW()),
+(1571,100000,'CN-50','重庆',0,'/1571/',22,'ACTIVE',0,0,'seed',NOW()),
+(1572,100000,'CN-51','四川',0,'/1572/',23,'ACTIVE',0,0,'seed',NOW()),
+(1573,100000,'CN-52','贵州',0,'/1573/',24,'ACTIVE',0,0,'seed',NOW()),
+(1574,100000,'CN-53','云南',0,'/1574/',25,'ACTIVE',0,0,'seed',NOW()),
+(1575,100000,'CN-54','西藏',0,'/1575/',26,'ACTIVE',0,0,'seed',NOW()),
+(1576,100000,'CN-61','陕西',0,'/1576/',27,'ACTIVE',0,0,'seed',NOW()),
+(1577,100000,'CN-62','甘肃',0,'/1577/',28,'ACTIVE',0,0,'seed',NOW()),
+(1578,100000,'CN-63','青海',0,'/1578/',29,'ACTIVE',0,0,'seed',NOW()),
+(1579,100000,'CN-64','宁夏',0,'/1579/',30,'ACTIVE',0,0,'seed',NOW()),
+(1580,100000,'CN-65','新疆',0,'/1580/',31,'ACTIVE',0,0,'seed',NOW()),
+(1581,100000,'CN-71','台湾',0,'/1581/',32,'ACTIVE',0,0,'seed',NOW()),
+(1582,100000,'CN-81','香港',0,'/1582/',33,'ACTIVE',0,0,'seed',NOW()),
+(1583,100000,'CN-82','澳门',0,'/1583/',34,'ACTIVE',0,0,'seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.crm_lost_reason (reason_id,tenant_id,reason_code,reason_name,reason_category,sort_no,status,deleted,version,create_by,create_time) VALUES
+(1550,100000,'PRICE','价格缺乏竞争力','PRICE',1,'ACTIVE',0,0,'seed',NOW()),
+(1551,100000,'PRODUCT','产品能力不匹配','PRODUCT',2,'ACTIVE',0,0,'seed',NOW()),
+(1552,100000,'SERVICE','服务能力不足','SERVICE',3,'ACTIVE',0,0,'seed',NOW()),
+(1553,100000,'COMPETITOR','竞争对手优势','COMPETITOR',4,'ACTIVE',0,0,'seed',NOW()),
+(1554,100000,'TIMING','采购时机不成熟','TIMING',5,'ACTIVE',0,0,'seed',NOW()),
+(1555,100000,'BUDGET','客户预算取消','BUDGET',6,'ACTIVE',0,0,'seed',NOW()),
+(1556,100000,'RELATIONSHIP','决策关系不足','RELATIONSHIP',7,'ACTIVE',0,0,'seed',NOW()),
+(1557,100000,'OTHER','其他原因','OTHER',8,'ACTIVE',0,0,'seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.crm_sla_policy (policy_id,tenant_id,policy_code,policy_name,entity_type,holiday_calendar_id,apply_for_resolution,round_the_clock_flag,default_flag,priority,status,deleted,version,create_by,create_time)
+VALUES (1550,100000,'CRM-DEFAULT','默认客户服务等级','GLOBAL',100,1,0,1,100,'ENABLED',0,0,'seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.crm_sla_priority (priority_id,tenant_id,policy_id,priority_code,priority_name,first_response_minutes,resolution_minutes,sort_no,deleted,create_by,create_time) VALUES
+(1550,100000,1550,'P1','紧急',60,240,1,0,'seed',NOW()),(1551,100000,1550,'P2','高',240,480,2,0,'seed',NOW()),
+(1552,100000,1550,'P3','中',480,1440,3,0,'seed',NOW()),(1553,100000,1550,'P4','低',1440,4320,4,0,'seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.crm_sla_status_rule (rule_id,tenant_id,policy_id,rule_type,ticket_status,deleted,create_by,create_time) VALUES
+(1550,100000,1550,'PAUSE','WAITING_CUSTOMER',0,'seed',NOW()),(1551,100000,1550,'FULFILL','RESOLVED',0,'seed',NOW()),(1552,100000,1550,'FULFILL','CLOSED',0,'seed',NOW());
+INSERT IGNORE INTO cloud_flow_db.crm_lead_score_rule (rule_id,tenant_id,rule_name,field_name,`operator`,field_value,score,enabled_flag,sort_no,deleted,version,create_by,create_time) VALUES
+(1550,100000,'年营收千万以上','annual_revenue','>=','10000000',20,1,1,0,0,'seed',NOW()),
+(1551,100000,'千人以上企业','employee_scale','=','1000+',15,1,2,0,0,'seed',NOW());
+UPDATE cloud_flow_db.crm_service_ticket SET severity=CASE severity WHEN 'CRITICAL' THEN 'P1' WHEN 'HIGH' THEN 'P2' WHEN 'MEDIUM' THEN 'P3' WHEN 'LOW' THEN 'P4' ELSE severity END
+WHERE severity IN ('CRITICAL','HIGH','MEDIUM','LOW');
+INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id,tenant_id,process_name,process_key,version,status,is_latest,model_json,create_by,create_time) VALUES
+('customer_credit_review',100000,'客户信用额度调整','customer_credit_review',1,'PUBLISHED',1,'{"nodes":[{"id":"start","type":"START","title":"提交申请"},{"id":"manager","type":"APPROVAL","title":"部门负责人审批","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","REJECT"]}},{"id":"finance","type":"APPROVAL","title":"财务审批","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","REJECT"]}},{"id":"end","type":"END","title":"完成"}],"edges":[{"id":"start-manager","source":"start","target":"manager"},{"id":"manager-finance","source":"manager","target":"finance"},{"id":"finance-end","source":"finance","target":"end"}]}','seed',NOW()),
+('opportunity_downgrade_review',100000,'商机降级与输单审批','opportunity_downgrade_review',1,'PUBLISHED',1,'{"nodes":[{"id":"start","type":"START","title":"提交申请"},{"id":"manager","type":"APPROVAL","title":"部门负责人审批","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","REJECT"]}},{"id":"end","type":"END","title":"完成"}],"edges":[{"id":"start-manager","source":"start","target":"manager"},{"id":"manager-end","source":"manager","target":"end"}]}','seed',NOW());
+
+INSERT IGNORE INTO cloud_flow_db.wf_process_definition
+(definition_id,tenant_id,process_name,process_key,version,status,is_latest,start_permission_type,start_permission_value,model_json,create_by,create_time) VALUES
+('crm_refund_review',100000,'原收款退款双级审批','crm_refund_review',1,'PUBLISHED',1,'ALL','[]','{"nodes":[{"id":"start","type":"START","title":"财务提交退款"},{"id":"customer_owner","type":"APPROVAL","title":"客户业务负责人审批","approverType":"VARIABLE_USER","approverValue":"customerOwnerApproverIds","allowDelegate":false,"allowAddSign":false,"props":{"buttons":["APPROVE","REJECT"],"allowEdit":false,"allowRollback":false,"allowSelection":false}},{"id":"finance_review","type":"APPROVAL","title":"另一名财务复核","approverType":"VARIABLE_USER","approverValue":"financeReviewerIds","signType":"ANY","allowDelegate":false,"allowAddSign":false,"props":{"buttons":["APPROVE","REJECT"],"allowEdit":false,"allowRollback":false,"allowSelection":false}},{"id":"end","type":"END","title":"退款审批完成"}],"edges":[{"id":"start-owner","source":"start","target":"customer_owner"},{"id":"owner-finance","source":"customer_owner","target":"finance_review"},{"id":"finance-end","source":"finance_review","target":"end"}]}','seed',NOW());
+
+-- batch-f-operations:start
+INSERT IGNORE INTO cloud_flow_db.sys_menu (
+  menu_id, menu_name, parent_id, order_num, path, component, menu_type, perms, icon, is_frame, is_cache, visible, status, create_by, create_time
+) VALUES
+(1650, '资产分类', 5, 30, '/admin/operations/asset-categories', 'pages/admin/operations/AssetCategoryPage', 'C', 'oa:asset:list', 'Boxes', 0, 0, '0', '0', 'seed', NOW()),
+(1651, '供应商分类', 5, 31, '/admin/operations/supplier-categories', 'pages/admin/operations/SupplierCategoryPage', 'C', 'oa:supplier:list', 'Building2', 0, 0, '0', '0', 'seed', NOW()),
+(1652, '工时活动与单价', 5, 32, '/admin/operations/activity-catalog', 'pages/admin/operations/ActivityCatalogPage', 'C', 'oa:activity-cost:list', 'Timer', 0, 0, '0', '0', 'seed', NOW()),
+(1653, '项目模板', 277, 33, '/office/project/templates', 'pages/admin/operations/ProjectTemplatePage', 'C', 'oa:project-template:list', 'LayoutTemplate', 0, 0, '0', '0', 'seed', NOW()),
+(1654, '项目工时', 277, 34, '/office/project/timesheets', 'pages/admin/operations/TimesheetPage', 'C', 'oa:timesheet:list', 'Clock', 0, 0, '0', '0', 'seed', NOW()),
+(1655, '合同条款模板', 277, 35, '/office/contracts/term-templates', 'pages/admin/operations/ContractTermTemplatePage', 'C', 'oa:contract-template:list', 'FileText', 0, 0, '0', '0', 'seed', NOW()),
+(1656, '询价比价', 203, 36, '/office/rfqs', 'pages/admin/operations/RfqPage', 'C', 'oa:rfq:list', 'Scale', 0, 0, '0', '0', 'seed', NOW()),
+(1657, '资产经营报表', 5, 37, '/admin/reports/assets', 'pages/admin/operations/OperationsReportPage', 'C', 'oa:asset:report', 'ChartColumn', 0, 0, '0', '0', 'seed', NOW()),
+(1658, '供应商经营报表', 5, 38, '/admin/reports/suppliers', 'pages/admin/operations/OperationsReportPage', 'C', 'oa:supplier:report', 'ChartColumn', 0, 0, '0', '0', 'seed', NOW()),
+(1659, '项目经营报表', 277, 39, '/admin/reports/projects', 'pages/admin/operations/OperationsReportPage', 'C', 'oa:project:report', 'ChartColumn', 0, 0, '0', '0', 'seed', NOW()),
+(1660, '合同履约报表', 277, 40, '/admin/reports/contracts', 'pages/admin/operations/OperationsReportPage', 'C', 'oa:contract:report', 'ChartColumn', 0, 0, '0', '0', 'seed', NOW()),
+(1661, '询价合规报表', 203, 41, '/admin/reports/rfqs', 'pages/admin/operations/OperationsReportPage', 'C', 'oa:rfq:report', 'ChartColumn', 0, 0, '0', '0', 'seed', NOW()),
+(1662, '工时单价维护', 1652, 1, '', NULL, 'F', 'oa:activity-cost:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1663, '活动类型维护', 1652, 1, '', NULL, 'F', 'oa:activity-type:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1664, '资产分类维护', 1650, 1, '', NULL, 'F', 'oa:asset-category:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1665, '资产分类删除', 1650, 1, '', NULL, 'F', 'oa:asset-category:remove', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1666, '资产折旧生成', 501, 1, '', NULL, 'F', 'oa:asset-depreciation:generate', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1667, '资产折旧查看', 501, 1, '', NULL, 'F', 'oa:asset-depreciation:list', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1668, '资产折旧过账', 501, 1, '', NULL, 'F', 'oa:asset-depreciation:post', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1669, '资产维保完成', 501, 1, '', NULL, 'F', 'oa:asset-maintenance:complete', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1670, '资产维保维护', 501, 1, '', NULL, 'F', 'oa:asset-maintenance:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1671, '资产维保查看', 501, 1, '', NULL, 'F', 'oa:asset-maintenance:list', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1672, '资产调拨维护', 501, 1, '', NULL, 'F', 'oa:asset-movement:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1673, '资产调拨执行', 501, 1, '', NULL, 'F', 'oa:asset-movement:execute', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1674, '资产调拨查看', 501, 1, '', NULL, 'F', 'oa:asset-movement:list', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1675, '资产维修完成', 501, 1, '', NULL, 'F', 'oa:asset-repair:complete', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1676, '资产维修维护', 501, 1, '', NULL, 'F', 'oa:asset-repair:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1677, '资产维修查看', 501, 1, '', NULL, 'F', 'oa:asset-repair:list', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1678, '合同条款模板维护', 1655, 1, '', NULL, 'F', 'oa:contract-template:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1679, '合同履约条款确认', 217, 1, '', NULL, 'F', 'oa:contract-term:confirm', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1680, '合同履约条款维护', 217, 1, '', NULL, 'F', 'oa:contract-term:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1681, '合同履约条款豁免', 217, 1, '', NULL, 'F', 'oa:contract-term:waive', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1682, '合同签署', 217, 1, '', NULL, 'F', 'oa:contract:sign', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1683, '项目成本重算', 214, 1, '', NULL, 'F', 'oa:project-cost:recalculate', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1684, '项目模板维护', 1653, 1, '', NULL, 'F', 'oa:project-template:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1685, '询价定标', 1656, 1, '', NULL, 'F', 'oa:rfq:award', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1686, '询价比价', 1656, 1, '', NULL, 'F', 'oa:rfq:comparison', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1687, '询价转采购', 1656, 1, '', NULL, 'F', 'oa:rfq:convert', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1688, '询价维护', 1656, 1, '', NULL, 'F', 'oa:rfq:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1689, '询价导出', 1656, 1, '', NULL, 'F', 'oa:rfq:export', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1690, '询价邀请', 1656, 1, '', NULL, 'F', 'oa:rfq:invite', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1691, '询价录入报价', 1656, 1, '', NULL, 'F', 'oa:rfq:quote', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1692, '询价流标处理', 1656, 1, '', NULL, 'F', 'oa:rfq:terminate', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1693, '供应商分类维护', 1651, 1, '', NULL, 'F', 'oa:supplier-category:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1694, '供应商分类删除', 1651, 1, '', NULL, 'F', 'oa:supplier-category:remove', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1695, '供应商资质维护', 508, 1, '', NULL, 'F', 'oa:supplier-qualification:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1696, '供应商资质核验', 508, 1, '', NULL, 'F', 'oa:supplier-qualification:verify', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1697, '供应商评分确认', 508, 1, '', NULL, 'F', 'oa:supplier-score:confirm', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1698, '供应商评分维护', 508, 1, '', NULL, 'F', 'oa:supplier-score:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1699, '供应商评分查看', 508, 1, '', NULL, 'F', 'oa:supplier-score:list', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1700, '供应商准入审批', 508, 1, '', NULL, 'F', 'oa:supplier:govern', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1701, '工时维护', 1654, 1, '', NULL, 'F', 'oa:timesheet:edit', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1702, '工时删除', 1654, 1, '', NULL, 'F', 'oa:timesheet:remove', '#', 0, 0, '0', '0', 'seed', NOW()),
+(1703, '工时提交', 1654, 1, '', NULL, 'F', 'oa:timesheet:submit', '#', 0, 0, '0', '0', 'seed', NOW());
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id,menu_id,tenant_id)
+SELECT roles.role_id,menus.menu_id,roles.tenant_id FROM cloud_flow_db.sys_role roles CROSS JOIN cloud_flow_db.sys_menu menus
+WHERE roles.deleted=0 AND roles.status='0' AND roles.role_key='admin' AND menus.menu_id BETWEEN 1650 AND 1749;
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id,menu_id,tenant_id)
+SELECT roles.role_id,grants.menu_id,roles.tenant_id FROM cloud_flow_db.sys_role roles JOIN (
+SELECT 1650 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1650 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1650 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1651 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1651 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1652 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1653 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1653 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'hr' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'employee' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'sales_manager' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'sales_rep' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'crm_ops' AS role_key
+UNION ALL SELECT 1654 AS menu_id,'customer_success' AS role_key
+UNION ALL SELECT 1655 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1655 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1656 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1656 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1657 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1657 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1657 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1658 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1658 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1658 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1659 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1659 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1660 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1660 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1660 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1661 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1661 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1662 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1663 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1664 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1664 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1664 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1665 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1665 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1665 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1666 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1667 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1667 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1668 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1669 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1669 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1669 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1670 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1670 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1670 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1671 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1671 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1671 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1672 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1672 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1672 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1673 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1673 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1673 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1674 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1674 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1674 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1675 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1675 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1675 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1676 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1676 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1676 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1677 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1677 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1677 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1678 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1678 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1679 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1679 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1680 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1680 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1681 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1681 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1682 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1682 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1683 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1684 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1684 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1685 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1686 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1686 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1687 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1687 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1688 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1688 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1689 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1689 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1690 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1690 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1691 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1691 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1692 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1692 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1693 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1693 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1694 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1694 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1695 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1695 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1696 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1696 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1697 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1698 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1698 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1699 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1699 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1700 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'hr' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'employee' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'sales_manager' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'sales_rep' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'crm_ops' AS role_key
+UNION ALL SELECT 1701 AS menu_id,'customer_success' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'hr' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'employee' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'sales_manager' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'sales_rep' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'crm_ops' AS role_key
+UNION ALL SELECT 1702 AS menu_id,'customer_success' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'manager' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'finance' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'hr' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'employee' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'legal' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'oa_clerk' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'sales_manager' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'sales_rep' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'crm_ops' AS role_key
+UNION ALL SELECT 1703 AS menu_id,'customer_success' AS role_key
+) grants ON grants.role_key=roles.role_key WHERE roles.deleted=0 AND roles.status='0';
+INSERT IGNORE INTO cloud_flow_db.sys_config (tenant_id,config_name,config_key,config_value,config_type,config_scope,create_by,create_time,remark)
+SELECT owners.tenant_id,options.config_name,options.config_key,COALESCE(options.config_value,CAST(owners.user_id AS CHAR)),'Y','1','seed',NOW(),'批次F；审批与提醒用户限定本租户，可信代理需按实际部署核实'
+FROM (SELECT account.tenant_id,COALESCE(MIN(CASE WHEN roles.role_key='admin' THEN account.user_id END),MIN(account.user_id)) AS user_id FROM cloud_flow_db.sys_user account JOIN cloud_flow_db.sys_tenant tenant ON tenant.tenant_id=account.tenant_id AND tenant.status='0' AND tenant.deleted=0 LEFT JOIN cloud_flow_db.sys_user_role membership ON membership.user_id=account.user_id AND membership.tenant_id=account.tenant_id LEFT JOIN cloud_flow_db.sys_role roles ON roles.role_id=membership.role_id AND roles.tenant_id=account.tenant_id AND roles.status='0' AND roles.deleted=0 WHERE account.deleted=0 AND account.status='0' GROUP BY account.tenant_id) owners CROSS JOIN (
+SELECT '资产保修提前提醒天数' AS config_name,'sys.oa.asset.warrantyReminderDays' AS config_key,'30' AS config_value
+UNION ALL SELECT '资产提醒接收人' AS config_name,'sys.oa.asset.reminderUserId' AS config_key,NULL AS config_value
+UNION ALL SELECT '资产维修审批金额阈值' AS config_name,'sys.oa.asset.repairApprovalThreshold' AS config_key,'0' AS config_value
+UNION ALL SELECT '资产审批人' AS config_name,'sys.oa.asset.approverUserId' AS config_key,NULL AS config_value
+UNION ALL SELECT '供应商评分周期月数' AS config_name,'sys.oa.supplier.scorePeriodMonths' AS config_key,'3' AS config_value
+UNION ALL SELECT '供应商资质与评分提醒接收人' AS config_name,'sys.oa.supplier.qualification.reminderUserId' AS config_key,NULL AS config_value
+UNION ALL SELECT '供应商准入审批人' AS config_name,'sys.oa.supplier.approverUserId' AS config_key,NULL AS config_value
+UNION ALL SELECT '供应商优秀评分线' AS config_name,'sys.oa.supplier.score.excellent' AS config_key,'90' AS config_value
+UNION ALL SELECT '供应商合格评分线' AS config_name,'sys.oa.supplier.score.qualified' AS config_key,'75' AS config_value
+UNION ALL SELECT '供应商观察评分线' AS config_name,'sys.oa.supplier.score.watch' AS config_key,'60' AS config_value
+UNION ALL SELECT '询价定标审批人' AS config_name,'sys.oa.rfq.approverUserId' AS config_key,NULL AS config_value
+UNION ALL SELECT '询价定标审批金额阈值' AS config_name,'sys.oa.rfq.awardApprovalThreshold' AS config_key,'0' AS config_value
+UNION ALL SELECT '询价截止提前提醒天数' AS config_name,'sys.oa.rfq.reminderDays' AS config_key,'3' AS config_value
+UNION ALL SELECT '单日工时上限' AS config_name,'sys.oa.timesheet.maxDailyHours' AS config_key,'24' AS config_value
+UNION ALL SELECT '合同条款提前提醒天数' AS config_name,'sys.oa.contract.fulfilmentReminderDays' AS config_key,'7' AS config_value
+UNION ALL SELECT '签署可信代理网段' AS config_name,'sys.oa.contract.sign.trustedProxyCidrs' AS config_key,'127.0.0.1/32,::1/128' AS config_value
+UNION ALL SELECT '签署IP解析顺序' AS config_name,'sys.oa.contract.sign.ipHeaders' AS config_key,'X-Forwarded-For,X-Real-IP,remoteAddr' AS config_value
+) options;
+INSERT IGNORE INTO cloud_flow_db.sys_business_rule (tenant_id,rule_code,rule_name,module,threshold_value,effect,enabled,priority,remark,create_by,create_time)
+SELECT tenant.tenant_id,options.rule_code,options.rule_name,'oa',options.threshold_value,options.effect,1,20,'批次F业务默认规则，可经规则中心发布调整','seed',NOW() FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+SELECT 'oa.project.dependency.unsatisfied' AS rule_code,'项目依赖未满足' AS rule_name,0 AS threshold_value,'WARN' AS effect
+UNION ALL SELECT 'oa.rfq.non-lowest.award' AS rule_code,'非最低价定标' AS rule_name,0 AS threshold_value,'WARN' AS effect
+UNION ALL SELECT 'oa.rfq.min.suppliers' AS rule_code,'询价最少邀请家数' AS rule_name,3 AS threshold_value,'WARN' AS effect
+UNION ALL SELECT 'oa.supplier.blacklist.block' AS rule_code,'黑名单供应商准入' AS rule_name,0 AS threshold_value,'BLOCK' AS effect
+UNION ALL SELECT 'oa.supplier.eliminated.block' AS rule_code,'淘汰供应商准入' AS rule_name,0 AS threshold_value,'BLOCK' AS effect
+UNION ALL SELECT 'oa.supplier.standing.limit' AS rule_code,'观察级供应商提示' AS rule_name,0 AS threshold_value,'WARN' AS effect
+UNION ALL SELECT 'oa.supplier.qualification.expired' AS rule_code,'关键资质过期准入' AS rule_name,0 AS threshold_value,'BLOCK' AS effect
+UNION ALL SELECT 'oa.timesheet.daily-hours' AS rule_code,'单日工时较长提示' AS rule_name,12 AS threshold_value,'WARN' AS effect
+) options WHERE tenant.status='0' AND tenant.deleted=0;
+INSERT IGNORE INTO cloud_flow_db.sys_business_rule_version (tenant_id,rule_id,rule_code,version_no,threshold_value,effect,enabled,priority,remark,status,publisher_name,published_time,snapshot_json,create_by,create_time)
+SELECT rules.tenant_id,rules.id,rules.rule_code,1,rules.threshold_value,rules.effect,rules.enabled,rules.priority,rules.remark,'PUBLISHED','seed',NOW(),JSON_OBJECT('ruleCode',rules.rule_code,'effect',rules.effect,'thresholdValue',rules.threshold_value,'enabled',rules.enabled),'seed',NOW() FROM cloud_flow_db.sys_business_rule rules
+WHERE rules.rule_code IN ('oa.project.dependency.unsatisfied','oa.rfq.non-lowest.award','oa.rfq.min.suppliers','oa.supplier.blacklist.block','oa.supplier.eliminated.block','oa.supplier.standing.limit','oa.supplier.qualification.expired','oa.timesheet.daily-hours') AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_business_rule_version existing WHERE existing.tenant_id=rules.tenant_id AND existing.rule_id=rules.id AND existing.version_no=1);
+INSERT IGNORE INTO cloud_flow_db.sys_job_handler (
+  handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time
+) VALUES
+(1650, 'oa', 'oaAssetDepreciationPost', '资产折旧过账', 'ONLINE', NOW(), 'seed', NOW()),
+(1651, 'oa', 'oaAssetMaintenanceGenerate', '资产维保任务生成及提醒', 'ONLINE', NOW(), 'seed', NOW()),
+(1652, 'oa', 'oaAssetExpiryReminder', '资产保险及保修到期提醒', 'ONLINE', NOW(), 'seed', NOW()),
+(1653, 'oa', 'oaSupplierQualificationScan', '供应商资质到期扫描', 'ONLINE', NOW(), 'seed', NOW()),
+(1654, 'oa', 'oaSupplierScoringReminder', '供应商周期评分生成及提醒', 'ONLINE', NOW(), 'seed', NOW()),
+(1655, 'oa', 'oaTimesheetFilingReminder', '项目工时填报提醒', 'ONLINE', NOW(), 'seed', NOW()),
+(1656, 'oa', 'oaContractFulfilmentScan', '合同履约到期及违约扫描', 'ONLINE', NOW(), 'seed', NOW()),
+(1657, 'oa', 'oaRfqDeadlineScan', '询价截止及线下联系提醒', 'ONLINE', NOW(), 'seed', NOW());
+INSERT IGNORE INTO cloud_flow_db.sys_job (
+  job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression, interval_ms, status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds, alarm_on_fail_flag, create_by, create_time
+) VALUES
+(1650, 100000, '资产折旧过账', 'OA', 'oa', 'oaAssetDepreciationPost', 'CRON', '0 5 1 * * ?', NULL, 'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW()),
+(1651, 100000, '资产维保任务生成及提醒', 'OA', 'oa', 'oaAssetMaintenanceGenerate', 'CRON', '0 15 1 * * ?', NULL, 'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW()),
+(1652, 100000, '资产保险及保修到期提醒', 'OA', 'oa', 'oaAssetExpiryReminder', 'CRON', '0 30 8 * * ?', NULL, 'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW()),
+(1653, 100000, '供应商资质到期扫描', 'OA', 'oa', 'oaSupplierQualificationScan', 'CRON', '0 40 8 * * ?', NULL, 'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW()),
+(1654, 100000, '供应商周期评分生成及提醒', 'OA', 'oa', 'oaSupplierScoringReminder', 'CRON', '0 0 9 1 * ?', NULL, 'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW()),
+(1655, 100000, '项目工时填报提醒', 'OA', 'oa', 'oaTimesheetFilingReminder', 'CRON', '0 0 9 ? * MON', NULL, 'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW()),
+(1656, 100000, '合同履约到期及违约扫描', 'OA', 'oa', 'oaContractFulfilmentScan', 'CRON', '0 10 9 * * ?', NULL, 'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW()),
+(1657, 100000, '询价截止及线下联系提醒', 'OA', 'oa', 'oaRfqDeadlineScan', 'CRON', '0 0 * * * ?', NULL, 'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW());
+INSERT IGNORE INTO cloud_flow_db.wf_process_definition (definition_id,tenant_id,process_name,process_key,version,status,is_latest,model_json,start_permission_type,create_by,create_time)
+SELECT CONCAT('batch-f-',options.process_key,'-',tenant.tenant_id),tenant.tenant_id,options.process_name,options.process_key,1,'PUBLISHED',1,'{"nodes":[{"id":"start","type":"START","title":"提交申请"},{"id":"approval","type":"APPROVAL","title":"责任人审批","approverType":"VARIABLE_USER","approverValue":"approverIds","signType":"ALL","approveSelf":"ALLOW","props":{"buttons":["APPROVE","REJECT"]}},{"id":"end","type":"END","title":"完成"}],"edges":[{"id":"start-approval","source":"start","target":"approval"},{"id":"approval-end","source":"approval","target":"end"}]}','ALL','seed',NOW() FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+SELECT 'oa_supplier_governance' AS process_key,'供应商准入审批' AS process_name
+UNION ALL SELECT 'oa_asset_movement' AS process_key,'资产调拨审批' AS process_name
+UNION ALL SELECT 'oa_asset_repair' AS process_key,'资产维修审批' AS process_name
+UNION ALL SELECT 'oa_timesheet_approval' AS process_key,'项目工时审批' AS process_name
+UNION ALL SELECT 'oa_rfq_award' AS process_key,'询价定标审批' AS process_name
+) options WHERE tenant.status='0' AND tenant.deleted=0;
+INSERT IGNORE INTO cloud_flow_db.oa_activity_type (
+  type_id, tenant_id, type_code, type_name, billable_default_flag, status, create_by, create_time
+) VALUES
+(165001, 100000, 'DELIVERY', '项目实施交付', 1, 'ACTIVE', 'seed', NOW()),
+(165002, 100000, 'INTERNAL', '内部协作与培训', 0, 'ACTIVE', 'seed', NOW());
+INSERT IGNORE INTO cloud_flow_db.oa_activity_cost (
+  cost_id, tenant_id, activity_type_id, employee_id, job_level_id, costing_rate, billing_rate, currency, effective_start, status, create_by, create_time
+) VALUES
+(165001, 100000, 165001, 0, 0, 120.00, 240.00, 'CNY', '2026-01-01', 'ACTIVE', 'seed', NOW()),
+(165002, 100000, 165002, 0, 0, 100.00, 0.00, 'CNY', '2026-01-01', 'ACTIVE', 'seed', NOW());
+-- batch-f-operations:end
+
+INSERT IGNORE INTO cloud_flow_db.sys_file_config
+  (config_id, tenant_id, config_code, config_name, storage_type, master_flag, base_path,
+   max_file_size, signed_url_expire_seconds, access_policy, status, deleted, version, create_by, create_time)
+VALUES (100, 0, 'PLATFORM_LOCAL', '平台默认本地存储', 'LOCAL', 1, 'upload', 52428800, 300, '0', 'ENABLED', 0, 0, 'seed', NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_menu
+  (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+   menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1750, '存储配置', 6, 30, '/system/file-config', 'pages/system/FileConfig', NULL, 0, 0, 'C', '0', '0', 'system:file:config:list', 'HardDrive', 'admin', NOW(), '', NULL, '批次G文件存储配置'),
+ (1751, '新增存储配置', 1750, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:file:config:add', '#', 'admin', NOW(), '', NULL, '新增存储配置'),
+ (1752, '修改存储配置', 1750, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:file:config:edit', '#', 'admin', NOW(), '', NULL, '修改及测试存储配置'),
+ (1753, '删除存储配置', 1750, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:file:config:remove', '#', 'admin', NOW(), '', NULL, '删除无引用存储配置'),
+ (1754, '错误与请求追踪', 6, 31, '/system/observability', 'pages/system/Observability', NULL, 0, 0, 'C', '0', '0', 'system:log:error:list', 'Activity', 'admin', NOW(), '', NULL, '批次G错误日志与请求追踪'),
+ (1755, '处理错误日志', 1754, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:log:error:process', '#', 'admin', NOW(), '', NULL, '错误状态及处理说明'),
+ (1756, '批量导入', 6, 32, '/system/import', 'pages/system/Import', NULL, 0, 0, 'C', '0', '0', 'system:import:list', 'FileSpreadsheet', 'admin', NOW(), '', NULL, '仅查询当前操作人的导入任务'),
+ (1757, '执行导入', 1756, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:import:execute', '#', 'admin', NOW(), '', NULL, '另须具备对应业务导入权限'),
+ (1758, '员工导入', 1756, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:employees:import', '#', 'admin', NOW(), '', NULL, '仅新增员工'),
+ (1759, '客户导入', 1756, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:customer:import', '#', 'admin', NOW(), '', NULL, '仅新增客户'),
+ (1760, '资产导入', 1756, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:asset:import', '#', 'admin', NOW(), '', NULL, '仅新增资产'),
+ (1761, '供应商导入', 1756, 5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:supplier:import', '#', 'admin', NOW(), '', NULL, '仅新增供应商'),
+ (1762, '业务基础选项查询', 6, 33, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:lookup:read', '#', 'admin', NOW(), '', NULL, '仅启用字典展示字段、五项客户端参数与本租户启用同事姓名部门，不包含管理信息或写权限'),
+ (1763, '打印模板', 6, 34, '/system/print/template', 'pages/system/print/Template', NULL, 0, 0, 'C', '0', '0', 'system:print:template:list', 'Printer', 'admin', NOW(), '', NULL, 'G5打印模板管理'),
+ (1764, '维护打印模板', 1763, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:print:template:edit', '#', 'admin', NOW(), '', NULL, '新增、修改、删除和上传打印模板'),
+ (1765, '查询打印记录', 1763, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:print:record:list', '#', 'admin', NOW(), '', NULL, '按业务、记录和操作人分页查询当前租户的打印记录');
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT roles.role_id, menus.menu_id, roles.tenant_id
+FROM cloud_flow_db.sys_role roles JOIN cloud_flow_db.sys_menu menus ON menus.menu_id IN (1763, 1764, 1765)
+WHERE roles.role_key = 'admin' AND roles.deleted = 0 AND roles.status = '0';
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT roles.role_id, menus.menu_id, roles.tenant_id
+FROM cloud_flow_db.sys_role roles CROSS JOIN cloud_flow_db.sys_menu menus
+WHERE roles.role_key = 'admin' AND roles.deleted = 0 AND roles.status = '0'
+  AND menus.menu_id BETWEEN 1750 AND 1761;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT roles.role_id, menus.menu_id, roles.tenant_id
+FROM cloud_flow_db.sys_role roles JOIN cloud_flow_db.sys_menu menus
+  ON (menus.menu_id = 1756 AND menus.perms = 'system:import:list')
+  OR (menus.menu_id = 1757 AND menus.perms = 'system:import:execute')
+WHERE roles.role_key = 'hr' AND roles.deleted = 0 AND roles.status = '0';
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT roles.role_id, menus.menu_id, roles.tenant_id
+FROM cloud_flow_db.sys_role roles JOIN cloud_flow_db.sys_menu menus
+  ON menus.menu_id = 1762 AND menus.perms = 'system:lookup:read'
+WHERE roles.deleted = 0 AND roles.status = '0'
+  AND roles.role_key IN ('admin', 'manager', 'finance', 'hr', 'employee', 'legal', 'oa_clerk',
+                         'sales_manager', 'sales_rep', 'crm_ops', 'customer_success');
+
+INSERT IGNORE INTO cloud_flow_db.sys_job_handler
+  (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES
+ (1750, 'auth', 'batchImport', '节假日批量导入（业务手动触发）', 'ONLINE', NOW(), 'seed', NOW()),
+ (1751, 'hr', 'batchImport', '员工批量导入（业务手动触发）', 'ONLINE', NOW(), 'seed', NOW()),
+ (1752, 'oa', 'batchImport', '资产与供应商批量导入（业务手动触发）', 'ONLINE', NOW(), 'seed', NOW()),
+ (1753, 'crm', 'batchImport', '客户批量导入（业务手动触发）', 'ONLINE', NOW(), 'seed', NOW()),
+ (1754, 'auth', 'importTaskCleanup', '清理到期导入任务及文件', 'ONLINE', NOW(), 'seed', NOW());
+
+INSERT IGNORE INTO cloud_flow_db.sys_job
+  (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression,
+   status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds, alarm_on_fail_flag, create_by, create_time)
+VALUES
+ (1750, 100000, '节假日批量导入', 'SYSTEM', 'auth', 'batchImport', 'CRON', '0 0 0 1 1 ?', 'PAUSED', 1, 'IGNORE', 0, 600, 600, 1, 'seed', NOW()),
+ (1751, 100000, '员工批量导入', 'HR', 'hr', 'batchImport', 'CRON', '0 0 0 1 1 ?', 'PAUSED', 1, 'IGNORE', 0, 600, 600, 1, 'seed', NOW()),
+ (1752, 100000, '资产及供应商批量导入', 'OA', 'oa', 'batchImport', 'CRON', '0 0 0 1 1 ?', 'PAUSED', 1, 'IGNORE', 0, 600, 600, 1, 'seed', NOW()),
+ (1753, 100000, '客户批量导入', 'CRM', 'crm', 'batchImport', 'CRON', '0 0 0 1 1 ?', 'PAUSED', 1, 'IGNORE', 0, 600, 600, 1, 'seed', NOW()),
+ (1754, 100000, '导入任务到期清理', 'SYSTEM', 'auth', 'importTaskCleanup', 'CRON', '0 10 3 * * ?', 'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW());
+
+-- external-message-delivery:start
+INSERT IGNORE INTO cloud_flow_db.sys_job_handler
+  (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES (1329, 'auth', 'messageDeliveryRecovery', '外部消息安全恢复与到期密文清理', 'ONLINE', NOW(), 'seed', NOW());
+INSERT IGNORE INTO cloud_flow_db.sys_job
+  (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression,
+   status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds, alarm_on_fail_flag, create_by, create_time)
+VALUES (1329, 100000, '外部消息可靠投递恢复', 'SYSTEM', 'auth', 'messageDeliveryRecovery', 'CRON', '0 * * * * ?',
+  'PAUSED', 0, 'IGNORE', 0, 300, 300, 1, 'seed', NOW());
+-- external-message-delivery:end
+
+INSERT INTO cloud_flow_db.sys_message_template
+  (tenant_id, template_code, template_name, channel_type, biz_module, message_category,
+   title_template, content_template, params_declare, force_send_flag, dedupe_window_sec, status, deleted, version, create_by, create_time)
+SELECT 100000, seed.template_code, seed.template_name, 'EMAIL', 'oa', 'BIZ_REMINDER', '${title}', '${content}', '[]', 0, 600, 'ENABLED', 0, 0, 'seed', NOW()
+FROM (
+  SELECT 'OA_RFQ_INVITE_EMAIL' AS template_code, '供应商询价邮件邀请' AS template_name
+  UNION ALL SELECT 'OA_RFQ_REMINDER_EMAIL', '供应商询价截止邮件提醒'
+  UNION ALL SELECT 'OA_RFQ_AWARD_EMAIL', '逐供应商询价结果邮件通知'
+) seed
+WHERE NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_message_template existing WHERE existing.tenant_id=100000 AND existing.template_code=seed.template_code AND existing.channel_type='EMAIL');
+
+INSERT IGNORE INTO cloud_flow_db.sys_message_template
+  (template_id, tenant_id, template_code, template_name, channel_type, biz_module, message_category,
+   title_template, content_template, params_declare, force_send_flag, dedupe_window_sec, status, deleted, version, create_by, create_time)
+VALUES
+ (1750, 100000, 'IMPORT_COMPLETED', '批量导入结果', 'INTERNAL', 'system', 'BIZ_REMINDER', '批量导入结果',
+  '${bizName}导入：成功${successRows}行，失败或跳过${failRows}行，共${totalRows}行。请在导入任务页面查看详情。',
+  '[{"name":"bizName","required":true},{"name":"successRows","required":true},{"name":"failRows","required":true},{"name":"totalRows","required":true}]',
+  0, 300, 'ENABLED', 0, 0, 'seed', NOW());
+
+CREATE TEMPORARY TABLE h_seed_role_assert (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO h_seed_role_assert (passed)
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND deleted = 0 AND status = '0' AND (role_id, role_key) IN
+ ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),(6,'legal'),(7,'oa_clerk'),
+  (8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+DROP TEMPORARY TABLE h_seed_role_assert;
+INSERT INTO cloud_flow_db.sys_menu
+  (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+   menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+  (1800, '我的草稿', 3, 5, '/workflow/drafts', 'pages/WorkflowDraftPage', NULL, 0, 0,
+   'C', '0', '0', 'workflow:draft:list', 'FileText', 'seed', NOW(), '', NULL, '仅当前用户草稿'),
+  (1801, '草稿详情', 1800, 1, '', NULL, NULL, 0, 0,
+   'F', '1', '0', 'workflow:draft:view', '#', 'seed', NOW(), '', NULL, '仅当前用户草稿'),
+  (1802, '保存草稿', 1800, 2, '', NULL, NULL, 0, 0,
+   'F', '1', '0', 'workflow:draft:save', '#', 'seed', NOW(), '', NULL, '校验定义发起资格'),
+  (1803, '删除草稿', 1800, 3, '', NULL, NULL, 0, 0,
+   'F', '1', '0', 'workflow:draft:remove', '#', 'seed', NOW(), '', NULL, '仅当前用户草稿'),
+  (1804, '从草稿提交', 1800, 4, '', NULL, NULL, 0, 0,
+   'F', '1', '0', 'workflow:draft:submit', '#', 'seed', NOW(), '', NULL, '仍需流程发起资格');
+
+INSERT INTO cloud_flow_db.sys_job_handler
+  (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES
+  (1800, 'workflow', 'workflowDraftCleanup', '清理本租户到期表单草稿', 'ONLINE', NOW(), 'seed', NOW());
+
+INSERT INTO cloud_flow_db.sys_job
+  (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression,
+   status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds,
+   alarm_on_fail_flag, create_by, create_time)
+VALUES
+  (1800, 100000, '到期表单草稿清理', 'WORKFLOW', 'workflow', 'workflowDraftCleanup', 'CRON', '0 20 3 * * ?',
+   'ENABLED', 0, 'IGNORE', 1, 150, 180, 1, 'seed', NOW());
+
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+(1810, '耗材台账', 5, 1810, '/admin/consumable-ledger', 'pages/admin/ConsumableLedgerPage', NULL, 1, 0, 'C', '0', '0', 'oa:consumable-ledger:list', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1811, '台账成本', 1810, 1811, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-ledger:cost', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1812, '台账冲正', 1810, 1812, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-ledger:reverse', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1813, '库存核对重算', 1810, 1813, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-ledger:recalculate', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1814, '盘盈盘亏调整', 509, 1814, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable:adjust', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1815, '耗材报废', 509, 1815, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable:scrap', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1816, '耗材退回', 1810, 1816, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable:return', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1817, '耗材报表', 5, 1817, '/admin/consumable-reports', 'pages/admin/ConsumableReportsPage', NULL, 1, 0, 'C', '0', '0', 'oa:consumable-report:list', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1818, '耗材成本报表', 1817, 1818, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-report:cost', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1820, '耗材领用', 5, 1820, '/admin/consumable-request', 'pages/admin/ConsumableRequestPage', NULL, 1, 0, 'C', '0', '0', 'oa:consumable-request:list', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1821, '领用详情', 1820, 1821, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-request:query', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1822, '新建领用', 1820, 1822, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-request:add', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1823, '编辑领用', 1820, 1823, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-request:edit', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1824, '提交领用', 1820, 1824, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-request:submit', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1825, '取消领用', 1820, 1825, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-request:cancel', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1826, '领用发料', 1820, 1826, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-request:issue', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1827, '仓管队列', 1820, 1827, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-request:dispatch', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1828, '可领耗材查询', 1820, 1828, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-request:lookup', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1829, '部门领用查询', 1820, 1829, '', NULL, NULL, 1, 0, 'F', '1', '0', 'oa:consumable-request:dept-list', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1830, '我的加班', 7, 1830, '/hr/ess/overtime', 'pages/OvertimeApplicationPage', NULL, 1, 0, 'C', '0', '0', 'hr:overtime:mine', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1831, '申请加班', 1830, 1831, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime:apply', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1832, '撤回加班', 1830, 1832, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime:cancel', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1833, '加班管理', 7, 1833, '/hr/overtime', 'pages/hr/HrOvertimePage', NULL, 1, 0, 'C', '0', '0', 'hr:overtime:list', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1834, '核定工时', 1833, 1834, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime:verify', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1835, '核定加班费', 1833, 1835, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime:price', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1836, '查看加班费结算', 1833, 1836, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime:finance', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1837, '重试加班结算', 1833, 1837, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime:retry', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1838, '处置结算异常', 1833, 1838, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime:resolve', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1839, '导出加班记录', 1833, 1839, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime:export', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1840, '加班规则', 7, 1840, '/hr/overtime-types', 'pages/hr/rules/HrOvertimeTypePage', NULL, 1, 0, 'C', '0', '0', 'hr:overtime-type:list', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1841, '新增加班类型', 1840, 1841, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime-type:add', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1842, '调整加班规则', 1840, 1842, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:overtime-type:edit', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1843, '我的调班', 7, 1843, '/hr/ess/shift-requests', 'pages/hr/ess/HrEssShiftRequestPage', NULL, 1, 0, 'C', '0', '0', 'hr:shift-request:mine', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1844, '申请调班', 1843, 1844, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:shift-request:apply', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1845, '撤回调班', 1843, 1845, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:shift-request:cancel', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1846, '换班邀请', 7, 1846, '/hr/ess/shift-invitations', 'pages/hr/ess/HrEssShiftInvitationPage', NULL, 1, 0, 'C', '0', '0', 'hr:shift-request:respond', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1847, '调班管理', 7, 1847, '/hr/shift-requests', 'pages/hr/HrShiftRequestPage', NULL, 1, 0, 'C', '0', '0', 'hr:shift-request:list', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围'),
+(1848, '重试调班应用', 1847, 1848, '', NULL, NULL, 1, 0, 'F', '0', '0', 'hr:shift-request:retry', 'FileText', 'seed', NOW(), '', NULL, '批次H首轮确认范围');
+
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id) VALUES
+(2, 1810, 100000),
+(2, 1811, 100000),
+(2, 1812, 100000),
+(2, 1814, 100000),
+(2, 1815, 100000),
+(2, 1816, 100000),
+(2, 1817, 100000),
+(2, 1818, 100000),
+(2, 1820, 100000),
+(2, 1821, 100000),
+(2, 1822, 100000),
+(2, 1823, 100000),
+(2, 1824, 100000),
+(2, 1825, 100000),
+(2, 1826, 100000),
+(2, 1827, 100000),
+(2, 1828, 100000),
+(2, 1829, 100000),
+(2, 1830, 100000),
+(2, 1831, 100000),
+(2, 1832, 100000),
+(2, 1833, 100000),
+(2, 1843, 100000),
+(2, 1844, 100000),
+(2, 1845, 100000),
+(2, 1846, 100000),
+(2, 1847, 100000),
+(2, 1800, 100000),
+(2, 1801, 100000),
+(2, 1802, 100000),
+(2, 1803, 100000),
+(2, 1804, 100000),
+(3, 1810, 100000),
+(3, 1811, 100000),
+(3, 1817, 100000),
+(3, 1818, 100000),
+(3, 1820, 100000),
+(3, 1821, 100000),
+(3, 1822, 100000),
+(3, 1823, 100000),
+(3, 1824, 100000),
+(3, 1825, 100000),
+(3, 1828, 100000),
+(3, 1830, 100000),
+(3, 1831, 100000),
+(3, 1832, 100000),
+(3, 1833, 100000),
+(3, 1835, 100000),
+(3, 1836, 100000),
+(3, 1837, 100000),
+(3, 1838, 100000),
+(3, 1843, 100000),
+(3, 1844, 100000),
+(3, 1845, 100000),
+(3, 1846, 100000),
+(3, 1800, 100000),
+(3, 1801, 100000),
+(3, 1802, 100000),
+(3, 1803, 100000),
+(3, 1804, 100000),
+(4, 1820, 100000),
+(4, 1821, 100000),
+(4, 1822, 100000),
+(4, 1823, 100000),
+(4, 1824, 100000),
+(4, 1825, 100000),
+(4, 1828, 100000),
+(4, 1830, 100000),
+(4, 1831, 100000),
+(4, 1832, 100000),
+(4, 1833, 100000),
+(4, 1834, 100000),
+(4, 1837, 100000),
+(4, 1838, 100000),
+(4, 1839, 100000),
+(4, 1840, 100000),
+(4, 1841, 100000),
+(4, 1842, 100000),
+(4, 1843, 100000),
+(4, 1844, 100000),
+(4, 1845, 100000),
+(4, 1846, 100000),
+(4, 1847, 100000),
+(4, 1848, 100000),
+(4, 1800, 100000),
+(4, 1801, 100000),
+(4, 1802, 100000),
+(4, 1803, 100000),
+(4, 1804, 100000),
+(5, 1820, 100000),
+(5, 1821, 100000),
+(5, 1822, 100000),
+(5, 1823, 100000),
+(5, 1824, 100000),
+(5, 1825, 100000),
+(5, 1828, 100000),
+(5, 1830, 100000),
+(5, 1831, 100000),
+(5, 1832, 100000),
+(5, 1843, 100000),
+(5, 1844, 100000),
+(5, 1845, 100000),
+(5, 1846, 100000),
+(5, 1800, 100000),
+(5, 1801, 100000),
+(5, 1802, 100000),
+(5, 1803, 100000),
+(5, 1804, 100000),
+(6, 1820, 100000),
+(6, 1821, 100000),
+(6, 1822, 100000),
+(6, 1823, 100000),
+(6, 1824, 100000),
+(6, 1825, 100000),
+(6, 1828, 100000),
+(6, 1830, 100000),
+(6, 1831, 100000),
+(6, 1832, 100000),
+(6, 1843, 100000),
+(6, 1844, 100000),
+(6, 1845, 100000),
+(6, 1846, 100000),
+(7, 1810, 100000),
+(7, 1816, 100000),
+(7, 1820, 100000),
+(7, 1821, 100000),
+(7, 1822, 100000),
+(7, 1823, 100000),
+(7, 1824, 100000),
+(7, 1825, 100000),
+(7, 1826, 100000),
+(7, 1827, 100000),
+(7, 1828, 100000),
+(7, 1830, 100000),
+(7, 1831, 100000),
+(7, 1832, 100000),
+(7, 1843, 100000),
+(7, 1844, 100000),
+(7, 1845, 100000),
+(7, 1846, 100000),
+(8, 1820, 100000),
+(8, 1821, 100000),
+(8, 1822, 100000),
+(8, 1823, 100000),
+(8, 1824, 100000),
+(8, 1825, 100000),
+(8, 1828, 100000),
+(8, 1829, 100000),
+(8, 1830, 100000),
+(8, 1831, 100000),
+(8, 1832, 100000),
+(8, 1833, 100000),
+(8, 1843, 100000),
+(8, 1844, 100000),
+(8, 1845, 100000),
+(8, 1846, 100000),
+(8, 1847, 100000),
+(8, 1800, 100000),
+(8, 1801, 100000),
+(8, 1802, 100000),
+(8, 1803, 100000),
+(8, 1804, 100000),
+(9, 1820, 100000),
+(9, 1821, 100000),
+(9, 1822, 100000),
+(9, 1823, 100000),
+(9, 1824, 100000),
+(9, 1825, 100000),
+(9, 1828, 100000),
+(9, 1830, 100000),
+(9, 1831, 100000),
+(9, 1832, 100000),
+(9, 1843, 100000),
+(9, 1844, 100000),
+(9, 1845, 100000),
+(9, 1846, 100000),
+(9, 1800, 100000),
+(9, 1801, 100000),
+(9, 1802, 100000),
+(9, 1803, 100000),
+(9, 1804, 100000),
+(10, 1820, 100000),
+(10, 1821, 100000),
+(10, 1822, 100000),
+(10, 1823, 100000),
+(10, 1824, 100000),
+(10, 1825, 100000),
+(10, 1828, 100000),
+(10, 1830, 100000),
+(10, 1831, 100000),
+(10, 1832, 100000),
+(10, 1843, 100000),
+(10, 1844, 100000),
+(10, 1845, 100000),
+(10, 1846, 100000),
+(11, 1820, 100000),
+(11, 1821, 100000),
+(11, 1822, 100000),
+(11, 1823, 100000),
+(11, 1824, 100000),
+(11, 1825, 100000),
+(11, 1828, 100000),
+(11, 1830, 100000),
+(11, 1831, 100000),
+(11, 1832, 100000),
+(11, 1843, 100000),
+(11, 1844, 100000),
+(11, 1845, 100000),
+(11, 1846, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT roles.role_id, menus.menu_id, roles.tenant_id
+FROM cloud_flow_db.sys_role roles JOIN cloud_flow_db.sys_menu menus ON menus.menu_id IN (5,7)
+WHERE roles.tenant_id = 100000 AND roles.role_id BETWEEN 1 AND 11
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_role_menu existing
+                 WHERE existing.role_id = roles.role_id AND existing.menu_id = menus.menu_id);
+
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT roles.role_id, menus.menu_id, roles.tenant_id
+FROM cloud_flow_db.sys_role roles JOIN cloud_flow_db.sys_menu menus ON menus.status = '0'
+WHERE roles.tenant_id = 100000 AND roles.role_id = 1 AND roles.role_key = 'admin'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_role_menu existing
+                 WHERE existing.role_id = roles.role_id AND existing.menu_id = menus.menu_id);
+
+
+-- batch-h-foundations:start
+INSERT INTO cloud_flow_db.sys_dict_type (tenant_id, dict_name, dict_type, status, create_by, create_time)
+SELECT tenant.tenant_id, seeds.dict_name, seeds.dict_type, '0', 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+SELECT 'oa_consumable_category' AS dict_type, '耗材分类' AS dict_name
+UNION ALL SELECT 'hr_overtime_type' AS dict_type, '加班类型' AS dict_name
+UNION ALL SELECT 'hr_overtime_compensation_type' AS dict_type, '加班报酬方式' AS dict_name
+UNION ALL SELECT 'hr_overtime_status' AS dict_type, '加班状态' AS dict_name
+UNION ALL SELECT 'hr_overtime_settlement_status' AS dict_type, '加班结算状态' AS dict_name
+UNION ALL SELECT 'hr_shift_request_mode' AS dict_type, '调班方式' AS dict_name
+UNION ALL SELECT 'hr_shift_request_status' AS dict_type, '调班申请状态' AS dict_name
+UNION ALL SELECT 'hr_shift_peer_acceptance_status' AS dict_type, '换班邀请状态' AS dict_name
+UNION ALL SELECT 'hr_shift_application_status' AS dict_type, '排班应用状态' AS dict_name
+) seeds
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_dict_type existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.dict_type = seeds.dict_type);
+
+INSERT INTO cloud_flow_db.sys_dict_data
+ (tenant_id, dict_sort, dict_label, dict_value, dict_type, list_class, status, create_by, create_time)
+SELECT tenant.tenant_id, seeds.dict_sort, seeds.dict_label, seeds.dict_value, seeds.dict_type, seeds.list_class, '0', 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+SELECT 'oa_consumable_category' AS dict_type, 'OFFICE' AS dict_value, '办公用品' AS dict_label, 'default' AS list_class, 1 AS dict_sort
+UNION ALL SELECT 'oa_consumable_category' AS dict_type, 'PRINT' AS dict_value, '打印耗材' AS dict_label, 'info' AS list_class, 2 AS dict_sort
+UNION ALL SELECT 'oa_consumable_category' AS dict_type, 'IT' AS dict_value, '数码配件' AS dict_label, 'warning' AS list_class, 3 AS dict_sort
+UNION ALL SELECT 'hr_overtime_type' AS dict_type, 'WORKDAY' AS dict_value, '工作日加班' AS dict_label, 'default' AS list_class, 4 AS dict_sort
+UNION ALL SELECT 'hr_overtime_type' AS dict_type, 'REST_DAY' AS dict_value, '休息日加班' AS dict_label, 'warning' AS list_class, 5 AS dict_sort
+UNION ALL SELECT 'hr_overtime_type' AS dict_type, 'HOLIDAY' AS dict_value, '法定节假日加班' AS dict_label, 'danger' AS list_class, 6 AS dict_sort
+UNION ALL SELECT 'hr_overtime_compensation_type' AS dict_type, 'PAY' AS dict_value, '加班费' AS dict_label, 'default' AS list_class, 7 AS dict_sort
+UNION ALL SELECT 'hr_overtime_compensation_type' AS dict_type, 'COMPENSATORY' AS dict_value, '调休' AS dict_label, 'default' AS list_class, 8 AS dict_sort
+UNION ALL SELECT 'hr_overtime_status' AS dict_type, 'DRAFT' AS dict_value, '草稿' AS dict_label, 'default' AS list_class, 9 AS dict_sort
+UNION ALL SELECT 'hr_overtime_status' AS dict_type, 'SUBMITTED' AS dict_value, '待核定' AS dict_label, 'warning' AS list_class, 10 AS dict_sort
+UNION ALL SELECT 'hr_overtime_status' AS dict_type, 'PENDING' AS dict_value, '待启动审批' AS dict_label, 'info' AS list_class, 11 AS dict_sort
+UNION ALL SELECT 'hr_overtime_status' AS dict_type, 'APPROVING' AS dict_value, '审批中' AS dict_label, 'info' AS list_class, 12 AS dict_sort
+UNION ALL SELECT 'hr_overtime_status' AS dict_type, 'APPROVED' AS dict_value, '已通过' AS dict_label, 'success' AS list_class, 13 AS dict_sort
+UNION ALL SELECT 'hr_overtime_status' AS dict_type, 'REJECTED' AS dict_value, '已拒绝' AS dict_label, 'danger' AS list_class, 14 AS dict_sort
+UNION ALL SELECT 'hr_overtime_status' AS dict_type, 'CANCELLED' AS dict_value, '已撤回' AS dict_label, 'default' AS list_class, 15 AS dict_sort
+UNION ALL SELECT 'hr_overtime_settlement_status' AS dict_type, 'NOT_READY' AS dict_value, '未就绪' AS dict_label, 'default' AS list_class, 16 AS dict_sort
+UNION ALL SELECT 'hr_overtime_settlement_status' AS dict_type, 'PENDING' AS dict_value, '待结算' AS dict_label, 'info' AS list_class, 17 AS dict_sort
+UNION ALL SELECT 'hr_overtime_settlement_status' AS dict_type, 'SETTLED' AS dict_value, '已结算' AS dict_label, 'success' AS list_class, 18 AS dict_sort
+UNION ALL SELECT 'hr_overtime_settlement_status' AS dict_type, 'FAILED' AS dict_value, '执行失败' AS dict_label, 'danger' AS list_class, 19 AS dict_sort
+UNION ALL SELECT 'hr_overtime_settlement_status' AS dict_type, 'NEEDS_RESOLUTION' AS dict_value, '待人工处置' AS dict_label, 'warning' AS list_class, 20 AS dict_sort
+UNION ALL SELECT 'hr_overtime_settlement_status' AS dict_type, 'CORRECTION_PENDING' AS dict_value, '补正审批中' AS dict_label, 'info' AS list_class, 21 AS dict_sort
+UNION ALL SELECT 'hr_overtime_settlement_status' AS dict_type, 'REJECTED' AS dict_value, '自动结算已结案' AS dict_label, 'default' AS list_class, 22 AS dict_sort
+UNION ALL SELECT 'hr_shift_request_mode' AS dict_type, 'SINGLE' AS dict_value, '单人调班' AS dict_label, 'default' AS list_class, 23 AS dict_sort
+UNION ALL SELECT 'hr_shift_request_mode' AS dict_type, 'SWAP' AS dict_value, '双方换班' AS dict_label, 'default' AS list_class, 24 AS dict_sort
+UNION ALL SELECT 'hr_shift_request_status' AS dict_type, 'DRAFT' AS dict_value, '草稿' AS dict_label, 'default' AS list_class, 25 AS dict_sort
+UNION ALL SELECT 'hr_shift_request_status' AS dict_type, 'WAITING_ACCEPTANCE' AS dict_value, '等待对方同意' AS dict_label, 'warning' AS list_class, 26 AS dict_sort
+UNION ALL SELECT 'hr_shift_request_status' AS dict_type, 'PENDING' AS dict_value, '待启动审批' AS dict_label, 'info' AS list_class, 27 AS dict_sort
+UNION ALL SELECT 'hr_shift_request_status' AS dict_type, 'APPROVING' AS dict_value, '审批中' AS dict_label, 'info' AS list_class, 28 AS dict_sort
+UNION ALL SELECT 'hr_shift_request_status' AS dict_type, 'APPROVED' AS dict_value, '已通过' AS dict_label, 'success' AS list_class, 29 AS dict_sort
+UNION ALL SELECT 'hr_shift_request_status' AS dict_type, 'REJECTED' AS dict_value, '已拒绝' AS dict_label, 'danger' AS list_class, 30 AS dict_sort
+UNION ALL SELECT 'hr_shift_request_status' AS dict_type, 'CANCELLED' AS dict_value, '已撤回' AS dict_label, 'default' AS list_class, 31 AS dict_sort
+UNION ALL SELECT 'hr_shift_peer_acceptance_status' AS dict_type, 'NONE' AS dict_value, '无须回应' AS dict_label, 'default' AS list_class, 32 AS dict_sort
+UNION ALL SELECT 'hr_shift_peer_acceptance_status' AS dict_type, 'PENDING' AS dict_value, '待回应' AS dict_label, 'info' AS list_class, 33 AS dict_sort
+UNION ALL SELECT 'hr_shift_peer_acceptance_status' AS dict_type, 'ACCEPTED' AS dict_value, '已同意' AS dict_label, 'success' AS list_class, 34 AS dict_sort
+UNION ALL SELECT 'hr_shift_peer_acceptance_status' AS dict_type, 'DECLINED' AS dict_value, '已拒绝' AS dict_label, 'danger' AS list_class, 35 AS dict_sort
+UNION ALL SELECT 'hr_shift_application_status' AS dict_type, 'NOT_READY' AS dict_value, '未就绪' AS dict_label, 'default' AS list_class, 36 AS dict_sort
+UNION ALL SELECT 'hr_shift_application_status' AS dict_type, 'PENDING' AS dict_value, '待应用' AS dict_label, 'info' AS list_class, 37 AS dict_sort
+UNION ALL SELECT 'hr_shift_application_status' AS dict_type, 'APPLIED' AS dict_value, '已应用' AS dict_label, 'success' AS list_class, 38 AS dict_sort
+UNION ALL SELECT 'hr_shift_application_status' AS dict_type, 'FAILED' AS dict_value, '应用失败' AS dict_label, 'danger' AS list_class, 39 AS dict_sort
+) seeds
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_dict_data existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.dict_type = seeds.dict_type AND existing.dict_value = seeds.dict_value);
+
+INSERT INTO cloud_flow_db.sys_config
+ (tenant_id, config_name, config_key, config_value, config_type, config_scope, create_by, create_time, remark)
+SELECT tenant.tenant_id, seeds.config_name, seeds.config_key, seeds.config_value, 'Y', '1', 'seed', NOW(), '批次H确认边界：空值须由本租户核定，禁止默认代填人员或政策'
+FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+SELECT 'sys.oa.consumable.approvalMode' AS config_key, '耗材审批模式' AS config_name, 'ALWAYS' AS config_value
+UNION ALL SELECT 'sys.oa.consumable.limitMetric' AS config_key, '耗材审批规则计量依据' AS config_name, 'AMOUNT' AS config_value
+UNION ALL SELECT 'sys.oa.consumable.approverUserId' AS config_key, '耗材领用审批人（待核定）' AS config_name, '' AS config_value
+UNION ALL SELECT 'sys.oa.consumable.stockManagerUserId' AS config_key, '耗材预警接收人（待核定）' AS config_name, '' AS config_value
+UNION ALL SELECT 'sys.oa.consumable.recalculateMode' AS config_key, '耗材库存核对方式' AS config_name, 'CHECK' AS config_value
+UNION ALL SELECT 'sys.hr.overtime.processKey' AS config_key, '加班审批流程Key' AS config_name, 'overtime_request' AS config_value
+UNION ALL SELECT 'sys.hr.shiftRequest.processKey' AS config_key, '调班审批流程Key' AS config_name, 'hr_shift_request' AS config_value
+UNION ALL SELECT 'sys.hr.overtime.approvalUsers' AS config_key, '加班审批人（待核定）' AS config_name, '' AS config_value
+UNION ALL SELECT 'sys.hr.shiftRequest.approvalUsers' AS config_key, '调班审批人（待核定）' AS config_name, '' AS config_value
+UNION ALL SELECT 'sys.hr.referral.processKey' AS config_key, '内推奖金审批流程（待核定）' AS config_name, '' AS config_value
+UNION ALL SELECT 'sys.hr.referral.approvalUsers' AS config_key, '内推奖金审批人（待核定）' AS config_name, '' AS config_value
+UNION ALL SELECT 'sys.hr.offer.processKey' AS config_key, '录用审批流程' AS config_name, 'offer_approval' AS config_value
+UNION ALL SELECT 'sys.hr.shift.minimumRestMinutes' AS config_key, '调班最短休息分钟（待核定）' AS config_name, '' AS config_value
+) seeds
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_config existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.config_key = seeds.config_key);
+
+INSERT INTO cloud_flow_db.hr_comp_component
+ (tenant_id, component_code, component_name, component_type, category, taxable, sort_order, status, version)
+SELECT tenant.tenant_id, 'OVERTIME', '加班费', 'VARIABLE', 'OTHER', 1, 40, 0, 0
+FROM cloud_flow_db.sys_tenant tenant
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.hr_comp_component existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.component_code = 'OVERTIME');
+
+INSERT INTO cloud_flow_db.hr_overtime_type
+ (tenant_id, type_code, type_name, applicable_day_type, rate_multiplier, salary_component_id,
+  compensatory_flag, need_approval_flag, status, remark, deleted, version, create_by, create_time)
+SELECT tenant.tenant_id, seeds.type_code, seeds.type_name, seeds.type_code, seeds.rate_multiplier, component.id,
+ 0, 1, 0, '待公司核定，禁止生产启用；倍率为PRD草案，日月上限、目标假种和调休比例未核定', 0, 0, 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant
+JOIN cloud_flow_db.hr_comp_component component ON component.tenant_id = tenant.tenant_id AND component.component_code = 'OVERTIME'
+CROSS JOIN (
+ SELECT 'WORKDAY' AS type_code, '工作日加班' AS type_name, 1.50 AS rate_multiplier
+ UNION ALL SELECT 'REST_DAY', '休息日加班', 2.00
+ UNION ALL SELECT 'HOLIDAY', '法定节假日加班', 3.00
+) seeds
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.hr_overtime_type existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.type_code = seeds.type_code AND existing.deleted = 0);
+
+UPDATE cloud_flow_db.hr_leave_type SET compensatory_flag = 1, need_quota = 1, unit = 'HOUR', quota_rule = NULL
+WHERE tenant_id = 100000 AND leave_code = 'COMP_TIME' AND id = 102;
+
+INSERT INTO cloud_flow_db.sys_business_rule
+ (tenant_id, rule_code, rule_name, module, threshold_value, effect, enabled, priority, remark, create_by, create_time)
+SELECT tenant.tenant_id, seeds.rule_code, seeds.rule_name, seeds.module, seeds.threshold_value, seeds.effect,
+ seeds.enabled, 100, seeds.remark, 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+ SELECT 'oa.consumable.request.limit' AS rule_code, '耗材领用送审阈值' AS rule_name, 'oa' AS module,
+  0.00 AS threshold_value, 'WARN' AS effect, 1 AS enabled, 'ALWAYS下零阈值仅为演示，不代表公司实际限额' AS remark
+ UNION ALL SELECT 'hr.overtime.hours.limit', '加班时长上限', 'hr', NULL, 'BLOCK', 0,
+  '阈值权威在加班类型表；停用草案，启用前须核定BLOCK或WARN并发布版本'
+) seeds
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_business_rule existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.rule_code = seeds.rule_code);
+
+INSERT INTO cloud_flow_db.sys_business_rule_version
+ (tenant_id, rule_id, rule_code, version_no, threshold_value, effect, enabled, priority, remark, status,
+  publisher_name, published_time, snapshot_json, create_by, create_time)
+SELECT rules.tenant_id, rules.id, rules.rule_code, 1, rules.threshold_value, rules.effect, rules.enabled,
+ rules.priority, rules.remark, IF(rules.enabled = 1, 'PUBLISHED', 'DRAFT'),
+ IF(rules.enabled = 1, 'seed', NULL), IF(rules.enabled = 1, NOW(), NULL),
+ JSON_OBJECT('ruleCode', rules.rule_code, 'thresholdValue', rules.threshold_value, 'effect', rules.effect,
+             'enabled', rules.enabled, 'priority', rules.priority), 'seed', NOW()
+FROM cloud_flow_db.sys_business_rule rules
+WHERE rules.rule_code IN ('oa.consumable.request.limit', 'hr.overtime.hours.limit')
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_business_rule_version existing
+                 WHERE existing.rule_id = rules.id AND existing.version_no = 1);
+
+INSERT INTO cloud_flow_db.wf_process_definition
+ (definition_id, tenant_id, process_name, process_key, version, status, is_latest, category,
+  model_json, form_id, start_permission_type, create_by, create_time, update_by, update_time)
+SELECT CASE seeds.process_key
+ WHEN 'overtime_request' THEN IF(tenant.tenant_id = 100000, 'wf_overtime_request', CONCAT('batch-h-hr09-overtime-',tenant.tenant_id))
+ WHEN 'hr_shift_request' THEN CONCAT('batch-h-hr09-shift-',tenant.tenant_id)
+ ELSE CONCAT('batch-h-oa08-',tenant.tenant_id) END,
+ tenant.tenant_id, seeds.process_name, seeds.process_key, 1, seeds.status, 1, seeds.category,
+ seeds.model_json, NULL, 'ALL', 'seed', NOW(), 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+ SELECT 'overtime_request' AS process_key, '加班审批流程（审批人待核定）' AS process_name, 'DRAFT' AS status,
+  'HR' AS category, '{"nodes":[{"id":"root","type":"START","title":"提交业务申请"},{"id":"responsible","type":"APPROVAL","title":"负责人审批","approverType":"VARIABLE_USER","approverValue":"responsibleApproverIds","approveSelf":"TO_DEPT_MANAGER","allowDelegate":false,"allowAddSign":false,"allowReduceSign":false},{"id":"hr","type":"APPROVAL","title":"人事审批","approverType":"VARIABLE_USER","approverValue":"hrApproverIds","approveSelf":"TO_DEPT_MANAGER","allowDelegate":false,"allowAddSign":false,"allowReduceSign":false},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root-responsible","source":"root","target":"responsible"},{"id":"responsible-hr","source":"responsible","target":"hr"},{"id":"hr-end","source":"hr","target":"end"}]}' AS model_json
+ UNION ALL SELECT 'hr_shift_request', '调班审批流程（审批人待核定）', 'DRAFT', 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交业务申请"},{"id":"responsible","type":"APPROVAL","title":"负责人审批","approverType":"VARIABLE_USER","approverValue":"responsibleApproverIds","approveSelf":"TO_DEPT_MANAGER","allowDelegate":false,"allowAddSign":false,"allowReduceSign":false},{"id":"hr","type":"APPROVAL","title":"人事审批","approverType":"VARIABLE_USER","approverValue":"hrApproverIds","approveSelf":"TO_DEPT_MANAGER","allowDelegate":false,"allowAddSign":false,"allowReduceSign":false},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root-responsible","source":"root","target":"responsible"},{"id":"responsible-hr","source":"responsible","target":"hr"},{"id":"hr-end","source":"hr","target":"end"}]}'
+ UNION ALL SELECT 'oa_consumable_request', '耗材领用审批', 'PUBLISHED', 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交耗材领用"},{"id":"approval","type":"APPROVAL","title":"耗材领用审批","approverType":"VARIABLE_USER","approverValue":"approverIds","approveSelf":"TO_DEPT_MANAGER","allowDelegate":false,"allowAddSign":false,"allowReduceSign":false},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root-approval","source":"root","target":"approval"},{"id":"approval-end","source":"approval","target":"end"}]}'
+) seeds
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.wf_process_definition existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.process_key = seeds.process_key AND existing.deleted = 0);
+
+INSERT INTO cloud_flow_db.sys_message_template
+ (tenant_id, template_code, template_name, channel_type, biz_module, message_category, title_template,
+  content_template, params_declare, link_url_template, force_send_flag, dedupe_window_sec,
+  status, deleted, version, create_by, create_time)
+SELECT tenant.tenant_id, seeds.template_code, seeds.title, 'INTERNAL', 'hr', 'BIZ_REMINDER', seeds.title,
+ '单据 ${requestNo}，状态 ${status}；${actionLabel}',
+ '[{"name":"requestNo","required":true},{"name":"status","required":true},{"name":"actionLabel","required":true},{"name":"linkUrl","required":true}]',
+ '${linkUrl}', 0, 300, 'ENABLED', 0, 0, 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+ SELECT 'HR_OVERTIME_ACTION_REQUIRED' AS template_code, '加班申请待处理' AS title
+ UNION ALL SELECT 'HR_SHIFT_REQUEST_INVITATION', '收到换班邀请'
+ UNION ALL SELECT 'HR_REQUEST_EXECUTION_RESULT', '申请执行结果'
+) seeds
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_message_template existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.template_code = seeds.template_code AND existing.channel_type = 'INTERNAL');
+
+INSERT INTO cloud_flow_db.sys_message_template
+ (tenant_id, template_code, template_name, channel_type, biz_module, message_category, title_template,
+  content_template, params_declare, link_url_template, force_send_flag, dedupe_window_sec,
+  status, deleted, version, create_by, create_time)
+SELECT tenant.tenant_id, 'OA_CONSUMABLE_LOW_STOCK', '耗材库存预警', 'INTERNAL', 'oa', 'BIZ_REMINDER', '耗材库存预警',
+ '${name}（${model}）当前库存 ${quantity}${unit}，预警阈值 ${threshold}${unit}。',
+ '[{"name":"name","required":true},{"name":"model","required":true},{"name":"unit","required":true},{"name":"quantity","required":true},{"name":"threshold","required":true},{"name":"linkUrl","required":true}]',
+ '${linkUrl}', 0, 300, 'ENABLED', 0, 0, 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_message_template existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.template_code = 'OA_CONSUMABLE_LOW_STOCK' AND existing.channel_type = 'INTERNAL');
+
+INSERT INTO cloud_flow_db.oa_consumable
+ (consumable_id, tenant_id, name, model, unit, quantity, low_stock_threshold, target_stock,
+  avg_cost, stock_amount, status, deleted, create_by, create_time)
+SELECT seeds.consumable_id, 100000, seeds.name, seeds.model, seeds.unit, 0, 0, 0, 0.00, 0.00, 'ACTIVE', 0, 'seed', NOW()
+FROM (
+ SELECT 2001 AS consumable_id, '55 寸演示显示屏' AS name, 'CF-DISPLAY-55' AS model, '台' AS unit
+ UNION ALL SELECT 2002, '无线投屏终端', 'CF-CAST-01', '套'
+) seeds
+WHERE NOT EXISTS (SELECT 1 FROM cloud_flow_db.oa_consumable existing WHERE existing.consumable_id = seeds.consumable_id);
+
+CREATE TEMPORARY TABLE h_consumable_opening (
+ consumable_id BIGINT PRIMARY KEY, quantity INT NOT NULL, unit_price DECIMAL(10,2) NOT NULL
+);
+INSERT INTO h_consumable_opening VALUES
+ (9001,20,100.00),(9002,4,350.00),(9003,12,3.00),(9004,30,2.00),
+ (9005,2,50.00),(9006,20,18.00),(9007,100,1.50),(9008,8,129.00);
+
+INSERT INTO cloud_flow_db.oa_asset_log
+ (log_id, tenant_id, ref_id, ref_type, type, quantity_change, operator_id, target_id, remark, create_time)
+SELECT 181000 + material.consumable_id, material.tenant_id, material.consumable_id, '2', '入库',
+ opening.quantity, 1, NULL, 'H OA08明确演示期初；数量和单价为测试场景，不代表真实开账依据', DATE_SUB(CURDATE(), INTERVAL 10 DAY)
+FROM cloud_flow_db.oa_consumable material JOIN h_consumable_opening opening ON opening.consumable_id = material.consumable_id
+WHERE material.tenant_id = 100000 AND NOT EXISTS (
+ SELECT 1 FROM cloud_flow_db.oa_asset_log existing WHERE existing.log_id = 181000 + material.consumable_id);
+
+INSERT INTO cloud_flow_db.oa_consumable_ledger
+ (tenant_id, consumable_id, consumable_name, model, unit, transaction_type, quantity, balance_after,
+  unit_price, amount, balance_amount_after, avg_cost_after, source_biz_type, source_event_key,
+  operation_key, operation_line_no, operation_hash, asset_log_id, operator_id, operator_name,
+  operate_time, remark, create_by, create_time)
+SELECT material.tenant_id, material.consumable_id, material.name, material.model, material.unit, 'INBOUND',
+ opening.quantity, opening.quantity, opening.unit_price, opening.quantity * opening.unit_price,
+ opening.quantity * opening.unit_price, opening.unit_price, 'MANUAL',
+ CONCAT('SEED:OA08:',material.consumable_id,':OPENING'), CONCAT('SEED:OA08:',material.consumable_id,':OPENING'), 1,
+ SHA2(CONCAT('H:OA08:OPENING:',material.consumable_id,':',opening.quantity,':',opening.unit_price),256),
+ 181000 + material.consumable_id, 1, operator.nick_name, DATE_SUB(CURDATE(), INTERVAL 10 DAY),
+ '明确演示期初，价格为测试数据，不能作为生产价格依据', 'seed', NOW()
+FROM cloud_flow_db.oa_consumable material
+JOIN h_consumable_opening opening ON opening.consumable_id = material.consumable_id
+JOIN cloud_flow_db.sys_user operator ON operator.tenant_id = material.tenant_id AND operator.user_id = 1
+WHERE material.tenant_id = 100000 AND NOT EXISTS (
+ SELECT 1 FROM cloud_flow_db.oa_consumable_ledger existing
+ WHERE existing.tenant_id = material.tenant_id AND existing.source_event_key = CONCAT('SEED:OA08:',material.consumable_id,':OPENING'));
+
+CREATE TEMPORARY TABLE h_consumable_opening_assert (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO h_consumable_opening_assert
+SELECT COUNT(*) = 8 AND SUM(ledger.quantity = opening.quantity AND ledger.unit_price = opening.unit_price
+ AND ledger.amount = opening.quantity * opening.unit_price AND ledger.balance_after = opening.quantity
+ AND ledger.balance_amount_after = ledger.amount AND ledger.source_biz_type = 'MANUAL'
+ AND ledger.avg_cost_after = opening.unit_price AND ledger.transaction_type = 'INBOUND'
+ AND ledger.consumable_id = opening.consumable_id AND ledger.source_biz_id IS NULL AND ledger.source_item_id IS NULL
+ AND ledger.source_ledger_id IS NULL AND ledger.reversal_of_ledger_id IS NULL
+ AND ledger.operation_key = ledger.source_event_key AND ledger.operation_line_no = 1
+ AND ledger.operation_hash = SHA2(CONCAT('H:OA08:OPENING:',opening.consumable_id,':',opening.quantity,':',opening.unit_price),256)
+ AND ledger.asset_log_id = 181000 + opening.consumable_id AND history.quantity_change = opening.quantity
+ AND history.ref_type = '2' AND history.ref_id = opening.consumable_id AND history.type = '入库') = 8
+FROM h_consumable_opening opening
+JOIN cloud_flow_db.oa_consumable_ledger ledger ON ledger.tenant_id = 100000
+ AND ledger.source_event_key = CONCAT('SEED:OA08:',opening.consumable_id,':OPENING')
+JOIN cloud_flow_db.oa_asset_log history ON history.log_id = ledger.asset_log_id AND history.tenant_id = ledger.tenant_id;
+DROP TEMPORARY TABLE h_consumable_opening_assert;
+DROP TEMPORARY TABLE h_consumable_opening;
+
+INSERT INTO cloud_flow_db.oa_asset_log
+ (log_id, tenant_id, ref_id, ref_type, type, quantity_change, operator_id, target_id, remark, create_time)
+SELECT 181000 + receipt.consumable_id, receipt.tenant_id, receipt.consumable_id, '2', '入库',
+ receipt.received_quantity, receipt.operator_id, NULL, CONCAT('采购收货演示，收货记录',receipt.id), receipt.receipt_time
+FROM cloud_flow_db.biz_purchase_receipt receipt
+WHERE receipt.tenant_id = 100000 AND receipt.id IN (90031,90032)
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.oa_asset_log existing WHERE existing.log_id = 181000 + receipt.consumable_id);
+
+INSERT INTO cloud_flow_db.oa_consumable_ledger
+ (tenant_id, consumable_id, consumable_name, model, unit, transaction_type, quantity, balance_after,
+  unit_price, amount, balance_amount_after, avg_cost_after, source_biz_type, source_biz_id, source_item_id,
+  source_event_key, operation_key, operation_line_no, operation_hash, asset_log_id, operator_id,
+  operator_name, operate_time, remark, create_by, create_time)
+SELECT receipt.tenant_id, receipt.consumable_id, material.name, material.model, material.unit, 'INBOUND',
+ receipt.received_quantity, receipt.received_quantity, item.unit_price, item.amount, item.amount, item.unit_price,
+ 'PURCHASE_RECEIPT', receipt.id, item.id, CONCAT('PURCHASE_RECEIPT:',receipt.id),
+ CONCAT('SEED:OA08:RECEIPT:',receipt.id), 1, SHA2(CONCAT('H:OA08:RECEIPT:',receipt.id,':',item.amount),256),
+ 181000 + receipt.consumable_id, receipt.operator_id, receipt.operator_name, receipt.receipt_time,
+ '原演示采购收货成本只在本笔台账计入一次', 'seed', NOW()
+FROM cloud_flow_db.biz_purchase_receipt receipt
+JOIN cloud_flow_db.biz_purchase_item item ON item.id = receipt.item_id AND item.tenant_id = receipt.tenant_id
+JOIN cloud_flow_db.oa_consumable material ON material.consumable_id = receipt.consumable_id AND material.tenant_id = receipt.tenant_id
+WHERE receipt.tenant_id = 100000 AND receipt.id IN (90031,90032)
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.oa_consumable_ledger existing
+                 WHERE existing.tenant_id = receipt.tenant_id AND existing.source_event_key = CONCAT('PURCHASE_RECEIPT:',receipt.id));
+
+CREATE TEMPORARY TABLE h_consumable_receipt_assert (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO h_consumable_receipt_assert
+SELECT COUNT(*) = 2 AND SUM(ledger.consumable_id = receipt.consumable_id
+ AND receipt.received_quantity = item.quantity AND item.received_quantity = item.quantity
+ AND ledger.quantity = receipt.received_quantity AND ledger.balance_after = ledger.quantity
+ AND ledger.unit_price = item.unit_price AND ledger.amount = item.amount
+ AND ledger.amount = ROUND(receipt.received_quantity * item.unit_price, 2)
+ AND ledger.balance_amount_after = ledger.amount AND ledger.avg_cost_after = item.unit_price
+ AND ledger.source_biz_type = 'PURCHASE_RECEIPT' AND ledger.source_biz_id = receipt.id
+ AND ledger.source_item_id = item.id AND ledger.transaction_type = 'INBOUND'
+ AND ledger.source_ledger_id IS NULL AND ledger.reversal_of_ledger_id IS NULL
+ AND ledger.operation_key = CONCAT('SEED:OA08:RECEIPT:',receipt.id) AND ledger.operation_line_no = 1
+ AND ledger.operation_hash = SHA2(CONCAT('H:OA08:RECEIPT:',receipt.id,':',item.amount),256)
+ AND ledger.asset_log_id = 181000 + receipt.consumable_id AND ledger.operator_id = receipt.operator_id
+ AND history.quantity_change = receipt.received_quantity AND history.ref_type = '2'
+ AND history.ref_id = receipt.consumable_id AND history.type = '入库' AND purchase.status = 'RECEIVED') = 2
+FROM cloud_flow_db.biz_purchase_receipt receipt
+JOIN cloud_flow_db.biz_purchase_item item ON item.id = receipt.item_id AND item.tenant_id = receipt.tenant_id
+JOIN cloud_flow_db.biz_purchase_request purchase ON purchase.id = receipt.purchase_id AND purchase.tenant_id = receipt.tenant_id
+JOIN cloud_flow_db.oa_consumable_ledger ledger ON ledger.tenant_id = receipt.tenant_id
+ AND ledger.source_event_key = CONCAT('PURCHASE_RECEIPT:',receipt.id)
+JOIN cloud_flow_db.oa_asset_log history ON history.log_id = ledger.asset_log_id AND history.tenant_id = ledger.tenant_id
+WHERE receipt.tenant_id = 100000 AND receipt.id IN (90031,90032);
+DROP TEMPORARY TABLE h_consumable_receipt_assert;
+
+UPDATE cloud_flow_db.oa_consumable material
+JOIN (
+ SELECT tenant_id, consumable_id, SUM(quantity) AS quantity, SUM(amount) AS amount, MAX(operate_time) AS last_calc_time
+ FROM cloud_flow_db.oa_consumable_ledger WHERE tenant_id = 100000
+ GROUP BY tenant_id, consumable_id
+) totals ON totals.tenant_id = material.tenant_id AND totals.consumable_id = material.consumable_id
+LEFT JOIN cloud_flow_db.sys_dict_data category ON category.tenant_id = material.tenant_id
+ AND category.dict_type = 'oa_consumable_category'
+ AND category.dict_value = CASE WHEN material.consumable_id IN (9001,9002) THEN 'PRINT'
+   WHEN material.consumable_id IN (9005,9008,2001,2002) THEN 'IT' ELSE 'OFFICE' END
+SET material.quantity = totals.quantity, material.stock_amount = totals.amount,
+ material.avg_cost = IF(totals.quantity = 0, 0.00, ROUND(totals.amount / totals.quantity, 2)),
+ material.last_purchase_price = CASE material.consumable_id WHEN 2001 THEN 12000.00 WHEN 2002 THEN 4000.00 ELSE NULL END,
+ material.last_calc_time = totals.last_calc_time, material.category_id = category.dict_code
+WHERE material.tenant_id = 100000 AND material.consumable_id IN (2001,2002,9001,9002,9003,9004,9005,9006,9007,9008);
+-- batch-h-foundations:end
+
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES
+ (1810, 'oa', 'oaConsumableStockWarning', '耗材低库存预警', 'ONLINE', NOW(), 'seed', NOW()),
+ (1811, 'oa', 'oaConsumableStockRecalculate', '耗材库存链核对重算', 'ONLINE', NOW(), 'seed', NOW());
+
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression,
+  interval_ms, status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds,
+  alarm_on_fail_flag, create_by, create_time, remark)
+VALUES
+ (1810, 100000, '耗材低库存预警', 'OA', 'oa', 'oaConsumableStockWarning', 'FIXED_RATE', NULL,
+  300000, 'PAUSED', 0, 'IGNORE', 1, 240, 300, 1, 'seed', NOW(), '接收人和业务配置核定后启用'),
+ (1811, 100000, '耗材库存核对重算', 'OA', 'oa', 'oaConsumableStockRecalculate', 'CRON', '0 30 2 * * ?',
+  NULL, 'PAUSED', 0, 'IGNORE', 1, 1800, 1800, 1, 'seed', NOW(), '默认CHECK，仅核对；REBUILD须明确授权');
+
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1400, '表单版本历史', 403, 10, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:form:history', '#', 'seed', NOW(), '', NULL, 'C批：仅管理员读取表单历史及差异'),
+ (1401, '表单版本回滚', 403, 11, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:form:rollback', '#', 'seed', NOW(), '', NULL, 'C批：仅管理员回滚表单版本');
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 1, menu_id, 100000 FROM cloud_flow_db.sys_menu;
+
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES (1400, 'workflow', 'workflowFormVersionCleanup', '保留最近20版和全部实例引用版本', 'ONLINE', NOW(), 'seed', NOW());
+
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression,
+  status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds,
+  alarm_on_fail_flag, create_by, create_time, remark)
+VALUES (1400, 100000, '未引用表单历史版本清理', 'WORKFLOW', 'workflow', 'workflowFormVersionCleanup', 'CRON', '0 45 3 * * ?',
+ 'PAUSED', 0, 'IGNORE', 1, 240, 300, 1, 'seed', NOW(), '保留最近20版及全部实例引用版本，首次核对后启用');
+
+-- batch-h1-agent:start
+CREATE TEMPORARY TABLE h1_agent_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO h1_agent_seed_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),
+ (6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+DROP TEMPORARY TABLE h1_agent_seed_guard;
+
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1850, '我的代理设置', 2, 15, '/workflow/my-agents', 'pages/WorkflowAgentPage', NULL, 0, 0, 'C', '0', '0', 'workflow:agent:mine', 'UserRoundCheck', 'seed', NOW(), '', NULL, 'H1：仅查询本人代理设置'),
+ (1851, '保存本人代理', 1850, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:agent:save', '#', 'seed', NOW(), '', NULL, 'H1：仅创建或修改本人设置'),
+ (1852, '停用本人代理', 1850, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:agent:remove', '#', 'seed', NOW(), '', NULL, 'H1：仅停用本人设置'),
+ (1853, '归还本人代理任务', 1850, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:agent:return', '#', 'seed', NOW(), '', NULL, 'H1：仅当前有效代理人归还获派任务'),
+ (1854, '提交本人协办意见', 1850, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:agent:assist', '#', 'seed', NOW(), '', NULL, 'H1：仅当前有效协办人追加意见');
+
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id
+FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.role_id BETWEEN 1 AND 11
+ AND role.status = '0' AND role.deleted = 0 AND menu.menu_id BETWEEN 1850 AND 1854;
+
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES (1850, 'workflow', 'workflowAgentRefresh', '刷新当前租户生效及到期的任务代理', 'ONLINE', NOW(), 'seed', NOW());
+
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds,
+  alarm_on_fail_flag, create_by, create_time, remark)
+VALUES (1850, 100000, '任务代理生效及到期刷新', 'WORKFLOW', 'workflow', 'workflowAgentRefresh', 'FIXED_DELAY', 60000,
+ 'ENABLED', 0, 'FIRE_ONCE', 1, 180, 240, 1, 'seed', NOW(), '每分钟刷新本租户待办；实际办理时独立重新核实代理资格');
+-- batch-h1-agent:end
+
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES (1851, 'workflow', 'workflowGatewayArchiveCleanup', '清理已归档终态实例的网关及到达记录', 'ONLINE', NOW(), 'seed', NOW());
+
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds,
+  log_success_flag, alarm_on_fail_flag, create_by, create_time, remark)
+VALUES (1851, 100000, '已归档实例网关清理', 'WORKFLOW', 'workflow', 'workflowGatewayArchiveCleanup', 'FIXED_DELAY', 86400000,
+ 'ENABLED', 0, 'IGNORE', 1, 240, 300, 1, 1, 'seed', NOW(), '仅清理已标记归档且已结束、无未完成任务及等待的实例；运行中及未归档实例永久保留网关轮次');
+
+INSERT INTO cloud_flow_db.wf_process_definition
+ (definition_id, tenant_id, process_name, process_key, version, status, is_latest, category,
+  model_json, form_id, start_permission_type, create_by, create_time, update_by, update_time)
+SELECT CONCAT('batch-h4-meeting-', tenant.tenant_id), tenant.tenant_id, '会议室预约审批', 'oa_meeting_booking', 1, 'PUBLISHED', 1, 'OA',
+ '{"nodes":[{"id":"root","type":"START","title":"提交会议预约"},{"id":"approval","type":"APPROVAL","title":"会议室负责人审批","approverType":"VARIABLE_USER","approverValue":"approverIds","approveSelf":"TO_DEPT_MANAGER","allowDelegate":false,"allowAddSign":false,"allowReduceSign":false},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root-approval","source":"root","target":"approval"},{"id":"approval-end","source":"approval","target":"end"}]}',
+ NULL, 'ALL', 'seed', NOW(), 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.wf_process_definition existing
+                 WHERE existing.tenant_id = tenant.tenant_id AND existing.process_key = 'oa_meeting_booking' AND existing.deleted = 0);
+
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES (1950, 'oa', 'oaMeetingApprovalExpiry', '会议预约逾期未批关闭', 'ONLINE', NOW(), 'seed', NOW());
+
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds,
+  alarm_on_fail_flag, create_by, create_time, remark)
+VALUES (1950, 100000, '会议预约逾期未批关闭', 'OA', 'oa', 'oaMeetingApprovalExpiry', 'FIXED_DELAY', 60000,
+ 'ENABLED', 0, 'FIRE_ONCE', 1, 240, 300, 1, 'seed', NOW(), '将已过预约结束时间仍待审批的会议标为未举行，释放占位并可靠作废旧审批');
+
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES (1951, 'oa', 'oaMeetingReminders', '按数据库恢复及派发会议提醒', 'ONLINE', NOW(), 'seed', NOW());
+
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds,
+  alarm_on_fail_flag, create_by, create_time, remark)
+VALUES (1951, 100000, '会议邀请与多提醒派发', 'OA', 'oa', 'oaMeetingReminders', 'FIXED_DELAY', 30000,
+ 'ENABLED', 0, 'FIRE_ONCE', 1, 240, 300, 1, 'seed', NOW(), '按数据库到期事实恢复；逐人结果全部接纳才标记已发送，旧版本在真正投递前再次核验');
+
+INSERT INTO cloud_flow_db.sys_message_template
+ (tenant_id, template_code, template_name, channel_type, biz_module, message_category, title_template, content_template,
+  params_declare, force_send_flag, dedupe_window_sec, status, deleted, version, create_by, create_time, update_by, update_time)
+SELECT tenant.tenant_id, 'OA_MEETING_NOTICE', '会议邀请、提醒与更正', channels.channel_type, 'oa', 'BIZ_REMINDER',
+ '会议通知', '请查看会议详情', '[]', 0, 0, 'ENABLED', 0, 0, 'seed', NOW(), 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (SELECT 'INTERNAL' AS channel_type UNION ALL SELECT 'EMAIL') channels
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_message_template existing
+     WHERE existing.tenant_id = tenant.tenant_id AND existing.template_code = 'OA_MEETING_NOTICE' AND existing.channel_type = channels.channel_type AND existing.deleted = 0);
+
+-- batch-h4-meeting-menus:start
+CREATE TEMPORARY TABLE h4_meeting_role_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO h4_meeting_role_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),
+ (6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+DROP TEMPORARY TABLE h4_meeting_role_guard;
+
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1950, '会议室占用看板', 5, 31, '/admin/meeting-board', 'pages/admin/MeetingBoardPage', NULL, 0, 0, 'C', '0', '0', 'oa:meeting:board', 'CalendarDays', 'seed', NOW(), '', NULL, 'H4：授权会议详情或仅忙碌时段'),
+ (1951, '配置会议室预约规则', 1950, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:meeting:room-manage', '#', 'seed', NOW(), '', NULL, 'H4：仅管理员和OA专员配置房间规则与照片'),
+ (1952, '提交本人会议预约', 1959, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:meeting:book', '#', 'seed', NOW(), '', NULL, 'H4：仅发起和提交本人预约'),
+ (1953, '编辑本人会议', 1959, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:meeting:edit-own', '#', 'seed', NOW(), '', NULL, 'H4：仅本人会议合法状态操作'),
+ (1954, '取消本人预约', 1959, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:meeting:cancel-own', '#', 'seed', NOW(), '', NULL, 'H4：仅取消本人未开始预约'),
+ (1955, '回应本人会议邀请', 1959, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:meeting:respond', '#', 'seed', NOW(), '', NULL, 'H4：仅当前受邀本人回应'),
+ (1956, '管理会议状态', 1950, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:meeting:manage', '#', 'seed', NOW(), '', NULL, 'H4：管理员、经理和OA专员按数据范围管理'),
+ (1957, '会议室使用统计', 5, 32, '/admin/meeting-usage', 'pages/admin/MeetingUsagePage', NULL, 0, 0, 'C', '0', '0', 'oa:meeting:usage', 'ChartColumn', 'seed', NOW(), '', NULL, 'H4：实际使用与预订占用分别核算'),
+ (1958, '管理本人周期会议', 1959, 5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:meeting:series', '#', 'seed', NOW(), '', NULL, 'H4：仅本人未来周期实例，预览后确认'),
+ (1959, '我的会议邀请', 2, 16, '/office/my-meetings', 'pages/MeetingMinePage', NULL, 0, 0, 'C', '0', '0', 'oa:meeting:mine', 'CalendarCheck', 'seed', NOW(), '', NULL, 'H4：仅本人发起和本人受邀会议');
+
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND ((role.role_id BETWEEN 1 AND 11 AND menu.menu_id IN (1950,1952,1953,1954,1955,1958,1959))
+   OR (role.role_id IN (1,7) AND menu.menu_id = 1951)
+   OR (role.role_id IN (1,2,7) AND menu.menu_id IN (1956,1957)));
+-- batch-h4-meeting-menus:end
+
+-- crm-opportunity-stage-defaults:start
+INSERT INTO cloud_flow_db.crm_sales_stage
+ (tenant_id, stage_code, stage_name, sort_no, default_win_rate, allow_skip_flag, required_fields,
+  required_activity_flag, overdue_days, is_won_flag, is_lost_flag, status, deleted, version, create_by, create_time)
+SELECT tenant.tenant_id, defaults.stage_code, defaults.stage_name, defaults.sort_no, defaults.default_win_rate,
+ 0, '[]', 0, NULL, defaults.is_won_flag, defaults.is_lost_flag, 'ACTIVE', 0, 0, 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant CROSS JOIN (
+ SELECT 'LEAD' AS stage_code, '初步接触' AS stage_name, 10 AS sort_no, 0.1000 AS default_win_rate, 0 AS is_won_flag, 0 AS is_lost_flag
+ UNION ALL SELECT 'QUALIFIED', '需求确认', 20, 0.3000, 0, 0
+ UNION ALL SELECT 'PROPOSAL', '方案报价', 30, 0.5000, 0, 0
+ UNION ALL SELECT 'NEGOTIATION', '商务谈判', 40, 0.7000, 0, 0
+ UNION ALL SELECT 'WON', '赢单', 50, 1.0000, 1, 0
+ UNION ALL SELECT 'LOST', '丢单', 60, 0.0000, 0, 1
+) defaults
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.crm_sales_stage existing
+     WHERE existing.tenant_id = tenant.tenant_id AND existing.stage_code = defaults.stage_code AND existing.deleted = 0);
+
+INSERT INTO cloud_flow_db.sys_message_template
+ (tenant_id, template_code, template_name, channel_type, biz_module, message_category, title_template, content_template,
+  params_declare, force_send_flag, dedupe_window_sec, status, deleted, version, create_by, create_time)
+SELECT tenant.tenant_id, 'CRM_OPPORTUNITY_STAGE_NOTICE', '商机阶段超期提醒', 'INTERNAL', 'crm', 'BIZ_REMINDER',
+ '商机阶段超期提醒', '请核实商机推进计划', '[]', 0, 0, 'ENABLED', 0, 0, 'seed', NOW()
+FROM cloud_flow_db.sys_tenant tenant
+WHERE tenant.tenant_id > 0 AND tenant.deleted = 0 AND tenant.status = '0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_message_template existing WHERE existing.tenant_id = tenant.tenant_id
+     AND existing.template_code = 'CRM_OPPORTUNITY_STAGE_NOTICE' AND existing.channel_type = 'INTERNAL' AND existing.deleted = 0);
+-- crm-opportunity-stage-defaults:end
+
+UPDATE cloud_flow_db.crm_opportunity SET win_rate = CASE WHEN stage = 'WON' THEN 100 WHEN stage = 'LOST' THEN 0 ELSE IFNULL(win_rate, 0) END;
+UPDATE cloud_flow_db.crm_opportunity SET weighted_amount = ROUND(IFNULL(expected_amount, 0) * win_rate / 100, 2),
+ stage_duration_days = IF(stage_changed_time IS NULL, 0, GREATEST(0, TIMESTAMPDIFF(DAY, stage_changed_time, NOW())));
+
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES (1900, 'crm', 'crmOpportunityStageReminder', '商机阶段停留刷新及超期提醒', 'ONLINE', NOW(), 'seed', NOW());
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds,
+  alarm_on_fail_flag, create_by, create_time, remark)
+VALUES (1900, 100000, '商机阶段停留刷新及超期提醒', 'CRM', 'crm', 'crmOpportunityStageReminder', 'FIXED_DELAY', 86400000,
+ 'ENABLED', 0, 'FIRE_ONCE', 1, 240, 300, 1, 'seed', NOW(), '只按实际阶段历史生成一次可靠站内提醒；阶段改变或接收权限失效时停止投递');
+
+-- batch-h3-opportunity-menus:start
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES (1901, 'oa', 'oaContractPerformanceConfirm', '确认已到开始日期的合同销售业绩', 'ONLINE', NOW(), 'seed', NOW());
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds,
+  alarm_on_fail_flag, create_by, create_time, remark)
+VALUES (1901, 100000, '确认已到开始日期的合同销售业绩', 'OA', 'oa', 'oaContractPerformanceConfirm', 'FIXED_DELAY', 60000,
+ 'ENABLED', 0, 'FIRE_ONCE', 0, 1800, 1800, 1, 'seed', NOW(), '审批通过、双方签署且开始日期已到；逐合同事务保存可靠来源，缺日期不计业绩，失败由后续扫描重试');
+
+CREATE TEMPORARY TABLE h3_opportunity_role_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO h3_opportunity_role_guard
+SELECT COUNT(*) = 5 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+DROP TEMPORARY TABLE h3_opportunity_role_guard;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1900, '销售阶段规则', 8, 35, '/crm/sales-stages', 'pages/crm/CrmSalesStagePage', NULL, 0, 0, 'C', '0', '0', 'crm:sales-stage:list', 'ListOrdered', 'seed', NOW(), '', NULL, 'H3：查看本租户阶段规则'),
+ (1901, '维护销售阶段', 1900, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:sales-stage:manage', '#', 'seed', NOW(), '', NULL, 'H3：仅管理员、销售主管和营销运营维护'),
+ (1902, '维护商机产品', 801, 10, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:opportunity:items', '#', 'seed', NOW(), '', NULL, 'H3：仅管理员、销售主管和销售，仍须核验商机所有权'),
+ (1903, '销售阶段分析', 8, 36, '/crm/stage-analysis', 'pages/crm/CrmStageAnalysisPage', NULL, 0, 0, 'C', '0', '0', 'crm:opportunity:stage-analysis', 'ChartColumn', 'seed', NOW(), '', NULL, 'H3：按授权范围统计真实进入和退出记录'),
+ (1904, '恢复终态商机', 801, 11, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:opportunity:stage-reopen', '#', 'seed', NOW(), '', NULL, 'H3：仅管理员及销售主管，按客户范围恢复并核验原事实冲正'),
+ (1905, '销售团队分成', 8, 37, '/crm/deal-teams', 'pages/crm/CrmDealTeamPage', NULL, 0, 0, 'C', '0', '0', 'crm:deal-team:query', 'Users', 'seed', NOW(), '', NULL, 'H3：查看获准业务团队，不扩张客户或工资范围'),
+ (1906, '维护分成团队', 1905, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:deal-team:manage', '#', 'seed', NOW(), '', NULL, 'H3：仅管理员、销售主管和营销运营，仍核验业务所有权');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND ((role.role_id IN (1,8,9,10,11) AND menu.menu_id IN (1900,1903,1905))
+   OR (role.role_id IN (1,8,10) AND menu.menu_id IN (1901,1906))
+   OR (role.role_id IN (1,8,9) AND menu.menu_id = 1902)
+   OR (role.role_id IN (1,8) AND menu.menu_id = 1904));
+-- batch-h3-opportunity-menus:end
+
+-- batch-h3-commission-menus:start
+CREATE TEMPORARY TABLE h3_commission_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO h3_commission_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id IN (1907,1908);
+INSERT INTO h3_commission_guard
+SELECT COUNT(*) = 4 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(3,'finance'),(4,'hr'),(8,'sales_manager'));
+DROP TEMPORARY TABLE h3_commission_guard;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1907, '业绩与提成事实', 8, 38, '/crm/deal-allocations', 'pages/crm/CrmDealAllocationPage', NULL, 0, 0, 'C', '0', '0', 'crm:deal-allocation:list', 'Receipt', 'seed', NOW(), '', NULL, 'H3：按业务数据范围查看冻结分配，无核定权限时隐藏提成金额'),
+ (1908, '核定并传送提成', 1907, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:commission:manage', '#', 'seed', NOW(), '', NULL, 'H3：仅管理员、财务及人事核定真实到账提成，实际发薪后记为已支付');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND ((role.role_id IN (1,3,4,8) AND menu.menu_id = 1907) OR (role.role_id IN (1,3,4) AND menu.menu_id = 1908));
+-- batch-h3-commission-menus:end
+
+-- batch-h3-email-archive:start
+CREATE TEMPORARY TABLE h3_email_role_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO h3_email_role_guard
+SELECT COUNT(*) = 5 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+DROP TEMPORARY TABLE h3_email_role_guard;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1909, '客户邮件归档', 8, 38, '/crm/emails', 'pages/crm/CrmEmailPage', NULL, 0, 0, 'C', '0', '0', 'crm:email:list', 'Mail', 'seed', NOW(), '', NULL, 'H3：仅查看有权访问业务的邮件和私有附件'),
+ (1910, '发送客户邮件', 1909, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:email:send', '#', 'seed', NOW(), '', NULL, 'H3：消息中心真实投递；未配置保留草稿且明确未发送'),
+ (1911, '手工归档客户来信', 1909, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:email:archive', '#', 'seed', NOW(), '', NULL, 'H3：仅手工归档获准业务来信，不读取邮箱');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND role.role_id IN (1,8,9,10,11) AND menu.menu_id IN (1909,1910,1911);
+INSERT INTO cloud_flow_db.sys_message_template
+ (tenant_id, template_code, template_name, channel_type, biz_module, message_category, title_template, content_template,
+  params_declare, force_send_flag, dedupe_window_sec, status, remark, create_by, create_time)
+VALUES (100000, 'CRM_CUSTOMER_EMAIL', '客户业务往来', 'EMAIL', 'crm', 'BIZ_REMINDER', '客户业务往来',
+ '<p>{{contactName}}，您好：</p><p>关于{{businessName}}，请在发送前填写并核对具体业务内容。</p><p>感谢{{customerName}}的支持。</p>',
+ '[{"name":"contactName","required":false},{"name":"customerName","required":true},{"name":"businessName","required":true}]',
+ 0, 0, 'ENABLED', '客户业务往来模板；渠道未配置时仅保存草稿，不触发外部发送', 'seed', NOW());
+-- batch-h3-email-archive:end
+
+-- batch-h3-portal-accounts:start
+CREATE TEMPORARY TABLE h3_portal_role_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO h3_portal_role_guard
+SELECT COUNT(*) = 3 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(8,'sales_manager'),(10,'crm_ops'));
+DROP TEMPORARY TABLE h3_portal_role_guard;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1912, '客户门户账号', 8, 39, '/system/portal-users', 'pages/system/PortalUserPage', NULL, 0, 0, 'C', '0', '0', 'system:portal:user:list', 'UserRoundKey', 'seed', NOW(), '', NULL, 'H3：独立客户账号，仅限有权访问的客户联系人'),
+ (1913, '管理客户门户邀请', 1912, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:portal:user:manage', '#', 'seed', NOW(), '', NULL, 'H3：可信邀请及停用重设；外部依赖未配置时明确停用');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND role.role_id IN (1,8,10) AND menu.menu_id IN (1912,1913);
+-- batch-h3-portal-accounts:end
+
+CREATE TEMPORARY TABLE h3_ticket_publication_guard (accepted TINYINT NOT NULL, CHECK (accepted = 1));
+INSERT INTO h3_ticket_publication_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1914 OR perms = 'crm:portal:solution:publish';
+INSERT INTO h3_ticket_publication_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 805 AND perms = 'crm:ticket:list' AND status = '0';
+INSERT INTO h3_ticket_publication_guard
+SELECT COUNT(*) = 4 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(8,'sales_manager'),(9,'sales_rep'),(11,'customer_success'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES (1914, '发布客户工单方案', 805, 8, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:portal:solution:publish', '#', 'seed', NOW(), '', NULL, 'H3：当前接手人明确发布或撤回，内部意见不自动对外');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND role.role_id IN (1,8,9,11) AND menu.menu_id = 1914;
+DROP TEMPORARY TABLE h3_ticket_publication_guard;
+
+CREATE TEMPORARY TABLE h3_knowledge_publication_guard (accepted TINYINT NOT NULL, CHECK (accepted = 1));
+INSERT INTO h3_knowledge_publication_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1915 OR perms = 'oa:knowledge:external-publish';
+INSERT INTO h3_knowledge_publication_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 210 AND perms = 'oa:knowledge:list' AND status = '0';
+INSERT INTO h3_knowledge_publication_guard
+SELECT COUNT(*) = 2 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(7,'oa_clerk'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES (1915, '对外发布知识版本', 210, 7, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:knowledge:external-publish', '#', 'seed', NOW(), '', NULL, 'H3：明确指定发布版本，撤回立即停止后续读取');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND role.role_id IN (1,7) AND menu.menu_id = 1915;
+DROP TEMPORARY TABLE h3_knowledge_publication_guard;
+
+-- H3财务公开：仅管理员和财务；不授予回款业务维护权限。
+CREATE TEMPORARY TABLE h3_finance_publication_guard (accepted TINYINT NOT NULL, CHECK (accepted = 1));
+INSERT INTO h3_finance_publication_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1916 OR perms = 'crm:portal-finance:manage';
+INSERT INTO h3_finance_publication_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 803 AND perms = 'crm:receivable:list' AND status = '0';
+INSERT INTO h3_finance_publication_guard
+SELECT COUNT(*) = 2 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(3,'finance'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES (1916, '确认财务对外公开', 803, 9, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:portal-finance:manage', '#', 'seed', NOW(), '', NULL, 'H3：管理员和财务逐单确认公开或撤回，单据变更需重新确认');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+ WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND role.role_id IN (1,3) AND menu.menu_id = 1916;
+DROP TEMPORARY TABLE h3_finance_publication_guard;
+
+-- H3商机导入：新增及更新由操作列区分，逐行检查源业务权限和现有负责人范围。
+CREATE TEMPORARY TABLE h3_opportunity_import_guard (accepted TINYINT NOT NULL, CHECK (accepted = 1));
+INSERT INTO h3_opportunity_import_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1917 OR perms = 'crm:opportunity:import';
+INSERT INTO h3_opportunity_import_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 1756 AND perms = 'system:import:list' AND status = '0';
+INSERT INTO h3_opportunity_import_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND role_id = 1 AND role_key = 'admin';
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES (1917, '商机导入', 1756, 7, '', NULL, NULL, 0, 0, 'F', '1', '0', 'crm:opportunity:import', '#', 'seed', NOW(), '', NULL, 'H3：逐行新增或更新商机，沿用阶段及团队规则，更新校对导出版本');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+ WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND role.role_id = 1 AND menu.menu_id = 1917;
+DROP TEMPORARY TABLE h3_opportunity_import_guard;
+
+-- batch-h2-skills:start
+CREATE TEMPORARY TABLE h2_skill_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_skill_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id IN (1877,1878,1879,1880,1881,1893) OR perms LIKE 'hr:skill:%';
+INSERT INTO h2_skill_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 7 AND visible = '0' AND status = '0';
+INSERT INTO h2_skill_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),(6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1877, '技能目录', 7, 50, '/hr/skills', 'pages/hr/HrSkillPage', NULL, 0, 0, 'C', '0', '0', 'hr:skill:list', 'Award', 'seed', NOW(), '', NULL, 'H2：本租户技能定义，不包含他人员工证据'),
+ (1878, '维护技能及岗位要求', 1877, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:skill:manage', '#', 'seed', NOW(), '', NULL, 'H2：管理员和HR维护技能、岗位要求及课程目标'),
+ (1879, '评估员工技能', 1877, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:skill:assess', '#', 'seed', NOW(), '', NULL, 'H2：HR或主管管理范围内核实证据，禁止自审'),
+ (1880, '提交本人技能自报', 1893, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:skill:self-submit', '#', 'seed', NOW(), '', NULL, 'H2：仅本人PENDING申请，不直接改变有效等级'),
+ (1881, '岗位技能差距', 7, 51, '/hr/skill-gap', 'pages/hr/HrSkillGapPage', NULL, 0, 0, 'C', '0', '0', 'hr:skill:gap', 'ChartNoAxesColumn', 'seed', NOW(), '', NULL, 'H2：仅管理范围内在岗人员及有权报名的推荐课程'),
+ (1893, '我的技能', 7, 52, '/hr/ess/skills', 'pages/hr/ess/HrEssSkillPage', NULL, 0, 0, 'C', '0', '0', 'hr:skill:own', 'GraduationCap', 'seed', NOW(), '', NULL, 'H2：本人技能证据及岗位差距，过期和撤销不恢复旧证据');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND ((role.role_id BETWEEN 1 AND 11 AND menu.menu_id IN (1877,1880,1893))
+   OR (role.role_id IN (1,4) AND menu.menu_id = 1878)
+   OR (role.role_id IN (1,2,4) AND menu.menu_id IN (1879,1881)));
+DROP TEMPORARY TABLE h2_skill_guard;
+-- batch-h2-skills:end
+
+-- batch-h2-appraisals:start
+CREATE TEMPORARY TABLE h2_appraisal_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_appraisal_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id IN (1882,1883,1884,1885,1886,1894) OR perms LIKE 'hr:appraisal:%';
+INSERT INTO h2_appraisal_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 7 AND visible = '0' AND status = '0';
+INSERT INTO h2_appraisal_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),(6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1882, '绩效周期', 7, 52, '/hr/appraisal-cycles', 'pages/hr/HrAppraisalCyclePage', NULL, 0, 0, 'C', '0', '0', 'hr:appraisal:list', 'Target', 'seed', NOW(), '', NULL, 'H2：HR与主管范围内的绩效周期'),
+ (1883, '管理绩效周期', 1882, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:appraisal:manage', '#', 'seed', NOW(), '', NULL, 'H2：管理员和HR配置范围、目标及分布规则'),
+ (1884, '推进绩效周期', 1882, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:appraisal:transition', '#', 'seed', NOW(), '', NULL, 'H2：按序检查前置条件并冻结依据'),
+ (1885, '计算周期得分', 1882, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:appraisal:score', '#', 'seed', NOW(), '', NULL, 'H2：记录目标评分并从真实来源计算总分'),
+ (1886, '校准绩效结果', 1882, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:appraisal:calibrate', '#', 'seed', NOW(), '', NULL, 'H2：范围内校准，保留计算原分及原因'),
+ (1894, '我的绩效周期', 7, 53, '/hr/ess/appraisals', 'pages/hr/ess/HrEssAppraisalPage', NULL, 0, 0, 'C', '0', '0', 'hr:appraisal:own', 'Target', 'seed', NOW(), '', NULL, 'H2：仅本人读取，隐藏他人及评价人身份');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND ((menu.menu_id IN (1882,1886) AND role.role_id IN (1,2,4))
+   OR (menu.menu_id IN (1883,1884,1885) AND role.role_id IN (1,4))
+   OR (menu.menu_id = 1894 AND role.role_id IN (1,2,3,4,5,6,7,8,9,10,11)));
+DROP TEMPORARY TABLE h2_appraisal_guard;
+-- batch-h2-appraisal-response:start
+CREATE TEMPORARY TABLE h2_appraisal_response_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_appraisal_response_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1895 OR perms = 'hr:appraisal:respond';
+INSERT INTO h2_appraisal_response_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 1894 AND perms = 'hr:appraisal:own' AND status = '0';
+INSERT INTO h2_appraisal_response_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),(6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1895, '提交本人受邀评分', 1894, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:appraisal:respond', '#', 'seed', NOW(), '', NULL, 'H2：仅本人、待提交且正在评分的周期邀请；禁止代评和旧绩效写入');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 1895, tenant_id FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND role_id IN (1,2,3,4,5,6,7,8,9,10,11) AND status = '0' AND deleted = 0;
+DROP TEMPORARY TABLE h2_appraisal_response_guard;
+-- batch-h2-appraisal-response:end
+-- batch-h2-appraisals:end
+
+-- batch-h2-referral-entry:start
+CREATE TEMPORARY TABLE h2_referral_entry_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_referral_entry_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1887 AND 1892 OR perms LIKE 'hr:referral:%';
+INSERT INTO h2_referral_entry_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id BETWEEN 1887 AND 1892;
+INSERT INTO h2_referral_entry_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 7 AND visible = '0' AND status = '0';
+INSERT INTO h2_referral_entry_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),(6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1887, '员工内推管理', 7, 56, '/hr/referrals', 'pages/hr/HrReferralPage', NULL, 0, 0, 'C', '0', '0', 'hr:referral:list', 'Users', 'seed', NOW(), '', NULL, 'H2：受权HR查看范围内推荐与奖金进展'),
+ (1888, '我的推荐', 7, 57, '/hr/ess/referrals', 'pages/hr/ess/HrEssReferralPage', NULL, 0, 0, 'C', '0', '0', 'hr:referral:own', 'Users', 'seed', NOW(), '', NULL, 'H2：仅本人推荐与私有简历'),
+ (1889, '提交本人推荐', 1888, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:referral:submit', '#', 'seed', NOW(), '', NULL, 'H2：本人推荐，联系方式统一防重'),
+ (1890, '推荐转候选人', 1887, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:referral:convert', '#', 'seed', NOW(), '', NULL, 'H2：初筛通过后转为唯一候选人'),
+ (1891, '审批推荐奖金', 1887, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:referral:bonus', '#', 'seed', NOW(), '', NULL, 'H2：核定奖金并发起审批，实际工资付款后标记已发'),
+ (1892, '管理推荐初筛', 1887, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:referral:manage', '#', 'seed', NOW(), '', NULL, 'H2：记录初筛及拒绝原因');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND ((menu.menu_id IN (1888,1889) AND role.role_id BETWEEN 1 AND 11)
+   OR (menu.menu_id IN (1887,1890,1891,1892) AND role.role_id IN (1,4)));
+DROP TEMPORARY TABLE h2_referral_entry_guard;
+-- batch-h2-referral-entry:end
+
+-- batch-h2-exit-interview:start
+CREATE TEMPORARY TABLE h2_exit_interview_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_exit_interview_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1869 OR perms = 'hr:exit-interview:manage' OR path = '/hr/exit-interviews';
+INSERT INTO h2_exit_interview_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id = 1869;
+INSERT INTO h2_exit_interview_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 7 AND visible = '0' AND status = '0';
+INSERT INTO h2_exit_interview_guard
+SELECT COUNT(*) = 2 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(4,'hr'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1869, '离职面谈', 7, 58, '/hr/exit-interviews', 'pages/hr/HrExitInterviewPage', NULL, 0, 0, 'C', '0', '0', 'hr:exit-interview:manage', 'MessagesSquare', 'seed', NOW(), '', NULL, 'H2：授权人员管理内部面谈及私有附件，排除离职员工本人');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 1869, tenant_id FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND role_id IN (1,4) AND status = '0' AND deleted = 0;
+DROP TEMPORARY TABLE h2_exit_interview_guard;
+-- batch-h2-exit-interview:end
+
+-- batch-h2-training-recovery:start
+CREATE TEMPORARY TABLE h2_training_recovery_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_training_recovery_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1870 OR perms = 'hr:training-recovery:manage' OR path = '/hr/training-recoveries';
+INSERT INTO h2_training_recovery_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id = 1870;
+INSERT INTO h2_training_recovery_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 7 AND visible = '0' AND status = '0';
+INSERT INTO h2_training_recovery_guard
+SELECT COUNT(*) = 2 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(4,'hr'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1870, '培训追偿核定', 7, 59, '/hr/training-recoveries', 'pages/hr/HrTrainingRecoveryPage', NULL, 0, 0, 'C', '0', '0', 'hr:training-recovery:manage', 'FileCheck2', 'seed', NOW(), '', NULL, 'H2：依据真实培训及私有协议核定追偿，不代替实际收款');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 1870, tenant_id FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND role_id IN (1,4) AND status = '0' AND deleted = 0;
+DROP TEMPORARY TABLE h2_training_recovery_guard;
+-- batch-h2-training-recovery:end
+
+-- batch-h2-severance-policy:start
+CREATE TEMPORARY TABLE h2_severance_policy_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_severance_policy_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1868 OR perms = 'hr:severance:manage' OR path = '/hr/severance-rules';
+INSERT INTO h2_severance_policy_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id = 1868;
+INSERT INTO h2_severance_policy_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 7 AND visible = '0' AND status = '0';
+INSERT INTO h2_severance_policy_guard
+SELECT COUNT(*) = 3 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(4,'hr'),(6,'legal'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1868, '经济补偿规则', 7, 58, '/hr/severance-rules', 'pages/hr/rules/HrSeveranceRulePage', NULL, 0, 0, 'C', '0', '0', 'hr:severance:manage', 'FileCheck2', 'seed', NOW(), '', NULL, 'H2：按核定工资项目、工龄分档及私有政策文件计算补偿，逐项四舍五入到分');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 1868, tenant_id FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND role_id IN (1,4,6) AND status = '0' AND deleted = 0;
+DROP TEMPORARY TABLE h2_severance_policy_guard;
+-- batch-h2-severance-policy:end
+
+-- batch-h2-settlement-draft:start
+CREATE TEMPORARY TABLE h2_settlement_draft_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_settlement_draft_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1860 AND 1863 OR perms IN ('hr:settlement:list','hr:settlement:add','hr:settlement:edit','hr:settlement:calculate') OR path = '/hr/final-settlements';
+INSERT INTO h2_settlement_draft_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id BETWEEN 1860 AND 1863;
+INSERT INTO h2_settlement_draft_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 7 AND visible = '0' AND status = '0';
+INSERT INTO h2_settlement_draft_guard
+SELECT COUNT(*) = 3 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(3,'finance'),(4,'hr'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1860, '离职结算', 7, 60, '/hr/final-settlements', 'pages/hr/HrFinalSettlementPage', NULL, 0, 0, 'C', '0', '0', 'hr:settlement:list', 'Calculator', 'seed', NOW(), '', NULL, 'H2：授权人事及财务核对结算草稿与来源'),
+ (1861, '创建离职结算', 1860, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:settlement:add', '#', 'seed', NOW(), '', NULL, 'H2：仅人事从已通过离职申请建立草稿'),
+ (1862, '编辑离职结算', 1860, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:settlement:edit', '#', 'seed', NOW(), '', NULL, 'H2：仅人事逐单核定政策、取样及日期来源'),
+ (1863, '计算离职结算', 1860, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:settlement:calculate', '#', 'seed', NOW(), '', NULL, 'H2：重算实际来源与缺项，不发款或入账');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND ((menu.menu_id IN (1860,1863) AND role.role_id IN (1,3,4))
+   OR (menu.menu_id IN (1861,1862) AND role.role_id IN (1,4)));
+DROP TEMPORARY TABLE h2_settlement_draft_guard;
+-- batch-h2-settlement-draft:end
+
+-- batch-h2-settlement-approval:start
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES (1864, '提交离职结算', 1860, 4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:settlement:submit', '#', 'seed', NOW(), '', NULL, 'H2：人事提交及本人撤回，独立财务复核，提交人与离职本人回避');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, 100000
+FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id=100000 AND role.deleted=0 AND role.status='0'
+ AND role.role_id IN (1,4) AND menu.menu_id=1864;
+-- batch-h2-settlement-approval:end
+
+-- batch-h2-settlement-funds:start
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1865, '确认离职结算', 1860, 5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:settlement:confirm', '#', 'seed', NOW(), '', NULL, 'H2：按已批准金额确认，实际收付和来源入账及资产处置完成后关闭'),
+ (1867, '确认结算收款', 1860, 7, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:settlement:receipt', '#', 'seed', NOW(), '', NULL, 'H2：财务核对真实到账及私有收款凭据后入账');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, 100000
+FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id=100000 AND role.deleted=0 AND role.status='0'
+ AND ((role.role_id IN (1,3,4) AND menu.menu_id=1865) OR (role.role_id IN (1,3) AND menu.menu_id=1867));
+-- batch-h2-settlement-funds:end
+
+-- batch-h2-settlement-reversal:start
+INSERT INTO sys_menu(menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark) VALUES
+ (1866, '冲正离职结算', 1860, 6, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:settlement:reverse', '#', 'seed', NOW(), '', NULL, 'H2：关联原单独立复核，实际反向收付完成后恢复来源，保留原金额和历史');
+INSERT INTO sys_role_menu(role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM sys_role role CROSS JOIN sys_menu menu
+WHERE role.tenant_id=100000 AND role.role_id IN (1,3) AND menu.menu_id=1866;
+-- batch-h2-settlement-reversal:end
+
+INSERT INTO cloud_flow_db.hr_recruitment_identity (tenant_id, identity_type, identity_hash, candidate_id, create_by, update_by)
+SELECT tenant_id, 'EMAIL', SHA2(CONCAT(tenant_id, ':EMAIL:', LOWER(TRIM(email))), 256), id, 'seed', 'seed'
+FROM cloud_flow_db.hr_candidate WHERE email IS NOT NULL AND TRIM(email) <> '';
+
+-- batch-h2-advance-entry:start
+CREATE TEMPORARY TABLE h2_advance_entry_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_advance_entry_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1871 AND 1876 OR perms LIKE 'hr:advance:%';
+INSERT INTO h2_advance_entry_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 7 AND visible = '0' AND status = '0';
+INSERT INTO h2_advance_entry_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),(6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1871, '员工借款管理', 7, 54, '/hr/advances', 'pages/hr/HrAdvancePage', NULL, 0, 0, 'C', '0', '0', 'hr:advance:list', 'Wallet', 'seed', NOW(), '', NULL, 'H2：管理员、HR及财务仅查看授权人员范围'),
+ (1872, '保存本人借款', 1876, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:advance:apply', '#', 'seed', NOW(), '', NULL, 'H2：仅本人未提交草稿，不占额度，不产生放款'),
+ (1874, '登记实际还款', 1871, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:advance:repay', '#', 'seed', NOW(), '', NULL, 'H2：核验真实私有凭据，禁止经办本人借款'),
+ (1875, '核销借款', 1871, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:advance:writeoff', '#', 'seed', NOW(), '', NULL, 'H2：财务二次确认及独立审计，禁止经办本人借款'),
+ (1876, '我的借款', 7, 55, '/hr/ess/advances', 'pages/hr/ess/HrEssAdvancePage', NULL, 0, 0, 'C', '0', '0', 'hr:advance:own', 'Wallet', 'seed', NOW(), '', NULL, 'H2：本人借款、还款及已入账私有凭据');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role.role_id, menu.menu_id, role.tenant_id FROM cloud_flow_db.sys_role role CROSS JOIN cloud_flow_db.sys_menu menu
+WHERE role.tenant_id = 100000 AND role.status = '0' AND role.deleted = 0
+ AND ((menu.menu_id = 1871 AND role.role_id IN (1,3,4))
+   OR (menu.menu_id IN (1872,1876) AND role.role_id BETWEEN 1 AND 11)
+   OR (menu.menu_id IN (1874,1875) AND role.role_id IN (1,3)));
+DROP TEMPORARY TABLE h2_advance_entry_guard;
+-- batch-h2-advance-entry:end
+
+-- batch-h2-advance-submit:start
+CREATE TEMPORARY TABLE h2_advance_submit_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h2_advance_submit_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1873 OR perms = 'hr:advance:submit';
+INSERT INTO h2_advance_submit_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id = 1873;
+INSERT INTO h2_advance_submit_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 1876 AND perms = 'hr:advance:own' AND status = '0';
+INSERT INTO h2_advance_submit_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),(6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1873, '提交撤回本人借款', 1876, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:advance:submit', '#', 'seed', NOW(), '', NULL, 'H2：仅本人申请；部门负责人先审、财务复核；真实终审后禁止撤回');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 1873, tenant_id FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND role_id BETWEEN 1 AND 11 AND status = '0' AND deleted = 0;
+DROP TEMPORARY TABLE h2_advance_submit_guard;
+-- batch-h2-advance-submit:end
+
+CREATE TEMPORARY TABLE h5_business_search_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h5_business_search_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1986 OR perms = 'system:search:business';
+INSERT INTO h5_business_search_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 2 AND visible = '0' AND status = '0';
+INSERT INTO h5_business_search_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),(6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1986, '搜索授权业务', 2, 21, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:search:business', '#', 'seed', NOW(), '', NULL, 'H5：仅搜索当前业务查看权限和数据范围内的名称、编号及状态');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 1986, tenant_id FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND role_id IN (1,2,3,4,5,6,7,8,9,10,11) AND status = '0' AND deleted = 0;
+DROP TEMPORARY TABLE h5_business_search_guard;
+
+CREATE TEMPORARY TABLE h5_file_preview_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h5_file_preview_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1985 OR perms = 'system:file:preview';
+INSERT INTO h5_file_preview_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 2 AND visible = '0' AND status = '0';
+INSERT INTO h5_file_preview_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND status = '0' AND deleted = 0
+ AND (role_id, role_key) IN ((1,'admin'),(2,'manager'),(3,'finance'),(4,'hr'),(5,'employee'),(6,'legal'),(7,'oa_clerk'),(8,'sales_manager'),(9,'sales_rep'),(10,'crm_ops'),(11,'customer_success'));
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1985, '预览授权文件', 2, 20, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:file:preview', '#', 'seed', NOW(), '', NULL, 'H5：仅预览当前会话和原业务权限允许读取的附件，文件流每次重新校验');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 1985, tenant_id FROM cloud_flow_db.sys_role
+WHERE tenant_id = 100000 AND role_id IN (1,2,3,4,5,6,7,8,9,10,11) AND status = '0' AND deleted = 0;
+DROP TEMPORARY TABLE h5_file_preview_guard;
+
+CREATE TEMPORARY TABLE h5_data_source_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h5_data_source_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1973 AND 1976 OR perms LIKE 'system:data-source:%';
+INSERT INTO h5_data_source_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 6 AND visible = '0' AND status = '0';
+INSERT INTO h5_data_source_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND role_id = 1 AND role_key = 'admin' AND status = '0' AND deleted = 0;
+INSERT INTO h5_data_source_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_job WHERE job_id = 1973 OR handler_name = 'dataSourceReconcile';
+INSERT INTO h5_data_source_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_job_handler WHERE handler_id = 1973 OR handler_name = 'dataSourceReconcile';
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1973, '动态数据源', 6, 31, '/system/data-sources', 'pages/system/DataSourcePage', NULL, 0, 0, 'C', '0', '0', 'system:data-source:list', 'Database', 'seed', NOW(), '', NULL, 'H5：仅部署允许的平台身份，所有操作须五分钟内再次认证'),
+ (1974, '管理数据源配置', 1973, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:data-source:manage', '#', 'seed', NOW(), '', NULL, 'H5：网络名单及密码独立加密，禁止覆盖默认业务库'),
+ (1975, '测试数据源连接', 1973, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:data-source:test', '#', 'seed', NOW(), '', NULL, 'H5：专用只读账号及固定连接测试'),
+ (1976, '注册停用数据源', 1973, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:data-source:register', '#', 'seed', NOW(), '', NULL, 'H5：明确服务与二次确认，每实例核验采用版本');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 1, menu_id, 100000 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1973 AND 1976;
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time, update_by, update_time)
+VALUES (1973, 'auth', 'dataSourceReconcile', '逐实例核对动态数据源并补应用失败或离线版本', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW());
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, retry_interval_sec, dispatch_retry_count,
+  dispatch_retry_interval_sec, timeout_seconds, lock_time_seconds, critical_flag, log_success_flag,
+  alarm_on_fail_flag, create_by, create_time, update_by, update_time)
+VALUES (1973,100000,'动态数据源实例核对','AUTH','auth','dataSourceReconcile','FIXED_DELAY',NULL,60000,
+ 'ENABLED',0,'IGNORE',0,60,3,10,240,300,0,0,1,'seed',NOW(),'seed',NOW());
+DROP TEMPORARY TABLE h5_data_source_guard;
+
+CREATE TEMPORARY TABLE h5_oauth2_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h5_oauth2_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1987 AND 1991 OR perms LIKE 'system:oauth2:%';
+INSERT INTO h5_oauth2_guard
+SELECT COUNT(*) = 2 FROM cloud_flow_db.sys_menu WHERE menu_id IN (2,6) AND visible = '0' AND status = '0';
+INSERT INTO h5_oauth2_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND role_id IN (1,2,3,4,5,6,7,8,9,10,11) AND status = '0' AND deleted = 0;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1987, '第三方应用客户端', 6, 32, '/system/oauth2-clients', 'pages/system/OauthClientPage', NULL, 0, 0, 'C', '0', '0', 'system:oauth2:client:list', 'KeyRound', 'seed', NOW(), '', NULL, 'H5：仅部署允许的平台身份并须再次验证'),
+ (1988, '管理第三方客户端', 1987, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:oauth2:client:manage', '#', 'seed', NOW(), '', NULL, 'H5：客户端默认停用，仅注册的只读范围'),
+ (1990, '我的第三方授权', 2, 22, '/workspace/oauth2-grants', 'pages/OauthGrantMinePage', NULL, 0, 0, 'C', '0', '0', 'system:oauth2:grant:list', 'ShieldCheck', 'seed', NOW(), '', NULL, 'H5：只查看本人同意记录'),
+ (1989, '确认本人第三方授权', 1990, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:oauth2:authorize', '#', 'seed', NOW(), '', NULL, 'H5：本人会话、精确回调、PKCE及当前权限交集'),
+ (1991, '撤销本人第三方授权', 1990, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:oauth2:grant:revoke', '#', 'seed', NOW(), '', NULL, 'H5：仅撤销本人同意及关联令牌');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 1, menu_id, 100000 FROM cloud_flow_db.sys_menu WHERE menu_id IN (1987,1988);
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, menu_id, cloud_flow_db.sys_role.tenant_id
+FROM cloud_flow_db.sys_role CROSS JOIN cloud_flow_db.sys_menu
+WHERE cloud_flow_db.sys_role.tenant_id = 100000 AND role_id IN (1,2,3,4,5,6,7,8,9,10,11)
+ AND cloud_flow_db.sys_role.status = '0' AND cloud_flow_db.sys_role.deleted = 0 AND menu_id IN (1989,1990,1991);
+DROP TEMPORARY TABLE h5_oauth2_guard;
+
+CREATE TEMPORARY TABLE h5_report_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h5_report_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1977 AND 1984 OR menu_id BETWEEN 1992 AND 2000 OR perms LIKE 'system:report:%';
+INSERT INTO h5_report_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 2 AND visible = '0' AND status = '0';
+INSERT INTO h5_report_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND role_id IN (1,2,3,4,5,6,7,8,9,10,11) AND status = '0' AND deleted = 0;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1977, '查看授权数据集', 1978, 24, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:dataset:list', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1978, '我的自助图表', 2, 25, '/workspace/report-charts', 'pages/ReportChartPage', NULL, 0, 0, 'C', '0', '0', 'system:report:chart:list', 'ChartNoAxesCombined', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1979, '保存本人图表', 1978, 26, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:chart:save', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1980, '删除本人图表', 1978, 27, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:chart:remove', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1981, '我的仪表盘', 2, 28, '/workspace/report-dashboards', 'pages/ReportDashboardPage', NULL, 0, 0, 'C', '0', '0', 'system:report:dashboard:list', 'ChartNoAxesCombined', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1982, '保存本人仪表盘', 1981, 29, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:dashboard:save', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1983, '删除本人仪表盘', 1981, 30, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:dashboard:remove', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1984, '分享本人报表定义', 1981, 31, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:share', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1992, '流程实例数据集', 1978, 32, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:data:workflow-instance', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1993, '任务时效数据集', 1978, 33, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:data:workflow-task', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1994, '销售漏斗数据集', 1978, 34, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:data:crm-funnel', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1995, '回款账龄数据集', 1978, 35, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:data:crm-aging', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1996, '考勤统计数据集', 1978, 36, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:data:hr-attendance', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1997, '假期统计数据集', 1978, 37, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:data:hr-leave', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1998, '费用执行数据集', 1978, 38, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:data:oa-expense', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (1999, '预算执行数据集', 1978, 39, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:data:oa-budget', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询'),
+ (2000, '资产台账数据集', 1978, 40, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:report:data:oa-asset', '#', 'seed', NOW(), '', NULL, 'H5：仅共享报表定义，数据始终按查看者本人权限查询');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, menu_id, cloud_flow_db.sys_role.tenant_id
+FROM cloud_flow_db.sys_role CROSS JOIN cloud_flow_db.sys_menu
+WHERE cloud_flow_db.sys_role.tenant_id = 100000 AND role_id IN (1,2,3,4,5,6,7,8,9,10,11)
+ AND cloud_flow_db.sys_role.status = '0' AND cloud_flow_db.sys_role.deleted = 0 AND menu_id IN (1977,1978,1979,1980,1981,1982,1983,1984,1992,1993,1996,1997);
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, menu_id, cloud_flow_db.sys_role.tenant_id
+FROM cloud_flow_db.sys_role CROSS JOIN cloud_flow_db.sys_menu
+WHERE cloud_flow_db.sys_role.tenant_id = 100000 AND role_id IN (1,8,9,10,11)
+ AND cloud_flow_db.sys_role.status = '0' AND cloud_flow_db.sys_role.deleted = 0 AND menu_id IN (1994);
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, menu_id, cloud_flow_db.sys_role.tenant_id
+FROM cloud_flow_db.sys_role CROSS JOIN cloud_flow_db.sys_menu
+WHERE cloud_flow_db.sys_role.tenant_id = 100000 AND role_id IN (1,3,4,8)
+ AND cloud_flow_db.sys_role.status = '0' AND cloud_flow_db.sys_role.deleted = 0 AND menu_id IN (1995);
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, menu_id, cloud_flow_db.sys_role.tenant_id
+FROM cloud_flow_db.sys_role CROSS JOIN cloud_flow_db.sys_menu
+WHERE cloud_flow_db.sys_role.tenant_id = 100000 AND role_id IN (1,2,3,7)
+ AND cloud_flow_db.sys_role.status = '0' AND cloud_flow_db.sys_role.deleted = 0 AND menu_id IN (1998,1999);
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, menu_id, cloud_flow_db.sys_role.tenant_id
+FROM cloud_flow_db.sys_role CROSS JOIN cloud_flow_db.sys_menu
+WHERE cloud_flow_db.sys_role.tenant_id = 100000 AND role_id IN (1,2,7)
+ AND cloud_flow_db.sys_role.status = '0' AND cloud_flow_db.sys_role.deleted = 0 AND menu_id IN (2000);
+DROP TEMPORARY TABLE h5_report_guard;
+
+CREATE TEMPORARY TABLE h5_tenant_package_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO h5_tenant_package_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1970 AND 1972 OR perms LIKE 'system:tenant-package:%';
+INSERT INTO h5_tenant_package_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 6 AND visible = '0' AND status = '0';
+INSERT INTO h5_tenant_package_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND role_id = 1 AND role_key = 'admin' AND status = '0' AND deleted = 0;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1970, '租户套餐', 6, 30, '/system/tenant-packages', 'pages/system/TenantPackagePage', NULL, 0, 0, 'C', '0', '0', 'system:tenant-package:list', 'Building2', 'seed', NOW(), '', NULL, 'H5：平台身份及五分钟内再认证，按套餐与原角色交集控制功能'),
+ (1971, '管理租户套餐', 1970, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:tenant-package:manage', '#', 'seed', NOW(), '', NULL, 'H5：明确选择功能和配额，模板修改不自动同步租户'),
+ (1972, '确认批量套餐同步', 1970, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:tenant-package:sync', '#', 'seed', NOW(), '', NULL, 'H5：逐户预览、原操作者及摘要确认，保留覆盖与已应用项');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 1, menu_id, 100000 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1970 AND 1972;
+DROP TEMPORARY TABLE h5_tenant_package_guard;
+
+CREATE TEMPORARY TABLE g4_im_config_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO g4_im_config_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id BETWEEN 1780 AND 1799 OR perms LIKE 'system:im:%';
+INSERT INTO g4_im_config_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id BETWEEN 1780 AND 1799;
+INSERT INTO g4_im_config_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 6 AND visible = '0' AND status = '0';
+INSERT INTO g4_im_config_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND role_id = 1 AND role_key = 'admin' AND status = '0' AND deleted = 0;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1780, '企业通信配置', 6, 31, '/system/im/config', 'pages/system/ImConfigPage', NULL, 0, 0, 'C', '0', '0', 'system:im:config:list', 'MessageSquare', 'seed', NOW(), '', NULL, 'G4：本租户管理员与套餐交集，独立配置和停用原因'),
+ (1781, '管理通信配置', 1780, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:im:config:manage', '#', 'seed', NOW(), '', NULL, 'G4：四项密钥独立动作、版本控制和事务审计'),
+ (1782, '测试通信连接', 1780, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:im:config:test', '#', 'seed', NOW(), '', NULL, 'G4：真实验证凭据，不返回访问令牌，不自动启用业务'),
+ (1783, '预览组织同步', 1785, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:im:sync:preview', '#', 'seed', NOW(), '', NULL, 'G4：显式范围、完整读取和加密报告，不执行组织写入'),
+ (1784, '执行组织同步', 1785, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:im:sync:run', '#', 'seed', NOW(), '', NULL, 'G4：确认精确版本与摘要，逐批复核管理员及套餐权限，安全清理后完成'),
+ (1785, '通信同步记录', 6, 32, '/system/im/sync', 'pages/system/ImSyncPage', NULL, 0, 0, 'C', '0', '0', 'system:im:sync:list', 'History', 'seed', NOW(), '', NULL, 'G4：本租户管理员与套餐交集，独立读取预览与失败记录');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 1, menu_id, 100000 FROM cloud_flow_db.sys_menu WHERE menu_id IN (1780, 1781, 1782, 1783, 1784, 1785);
+DROP TEMPORARY TABLE g4_im_config_guard;
+
+CREATE TEMPORARY TABLE g4_im_recovery_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO g4_im_recovery_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_job WHERE job_id = 1784 OR handler_name = 'imSyncRecovery';
+INSERT INTO g4_im_recovery_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_job_handler WHERE handler_id = 1784 OR handler_name = 'imSyncRecovery';
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time, update_by, update_time)
+VALUES (1784, 'auth', 'imSyncRecovery', '恢复已确认的组织同步及已提交变更的安全清理', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW());
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, retry_interval_sec, dispatch_retry_count,
+  dispatch_retry_interval_sec, timeout_seconds, lock_time_seconds, critical_flag, log_success_flag,
+  alarm_on_fail_flag, create_by, create_time, update_by, update_time)
+VALUES (1784,100000,'已确认组织同步恢复','AUTH','auth','imSyncRecovery','FIXED_DELAY',NULL,60000,
+ 'ENABLED',0,'IGNORE',0,60,3,10,240,300,0,0,1,'seed',NOW(),'seed',NOW());
+DROP TEMPORARY TABLE g4_im_recovery_guard;
+
+CREATE TEMPORARY TABLE g4_im_callback_recovery_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO g4_im_callback_recovery_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_job WHERE job_id = 1785 OR handler_name = 'imCallbackRecovery';
+INSERT INTO g4_im_callback_recovery_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_job_handler WHERE handler_id = 1785 OR handler_name = 'imCallbackRecovery';
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time, update_by, update_time)
+VALUES (1785, 'auth', 'imCallbackRecovery', '处理已验签持久回调并按事件审批历史恢复结果', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW());
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, retry_interval_sec, dispatch_retry_count,
+  dispatch_retry_interval_sec, timeout_seconds, lock_time_seconds, critical_flag, log_success_flag,
+  alarm_on_fail_flag, create_by, create_time, update_by, update_time)
+VALUES (1785,100000,'企业微信审批回调处理','AUTH','auth','imCallbackRecovery','FIXED_DELAY',NULL,10000,
+ 'ENABLED',0,'IGNORE',0,60,3,10,240,300,0,0,1,'seed',NOW(),'seed',NOW());
+DROP TEMPORARY TABLE g4_im_callback_recovery_guard;
+
+CREATE TEMPORARY TABLE g4_im_todo_recovery_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO g4_im_todo_recovery_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_job WHERE job_id = 1786 OR handler_name = 'imTodoRecovery';
+INSERT INTO g4_im_todo_recovery_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_job_handler WHERE handler_id = 1786 OR handler_name = 'imTodoRecovery';
+INSERT INTO cloud_flow_db.sys_job_handler
+ (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time, update_by, update_time)
+VALUES (1786, 'auth', 'imTodoRecovery', '扫描实际待办并恢复企业微信卡片投递状态', 'ONLINE', NOW(), 'seed', NOW(), 'seed', NOW());
+INSERT INTO cloud_flow_db.sys_job
+ (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression, interval_ms,
+  status, concurrent_flag, misfire_strategy, retry_count, retry_interval_sec, dispatch_retry_count,
+  dispatch_retry_interval_sec, timeout_seconds, lock_time_seconds, critical_flag, log_success_flag,
+  alarm_on_fail_flag, create_by, create_time, update_by, update_time)
+VALUES (1786,100000,'企业微信待办投递恢复','AUTH','auth','imTodoRecovery','FIXED_DELAY',NULL,10000,
+ 'ENABLED',0,'IGNORE',0,60,3,10,240,300,0,0,1,'seed',NOW(),'seed',NOW());
+DROP TEMPORARY TABLE g4_im_todo_recovery_guard;
+
+CREATE TEMPORARY TABLE g4_im_todo_menu_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO g4_im_todo_menu_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id = 1791 OR perms = 'system:im:todo:reconcile';
+INSERT INTO g4_im_todo_menu_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id = 1791;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES (1791, '待办卡片对账', 1780, 3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:im:todo:reconcile', '#', 'seed', NOW(), '', NULL, 'G4：本租户管理员与套餐交集，核对当前任务状态并更新卡片，不直接审批或重复使用结果未知的回执');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id) VALUES (1, 1791, 100000);
+DROP TEMPORARY TABLE g4_im_todo_menu_guard;
+
+CREATE TEMPORARY TABLE g4_im_self_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO g4_im_self_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id IN (1788,1789,1790) OR perms IN ('system:im:binding:mine','system:im:binding:bind','system:im:binding:unbind');
+INSERT INTO g4_im_self_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id IN (1788,1789,1790);
+INSERT INTO g4_im_self_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 2 AND visible = '0' AND status = '0';
+INSERT INTO g4_im_self_guard
+SELECT COUNT(*) = 11 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND role_id IN (1,2,3,4,5,6,7,8,9,10,11) AND status = '0' AND deleted = 0;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1788, '我的通信绑定', 2, 35, '/workspace/im-bindings', 'pages/ImBindingMinePage', NULL, 0, 0, 'C', '0', '0', 'system:im:binding:mine', 'Link2', 'seed', NOW(), '', NULL, 'G4：仅本人查看，企业微信登录随本功能受套餐控制，未配置明确停用'),
+ (1789, '绑定本人通信账号', 1788, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:im:binding:bind', '#', 'seed', NOW(), '', NULL, 'G4：本人密码及已登记动态码、企业微信身份和最终确认，不能代他人绑定'),
+ (1790, '解绑本人通信账号', 1788, 2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:im:binding:unbind', '#', 'seed', NOW(), '', NULL, 'G4：本人重新验证与当前绑定版本核对，组织同步来源仅管理员通过管理入口解除');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, menu_id, cloud_flow_db.sys_role.tenant_id
+FROM cloud_flow_db.sys_role CROSS JOIN cloud_flow_db.sys_menu
+WHERE cloud_flow_db.sys_role.tenant_id = 100000 AND role_id IN (1,2,3,4,5,6,7,8,9,10,11)
+ AND cloud_flow_db.sys_role.status = '0' AND cloud_flow_db.sys_role.deleted = 0 AND menu_id IN (1788,1789,1790);
+DROP TEMPORARY TABLE g4_im_self_guard;
+
+CREATE TEMPORARY TABLE g4_im_management_guard (accepted TINYINT NOT NULL CHECK (accepted = 1));
+INSERT INTO g4_im_management_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_menu WHERE menu_id IN (1786,1787) OR perms IN ('system:im:binding:list','system:im:binding:manage');
+INSERT INTO g4_im_management_guard
+SELECT COUNT(*) = 0 FROM cloud_flow_db.sys_role_menu WHERE menu_id IN (1786,1787);
+INSERT INTO g4_im_management_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_menu WHERE menu_id = 6 AND visible = '0' AND status = '0';
+INSERT INTO g4_im_management_guard
+SELECT COUNT(*) = 1 FROM cloud_flow_db.sys_role WHERE tenant_id = 100000 AND role_id = 1 AND role_key = 'admin' AND status = '0' AND deleted = 0;
+INSERT INTO cloud_flow_db.sys_menu
+ (menu_id, menu_name, parent_id, order_num, path, component, query, is_frame, is_cache,
+  menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES
+ (1786, '通信用户映射', 6, 33, '/system/im/bindings', 'pages/system/ImBindingPage', NULL, 0, 0, 'C', '0', '0', 'system:im:binding:list', 'Link2', 'seed', NOW(), '', NULL, 'G4：本租户管理员与套餐交集，查询通信绑定及停止管理记录'),
+ (1787, '管理通信映射', 1786, 1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:im:binding:manage', '#', 'seed', NOW(), '', NULL, 'G4：管理员重新验证后解除绑定或重新纳入，保留本地账号和事务审计');
+INSERT INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 1, menu_id, 100000 FROM cloud_flow_db.sys_menu WHERE menu_id IN (1786,1787);
+DROP TEMPORARY TABLE g4_im_management_guard;
+
+INSERT INTO cloud_flow_db.sys_message_template
+ (tenant_id,template_code,template_name,channel_type,biz_module,message_category,title_template,content_template,
+  params_declare,force_send_flag,dedupe_window_sec,link_url_template,status,deleted,version,create_by,create_time,update_by,update_time)
+SELECT tenant.tenant_id,notice.template_code,notice.template_name,'WECOM','system','SYSTEM','${title}','${content}',
+ notice.params_declare,0,300,notice.link_url_template,'ENABLED',0,0,'seed',NOW(),'seed',NOW()
+FROM cloud_flow_db.sys_tenant tenant
+CROSS JOIN (
+ SELECT 'IM_NOTICE_TEXT' AS template_code,'企业微信文本通知' AS template_name,
+  '[{"name":"title","required":true},{"name":"content","required":true}]' AS params_declare,NULL AS link_url_template
+ UNION ALL
+ SELECT 'IM_NOTICE_DETAIL','企业微信详情通知',
+  '[{"name":"title","required":true},{"name":"content","required":true},{"name":"detailPath","required":true}]','${detailPath}'
+) notice
+WHERE tenant.tenant_id > 0 AND tenant.deleted=0 AND tenant.status='0'
+ AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_message_template existing
+  WHERE existing.tenant_id=tenant.tenant_id AND existing.template_code=notice.template_code
+   AND existing.channel_type='WECOM' AND existing.deleted=0);
+
+INSERT IGNORE INTO cloud_flow_db.sys_job_handler
+    (handler_id, service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+VALUES (1658, 'oa', 'oaProjectCostRecalculate', '项目工时与成本全量重算', 'ONLINE', NOW(), 'seed', NOW());
+INSERT IGNORE INTO cloud_flow_db.sys_job
+    (job_id, tenant_id, job_name, job_group, service_name, handler_name, trigger_type, cron_expression, interval_ms,
+     status, concurrent_flag, misfire_strategy, retry_count, timeout_seconds, lock_time_seconds, alarm_on_fail_flag, create_by, create_time)
+VALUES (1658, 100000, '项目工时与成本全量重算', 'OA', 'oa', 'oaProjectCostRecalculate', 'CRON', '0 45 2 * * ?', NULL,
+        'ENABLED', 0, 'IGNORE', 0, 1800, 1800, 1, 'seed', NOW());
+
+-- h2-referral-employment-job:start
+INSERT INTO cloud_flow_db.sys_job_handler
+    (service_name, handler_name, handler_desc, status, last_report_time, create_by, create_time)
+SELECT 'hr', 'hrReferralEmployment', '员工内推入职生效扫描', 'OFFLINE', NULL, 'seed', NOW()
+WHERE NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_job_handler WHERE service_name='hr' AND handler_name='hrReferralEmployment');
+
+INSERT INTO cloud_flow_db.sys_job
+    (tenant_id, job_name, job_group, service_name, handler_name, handler_param, trigger_type, cron_expression,
+     status, concurrent_flag, misfire_strategy, timeout_seconds, lock_time_seconds, log_success_flag,
+     alarm_on_fail_flag, create_by, create_time)
+SELECT 100000, '员工内推入职生效扫描', 'HR', 'hr', 'hrReferralEmployment', '', 'CRON', '0 */5 * * * ?',
+       'ENABLED', 0, 'IGNORE', 240, 240, 1, 1, 'seed', NOW()
+WHERE NOT EXISTS (SELECT 1 FROM cloud_flow_db.sys_job WHERE service_name='hr' AND handler_name='hrReferralEmployment');
+-- h2-referral-employment-job:end

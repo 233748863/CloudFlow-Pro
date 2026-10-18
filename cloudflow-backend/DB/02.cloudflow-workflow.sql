@@ -88,6 +88,7 @@ CREATE TABLE `wf_process_category` (
 --
 DROP TABLE IF EXISTS wf_form_definition;
 CREATE TABLE wf_form_definition (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '版本记录ID',
   form_id           VARCHAR(64)     NOT NULL COMMENT '表单ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   form_name         VARCHAR(64)     NOT NULL COMMENT '表单名称',
@@ -96,11 +97,19 @@ CREATE TABLE wf_form_definition (
   form_schema       LONGTEXT COMMENT '表单Schema',
   status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态',
   version           INT             DEFAULT 1 COMMENT '版本号',
-  lock_version      INT             DEFAULT 1 COMMENT '乐观锁版本号',
-  version_lock      INT             DEFAULT 0 COMMENT '版本锁',
+  version_lock      INT             NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   is_latest         TINYINT(1)      DEFAULT 1 COMMENT '是否最新版本',
+  checksum          VARCHAR(64)     DEFAULT NULL COMMENT '字段定义哈希',
+  change_log        VARCHAR(500)    DEFAULT NULL COMMENT '变更说明',
+  change_type       VARCHAR(30)     DEFAULT NULL COMMENT '变更类型',
+  is_rollback       TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '是否回滚产生',
+  rollback_from_version INT         DEFAULT NULL COMMENT '回滚来源版本',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
-  PRIMARY KEY (form_id),
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_form_version (tenant_id, form_id, version),
+  UNIQUE KEY uk_form_key_version (tenant_id, form_key, version),
+  KEY idx_form_latest (tenant_id, form_id, is_latest),
+  KEY idx_form_key_latest (tenant_id, form_key, is_latest),
   KEY idx_form_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='表单定义表';
 
@@ -114,13 +123,14 @@ CREATE TABLE wf_process_instance (
   instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   process_def_key   VARCHAR(64)     NOT NULL COMMENT '流程定义Key',
+  form_version      INT             DEFAULT NULL COMMENT '发起时绑定的表单版本',
   definition_id     VARCHAR(64)     DEFAULT NULL COMMENT '流程定义ID',
   business_key      VARCHAR(64)     NOT NULL COMMENT '业务主键',
   title             VARCHAR(255)    DEFAULT NULL COMMENT '标题',
   lock_version      INT             DEFAULT 1 COMMENT '乐观锁版本号',
   start_user_id     BIGINT(20)      NOT NULL COMMENT '发起人ID',
-  start_user_name   VARCHAR(64)     DEFAULT NULL COMMENT '发起人姓名',
-  status            VARCHAR(20)     DEFAULT 'RUNNING' COMMENT '状态',
+  start_user_name   VARCHAR(100)    DEFAULT NULL COMMENT '发起人姓名',
+  status            VARCHAR(20)     DEFAULT 'RUNNING' COMMENT '实例状态：DRAFT/RUNNING/PASSED/AUTO_PASSED/REJECTED/TERMINATED/INVALIDATED/CANCELLED/WITHDRAWN/TASK_BACK/PAUSED/RESTARTED/PENDING/FAILED',
   starter_left      TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '发起人是否已离职(0否 1是)',
   start_time        DATETIME        DEFAULT NULL COMMENT '开始时间',
   end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
@@ -159,9 +169,16 @@ CREATE TABLE wf_task (
   node_key          VARCHAR(64)     NOT NULL COMMENT '节点Key',
   node_name         VARCHAR(64)     NOT NULL COMMENT '节点名称',
   assignee          BIGINT(20)      DEFAULT NULL COMMENT '处理人ID',
-  assignee_name     VARCHAR(64)     DEFAULT NULL COMMENT '处理人姓名',
+  assignee_name     VARCHAR(100)    DEFAULT NULL COMMENT '处理人姓名',
   proxy_user_id     BIGINT(20)      DEFAULT NULL COMMENT '代理人ID',
+  agent_setting_id  VARCHAR(64)     DEFAULT NULL COMMENT '服务器关联的代理设置ID',
+  execution_context JSON           DEFAULT NULL COMMENT '服务器持久执行上下文，禁止客户端写入',
+  disabled_from_user_id BIGINT(20)  DEFAULT NULL COMMENT '账号停用释放前处理人ID',
+  disabled_from_user_name VARCHAR(100) DEFAULT NULL COMMENT '账号停用释放前处理人姓名',
+  disabled_release_version INT     DEFAULT NULL COMMENT '账号停用释放后任务版本',
+  disabled_release_event_id VARCHAR(64) DEFAULT NULL COMMENT '账号停用释放来源事件ID',
   candidate_roles   VARCHAR(255)    DEFAULT NULL COMMENT '候选角色',
+  task_type         VARCHAR(30)     NOT NULL DEFAULT 'APPROVAL' COMMENT '任务语义类型',
   status            VARCHAR(20)     DEFAULT 'TODO' COMMENT '状态',
   lock_version      INT             DEFAULT 1 COMMENT '乐观锁版本号',
   priority          VARCHAR(20)     DEFAULT 'NORMAL' COMMENT '优先级',
@@ -172,6 +189,7 @@ CREATE TABLE wf_task (
   KEY idx_assignee (assignee),
   KEY idx_instance (instance_id),
   KEY idx_task_tenant (tenant_id),
+  KEY idx_disabled_handover (tenant_id, disabled_from_user_id, status),
   KEY idx_assignee_status (assignee, status),
   KEY idx_instance_status (instance_id, status),
   KEY idx_status (status),
@@ -189,8 +207,11 @@ CREATE TABLE wf_task_history (
   node_name         VARCHAR(64)     DEFAULT NULL COMMENT '节点名称',
   node_key          VARCHAR(64)     DEFAULT NULL COMMENT '节点Key',
   operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
-  operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '操作人姓名',
+  operator_name     VARCHAR(100)    DEFAULT NULL COMMENT '操作人姓名',
+  on_behalf_of_user_id BIGINT(20)   DEFAULT NULL COMMENT '代理操作归属的被代理人ID',
+  on_behalf_of_user_name VARCHAR(100) DEFAULT NULL COMMENT '被代理人姓名快照',
   action            VARCHAR(64)     DEFAULT NULL COMMENT '操作动作',
+  task_type         VARCHAR(30)     NOT NULL DEFAULT 'APPROVAL' COMMENT '任务语义类型',
   comment           VARCHAR(1000)   DEFAULT NULL COMMENT '处理意见(预留系统拼接前缀余量)',
   duration_seconds  INT             DEFAULT NULL COMMENT '处理耗时秒数',
   variables_changed TEXT COMMENT '变量变更内容',
@@ -237,13 +258,14 @@ DROP TABLE IF EXISTS wf_task_attachment;
 CREATE TABLE wf_task_attachment (
   attachment_id     VARCHAR(64)     NOT NULL COMMENT '附件ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  task_id           VARCHAR(64)     NOT NULL COMMENT '任务ID',
+  task_id           VARCHAR(64)     DEFAULT NULL COMMENT '任务ID(流程级附件可为空)',
   instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
   file_name         VARCHAR(255)    NOT NULL COMMENT '文件名称',
   file_path         VARCHAR(500)    NOT NULL COMMENT '文件路径',
   file_size         BIGINT          DEFAULT 0 COMMENT '文件大小',
   file_type         VARCHAR(50)     DEFAULT NULL COMMENT '文件类型',
   upload_user_id    BIGINT(20)      DEFAULT NULL COMMENT '上传人ID',
+  uploader_name     VARCHAR(100)    DEFAULT NULL COMMENT '上传人姓名',
   upload_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
   PRIMARY KEY (attachment_id),
   KEY idx_task_id (task_id),
@@ -255,15 +277,19 @@ DROP TABLE IF EXISTS wf_task_delegation;
 CREATE TABLE wf_task_delegation (
   delegation_id     VARCHAR(64)     NOT NULL COMMENT '委派ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  task_id           VARCHAR(64)     NOT NULL COMMENT '任务ID',
-  instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
+  task_id           VARCHAR(64)     DEFAULT NULL COMMENT '任务ID(审批代理可为空)',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID(审批代理可为空)',
   from_user_id      BIGINT(20)      NOT NULL COMMENT '原处理人ID',
-  from_user_name    VARCHAR(64)     DEFAULT NULL COMMENT '原处理人姓名',
+  from_user_name    VARCHAR(100)    DEFAULT NULL COMMENT '原处理人姓名',
   to_user_id        BIGINT(20)      NOT NULL COMMENT '目标处理人ID',
-  to_user_name      VARCHAR(64)     DEFAULT NULL COMMENT '目标处理人姓名',
-  delegation_type   VARCHAR(20)     DEFAULT 'DELEGATE' COMMENT '委派类型',
+  to_user_name      VARCHAR(100)    DEFAULT NULL COMMENT '目标处理人姓名',
+  delegation_type   VARCHAR(20)     DEFAULT 'DELEGATE' COMMENT '委派类型(DELEGATE/DELEGATE_RETURN/PROXY/TRANSFER)',
+  agent_mode        VARCHAR(20)     DEFAULT 'DELEGATE' COMMENT '模式：DELEGATE委派/AGENT代理/AGENT_ASSIST协办',
+  setting_id        VARCHAR(64)     DEFAULT NULL COMMENT '代理设置来源ID，普通委派为空',
   reason            VARCHAR(500)    DEFAULT NULL COMMENT '原因',
-  status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态',
+  status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/COMPLETED/CANCELLED)',
+  start_time        DATETIME        DEFAULT NULL COMMENT '开始时间',
+  end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
   version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (delegation_id),
@@ -273,12 +299,39 @@ CREATE TABLE wf_task_delegation (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务委派表';
 
 --
+DROP TABLE IF EXISTS wf_agent_setting;
+CREATE TABLE wf_agent_setting (
+  setting_id          VARCHAR(64) NOT NULL COMMENT '代理设置ID',
+  tenant_id           BIGINT(20) NOT NULL COMMENT '租户ID',
+  principal_user_id   BIGINT(20) NOT NULL COMMENT '被代理人用户ID',
+  agent_user_id       BIGINT(20) NOT NULL COMMENT '代理人用户ID',
+  agent_mode          VARCHAR(20) NOT NULL COMMENT 'AGENT或AGENT_ASSIST',
+  definition_ids      JSON DEFAULT NULL COMMENT '适用的已发布流程定义ID集合，空集合表示全部',
+  start_time          DATETIME NOT NULL COMMENT '生效时间，含此刻',
+  end_time            DATETIME NOT NULL COMMENT '失效时间，不含此刻',
+  reason              VARCHAR(500) DEFAULT NULL COMMENT '代理原因',
+  status              VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE或DISABLED',
+  version             INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本',
+  create_by           VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  create_time         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by           VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  update_time         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (setting_id),
+  KEY idx_agent_principal (tenant_id, principal_user_id, status, start_time, end_time),
+  KEY idx_agent_delegate (tenant_id, agent_user_id, status),
+  CONSTRAINT chk_agent_window CHECK (end_time > start_time),
+  CONSTRAINT chk_agent_mode CHECK (agent_mode IN ('AGENT','AGENT_ASSIST')),
+  CONSTRAINT chk_agent_distinct CHECK (principal_user_id <> agent_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户代理设置';
+
 DROP TABLE IF EXISTS wf_task_candidate;
 CREATE TABLE wf_task_candidate (
   candidate_id      VARCHAR(64)     NOT NULL COMMENT '候选记录ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  task_id           VARCHAR(64)     NOT NULL COMMENT '任务ID',
+  task_id           VARCHAR(64)     DEFAULT NULL COMMENT '任务ID，发起时选人尚未产生任务可为空',
   instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
+  node_key          VARCHAR(64)     DEFAULT NULL COMMENT '节点Key，发起时选人的节点归属',
+  source            VARCHAR(30)     NOT NULL DEFAULT 'NODE_CONFIG' COMMENT '来源：NODE_CONFIG/INITIATOR_SELECTED/ADD_SIGN',
   user_id           BIGINT(20)      NOT NULL COMMENT '候选用户ID',
   user_name         VARCHAR(100)    DEFAULT NULL COMMENT '候选用户姓名',
   candidate_type    VARCHAR(20)     NOT NULL COMMENT '候选人类型',
@@ -290,7 +343,8 @@ CREATE TABLE wf_task_candidate (
   KEY idx_task_id (task_id),
   KEY idx_instance_id (instance_id),
   KEY idx_user_status (tenant_id, user_id, status),
-  KEY idx_task_status (tenant_id, task_id, status)
+  KEY idx_task_status (tenant_id, task_id, status),
+  KEY idx_candidate_node_source (tenant_id, instance_id, node_key, source)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务候选人表';
 
 --
@@ -304,7 +358,7 @@ CREATE TABLE wf_task_add_sign (
   sign_user_ids     VARCHAR(500)    NOT NULL COMMENT '加签用户ID列表',
   sign_user_names   VARCHAR(500)    DEFAULT NULL COMMENT '加签用户姓名列表',
   initiator_id      BIGINT(20)      NOT NULL COMMENT '发起操作人ID',
-  initiator_name    VARCHAR(64)     DEFAULT NULL COMMENT '发起操作人姓名',
+  initiator_name    VARCHAR(100)    DEFAULT NULL COMMENT '发起操作人姓名',
   reason            VARCHAR(500)    DEFAULT NULL COMMENT '原因',
   status            VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态',
   version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
@@ -334,6 +388,10 @@ CREATE TABLE wf_countersign_task (
   voted_count       INT             DEFAULT 0 COMMENT '已投票数',
   approve_count     INT             DEFAULT 0 COMMENT '同意数',
   reject_count      INT             DEFAULT 0 COMMENT '拒绝数',
+  total_weight      DECIMAL(10,2)   DEFAULT NULL COMMENT '总权重',
+  approve_weight    DECIMAL(10,2)   NOT NULL DEFAULT 0.00 COMMENT '同意权重累计',
+  reject_weight     DECIMAL(10,2)   NOT NULL DEFAULT 0.00 COMMENT '反对权重累计',
+  pass_weight       DECIMAL(10,2)   DEFAULT NULL COMMENT '通过所需权重阈值',
   status            VARCHAR(20)     DEFAULT 'VOTING' COMMENT '状态',
   version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   assignee_order    TEXT            DEFAULT NULL COMMENT '处理人顺序',
@@ -353,8 +411,9 @@ CREATE TABLE wf_countersign_vote (
   countersign_id    VARCHAR(64)     NOT NULL COMMENT '会签ID',
   task_id           VARCHAR(64)     DEFAULT NULL COMMENT '任务ID',
   voter_id          BIGINT(20)      NOT NULL COMMENT '投票人ID',
-  voter_name        VARCHAR(64)     DEFAULT NULL COMMENT '投票人姓名',
-  vote_result       VARCHAR(20)     NOT NULL COMMENT '投票结果',
+  voter_name        VARCHAR(100)    DEFAULT NULL COMMENT '投票人姓名',
+  vote_result       VARCHAR(20)     NOT NULL COMMENT 'APPROVE/REJECT;票权快照PENDING/REMOVED/AUTO_PASS/AUTO_REJECT',
+  vote_weight       DECIMAL(6,2)    NOT NULL DEFAULT 1.00 COMMENT '投票权重',
   comment           VARCHAR(1000)   DEFAULT NULL COMMENT '处理意见(预留系统拼接前缀余量)',
   vote_time         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '投票时间',
   PRIMARY KEY (vote_id),
@@ -393,16 +452,16 @@ CREATE TABLE wf_node_record (
   process_def_key   VARCHAR(64)     DEFAULT NULL COMMENT '流程定义Key',
   node_key          VARCHAR(64)     NOT NULL COMMENT '节点Key',
   node_name         VARCHAR(128)    DEFAULT NULL COMMENT '节点名称',
-  node_type         VARCHAR(32)     DEFAULT NULL COMMENT '节点类型',
+  node_type         VARCHAR(32)     DEFAULT NULL COMMENT '节点类型(APPROVAL/START)',
   status            VARCHAR(20)     DEFAULT 'RUNNING' COMMENT '状态',
   version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   executor_id       BIGINT(20)      DEFAULT NULL COMMENT '执行人ID',
-  executor_name     VARCHAR(64)     DEFAULT NULL COMMENT '执行人姓名',
+  executor_name     VARCHAR(100)    DEFAULT NULL COMMENT '执行人姓名',
   start_time        DATETIME        DEFAULT NULL COMMENT '开始时间',
   end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
   duration_ms       BIGINT(20)      DEFAULT NULL COMMENT '耗时毫秒数',
   extra_data        TEXT            DEFAULT NULL COMMENT '扩展数据',
-  event_type        VARCHAR(32)     DEFAULT NULL COMMENT '事件类型',
+  event_type        VARCHAR(32)     DEFAULT NULL COMMENT '事件类型(NODE_COMPLETED/NODE_CREATED)',
   event_time        DATETIME        DEFAULT NULL COMMENT '事件时间',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
@@ -441,7 +500,7 @@ CREATE TABLE wf_deploy_window (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   window_name       VARCHAR(100)    NOT NULL COMMENT '窗口名称',
-  window_type       VARCHAR(20)     NOT NULL COMMENT '窗口类型',
+  window_type       VARCHAR(20)     NOT NULL COMMENT '窗口类型(DAILY/WEEKLY/MONTHLY/CUSTOM)',
   start_time        TIME            NOT NULL COMMENT '开始时间',
   end_time          TIME            NOT NULL COMMENT '结束时间',
   week_days         VARCHAR(50)     DEFAULT NULL COMMENT '星期几',
@@ -476,7 +535,7 @@ CREATE TABLE wf_deploy_record (
   version           INT             NOT NULL COMMENT '版本号',
   deploy_status     VARCHAR(20)     DEFAULT 'SUCCESS' COMMENT '发布状态',
   deploy_by         BIGINT(20)      NOT NULL COMMENT '发布人ID',
-  deployer_name     VARCHAR(64)     DEFAULT NULL COMMENT '发布人姓名',
+  deployer_name     VARCHAR(100)    DEFAULT NULL COMMENT '发布人姓名',
   deploy_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
   deploy_note       VARCHAR(500)    DEFAULT NULL COMMENT '发布说明',
   change_log        TEXT COMMENT '变更日志',
@@ -532,9 +591,9 @@ CREATE TABLE wf_deploy_approval_step (
   approval_id        BIGINT(20)      NOT NULL COMMENT '审批ID',
   step_no            INT             NOT NULL COMMENT '步骤序号',
   step_name          VARCHAR(100)    DEFAULT NULL COMMENT '步骤名称',
-  approver_type      VARCHAR(20)     NOT NULL COMMENT '审批人类型',
+  approver_type      VARCHAR(20)     NOT NULL COMMENT '审批人类型(USER/ROLE/DEPT)',
   approver_ids       VARCHAR(500)    NOT NULL COMMENT '审批人ID列表',
-  approval_mode      VARCHAR(20)     DEFAULT 'ANY' COMMENT '审批模式',
+  approval_mode      VARCHAR(20)     DEFAULT 'ANY' COMMENT '审批模式(ANY/ALL/SEQUENCE)',
   step_status        VARCHAR(20)     DEFAULT 'PENDING' COMMENT '步骤状态',
   actual_approver_id BIGINT(20)      DEFAULT NULL COMMENT '实际审批人ID',
   approval_comment   VARCHAR(500)    DEFAULT NULL COMMENT '审批意见',
@@ -554,8 +613,8 @@ CREATE TABLE wf_deploy_notification (
   id                   BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id            BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   deploy_id            BIGINT(20)      NOT NULL COMMENT '发布记录ID',
-  notification_type    VARCHAR(20)     NOT NULL COMMENT '通知类型',
-  recipient_type       VARCHAR(20)     NOT NULL COMMENT '接收人类型',
+  notification_type    VARCHAR(20)     NOT NULL COMMENT '通知类型(EMAIL/SMS/WEBSOCKET/WECHAT)',
+  recipient_type       VARCHAR(20)     NOT NULL COMMENT '接收人类型(USER/ROLE/DEPT/ALL)',
   recipient_ids        VARCHAR(500)    NOT NULL COMMENT '接收人ID列表',
   notification_title   VARCHAR(200)    DEFAULT NULL COMMENT '通知标题',
   notification_content TEXT            DEFAULT NULL COMMENT '通知内容',
@@ -572,84 +631,22 @@ CREATE TABLE wf_deploy_notification (
 
 -- C6: wf_process_version_snapshot 已下线(版本体系统一到 wf_process_definition 多版本行,回滚直接引用历史版本行)
 
--- =========================================================
---
--- =========================================================
-
---
-DROP TABLE IF EXISTS wf_notice;
-CREATE TABLE wf_notice (
-  notice_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '通知ID',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  notice_title      VARCHAR(50)     NOT NULL COMMENT '通知标题',
-  notice_type       CHAR(1)         NOT NULL COMMENT '通知类型',
-  notice_content    VARCHAR(500)    DEFAULT NULL COMMENT '通知内容',
-  sender_id         BIGINT(20)      DEFAULT NULL COMMENT '发送人ID',
-  recipient_id      BIGINT(20)      NOT NULL COMMENT '接收人ID',
-  status            CHAR(1)         DEFAULT '0' COMMENT '状态',
-  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
-  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建人',
-  create_time       DATETIME COMMENT '创建时间',
-  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新人',
-  update_time       DATETIME COMMENT '更新时间',
-  remark            VARCHAR(255)    DEFAULT NULL COMMENT '备注',
-  PRIMARY KEY (notice_id)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COMMENT='系统通知表';
-
---
-DROP TABLE IF EXISTS wf_notification_log;
-CREATE TABLE wf_notification_log (
-  log_id            VARCHAR(64)     NOT NULL COMMENT '日志ID',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  notification_type VARCHAR(20)     NOT NULL COMMENT '通知类型',
-  recipient_id      BIGINT(20)      NOT NULL COMMENT '接收人ID',
-  recipient_name    VARCHAR(64)     DEFAULT NULL COMMENT '接收人姓名',
-  title             VARCHAR(200)    DEFAULT NULL COMMENT '标题',
-  content           TEXT COMMENT '内容',
-  send_status       VARCHAR(20)     DEFAULT 'PENDING' COMMENT '发送状态',
-  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
-  send_time         DATETIME        DEFAULT NULL COMMENT '发送时间',
-  error_message     TEXT COMMENT '错误信息',
-  related_type      VARCHAR(50)     DEFAULT NULL COMMENT '关联类型',
-  related_id        VARCHAR(64)     DEFAULT NULL COMMENT '关联ID',
-  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  PRIMARY KEY (log_id),
-  KEY idx_recipient (recipient_id),
-  KEY idx_send_status (send_status),
-  KEY idx_create_time (create_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通知日志表';
-
---
-DROP TABLE IF EXISTS wf_notification_config;
-CREATE TABLE wf_notification_config (
-  config_id         VARCHAR(64)     NOT NULL COMMENT '配置ID',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  config_name       VARCHAR(100)    NOT NULL COMMENT '配置名称',
-  event_type        VARCHAR(50)     NOT NULL COMMENT '事件类型',
-  notify_channel    VARCHAR(20)     NOT NULL COMMENT '通知渠道',
-  template_id       VARCHAR(64)     DEFAULT NULL COMMENT '模板ID',
-  recipient_type    VARCHAR(20)     DEFAULT NULL COMMENT '接收人类型',
-  recipient_value   VARCHAR(500)    DEFAULT NULL COMMENT '接收人值',
-  enabled           TINYINT(1)      DEFAULT 1 COMMENT '是否启用',
-  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (config_id),
-  KEY idx_event_type (event_type),
-  KEY idx_enabled (enabled)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通知配置表';
+-- 旧通知表已由统一消息中心（sys_message_*）替代，故不再建表。
 
 --
 DROP TABLE IF EXISTS wf_urge_effect;
 CREATE TABLE wf_urge_effect (
-  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  effect_id         VARCHAR(64)     NOT NULL COMMENT '催办效果ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  urge_id           VARCHAR(64)     NOT NULL COMMENT '催办ID',
   task_id           VARCHAR(64)     NOT NULL COMMENT '任务ID',
-  urge_count        INT             DEFAULT 0 COMMENT '催办次数',
-  first_urge_time   DATETIME        DEFAULT NULL COMMENT '首次催办时间',
-  last_urge_time    DATETIME        DEFAULT NULL COMMENT '最后催办时间',
-  task_complete_time DATETIME       DEFAULT NULL COMMENT '任务完成时间',
-  response_seconds  INT             DEFAULT NULL COMMENT '响应秒数',
-  PRIMARY KEY (id),
+  before_duration   BIGINT          DEFAULT NULL COMMENT '催办前处理时长(秒)',
+  after_duration    BIGINT          DEFAULT NULL COMMENT '催办后处理时长(秒)',
+  effectiveness     INT             DEFAULT NULL COMMENT '催办效果等级(1最低/5最高)',
+  urge_time         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '催办时间',
+  complete_time     DATETIME        DEFAULT NULL COMMENT '完成时间',
+  PRIMARY KEY (effect_id),
+  KEY idx_urge_id (urge_id),
   KEY idx_task_id (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='催办效果表';
 
@@ -664,7 +661,7 @@ CREATE TABLE wf_process_copy (
   `node_id`         VARCHAR(64)  DEFAULT NULL COMMENT '节点ID',
   `node_name`       VARCHAR(128) DEFAULT NULL COMMENT '节点名称',
   `start_user_id`   BIGINT       DEFAULT NULL COMMENT '发起人ID',
-  `start_user_name` VARCHAR(64)  DEFAULT NULL COMMENT '发起人姓名',
+  `start_user_name` VARCHAR(100) DEFAULT NULL COMMENT '发起人姓名',
   `user_id`         BIGINT       NOT NULL COMMENT '用户ID',
   `form_data`       TEXT         DEFAULT NULL COMMENT '表单数据',
   `is_read`         TINYINT      NOT NULL DEFAULT 0 COMMENT '是否已读',
@@ -686,11 +683,11 @@ CREATE TABLE wf_deploy_rollback_history (
   process_def_id    VARCHAR(64)     NOT NULL COMMENT '流程定义ID',
     from_version      INT             NOT NULL COMMENT '来源版本',
     to_version        INT             NOT NULL COMMENT '目标版本',
-    rollback_type     VARCHAR(20)     DEFAULT 'MANUAL' COMMENT '回滚类型',
+    rollback_type     VARCHAR(20)     DEFAULT 'MANUAL' COMMENT '回滚类型(MANUAL/AUTO)',
     rollback_status   VARCHAR(20)     DEFAULT 'SUCCESS' COMMENT '回滚状态',
     rollback_reason   VARCHAR(500)    DEFAULT NULL COMMENT '回滚原因',
     rollback_by       BIGINT(20)      NOT NULL COMMENT '回滚人ID',
-  rollback_by_name  VARCHAR(64)     DEFAULT NULL COMMENT '回滚人姓名',
+  rollback_by_name  VARCHAR(100)    DEFAULT NULL COMMENT '回滚人姓名',
   rollback_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '回滚时间',
   success           TINYINT(1)      DEFAULT 1 COMMENT '是否成功',
   error_message     TEXT            DEFAULT NULL COMMENT '错误信息',
@@ -707,8 +704,8 @@ CREATE TABLE wf_deploy_impact (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   deploy_id         BIGINT(20)      NOT NULL COMMENT '发布ID',
-  impact_type       VARCHAR(30)     NOT NULL COMMENT '影响类型',
-  impact_level      VARCHAR(20)     NOT NULL COMMENT '影响级别',
+  impact_type       VARCHAR(30)     NOT NULL COMMENT '影响类型(RUNNING_INSTANCE/PENDING_TASK/FORM_CHANGE/NODE_CHANGE)',
+  impact_level      VARCHAR(20)     NOT NULL COMMENT '影响级别(LOW/MEDIUM/HIGH/CRITICAL)',
   impact_count      INT             DEFAULT 0 COMMENT '影响数量',
   impact_detail     TEXT            DEFAULT NULL COMMENT '影响详情',
   mitigation_plan   TEXT            DEFAULT NULL COMMENT '缓解方案',
@@ -860,7 +857,7 @@ CREATE TABLE wf_task_monitor (
     total_duration BIGINT COMMENT '总耗时毫秒数',
     status VARCHAR(30) NOT NULL DEFAULT 'PENDING' COMMENT '状态',
     version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
-    action VARCHAR(30) COMMENT '操作动作',
+    action VARCHAR(30) COMMENT '操作动作(APPROVE/SUBMIT/URGE/DELEGATE/DISABLE/ESCALATE_REASSIGN/TRANSFER)',
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY uk_task_id (task_id),
@@ -878,7 +875,7 @@ CREATE TABLE wf_node_monitor (
     node_id VARCHAR(100) COMMENT '节点ID',
     node_key VARCHAR(100) COMMENT '节点Key',
     node_name VARCHAR(200) COMMENT '节点名称',
-    node_type VARCHAR(50) COMMENT '节点类型',
+    node_type VARCHAR(50) COMMENT '节点类型(APPROVAL/START)',
     start_time DATETIME NOT NULL COMMENT '开始时间',
     end_time DATETIME COMMENT '结束时间',
     duration BIGINT COMMENT '耗时毫秒数',
@@ -899,10 +896,10 @@ DROP TABLE IF EXISTS wf_timeout_alert;
 CREATE TABLE wf_timeout_alert (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
     tenant_id BIGINT COMMENT '租户ID',
-    alert_type VARCHAR(30) NOT NULL COMMENT '告警类型',
+    alert_type VARCHAR(30) NOT NULL COMMENT '告警类型(TASK/PROCESS)',
     target_id VARCHAR(64) NOT NULL COMMENT '目标ID',
     target_name VARCHAR(200) COMMENT '目标名称',
-    timeout_level VARCHAR(30) NOT NULL COMMENT '超时级别',
+    timeout_level VARCHAR(30) NOT NULL COMMENT '超时级别(REMIND/WARNING/CRITICAL)',
     timeout_duration BIGINT COMMENT '超时时长毫秒数',
     threshold BIGINT COMMENT '阈值毫秒数',
     assignee_id BIGINT COMMENT '处理人ID',
@@ -954,7 +951,7 @@ CREATE TABLE wf_escalation_log (
     instance_id VARCHAR(64) COMMENT '流程实例ID',
     biz_module VARCHAR(32) NOT NULL COMMENT '业务模块',
     level_no INT NOT NULL COMMENT '升级级别',
-    action_type VARCHAR(32) NOT NULL COMMENT '动作类型',
+    action_type VARCHAR(32) NOT NULL COMMENT '动作类型(ESCALATE/NOTIFY/REASSIGN)',
     action_target VARCHAR(128) COMMENT '动作目标',
     target_user_id BIGINT COMMENT '目标用户ID',
     target_user_name VARCHAR(100) COMMENT '目标用户姓名',
@@ -976,7 +973,7 @@ CREATE TABLE wf_anomaly_alert (
     process_def_name VARCHAR(200) COMMENT '流程定义名称',
     node_key VARCHAR(100) COMMENT '节点Key',
     node_name VARCHAR(200) COMMENT '节点名称',
-    anomaly_type VARCHAR(50) NOT NULL COMMENT '异常类型',
+    anomaly_type VARCHAR(50) NOT NULL COMMENT '异常类型(APPROVER_UNAVAILABLE/BUSINESS_EXCEPTION/CALLBACK_FAILED/DATA_INCONSISTENCY/DEADLOCK/EXECUTION_FAILED/NODE_TIMEOUT/NO_ASSIGNEE/SCHEDULER_EXCEPTION)',
     severity VARCHAR(30) NOT NULL COMMENT '严重程度',
     error_message TEXT COMMENT '错误信息',
     stack_trace MEDIUMTEXT COMMENT '堆栈信息',
@@ -1083,7 +1080,7 @@ CREATE TABLE wf_callback_dead_letter (
   tenant_id           BIGINT DEFAULT 100000 COMMENT '租户ID（运维筛选用，本表不参与 MP 自动租户过滤）',
   stream_key          VARCHAR(128) NOT NULL COMMENT 'Redis Stream 键名',
   process_instance_id VARCHAR(64) COMMENT '流程实例ID',
-  business_type       VARCHAR(64) COMMENT '业务类型',
+  business_type       VARCHAR(64) COMMENT '业务类型(CRM_SALES_CONTRACT/HR_CONTRACT_RENEW/HR_RESIGNATION)',
   business_id         BIGINT COMMENT '业务主键ID',
   payload_json        JSON NOT NULL COMMENT '原始消息载荷(JSON)',
   retry_count         INT DEFAULT 0 COMMENT '已重试次数',
@@ -1135,17 +1132,88 @@ CREATE TABLE wf_reconcile_alert (
   KEY idx_resolved_at (resolved_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程业务状态对账告警';
 
--- B1修复: 并行网关汇聚到达记录（替代 Redis increment 计数）
--- 到达记录与审批/流转同事务写入，事务回滚自动撤销，杜绝“计数不回滚导致汇聚提前放行”；
--- 唯一键防同一分支重复计数；汇聚放行后同事务清理。
+DROP TABLE IF EXISTS wf_gateway_activation;
+CREATE TABLE wf_gateway_activation (
+  activation_id       VARCHAR(64) NOT NULL COMMENT '网关本轮激活ID',
+  tenant_id           BIGINT(20) NOT NULL COMMENT '租户ID',
+  instance_id         VARCHAR(64) NOT NULL COMMENT '流程实例ID',
+  gateway_id          VARCHAR(64) NOT NULL COMMENT '分流网关节点ID',
+  join_node_key       VARCHAR(64) NOT NULL COMMENT '对应汇聚节点ID',
+  join_type           VARCHAR(20) NOT NULL COMMENT 'PARALLEL或INCLUSIVE',
+  activated_branches  JSON NOT NULL COMMENT '本轮实际激活的出口边ID集合',
+  expected_count      INT NOT NULL COMMENT '本轮应到分支数',
+  parent_context      JSON DEFAULT NULL COMMENT '服务器父层执行上下文',
+  status              VARCHAR(20) NOT NULL DEFAULT 'WAITING' COMMENT 'WAITING或RELEASED或CANCELLED',
+  released_time       DATETIME DEFAULT NULL COMMENT '本轮放行时间',
+  version             INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本',
+  create_time         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (activation_id),
+  KEY idx_activation_instance (tenant_id, instance_id, status),
+  KEY idx_activation_gateway (tenant_id, instance_id, gateway_id),
+  CONSTRAINT chk_activation_expected CHECK (expected_count > 0),
+  CONSTRAINT chk_activation_type CHECK (join_type IN ('PARALLEL','INCLUSIVE'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='网关实际激活分支及放行状态';
+
 DROP TABLE IF EXISTS wf_parallel_join;
 CREATE TABLE wf_parallel_join (
-  id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id           BIGINT DEFAULT NULL COMMENT '租户ID',
+  id                  BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '物理主键ID，保留既有类型',
+  tenant_id           BIGINT(20) NOT NULL COMMENT '租户ID',
   instance_id         VARCHAR(64) NOT NULL COMMENT '流程实例ID',
-  gateway_id          VARCHAR(64) NOT NULL COMMENT '并行网关节点ID',
-  branch_key          VARCHAR(64) NOT NULL COMMENT '到达汇聚点的分支标识(汇聚点直接前驱节点ID)',
-  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '到达时间',
-  UNIQUE KEY uk_join_arrival (instance_id, gateway_id, branch_key),
-  KEY idx_join_tenant (tenant_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='并行网关汇聚到达记录';
+  gateway_id          VARCHAR(64) NOT NULL COMMENT '分流网关节点ID',
+  activation_id       VARCHAR(64) NOT NULL COMMENT '本轮网关激活ID',
+  branch_key          VARCHAR(64) NOT NULL COMMENT '实际激活的出口边ID',
+  join_type           VARCHAR(20) NOT NULL COMMENT 'PARALLEL或INCLUSIVE',
+  expected_count      INT NOT NULL COMMENT '本轮应到分支数快照',
+  create_time         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '到达时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_join_arrival (tenant_id, activation_id, branch_key),
+  KEY idx_join_instance (tenant_id, instance_id, gateway_id),
+  CONSTRAINT chk_join_expected CHECK (expected_count > 0),
+  CONSTRAINT chk_join_type CHECK (join_type IN ('PARALLEL','INCLUSIVE'))
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='网关本轮分支到达记录';
+
+DROP TABLE IF EXISTS wf_form_field_permission;
+CREATE TABLE wf_form_field_permission (
+  permission_id     VARCHAR(64)     NOT NULL COMMENT '权限ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  definition_id     VARCHAR(64)     NOT NULL COMMENT '流程定义ID',
+  node_key          VARCHAR(64)     NOT NULL COMMENT '节点Key，__START__表示发起环节',
+  field_id          VARCHAR(100)    NOT NULL COMMENT '字段ID，子表列使用subTableId.columnId',
+  visible_flag      TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '是否可见',
+  editable_flag     TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '是否可编辑',
+  required_flag     TINYINT(1)      DEFAULT NULL COMMENT '是否必填，NULL继承字段定义',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (permission_id),
+  UNIQUE KEY uk_wffp_def_node_field (tenant_id, definition_id, node_key, field_id),
+  KEY idx_wffp_def_node (definition_id, node_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='表单字段权限表';
+
+DROP TABLE IF EXISTS wf_form_draft;
+CREATE TABLE wf_form_draft (
+  draft_id                 VARCHAR(64)   NOT NULL COMMENT '草稿ID',
+  tenant_id                BIGINT(20)    NOT NULL DEFAULT 100000 COMMENT '租户ID',
+  definition_id            VARCHAR(64)   NOT NULL COMMENT '流程定义ID',
+  definition_name          VARCHAR(100)  DEFAULT NULL COMMENT '流程名称快照',
+  form_id                  VARCHAR(64)   DEFAULT NULL COMMENT '绑定表单ID',
+  user_id                  BIGINT(20)    NOT NULL COMMENT '草稿所属用户ID',
+  title                    VARCHAR(200)  DEFAULT NULL COMMENT '申请标题',
+  form_data                LONGTEXT     COMMENT '表单数据JSON对象',
+  node_assignees           TEXT         COMMENT '发起人自选审批人JSON对象',
+  attachment_url           VARCHAR(1000) DEFAULT NULL COMMENT '预留附件引用，本轮不接受任意外部URL',
+  definition_snapshot_hash CHAR(64)      NOT NULL COMMENT '流程表单及发起配置SHA256摘要',
+  lock_version             INT          NOT NULL DEFAULT 1 COMMENT '草稿乐观锁版本号',
+  last_save_time           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近有效保存时间',
+  expire_time              DATETIME     NOT NULL COMMENT '最近有效保存30天后的到期时间',
+  create_by                VARCHAR(64)   DEFAULT '' COMMENT '创建者',
+  create_time              DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by                VARCHAR(64)   DEFAULT '' COMMENT '更新者',
+  update_time              DATETIME     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (draft_id),
+  UNIQUE KEY uk_wfdraft_user_def (tenant_id, user_id, definition_id),
+  KEY idx_wfdraft_expire (expire_time, draft_id),
+  KEY idx_wfdraft_user_save (tenant_id, user_id, last_save_time, draft_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='表单草稿表';

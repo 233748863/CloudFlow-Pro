@@ -4,11 +4,14 @@ param(
     [string]$SchemaPath = (Join-Path $PSScriptRoot '..\cloudflow-backend\DB'),
     [ValidateRange(50, 50)][int]$RowsPerTenant = 50,
     [ValidateRange(50, 50)][int]$TenantCount = 50,
+    [string[]]$Tables = @(),
     [switch]$ValidateOnly
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'demo-seed-oa-operations.ps1')
+. (Join-Path $PSScriptRoot 'demo-seed-h-enhancements.ps1')
 
 $tenantBase = 100000
 $tenantLast = $tenantBase + $TenantCount - 1
@@ -132,6 +135,17 @@ function Get-MeetingTitleExpression() { return Get-CatalogExpression $meetingTit
 function Get-IndustryExpression() { return Get-CatalogExpression @('软件服务','智能制造','医药健康','零售连锁','现代物流','金融服务','新能源','教育服务','工程建设','专业咨询') }
 function Get-ProvinceExpression() { return Get-CatalogExpression $provinces }
 function Get-HealthLevelExpression() { return Get-CatalogExpression @('A','A','B','B','C','D') }
+function Get-DemoModuleExpression() { return "ELT(MOD(r.n,5)+1,'system','oa','crm','hr','workflow')" }
+function Get-DemoServiceExpression() { return "ELT(MOD(r.n,5)+1,'auth','workflow','oa','crm','hr')" }
+function Get-DemoHandlerExpression() { return "CONCAT('demoJobT',LPAD(t.n,2,'0'),'R',LPAD(r.n+1,3,'0'))" }
+function Get-DemoMessageChannelExpression() { return "ELT(MOD(r.n,7)+1,'INTERNAL','EMAIL','SMS','WECOM','DINGTALK','FEISHU','WEBHOOK')" }
+function Get-DemoMessageCategoryExpression() { return "ELT(MOD(r.n,5)+1,'TODO','CC','ANNOUNCEMENT','SYSTEM','BIZ_REMINDER')" }
+function Get-DemoMessageStatusExpression() { return "ELT(MOD(r.n,6)+1,'PENDING','SENDING','SUCCESS','FAILED','CANCELLED','SKIPPED')" }
+function Get-DemoJobTriggerExpression() { return "ELT(MOD(r.n,3)+1,'CRON','FIXED_RATE','FIXED_DELAY')" }
+function Get-DemoJobLogTriggerExpression() { return "ELT(MOD(r.n,3)+1,'CRON','MANUAL','RETRY')" }
+function Get-DemoJobLogStatusExpression() { return "ELT(MOD(r.n,6)+1,'RUNNING','SUCCESS','FAILED','TIMEOUT','SKIPPED','DISPATCH_FAILED')" }
+function Get-DemoHolidayDateExpression() { return "DATE_ADD('2026-01-01', INTERVAL r.n DAY)" }
+function Get-DemoHolidayTypeExpression() { return "ELT(MOD(r.n,3)+1,'WORKDAY','HOLIDAY','REST')" }
 
 function Split-SqlParts([string]$text) {
     $parts = [System.Collections.Generic.List[string]]::new()
@@ -161,9 +175,9 @@ function Split-SqlParts([string]$text) {
 
 function Read-Schema([string]$root) {
     $definitions = [System.Collections.Generic.List[object]]::new()
-    $files = Get-ChildItem -LiteralPath $root -Filter '*.sql' |
-        Where-Object Name -Match '^0[1-5]\.' |
-        Sort-Object Name
+    $files = if (Test-Path -LiteralPath $root -PathType Leaf) { Get-Item -LiteralPath $root } else {
+        Get-ChildItem -LiteralPath $root -Filter '*.sql' | Where-Object Name -Match '^0[1-5]\.' | Sort-Object Name
+    }
     foreach ($file in $files) {
         $sql = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
         $matches = [regex]::Matches($sql, '(?is)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:\x60?cloud_flow_db\x60?\.)?\x60?([a-z0-9_]+)\x60?\s*\((.*?)\)\s*ENGINE=')
@@ -185,6 +199,8 @@ function Read-Schema([string]$root) {
                     Type = $type
                     Length = if ($lengthMatch.Success) { [int]$lengthMatch.Groups[1].Value } else { 0 }
                     Auto = $rest -match '(?i)\bAUTO_INCREMENT\b'
+                    Nullable = $rest -notmatch '(?i)\bNOT NULL\b'
+                    DefaultExpression = if ($rest -match "(?i)\bDEFAULT\s+('[^']*'|[^\s,]+)") { $Matches[1] } else { $null }
                     Comment = if ($commentMatch.Success) { $commentMatch.Groups[1].Value.Replace("''", "'") } else { '' }
                 })
                 if ($rest -match '(?i)\bPRIMARY\s+KEY\b') { $inlinePrimary.Add($columnMatch.Groups[1].Value.ToLowerInvariant()) }
@@ -244,14 +260,18 @@ function Get-TargetTable([string]$column) {
         instance_id='wf_process_instance'; process_instance_id='wf_process_instance'; task_id='wf_task'; history_id='wf_task_history';
         attachment_id='wf_task_attachment'; delegation_id='wf_task_delegation'; add_sign_id='wf_task_add_sign';
         countersign_id='wf_countersign_task'; vote_id='wf_countersign_vote'; snapshot_id='wf_process_snapshot';
-        message_id='wf_transaction_message'; notice_id='wf_notice'; project_id='oa_project'; contract_id='oa_contract';
-        milestone_id='oa_project_milestone'; budget_id='oa_budget_plan'; subject_id='oa_budget_subject'; invoice_id='oa_invoice';
+        message_id='wf_transaction_message'; project_id='oa_project'; contract_id='oa_contract';
+        milestone_id='oa_project_task'; budget_id='oa_budget_plan'; subject_id='oa_budget_subject'; invoice_id='oa_invoice';
         seal_id='oa_seal'; license_id='oa_license'; vehicle_id='oa_vehicle'; asset_id='oa_asset'; supplier_id='oa_supplier';
         room_id='oa_meeting_room'; minutes_id='oa_meeting_minutes'; visitor_id='oa_visitor'; lead_id='crm_lead';
         customer_id='crm_customer'; contact_id='crm_contact'; opportunity_id='crm_opportunity'; quote_id='crm_quote';
         quote_line_id='crm_quote_line'; receivable_id='crm_receivable'; renewal_id='crm_renewal'; ticket_id='crm_service_ticket';
         sales_target_id='crm_sales_target'
         menu_id='sys_menu'; announcement_id='oa_announcement'
+        calendar_id='sys_holiday_calendar'; holiday_calendar_id='sys_holiday_calendar'
+        leave_period_id='hr_leave_period'; payroll_period_id='hr_payroll_period'; policy_id='hr_leave_policy'
+        slab_id='hr_tax_slab'; tax_slab_id='hr_tax_slab'; grievance_id='hr_grievance'; ledger_id='hr_leave_ledger'
+        batch_id='hr_payroll_batch'; salary_slip_id='hr_salary_slip'; original_slip_id='hr_salary_slip'; correction_slip_id='hr_salary_slip'
     }
     if ($map.ContainsKey($column)) { return $map[$column] }
     if ($column -match '(?i)(assignee|approver|reviewer|manager|interviewer|investigator|operator|driver|owner|applicant|handler|creator|recipient|sender|voter|evaluatee|evaluator|uploaded_by)_id$') { return 'sys_user' }
@@ -261,34 +281,95 @@ function Get-TargetTable([string]$column) {
 
 function Get-TargetIdExpression([string]$target, [hashtable]$indexes, [hashtable]$definitionMap) {
     if (-not $target -or -not $indexes.ContainsKey($target)) { return $null }
-    if ($target -eq 'sys_menu') { return '(3000+r.n)' }
     $targetDefinition = $definitionMap[$target]
     $primaryName = $targetDefinition.Primary[0]
+    if ($target -eq 'wf_form_definition') { $primaryName = 'form_id' }
     $primaryColumn = $targetDefinition.Columns | Where-Object Name -eq $primaryName | Select-Object -First 1
+    if ($scopedGeneration -and $target -notin $Tables) {
+        if ($targetDefinition.HasTenant) {
+            return "(SELECT reference_id FROM (SELECT $primaryName AS reference_id,tenant_id,ROW_NUMBER() OVER (PARTITION BY tenant_id ORDER BY $primaryName)-1 AS row_index FROM cloud_flow_db.$target) AS demo_reference WHERE tenant_id=$tenantBase+t.n AND row_index=r.n)"
+        }
+        return "(SELECT reference_id FROM (SELECT $primaryName AS reference_id,ROW_NUMBER() OVER (ORDER BY $primaryName)-1 AS row_index FROM cloud_flow_db.$target) AS demo_reference WHERE row_index=r.n)"
+    }
+    if ($target -eq 'sys_menu') { return '(3000+r.n)' }
     if ($primaryColumn.Type -match 'char|varchar|text') { return Get-StringIdExpression $target $primaryName }
     $expression = Get-NumericIdExpression $indexes[$target]
-    if ($target -eq 'sys_user') { return "IF(t.n=0 AND r.n=0,1,$expression)" }
+    if ($target -in @('sys_user','sys_role')) { return "IF(t.n=0 AND r.n=0,1,$expression)" }
     return $expression
 }
 
 function Get-EnumValuesFromComment([string]$comment) {
-    # 从建表注释里抽出枚举允许值，例如
-    #   状态(PENDING待开始/IN_PROGRESS进行中/DONE已完成/OVERDUE已逾期/CANCELLED已取消)
-    # 抽出 PENDING/IN_PROGRESS/DONE/OVERDUE/CANCELLED。
-    # 判定条件：括号内既有分隔符（/ | 、 或 ", "）又有两个以上全大写词，
-    # 缺一不可——只看"两个大写词"会把「TOTP密钥密文（AES-GCM）」误判成 AES/GCM。
+    # 从建表注释里抽出枚举允许值。项目里的注释有两种写法，都要认：
+    #   括号内：状态(PENDING待开始/IN_PROGRESS进行中/DONE已完成/OVERDUE已逾期/CANCELLED已取消)
+    #   裸写  ：状态 ACTIVE/INACTIVE      维度类型：OWNER/DEPT      DRAFT/PAID/RECONCILED
+    # 都抽成 PENDING/IN_PROGRESS/... 这样的清单。
     $values = [System.Collections.Generic.List[string]]::new()
     if (-not $comment) { return $values.ToArray() }
+    # 单字符枚举值也要认（{0,29} 而不是 {1,29}）：
+    #   hr_performance_result.grade 绩效等级(S/A/B/C/D)
+    #   oa_announcement.priority   优先级 (L:低, M:中, H:高)
+    #   sys_config.config_type     系统内置（Y是 N否）(Y/N)
+    # 实测放宽只多认出这 3 列，已认出的列取值一个都没变，没有误判。
+    $tokenPattern = '(?<![A-Za-z0-9_])([A-Z][A-Z0-9_+]{0,29})(?![A-Za-z0-9_+])'
+
+    # 先按括号取。括号内要求既有分隔符（/ | 、 或 ", "）又有两个以上全大写词，
+    # 缺一不可——只看"两个大写词"会把「TOTP密钥密文（AES-GCM）」误判成 AES/GCM。
     foreach ($segmentMatch in [regex]::Matches($comment, '[（(]([^）)]*)[）)]')) {
         $segment = $segmentMatch.Groups[1].Value
         if ($segment -notmatch '[/|、]|,\s') { continue }
-        $tokens = @([regex]::Matches($segment, '(?<![A-Za-z0-9_])([A-Z][A-Z0-9_]{1,29})(?![A-Za-z0-9_])') |
-            ForEach-Object { $_.Groups[1].Value })
+        $tokens = @([regex]::Matches($segment, $tokenPattern) | ForEach-Object { $_.Groups[1].Value })
         if ($tokens.Count -lt 2) { continue }
         foreach ($token in $tokens) {
             if (-not $values.Contains($token)) { $values.Add($token) }
         }
     }
+    if ($values.Count -gt 0) { return $values.ToArray() }
+
+    # 括号里没有再找裸写的。这里必须要求"大写词之间由分隔符直接连接"，
+    # 不能退化成"注释里出现两个大写词就算"，否则普通描述会被误判。
+    foreach ($runMatch in [regex]::Matches($comment, '[A-Z][A-Z0-9_]*(?:\s*[/|、]\s*[A-Z][A-Z0-9_]*)+')) {
+        # 匹配到的斜杠串紧邻前后若还有分隔符，说明这条串里还有非大写词成员，
+        # 那是在描述格式而不是列举取值，整条丢掉。
+        # 实例：sys_ip_acl.ip_pattern 注释「IP/CIDR/区间表达式」——裸写正则只吃到
+        # IP/CIDR 就停在中文前，于是 IP 列被灌成字面量 'IP'/'CIDR'。
+        # 实测这条闸只拦掉这一列，另外 238 个按注释取枚举的列取值一个都没变。
+        $after = $comment.Substring($runMatch.Index + $runMatch.Length)
+        $before = $comment.Substring(0, $runMatch.Index)
+        if ($after -match '^\s*[/|、]' -or $before -match '[/|、]\s*$') { continue }
+        $tokens = @([regex]::Matches($runMatch.Value, $tokenPattern) | ForEach-Object { $_.Groups[1].Value })
+        if ($tokens.Count -lt 2) { continue }
+        foreach ($token in $tokens) {
+            if (-not $values.Contains($token)) { $values.Add($token) }
+        }
+    }
+    return $values.ToArray()
+}
+
+# 抽数字枚举。上面那个 Get-EnumValuesFromComment 只认全大写词元，
+# 「状态（1闲置 2在用 3维修 4报废 5丢失）」这种数字+中文的一个都抽不出来。
+# 认两种写法：括号内「1闲置 2在用」，以及冒号式「0:草稿, 1:已发布」。
+# 要求数字后面紧跟中文，避免把注释里的年份、长度、金额示例误当枚举。
+function Get-NumericEnumValuesFromComment([string]$comment) {
+    $values = [System.Collections.Generic.List[string]]::new()
+    if (-not $comment) { return $values.ToArray() }
+
+    $scan = {
+        param([string]$segment)
+        foreach ($m in [regex]::Matches($segment, '(?<![0-9A-Za-z_])([0-9])\s*[:：]?\s*[一-龥]{1,6}')) {
+            $v = $m.Groups[1].Value
+            if (-not $values.Contains($v)) { $values.Add($v) }
+        }
+    }
+
+    # 先只看括号内，最可靠
+    foreach ($segmentMatch in [regex]::Matches($comment, '[（(]([^）)]*)[）)]')) {
+        & $scan $segmentMatch.Groups[1].Value
+    }
+    if ($values.Count -ge 2) { return $values.ToArray() }
+
+    # 括号里没有再扫全串，例如「状态：0正常 1停用」
+    $values.Clear()
+    & $scan $comment
     return $values.ToArray()
 }
 
@@ -300,12 +381,26 @@ function Get-EnumExpression([string[]]$values) {
 
 function Get-StatusExpression([string]$table, [string]$column, [string]$type, [int]$length, [string]$comment = '') {
     if ($type -match '(?i)(tinyint|smallint|mediumint|int|bigint|bit)') { return '1' }
-    if (($type -match 'char|varchar') -and $length -gt 0 -and $length -le 2) { return "'0'" }
+    # 短 CHAR/VARCHAR 默认灌 '0'，但必须先确认 '0' 在建表注释声明的取值域内。
+    # 全项目 15 个短 CHAR status 列里有 12 个写了数字枚举：9 个是「0正常 1停用」，'0' 合法；
+    # oa_vehicle（1可用…5报废）不含 0，
+    # 硬灌 '0' 会让前端枚举映射取到 undefined —— 资产页 meta.className 直接崩（实测）。
+    # 这里只在 '0' 越界时改用注释里的枚举，'0' 合法的那 9 张表取值一个都不变
+    # （若改成一律按注释轮询，sys_tenant/sys_user/sys_menu 会被刷出一半「停用」）。
+    if (($type -match 'char|varchar') -and $length -gt 0 -and $length -le 2) {
+        # 必须 @() 包一层：StrictMode 下单元素返回值会被拆成标量，直接取 .Count 会抛
+        # "The property 'Count' cannot be found on this object"。
+        $numericEnum = @(Get-NumericEnumValuesFromComment $comment)
+        if ($numericEnum.Count -ge 2 -and ($numericEnum -notcontains '0')) {
+            return Get-EnumExpression $numericEnum
+        }
+        return "'0'"
+    }
     if ($table -in @('sys_tenant','sys_user','sys_role','sys_post','sys_menu','sys_dict_type','sys_dict_data','sys_config')) { return "'0'" }
     if ($table -eq 'sys_legal_release') { return "'PUBLISHED'" }
     if ($table -eq 'sys_legal_document') { return "'0'" }
-    if ($table -eq 'wf_task') { return "ELT(MOD(r.n,5)+1,'TODO','DONE','CANCELLED','TRANSFERRED','DONE')" }
-    if ($table -eq 'wf_process_instance') { return "ELT(MOD(r.n,5)+1,'RUNNING','COMPLETED','CANCELLED','REJECTED','SUSPENDED')" }
+    if ($table -eq 'wf_task') { return "ELT(MOD(r.n,6)+1,'TODO','COMPLETED','REJECTED','REVOKED','SUSPENDED','DELEGATED')" }
+    if ($table -in @('wf_process_instance', 'wf_process_monitor')) { return "ELT(MOD(r.n,14)+1,'DRAFT','RUNNING','PASSED','AUTO_PASSED','REJECTED','TERMINATED','INVALIDATED','CANCELLED','WITHDRAWN','TASK_BACK','PAUSED','RESTARTED','PENDING','FAILED')" }
     if ($table -eq 'hr_employee' -and $column -eq 'employee_status') { return "ELT(MOD(r.n,5)+1,'ACTIVE','ACTIVE','PROBATION','ON_LEAVE','ACTIVE')" }
     if ($table -eq 'crm_lead') { return "ELT(MOD(r.n,5)+1,'NEW','CONTACTED','QUALIFIED','CONVERTED','CLOSED')" }
     if ($table -eq 'crm_customer') { return "ELT(MOD(r.n,5)+1,'POTENTIAL','NORMAL','VIP','ACTIVE','DORMANT')" }
@@ -337,6 +432,10 @@ function Get-TextExpression($definition, $column) {
     if ($name -eq 'dict_type') { return "CONCAT('demo_dict_t',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,2,'0'))" }
     if ($table -eq 'sys_dict_type' -and $name -eq 'dict_name') { return Get-DictNameExpression }
     if ($table -eq 'sys_user' -and $name -eq 'user_name') { return "IF(r.n=0,'admin',CONCAT('demo_u',LPAD(r.n+1,2,'0')))" }
+    if ($table -eq 'sys_user_blacklist' -and $name -eq 'user_name') {
+        # 与 user_id 一样永远跳过 admin（r.n=0）：1+MOD(r.n,49) => 1..49，对应 demo_u02..demo_u50。
+        return "CONCAT('demo_u',LPAD(2+MOD(r.n,49),2,'0'))"
+    }
     if ($table -eq 'hr_employee' -and $name -eq 'name') { return Get-PersonExpression }
     if ($table -eq 'sys_role' -and $name -eq 'role_name') { return "IF(r.n=0,'超级管理员',$(Get-PostExpression))" }
     if ($table -eq 'sys_role' -and $name -eq 'role_key') { return "IF(r.n=0,'admin',CONCAT('business_role_',LPAD(r.n+1,2,'0')))" }
@@ -380,6 +479,10 @@ function Get-TextExpression($definition, $column) {
     if ($name -eq 'province') { return Get-ProvinceExpression }
     if ($name -eq 'industry') { return Get-IndustryExpression }
     if ($name -eq 'health_level') { return Get-HealthLevelExpression }
+    if (($table -in @('wf_task', 'wf_task_history') -and $name -eq 'task_type') -or ($table -eq 'wf_node_record' -and $name -eq 'event_type')) {
+        return Get-CatalogExpression @('APPROVAL','CC','MANUAL','COUNTERSIGN','OR_SIGN','PERCENT_SIGN','SEQUENTIAL_SIGN','WEIGHT_SIGN','TRANSFER','DELEGATE','DELEGATE_RETURN','ADD_SIGN','REDUCE_SIGN','REJECT','REJECT_JUMP','AUTO_PASS','AUTO_REJECT','AUTO_SKIP')
+    }
+    if ($table -eq 'wf_task_candidate' -and $name -eq 'source') { return "'NODE_CONFIG'" }
     if ($name -eq 'source') { return Get-CatalogExpression @('官网咨询','客户转介绍','行业展会','合作伙伴推荐','线上广告','主动拓展','生态联盟','存量客户挖掘') }
     if ($name -eq 'module') { return Get-CatalogExpression @('AUTH','WORKFLOW','HR','OA','CRM','SYSTEM') }
     if ($name -eq 'currency') { return "'CNY'" }
@@ -471,11 +574,954 @@ function Get-TextExpression($definition, $column) {
     return "CONCAT($(Get-TenantFieldExpression 'Name'),'业务登记-',LPAD(r.n+1,3,'0'))"
 }
 
+# 通用兜底：原生 json 类型，或列名带 json、或注释里写了 JSON 的文本列，一律灌演示对象。
+# 只认「_json / json_ 结尾开头」和注释里的 JSON 字样，不按语义猜——
+# 反例 wf_audit_log.operation_details（注释「操作详情」）是给人看的自由文本，
+# 前端 VersionRollbackManagement 直接 {impact.impactDetail} 渲染，灌 JSON 反而露出原始花括号。
+function Get-JsonColumnFallbackExpression($definition, $column, [hashtable]$indexes, [hashtable]$definitionMap) {
+    $table = $definition.Table
+    $name = $column.Name
+    $type = $column.Type
+    $comment = $column.Comment
+    $looksJson = ($type -match 'json') -or ($name -match '(?i)(^|_)json($|_)') -or ($comment -match 'JSON')
+    if (-not $looksJson) { return $null }
+    return "JSON_OBJECT('source','demo50','tenantId',$tenantBase+t.n,'table','$table','row',r.n+1,'label','全链路演示数据')"
+}
+
+# 建表注释里写了 JSON 的列必须落合法 JSON。原来只有 MySQL 原生 json 类型走 JSON_OBJECT
+# （Get-ColumnExpression 末尾的类型兜底），用 TEXT/LONGTEXT/VARCHAR 承载的 JSON 一路落到
+# Get-TextExpression，被灌成「佛山联华新材料有限公司业务登记-001」这种中文串。
+# 实测后果：抄送我的详情弹窗 JSON.parse(formData) 抛异常，表单快照卡片显示「无法解析表单数据」；
+# wf_process_definition.model_json 同病，parseWorkflowGraphDefinition 判不出 nodes+edges 直接返回 null。
+# 全库有 24 个这样的列，形状敏感的（图结构 / 字段数组 / 步骤数组）在下面逐列登记，
+# 其余按列名或注释里的 JSON 字样走通用对象兜底。
+# 返回 $null 表示这一列不是 JSON 列，交回原来的取值链。
+function Get-JsonColumnExpression($definition, $column, [hashtable]$indexes, [hashtable]$definitionMap) {
+    $table = $definition.Table
+    $name = $column.Name
+    $key = "$table.$name"
+
+    # 表单字段 id 与 wf_form_definition.fields_json 用同一套：抄送详情弹窗把 form_data 的 key
+    # 直接当行标题渲染（Object.entries），两边对不齐就会出现表里有字段、快照里查不到的假象。
+    # 06 手写种子也是这个路子（l1..l5 / c1..c5 对应各自表单定义）。
+    $formFieldsExpression = "JSON_ARRAY(JSON_OBJECT('id','f1','type','TEXT','label','申请事项','required',TRUE),JSON_OBJECT('id','f2','type','DATE','label','申请日期','required',TRUE),JSON_OBJECT('id','f3','type','NUMBER','label','申请金额','required',FALSE),JSON_OBJECT('id','f4','type','TEXTAREA','label','申请说明','required',FALSE))"
+    $formDataExpression = "JSON_OBJECT('f1',$(Get-WorkflowExpression),'f2',DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL MOD(r.n,30)+1 DAY),'%Y-%m-%d'),'f3',CAST(1000+MOD(t.n*97+r.n*233,90000) AS DECIMAL(18,2)),'f4','演示数据：用于校验抄送、审批与表单快照链路。')"
+    # 节点类型只能取 NodeType 里的 START/APPROVAL/END，审批人类型只能取 AssigneeType 的枚举，
+    # 边必须是 source/target 成对，否则前端画布判定为非法模型。
+    $modelJsonExpression = "JSON_OBJECT('nodes',JSON_ARRAY(JSON_OBJECT('id','root','type','START','title','提交申请'),JSON_OBJECT('id','n1','type','APPROVAL','title','直属上级审批','approverType','DIRECT_LEADER'),JSON_OBJECT('id','n2','type','APPROVAL','title','部门经理审批','approverType','DEPT_MANAGER'),JSON_OBJECT('id','end','type','END','title','流程结束')),'edges',JSON_ARRAY(JSON_OBJECT('id','root->n1','source','root','target','n1'),JSON_OBJECT('id','n1->n2','source','n1','target','n2'),JSON_OBJECT('id','n2->end','source','n2','target','end')))"
+    $amountExpression = 'CAST(1000+MOD(t.n*97+r.n*233,90000) AS DECIMAL(18,2))'
+    $applyNoExpression = "CONCAT('CF-T',LPAD(t.n,2,'0'),'-',LPAD(r.n+1,3,'0'))"
+
+    switch ($key) {
+        'wf_process_copy.form_data' { return $formDataExpression }
+        'wf_form_draft.form_data' { return $formDataExpression }
+        'wf_form_definition.fields_json' { return $formFieldsExpression }
+        'wf_form_definition.form_schema' { return $formFieldsExpression }
+        'wf_form_definition.version' { return '1' }
+        'wf_form_definition.version_lock' { return '0' }
+        'wf_form_definition.is_latest' { return '1' }
+        'wf_form_definition.is_rollback' { return '0' }
+        'wf_form_definition.rollback_from_version' { return 'NULL' }
+        'wf_form_definition.status' { return "'ACTIVE'" }
+        'wf_form_definition.change_type' { return "'ADD_FIELD'" }
+        'wf_form_definition.change_log' { return "'初始化演示表单'" }
+        'wf_form_definition.checksum' { return 'NULL' }
+        'wf_process_instance.form_version' { return '1' }
+        'wf_process_definition.model_json' { return $modelJsonExpression }
+        # 注释只写了「标签」，但 ExportServiceImpl 是 objectMapper.readValue(tags, List.class)，
+        # 前端 ProcessManagement 也按数组解析，所以这列是 JSON 数组不是逗号串。
+        'wf_process_definition.tags' { return "JSON_ARRAY('演示数据',$(Get-CatalogExpression @('审批','行政','人事','财务','采购') 'r.n'))" }
+        'oa_work_task.tags' { return "JSON_ARRAY('演示数据',$(Get-CatalogExpression @('高优','常规','跟进','待评估') 'r.n'))" }
+        'oa_meeting_room.equipment' { return "JSON_ARRAY('投影仪','音响','白板','视频会议终端')" }
+        'biz_business_trip.companions' { return "JSON_ARRAY($(Get-PersonExpression))" }
+        'biz_business_trip.itinerary' { return "JSON_ARRAY(JSON_OBJECT('date','第1天','plan','抵达客户现场并确认调研范围'),JSON_OBJECT('date','第2天','plan','方案评审与流程配置辅导'),JSON_OBJECT('date','第3天','plan','结论确认与返程'))" }
+        'wf_process_snapshot.variables' { return "JSON_OBJECT('applyNo',$applyNoExpression,'amount',$amountExpression)" }
+        'wf_task_history.variables_changed' { return "JSON_OBJECT('approveNode',ELT(MOD(r.n,3)+1,'n1','n2','n3'))" }
+        'wf_node_record.extra_data' { return "JSON_OBJECT('decision',ELT(MOD(r.n,3)+1,'APPROVE','REJECT','TRANSFER'),'amount',$amountExpression)" }
+        # 「处理人顺序」是加签会签的顺序数组，06 里就是 [3,6] 这种整型数组。
+        'wf_countersign_task.assignee_order' { return "JSON_ARRAY(MOD(r.n,5)+1,MOD(r.n+2,5)+1,MOD(r.n+4,5)+1)" }
+        'wf_deploy_approval.approval_config' { return "JSON_OBJECT('steps',JSON_ARRAY(JSON_OBJECT('step',1,'name','流程负责人审批','approverType','USER','approverIds','1'),JSON_OBJECT('step',2,'name','运维总监审批','approverType','ROLE','approverIds','100')))" }
+        'sys_audit_log.before_json' { return "JSON_OBJECT('status','draft')" }
+        'sys_audit_log.after_json' { return "JSON_OBJECT('status','published')" }
+        'sys_audit_log.diff_json' { return "JSON_ARRAY(JSON_OBJECT('op','replace','path','/status','from','draft','value','published'))" }
+        'sys_log.params' { return "JSON_OBJECT('page',1,'pageSize',10,'tenantId',$tenantBase+t.n)" }
+        'wf_hot_update_record.details_json' {
+            $migratedInstance = Get-TargetIdExpression 'wf_process_instance' $indexes $definitionMap
+            if (-not $migratedInstance) { $migratedInstance = "CONCAT('demo50_t',LPAD(t.n,2,'0'),'_instance_',LPAD(r.n+1,3,'0'))" }
+            return "JSON_ARRAY(JSON_OBJECT('instanceId',$migratedInstance,'currentNodeKey',ELT(MOD(r.n,3)+1,'n1','n2','n3'),'status',ELT(MOD(r.n,2)+1,'MIGRATED','SKIPPED')))"
+        }
+        'wf_process_snapshot.active_tasks' {
+            # 列名含 active，原来被布尔兜底截走灌成 '0'——JSON_VALID('0') 是 1，
+            # 所以这条脏数据在「是否合法 JSON」的体检里查不出来，只能靠形状对账发现。
+            $snapshotTask = Get-TargetIdExpression 'wf_task' $indexes $definitionMap
+            if (-not $snapshotTask) { $snapshotTask = "CONCAT('demo50_t',LPAD(t.n,2,'0'),'_task_',LPAD(r.n+1,3,'0'))" }
+            return "JSON_ARRAY(JSON_OBJECT('taskId',$snapshotTask,'assigneeName',$(Get-PersonExpression),'status','TODO','timeout',FALSE))"
+        }
+        'wf_form_draft.node_assignees' {
+            $draftAssignee = Get-TargetIdExpression 'sys_user' $indexes $definitionMap
+            if (-not $draftAssignee) { $draftAssignee = 'r.n+1' }
+            return "JSON_ARRAY($draftAssignee)"
+        }
+        'hr_candidate.resume_attachment_urls' { return "JSON_ARRAY(CONCAT('/upload/hr/resume/demo50_t',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,3,'0'),'.pdf'))" }
+        'hr_employee_contract.attachment_urls' { return "JSON_ARRAY(CONCAT('/upload/hr/contracts/demo50_t',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,3,'0'),'.pdf'))" }
+        'hr_employee_document.attachment_urls' { return "JSON_ARRAY(CONCAT('/upload/hr/documents/demo50_t',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,3,'0'),'.pdf'))" }
+    }
+
+    return Get-JsonColumnFallbackExpression $definition $column $indexes $definitionMap
+}
+
+function Get-HrRuleDemoExpression([string]$table, [string]$name, [hashtable]$indexes) {
+    $ruleTables = @('hr_leave_type','hr_leave_quota','hr_leave_ledger','hr_leave_period','hr_leave_policy','hr_leave_policy_detail',
+        'hr_leave_policy_assignment','hr_earned_leave_schedule','hr_shift','hr_attendance_record','hr_attendance_checkin',
+        'hr_attendance_monthly','hr_time_request','hr_attendance_appeal','hr_payroll_period','hr_payroll_batch',
+        'hr_payroll_batch_employee','hr_payroll_correction','hr_tax_slab','hr_tax_slab_detail','hr_salary_slip',
+        'hr_tax_profile','hr_tax_deduction','hr_grievance','hr_grievance_record')
+    if ($table -notin $ruleTables) { return $null }
+    $yearStart = "DATE_ADD('2026-01-01',INTERVAL r.n YEAR)"
+    $yearEnd = "DATE_SUB(DATE_ADD($yearStart,INTERVAL 1 YEAR),INTERVAL 1 DAY)"
+    $monthStart = "DATE_ADD('2026-01-01',INTERVAL r.n MONTH)"
+    $monthEnd = "LAST_DAY($monthStart)"
+    $employeeId = Get-NumericIdExpression $indexes['hr_employee']
+    $salarySlipId = Get-NumericIdExpression $indexes['hr_salary_slip']
+    if ($name -in @('deleted','version')) { return '0' }
+    if ($name -in @('create_time','update_time')) { return "TIMESTAMP('2026-01-01 09:00:00')" }
+    if ($name -in @('instance_id','process_instance_id','proof_file_url','attachment_url','photo_file_id','reversal_of_id','error_message')) { return 'NULL' }
+    switch ($table) {
+        'hr_leave_type' {
+            switch ($name) {
+                'unit' { return "'DAY'" }
+                'need_quota' { return '1' }
+                'is_paid' { return '1' }
+                'status' { return '1' }
+                'max_days_per_year' { return '10.00' }
+                'max_continuous_days' { return '10.00' }
+                'max_carry_forward_days' { return '0.00' }
+                'applicable_after_days' { return '0' }
+                'carry_forward_expire_days' { return 'NULL' }
+                'earned_leave_frequency' { return "'MONTHLY'" }
+                'rounding_mode' { return "'NONE'" }
+                'salary_fraction_per_day' { return '1.00' }
+                'encashment_component_id' { return 'NULL' }
+            }
+        }
+        'hr_leave_quota' {
+            switch ($name) {
+                'period_id' { return Get-NumericIdExpression $indexes['hr_leave_period'] }
+                { $_ -in @('total_quota','available_quota') } { return '10.00' }
+                { $_ -in @('used_quota','frozen_quota') } { return '0.00' }
+                'expiry_date' { return $yearEnd }
+            }
+        }
+        'hr_leave_ledger' {
+            switch ($name) {
+                'transaction_type' { return "'ALLOCATION'" }
+                'source_biz_type' { return "'DEMO_INITIAL_ALLOCATION'" }
+                'source_biz_id' { return Get-NumericIdExpression $indexes['hr_leave_policy_assignment'] }
+                'leave_days' { return '10.00' }
+                'quantity_unit' { return "'DAY'" }
+                'from_date' { return $yearStart }
+                'to_date' { return $yearEnd }
+            }
+        }
+        'hr_leave_period' {
+            switch ($name) {
+                'start_date' { return $yearStart }
+                'end_date' { return $yearEnd }
+                'status' { return "'CLOSED'" }
+            }
+        }
+        'hr_leave_policy' { if ($name -eq 'status') { return "'INACTIVE'" } }
+        'hr_leave_policy_detail' { if ($name -eq 'annual_days') { return '10.00' } }
+        'hr_leave_policy_assignment' {
+            switch ($name) {
+                'assignment_basis' { return "'PERIOD'" }
+                'effective_from' { return $yearStart }
+                'effective_to' { return $yearEnd }
+                'allocated_flag' { return '1' }
+                'status' { return "'INACTIVE'" }
+            }
+        }
+        'hr_earned_leave_schedule' {
+            switch ($name) {
+                'schedule_date' { return $yearStart }
+                'earned_days' { return '10.00' }
+                'executed_flag' { return '1' }
+            }
+        }
+        'hr_shift' {
+            switch ($name) {
+                'start_time' { return "'09:00:00'" }
+                'end_time' { return "'18:00:00'" }
+                'break_minutes' { return '60' }
+                'work_minutes' { return '480' }
+                { $_ -in @('checkin_window_before_minutes','checkout_window_after_minutes') } { return '120' }
+                { $_ -in @('late_grace_minutes','early_exit_grace_minutes','overtime_threshold_minutes') } { return '0' }
+                'half_day_hours_threshold' { return '4.00' }
+                'absent_hours_threshold' { return '2.00' }
+                'working_hours_calc_mode' { return "'FIRST_LAST'" }
+                'checkin_determine_mode' { return "'EARLIEST_LATEST'" }
+                'process_attendance_after' { return 'NULL' }
+                'status' { return '1' }
+            }
+        }
+        'hr_attendance_record' {
+            switch ($name) {
+                'attendance_date' { return "DATE('2026-01-05')" }
+                'expected_minutes' { return '480' }
+                { $_ -in @('work_minutes','late_minutes','early_exit_minutes','overtime_minutes') } { return '0' }
+                'first_checkin_time' { return "TIMESTAMP('2026-01-05 09:00:00')" }
+                'last_checkout_time' { return 'NULL' }
+                'checkin_count' { return '1' }
+                'date_type' { return "'WORKDAY'" }
+                'status' { return "'PENDING'" }
+                'appeal_id' { return 'NULL' }
+            }
+        }
+        'hr_attendance_checkin' {
+            switch ($name) {
+                'log_type' { return "'IN'" }
+                'check_time' { return "TIMESTAMP('2026-01-05 09:00:00')" }
+                'attendance_date' { return "DATE('2026-01-05')" }
+                'check_method' { return "'MANUAL'" }
+                'latitude' { return '31.230400' }
+                'longitude' { return '121.473700' }
+                'overtime_type_id' { return 'NULL' }
+            }
+        }
+        'hr_attendance_monthly' {
+            switch ($name) {
+                'year' { return '2026' }
+                'month' { return '1' }
+                { $_ -in @('work_days','actual_days','late_times','early_times','absent_days','leave_days','overtime_hours','attendance_rate') } { return '0' }
+                'status' { return "'DRAFT'" }
+            }
+        }
+        'hr_time_request' {
+            switch ($name) {
+                'request_type' { return "'LEAVE'" }
+                'start_time' { return "DATE_ADD($yearStart,INTERVAL 9 HOUR)" }
+                'end_time' { return "DATE_ADD($yearStart,INTERVAL 18 HOUR)" }
+                'duration' { return '1.00' }
+                'unit' { return "'DAY'" }
+                'status' { return "'CANCELLED'" }
+            }
+        }
+        'hr_payroll_period' {
+            switch ($name) {
+                'start_date' { return $monthStart }
+                'end_date' { return $monthEnd }
+                'pay_date' { return "DATE_ADD($monthEnd,INTERVAL 5 DAY)" }
+                'frequency' { return "'MONTHLY'" }
+                'status' { return "'OPEN'" }
+            }
+        }
+        'hr_payroll_batch' {
+            switch ($name) {
+                'posting_date' { return "DATE_ADD($monthEnd,INTERVAL 5 DAY)" }
+                'filter_employee_ids' { return "JSON_ARRAY($employeeId)" }
+                { $_ -in @('filter_dept_ids','filter_position_ids','filter_job_level_ids') } { return 'JSON_ARRAY()' }
+                'filter_employee_type' { return 'NULL' }
+                'employee_count' { return '1' }
+                'status' { return "'DRAFT'" }
+                { $_ -in @('total_gross','total_deduction','total_tax','total_net') } { return '0.00' }
+                { $_ -in @('calc_start_time','calc_end_time') } { return 'NULL' }
+            }
+        }
+        'hr_payroll_batch_employee' {
+            switch ($name) {
+                'salary_slip_id' { return 'NULL' }
+                'calc_status' { return "'PENDING'" }
+                { $_ -in @('gross_total','net_total') } { return '0.00' }
+            }
+        }
+        'hr_salary_slip' {
+            switch ($name) {
+                'batch_id' { return 'NULL' }
+                'reserved_settlement_id' { return 'NULL' }
+                'period_month' { return "DATE_FORMAT($monthStart,'%Y-%m')" }
+                { $_ -in @('gross_total','net_total') } { return '10000.00' }
+                { $_ -in @('deduction_total','tax_amount','benefit_amount','cumulative_taxable_income','cumulative_deduction','cumulative_tax_payable','cumulative_tax_paid','current_tax') } { return '0.00' }
+                'components' { return "JSON_ARRAY(JSON_OBJECT('name','待核算演示工资','type','EARNING','amount',10000.00))" }
+                'status' { return "'DRAFT'" }
+                'employee_confirmed' { return '0' }
+                { $_ -in @('confirmed_time','pay_date') } { return 'NULL' }
+            }
+        }
+        'hr_payroll_correction' {
+            switch ($name) {
+                'original_slip_id' { return $salarySlipId }
+                { $_ -in @('correction_slip_id','corrected_by','correction_time') } { return 'NULL' }
+                'status' { return "'DRAFT'" }
+                'reason' { return "'演示补正草稿，原工资单尚未发放且未生成补正工资单'" }
+                'diff_amount' { return '0.00' }
+            }
+        }
+        'hr_tax_slab' {
+            switch ($name) {
+                'region' { return "'DEMO'" }
+                'effective_from' { return $yearStart }
+                'effective_to' { return $yearEnd }
+                'threshold_amount' { return '0.00' }
+                'status' { return "'DRAFT'" }
+                'remark' { return "'演示占位草稿不参与算薪；正式居民工资税表由管理员或财务启用'" }
+            }
+        }
+        'hr_tax_slab_detail' {
+            switch ($name) {
+                'level_no' { return '1' }
+                { $_ -in @('from_amount','tax_rate','quick_deduction') } { return '0.00' }
+                'to_amount' { return 'NULL' }
+            }
+        }
+        'hr_tax_profile' {
+            switch ($name) {
+                'status' { return "'INACTIVE'" }
+                'threshold' { return '0.00' }
+                'tax_config' { return 'JSON_OBJECT()' }
+            }
+        }
+        'hr_tax_deduction' {
+            switch ($name) {
+                'start_date' { return $yearStart }
+                'end_date' { return $yearEnd }
+                'amount' { return '1000.00' }
+                'declare_status' { return "'DECLARED'" }
+                'status' { return "'ACTIVE'" }
+                { $_ -in @('verify_by','verify_time','reject_reason') } { return 'NULL' }
+            }
+        }
+        'hr_grievance' {
+            switch ($name) {
+                'grievance_type' { return "ELT(MOD(r.n,6)+1,'SALARY','PERFORMANCE','MANAGEMENT','WORKPLACE','POLICY','OTHER')" }
+                'against_type' { return "'NONE'" }
+                'priority' { return "'NORMAL'" }
+                'status' { return "'WITHDRAWN'" }
+                { $_ -in @('against_id','against_name','related_biz_type','related_biz_id','handler_id','handler_name','accept_time','resolution_detail','resolution_date','satisfied_flag','escalated_dispute_id') } { return 'NULL' }
+            }
+        }
+        'hr_grievance_record' {
+            switch ($name) {
+                'record_type' { return "'STATUS_CHANGE'" }
+                'operator_role' { return "'EMPLOYEE'" }
+                'content' { return "'演示申诉已撤回，不进入受理提醒'" }
+                'visible_to_employee_flag' { return '1' }
+            }
+        }
+    }
+    if ($name -match '_flag$') { return '0' }
+    return $null
+}
+
+function Get-CrmOperationsDemoExpression($definition, [string]$name, [hashtable]$indexes, [hashtable]$definitionMap) {
+    $table = $definition.Table
+    $operationsTables = @('crm_activity','crm_activity_participant','crm_activity_reminder','crm_sla_policy','crm_sla_priority',
+        'crm_sla_status_rule','crm_lost_reason','crm_competitor','crm_opportunity_lost_detail','crm_customer_credit','crm_territory',
+        'crm_lead_score_rule','crm_campaign','crm_target_list','crm_target_list_member','crm_campaign_target_list','crm_mass_email','crm_campaign_log')
+    if ($table -notin $operationsTables -and $table -notin @('crm_lead','crm_customer','crm_opportunity','crm_service_ticket')) { return $null }
+    if ($name -in $definition.Primary) { return $null }
+    if ($name -in @('deleted','version')) { return '0' }
+    $links = @{ activity_id='crm_activity'; campaign_id='crm_campaign'; list_id='crm_target_list'; territory_id='crm_territory';
+        competitor_id='crm_competitor'; lost_reason_id='crm_lost_reason'; mass_email_id='crm_mass_email' }
+    if ($links.ContainsKey($name)) { return Get-TargetIdExpression $links[$name] $indexes $definitionMap }
+    if ($name -in @('message_record_id','instance_id','join_url','attachment_url','follow_up_id','bypass_by','bypass_time','bypass_expire_date')) { return 'NULL' }
+    if ($name -in @('market_segment','employee_scale')) {
+        if ($name -eq 'market_segment') { return "ELT(MOD(r.n,4)+1,'SMB','MID_MARKET','ENTERPRISE','GOVERNMENT')" }
+        return "ELT(MOD(r.n,6)+1,'1-10','11-50','51-200','201-500','501-1000','1000+')"
+    }
+    switch ($table) {
+        'crm_lead' {
+            if ($name -in @('converted_customer_id','converted_time','qualified_by','qualified_by_name','qualified_time','disqualify_reason','unsubscribe_time')) { return 'NULL' }
+            if ($name -eq 'qualification_status') { return "'UNQUALIFIED'" }
+            if ($name -eq 'lead_score') { return '0' }
+            if ($name -eq 'status') { return "'NEW'" }
+        }
+        'crm_customer' { if ($name -eq 'status') { return "'ACTIVE'" } }
+        'crm_opportunity' {
+            switch ($name) {
+                'stage' { return "ELT(MOD(r.n,6)+1,'LEAD','QUALIFIED','PROPOSAL','NEGOTIATION','WON','LOST')" }
+                'status' { return "IF(MOD(r.n,6) IN (4,5),'CLOSED','OPEN')" }
+                'win_rate' { return 'ELT(MOD(r.n,6)+1,10,30,50,70,100,0)' }
+                'weighted_amount' { return 'ROUND((1000+MOD(t.n*97+r.n*233,90000))*ELT(MOD(r.n,6)+1,10,30,50,70,100,0)/100,2)' }
+                'last_stage' { return 'NULL' }
+                'team_version' { return '0' }
+                'stage_changed_time' { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL MOD(r.n,15) DAY)' }
+                'stage_duration_days' { return 'MOD(r.n,15)' }
+            }
+        }
+        'crm_activity' {
+            switch ($name) {
+                'status' { return "'CANCELLED'" }
+                'activity_type' { return "ELT(MOD(r.n,3)+1,'MEETING','CALL','TASK')" }
+                'priority' { return "'MEDIUM'" }
+                'direction' { return "IF(MOD(r.n,3)=1,'OUTBOUND',NULL)" }
+                'biz_type' { return "'CUSTOMER'" }
+                'biz_id' { return Get-TargetIdExpression 'crm_customer' $indexes $definitionMap }
+                'start_time' { return "TIMESTAMP('2026-01-05 09:00:00')" }
+                'end_time' { return "TIMESTAMP('2026-01-05 10:00:00')" }
+                'duration_minutes' { return '60' }
+                'complete_time' { return 'NULL' }
+            }
+        }
+        'crm_activity_participant' {
+            switch ($name) {
+                'participant_type' { return "'USER'" }
+                'participant_ref_id' { return Get-TargetIdExpression 'sys_user' $indexes $definitionMap }
+                'participant_name' { return Get-PersonExpression }
+                'acceptance_status' { return "'NONE'" }
+                'response_time' { return 'NULL' }
+            }
+        }
+        'crm_activity_reminder' {
+            switch ($name) {
+                'remind_minutes_before' { return '15' }
+                'channel_type' { return "'INTERNAL'" }
+                'send_time' { return 'NULL' }
+            }
+        }
+        'crm_sla_policy' {
+            switch ($name) {
+                'entity_type' { return "'GLOBAL'" }
+                'entity_id' { return 'NULL' }
+                'status' { return "'DISABLED'" }
+                'apply_for_resolution' { return '1' }
+                'effective_start' { return "DATE('2026-01-01')" }
+                'effective_end' { return 'NULL' }
+            }
+        }
+        'crm_sla_priority' {
+            switch ($name) {
+                'policy_id' { return Get-TargetIdExpression 'crm_sla_policy' $indexes $definitionMap }
+                'priority_code' { return "'P4'" }
+                'priority_name' { return "'P4 低'" }
+                'first_response_minutes' { return '1440' }
+                'resolution_minutes' { return '4320' }
+            }
+        }
+        'crm_sla_status_rule' {
+            switch ($name) {
+                'policy_id' { return Get-TargetIdExpression 'crm_sla_policy' $indexes $definitionMap }
+                'rule_type' { return "'FULFILL'" }
+                'ticket_status' { return "'CLOSED'" }
+            }
+        }
+        'crm_service_ticket' {
+            if ($name -in @('sla_policy_id','first_response_due','resolution_due','first_response_time','first_response_minutes','resolution_minutes','pause_start_time','due_time')) { return 'NULL' }
+            if ($name -eq 'sla_status') { return "'NOT_APPLICABLE'" }
+            if ($name -eq 'sla_paused_minutes') { return '0' }
+            if ($name -eq 'severity') { return "CONCAT('P',1+MOD(r.n,4))" }
+        }
+        'crm_lost_reason' { if ($name -eq 'status') { return "'ACTIVE'" } }
+        'crm_competitor' { if ($name -eq 'status') { return "'ACTIVE'" } }
+        'crm_opportunity_lost_detail' { if ($name -eq 'is_primary_flag') { return '1' } }
+        'crm_customer_credit' {
+            if ($name -in @('credit_limit','overdue_threshold')) { return '0.00' }
+            if ($name -eq 'status') { return "'DISABLED'" }
+            if ($name -eq 'currency') { return "'CNY'" }
+            if ($name -in @('effective_start','effective_end')) { return 'NULL' }
+        }
+        'crm_territory' {
+            switch ($name) {
+                'parent_id' { return '0' }
+                'level_path' { return "CONCAT('/',$(Get-NumericIdExpression $indexes['crm_territory']),'/')" }
+                'status' { return "'ACTIVE'" }
+            }
+        }
+        'crm_lead_score_rule' {
+            switch ($name) {
+                'field_name' { return "'annual_revenue'" }
+                'operator' { return "'>='" }
+                'field_value' { return "'1000000'" }
+                'score' { return '10' }
+            }
+        }
+        'crm_campaign' {
+            if ($name -match '_count$|_rate$' -or $name -in @('actual_cost','revenue')) { return '0' }
+            switch ($name) {
+                'campaign_type' { return "'EVENT'" }
+                'status' { return "'CANCELLED'" }
+                'start_date' { return "DATE('2026-01-01')" }
+                'end_date' { return "DATE('2026-01-31')" }
+                'roi' { return 'NULL' }
+            }
+        }
+        'crm_target_list' {
+            switch ($name) {
+                'status' { return "'INACTIVE'" }
+                'source_type' { return "'MANUAL'" }
+                'query_condition' { return 'NULL' }
+                'member_count' { return '1' }
+                'opted_out_count' { return '0' }
+            }
+        }
+        'crm_target_list_member' {
+            switch ($name) {
+                'member_type' { return "'CUSTOMER'" }
+                'member_ref_id' { return Get-TargetIdExpression 'crm_customer' $indexes $definitionMap }
+            }
+        }
+        'crm_mass_email' {
+            if ($name -match '_count$') { return '0' }
+            if ($name -in @('start_time','end_time','scheduled_time','recipient_snapshot_time','delivery_summary')) { return 'NULL' }
+            if ($name -eq 'status') { return "'DRAFT'" }
+        }
+        'crm_campaign_log' {
+            if ($name -in @('archive_payload','archive_checksum','archived_time','archive_checked_time')) { return 'NULL' }
+            switch ($name) {
+                'test_flag' { return '1' }
+                'action' { return "'LEAD_CREATED'" }
+                'target_type' { return "'LEAD'" }
+                'target_id' { return Get-TargetIdExpression 'crm_lead' $indexes $definitionMap }
+                'click_url' { return 'NULL' }
+                'source_event_key' { return 'NULL' }
+            }
+        }
+    }
+    if ($name -match '_flag$') { return '0' }
+    return $null
+}
+
+function Get-PlatformFoundationDemoExpression($definition, [string]$name, [hashtable]$indexes) {
+    $table = $definition.Table
+    if ($definition.Primary -contains $name) { return $null }
+    if ($table -in @('sys_file_config','sys_import_task','sys_import_error','sys_print_template','sys_print_record','sys_api_error_log') -and $name -in @('version','deleted')) { return '0' }
+    if ($table -in @('sys_log','sys_api_error_log','oa_frontend_error_log') -and $name -eq 'trace_id') { return "SHA2(CONCAT('demo-trace-',t.n,'-',r.n),256)" }
+    if ($table -in @('sys_log','sys_api_error_log')) {
+        switch ($name) {
+            'service_name' { return "CONCAT('cloudflow-',$(Get-DemoServiceExpression))" }
+            'request_method' { return "'GET'" }
+            'request_url' { return "'/demo/example'" }
+            'duration_ms' { return '20+r.n*10' }
+            'result_code' { return '200' }
+            'client_ip' { return "'192.0.2.10'" }
+            'slow_flag' { return '0' }
+        }
+    }
+    switch ($table) {
+        'sys_file_config' {
+            switch ($name) {
+                'config_code' { return "CONCAT('DEMO_LOCAL_',LPAD(r.n+1,3,'0'))" }
+                'config_name' { return "CONCAT('演示本地存储 ',LPAD(r.n+1,3,'0'))" }
+                'storage_type' { return "'LOCAL'" }
+                'master_flag' { return '0' }
+                'status' { return "'DISABLED'" }
+                'base_path' { return "'upload'" }
+                'max_file_size' { return '52428800' }
+                'signed_url_expire_seconds' { return '300' }
+                'access_policy' { return "'0'" }
+                { $_ -in @('endpoint','region','bucket','access_key','secret_key_cipher','domain','allowed_extensions') } { return 'NULL' }
+            }
+        }
+        'sys_file' {
+            switch ($name) {
+                'storage_type' { return "'LOCAL'" }
+                { $_ -in @('config_id','file_hash','bucket','object_key','biz_type','biz_id') } { return 'NULL' }
+                'access_type' { return "'PRIVATE'" }
+                'ref_count' { return '1' }
+            }
+        }
+        'sys_import_task' {
+            switch ($name) {
+                'task_no' { return "CONCAT('DEMO-IMPORT-',t.n,'-',r.n+1)" }
+                'biz_type' { return "'ASSET'" }
+                'biz_name' { return "'资产导入演示'" }
+                'status' { return "'CANCELLED'" }
+                'file_url' { return "CONCAT('/api/auth/system/file/',$(Get-NumericIdExpression $indexes['sys_file']),'/content')" }
+                { $_ -in @('total_rows','invalid_rows') } { return '1' }
+                { $_ -in @('valid_rows','success_rows','fail_rows') } { return '0' }
+                { $_ -in @('error_file_url','job_log_id','duration_ms','error_message','start_time','end_time') } { return 'NULL' }
+                'operator_id' { return Get-NumericIdExpression $indexes['sys_user'] }
+            }
+        }
+        'sys_import_error' {
+            switch ($name) {
+                'task_id' { return Get-NumericIdExpression $indexes['sys_import_task'] }
+                'row_no' { return '2' }
+                'column_name' { return "'资产名称'" }
+                'cell_value' { return 'NULL' }
+                'error_type' { return "'REQUIRED'" }
+                'error_message' { return "'演示校验：资产名称不能为空'" }
+            }
+        }
+        'sys_print_template' {
+            switch ($name) {
+                'template_code' { return "CONCAT('DEMO_PRINT_',LPAD(r.n+1,3,'0'))" }
+                'template_name' { return "CONCAT('演示资产标签 ',LPAD(r.n+1,3,'0'))" }
+                'biz_type' { return "'ASSET_LABEL'" }
+                'template_format' { return "'HTML'" }
+                'output_format' { return "'PDF'" }
+                'template_content' { return Quote-Sql '<html><body><h1>${title}</h1></body></html>' }
+                { $_ -in @('template_file_url','paper_width_mm','paper_height_mm') } { return 'NULL' }
+                'paper_size' { return "'A4'" }
+                'orientation' { return "'PORTRAIT'" }
+                { $_ -in @('margin_top','margin_bottom','margin_left','margin_right') } { return '10.00' }
+                'variables_declare' { return "JSON_OBJECT('title','资产名称')" }
+                'default_flag' { return '0' }
+                'status' { return "'DISABLED'" }
+            }
+        }
+        'sys_print_record' {
+            switch ($name) {
+                'template_id' { return Get-NumericIdExpression $indexes['sys_print_template'] }
+                'template_code' { return "CONCAT('DEMO_PRINT_',LPAD(r.n+1,3,'0'))" }
+                'biz_type' { return "'ASSET_LABEL'" }
+                'biz_id' { return "CAST($(Get-NumericIdExpression $indexes['oa_asset']) AS CHAR)" }
+                'output_format' { return "'PDF'" }
+                'file_url' { return 'NULL' }
+                'operator_id' { return Get-NumericIdExpression $indexes['sys_user'] }
+                'ip_address' { return "'2001:db8::10'" }
+            }
+        }
+        'sys_api_error_log' {
+            switch ($name) {
+                'process_status' { return "'TODO'" }
+                { $_ -in @('request_params','exception_stack','process_by','process_time','process_remark') } { return 'NULL' }
+                'exception_message' { return "'演示错误记录，不代表真实服务故障'" }
+                'exception_class' { return "'DemoException'" }
+            }
+        }
+    }
+    return $null
+}
+
 function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashtable]$definitionMap) {
     $table = $definition.Table
     $name = $column.Name
     $type = $column.Type
-    if ($name -eq 'tenant_id') { return "($tenantBase + t.n)" }
+    # 停用释放来源只由真实停用事件建立，演示待办不得虚构可接续来源。
+    if ($table -eq 'wf_task' -and $name -in @('disabled_from_user_id','disabled_from_user_name','disabled_release_version','disabled_release_event_id')) { return 'NULL' }
+    # 普通演示付款没有经过人事业务确认，来源只允许由真实业务建立。
+    if ($table -in @('crm_receivable','oa_invoice') -and $name -in @('portal_public_version','portal_published_by','portal_published_time','portal_file_ids')) { return 'NULL' }
+    if ($table -eq 'biz_payment_request' -and $name -in @('source_biz_type','source_biz_id')) { return 'NULL' }
+    if ($table -eq 'sys_tenant' -and $name -in @('package_id','package_version','package_override','effective_menu_ids')) { return 'NULL' }
+    if ($table -eq 'oa_knowledge_document') {
+        if ($name -eq 'external_visible_flag') { return '0' }
+        if ($name -in @('external_version_id', 'external_attachment_file_ids')) { return 'NULL' }
+    }
+    $hExpression = Get-HEnhancementDemoExpression $definition $column $indexes $definitionMap
+    if ($null -ne $hExpression) { return $hExpression }
+    $platformExpression = Get-PlatformFoundationDemoExpression $definition $name $indexes
+    if ($null -ne $platformExpression) { return $platformExpression }
+    $oaOperationsExpression = Get-OaOperationsDemoExpression $definition $column $indexes $definitionMap
+    if ($null -ne $oaOperationsExpression) { return $oaOperationsExpression }
+    $crmOperationsExpression = Get-CrmOperationsDemoExpression $definition $name $indexes $definitionMap
+    if ($null -ne $crmOperationsExpression) { return $crmOperationsExpression }
+    $hrRuleExpression = Get-HrRuleDemoExpression $table $name $indexes
+    if ($null -ne $hrRuleExpression) { return $hrRuleExpression }
+    if ($table -eq 'sys_ip_acl' -and $name -eq 'rule_type') {
+        # ip_pattern 统一生成 /32 CIDR，匹配类型必须与值的格式保持一致。
+        return "'CIDR'"
+    }
+    if ($table -eq 'sys_ip_acl' -and $name -eq 'ip_pattern') {
+        # IP/CIDR/区间表达式是格式说明，不是枚举；不能回落到通用文本模板，
+        # 否则会灌入公司名称并让网关在每个请求中尝试 DNS 解析。
+        # 使用 RFC 5737 的 TEST-NET 保留地址，既是合法 IPv4/CIDR，又不会命中真实网络。
+        return "CONCAT('198.51.',100+MOD(t.n,50),'.',MOD(r.n,250)+1,'/32')"
+    }
+    if ($name -eq 'tenant_id') {
+        # 所有带租户列的表都必须跟 sys_tenant.tenant_id 同一套编号。
+        # 不能落到整数兜底 r.n+1：那会把 50 个租户的业务行（含用户、黑名单）写到 1–50，
+        # 而真正的租户是 100000–100049。登录按租户查用户时对不上，
+        # 黑名单却按裸 user_id 拦截，默认 admin(user_id=1) 会被误伤。
+        return "($tenantBase+t.n)"
+    }
+
+    # 批次 A 基础设施表包含大量强语义枚举、布尔标志和跨表引用，不能使用
+    # 通用“列名猜值”兜底；否则会生成 r.n+1 布尔值、非法状态和孤儿引用。
+    switch ($table) {
+        'oa_expense_standard' {
+            switch ($name) {
+                'position_level' { return "IF(MOD(r.n,5)=0,NULL,CONCAT('P',1+MOD(r.n,9)))" }
+                'city' { return "IF(MOD(r.n,5)=0,NULL,$(Get-TenantFieldExpression 'City'))" }
+                'limit_amount' { return 'CAST(200+MOD(r.n,10)*100 AS DECIMAL(12,2))' }
+                'status' { return "IF(MOD(r.n,10)=9,'INACTIVE','ACTIVE')" }
+                'deleted' { return '0' }
+                'version' { return '0' }
+            }
+        }
+        'wf_task_attachment' {
+            $uploaderExpression = Get-TargetIdExpression 'sys_user' $indexes $definitionMap
+            switch ($name) {
+                'upload_user_id' { return $uploaderExpression }
+                'uploader_name' { return "(SELECT nick_name FROM cloud_flow_db.sys_user WHERE user_id=$uploaderExpression AND tenant_id=$tenantBase+t.n LIMIT 1)" }
+                'file_name' { return "CONCAT('审批材料-',LPAD(r.n+1,3,'0'),'.pdf')" }
+                'file_type' { return "'pdf'" }
+                'file_size' { return '1024*(16+r.n)' }
+                'upload_time' { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY)' }
+            }
+        }
+        'wf_task_delegation' {
+            $fromUserExpression = Get-TargetIdExpression 'sys_user' $indexes $definitionMap
+            $toUserExpression = $fromUserExpression -replace 'r\.n', "MOD(r.n+1,$RowsPerTenant)"
+            $delegationTypeExpression = "ELT(MOD(r.n,4)+1,'DELEGATE','DELEGATE_RETURN','PROXY','TRANSFER')"
+            switch ($name) {
+                'from_user_id' { return $fromUserExpression }
+                'to_user_id' { return $toUserExpression }
+                'from_user_name' { return "(SELECT nick_name FROM cloud_flow_db.sys_user WHERE user_id=$fromUserExpression AND tenant_id=$tenantBase+t.n LIMIT 1)" }
+                'to_user_name' { return "(SELECT nick_name FROM cloud_flow_db.sys_user WHERE user_id=$toUserExpression AND tenant_id=$tenantBase+t.n LIMIT 1)" }
+                'task_id' { return "IF(MOD(r.n,4)=2,NULL,$(Get-TargetIdExpression 'wf_task' $indexes $definitionMap))" }
+                'instance_id' { return "IF(MOD(r.n,4)=2,NULL,$(Get-TargetIdExpression 'wf_process_instance' $indexes $definitionMap))" }
+                'delegation_type' { return $delegationTypeExpression }
+                'status' { return "IF(MOD(r.n,4) IN (0,3),'COMPLETED','ACTIVE')" }
+                'start_time' { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY)' }
+                'end_time' { return 'CASE MOD(r.n,4) WHEN 2 THEN DATE_ADD(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY) WHEN 1 THEN NULL ELSE DATE_ADD(DATE_SUB(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY), INTERVAL 1 HOUR) END' }
+                'create_time' { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY)' }
+                'version' { return '0' }
+            }
+        }
+        'wf_urge_effect' {
+            switch ($name) {
+                'urge_id' { return Get-StringIdExpression $table $name }
+                'before_duration' { return '3600*(1+MOD(r.n,12))' }
+                'after_duration' { return '1800*(1+MOD(r.n,12))' }
+                'effectiveness' { return '5' }
+                'urge_time' { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY)' }
+                'complete_time' { return 'DATE_ADD(DATE_SUB(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY), INTERVAL 1800*(1+MOD(r.n,12)) SECOND)' }
+            }
+        }
+        'wf_deploy_impact' {
+            switch ($name) {
+                'deploy_id' { return Get-TargetIdExpression 'wf_deploy_record' $indexes $definitionMap }
+                # 影响详情是给人看的自由文本：前端 VersionRollbackManagement 直接
+                # {impact.impactDetail} 渲染，灌 JSON_OBJECT 会把花括号和 source/demo50 原样显示到页面上。
+                # 06 手写种子那 7 行也是中文句子，这里跟它保持一致。
+                'impact_detail' { return Get-CatalogExpression @('影响进行中的审批实例，需等待当前节点处理完成','待办任务需重新分派到新版本对应节点','历史实例保留原版本轨迹，不参与本次迁移','表单字段有增减，需核对后再执行发布') 'r.n' }
+                'mitigation_plan' { return Get-CatalogExpression @('待运行中实例结束后发布','保留现有待办并通知处理人','核对表单字段后执行发布','先验证节点变更再安排发布') 'r.n' }
+                'create_time' { return 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL r.n+1 DAY)' }
+            }
+        }
+        'sys_dept' {
+            if ($name -eq 'holiday_calendar_id') {
+                $generatedDefault = Get-NumericIdExpression $indexes['sys_holiday_calendar'] 't.n' '0'
+                # 默认租户已由 06 提供 calendar_id=100 的正式日历，避免再造第二个默认日历。
+                return "IF(t.n=0,100,$generatedDefault)"
+            }
+        }
+        'sys_codegen_table' {
+            switch ($name) {
+                'table_name' { return "CONCAT('demo_codegen_',LPAD(r.n+1,3,'0'))" }
+                'table_comment' { return "CONCAT('演示代码生成配置 ',LPAD(r.n+1,3,'0'))" }
+                'module_name' { return Get-DemoModuleExpression }
+                'business_name' { return "CONCAT('demo_resource_',LPAD(r.n+1,3,'0'))" }
+                'class_name' { return "CONCAT('DemoResource',LPAD(r.n+1,3,'0'))" }
+                'function_name' { return "CONCAT('演示资源',LPAD(r.n+1,3,'0'))" }
+                'package_name' { return "CONCAT('com.cloudflow.demo.t',LPAD(t.n,2,'0'))" }
+                'author' { return "'CloudFlow Demo'" }
+                'tpl_category' { return "ELT(MOD(r.n,5)+1,'CRUD','TREE','SUB','INNER','HR_TYPED')" }
+                'parent_menu_id' { return 'IF(MOD(r.n,5)=3,NULL,6)' }
+                'sub_table_name' { return "IF(MOD(r.n,5)=2,CONCAT('demo_child_',LPAD(r.n+1,3,'0')),NULL)" }
+                'sub_table_fk' { return "IF(MOD(r.n,5)=2,'parent_id',NULL)" }
+                'tree_parent_code' { return "IF(MOD(r.n,5)=1,'parent_id',NULL)" }
+                'tree_name_code' { return "IF(MOD(r.n,5)=1,'name',NULL)" }
+                'tenant_field_flag' { return '1' }
+                'logic_delete_flag' { return '1' }
+                'version_field_flag' { return '1' }
+                'version' { return '0' }
+            }
+        }
+        'sys_codegen_column' {
+            switch ($name) {
+                'table_id' { return Get-NumericIdExpression $indexes['sys_codegen_table'] }
+                'column_name' { return "'id'" }
+                'column_comment' { return "'主键ID'" }
+                'column_type' { return "'bigint'" }
+                'java_type' { return "'Long'" }
+                'java_field' { return "'id'" }
+                'pk_flag' { return '1' }
+                'increment_flag' { return '1' }
+                'required_flag' { return '1' }
+                'insert_flag' { return '0' }
+                'edit_flag' { return '0' }
+                'list_flag' { return '1' }
+                'query_flag' { return '1' }
+                'query_type' { return "'EQ'" }
+                'html_type' { return "'input'" }
+                'dict_type' { return 'NULL' }
+                'audit_field_flag' { return '0' }
+                'sort_no' { return '1' }
+            }
+        }
+        'sys_message_channel' {
+            switch ($name) {
+                'channel_type' { return Get-DemoMessageChannelExpression }
+                'channel_code' { return "CONCAT('demo-channel-t',LPAD(t.n,2,'0'),'-',LPAD(r.n+1,3,'0'))" }
+                'channel_name' { return "CONCAT('演示消息渠道 ',LPAD(r.n+1,3,'0'))" }
+                'provider' { return "IF(MOD(r.n,7)=0,'cloudflow','demo-placeholder')" }
+                'signature' { return 'NULL' }
+                'api_key' { return 'NULL' }
+                'api_secret_cipher' { return 'NULL' }
+                'endpoint' { return 'NULL' }
+                'smtp_host' { return 'NULL' }
+                'smtp_port' { return 'IF(MOD(r.n,7)=1,465,NULL)' }
+                'smtp_ssl_flag' { return '1' }
+                'smtp_username' { return 'NULL' }
+                'smtp_pwd_cipher' { return 'NULL' }
+                'from_address' { return "IF(MOD(r.n,7)=1,CONCAT('demo',r.n+1,'@example.invalid'),NULL)" }
+                'from_name' { return "'CloudFlow Demo'" }
+                'callback_url' { return 'NULL' }
+                'priority' { return '10+r.n' }
+                'rate_limit_minute' { return '60' }
+                'daily_limit' { return '1000' }
+                'retry_count' { return '3' }
+                'retry_interval_sec' { return '60' }
+                'implemented_flag' { return 'IF(MOD(r.n,7)=0,1,0)' }
+                'status' { return "IF(MOD(r.n,7)=0,'ENABLED','DISABLED')" }
+                'version' { return '0' }
+            }
+        }
+        'sys_message_template' {
+            switch ($name) {
+                'template_code' { return "CONCAT('DEMO_TPL_T',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,3,'0'))" }
+                'template_name' { return "CONCAT('演示消息模板 ',LPAD(r.n+1,3,'0'))" }
+                'channel_type' { return Get-DemoMessageChannelExpression }
+                'biz_module' { return Get-DemoModuleExpression }
+                'message_category' { return Get-DemoMessageCategoryExpression }
+                'title_template' { return "CONCAT('演示消息 ',LPAD(r.n+1,3,'0'))" }
+                'content_template' { return "CONCAT('这是租户 ',100000+t.n,' 的演示消息内容。')" }
+                'params_declare' { return "'[]'" }
+                'force_send_flag' { return '0' }
+                'dedupe_window_sec' { return '300' }
+                'link_url_template' { return "CONCAT('/message/demo/',LPAD(r.n+1,3,'0'))" }
+                'status' { return "IF(MOD(r.n,7)=0,'ENABLED','DISABLED')" }
+                'version' { return '0' }
+            }
+        }
+        'sys_message_record' {
+            switch ($name) {
+                'trace_id' { return "CONCAT('demo-trace-t',LPAD(t.n,2,'0'),'-',LPAD(r.n+1,3,'0'))" }
+                'template_code' { return "CONCAT('DEMO_TPL_T',LPAD(t.n,2,'0'),'_',LPAD(r.n+1,3,'0'))" }
+                'channel_type' { return Get-DemoMessageChannelExpression }
+                'channel_id' { return Get-NumericIdExpression $indexes['sys_message_channel'] }
+                'receiver_type' { return "'USER'" }
+                'receiver_id' { return Get-TargetIdExpression 'sys_user' $indexes $definitionMap }
+                'receiver_addr_mask' { return 'NULL' }
+                'receiver_addr_cipher' { return 'NULL' }
+                'receiver_name' { return Get-PersonExpression }
+                'title' { return "CONCAT('演示消息 ',LPAD(r.n+1,3,'0'))" }
+                'content' { return "CONCAT('租户 ',100000+t.n,' 的演示消息记录。')" }
+                'message_category' { return Get-DemoMessageCategoryExpression }
+                'biz_type' { return "'DEMO'" }
+                'biz_id' { return "CONCAT('DEMO-',LPAD(t.n,2,'0'),'-',LPAD(r.n+1,3,'0'))" }
+                'link_url' { return "CONCAT('/message/demo/',LPAD(r.n+1,3,'0'))" }
+                'send_status' { return Get-DemoMessageStatusExpression }
+                'skip_reason' { return "IF(MOD(r.n,6)=5,'NOT_IMPLEMENTED',NULL)" }
+                'retry_count' { return 'IF(MOD(r.n,6)=3,1,0)' }
+                'error_msg' { return "IF(MOD(r.n,6)=3,'演示发送失败',NULL)" }
+                'send_time' { return 'IF(MOD(r.n,6)>=2,DATE_SUB(CURRENT_TIMESTAMP,INTERVAL r.n MINUTE),NULL)' }
+                'read_flag' { return 'MOD(r.n,2)' }
+                'read_time' { return 'IF(MOD(r.n,2)=1,DATE_SUB(CURRENT_TIMESTAMP,INTERVAL r.n MINUTE),NULL)' }
+                'resend_from_id' { return 'NULL' }
+                'outbox_event_id' { return 'NULL' }
+            }
+        }
+        'sys_message_subscribe' {
+            switch ($name) {
+                'user_id' { return Get-TargetIdExpression 'sys_user' $indexes $definitionMap }
+                'message_category' { return Get-DemoMessageCategoryExpression }
+                'channel_type' { return Get-DemoMessageChannelExpression }
+                'enabled_flag' { return 'MOD(r.n,2)' }
+                'quiet_start' { return "'22:00:00'" }
+                'quiet_end' { return "'07:00:00'" }
+            }
+        }
+        'sys_sms_code' {
+            switch ($name) {
+                'code_hash' { return "SHA2(CONCAT('demo-sms-',t.n,'-',r.n),256)" }
+                'biz_scene' { return "'DEMO_LOGIN'" }
+                'expire_time' { return 'DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 5 MINUTE)' }
+                'used_flag' { return 'MOD(r.n,2)' }
+                'used_time' { return 'IF(MOD(r.n,2)=1,CURRENT_TIMESTAMP,NULL)' }
+                'send_ip' { return "CONCAT('198.51.100.',MOD(r.n,250)+1)" }
+                'verify_fail_count' { return 'MOD(r.n,3)' }
+            }
+        }
+        'sys_job' {
+            switch ($name) {
+                'job_name' { return "CONCAT('演示定时任务 ',LPAD(r.n+1,3,'0'))" }
+                'job_group' { return "'DEMO'" }
+                'service_name' { return Get-DemoServiceExpression }
+                'handler_name' { return Get-DemoHandlerExpression }
+                'handler_param' { return 'NULL' }
+                'trigger_type' { return Get-DemoJobTriggerExpression }
+                'cron_expression' { return "IF(MOD(r.n,3)=0,'0 0 2 * * ?',NULL)" }
+                'interval_ms' { return 'IF(MOD(r.n,3)=0,NULL,300000)' }
+                'status' { return "'PAUSED'" }
+                'concurrent_flag' { return '0' }
+                'misfire_strategy' { return "ELT(MOD(r.n,3)+1,'IGNORE','FIRE_ONCE','FIRE_ALL')" }
+                'retry_count' { return '1' }
+                'retry_interval_sec' { return '60' }
+                'dispatch_retry_count' { return '3' }
+                'dispatch_retry_interval_sec' { return '10' }
+                'timeout_seconds' { return '1800' }
+                'lock_time_seconds' { return '300' }
+                'critical_flag' { return '0' }
+                'log_success_flag' { return '1' }
+                'alarm_on_fail_flag' { return '0' }
+                'alarm_receiver' { return 'NULL' }
+                'consecutive_fail_count' { return '0' }
+                'last_fire_time' { return 'NULL' }
+                'next_fire_time' { return 'NULL' }
+                'version' { return '0' }
+            }
+        }
+        'sys_job_handler' {
+            switch ($name) {
+                'service_name' { return Get-DemoServiceExpression }
+                'handler_name' { return Get-DemoHandlerExpression }
+                'handler_desc' { return "CONCAT('演示任务处理器 ',LPAD(r.n+1,3,'0'))" }
+                'status' { return "'OFFLINE'" }
+                'last_report_time' { return 'NULL' }
+            }
+        }
+        'sys_job_log' {
+            switch ($name) {
+                'job_id' { return Get-NumericIdExpression $indexes['sys_job'] }
+                'job_name' { return "CONCAT('演示定时任务 ',LPAD(r.n+1,3,'0'))" }
+                'handler_name' { return Get-DemoHandlerExpression }
+                'execute_no' { return "CONCAT('DEMO-JOB-T',LPAD(t.n,2,'0'),'-',LPAD(r.n+1,3,'0'))" }
+                'trigger_type' { return Get-DemoJobLogTriggerExpression }
+                'trigger_by' { return "IF(MOD(r.n,3)=1,'demo_operator',NULL)" }
+                'start_time' { return 'DATE_SUB(CURRENT_TIMESTAMP,INTERVAL r.n+1 MINUTE)' }
+                'end_time' { return 'IF(MOD(r.n,6)=0,NULL,DATE_SUB(CURRENT_TIMESTAMP,INTERVAL r.n MINUTE))' }
+                'duration_ms' { return 'IF(MOD(r.n,6)=0,NULL,60000)' }
+                'execute_status' { return Get-DemoJobLogStatusExpression }
+                'affected_rows' { return 'IF(MOD(r.n,6)=1,r.n+1,NULL)' }
+                'result_msg' { return "CONCAT('演示执行结果 ',LPAD(r.n+1,3,'0'))" }
+                'exception_stack' { return "IF(MOD(r.n,6)=2,'演示异常堆栈',NULL)" }
+                'executor_ip' { return "CONCAT('10.10.',t.n+1,'.',r.n+1)" }
+                'dispatcher_ip' { return "CONCAT('10.20.',t.n+1,'.1')" }
+                'dispatch_retry_index' { return 'MOD(r.n,3)' }
+                'retry_index' { return 'MOD(r.n,2)' }
+                'report_time' { return 'IF(MOD(r.n,6)=0,NULL,CURRENT_TIMESTAMP)' }
+            }
+        }
+        'sys_holiday_calendar' {
+            switch ($name) {
+                'calendar_code' { return "CONCAT('CN-DEMO-',LPAD(r.n+1,3,'0'))" }
+                'calendar_name' { return "CONCAT('中国大陆演示日历 ',LPAD(r.n+1,3,'0'))" }
+                'region' { return "'中国大陆'" }
+                'default_flag' { return 'IF(t.n>0 AND r.n=0,1,0)' }
+                'weekly_rest_days' { return "'6,7'" }
+                'work_start_time' { return "'09:00:00'" }
+                'work_end_time' { return "'18:00:00'" }
+                'lunch_start_time' { return "'12:00:00'" }
+                'lunch_end_time' { return "'13:00:00'" }
+                'status' { return "'ENABLED'" }
+                'version' { return '0' }
+            }
+        }
+        'sys_holiday_date' {
+            switch ($name) {
+                'calendar_id' { return Get-NumericIdExpression $indexes['sys_holiday_calendar'] 't.n' '0' }
+                'holiday_date' { return Get-DemoHolidayDateExpression }
+                'date_type' { return Get-DemoHolidayTypeExpression }
+                'holiday_name' { return "ELT(MOD(r.n,3)+1,'演示调休上班','演示法定节假日','演示休息日')" }
+                'triple_pay_flag' { return 'IF(MOD(r.n,3)=1,1,0)' }
+                'year_no' { return '2026' }
+                'version' { return '0' }
+            }
+        }
+    }
+
     if ($table -eq 'sys_tenant' -and $name -eq 'user_limit') { return '100' }
     if ($table -eq 'sys_tenant' -and $name -eq 'storage_limit') { return '10240' }
     # 租户到期时间必须显式给 1 年，与 06.cloudflow-business-seed.sql 的默认租户一致。
@@ -487,6 +1533,7 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     if ($table -eq 'sys_role' -and $name -eq 'data_scope') { return "IF(r.n=0,'1','3')" }
     if ($table -eq 'sys_role' -and $name -eq 'ds_type') { return 'IF(r.n=0,0,3)' }
     if ($table -eq 'sys_menu' -and $name -eq 'status') { return "'1'" }
+    if ($table -eq 'sys_menu' -and $name -eq 'perms') { return "CONCAT('system:demo-menu:view-',LPAD(r.n+1,3,'0'))" }
     if ($table -eq 'oa_meeting_room' -and $name -eq 'status') { return "'1'" }
     if ($table -eq 'sys_user_totp' -and $name -eq 'secret_ciphertext') { return "'DEMO_DISABLED'" }
     if ($table -eq 'sys_user_totp' -and $name -eq 'enabled') { return '0' }
@@ -523,6 +1570,23 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
             'publish_time' { return 'CURRENT_TIMESTAMP' }
             'create_time' { return 'CURRENT_TIMESTAMP' }
             'update_time' { return 'CURRENT_TIMESTAMP' }
+        }
+    }
+
+    if ($table -eq 'oa_meeting_room') {
+        switch ($name) {
+            'equipment_tags' { return "JSON_ARRAY('投影仪','白板')" }
+            { $_ -in @('open_time','close_time','bookable_weekdays','holiday_calendar_id','max_booking_minutes','advance_booking_days','approver_id','photo_file_id') } { return 'NULL' }
+            { $_ -in @('holiday_bookable_flag','min_booking_minutes') } { return '1' }
+            { $_ -in @('need_approval_flag','buffer_minutes') } { return '0' }
+        }
+    }
+
+    if ($table -eq 'oa_meeting_attendance') {
+        switch ($name) {
+            { $_ -in @('schedule_event_id','response_time') } { return 'NULL' }
+            'acceptance_status' { return "'NONE'" }
+            'invitation_version' { return '0' }
         }
     }
 
@@ -569,6 +1633,14 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
             'end_time' { return "IF($scheduleAllDay,DATE_ADD($scheduleDate, INTERVAL 1 DAY),DATE_ADD($scheduleStart, INTERVAL (1+MOD(r.n,3)) HOUR))" }
             'is_all_day' { return "IF($scheduleAllDay,1,0)" }
             'type' { return "ELT($scheduleTypeOffset+1,'MEETING','WORK','PERSONAL')" }
+            'status' { return "'PLANNED'" }
+            'approval_status' { return "'NOT_REQUIRED'" }
+            'recurrence_role' { return "'SINGLE'" }
+            'timezone_id' { return "'Asia/Shanghai'" }
+            'reminders' { return 'JSON_ARRAY()' }
+            'expected_attendees' { return '3' }
+            { $_ -in @('buffer_minutes_snapshot','schedule_version','recurrence_exception_flag') } { return '0' }
+            { $_ -in @('join_url','meeting_platform','recurrence_rule','recurrence_end_date','parent_event_id','original_start_time','source_series_version','instance_id') } { return 'NULL' }
             'room_id' {
                 $roomExpression = Get-TargetIdExpression 'oa_meeting_room' $indexes $definitionMap
                 return "IF($scheduleTypeOffset=0,$roomExpression,NULL)"
@@ -582,6 +1654,13 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
         }
     }
 
+    if ($table -eq 'sys_user_blacklist' -and $name -eq 'user_id') {
+        # 每租户 r.n=0 是 admin。Get-TargetIdExpression 还会把默认租户第一行映射成
+        # user_id=1（06 手写的真实 admin）。登录 isBanned 只看 user_id、不看 tenant_id，
+        # 演示黑名单一旦指向 1，xinyuan/admin 当天就会被拦，表现为“账户过期”。
+        # 指向下一行演示用户，既保留黑名单列表，又不锁死租户管理员。
+        return Get-NumericIdExpression $indexes['sys_user'] 't.n' '1+MOD(r.n,49)'
+    }
     $target = Get-TargetTable $name
     if ($table -like 'oa_knowledge_*' -and $name -eq 'document_id') { $target = 'oa_knowledge_document' }
     if ($target -and $definition.Primary.Count -gt 1) {
@@ -598,7 +1677,23 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
     }
 
     if ($table -eq 'sys_menu' -and $name -eq 'parent_id') { return 'IF(r.n=0,0,3000)' }
-    if ($table -eq 'sys_dept' -and $name -eq 'parent_id') { return 'IF(r.n=0,0,' + (Get-NumericIdExpression $indexes[$table] 't.n' 'r.n-1') + ')' }
+    # 演示部门必须是扇形三层，不能连成链。原来 parent 指向 r.n-1，50 行串成 50 层深，
+    # 前端 OrgStructure 每层缩进 18px，第 50 层是 900px，远超 320px 的面板宽度，
+    # 树会斜向下坠出可视区、部门名被压成「战略投...」。按 06 手写种子的形状来：
+    # r.n=0 是根公司；r.n=1..10 是 10 个一级部门，挂在根下；r.n>=11 是二级组，
+    # 轮流挂到那 10 个一级部门上（MOD 取模均摊，39 个二级组分成 4/4/4/4/4/4/4/4/4/3）。
+    if ($table -eq 'sys_dept' -and $name -eq 'parent_id') {
+        $rootId = Get-NumericIdExpression $indexes[$table] 't.n' '0'
+        $firstLevelId = Get-NumericIdExpression $indexes[$table] 't.n' '1+MOD(r.n-11,10)'
+        return "CASE WHEN r.n=0 THEN 0 WHEN r.n<11 THEN $rootId ELSE $firstLevelId END"
+    }
+    # ancestors 是逗号分隔的祖先路径（不含自己），必须和上面的 parent_id 严格对应，
+    # 否则前端按 ancestors 算层级、后端按 ancestors 做数据权限过滤都会错。
+    if ($table -eq 'sys_dept' -and $name -eq 'ancestors') {
+        $rootId = Get-NumericIdExpression $indexes[$table] 't.n' '0'
+        $firstLevelId = Get-NumericIdExpression $indexes[$table] 't.n' '1+MOD(r.n-11,10)'
+        return "CASE WHEN r.n=0 THEN '0' WHEN r.n<11 THEN CONCAT('0,',$rootId) ELSE CONCAT('0,',$rootId,',',$firstLevelId) END"
+    }
     if ($table -eq 'sys_menu' -and $name -eq 'menu_type') { return "IF(r.n=0,'M',IF(r.n<25,'C','F'))" }
     if ($name -match '(?i)(status|_status)$') { return Get-StatusExpression $table $name $type $column.Length $column.Comment }
     if ($name -eq 'direction') { return "IF(MOD(r.n,2)=0,'IN','OUT')" }
@@ -623,7 +1718,11 @@ function Get-ColumnExpression($definition, $column, [hashtable]$indexes, [hashta
         }
     }
 
-    if ($type -match 'json') { return "JSON_OBJECT('source','demo50','tenantId',$tenantBase+t.n,'table','$table','row',r.n+1,'label','全链路演示数据')" }
+    # 原生 json 类型和 TEXT/VARCHAR 承载的 JSON 走同一条路。放在类型兜底这里而不是更早：
+    # 更早会盖掉上面各表手工调过的取值（如 oa_schedule_event.attendees 已经是 JSON_ARRAY 用户 ID、
+    # sys_message_template.params_declare 已经是 '[]'），那些都比通用形状更贴合业务。
+    $jsonExpression = Get-JsonColumnExpression $definition $column $indexes $definitionMap
+    if ($jsonExpression) { return $jsonExpression }
     if ($type -match '(datetime|timestamp)') {
         if ($name -match '(?i)(end|expire|expiry|deadline|due|renew|next|effective|return)') { return 'DATE_ADD(CURRENT_TIMESTAMP, INTERVAL MOD(r.n,90)+1 DAY)' }
         return 'DATE_ADD(CURRENT_TIMESTAMP, INTERVAL MOD(t.n*50+r.n,365)+1 DAY)'
@@ -659,6 +1758,8 @@ function Get-DeletePredicate($definition, [hashtable]$indexes) {
     if ($table -eq 'sys_audit_archive_policy') { return "biz_module LIKE 'demo50-%'" }
     if (-not $definition.HasTenant) { return '1=0' }
     $tenantPredicate = "tenant_id BETWEEN $($tenantBase + 1) AND $tenantLast"
+    # 旧生成器把 tenant_id 写成 r.n+1，脏数据落在 1–50；重灌必须清掉，否则黑名单等行会留下。
+    $legacyMiskeyedPredicate = "tenant_id BETWEEN 1 AND $TenantCount"
     $primaryPredicates = @()
     foreach ($primaryName in $definition.Primary) {
         if ($primaryName -eq 'tenant_id') { continue }
@@ -670,12 +1771,14 @@ function Get-DeletePredicate($definition, [hashtable]$indexes) {
             $primaryPredicates += "$primaryName BETWEEN $minimum AND $maximum"
         }
     }
-    if ($primaryPredicates.Count -eq 0) { return $tenantPredicate }
-    return "($tenantPredicate) OR (tenant_id=$tenantBase AND (" + ($primaryPredicates -join ' OR ') + '))'
+    if ($primaryPredicates.Count -eq 0) { return "($tenantPredicate) OR ($legacyMiskeyedPredicate)" }
+    $predicate = "($tenantPredicate) OR ($legacyMiskeyedPredicate) OR (tenant_id=$tenantBase AND (" + ($primaryPredicates -join ' OR ') + '))'
+    if ($table -eq 'hr_comp_component') { return "($predicate) AND component_code <> 'OVERTIME'" }
+    return $predicate
 }
 
 $definitions = @(Read-Schema $SchemaPath)
-if ($definitions.Count -ne 244) { throw "Expected 244 tables, found $($definitions.Count)." }
+if ($definitions.Count -ne 374) { throw "Expected 374 tables including the six approved settlement tables, found $($definitions.Count)." }
 $definitionMap = @{}
 $indexes = @{}
 $tableIndex = 1
@@ -684,36 +1787,76 @@ foreach ($definition in ($definitions | Sort-Object Table)) {
     $indexes[$definition.Table] = $tableIndex
     $tableIndex++
 }
+$emailTables = @('crm_mass_email_recipient','crm_email_tracking_link','crm_email_suppression')
+$approvedEmailTables = @(Read-Schema (Join-Path $PSScriptRoot '../docs/design/外部接入与可靠投递提案DDL.sql') | Where-Object Table -In $emailTables)
+if ($approvedEmailTables.Count -ne 3) { throw 'The approved CRM email proposal must contain exactly three CRM email tables.' }
+foreach ($approved in $approvedEmailTables) {
+    $actual = $definitionMap[$approved.Table]
+    if ($null -eq $actual) { throw "Missing approved email table: $($approved.Table)" }
+    $expectedColumns = @($approved.Columns | Select-Object Name,Type,Length,Auto,Nullable,DefaultExpression) | ConvertTo-Json -Depth 8 -Compress
+    $actualColumns = @($actual.Columns | Select-Object Name,Type,Length,Auto,Nullable,DefaultExpression) | ConvertTo-Json -Depth 8 -Compress
+    if ($expectedColumns -cne $actualColumns -or ($approved.Primary -join ',') -cne ($actual.Primary -join ',')) {
+        throw "CRM email table differs from the approved proposal: $($approved.Table)"
+    }
+}
+$Tables = @($Tables | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ } | Sort-Object -Unique)
+foreach ($tableName in $Tables) {
+    if (-not $definitionMap.ContainsKey($tableName)) { throw "Unknown table: $tableName" }
+}
+$scopedGeneration = $Tables.Count -gt 0
+$selectedDefinitions = @($definitions | Where-Object { -not $scopedGeneration -or $_.Table -in $Tables })
+if ($scopedGeneration -and -not $ValidateOnly) {
+    $fullSeedPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\cloudflow-backend\DB\07.cloudflow-demo-seed.sql'))
+    if (-not $PSBoundParameters.ContainsKey('OutputPath') -or [IO.Path]::GetFullPath($OutputPath) -eq $fullSeedPath) {
+        throw 'Scoped generation requires a separate -OutputPath; the full 07 seed must not be overwritten.'
+    }
+}
 if ($ValidateOnly) {
-    $definitions | Sort-Object Table | ForEach-Object { "{0}`t{1}`t{2}" -f $_.Table,$_.Columns.Count,$_.HasTenant }
+    $selectedDefinitions | Sort-Object Table | ForEach-Object { "{0}`t{1}`t{2}" -f $_.Table,$_.Columns.Count,$_.HasTenant }
     exit 0
 }
 
-$deleteOrder = @($definitions | Sort-Object Table -Descending)
+$serviceGeneratedTables = @('sys_data_source_config','sys_data_source_registration','hr_employee_referral','hr_recruitment_identity','hr_employee_advance','hr_advance_repayment','hr_appraisal_cycle','hr_appraisal_kra','hr_appraisal_result','hr_skill','hr_position_skill','hr_employee_skill','sys_portal_user','sys_message_delivery','crm_mass_email_recipient','crm_email_tracking_link','crm_email_suppression','crm_email_record','crm_sales_stage','crm_opportunity_item','crm_opportunity_stage_history','crm_deal_team','crm_deal_event','crm_deal_allocation','oa_meeting_reminder','wf_form_draft','wf_agent_setting','wf_gateway_activation','wf_parallel_join','hr_overtime_type','hr_overtime_request','hr_shift_request',
+    'oa_consumable_ledger','oa_consumable_request','oa_consumable_request_item','biz_purchase_receipt')
+$serviceGeneratedTables += @('sys_oauth2_client','sys_oauth2_code','sys_oauth2_access_token','sys_oauth2_refresh_token','sys_oauth2_approve')
+$serviceGeneratedTables += @('sys_report_dataset','sys_report_chart','sys_report_dashboard','sys_report_dashboard_item')
+$serviceGeneratedTables += @('sys_tenant_package','sys_tenant_package_sync','sys_tenant_package_sync_item')
+$serviceGeneratedTables += @('sys_im_config','sys_im_user_mapping','sys_im_dept_mapping','sys_im_todo_mapping','sys_im_sync_run','sys_im_callback_event')
+$serviceGeneratedTables += @('hr_severance_rule','hr_severance_rule_slab','hr_final_settlement','hr_final_settlement_item','hr_training_recovery','hr_exit_interview')
+if ($scopedGeneration -and @($Tables | Where-Object { $_ -in $serviceGeneratedTables }).Count -gt 0) {
+    throw 'Application, draft, delivery, tracking, inventory and data source tables require canonical foundations or real service operations.'
+}
+$selectedDefinitions = @($selectedDefinitions | Where-Object { $_.Table -notin $serviceGeneratedTables })
+$deleteOrder = @($selectedDefinitions | Sort-Object Table -Descending)
 $insertOrderNames = @('sys_tenant','sys_dept','sys_user','sys_role','sys_post','sys_menu','sys_user_role','sys_role_menu','sys_user_post','sys_file','sys_legal_release','sys_legal_document','sys_legal_consent')
 $insertOrder = [System.Collections.Generic.List[object]]::new()
-foreach ($name in $insertOrderNames) { if ($definitionMap.ContainsKey($name)) { $insertOrder.Add($definitionMap[$name]) } }
-foreach ($definition in ($definitions | Sort-Object Table)) { if (-not $insertOrderNames.Contains($definition.Table)) { $insertOrder.Add($definition) } }
+foreach ($name in $insertOrderNames) { if ($definitionMap.ContainsKey($name) -and (-not $scopedGeneration -or $name -in $Tables)) { $insertOrder.Add($definitionMap[$name]) } }
+foreach ($definition in ($selectedDefinitions | Sort-Object Table)) { if (-not $insertOrderNames.Contains($definition.Table)) { $insertOrder.Add($definition) } }
 
 $outputDirectory = Split-Path -Parent $OutputPath
 if (-not (Test-Path -LiteralPath $outputDirectory)) { New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null }
 $writer = [System.IO.StreamWriter]::new($OutputPath, $false, [System.Text.UTF8Encoding]::new($false))
 try {
-    $writer.WriteLine('-- CloudFlow Pro - 50-tenant full Demo seed')
+    $writer.WriteLine("-- CloudFlow Pro - 50-tenant $(if ($scopedGeneration) { 'scoped' } else { 'full' }) Demo seed")
     $writer.WriteLine('-- Generated by scripts/generate-demo-seed.ps1. Do not hand-edit this file.')
-    $writer.WriteLine('-- 242 tenant tables receive 50 rows per tenant; 2 global tables receive 50 rows total.')
+    $tenantTableCount = @($selectedDefinitions | Where-Object HasTenant).Count
+    $globalTableCount = $selectedDefinitions.Count - $tenantTableCount
+    $writer.WriteLine("-- Generic seeds: $tenantTableCount tenant tables receive $RowsPerTenant rows per tenant; $globalTableCount global tables receive $RowsPerTenant rows total.")
+    $writer.WriteLine('-- H foundations add three disabled overtime types per active tenant; drafts, approvals, settlements and inventory events require real service operations.')
     $writer.WriteLine('SET NAMES utf8mb4;')
     $writer.WriteLine('SET FOREIGN_KEY_CHECKS=0;')
-    $writer.WriteLine('SET UNIQUE_CHECKS=0;')
+    $writer.WriteLine('SET UNIQUE_CHECKS=1;')
     $writer.WriteLine('USE cloud_flow_db;')
-    $writer.WriteLine("SET @cloudflow_schema_sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_meeting_minutes' AND column_name='room_id'), 'SELECT 1', 'ALTER TABLE oa_meeting_minutes ADD COLUMN room_id VARCHAR(64) DEFAULT NULL AFTER meeting_time');")
-    $writer.WriteLine('PREPARE cloudflow_schema_stmt FROM @cloudflow_schema_sql;')
-    $writer.WriteLine('EXECUTE cloudflow_schema_stmt;')
-    $writer.WriteLine('DEALLOCATE PREPARE cloudflow_schema_stmt;')
-    $writer.WriteLine("SET @cloudflow_schema_sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_meeting_minutes' AND column_name='schedule_event_id'), 'SELECT 1', 'ALTER TABLE oa_meeting_minutes ADD COLUMN schedule_event_id BIGINT(20) DEFAULT NULL AFTER organizer_name');")
-    $writer.WriteLine('PREPARE cloudflow_schema_stmt FROM @cloudflow_schema_sql;')
-    $writer.WriteLine('EXECUTE cloudflow_schema_stmt;')
-    $writer.WriteLine('DEALLOCATE PREPARE cloudflow_schema_stmt;')
+    if (-not $scopedGeneration -or 'oa_meeting_minutes' -in $Tables) {
+        $writer.WriteLine("SET @cloudflow_schema_sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_meeting_minutes' AND column_name='room_id'), 'SELECT 1', 'ALTER TABLE oa_meeting_minutes ADD COLUMN room_id VARCHAR(64) DEFAULT NULL AFTER meeting_time');")
+        $writer.WriteLine('PREPARE cloudflow_schema_stmt FROM @cloudflow_schema_sql;')
+        $writer.WriteLine('EXECUTE cloudflow_schema_stmt;')
+        $writer.WriteLine('DEALLOCATE PREPARE cloudflow_schema_stmt;')
+        $writer.WriteLine("SET @cloudflow_schema_sql = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_meeting_minutes' AND column_name='schedule_event_id'), 'SELECT 1', 'ALTER TABLE oa_meeting_minutes ADD COLUMN schedule_event_id BIGINT(20) DEFAULT NULL AFTER organizer_name');")
+        $writer.WriteLine('PREPARE cloudflow_schema_stmt FROM @cloudflow_schema_sql;')
+        $writer.WriteLine('EXECUTE cloudflow_schema_stmt;')
+        $writer.WriteLine('DEALLOCATE PREPARE cloudflow_schema_stmt;')
+    }
     $writer.WriteLine('DROP TEMPORARY TABLE IF EXISTS demo_seed_tenants;')
     $writer.WriteLine('DROP TEMPORARY TABLE IF EXISTS demo_seed_rows;')
     $writer.WriteLine('CREATE TEMPORARY TABLE demo_seed_tenants (n INT NOT NULL PRIMARY KEY);')
@@ -722,6 +1865,102 @@ try {
     $writer.WriteLine('INSERT INTO demo_seed_tenants (n) VALUES ' + ($numberValues -join ',') + ';')
     $writer.WriteLine('INSERT INTO demo_seed_rows (n) VALUES ' + ($numberValues -join ',') + ';')
     $writer.WriteLine('')
+    if (-not $scopedGeneration) { Write-HEnhancementGuard $writer }
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE oauth2_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO oauth2_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM sys_oauth2_client)
+ AND NOT EXISTS(SELECT 1 FROM sys_oauth2_code)
+ AND NOT EXISTS(SELECT 1 FROM sys_oauth2_access_token)
+ AND NOT EXISTS(SELECT 1 FROM sys_oauth2_refresh_token)
+ AND NOT EXISTS(SELECT 1 FROM sys_oauth2_approve);
+DROP TEMPORARY TABLE oauth2_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE report_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO report_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM sys_report_dataset)
+ AND NOT EXISTS(SELECT 1 FROM sys_report_chart)
+ AND NOT EXISTS(SELECT 1 FROM sys_report_dashboard)
+ AND NOT EXISTS(SELECT 1 FROM sys_report_dashboard_item);
+DROP TEMPORARY TABLE report_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE data_source_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO data_source_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM sys_data_source_config)
+ AND NOT EXISTS(SELECT 1 FROM sys_data_source_registration);
+DROP TEMPORARY TABLE data_source_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE tenant_package_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO tenant_package_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM sys_tenant_package)
+ AND NOT EXISTS(SELECT 1 FROM sys_tenant_package_sync)
+ AND NOT EXISTS(SELECT 1 FROM sys_tenant_package_sync_item)
+ AND NOT EXISTS(SELECT 1 FROM sys_tenant WHERE package_id IS NOT NULL OR package_version IS NOT NULL OR package_override IS NOT NULL OR effective_menu_ids IS NOT NULL);
+DROP TEMPORARY TABLE tenant_package_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE im_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO im_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM sys_im_config)
+ AND NOT EXISTS(SELECT 1 FROM sys_im_user_mapping)
+ AND NOT EXISTS(SELECT 1 FROM sys_im_dept_mapping)
+ AND NOT EXISTS(SELECT 1 FROM sys_im_todo_mapping)
+ AND NOT EXISTS(SELECT 1 FROM sys_im_sync_run)
+ AND NOT EXISTS(SELECT 1 FROM sys_im_callback_event);
+DROP TEMPORARY TABLE im_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE hr_skill_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO hr_skill_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM hr_skill WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM hr_position_skill WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM hr_employee_skill WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50);
+DROP TEMPORARY TABLE hr_skill_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE hr_advance_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO hr_advance_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM hr_employee_advance WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM hr_advance_repayment WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50);
+DROP TEMPORARY TABLE hr_advance_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE portal_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO portal_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM sys_portal_user WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM oa_knowledge_document WHERE (tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+  AND (external_visible_flag <> 0 OR external_version_id IS NOT NULL OR external_attachment_file_ids IS NOT NULL))
+ AND NOT EXISTS(SELECT 1 FROM oa_contract WHERE (tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+  AND (portal_term_ids IS NOT NULL OR portal_milestone_ids IS NOT NULL OR portal_payment_schedule_ids IS NOT NULL));
+DROP TEMPORARY TABLE portal_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE crm_email_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO crm_email_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM crm_mass_email_recipient WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM crm_email_tracking_link WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM crm_email_suppression WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM crm_email_record WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50);
+DROP TEMPORARY TABLE crm_email_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE crm_opportunity_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO crm_opportunity_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM crm_opportunity_stage_history WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM crm_opportunity_item WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50);
+DROP TEMPORARY TABLE crm_opportunity_demo_seed_guard;
+'@)
+    $writer.WriteLine(@'
+CREATE TEMPORARY TABLE crm_deal_demo_seed_guard (passed TINYINT NOT NULL CHECK (passed = 1));
+INSERT INTO crm_deal_demo_seed_guard
+SELECT NOT EXISTS(SELECT 1 FROM crm_deal_team WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM crm_deal_event WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50)
+ AND NOT EXISTS(SELECT 1 FROM crm_deal_allocation WHERE tenant_id BETWEEN 100000 AND 100049 OR tenant_id BETWEEN 1 AND 50);
+DROP TEMPORARY TABLE crm_deal_demo_seed_guard;
+'@)
     foreach ($definition in $deleteOrder) {
         $writer.WriteLine("DELETE FROM cloud_flow_db.$($definition.Table) WHERE $(Get-DeletePredicate $definition $indexes);")
     }
@@ -760,9 +1999,32 @@ try {
             $writer.WriteLine('SELECT ' + ($expressions -join ',') + ' FROM demo_seed_tenants t CROSS JOIN demo_seed_rows r;')
         }
     }
-    $adminRoleExpression = Get-NumericIdExpression $indexes['sys_role'] 't.n' '0'
-    $writer.WriteLine('INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id,menu_id,tenant_id)')
-    $writer.WriteLine("SELECT $adminRoleExpression,m.menu_id,$tenantBase+t.n FROM demo_seed_tenants t CROSS JOIN cloud_flow_db.sys_menu m WHERE m.status='0' AND m.menu_id NOT BETWEEN 3000 AND 3049;")
+    if (-not $scopedGeneration -or 'sys_role_menu' -in $Tables) {
+        $writer.WriteLine('INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id,menu_id,tenant_id)')
+        $writer.WriteLine("SELECT r.role_id,m.menu_id,r.tenant_id FROM cloud_flow_db.sys_role r CROSS JOIN cloud_flow_db.sys_menu m WHERE r.tenant_id BETWEEN $tenantBase AND $tenantLast AND r.role_key='admin' AND r.status='0' AND r.deleted=0 AND m.status='0' AND m.menu_id NOT BETWEEN 3000 AND 3049 AND m.menu_id NOT BETWEEN 1970 AND 1976 AND m.menu_id NOT BETWEEN 1780 AND 1799 AND m.menu_id NOT IN (1987,1988);")
+        $writer.WriteLine('INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id,menu_id,tenant_id)')
+        $writer.WriteLine("SELECT r.role_id,m.menu_id,r.tenant_id FROM cloud_flow_db.sys_role r CROSS JOIN cloud_flow_db.sys_menu m WHERE r.tenant_id BETWEEN $tenantBase AND $tenantLast AND r.role_key='hr' AND r.status='0' AND r.deleted=0 AND m.status='0' AND (m.menu_id IN (6,1756,1757) OR m.menu_id BETWEEN 1320 AND 1324);")
+        $writer.WriteLine('INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id,menu_id,tenant_id)')
+        $writer.WriteLine("SELECT r.role_id,m.menu_id,r.tenant_id FROM cloud_flow_db.sys_role r CROSS JOIN cloud_flow_db.sys_menu m WHERE r.tenant_id BETWEEN $tenantBase AND $tenantLast AND r.status='0' AND r.deleted=0 AND m.menu_id IN (1325,1336,1337,1338,1339);")
+    }
+    if (-not $scopedGeneration) { Write-OaOperationsDefaults $writer $SchemaPath }
+    if (-not $scopedGeneration) { Write-HEnhancementDefaults $writer $SchemaPath }
+    if (-not $scopedGeneration) {
+        $messageSource = Get-Content -LiteralPath (Join-Path $SchemaPath '06.cloudflow-business-seed.sql') -Raw -Encoding utf8
+        $messageDefaults = [regex]::Match($messageSource, '(?s)-- external-message-delivery:start.*?-- external-message-delivery:end')
+        if (-not $messageDefaults.Success) { throw 'Missing approved external message job seed' }
+        $writer.WriteLine($messageDefaults.Value)
+        $marketingDefaults = [regex]::Match($messageSource, '(?s)-- crm-marketing-email-defaults:start.*?-- crm-marketing-email-defaults:end')
+        if (-not $marketingDefaults.Success) { throw 'Missing approved CRM marketing defaults' }
+        $writer.WriteLine($marketingDefaults.Value)
+        $opportunityDefaults = [regex]::Match($messageSource, '(?s)-- crm-opportunity-stage-defaults:start.*?-- crm-opportunity-stage-defaults:end')
+        if (-not $opportunityDefaults.Success) { throw 'Missing approved opportunity stage defaults' }
+        $writer.WriteLine($opportunityDefaults.Value)
+    }
+    if (-not $scopedGeneration -or 'hr_candidate' -in $Tables) {
+        $writer.WriteLine('INSERT INTO cloud_flow_db.hr_recruitment_identity (tenant_id, identity_type, identity_hash, candidate_id, create_by, update_by)')
+        $writer.WriteLine("SELECT candidate.tenant_id, 'EMAIL', SHA2(CONCAT(candidate.tenant_id, ':EMAIL:', LOWER(TRIM(candidate.email))), 256), candidate.id, 'seed', 'seed' FROM cloud_flow_db.hr_candidate candidate WHERE candidate.tenant_id BETWEEN $tenantBase AND $tenantLast AND candidate.email IS NOT NULL AND TRIM(candidate.email) <> '' AND NOT EXISTS (SELECT 1 FROM cloud_flow_db.hr_recruitment_identity identity_row WHERE identity_row.tenant_id = candidate.tenant_id AND identity_row.identity_type = 'EMAIL' AND identity_row.identity_hash = SHA2(CONCAT(candidate.tenant_id, ':EMAIL:', LOWER(TRIM(candidate.email))), 256));")
+    }
     $writer.WriteLine('DROP TEMPORARY TABLE demo_seed_tenants;')
     $writer.WriteLine('DROP TEMPORARY TABLE demo_seed_rows;')
     $writer.WriteLine('SET UNIQUE_CHECKS=1;')
@@ -771,4 +2033,4 @@ try {
     $writer.Dispose()
 }
 
-Write-Host ("Generated {0:N0} bytes for {1} tables." -f (Get-Item -LiteralPath $OutputPath).Length, $definitions.Count)
+Write-Host ("Generated {0:N0} bytes for {1} tables." -f (Get-Item -LiteralPath $OutputPath).Length, $selectedDefinitions.Count)
