@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.SysJobMapper">
+
+    <select id="selectIncludingDeleted" resultType="com.cloudflow.auth.domain.SysJob">
+        SELECT *
+        FROM sys_job
+        WHERE job_id = #{jobId}
+    </select>
+
+    <select id="lockActiveImportTenant" resultType="java.lang.Long">
+        SELECT tenant_id
+        FROM sys_tenant
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
+          AND (expire_time IS NULL OR expire_time &gt; NOW())
+        FOR UPDATE
+    </select>
+
+</mapper>

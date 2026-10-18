@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.SysMessageDeliveryMapper">
+    <select id="lockDelivery" resultType="com.cloudflow.auth.domain.SysMessageDelivery">
+        SELECT * FROM sys_message_delivery
+        WHERE tenant_id = #{tenantId} AND delivery_id = #{deliveryId} FOR UPDATE
+    </select>
+    <select id="lockChannel" resultType="com.cloudflow.auth.domain.SysMessageChannel">
+        SELECT * FROM sys_message_channel
+        WHERE tenant_id = #{tenantId} AND channel_id = #{channelId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockTemplate" resultType="com.cloudflow.auth.domain.SysMessageTemplate">
+        SELECT * FROM sys_message_template
+        WHERE tenant_id = #{tenantId} AND template_id = #{templateId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="duplicated" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM sys_message_delivery delivery
+            JOIN sys_message_record record ON record.tenant_id = delivery.tenant_id AND record.record_id = delivery.record_id
+            WHERE delivery.tenant_id = #{tenantId} AND delivery.delivery_id != #{deliveryId}
+              AND delivery.receiver_key = #{receiverKey} AND delivery.channel_type = #{channelType}
+              AND record.template_code = #{templateCode} AND record.biz_id = #{bizId}
+              AND delivery.status IN ('PENDING', 'CLAIMED', 'RETRYABLE', 'SENDING', 'UNKNOWN', 'SENT')
+              AND delivery.attempt_count &gt; 0 AND record.send_time &gt;= #{cutoff}
+        )
+    </select>
+    <select id="due" resultType="java.lang.Long">
+        SELECT delivery_id FROM sys_message_delivery
+        WHERE tenant_id = #{tenantId} AND (
+            (status IN ('PENDING', 'RETRYABLE') AND (next_attempt_time IS NULL OR next_attempt_time &lt;= #{now}))
+            OR (status IN ('CLAIMED', 'SENDING') AND claim_until &lt;= #{now})
+        ) ORDER BY delivery_id LIMIT #{limit}
+    </select>
+    <select id="recentAttempts" resultType="com.cloudflow.auth.domain.SysMessageDelivery">
+        SELECT delivery.* FROM sys_message_delivery delivery
+        JOIN sys_message_record record ON record.tenant_id = delivery.tenant_id AND record.record_id = delivery.record_id
+        WHERE delivery.tenant_id = #{tenantId}
+          AND record.send_time &gt;= #{cutoff} AND delivery.attempt_count &gt; 0
+    </select>
+    <update id="writeState">
+        UPDATE sys_message_delivery SET status = #{delivery.status}, claim_owner = #{delivery.claimOwner},
+            claim_until = #{delivery.claimUntil}, send_started_time = #{delivery.sendStartedTime},
+            attempt_count = #{delivery.attemptCount}, next_attempt_time = #{delivery.nextAttemptTime},
+            provider_message_id = #{delivery.providerMessageId}, accepted_time = #{delivery.acceptedTime},
+            bounced_time = #{delivery.bouncedTime}, last_error_code = #{delivery.lastErrorCode},
+            resolved_by = #{delivery.resolvedBy}, resolution_reason = #{delivery.resolutionReason},
+            payload_encrypted = #{delivery.payloadEncrypted}, update_by = #{delivery.updateBy},
+            update_time = #{delivery.updateTime}, version = version + 1
+        WHERE tenant_id = #{delivery.tenantId} AND delivery_id = #{delivery.deliveryId} AND version = #{delivery.version}
+    </update>
+</mapper>

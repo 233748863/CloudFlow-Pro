@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.HolidayDateWriteMapper">
+    <select id="lockTenant" resultType="java.lang.Long">
+        SELECT tenant_id FROM sys_tenant WHERE tenant_id = #{tenantId} AND deleted = 0
+        FOR UPDATE
+    </select>
+    <select id="lockDefaultCalendars" resultType="com.cloudflow.common.holiday.domain.HolidayCalendar">
+        SELECT calendar_id, tenant_id, calendar_code, calendar_name, region, default_flag, weekly_rest_days,
+               work_start_time, work_end_time, lunch_start_time, lunch_end_time, status, remark, deleted,
+               version, create_by, create_time, update_by, update_time
+        FROM sys_holiday_calendar
+        WHERE tenant_id = #{tenantId} AND default_flag = 1 AND deleted = 0
+        <if test="exceptId != null">AND calendar_id &lt;&gt; #{exceptId}</if>
+        FOR UPDATE
+    </select>
+    <select id="lockCalendar" resultType="java.lang.Long">
+        SELECT calendar_id FROM sys_holiday_calendar
+        WHERE calendar_id = #{calendarId} AND tenant_id = #{tenantId} AND deleted = 0
+        FOR UPDATE
+    </select>
+    <insert id="saveDate">
+        INSERT INTO sys_holiday_date
+            (tenant_id, calendar_id, holiday_date, date_type, holiday_name, triple_pay_flag,
+             year_no, remark, deleted, version, create_by, create_time, update_by, update_time)
+        VALUES (#{row.tenantId}, #{row.calendarId}, #{row.holidayDate}, #{row.dateType},
+                #{row.holidayName}, #{row.triplePayFlag}, #{row.yearNo}, #{row.remark}, 0, 0,
+                #{row.createBy}, #{row.createTime}, #{row.updateBy}, #{row.updateTime})
+        ON DUPLICATE KEY UPDATE date_type = VALUES(date_type), holiday_name = VALUES(holiday_name),
+            triple_pay_flag = VALUES(triple_pay_flag), year_no = VALUES(year_no), remark = VALUES(remark),
+            deleted = 0, version = version + 1, update_by = VALUES(update_by), update_time = VALUES(update_time)
+    </insert>
+</mapper>

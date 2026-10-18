@@ -26,7 +26,7 @@ public class AuthCacheWarmer implements ApplicationRunner {
             "sys_user_sex",
             "sys_show_hide",
             "sys_yes_no",
-            "sys_notice_type",
+            "sys_message_category",
             "oa_approval_status",
             "oa_expense_type",
             "crm_lead_status",

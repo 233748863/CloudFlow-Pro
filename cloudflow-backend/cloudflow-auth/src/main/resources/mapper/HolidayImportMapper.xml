@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.HolidayImportMapper">
+    <select id="existing" resultType="com.cloudflow.common.holiday.domain.HolidayDate">
+        SELECT calendar_id, holiday_date FROM sys_holiday_date WHERE tenant_id = #{tenantId} AND
+        <foreach collection="rows" item="row" separator=" OR " open="(" close=")">
+            (calendar_id = #{row.calendarId} AND holiday_date = #{row.holidayDate})
+        </foreach>
+    </select>
+</mapper>
