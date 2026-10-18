@@ -2,14 +2,13 @@ import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { EmptyState, LoadingSpinner } from '@/components/common';
 import { InnerTableSurface } from '@/components/layout/TablePageLayout';
-import type { WorkflowDefinition } from '@/types';
 import { getWorkflowCategoryLabel } from '@/utils/workflowCategory';
-import { getWorkflowCatalogIcon, normalizeWorkflowTags } from './workflowCatalogUtils';
+import { getWorkflowCatalogIcon, normalizeWorkflowTags, type WorkflowCatalogItem } from './workflowCatalogUtils';
 
 interface WorkflowCatalogGridProps {
-  workflows: WorkflowDefinition[];
+  workflows: WorkflowCatalogItem[];
   loading: boolean;
-  onStart: (workflow: WorkflowDefinition) => void;
+  onStart: (workflow: WorkflowCatalogItem) => void;
 }
 
 export const WorkflowCatalogGrid: React.FC<WorkflowCatalogGridProps> = ({

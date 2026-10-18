@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Edit,
+  Eye,
   FolderOpen,
   FolderPlus,
   Loader2,
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog, Pagination } from '@/components/common';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
@@ -289,6 +290,7 @@ export const TemplateManagement: React.FC = () => {
   const [savingCategory, setSavingCategory] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [detailTemplate, setDetailTemplate] = useState<TemplateItem | null>(null);
 
   const flatCategories = useMemo(() => flattenCategoryTree(categories), [categories]);
   const selectableParentCategories = useMemo(() => {
@@ -798,6 +800,9 @@ export const TemplateManagement: React.FC = () => {
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailTemplate(template)}>
+                        <Eye size={15} />
+                      </button>
                       <button type="button" data-tooltip="编辑" aria-label="编辑模板" onClick={() => openTemplateModal(template)}>
                         <Edit size={15} />
                       </button>
@@ -1122,6 +1127,30 @@ export const TemplateManagement: React.FC = () => {
         danger
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
+      />
+
+      <DetailDialog
+        open={Boolean(detailTemplate)}
+        title="流程模板详情"
+        onClose={() => setDetailTemplate(null)}
+        heading={detailTemplate?.name}
+        subheading={detailTemplate?.categoryName}
+        headingAside={detailTemplate ? (
+          <span className="text-xs text-cf-subtle">{detailTemplate.status === 'active' ? '启用' : '禁用'}</span>
+        ) : undefined}
+        sections={detailTemplate ? [
+          {
+            title: '模板信息',
+            items: [
+              { label: '模板名称', value: detailTemplate.name },
+              { label: '所属分类', value: detailTemplate.categoryName },
+              { label: '标签', value: formatTemplateTags(detailTemplate.tags) },
+              { label: '使用次数', value: String(detailTemplate.usageCount ?? 0) },
+              { label: '状态', value: detailTemplate.status === 'active' ? '启用' : '禁用' },
+              { label: '模板说明', value: detailTemplate.description, wide: true },
+            ],
+          },
+        ] : []}
       />
     </>
   );

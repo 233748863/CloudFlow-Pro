@@ -23,6 +23,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Copy, GitMerge, GripVertical, Plus } from "lucide-react";
 import { NodeType, type WorkflowGraphDefinition } from "../../types";
+import { isWorkflowGatewayPointer, isWorkflowGatewaySplit } from "../../utils/workflowGateway";
 import {
   studioQuickAddMenuClassName,
   quickAddOptionIconClassName,
@@ -50,6 +51,7 @@ type WorkflowCanvasEdgeData = {
   draggingNodeId: string | null;
   condition?: string;
   isDefault?: boolean;
+  joinPointer?: boolean;
 };
 
 type WorkflowCanvasNode = Node<WorkflowCanvasNodeData, "workflowNode">;
@@ -90,11 +92,7 @@ const WorkflowCanvasNodeView = memo(
     const canStructureDrag =
       displayNode.type !== NodeType.START && displayNode.type !== NodeType.END;
     const canAddBranch =
-      displayNode.type !== NodeType.PARALLEL ||
-      (displayNode.signType &&
-        !["ALL", "ANY", "PERCENT", "SEQUENTIAL"].includes(
-          String(displayNode.signType),
-        ));
+      displayNode.type !== NodeType.PARALLEL || isWorkflowGatewaySplit(displayNode);
     const nodeMetaText = getNodeMetaText(displayNode, branchCount);
     const nodeAssigneeSummary = getNodeAssigneeSummary(displayNode);
     const isSharedEndNode =
@@ -239,14 +237,14 @@ const WorkflowCanvasNodeView = memo(
                   const ItemIcon = item.icon;
                   return (
                     <button
-                      key={item.type}
-                      className="mb-1 flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left transition-colors hover:bg-cyan-50 dark:hover:bg-cyan-950/20"
+                      key={`${item.type}-${item.label}`}
+                      className="mb-1 flex min-h-[44px] w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left transition-colors duration-150 motion-reduce:transition-none hover:bg-cyan-50 dark:hover:bg-cyan-950/20"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (item.isBranch) {
                           actions.onAddBranch(id);
                         } else {
-                          actions.onAddNext(id, item.type as NodeType);
+                          actions.onAddNext(id, item.type as NodeType, item.isGateway);
                         }
                         ui.setActiveQuickAddId(null);
                       }}
@@ -321,7 +319,7 @@ const WorkflowCanvasEdgeView = ({
     borderRadius: 12,
   });
   const isInvalidDrop = data?.draggingNodeId === source || data?.draggingNodeId === target;
-  const label = data?.condition || (data?.isDefault ? "默认" : "");
+  const label = data?.joinPointer ? '汇聚关联' : data?.isDefault ? '默认出口' : data?.condition || '';
 
   return (
     <>
@@ -409,15 +407,16 @@ const WorkflowCanvasInner = ({
         target: edge.target,
         type: "workflowEdge",
         markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-        style: { strokeWidth: 1.4 },
+        style: { strokeWidth: 1.4, strokeDasharray: isWorkflowGatewayPointer(graph, edge) ? '5 4' : undefined },
         data: {
           isDraggingGlobal,
           draggingNodeId,
           condition: typeof edge.condition === "string" ? edge.condition : undefined,
           isDefault: Boolean(edge.isDefault),
+          joinPointer: isWorkflowGatewayPointer(graph, edge),
         },
       })),
-    [draggingNodeId, graph.edges, isDraggingGlobal],
+    [draggingNodeId, graph, isDraggingGlobal],
   );
   const [nodes, setNodes] = useState<WorkflowCanvasNode[]>(canvasNodes);
 

@@ -223,7 +223,7 @@ export const MobileLeaveApplication: React.FC = () => {
         <h1 className="flex-1 text-lg font-semibold text-cf-title">请假申请</h1>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="cf-mobile-primary-space space-y-4 p-4">
         {restrictionMessage && (
           <div
             data-testid="hr-self-service-restriction"
@@ -251,6 +251,7 @@ export const MobileLeaveApplication: React.FC = () => {
                 key={type.id}
                 onClick={() => setForm((prev) => ({ ...prev, leaveTypeId: type.id }))}
                 disabled={selfServiceLocked}
+                aria-pressed={form.leaveTypeId === type.id}
                 className={`rounded-lg border px-3 py-3 text-sm font-medium transition-all ${
  form.leaveTypeId === type.id
  ? 'border-[#0d95b5] bg-[#effbfe] text-[#0d95b5]'
@@ -269,10 +270,13 @@ export const MobileLeaveApplication: React.FC = () => {
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-cf-body">
+              <label htmlFor="mobile-leave-start" className="mb-1 block text-sm font-medium text-cf-body">
                 {selectedType?.unit === 'HOUR' ? '开始时间' : '开始日期'}
               </label>
               <DatePicker
+                id="mobile-leave-start"
+                disabled={submitting || selfServiceLocked}
+                required
                 type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
                 value={form.startValue}
                 onChange={(event) =>
@@ -281,10 +285,13 @@ export const MobileLeaveApplication: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-cf-body">
+              <label htmlFor="mobile-leave-end" className="mb-1 block text-sm font-medium text-cf-body">
                 {selectedType?.unit === 'HOUR' ? '结束时间' : '结束日期'}
               </label>
               <DatePicker
+                id="mobile-leave-end"
+                disabled={submitting || selfServiceLocked}
+                required
                 type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
                 value={form.endValue}
                 onChange={(event) =>
@@ -296,11 +303,14 @@ export const MobileLeaveApplication: React.FC = () => {
         </div>
 
         <div className="rounded-lg border border-slate-100 bg-[var(--cf-surface-strong)] p-4 shadow-none">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cf-faint">
-            Reason
-          </div>
+          <label htmlFor="mobile-leave-reason" className="text-sm font-medium text-cf-body">
+            请假原因
+          </label>
           <div className="mt-3">
             <textarea
+              id="mobile-leave-reason"
+              disabled={submitting || selfServiceLocked}
+              required
               value={form.reason}
               onChange={(event) => setForm((prev) => ({ ...prev, reason: event.target.value }))}
               placeholder="请详细说明请假原因"
@@ -326,17 +336,19 @@ export const MobileLeaveApplication: React.FC = () => {
                   </span>
                 </div>
                 <div className="mt-1 text-xs text-cf-subtle">
-                  后端将按 HR 请假类型配置的正式单位和额度规则处理，不再拼装兼容字段。
+                  请假时长与可用额度以已配置的请假规则核定。
                 </div>
               </div>
             </div>
           </div>
         </div>
 
+      </div>
+      <div className="cf-mobile-primary-footer">
         <button
           onClick={handleSubmit}
           disabled={submitting || selfServiceLocked}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0d95b5] py-3 font-medium text-white shadow-none transition hover:bg-[#0b7894] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0d95b5] py-3 font-medium text-white shadow-none transition hover:bg-[#0b7894] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? (
             <>

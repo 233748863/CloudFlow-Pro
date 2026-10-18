@@ -3,6 +3,9 @@ import { Clock, DollarSign, FileBadge, GitMerge, Monitor } from 'lucide-react';
 import type { FormDefinition, WorkflowDefinition } from '@/types';
 import { mapBackendFormDefinition } from '@/utils/formDefinition';
 
+export type WorkflowCatalogItem = Pick<WorkflowDefinition,
+  'id' | 'name' | 'key' | 'version' | 'formId' | 'category' | 'tags' | 'description'>;
+
 export const normalizeWorkflowTags = (rawTags: unknown): string[] => {
   if (Array.isArray(rawTags)) {
     return rawTags.filter((item): item is string => typeof item === 'string');
@@ -34,7 +37,7 @@ export const mapWorkflowBackendForm = (form: any): FormDefinition =>
     fields: [],
   };
 
-export const getWorkflowCatalogIcon = (workflow: WorkflowDefinition): React.ReactNode => {
+export const getWorkflowCatalogIcon = (workflow: Pick<WorkflowDefinition, 'key'>): React.ReactNode => {
   if (workflow.key.includes('reimburse') || workflow.key.includes('payment')) {
     return <DollarSign size={20} />;
   }

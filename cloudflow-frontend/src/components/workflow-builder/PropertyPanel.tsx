@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { NodeType, WorkflowGraphNode } from "../../types";
+import { NodeType, WorkflowGraphNode, WorkflowGraphDefinition } from "../../types";
+import { isWorkflowGatewayJoin, isWorkflowGatewayRouter, isWorkflowGatewaySplit } from "../../utils/workflowGateway";
+import { GatewayPropertyFields } from "./GatewayPropertyFields";
 
 /**
  * P2-3: 最小化 condition 表达式校验。
@@ -16,7 +19,7 @@ const validateConditionExpression = (
   raw: string,
 ): { valid: boolean; error?: string } => {
   const expr = (raw ?? "").trim();
-  if (!expr) return { valid: true };
+  if (!expr || expr === 'true' || expr === 'false') return { valid: true };
 
   let depth = 0;
   for (let i = 0; i < expr.length; i++) {
@@ -47,7 +50,9 @@ import {
   SelectContent,
   SelectItem,
 } from "../common/select";
-import { DatePicker } from "../common/date-picker";
+import { SemanticPropertyFields } from "./SemanticPropertyFields";
+import { TimerPropertyFields } from "./TimerPropertyFields";
+import { TriggerPropertyFields } from "./TriggerPropertyFields";
 import { ApproverValueSelector } from "./ApproverValueSelector";
 import { LazyInput, LazyTextarea } from "./LazyInput";
 import {
@@ -62,20 +67,26 @@ import type { EditableWorkflowNode } from "./types";
 
 interface PropertyPanelProps {
   node: EditableWorkflowNode;
+  graph: WorkflowGraphDefinition;
   branchCount: number;
   onClose: () => void;
   onUpdate: (id: string, data: Partial<WorkflowGraphNode>) => void;
+  onUpdateGraph: (graph: WorkflowGraphDefinition) => void;
   onDelete: (id: string) => void;
   onConfirmAction: (message: string, onConfirm: () => void) => void;
 }
 
 export const PropertyPanel = ({
   node,
+  graph,
   branchCount,
   onClose,
   onUpdate,
+  onUpdateGraph,
   onDelete,
 }: PropertyPanelProps) => {
+  const gateway = isWorkflowGatewayRouter(graph, node);
+  const pairedJoin = isWorkflowGatewayJoin(graph, node.id);
   const [formData, setFormData] = useState(node);
   // B16: 图模型为不可变更新，node 引用变化即内容变化（含撤销/重做回滚），
   // 依赖必须是整个 node——按字段列举会漏 title/condition/approverValue 等，导致面板显示旧值并在 blur 时把旧值写回图
@@ -109,6 +120,11 @@ export const PropertyPanel = ({
     [formData.condition],
   );
 
+  const handlePatch = (changes: Partial<EditableWorkflowNode>) => {
+    setFormData((previous) => ({ ...previous, ...changes }));
+    onUpdate(node.id, changes);
+  };
+
   const handleChange = (field: keyof EditableWorkflowNode, value: any) => {
     // 切换审批方式时，清空之前选择的审批人，避免残留旧数据
     if (field === "approverType") {
@@ -138,7 +154,7 @@ export const PropertyPanel = ({
       ? "PARALLEL"
       : "EXCLUSIVE";
 
-  return (
+  return createPortal(
     <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
  <div className="flex items-center justify-between border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
  <div className="text-sm font-semibold text-cf-title">
@@ -146,7 +162,8 @@ export const PropertyPanel = ({
  </div>
  <button
  onClick={onClose}
- className="rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1.5 text-cf-faint transition-colors hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
+ aria-label="关闭节点设置"
+ className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-1.5 text-cf-faint transition-colors duration-150 motion-reduce:transition-none hover:bg-[var(--cf-surface-muted)] hover:text-cf-body dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
  >
  <X size={18} />
  </button>
@@ -159,7 +176,7 @@ export const PropertyPanel = ({
  {node.type !== NodeType.START && node.type !== NodeType.END && (
  <button
  onClick={() => onDelete(node.id)}
- className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:text-rose-300 dark:hover:bg-rose-950/30 dark:hover:text-rose-200"
+ className="flex min-h-[44px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-500 transition-colors duration-150 motion-reduce:transition-none hover:bg-rose-50 hover:text-rose-600 dark:text-rose-300 dark:hover:bg-rose-950/30 dark:hover:text-rose-200"
  data-tooltip="删除节点" aria-label="删除节点"
  >
  <Trash2 size={14} /> 删除节点
@@ -191,7 +208,7 @@ export const PropertyPanel = ({
  value={formData.approverType || "ROLE"}
  onValueChange={(v) => handleChange("approverType", v)}
  >
- <SelectTrigger>
+ <SelectTrigger aria-label="审批方式" className="min-h-[44px]">
  <SelectValue placeholder="请选择" />
  </SelectTrigger>
  <SelectContent>
@@ -229,7 +246,7 @@ export const PropertyPanel = ({
  }
  />
  )}
- {formData.approverType === "USERS" && (
+ {(formData.approverType === "USERS" || formData.approverType === "USER_LIST") && (
  <ApproverValueSelector
  type="USER"
  value={formData.approverValue || ""}
@@ -270,7 +287,7 @@ export const PropertyPanel = ({
  )}
  </div>
  )}
- {node.type === NodeType.PARALLEL && (
+ {node.type === NodeType.PARALLEL && !isWorkflowGatewaySplit(node) && (
  <div className="admin-dialog-field border-t border-slate-200 pt-3 dark:border-slate-700">
  <div className={studioSectionTitleClassName}>会签设置</div>
  <div>
@@ -291,6 +308,7 @@ export const PropertyPanel = ({
  <SelectItem value="SEQUENTIAL">
  顺序签（按顺序逐个审批）
  </SelectItem>
+ <SelectItem value="WEIGHT">票签（按权重通过）</SelectItem>
  </SelectContent>
  </Select>
  </div>
@@ -317,7 +335,7 @@ export const PropertyPanel = ({
  </span>
  <Select
  value={
- formData.approverType === "USERS"
+ (formData.approverType === "USERS" || formData.approverType === "USER_LIST")
  ? "USER"
  : formData.approverType || "ROLE"
  }
@@ -328,7 +346,7 @@ export const PropertyPanel = ({
  </SelectTrigger>
  <SelectContent>
  {Object.entries(APPROVER_TYPE_LABELS)
- .filter(([k]) => k !== "USERS")
+ .filter(([k]) => k !== "USERS" && k !== "USER_LIST")
  .map(([k, v]) => (
  <SelectItem key={k} value={k}>
  {v}
@@ -339,10 +357,10 @@ export const PropertyPanel = ({
  </div>
  {(formData.approverType === "ROLE" ||
  formData.approverType === "USER" ||
- formData.approverType === "USERS") && (
+ formData.approverType === "USERS" || formData.approverType === "USER_LIST") && (
  <ApproverValueSelector
  type={
- formData.approverType === "USERS"
+ (formData.approverType === "USERS" || formData.approverType === "USER_LIST")
  ? "USER"
  : formData.approverType || "ROLE"
  }
@@ -488,204 +506,11 @@ export const PropertyPanel = ({
  </div>
  </div>
  )}
- {node.type === NodeType.SCRIPT && (
- <div className="admin-dialog-field border-t border-slate-200 pt-3 dark:border-slate-700">
- <div className={studioSectionTitleClassName}>脚本设置</div>
- <div>
- <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
- 脚本类型
- </span>
- <Select
- value={formData.props?.scriptType || "API"}
- onValueChange={(v) =>
- handleChange("props", { ...formData.props, scriptType: v })
- }
- >
- <SelectTrigger>
- <SelectValue placeholder="请选择" />
- </SelectTrigger>
- <SelectContent>
- <SelectItem value="GROOVY">Groovy 脚本</SelectItem>
- <SelectItem value="API">HTTP API 调用</SelectItem>
- </SelectContent>
- </Select>
- </div>
- {formData.props?.scriptType === "GROOVY" && (
- <div>
- <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
- 脚本内容
- </span>
- <LazyTextarea
- className="min-h-[112px] font-mono text-[11px]"
- placeholder="def result = amount * 1.1\nreturn result"
- value={formData.props?.scriptContent || ""}
- onChange={(val: any) =>
- handleChange("props", {
- ...formData.props,
- scriptContent: val,
- })
- }
- />
- </div>
- )}
- {formData.props?.scriptType === "API" && (
- <>
- <div>
- <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
- API URL
- </span>
- <LazyInput
- className="font-mono"
- placeholder="https://api.example.com/endpoint"
- value={formData.props?.apiUrl || ""}
- onChange={(val: any) =>
- handleChange("props", {
- ...formData.props,
- apiUrl: val,
- })
- }
- />
- </div>
- <div>
- <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
- 请求方法
- </span>
- <Select
- value={formData.props?.apiMethod || "GET"}
- onValueChange={(v) =>
- handleChange("props", {
- ...formData.props,
- apiMethod: v,
- })
- }
- >
- <SelectTrigger>
- <SelectValue placeholder="请选择" />
- </SelectTrigger>
- <SelectContent>
- <SelectItem value="GET">GET</SelectItem>
- <SelectItem value="POST">POST</SelectItem>
- <SelectItem value="PUT">PUT</SelectItem>
- <SelectItem value="DELETE">DELETE</SelectItem>
- </SelectContent>
- </Select>
- </div>
- <div>
- <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
- 请求头 (JSON)
- </span>
- <LazyTextarea
- className="min-h-[64px] rounded-md bg-[var(--cf-surface-muted)] font-mono text-[11px] dark:bg-slate-950"
- placeholder='{"Content-Type": "application/json"}'
- value={formData.props?.apiHeaders || ""}
- onChange={(val: any) =>
- handleChange("props", {
- ...formData.props,
- apiHeaders: val,
- })
- }
- />
- </div>
- <div>
- <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
- 请求体 (JSON)
- </span>
- <LazyTextarea
- className="min-h-[64px] rounded-md bg-[var(--cf-surface-muted)] font-mono text-[11px] dark:bg-slate-950"
- placeholder='{"amount": "${amount}"}'
- value={formData.props?.apiBody || ""}
- onChange={(val: any) =>
- handleChange("props", {
- ...formData.props,
- apiBody: val,
- })
- }
- />
- </div>
- </>
- )}
- <div className="flex items-center gap-2">
- <input
- type="checkbox"
- id="continueOnError"
- className="rounded border-slate-300 dark:border-slate-700"
- checked={formData.props?.continueOnError || false}
- onChange={(e) =>
- handleChange("props", {
- ...formData.props,
- continueOnError: e.target.checked,
- })
- }
- />
- <label
- htmlFor="continueOnError"
- className="text-xs text-cf-muted"
- >
- 出错时继续执行
- </label>
- </div>
- </div>
- )}
- {node.type === NodeType.TIMER && (
- <div className="admin-dialog-field border-t border-slate-200 pt-3 dark:border-slate-700">
- <div className={studioSectionTitleClassName}>定时设置</div>
- <div>
- <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
- 定时类型
- </span>
- <Select
- value={formData.props?.timerType || "DELAY"}
- onValueChange={(v) =>
- handleChange("props", { ...formData.props, timerType: v })
- }
- >
- <SelectTrigger>
- <SelectValue placeholder="请选择" />
- </SelectTrigger>
- <SelectContent>
- <SelectItem value="DELAY">延迟执行</SelectItem>
- <SelectItem value="SCHEDULE">定时执行</SelectItem>
- </SelectContent>
- </Select>
- </div>
- {formData.props?.timerType === "DELAY" && (
- <div>
- <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
- 延迟时间（分钟）
- </span>
- <LazyInput
- type="number"
- placeholder="例如: 60"
- min="1"
- value={formData.props?.delayMinutes || ""}
- onChange={(val: any) =>
- handleChange("props", {
- ...formData.props,
- delayMinutes: parseInt(val) || 0,
- })
- }
- />
- </div>
- )}
- {formData.props?.timerType === "SCHEDULE" && (
- <div>
- <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
- 定时时间
- </span>
- <DatePicker
- type="datetime-local"
- value={formData.props?.scheduleTime || ""}
- onChange={(e) =>
- handleChange("props", {
- ...formData.props,
- scheduleTime: e.target.value,
- })
- }
- />
- </div>
- )}
- </div>
- )}
+ {gateway && <GatewayPropertyFields node={node} graph={graph} onChange={onUpdateGraph} />}
+ {pairedJoin && <p className="text-xs text-cf-muted">配对汇聚节点 · 仅在本轮激活的分支全部到达后继续。</p>}
+ {!gateway && <SemanticPropertyFields node={formData} graph={graph} onChange={handlePatch} />}
+ {node.type === NodeType.SCRIPT && <TriggerPropertyFields node={formData} onChange={handlePatch} />}
+ {node.type === NodeType.TIMER && <TimerPropertyFields node={formData} onChange={handlePatch} />}
  {node.type === NodeType.SUBPROCESS && (
  <div className="admin-dialog-field border-t border-slate-200 pt-3 dark:border-slate-700">
  <div className={studioSectionTitleClassName}>子流程设置</div>
@@ -792,7 +617,7 @@ export const PropertyPanel = ({
  }
  />
  )}
- {formData.approverType === "USERS" && (
+ {(formData.approverType === "USERS" || formData.approverType === "USER_LIST") && (
  <ApproverValueSelector
  type="USER"
  value={formData.approverValue || ""}
@@ -886,7 +711,7 @@ export const PropertyPanel = ({
  }
  />
  )}
- {formData.approverType === "USERS" && (
+ {(formData.approverType === "USERS" || formData.approverType === "USER_LIST") && (
  <ApproverValueSelector
  type="USER"
  value={formData.approverValue || ""}
@@ -935,7 +760,7 @@ export const PropertyPanel = ({
  </div>
  </div>
  )}
- {branchCount > 0 && (
+ {branchCount > 0 && !gateway && (
  <div className="admin-dialog-field border-t border-slate-200 pt-3 dark:border-slate-700">
  <div className={studioSectionTitleClassName}>分支规则</div>
  <Select
@@ -955,7 +780,7 @@ export const PropertyPanel = ({
  </Select>
  </div>
  )}
- <div className="admin-dialog-field border-t border-slate-200 pt-3 dark:border-slate-700">
+ {!gateway && !pairedJoin && <div className="admin-dialog-field border-t border-slate-200 pt-3 dark:border-slate-700">
  <div className={studioSectionTitleClassName}>条件设置</div>
  <div>
  <span className="mb-1 block text-[11px] font-medium text-cf-subtle">
@@ -973,7 +798,7 @@ export const PropertyPanel = ({
                 </div>
               )}
             </div>
-          </div>
+          </div>}
           {[
             NodeType.NOTIFICATION,
             NodeType.SCRIPT,
@@ -1091,6 +916,7 @@ export const PropertyPanel = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

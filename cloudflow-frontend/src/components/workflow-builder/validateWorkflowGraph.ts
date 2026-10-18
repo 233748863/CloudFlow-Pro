@@ -5,6 +5,8 @@ import {
   WorkflowGraphNode,
 } from "../../types";
 import { countWorkflowGraphBranches } from "../../utils/workflowGraph";
+import { validateWorkflowSemantics } from "./validateWorkflowSemantics";
+import { getWorkflowGatewayBranchStrategy, isWorkflowGatewayRouter, isWorkflowGatewaySplit, validateWorkflowGateways, workflowEdgeIsDefault } from "../../utils/workflowGateway";
 
 export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
   errors: string[];
@@ -24,8 +26,9 @@ export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
     };
   }
 
-  const errors: string[] = [];
-  const errorNodeIds = new Set<string>();
+  const gatewayValidation = validateWorkflowGateways(graph);
+  const errors: string[] = [...gatewayValidation.errors];
+  const errorNodeIds = new Set<string>(gatewayValidation.errorNodes);
 
   const pushError = (
     message: string,
@@ -102,7 +105,7 @@ export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
       return;
     }
     if (
-      !["DIRECT_LEADER", "DEPT_MANAGER", "INITIATOR"].includes(
+      !["DIRECT_LEADER", "DEPT_MANAGER", "INITIATOR", "INITIATOR_SELECTED", "MULTI_LEVEL_MANAGER"].includes(
         String(node.approverType),
       ) &&
       !node.approverValue
@@ -141,21 +144,22 @@ export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
       branchCount > 0 &&
       nodeType !== NodeType.PARALLEL &&
       node.branchStrategy &&
-      node.branchStrategy !== "EXCLUSIVE"
+      node.branchStrategy !== "EXCLUSIVE" &&
+      node.branchStrategy !== getWorkflowGatewayBranchStrategy(node)
     ) {
       pushError(
         '节点"' +
           nodeTitle +
-          '"不是并行网关，仅支持单选分支（EXCLUSIVE），请调整分支策略',
+          '"的分支策略与节点类型不匹配，请调整分支策略',
         [nodeId],
       );
     }
 
-    if (nodeType === NodeType.PARALLEL) {
+    if (nodeType === NodeType.PARALLEL && !isWorkflowGatewaySplit(node)) {
       validateApprover(node, nodeId, "会签", "审批");
       const signType = String(node.signType || "ALL");
       if (
-        ["ALL", "ANY", "PERCENT", "SEQUENTIAL"].includes(signType) &&
+        ["ALL", "ANY", "PERCENT", "SEQUENTIAL", "WEIGHT"].includes(signType) &&
         branchCount > 0
       ) {
         const signLabel =
@@ -197,7 +201,7 @@ export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
       }
     }
 
-    if (nodeType === NodeType.SCRIPT) {
+    if (nodeType === NodeType.SCRIPT && !props.triggerType) {
       const scriptType = props.scriptType || "API";
       if (scriptType === "JAVASCRIPT") {
         pushError(
@@ -222,6 +226,7 @@ export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
     if (nodeType === NodeType.TIMER) {
       if (
         props.timerType === "DELAY" &&
+        props.delayValue == null &&
         (!props.delayMinutes || props.delayMinutes <= 0)
       ) {
         pushError(
@@ -256,6 +261,8 @@ export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
 
     if (
       nodeType === NodeType.CONDITION &&
+      !isWorkflowGatewayRouter(graph, node) &&
+      !incomingEdges.some(edge => workflowEdgeIsDefault(edge) || isWorkflowGatewaySplit(nodeMap.get(edge.source))) &&
       !hasNodeCondition(node) &&
       !hasIncomingEdgeCondition(incomingEdges)
     ) {
@@ -287,6 +294,8 @@ export function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
       );
     }
   });
+
+  validateWorkflowSemantics(graph).forEach(({ message, nodeId }) => pushError(message, [nodeId]));
 
   return {
     errors: Array.from(new Set(errors)),

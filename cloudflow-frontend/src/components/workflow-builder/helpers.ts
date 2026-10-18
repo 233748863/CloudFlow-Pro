@@ -1,5 +1,7 @@
 import {
   GitBranch,
+  Split,
+  Route,
   UserCheck,
   Layers,
   Bell,
@@ -11,6 +13,7 @@ import {
   Flag,
 } from "lucide-react";
 import { NodeType, WorkflowGraphNode } from "../../types";
+import { isWorkflowGatewaySplit } from "../../utils/workflowGateway";
 import { getCurrentUserSnapshot } from "@/utils/authStorage";
 import { tenantStorage } from "@/utils/tenantStorage";
 import {
@@ -54,6 +57,8 @@ export const getNodeMetaText = (
   node: EditableWorkflowNode,
   branchCount: number,
 ): string => {
+  if (isWorkflowGatewaySplit(node)) return `${node.type === NodeType.INCLUSIVE ? '包含网关 · 命中分支等齐' : '并行网关 · 全部分支等齐'} · ${branchCount} 分支`;
+  if (node.type === NodeType.ROUTE) return `路由网关 · 首个命中 · ${branchCount} 出口`;
   if (node.type === NodeType.PARALLEL) {
     if (branchCount > 0 && node.branchStrategy) {
       const strategyLabel =
@@ -64,6 +69,7 @@ export const getNodeMetaText = (
     if (node.signType === "PERCENT")
       return `会签 · 比例签 ${node.passPercent || 0}%`;
     if (node.signType === "SEQUENTIAL") return "会签 · 顺序签";
+    if (node.signType === "WEIGHT") return `会签 · 票签，需 ${node.passWeight ?? '未设置'} 权重`;
     return "会签 · 全签";
   }
 
@@ -126,6 +132,10 @@ export const buildQuickAddOptions = (
     { type: NodeType.SUBPROCESS, icon: Workflow, label: "子流程节点" },
     { type: NodeType.MANUAL, icon: ClipboardCheck, label: "人工任务" },
     { type: NodeType.COPY, icon: Send, label: "抄送节点" },
+    { type: NodeType.CONDITION, icon: GitBranch, label: "排他网关", isGateway: true },
+    { type: NodeType.PARALLEL, icon: Layers, label: "并行网关", isGateway: true },
+    { type: NodeType.INCLUSIVE, icon: Split, label: "包含网关", isGateway: true },
+    { type: NodeType.ROUTE, icon: Route, label: "路由网关", isGateway: true },
   ];
 
   // 分支根节点：禁掉「条件分支」选项避免在分支根上再嵌一层分支

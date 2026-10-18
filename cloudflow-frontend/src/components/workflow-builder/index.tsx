@@ -45,6 +45,7 @@ import {
   isWorkflowGraphBranchRoot,
   isWorkflowGraphSharedEndNode,
   insertWorkflowGraphNodeAfter,
+  insertWorkflowGatewayAfter,
   insertWorkflowGraphNodeBeforeMergeEnd,
   insertWorkflowGraphSubgraphAfter,
   moveWorkflowGraphNode,
@@ -58,6 +59,7 @@ import {
   replaceWorkflowGraphNextNode,
   patchWorkflowGraphNode,
 } from "../../utils/workflowGraph";
+import { collectWorkflowGatewayBranch, getWorkflowGatewayBranchStrategy, getWorkflowGatewayBranches, getWorkflowGatewayJoinKey, isWorkflowGatewayJoin, isWorkflowGatewaySplit } from "../../utils/workflowGateway";
 import { generateNodeId, toEditableWorkflowNode, writeApproverCache } from "./helpers";
 import type { WorkflowBuilderProps } from "./types";
 import { WorkflowToolbar } from "./WorkflowToolbar";
@@ -472,7 +474,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         replaceGraphState(nextGraph);
       } catch (error) {
         console.error("[WorkflowBuilder] graph edit apply failed", error);
-        toast.error("图模型更新失败，请重试");
+        toast.error(getErrorMessage(error, "图模型更新失败，请重试"));
         return false;
       }
 
@@ -575,7 +577,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         const signType = parentNode.signType;
         if (
           signType &&
-          ["ALL", "ANY", "PERCENT", "SEQUENTIAL"].includes(String(signType))
+          ["ALL", "ANY", "PERCENT", "SEQUENTIAL", "WEIGHT"].includes(String(signType))
         ) {
           toast.error(
             `会签节点"${parentNode.title}"已配置${signType === "ALL" ? "全签" : signType === "ANY" ? "或签" : signType === "PERCENT" ? "比例签" : "顺序签"}模式，不能同时添加分支。如需使用并行分支，请先在属性面板中移除会签配置。`,
@@ -586,12 +588,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
       const newBranch: WorkflowGraphNode = {
         id: generateNodeId("branch"),
-        type: NodeType.CONDITION,
+        type: isWorkflowGatewaySplit(parentNode) || parentNode?.type === NodeType.ROUTE ? NodeType.APPROVAL : NodeType.CONDITION,
         title: "新分支",
-        condition: "amount > 0",
+        condition: "true",
+        ...(isWorkflowGatewaySplit(parentNode) || parentNode?.type === NodeType.ROUTE ? { approverType: 'ROLE' } : {}),
       };
-      const defaultStrategy =
-        parentNode?.type === NodeType.PARALLEL ? "PARALLEL" : "EXCLUSIVE";
+      const defaultStrategy = getWorkflowGatewayBranchStrategy(parentNode);
       const nextGraph = appendWorkflowGraphBranch(
         currentGraph,
         parentId,
@@ -604,9 +606,17 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   );
 
   const handleAddNext = useCallback(
-    (parentId: string, type?: NodeType) => {
+    (parentId: string, type?: NodeType, isGateway = false) => {
       const currentGraph = graphModelRef.current;
       const nodeType = type || NodeType.APPROVAL;
+      if (isGateway) {
+        try {
+          applyGraphChange(insertWorkflowGatewayAfter(currentGraph, parentId, nodeType, generateNodeId));
+        } catch (error) {
+          toast.error(getErrorMessage(error, '无法在当前位置添加网关'));
+        }
+        return;
+      }
 
       const resolveAnchorId = (
         graph: WorkflowGraphDefinition,
@@ -666,7 +676,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           ? { approverType: "ROLE" as const }
           : {}),
         ...(nodeType === NodeType.SCRIPT
-          ? { props: { scriptType: "API", apiMethod: "POST" } }
+          ? { props: { scriptType: "API", triggerType: "HTTP_CALLBACK", actionMethod: "POST", callAsync: true, failStrategy: "BLOCK", retryCount: 0, timeoutSeconds: 10 } }
+          : {}),
+        ...(nodeType === NodeType.TIMER
+          ? { props: { timerType: "DELAY", delayValue: 1, delayUnit: "HOUR", timerAction: "AUTO_PASS" } }
           : {}),
       });
 
@@ -757,12 +770,23 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         toast.error("结束节点不可删除");
         return;
       }
+      if (isWorkflowGatewayJoin(currentGraph, id)) {
+        toast.error('请通过配对分流节点删除网关，保留完整的分流与汇聚关系');
+        return;
+      }
 
       const parentNodeId = findWorkflowGraphParentNodeId(currentGraph, id);
       if (parentNodeId && isWorkflowGraphBranchRoot(currentGraph, id)) {
+        const parentNode = findWorkflowGraphNode(currentGraph, parentNodeId)!;
+        if ((isWorkflowGatewaySplit(parentNode) || parentNode.type === NodeType.ROUTE)
+          && getWorkflowGatewayBranches(currentGraph, parentNode).length <= 1) {
+          toast.error('网关至少保留一个出口；删除整个网关请选中分流节点');
+          return;
+        }
+        const pairedJoin = getWorkflowGatewayJoinKey(currentGraph, parentNode);
         // P1-3: 分支根删除文案明确级联节点数（DFS 子树大小 - 1 = 下属节点数）
-        const subtreeIds = new Set<string>();
-        const stack = [id];
+        const subtreeIds = pairedJoin ? collectWorkflowGatewayBranch(currentGraph, id, pairedJoin) : new Set<string>();
+        const stack = pairedJoin ? [] : [id];
         while (stack.length > 0) {
           const cur = stack.pop()!;
           if (subtreeIds.has(cur)) continue;
@@ -1311,9 +1335,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             {selectedEditorNode && (
               <PropertyPanel
                 node={selectedEditorNode}
+                graph={graphModel}
                 branchCount={selectedNodeBranchCount}
                 onClose={() => setSelectedNodeId(null)}
                 onUpdate={handleUpdateNode}
+                onUpdateGraph={applyGraphChange}
                 onDelete={handleDeleteNode}
                 onConfirmAction={(message, onConfirm) =>
                   setConfirmDialog({ open: true, message, onConfirm })

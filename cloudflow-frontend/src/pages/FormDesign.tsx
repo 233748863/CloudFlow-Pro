@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, FileSpreadsheet, GitMerge, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { FormBuilder } from '../components/FormBuilder';
+import { FormRenderer } from '@/components/FormRenderer';
+import { FormVersionHistory } from '@/components/workflow/FormVersionHistory';
 import {
   EmptyError,
   EmptyForms,
@@ -13,13 +15,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  ConfirmDialog,
 } from '@/components/common';
 import { useMount } from '../hooks/useMount';
-import { useAutoSave } from '../hooks/useAutoSave';
-import { getFormDefinitions, saveFormDefinition } from '../services/api/workflow';
+import { getFormDefinition, getFormDefinitions, saveFormDefinition } from '../services/api/workflow';
 import { logForm } from '../lib/logger';
 import { FormDefinition } from '../types';
-import { mapBackendFormDefinitions } from '@/utils/formDefinition';
+import { mapBackendFormDefinition, mapBackendFormDefinitions } from '@/utils/formDefinition';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const NEW_FORM_NAME = '新表单';
@@ -49,6 +51,12 @@ const StatusPanel: React.FC<{
 export const FormDesign = () => {
   const [forms, setForms] = useState<FormDefinition[]>([]);
   const [selectedForm, setSelectedForm] = useState<FormDefinition | null>(null);
+  const [viewedForm, setViewedForm] = useState<FormDefinition>();
+  const [pendingForm, setPendingForm] = useState<FormDefinition>();
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [confirmReload, setConfirmReload] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -86,60 +94,54 @@ export const FormDesign = () => {
     loadForms();
   });
 
-  const handleSaveForm = async (form: FormDefinition, options?: { silent?: boolean }) => {
+  const acceptSaved = (saved: FormDefinition, oldId = saved.id) => {
+    setSelectedForm(saved); setViewedForm(undefined); setSaveError(''); setDirty(false);
+    setForms((previous) => previous.some((form) => form.id === oldId)
+      ? previous.map((form) => form.id === oldId ? saved : form) : [...previous, saved]);
+  };
+
+  const handleSaveForm = async (form: FormDefinition) => {
+    setSaving(true); setSaveError('');
     try {
       const payload = {
         formId: form.id.startsWith('new_') ? undefined : form.id,
+        formKey: form.formKey,
         formName: form.name,
         fieldsJson: JSON.stringify(form.fields),
+        versionLock: form.versionLock,
+        changeLog: form.changeLog,
       };
-
-      const result: any = await saveFormDefinition(payload as any);
-      const savedId = result?.id || result?.formId;
-
-      if (savedId) {
-        const updatedForm = { ...form, id: savedId };
-        setSelectedForm(updatedForm);
-
-        setForms((prevForms) => {
-          const index = prevForms.findIndex((item) => item.id === form.id);
-          if (index >= 0) {
-            const next = [...prevForms];
-            next[index] = updatedForm;
-            return next;
-          }
-          return [...prevForms, updatedForm];
-        });
-      }
-
-      if (!options?.silent) {
-        toast.success('表单保存成功');
-      }
+      const saved = mapBackendFormDefinition(await saveFormDefinition(payload));
+      if (!saved?.version || saved.versionLock === undefined) throw new Error('保存响应缺少版本信息，请重新读取后确认');
+      acceptSaved(saved, form.id);
+      toast.success(saved.version === form.version ? `表单内容未变，保留 v${saved.version}` : `表单版本 v${saved.version} 保存成功`);
     } catch (err) {
       logForm.error('保存表单失败:', err);
+      setSaveError(err instanceof Error ? err.message : '表单保存失败，编辑内容已保留');
       toast.error(err instanceof Error ? err.message : '表单保存失败');
       throw err;
-    }
+    } finally { setSaving(false); }
   };
 
-  useAutoSave(
-    selectedForm,
-    async (form) => {
-      if (form && form.name && form.name !== NEW_FORM_NAME) {
-        await handleSaveForm(form, { silent: true });
-      }
-    },
-    {
-      delay: 3000,
-      enabled: !!selectedForm && !selectedForm.id.startsWith('new_'),
-      resetKey: selectedForm?.id,
-      onSuccess: () => logForm.info('表单自动保存成功'),
-      onError: (err) => logForm.error('表单自动保存失败:', err),
-    },
-  );
+  const switchForm = (form: FormDefinition) => {
+    if (saving) return;
+    if (dirty) { setPendingForm(form); return; }
+    setSelectedForm(form); setViewedForm(undefined); setSaveError('');
+  };
+
+  const reloadSelected = async () => {
+    if (!selectedForm || saving) return;
+    setSaving(true);
+    try {
+      const form = mapBackendFormDefinition(await getFormDefinition(selectedForm.id));
+      if (!form) throw new Error('表单读取失败');
+      acceptSaved(form); setConfirmReload(false);
+    } catch (failure) { toast.error(failure instanceof Error ? failure.message : '表单读取失败'); }
+    finally { setSaving(false); }
+  };
 
   const handleCreateNew = () => {
-    setSelectedForm({
+    switchForm({
       id: `new_${Date.now()}`,
       name: NEW_FORM_NAME,
       fields: [],
@@ -241,10 +243,11 @@ export const FormDesign = () => {
           <span className="input-label">当前表单</span>
           <Select
             value={selectedForm.id}
+            disabled={saving}
             onValueChange={(value) => {
               const nextForm = formOptions.find((form) => form.id === value);
               if (nextForm) {
-                setSelectedForm(nextForm);
+                switchForm(nextForm);
               }
             }}
           >
@@ -291,12 +294,16 @@ export const FormDesign = () => {
           <strong>{selectedForm.name}</strong>
           <span>{selectedForm.fields.length} 个字段 · 设计画布</span>
         </div>
+        <FormVersionHistory key={selectedForm.id} latest={selectedForm} viewedVersion={viewedForm?.version} disabled={saving} onPreview={setViewedForm} onRollback={(form) => acceptSaved(form)} />
       </div>
-      <div className="min-h-[42rem] overflow-auto">
+      {saveError ? <div role="alert" className="flex flex-wrap items-center gap-3 border-b border-[var(--cf-border)] p-3 text-sm"><span className="flex-1 text-[var(--cf-chart-critical)]">{saveError} · 编辑内容已保留</span>{selectedForm.version ? <Button type="button" variant="outline" disabled={saving} onClick={() => setConfirmReload(true)}>重新读取最新版</Button> : null}</div> : null}
+      {viewedForm ? <section aria-label="历史表单只读预览" className="min-h-[42rem] space-y-4 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-cf-subtle">{viewedForm.name} · v{viewedForm.version} · 历史版本只读，最新版未保存的编辑仍保留</p><Button type="button" variant="outline" onClick={() => setViewedForm(undefined)}>返回最新版编辑</Button></div><FormRenderer key={`${viewedForm.id}:${viewedForm.version}`} formDef={viewedForm} readonly hideActions renderUploadField={() => <p className="text-xs text-cf-faint">历史结构预览不展示实例附件</p>} /></section> : null}
+      <div className={viewedForm ? 'hidden' : 'min-h-[42rem] overflow-auto'}>
         <FormBuilder
           key={selectedForm.id}
           onSave={handleSaveForm}
           initialForm={selectedForm}
+          onDirtyChange={setDirty}
         />
       </div>
     </InnerTableSurface>
@@ -309,6 +316,8 @@ export const FormDesign = () => {
         filters={pageFilters}
         table={pageContent}
       />
+      <ConfirmDialog open={Boolean(pendingForm)} title="切换表单" message="当前表单有未保存的修改，切换后会丢弃这些修改。" confirmText="丢弃并切换" onCancel={() => setPendingForm(undefined)} onConfirm={() => { if (pendingForm) { setSelectedForm(pendingForm); setViewedForm(undefined); setSaveError(''); setDirty(false); setPendingForm(undefined); } }} />
+      <ConfirmDialog open={confirmReload} title="重新读取最新版" message="本地未保存的修改将被丢弃，重新读取服务器最新版本与并发锁。" confirmText="丢弃并重新读取" onCancel={() => { if (!saving) setConfirmReload(false); }} onConfirm={() => void reloadSelected()} />
     </section>
   );
 };

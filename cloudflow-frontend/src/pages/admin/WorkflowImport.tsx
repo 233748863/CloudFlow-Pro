@@ -846,16 +846,11 @@ const FileItem: React.FC<FileItemProps> = ({
       </td>
       <td>
         {!disabled && status !== 'importing' ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onRemove}
-            className="admin-workflow-import-remove"
-            title="移除文件"
-            aria-label="移除文件"
-          >
-            <X size={15} />
-          </Button>
+          <div className="admin-users-row-actions">
+            <button type="button" className="danger" data-tooltip="移除文件" aria-label="移除文件" onClick={onRemove}>
+              <X size={15} />
+            </button>
+          </div>
         ) : (
           <span className="admin-workflow-import-muted">锁定</span>
         )}

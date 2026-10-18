@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Bell, Mail, AlertCircle, CheckCircle, Trash2, Loader2, RefreshCw } from 'lucide-react';
-import { getNoticeList, markNoticeRead, deleteNotice, getUnreadCount } from '@/services/api/notice';
+import { ChevronLeft, Bell, Mail, AlertCircle, CheckCircle, Loader2, RefreshCw } from 'lucide-react';
+import { getNoticeList, markNoticeRead, getUnreadCount } from '@/services/api/notice';
 import type { Notice } from '@/services/api/notice';
+import type { MessageCategory } from '@/services/api/message';
+import { CATEGORY_LABELS } from '@/pages/system/message/options';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -16,7 +18,6 @@ export const MobileMessages: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [unreadCount, setUnreadCount] = useState(0);
   const [selectedMessage, setSelectedMessage] = useState<Notice | null>(null);
-  const [deleting, setDeleting] = useState<number | null>(null);
 
   // 获取消息列表
   const fetchMessages = useCallback(async () => {
@@ -42,7 +43,14 @@ export const MobileMessages: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchMessages();
+    void fetchMessages();
+    const refreshMessages = () => { void fetchMessages(); };
+    window.addEventListener('sys-notice-received', refreshMessages);
+    window.addEventListener('cloudflow:messages-read', refreshMessages);
+    return () => {
+      window.removeEventListener('sys-notice-received', refreshMessages);
+      window.removeEventListener('cloudflow:messages-read', refreshMessages);
+    };
   }, [fetchMessages]);
 
   // 下拉刷新
@@ -64,33 +72,12 @@ export const MobileMessages: React.FC = () => {
         prev.map(m => (m.id === notice.id ? { ...m, isRead: true } : m))
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
+      window.dispatchEvent(new Event('cloudflow:messages-read'));
       if (selectedMessage?.id === notice.id) {
         setSelectedMessage({ ...notice, isRead: true });
       }
     } catch (err: any) {
       toast.error(getErrorMessage(err, '标记已读失败'));
-    }
-  };
-
-  // 删除消息
-  const handleDelete = async (noticeId: number, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setDeleting(noticeId);
-    try {
-      await deleteNotice(noticeId);
-      const deleted = messages.find(m => m.id === noticeId);
-      setMessages(prev => prev.filter(m => m.id !== noticeId));
-      if (deleted && !deleted.isRead) {
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
-      if (selectedMessage?.id === noticeId) {
-        setSelectedMessage(null);
-      }
-      toast.success('删除成功');
-    } catch (err: any) {
-      toast.error(getErrorMessage(err, '删除失败'));
-    } finally {
-      setDeleting(null);
     }
   };
 
@@ -111,10 +98,10 @@ export const MobileMessages: React.FC = () => {
 
   // 获取消息类型图标
   const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'system':
+    switch ((type || '').toUpperCase()) {
+      case 'SYSTEM':
         return <AlertCircle size={16} className="text-orange-500" />;
-      case 'task':
+      case 'TODO':
         return <CheckCircle size={16} className="text-green-500" />;
       default:
         return <Mail size={16} className="text-[#3fb8d0]" />;
@@ -155,13 +142,6 @@ export const MobileMessages: React.FC = () => {
             <ChevronLeft size={24} className="text-cf-muted" />
           </button>
           <h1 className="text-lg font-semibold text-cf-title truncate flex-1">消息详情</h1>
-          <button
-            onClick={() => handleDelete(selectedMessage.id)}
-            className="p-2 text-red-500"
-            aria-label="删除消息"
-          >
-            <Trash2 size={18} />
-          </button>
         </div>
 
         {/* Content */}
@@ -169,7 +149,7 @@ export const MobileMessages: React.FC = () => {
           <div className="bg-[var(--cf-surface-strong)] rounded-md p-4 shadow-none">
             <div className="flex items-center gap-2 mb-3">
               {getTypeIcon(selectedMessage.type)}
-              <span className="text-xs text-cf-faint">{selectedMessage.type || '通知'}</span>
+              <span className="text-xs text-cf-faint">{CATEGORY_LABELS[selectedMessage.type.toUpperCase() as MessageCategory] || '通知'}</span>
               <span className="text-xs text-cf-faint ml-auto">
                 {formatTime(selectedMessage.createTime)}
               </span>
@@ -181,6 +161,15 @@ export const MobileMessages: React.FC = () => {
             <div className="text-sm text-cf-body leading-relaxed whitespace-pre-wrap">
               {selectedMessage.content}
             </div>
+            {selectedMessage.linkUrl?.startsWith('/') ? (
+              <button
+                type="button"
+                className="mt-4 rounded-md bg-cyan-600 px-3 py-2 text-sm font-medium text-white"
+                onClick={() => navigate(selectedMessage.linkUrl as string)}
+              >
+                查看详情
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -297,18 +286,6 @@ export const MobileMessages: React.FC = () => {
                   <p className="text-xs text-cf-subtle line-clamp-2 mb-2">{message.content}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-cf-faint">{formatTime(message.createTime)}</span>
-                    <button
-                      onClick={e => handleDelete(message.id, e)}
-                      disabled={deleting === message.id}
-                      className="p-1 text-cf-faint hover:text-red-500 transition-colors"
-                      aria-label="删除消息"
-                    >
-                      {deleting === message.id ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={14} />
-                      )}
-                    </button>
                   </div>
                 </div>
               </div>

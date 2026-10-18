@@ -39,6 +39,8 @@ import {
 import { downloadBlob } from '@/utils/download';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import { Chart } from '@/components/charts/Chart';
+import { DonutChart, LineChart, ScatterChart } from '@/components/charts/presets';
 import '../styles/features/admin-performance.css';
 import '../styles/features/dashboard-stat.css';
 
@@ -109,33 +111,6 @@ const getHealthBadgeClassName = (label: string) => {
     return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200';
   }
   return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200';
-};
-
-const getTooltipTransform = (xPercent: number) => {
-  if (xPercent <= 16) return 'translateX(0)';
-  if (xPercent >= 84) return 'translateX(-100%)';
-  return 'translateX(-50%)';
-};
-
-const polarToCartesian = (centerX: number, centerY: number, radius: number, angle: number) => {
-  const angleInRadians = ((angle - 90) * Math.PI) / 180;
-  return {
-    x: centerX + radius * Math.cos(angleInRadians),
-    y: centerY + radius * Math.sin(angleInRadians),
-  };
-};
-
-const describeArc = (
-  centerX: number,
-  centerY: number,
-  radius: number,
-  startAngle: number,
-  endAngle: number,
-) => {
-  const start = polarToCartesian(centerX, centerY, radius, startAngle);
-  const end = polarToCartesian(centerX, centerY, radius, endAngle);
-  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
 };
 
 const escapeCsv = (value: string | number) => {
@@ -281,175 +256,31 @@ const ExecutionTrendChart: React.FC<{
   data: PerformanceDashboardTrendPoint[];
   loading: boolean;
 }> = ({ data, loading }) => {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
   if (data.length === 0) {
-    return (
-      <EmptyBlock
-        title="暂无执行趋势"
-        description="当前时间范围没有流程统计数据。"
-        icon={<TrendingUp className="h-5 w-5" />}
-        loading={loading}
-      />
-    );
+    return <EmptyBlock title="暂无执行趋势" description="当前时间范围没有流程统计数据。" icon={<TrendingUp className="h-5 w-5" />} loading={loading} />;
   }
-
-  const width = 760;
-  const height = 236;
-  const padding = { top: 18, right: 24, bottom: 34, left: 40 };
-  const chartW = width - padding.left - padding.right;
-  const chartH = height - padding.top - padding.bottom;
-  const maxCount = Math.max(...data.map((item) => Math.max(item.totalCount, item.completedCount)), 1);
-  const maxDuration = Math.max(...data.map((item) => item.avgDurationMs), 1);
-  const labelStep = Math.max(1, Math.ceil(data.length / 8));
-  const columnWidth = chartW / Math.max(data.length, 1);
-  const barWidth = Math.min(18, Math.max(8, columnWidth * 0.22));
-  const x = (index: number) => padding.left + columnWidth * index + columnWidth / 2;
-  const yCount = (value: number) => padding.top + chartH - (value / maxCount) * chartH;
-  const yDuration = (value: number) => padding.top + chartH - (value / maxDuration) * chartH;
-  const durationLine = data.map((item, index) => `${index === 0 ? 'M' : 'L'}${x(index)},${yDuration(item.avgDurationMs)}`).join(' ');
-  const activeIndex =
-    hoveredIndex !== null && hoveredIndex >= 0 && hoveredIndex < data.length ? hoveredIndex : null;
-  const activePoint = activeIndex !== null ? data[activeIndex] : null;
-
   return (
-    <div className="admin-source-content-grid">
-      <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-cf-subtle">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-1" />
-          流程总量
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-2" />
-          完成数
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-3" />
-          平均时长
-        </span>
-      </div>
-
-      <div className="relative" onMouseLeave={() => setHoveredIndex(null)}>
-        {activePoint && activeIndex !== null ? (
-          <div
-            className="pointer-events-none absolute top-2 z-20 min-w-[176px] rounded-md border border-slate-800/80 bg-slate-950/92 px-3 py-2 text-xs shadow-none"
-            style={{
-              left: `${((x(activeIndex) - padding.left) / chartW) * 100}%`,
-              transform: getTooltipTransform(((x(activeIndex) - padding.left) / chartW) * 100),
-            }}
-          >
-            <div className="mb-2 font-semibold text-white">{activePoint.statDate}</div>
-            <div className="space-y-1.5 text-slate-200">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-300">总量</span>
-                <span>{formatCount(activePoint.totalCount)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-300">完成</span>
-                <span>{formatCount(activePoint.completedCount)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-300">失败</span>
-                <span>{formatCount(activePoint.failedCount)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-300">平均时长</span>
-                <span>{formatDuration(activePoint.avgDurationMs)}</span>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="relative">
-          <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full">
-            {Array.from({ length: 5 }, (_, index) => {
-              const value = Math.round((maxCount / 4) * index);
-              const y = yCount(value);
-
-              return (
-                <g key={index}>
-                  <line
-                    x1={padding.left}
-                    y1={y}
-                    x2={width - padding.right}
-                    y2={y}
-                    stroke="currentColor"
-                    strokeWidth={1}
-                    className="text-slate-200 dark:text-slate-800"
-                  />
-                  <text
-                    x={padding.left - 8}
-                    y={y + 4}
-                    textAnchor="end"
-                    fontSize={10}
-                    fill="currentColor"
-                    className="text-cf-faint"
-                  >
-                    {value}
-                  </text>
-                </g>
-              );
-            })}
-
-            <path d={durationLine} fill="none" stroke="var(--cf-chart-3)" strokeWidth={2.5} />
-
-            {data.map((item, index) => {
-              const centerX = x(index);
-              const totalHeight = chartH - (yCount(item.totalCount) - padding.top);
-              const completedHeight = chartH - (yCount(item.completedCount) - padding.top);
-              return (
-                <g key={item.statDate}>
-                  <rect
-                    x={centerX - barWidth - 3}
-                    y={yCount(item.totalCount)}
-                    width={barWidth}
-                    height={totalHeight}
-                    rx={4}
-                    fill="var(--cf-chart-1)"
-                    opacity={0.92}
-                  />
-                  <rect
-                    x={centerX + 3}
-                    y={yCount(item.completedCount)}
-                    width={barWidth}
-                    height={completedHeight}
-                    rx={4}
-                    fill="var(--cf-chart-2)"
-                    opacity={0.92}
-                  />
-                  <circle cx={centerX} cy={yDuration(item.avgDurationMs)} r={3.5} fill="var(--cf-chart-3)" />
-                  <rect
-                    x={centerX - columnWidth / 2}
-                    y={padding.top}
-                    width={columnWidth}
-                    height={chartH}
-                    fill="transparent"
-                    onMouseEnter={() => setHoveredIndex(index)}
-                    onMouseMove={() => setHoveredIndex(index)}
-                  />
-                </g>
-              );
-            })}
-
-            {data.map((item, index) =>
-              index % labelStep === 0 || index === data.length - 1 ? (
-                <text
-                  key={item.statDate}
-                  x={x(index)}
-                  y={height - 10}
-                  textAnchor="middle"
-                  fontSize={10}
-                  fill="currentColor"
-                  className="text-cf-faint"
-                >
-                  {item.statDate.slice(5)}
-                </text>
-              ) : null,
-            )}
-          </svg>
-        </div>
-      </div>
-    </div>
+    <Chart
+      className="h-[236px]"
+      ariaLabel="流程执行总量、完成数和平均时长趋势图"
+      seriesCount={3}
+      dataTable={{ columns: ['日期', '流程总量', '完成数', '平均时长'], rows: data.map(item => [item.statDate, item.totalCount, item.completedCount, formatDuration(item.avgDurationMs)]) }}
+      option={(theme) => ({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['流程总量', '完成数', '平均时长'], top: 0, textStyle: { color: theme.subtle } },
+        grid: { left: 44, right: 54, top: 42, bottom: 32 },
+        xAxis: { type: 'category', data: data.map((item) => item.statDate.slice(5)), axisLabel: { color: theme.subtle }, axisLine: { lineStyle: { color: theme.border } } },
+        yAxis: [
+          { type: 'value', axisLabel: { color: theme.subtle }, splitLine: { lineStyle: { color: theme.border } } },
+          { type: 'value', axisLabel: { color: theme.subtle, formatter: (value: number) => formatChartDuration(value) }, splitLine: { show: false } },
+        ],
+        series: [
+          { name: '流程总量', type: 'bar', data: data.map((item) => item.totalCount), itemStyle: { color: theme.colors[0], borderRadius: [4, 4, 0, 0] } },
+          { name: '完成数', type: 'bar', data: data.map((item) => item.completedCount), itemStyle: { color: theme.colors[1], borderRadius: [4, 4, 0, 0] } },
+          { name: '平均时长', type: 'line', yAxisIndex: 1, data: data.map((item) => item.avgDurationMs), smooth: false, symbolSize: 7, lineStyle: { color: theme.colors[2] }, itemStyle: { color: theme.colors[2] } },
+        ],
+      })}
+    />
   );
 };
 
@@ -457,149 +288,20 @@ const RiskTrendChart: React.FC<{
   data: PerformanceDashboardTrendPoint[];
   loading: boolean;
 }> = ({ data, loading }) => {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
   if (data.length === 0) {
-    return (
-      <EmptyBlock
-        title="暂无风险趋势"
-        description="当前区间没有可绘制的风险数据。"
-        icon={<ShieldAlert className="h-5 w-5" />}
-        loading={loading}
-      />
-    );
+    return <EmptyBlock title="暂无风险趋势" description="当前区间没有可绘制的风险数据。" icon={<ShieldAlert className="h-5 w-5" />} loading={loading} />;
   }
-
-  const width = 760;
-  const height = 236;
-  const padding = { top: 18, right: 24, bottom: 34, left: 40 };
-  const chartW = width - padding.left - padding.right;
-  const chartH = height - padding.top - padding.bottom;
-  const maxRate = Math.max(
-    ...data.map((item) => Math.max(item.timeoutInstanceRate, item.anomalyInstanceRate)),
-    1,
-  );
-  const labelStep = Math.max(1, Math.ceil(data.length / 8));
-  const x = (index: number) => padding.left + (index / Math.max(data.length - 1, 1)) * chartW;
-  const y = (value: number) => padding.top + chartH - (value / maxRate) * chartH;
-  const timeoutLine = data.map((item, index) => `${index === 0 ? 'M' : 'L'}${x(index)},${y(item.timeoutInstanceRate)}`).join(' ');
-  const anomalyLine = data.map((item, index) => `${index === 0 ? 'M' : 'L'}${x(index)},${y(item.anomalyInstanceRate)}`).join(' ');
-  const activeIndex =
-    hoveredIndex !== null && hoveredIndex >= 0 && hoveredIndex < data.length ? hoveredIndex : null;
-  const activePoint = activeIndex !== null ? data[activeIndex] : null;
-
   return (
-    <div className="admin-source-content-grid">
-      <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-cf-subtle">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-warning" />
-          超时实例率
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cf-chart-critical" />
-          异常实例率
-        </span>
-      </div>
-
-      <div className="relative" onMouseLeave={() => setHoveredIndex(null)}>
-        {activePoint && activeIndex !== null ? (
-          <div
-            className="pointer-events-none absolute top-2 z-20 min-w-[200px] rounded-md border border-slate-800/80 bg-slate-950/92 px-3 py-2 text-xs shadow-none"
-            style={{
-              left: `${((x(activeIndex) - padding.left) / chartW) * 100}%`,
-              transform: getTooltipTransform(((x(activeIndex) - padding.left) / chartW) * 100),
-            }}
-          >
-            <div className="mb-2 font-semibold text-white">{activePoint.statDate}</div>
-            <div className="space-y-1.5 text-slate-200">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-300">超时实例率</span>
-                <span>{formatPercent(activePoint.timeoutInstanceRate)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-300">超时事件数</span>
-                <span>{formatCount(activePoint.timeoutEventCount)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-300">异常实例率</span>
-                <span>{formatPercent(activePoint.anomalyInstanceRate)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-300">异常事件数</span>
-                <span>{formatCount(activePoint.anomalyEventCount)}</span>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="relative">
-          <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full">
-            {Array.from({ length: 5 }, (_, index) => {
-              const value = (maxRate / 4) * index;
-              const lineY = y(value);
-              return (
-                <g key={index}>
-                  <line
-                    x1={padding.left}
-                    y1={lineY}
-                    x2={width - padding.right}
-                    y2={lineY}
-                    stroke="currentColor"
-                    strokeWidth={1}
-                    className="text-slate-200 dark:text-slate-800"
-                  />
-                  <text
-                    x={padding.left - 8}
-                    y={lineY + 4}
-                    textAnchor="end"
-                    fontSize={10}
-                    fill="currentColor"
-                    className="text-cf-faint"
-                  >
-                    {formatPercent(value)}
-                  </text>
-                </g>
-              );
-            })}
-
-            <path d={timeoutLine} fill="none" stroke="var(--cf-chart-warning)" strokeWidth={2.5} />
-            <path d={anomalyLine} fill="none" stroke="var(--cf-chart-critical)" strokeWidth={2.5} />
-
-            {data.map((item, index) => (
-              <g key={item.statDate}>
-                <circle cx={x(index)} cy={y(item.timeoutInstanceRate)} r={3.5} fill="var(--cf-chart-warning)" />
-                <circle cx={x(index)} cy={y(item.anomalyInstanceRate)} r={3.5} fill="var(--cf-chart-critical)" />
-                <rect
-                  x={x(index) - chartW / Math.max(data.length - 1, 1) / 2}
-                  y={padding.top}
-                  width={chartW / Math.max(data.length - 1, 1)}
-                  height={chartH}
-                  fill="transparent"
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onMouseMove={() => setHoveredIndex(index)}
-                />
-              </g>
-            ))}
-
-            {data.map((item, index) =>
-              index % labelStep === 0 || index === data.length - 1 ? (
-                <text
-                  key={item.statDate}
-                  x={x(index)}
-                  y={height - 10}
-                  textAnchor="middle"
-                  fontSize={10}
-                  fill="currentColor"
-                  className="text-cf-faint"
-                >
-                  {item.statDate.slice(5)}
-                </text>
-              ) : null,
-            )}
-          </svg>
-        </div>
-      </div>
-    </div>
+    <LineChart
+      height={236}
+      ariaLabel="流程超时实例率与异常实例率趋势图"
+      categories={data.map(item => item.statDate)} categoryAxisName="日期" valueAxisName="实例率"
+      valueFormatter={formatPercent}
+      series={[
+        { name: '超时实例率', values: data.map(item => item.timeoutInstanceRate), semantic: 'warning' },
+        { name: '异常实例率', values: data.map(item => item.anomalyInstanceRate), semantic: 'critical' },
+      ]}
+    />
   );
 };
 
@@ -722,173 +424,32 @@ const RiskMatrixChart: React.FC<{
   onSelect: (processDefKey: string) => void;
   loading: boolean;
 }> = ({ data, selectedProcess, onSelect, loading }) => {
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-
   if (data.length === 0) {
-    return (
-      <EmptyBlock
-        title="暂无风险矩阵"
-        description="当前区间没有可用于建模的流程风险数据。"
-        icon={<AlertTriangle className="h-5 w-5" />}
-        loading={loading}
-      />
-    );
+    return <EmptyBlock title="暂无风险矩阵" description="当前区间没有可用于建模的流程风险数据。" icon={<AlertTriangle className="h-5 w-5" />} loading={loading} />;
   }
-
-  const width = 720;
-  const height = 152;
-  const padding = { top: 16, right: 16, bottom: 28, left: 30 };
-  const chartW = width - padding.left - padding.right;
-  const chartH = height - padding.top - padding.bottom;
-  const maxDuration = Math.max(...data.map((item) => item.avgDurationMs), 1);
-  const maxRisk = Math.max(...data.map((item) => item.timeoutInstanceRate + item.anomalyInstanceRate), 1);
-  const maxTotal = Math.max(...data.map((item) => item.totalCount), 1);
-  const activeItem = data.find((item) => item.processDefKey === hoveredKey) || null;
-
-  const toX = (value: number) => padding.left + (value / maxDuration) * chartW;
-  const toY = (value: number) => padding.top + chartH - (value / maxRisk) * chartH;
-  const radius = (value: number) => 6 + (value / maxTotal) * 10;
-
   return (
-    <div className="relative" onMouseLeave={() => setHoveredKey(null)}>
-      {activeItem ? (
-        <div
-          className="pointer-events-none absolute right-0 top-0 z-20 min-w-[208px] rounded-md border border-slate-800/80 bg-slate-950/92 px-3 py-2 text-xs shadow-none"
-        >
-          <div className="mb-2 font-semibold text-white">{activeItem.processName}</div>
-          <div className="space-y-1.5 text-slate-200">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-slate-300">平均时长</span>
-              <span>{formatDuration(activeItem.avgDurationMs)}</span>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-slate-300">超时实例率</span>
-              <span>{formatPercent(activeItem.timeoutInstanceRate)}</span>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-slate-300">异常实例率</span>
-              <span>{formatPercent(activeItem.anomalyInstanceRate)}</span>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-slate-300">总量</span>
-              <span>{formatCount(activeItem.totalCount)}</span>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="relative">
-        <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full">
-          {Array.from({ length: 5 }, (_, index) => {
-            const x = padding.left + (chartW / 4) * index;
-            return (
-              <line
-                key={`v-${index}`}
-                x1={x}
-                y1={padding.top}
-                x2={x}
-                y2={height - padding.bottom}
-                stroke="currentColor"
-                strokeWidth={1}
-                className="text-slate-200 dark:text-slate-800"
-              />
-            );
-          })}
-          {Array.from({ length: 5 }, (_, index) => {
-            const y = padding.top + (chartH / 4) * index;
-            return (
-              <line
-                key={`h-${index}`}
-                x1={padding.left}
-                y1={y}
-                x2={width - padding.right}
-                y2={y}
-                stroke="currentColor"
-                strokeWidth={1}
-                className="text-slate-200 dark:text-slate-800"
-              />
-            );
-          })}
-
-          {data.map((item) => {
-            const selected = selectedProcess === item.processDefKey;
-            const totalRisk = item.timeoutInstanceRate + item.anomalyInstanceRate;
-            // 风险高低是状态而不是分类，所以走状态色而不是分类槽；
-            // 半透明是为了让重叠气泡能看出叠了几层。
-            const fillToken =
-              totalRisk <= 5
-                ? '--cf-chart-good'
-                : totalRisk <= 12
-                  ? '--cf-chart-warning'
-                  : '--cf-chart-critical';
-            const fill = `color-mix(in srgb, var(${fillToken}), transparent 45%)`;
-            return (
-              <circle
-                key={item.processDefKey}
-                cx={toX(item.avgDurationMs)}
-                cy={toY(totalRisk)}
-                r={radius(item.totalCount)}
-                fill={fill}
-                // 未选中态是「重叠标记的表面色分隔环」，必须跟着主题走：
-                // 原来写死 #0f172a，暗色下这圈会糊进背景，等于没有分隔。
-                // 选中态用品牌主色，与三档风险状态色都不同色，不会被误读成风险等级。
-                stroke={selected ? 'var(--cf-primary)' : 'var(--cf-surface-1)'}
-                strokeWidth={selected ? 3 : 1.5}
-                className="cursor-pointer"
-                data-testid={`performance-matrix-${item.processDefKey}`}
-                onMouseEnter={() => setHoveredKey(item.processDefKey)}
-                onMouseMove={() => setHoveredKey(item.processDefKey)}
-                onClick={() => onSelect(item.processDefKey)}
-              />
-            );
-          })}
-
-          <text
-            x={width / 2}
-            y={height - 10}
-            textAnchor="middle"
-            fontSize={11}
-            fill="currentColor"
-            className="text-cf-subtle"
-          >
-            平均时长
-          </text>
-          <text
-            x={16}
-            y={height / 2}
-            textAnchor="middle"
-            fontSize={10}
-            fill="currentColor"
-            transform={`rotate(-90 16 ${height / 2})`}
-            className="text-cf-subtle"
-          >
-            风险强度
-          </text>
-
-          <text x={padding.left} y={height - 14} fontSize={10} fill="currentColor" className="text-cf-faint">
-            0
-          </text>
-          <text x={width - padding.right} y={height - 14} textAnchor="end" fontSize={10} fill="currentColor" className="text-cf-faint">
-            {formatChartDuration(maxDuration)}
-          </text>
-          <text x={padding.left - 6} y={padding.top + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-cf-faint">
-            {formatPercent(maxRisk)}
-          </text>
-          <text x={padding.left - 6} y={height - padding.bottom + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-cf-faint">
-            0.0%
-          </text>
-        </svg>
-      </div>
-    </div>
+    <ScatterChart
+      height={220}
+      ariaLabel="流程平均时长、风险强度与实例数量矩阵图"
+      xAxisName="平均时长" yAxisName="风险强度" sizeName="实例数" xFormatter={formatDuration} yFormatter={formatPercent}
+      selectedId={selectedProcess} onSelect={point => { if (point.id) onSelect(point.id); }}
+      data={data.map(item => {
+        const risk = item.timeoutInstanceRate + item.anomalyInstanceRate;
+        return { id: item.processDefKey, name: item.processName, x: item.avgDurationMs, y: risk, size: item.totalCount,
+          semantic: risk <= 5 ? 'good' : risk <= 12 ? 'warning' : 'critical',
+          dimensions: { 超时实例率: formatPercent(item.timeoutInstanceRate), 异常实例率: formatPercent(item.anomalyInstanceRate) } };
+      })}
+    />
   );
 };
 
 /**
+ * 超时等级/**
  * 超时等级 → 图表状态色。
  *
  * stroke（SVG 标记）与 dot（图例色块）必须取自同一个 token：改造前 stroke 是
  * 写死的 v3 hex、dot 是 Tailwind 类名，而项目已升到 v4——v4 的 `amber-500` 是
- * `#fe9a00` 而不是 `#f59e0b`，于是图例色块和扇区显示的根本不是一个颜色。
+ * Tailwind 的语义色与项目色板并非同一组值，图例色块和扇区因此可能不一致。
  * 现在两者都指向 `--cf-chart-*`，亮暗切换交给 index.css。
  *
  * text 仍用 Tailwind 语义色：它是文字，要保证对比度，不能用图表标记色。
@@ -924,91 +485,19 @@ const TimeoutLevelDistributionCard: React.FC<{
   loading: boolean;
 }> = ({ items, total, loading }) => {
   if (total <= 0 || items.length === 0) {
-    return (
-      <EmptyBlock
-        title="暂无超时等级分布"
-        description="当前筛选区间没有超时事件。"
-        icon={<PieChart className="h-5 w-5" />}
-        loading={loading}
-      />
-    );
+    return <EmptyBlock title="暂无超时等级分布" description="当前筛选区间没有超时事件。" icon={<PieChart className="h-5 w-5" />} loading={loading} />;
   }
-
-  const size = 112;
-  const strokeWidth = 16;
-  const center = size / 2;
-  const radius = (size - strokeWidth) / 2;
-  let startAngle = 0;
-  const segments = items.map((item) => {
-    const angle = total <= 0 ? 0 : (item.count / total) * 360;
-    const segment = {
-      ...item,
-      startAngle,
-      endAngle: startAngle + angle,
-    };
-    startAngle += angle;
-    return segment;
-  });
-
   return (
-    <div className="grid gap-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
-      <div className="relative mx-auto h-28 w-28">
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-xl font-semibold text-cf-title">{formatCount(total)}</div>
-          <div className="mt-1 text-[11px] text-cf-faint">
-            超时事件
-          </div>
-        </div>
-        <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full">
-          <circle
-            cx={center}
-            cy={center}
-            r={radius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={strokeWidth}
-            className="text-slate-200 dark:text-slate-800"
-          />
-          {segments.map((segment) => {
-            const tone = timeoutLevelTone(segment.level);
-            return segment.endAngle <= segment.startAngle ? null : (
-              <path
-                key={segment.level}
-                d={describeArc(center, center, radius, segment.startAngle, segment.endAngle)}
-                fill="none"
-                stroke={tone.stroke}
-                strokeWidth={strokeWidth}
-                strokeLinecap="butt"
-              />
-            );
-          })}
-        </svg>
-      </div>
-
-      <div className="grid gap-3">
-        {segments.map((item) => {
-          const tone = timeoutLevelTone(item.level);
-          return (
-            <div key={item.level} className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className={cn('inline-block h-2.5 w-2.5 rounded-sm', tone.dot)} />
-                <span className="truncate text-sm text-cf-body">{item.label}</span>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-semibold text-cf-title">
-                  {formatCount(item.count)}
-                </div>
-                <div className={cn('text-xs', tone.text)}>{formatPercent(item.rate)}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <DonutChart
+      height={220}
+      ariaLabel="超时事件等级分布图"
+      data={items.map(item => ({ name: item.label, value: item.count, semantic: item.level === 'CRITICAL' ? 'critical' : item.level === 'WARNING' ? 'warning' : 'good' }))}
+    />
   );
 };
 
 /**
+ * 异常类型/**
  * 异常类型分布条的颜色：**单色**。
  *
  * 改造前是 5 个色按 `index % 5` 轮着发，两个问题：

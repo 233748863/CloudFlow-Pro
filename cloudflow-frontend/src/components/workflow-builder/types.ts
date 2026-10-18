@@ -9,7 +9,7 @@ import {
 
 export type EditableWorkflowNode = WorkflowGraphNode & {
   title: string;
-  branchStrategy?: "PARALLEL" | "EXCLUSIVE";
+  branchStrategy?: WorkflowGraphNode["branchStrategy"];
   condition?: string;
   inputs?: Record<string, string>;
   outputs?: Record<string, string>;
@@ -20,7 +20,7 @@ export type EditableWorkflowNode = WorkflowGraphNode & {
     delayMs: number;
   };
   props?: Record<string, any>;
-  signType?: "ALL" | "ANY" | "PERCENT" | "SEQUENTIAL";
+  signType?: "ALL" | "ANY" | "PERCENT" | "SEQUENTIAL" | "WEIGHT";
   passPercent?: number;
   description?: string;
   icon?: string;
@@ -28,6 +28,9 @@ export type EditableWorkflowNode = WorkflowGraphNode & {
     | "ROLE"
     | "USER"
     | "USERS"
+    | "USER_LIST"
+    | "INITIATOR_SELECTED"
+    | "MULTI_LEVEL_MANAGER"
     | "INITIATOR"
     | "DEPT_MANAGER"
     | "DIRECT_LEADER"
@@ -42,6 +45,7 @@ export interface QuickAddOption {
   icon: React.FC<{ size?: number; className?: string }>;
   label: string;
   isBranch?: boolean;
+  isGateway?: boolean;
 }
 
 export type ApproverCacheType = "ROLE" | "USER" | "DEPT";

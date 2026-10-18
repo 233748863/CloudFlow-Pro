@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import request from '@/services/api/request';
 import { useDict } from '@/hooks/useDict';
+import { PROCESS_STATUSES, getProcessStatusClass } from '@/utils/processStatus';
 
 interface MetricsData {
   totalInstances: number;
@@ -189,7 +190,8 @@ export const MobileWorkflowMonitor: React.FC = () => {
             </div>
             <button
               onClick={fetchData}
-              className="p-2 rounded-lg active:bg-cf-surface-3"
+              aria-label="刷新工作流监控"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg active:bg-cf-surface-3"
             >
               <RefreshCw className={`w-4 h-4 text-cf-muted ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -264,24 +266,15 @@ export const MobileWorkflowMonitor: React.FC = () => {
         {/* 流程状态分布 */}
         <div className="bg-[var(--cf-surface-strong)] rounded-lg shadow-none border border-gray-100 p-4">
           <h2 className="text-sm font-semibold text-cf-body mb-3">流程状态分布</h2>
-          <MobileProgressBar
-            label="运行中"
-            value={m.runningInstances}
-            max={m.totalInstances}
-            color="text-yellow-600"
-          />
-          <MobileProgressBar
-            label="已完成"
-            value={m.completedInstances}
-            max={m.totalInstances}
-            color="text-green-600"
-          />
-          <MobileProgressBar
-            label="已拒绝"
-            value={m.rejectedInstances}
-            max={m.totalInstances}
-            color="text-red-600"
-          />
+          <p className="mb-3 text-xs text-cf-subtle">仅统计已提交的流程。</p>
+          <dl className="space-y-3">
+            {Object.entries(PROCESS_STATUSES).filter(([status]) => status !== 'DRAFT').map(([status, { label }]) => (
+              <div key={status} data-process-status={status} className="flex items-center justify-between gap-3 text-xs">
+                <dt className={`rounded px-2 py-1 ${getProcessStatusClass(status)}`}>{label}</dt>
+                <dd className="font-medium tabular-nums text-cf-title">{a.byStatus[status] ?? 0}</dd>
+              </div>
+            ))}
+          </dl>
           <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
             <span className="text-xs text-cf-subtle">完成率</span>
             <span className={`text-lg font-bold ${completionRate > 80 ? 'text-green-600' : 'text-yellow-600'}`}>

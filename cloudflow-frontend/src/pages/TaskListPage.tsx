@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { isTaskInCurrentTodo } from '@/utils/workflowPermissions';
+import { PROCESS_STATUSES, ProcessStatus, getProcessStatusLabel } from '@/utils/processStatus';
 import {
   Button,
   DatePicker,
@@ -35,6 +37,7 @@ import { logTask } from '../lib/logger';
 import { TaskBoard } from '../components/TaskBoard';
 import { TaskHandleModal } from '../components/TaskHandleModal';
 import { TaskList } from '../components/TaskList';
+import { PendingSignatureButton } from '../components/workflow/PendingSignatureButton';
 import {
   getFormDefinition,
   getFormDefinitions,
@@ -60,7 +63,7 @@ type TaskListPageMode = 'pending' | 'applications';
 type ApprovalCenterMode = TaskListPageMode | 'done';
 type FilterType = 'all' | 'process' | 'work';
 type ViewMode = 'list' | 'board';
-type ApplicationStatus = 'ALL' | 'RUNNING' | 'COMPLETED' | 'REJECTED' | 'REVOKED';
+type ApplicationStatus = 'ALL' | ProcessStatus;
 
 const mapBackendForm = (f: any): FormDefinition =>
   mapBackendFormDefinition(f) ?? {
@@ -71,10 +74,7 @@ const mapBackendForm = (f: any): FormDefinition =>
 
 const statusTabs: Array<{ key: ApplicationStatus; label: string }> = [
   { key: 'ALL', label: '全部' },
-  { key: 'RUNNING', label: '进行中' },
-  { key: 'COMPLETED', label: '已完成' },
-  { key: 'REJECTED', label: '已拒绝' },
-  { key: 'REVOKED', label: '已撤回' },
+  ...Object.entries(PROCESS_STATUSES).map(([key, value]) => ({ key: key as ProcessStatus, label: value.label })),
 ];
 
 const filterTypeTabs: Array<{ key: FilterType; label: string }> = [
@@ -243,6 +243,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
   const [refreshing, setRefreshing] = useState(false);
   const canListWorkTasks = hasPermission('oa:work-task:list');
   const canUpdateWorkTaskStatus = hasPermission('oa:work-task:status');
+  const canListDefinitions = hasPermission('workflow:definition:list');
 
   useEffect(() => {
     setCenterMode(effectiveType);
@@ -340,10 +341,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
 
         const filteredProcessTasks = processTasks.filter((task) => {
           if (centerMode === 'pending') {
-            return (
-              task.status === TaskStatus.PENDING &&
-              (task.assigneeId === user.id || (task.assigneeRole === user.role && !task.assigneeId))
-            );
+            return isTaskInCurrentTodo(task, user);
           }
 
           return true;
@@ -401,6 +399,11 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
   }, [fetchTasks]);
 
   useEffect(() => {
+    if (!canListDefinitions) {
+      setProcessDefOptions([]);
+      setTodoProcessDefOptions([]);
+      return;
+    }
     getProcessDefinitions({ latestOnly: false })
       .then((res) => {
         if (!Array.isArray(res)) return;
@@ -416,7 +419,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
           hasShownProcessDefLoadWarningRef.current = true;
         }
       });
-  }, []);
+  }, [canListDefinitions]);
 
   useEffect(() => {
     if (!user || user.role !== Role.ADMIN) {
@@ -443,6 +446,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
     const formIds = Array.from(
       new Set(
         rawTasks
+          .filter((task) => !task.processInstanceId)
           .map((task) => task.formId)
           .filter((formId): formId is string => typeof formId === 'string' && formId.trim() !== ''),
       ),
@@ -632,16 +636,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
     centerMode === 'pending' ? (viewMode === 'list' ? '列表视图' : '看板视图') : '列表视图';
   const currentTypeLabel =
     filterType === 'process' ? '流程审批' : filterType === 'work' ? '协作待办' : '全部任务';
-  const currentStatusLabel =
-    statusFilter === 'RUNNING'
-      ? '进行中'
-      : statusFilter === 'COMPLETED'
-        ? '已完成'
-        : statusFilter === 'REJECTED'
-          ? '已拒绝'
-          : statusFilter === 'REVOKED'
-            ? '已撤回'
-            : '全部状态';
+  const currentStatusLabel = statusFilter === 'ALL' ? '全部状态' : getProcessStatusLabel(statusFilter);
   const currentPendingProcessLabel =
     todoProcessDefOptions.find((item) => item.key === todoProcessDefKey)?.name || '全部流程';
   const currentApplicationProcessLabel =
@@ -715,6 +710,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
           <span>同步审批、已办、申请和协作待办</span>
         </div>
         <div className="admin-source-controls">
+          <PendingSignatureButton onSuccess={() => void fetchTasks(false)} />
           <button className="btn btn-secondary" type="button" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw size={16} className={cn(refreshing && 'animate-spin')} />
             刷新
@@ -964,6 +960,7 @@ export const TaskListPage = ({ type }: { type?: TaskListPageMode }) => {
                       setIsModalOpen(true);
                     }}
                     showRecallButton={centerMode === 'applications'}
+                    showWithdrawalButton={centerMode === 'done'}
                     primaryActionLabel={centerMode === 'pending' ? '处理' : '详情'}
                     onRecallSuccess={() => void fetchTasks(false)}
                   />

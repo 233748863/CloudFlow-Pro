@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, GitMerge, Loader2, RefreshCw } from 'lucide-react';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
+import { FieldPermissionDialog } from '@/components/workflow/FieldPermissionDialog';
 import { WorkflowDefinition, FormDefinition, User } from '../types';
 import { Button } from '@/components/common';
 import {
@@ -234,6 +235,7 @@ export const WorkflowDesign = () => {
 
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [savedForms, setSavedForms] = useState<FormDefinition[]>([]);
+  const [showFieldPermissions, setShowFieldPermissions] = useState(false);
   const [availableRoles, setAvailableRoles] = useState<any[]>([]);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -554,6 +556,7 @@ export const WorkflowDesign = () => {
           <span>{isNewWorkflow ? '空白流程' : workflow.key ? `流程 KEY · ${workflow.key}` : '流程设计'}</span>
         </div>
         <div className="admin-source-controls">
+          <Button variant="outline" disabled={!workflow?.formId || !workflow?.id || workflow.id.startsWith('new_')} onClick={() => setShowFieldPermissions(true)}>字段权限</Button>
           <Button variant="outline" onClick={loadData}>
             <RefreshCw size={16} />
             刷新设计器
@@ -581,6 +584,7 @@ export const WorkflowDesign = () => {
 
   return (
     <section className="admin-source-page admin-workflow-design-page">
+      {showFieldPermissions && workflow?.id ? <FieldPermissionDialog definitionId={workflow.id} onClose={() => setShowFieldPermissions(false)} /> : null}
       <TablePageLayout
         className="admin-workflow-design-layout"
         tableSurfaceClassName="admin-workflow-design-table-surface"

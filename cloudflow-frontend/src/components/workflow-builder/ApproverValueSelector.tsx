@@ -16,6 +16,7 @@ interface ApproverValueSelectorProps {
   onChange: (val: string) => void;
   onLabelChange?: (label: string) => void;
   multiple?: boolean;
+  roleValueField?: "roleKey" | "roleId";
 }
 
 // 角色/用户/部门选择器子组件 - 支持多选
@@ -25,6 +26,7 @@ export const ApproverValueSelector = ({
   onChange,
   onLabelChange,
   multiple = false,
+  roleValueField = "roleKey",
 }: ApproverValueSelectorProps) => {
   const [roles, setRoles] = useState<any[]>(
     () => readApproverCache("ROLE") || [],
@@ -107,7 +109,7 @@ export const ApproverValueSelector = ({
     if (type === "ROLE") {
       return roles.map((r) => ({
         id: String(r.roleId),
-        value: r.roleKey,
+        value: String(r[roleValueField]),
         label: r.roleName || r.roleKey,
         caption: r.roleKey,
       }));
@@ -128,7 +130,7 @@ export const ApproverValueSelector = ({
       }));
     }
     return [];
-  }, [type, roles, users, depts]);
+  }, [type, roles, users, depts, roleValueField]);
 
   // 根据 value 数组反查 label (含已选但已不在候选列表的兜底回显)
   const getDisplayLabel = (vals: string[]): string => {

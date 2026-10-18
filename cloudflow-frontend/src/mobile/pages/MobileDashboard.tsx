@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Bell, CheckCircle2, Calendar, ChevronRight, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -13,33 +13,54 @@ import { getUnreadCount } from '@/services/api/notice';
 import { getTasksCount } from '@/services/api/workflow';
 import type { RecentTask } from '@/services/api/workplace';
 import type { SysScheduleEvent } from '@/types';
+import { useNetworkStatus } from '@/hooks/useOffline';
+import { getAuthSessionVersion } from '@/utils/authStorage';
+import { captureMobileScope, readMobileSnapshot, saveMobileSnapshot } from '@/utils/mobileSnapshots';
+import { MobileDashboardChart, type DashboardStats } from '@/mobile/components/MobileDashboardChart';
 
-// 统计数据类型
-interface DashboardStats {
-  pendingTasks: number;
-  todaySchedules: number;
-  unreadMessages: number;
-}
+const emptyStats = (): DashboardStats => ({ pendingTasks: null, todaySchedules: null, unreadMessages: null });
+const validCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0;
 
 export const MobileDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
+  const isOnline = useNetworkStatus();
+  const requestSequence = useRef(0);
+  const owner = JSON.stringify([user?.tenantId, user?.id, getAuthSessionVersion()]);
+  const [dataOwner, setDataOwner] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
 
   // 数据状态
-  const [stats, setStats] = useState<DashboardStats>({
-    pendingTasks: 0,
-    todaySchedules: 0,
-    unreadMessages: 0,
-  });
-  const [recentTasks, setRecentTasks] = useState<RecentTask[]>([]);
-  const [todaySchedules, setTodaySchedules] = useState<SysScheduleEvent[]>([]);
+  const [stats, setStats] = useState<DashboardStats>(emptyStats);
+  const [recentTasks, setRecentTasks] = useState<Pick<RecentTask, 'taskId' | 'taskName' | 'processName' | 'applicant' | 'deadline' | 'priority' | 'status'>[]>([]);
+  const [todaySchedules, setTodaySchedules] = useState<Pick<SysScheduleEvent, 'eventId' | 'title' | 'startTime' | 'roomId'>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // 获取仪表板数据
   const fetchDashboardData = useCallback(async () => {
+    const sequence = ++requestSequence.current;
+    const version = getAuthSessionVersion();
+    const scope = captureMobileScope();
+    const isCurrent = () => sequence === requestSequence.current && version === getAuthSessionVersion();
+    setDataOwner(owner);
+    setRecentTasks([]);
+    setTodaySchedules([]);
+    setStats(emptyStats());
+    setSavedAt(null);
+    if (!isOnline) {
+      const saved = readMobileSnapshot(scope, 'dashboard');
+      setRecentTasks(saved?.data.tasks ?? []);
+      setTodaySchedules(saved?.data.schedules ?? []);
+      setStats(saved?.data.stats ?? emptyStats());
+      setSavedAt(saved?.savedAt ?? null);
+      setError(saved ? null : '当前离线，此账号尚无可用工作台摘要');
+      setLoading(false);
+      return false;
+    }
     try {
       setError(null);
+      setSavedAt(null);
 
       // 并行请求所有数据
       const [tasksData, schedulesData, unreadData, taskCountData] = await Promise.allSettled([
@@ -48,6 +69,7 @@ export const MobileDashboard: React.FC = () => {
         getUnreadCount(),
         getTasksCount(),
       ]);
+      if (!isCurrent()) return false;
 
       // 处理最近任务
       if (tasksData.status === 'fulfilled' && Array.isArray(tasksData.value)) {
@@ -60,21 +82,15 @@ export const MobileDashboard: React.FC = () => {
       }
 
       // 处理未读消息数（优先使用独立接口的数据）
-      if (unreadData.status === 'fulfilled' && typeof unreadData.value === 'number') {
-        setStats(prev => ({
-          ...prev,
-          unreadMessages: unreadData.value as number,
-        }));
-      }
-
-      // 处理任务统计（优先使用独立接口的数据）
-      if (taskCountData.status === 'fulfilled' && taskCountData.value) {
-        const counts = taskCountData.value as unknown as Record<string, number | undefined>;
-        setStats(prev => ({
-          ...prev,
-          pendingTasks: counts.todoCount ?? counts.todo ?? counts.pending ?? prev.pendingTasks,
-        }));
-      }
+      const counts = taskCountData.status === 'fulfilled' && taskCountData.value
+        ? taskCountData.value as unknown as Record<string, unknown> : {};
+      const pendingTasks = counts.todoCount ?? counts.todo ?? counts.pending;
+      const nextStats: DashboardStats = {
+        pendingTasks: validCount(pendingTasks) ? pendingTasks : null,
+        todaySchedules: schedulesData.status === 'fulfilled' && Array.isArray(schedulesData.value) ? schedulesData.value.length : null,
+        unreadMessages: unreadData.status === 'fulfilled' && validCount(unreadData.value) ? unreadData.value : null,
+      };
+      setStats(nextStats);
 
       // 检查是否所有请求都失败了
       const allFailed = [tasksData, schedulesData, unreadData, taskCountData]
@@ -82,22 +98,32 @@ export const MobileDashboard: React.FC = () => {
       if (allFailed) {
         setError('无法加载数据，请检查网络连接');
       }
+      const complete = tasksData.status === 'fulfilled' && Array.isArray(tasksData.value)
+        && schedulesData.status === 'fulfilled' && Array.isArray(schedulesData.value)
+        && nextStats.pendingTasks !== null && nextStats.todaySchedules !== null && nextStats.unreadMessages !== null;
+      if (!allFailed && !complete) setError('部分数据加载失败，请重试');
+      if (complete) {
+        saveMobileSnapshot(scope, 'dashboard', { tasks: tasksData.value, schedules: schedulesData.value,
+          stats: { pendingTasks: nextStats.pendingTasks!, todaySchedules: nextStats.todaySchedules!, unreadMessages: nextStats.unreadMessages! } });
+      }
+      return complete;
     } catch (err: any) {
-      setError(err.message || '加载数据失败');
+      if (isCurrent()) setError(err.message || '加载数据失败');
+      return false;
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, []);
+  }, [isOnline, owner]);
 
   // 初始加载
   useEffect(() => {
     fetchDashboardData();
+    return () => { requestSequence.current++; };
   }, [fetchDashboardData]);
 
   // 下拉刷新
   const handleRefresh = async () => {
-    await fetchDashboardData();
-    toast.success('刷新成功');
+    if (await fetchDashboardData()) toast.success('刷新成功');
   };
 
   const { isRefreshing, pullDistance, isPulling } = usePullToRefresh({
@@ -109,6 +135,8 @@ export const MobileDashboard: React.FC = () => {
     { label: '请假', path: '/leave/apply', color: 'bg-[#effbfe] text-[#0d95b5]' },
     { label: '报销', path: '/reimbursement/request', color: 'bg-[#effbfe] text-[#0d95b5]' },
     { label: '会议室', path: '/meeting-room', color: 'bg-[#effbfe] text-[#0d95b5]' },
+    ...(hasPermission('oa:meeting:mine') ? [{ label: '我的会议', path: '/office/my-meetings', color: 'bg-[#effbfe] text-[#0d95b5]' }] : []),
+    ...(hasPermission('oa:rfq:list') ? [{ label: '询价采购', path: '/office/rfqs', color: 'bg-[#effbfe] text-[#0d95b5]' }] : []),
   ];
 
   // 格式化时间显示
@@ -154,7 +182,7 @@ export const MobileDashboard: React.FC = () => {
   };
 
   // 加载状态
-  if (loading) {
+  if (loading || dataOwner !== owner) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -193,6 +221,7 @@ export const MobileDashboard: React.FC = () => {
       )}
 
       <div className="p-4 space-y-6">
+        {savedAt && <p role="status" className="text-sm text-cf-subtle">离线只读 · 保存于 {new Date(savedAt).toLocaleString()}</p>}
         {/* Error Banner */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
@@ -220,11 +249,11 @@ export const MobileDashboard: React.FC = () => {
           </div>
           <button
             onClick={() => navigate('/messages')}
-            className="relative p-2"
+            className="relative min-h-11 min-w-11 p-2"
             aria-label="消息通知"
           >
             <Bell className="text-cf-muted" />
-            {stats.unreadMessages > 0 && (
+            {stats.unreadMessages !== null && stats.unreadMessages > 0 && (
               <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center">
                 <span className="text-[10px] text-white font-bold">
                   {stats.unreadMessages > 99 ? '99+' : stats.unreadMessages}
@@ -254,22 +283,24 @@ export const MobileDashboard: React.FC = () => {
         {/* Stats Card */}
         <Card className="bg-[#0d95b5] text-white border-none shadow-none shadow-none">
           <CardContent className="p-4 flex justify-between items-center">
-            <button onClick={() => navigate('/tasks')} className="text-center flex-1">
+            <button onClick={() => navigate('/tasks')} className="min-h-11 text-center flex-1">
               <div className="text-[#effbfe] text-sm">待办任务</div>
-              <div className="text-3xl font-bold mt-1">{stats.pendingTasks}</div>
+              <div className="text-3xl font-bold mt-1">{stats.pendingTasks ?? '—'}</div>
             </button>
             <div className="h-10 w-[1px] bg-[#7ed5e6]"></div>
-            <button onClick={() => navigate('/schedule')} className="text-center flex-1">
+            <button onClick={() => navigate('/schedule')} className="min-h-11 text-center flex-1">
               <div className="text-[#effbfe] text-sm">今日日程</div>
-              <div className="text-3xl font-bold mt-1">{stats.todaySchedules}</div>
+              <div className="text-3xl font-bold mt-1">{stats.todaySchedules ?? '—'}</div>
             </button>
             <div className="h-10 w-[1px] bg-[#7ed5e6]"></div>
-            <button onClick={() => navigate('/messages')} className="text-center flex-1">
+            <button onClick={() => navigate('/messages')} className="min-h-11 text-center flex-1">
               <div className="text-[#effbfe] text-sm">消息</div>
-              <div className="text-3xl font-bold mt-1">{stats.unreadMessages}</div>
+              <div className="text-3xl font-bold mt-1">{stats.unreadMessages ?? '—'}</div>
             </button>
           </CardContent>
         </Card>
+
+        <MobileDashboardChart stats={stats} />
 
         {/* Todo List Preview */}
         <div>
@@ -289,7 +320,8 @@ export const MobileDashboard: React.FC = () => {
                 <div
                   key={task.taskId}
                   className="bg-[var(--cf-surface-strong)] p-3 rounded-lg border border-slate-100 shadow-none flex items-start gap-3 active:bg-[var(--cf-bg)] transition-colors"
-                  onClick={() => navigate(`/tasks/${task.taskId}`)}
+                  onClick={() => isOnline && navigate(`/tasks/${task.taskId}`)}
+                  aria-disabled={!isOnline}
                   role="button"
                   tabIndex={0}
                 >

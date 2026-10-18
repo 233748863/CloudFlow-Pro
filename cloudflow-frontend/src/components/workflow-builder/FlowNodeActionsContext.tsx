@@ -22,7 +22,7 @@ export interface FlowNodeReadContextValue {
 }
 
 export interface FlowNodeActionsContextValue {
-  onAddNext: (parentId: string, type?: NodeType) => void;
+  onAddNext: (parentId: string, type?: NodeType, isGateway?: boolean) => void;
   onAddBranch: (parentId: string) => void;
   onSelect: (nodeId: string) => void;
   onDrop: (dragId: string, dropId: string) => void;

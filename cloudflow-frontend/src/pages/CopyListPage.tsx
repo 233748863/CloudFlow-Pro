@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { ProcessTrace } from '../components/ProcessTrace';
 import { cn } from '@/utils/cn';
+import { getProcessStatusClass, getProcessStatusLabel } from '@/utils/processStatus';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const PAGE_SIZE = 12;
@@ -333,33 +334,11 @@ export const CopyListPage: React.FC = () => {
   };
 
   const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'RUNNING':
-        return 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200';
-      case 'COMPLETED':
-        return 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200';
-      case 'REJECTED':
-        return 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
-      case 'REVOKED':
-        return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
-      default:
-        return 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900';
-    }
+    return getProcessStatusClass(status);
   };
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'RUNNING':
-        return '进行中';
-      case 'COMPLETED':
-        return '已完成';
-      case 'REJECTED':
-        return '已驳回';
-      case 'REVOKED':
-        return '已撤回';
-      default:
-        return status || '未知';
-    }
+    return getProcessStatusLabel(status);
   };
 
   const currentReadFilterLabel =

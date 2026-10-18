@@ -1,14 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, MapPin, Users, Clock, Calendar, Loader2, RefreshCw, Search } from 'lucide-react';
+import { ChevronLeft, MapPin, Users, Clock, Calendar, Loader2, RefreshCw, Search, SlidersHorizontal } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { toast } from 'sonner';
 import { format, addHours, startOfHour } from 'date-fns';
 import { getMeetingRooms, createEvent } from '@/services/api/schedule';
 import { DatePicker } from '@/components/common';
+import { useMeetingConflictConsent } from '@/pages/meeting/useMeetingConflictConsent';
+import { MobileFilterDrawer } from '@/components/mobile/MobileFilterDrawer';
+import { useAuth } from '@/context/AuthContext';
+import { getAuthSessionVersion } from '@/utils/authStorage';
+import type { SysScheduleEvent } from '@/types';
 
 interface MeetingRoom {
-  id: number;
+  id: string;
   name: string;
   location: string;
   capacity: number;
@@ -17,7 +22,7 @@ interface MeetingRoom {
 }
 
 interface Booking {
-  roomId: number;
+  roomId: string;
   roomName: string;
   date: string;
   startTime: string;
@@ -26,69 +31,95 @@ interface Booking {
   attendees: number;
 }
 
+const createBooking = (): Booking => ({
+  roomId: '', roomName: '', date: format(new Date(), 'yyyy-MM-dd'),
+  startTime: format(startOfHour(addHours(new Date(), 1)), 'HH:mm'),
+  endTime: format(startOfHour(addHours(new Date(), 2)), 'HH:mm'),
+  purpose: '', attendees: 1,
+});
+
+const readFacilities = (value: unknown): string[] => {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value !== 'string' || !value.trim()) return [];
+  try { const parsed: unknown = JSON.parse(value); if (Array.isArray(parsed)) return parsed.map(String); } catch { /* 兼容旧逗号分隔数据。 */ }
+  return value.split(',').map(item => item.trim()).filter(Boolean);
+};
+
 export const MobileMeetingRoom: React.FC = () => {
+  const { confirmSchedule, conflictDialog } = useMeetingConflictConsent();
+  const { user, hasPermission } = useAuth();
+  const canRead = Boolean(user && hasPermission('oa:meeting-room:list'));
+  const canBook = Boolean(canRead && hasPermission('oa:schedule:add'));
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<MeetingRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterDraft, setFilterDraft] = useState('');
   const [selectedRoom, setSelectedRoom] = useState<MeetingRoom | null>(null);
-  const [bookingForm, setBookingForm] = useState<Booking>({
-    roomId: 0,
-    roomName: '',
-    date: format(new Date(), 'yyyy-MM-dd'),
-    startTime: format(startOfHour(addHours(new Date(), 1)), 'HH:mm'),
-    endTime: format(startOfHour(addHours(new Date(), 2)), 'HH:mm'),
-    purpose: '',
-    attendees: 1,
-  });
+  const [bookingForm, setBookingForm] = useState<Booking>(createBooking);
   const [submitting, setSubmitting] = useState(false);
+  const roomRequest = useRef(0);
+  const submitRequest = useRef(0);
+  const submission = useRef(false);
+  const bookingAllowed = useRef(canBook);
+  bookingAllowed.current = canBook;
 
   /**
    * 将后端会议室数据映射为前端所需格式
-   * 后端 MeetingRoom 的 status 字段：1可用 2使用中 3维护中
+   * 后端状态：1可用、0维护；兼容旧数据2使用中。
    */
   const mapRoomStatus = (backendStatus: string | number): 'available' | 'occupied' | 'maintenance' => {
     const statusStr = String(backendStatus);
     switch (statusStr) {
       case '1': return 'available';
       case '2': return 'occupied';
-      case '3': return 'maintenance';
-      default: return 'available';
+      case '0': return 'maintenance';
+      default: return 'maintenance';
     }
   };
 
   // 获取会议室列表 - 调用真实API
   const fetchRooms = useCallback(async () => {
+    const sequence = ++roomRequest.current;
+    const session = getAuthSessionVersion();
+    const isCurrent = () => sequence === roomRequest.current && session === getAuthSessionVersion();
+    if (!canRead) { setRooms([]); setLoading(false); return false; }
     try {
       setLoading(true);
       const data = await getMeetingRooms();
+      if (!isCurrent()) return false;
       // 将后端数据映射为前端格式
       const mappedRooms: MeetingRoom[] = (Array.isArray(data) ? data : []).map((room: any) => ({
-        id: room.roomId || room.id,
+        id: String(room.roomId ?? room.id),
         name: room.name || room.roomName || '',
         location: room.location || '',
         capacity: room.capacity || 0,
-        facilities: room.facilities
-          ? (typeof room.facilities === 'string' ? room.facilities.split(',') : room.facilities)
-          : [],
+        facilities: readFacilities(room.equipment ?? room.facilities),
         status: mapRoomStatus(room.status),
       }));
       setRooms(mappedRooms);
+      return true;
     } catch (err: any) {
+      if (!isCurrent()) return false;
       toast.error(err.message || '加载会议室失败');
+      return false;
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, []);
+  }, [canRead, user?.id, user?.tenantId]);
 
   useEffect(() => {
-    fetchRooms();
+    setRooms([]); setSelectedRoom(null); setBookingForm(createBooking());
+    setSearchQuery(''); setFilterDraft(''); setFilterOpen(false);
+    setSubmitting(false); submission.current = false; submitRequest.current++;
+    void fetchRooms();
+    return () => { roomRequest.current++; submitRequest.current++; };
   }, [fetchRooms]);
 
   // 下拉刷新
   const handleRefresh = async () => {
-    await fetchRooms();
-    toast.success('刷新成功');
+    if (await fetchRooms()) toast.success('刷新成功');
   };
 
   const { isRefreshing, pullDistance, isPulling } = usePullToRefresh({
@@ -131,6 +162,7 @@ export const MobileMeetingRoom: React.FC = () => {
 
   // 选择会议室
   const handleSelectRoom = (room: MeetingRoom) => {
+    if (!canBook) { toast.error('暂无会议预订权限'); return; }
     if (room.status !== 'available') {
       toast.error('该会议室当前不可用');
       return;
@@ -145,6 +177,8 @@ export const MobileMeetingRoom: React.FC = () => {
 
   // 提交预订 - 调用真实API
   const handleSubmit = async () => {
+    if (!canBook) { toast.error('暂无会议预订权限'); return; }
+    if (submission.current) return;
     // 验证
     if (!bookingForm.roomId) {
       toast.error('请选择会议室');
@@ -154,7 +188,7 @@ export const MobileMeetingRoom: React.FC = () => {
       toast.error('请输入会议主题');
       return;
     }
-    if (bookingForm.attendees < 1) {
+    if (!Number.isInteger(bookingForm.attendees) || bookingForm.attendees < 1) {
       toast.error('参会人数至少为1人');
       return;
     }
@@ -168,6 +202,9 @@ export const MobileMeetingRoom: React.FC = () => {
     // 验证时间
     const startDateTime = new Date(`${bookingForm.date}T${bookingForm.startTime}`);
     const endDateTime = new Date(`${bookingForm.date}T${bookingForm.endTime}`);
+    if (!Number.isFinite(startDateTime.getTime()) || !Number.isFinite(endDateTime.getTime())) {
+      toast.error('请选择有效的预订日期和时间'); return;
+    }
     if (endDateTime <= startDateTime) {
       toast.error('结束时间必须晚于开始时间');
       return;
@@ -177,25 +214,36 @@ export const MobileMeetingRoom: React.FC = () => {
       return;
     }
 
-    setSubmitting(true);
+    const sequence = ++submitRequest.current;
+    const session = getAuthSessionVersion();
+    const isCurrent = () => sequence === submitRequest.current && session === getAuthSessionVersion() && bookingAllowed.current;
+    submission.current = true; setSubmitting(true);
     try {
       // 调用日程创建API进行会议室预订
-      await createEvent({
-        title: bookingForm.purpose,
+      const payload: Partial<SysScheduleEvent> = {
+        title: bookingForm.purpose.trim(),
         roomId: String(bookingForm.roomId),
-        startTime: `${bookingForm.date}T${bookingForm.startTime}:00`,
-        endTime: `${bookingForm.date}T${bookingForm.endTime}:00`,
+        startTime: `${bookingForm.date} ${bookingForm.startTime}:00`,
+        endTime: `${bookingForm.date} ${bookingForm.endTime}:00`,
+        expectedAttendees: bookingForm.attendees,
         type: 'MEETING',
         description: `会议室预订：${bookingForm.roomName}，参会人数：${bookingForm.attendees}`,
-      } as any);
+      };
+      const confirmed = await confirmSchedule(payload);
+      if (confirmed === undefined || !isCurrent()) return;
+      await createEvent({ ...payload, confirmParticipantConflicts: confirmed });
+      if (!isCurrent()) return;
       toast.success('预订成功！');
       navigate('/');
     } catch (err: any) {
+      if (!isCurrent()) return;
       toast.error(err.message || '预订失败');
     } finally {
-      setSubmitting(false);
+      if (sequence === submitRequest.current && session === getAuthSessionVersion()) { submission.current = false; setSubmitting(false); }
     }
   };
+
+  if (!canRead) return <div className="p-6 text-center text-cf-muted">暂无会议室查看权限</div>;
 
   // 加载状态
   if (loading) {
@@ -217,7 +265,8 @@ export const MobileMeetingRoom: React.FC = () => {
         <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
           <button
             onClick={() => setSelectedRoom(null)}
-            className="p-1 -ml-1"
+            disabled={submitting}
+            className="min-h-11 min-w-11 p-1 -ml-1 disabled:opacity-50"
             aria-label="返回"
           >
             <ChevronLeft size={24} className="text-cf-muted" />
@@ -225,8 +274,9 @@ export const MobileMeetingRoom: React.FC = () => {
           <h1 className="text-lg font-semibold text-cf-title flex-1">预订会议室</h1>
         </div>
 
+        {conflictDialog}
         {/* Form */}
-        <div className="p-4 space-y-4">
+        <div className="p-4 pb-28 space-y-4">
           {/* 会议室信息 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
             <h3 className="font-semibold text-cf-title mb-2">{selectedRoom.name}</h3>
@@ -254,11 +304,12 @@ export const MobileMeetingRoom: React.FC = () => {
 
           {/* 日期选择 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-cf-body mb-2">
+            <label htmlFor="meeting-booking-date" className="block text-sm font-medium text-cf-body mb-2">
               <Calendar size={16} className="inline mr-1" />
               预订日期
             </label>
             <DatePicker
+              id="meeting-booking-date"
               type="date"
               value={bookingForm.date}
               onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })}
@@ -275,8 +326,9 @@ export const MobileMeetingRoom: React.FC = () => {
             </label>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-cf-subtle mb-1 block">开始时间</label>
+                <label htmlFor="meeting-booking-start" className="text-xs text-cf-subtle mb-1 block">开始时间</label>
                 <DatePicker
+                  id="meeting-booking-start"
                   type="time"
                   value={bookingForm.startTime}
                   onChange={e => setBookingForm({ ...bookingForm, startTime: e.target.value })}
@@ -284,8 +336,9 @@ export const MobileMeetingRoom: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-xs text-cf-subtle mb-1 block">结束时间</label>
+                <label htmlFor="meeting-booking-end" className="text-xs text-cf-subtle mb-1 block">结束时间</label>
                 <DatePicker
+                  id="meeting-booking-end"
                   type="time"
                   value={bookingForm.endTime}
                   onChange={e => setBookingForm({ ...bookingForm, endTime: e.target.value })}
@@ -297,10 +350,11 @@ export const MobileMeetingRoom: React.FC = () => {
 
           {/* 会议主题 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-cf-body mb-2">
+            <label htmlFor="meeting-booking-purpose" className="block text-sm font-medium text-cf-body mb-2">
               会议主题 <span className="text-red-500">*</span>
             </label>
             <input
+              id="meeting-booking-purpose"
               type="text"
               value={bookingForm.purpose}
               onChange={e => setBookingForm({ ...bookingForm, purpose: e.target.value })}
@@ -311,14 +365,15 @@ export const MobileMeetingRoom: React.FC = () => {
 
           {/* 参会人数 */}
           <div className="bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border border-slate-100">
-            <label className="block text-sm font-medium text-cf-body mb-2">
+            <label htmlFor="meeting-booking-attendees" className="block text-sm font-medium text-cf-body mb-2">
               <Users size={16} className="inline mr-1" />
               参会人数
             </label>
             <input
+              id="meeting-booking-attendees"
               type="number"
               value={bookingForm.attendees}
-              onChange={e => setBookingForm({ ...bookingForm, attendees: parseInt(e.target.value) || 1 })}
+              onChange={e => setBookingForm({ ...bookingForm, attendees: Number(e.target.value) })}
               min="1"
               max={selectedRoom.capacity}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5]"
@@ -328,10 +383,11 @@ export const MobileMeetingRoom: React.FC = () => {
             </p>
           </div>
 
-          {/* 提交按钮 */}
+        </div>
+        <footer className="cf-mobile-booking-footer">
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || !canBook}
             className="w-full bg-[#0d95b5] text-white py-3 rounded-lg font-medium hover:bg-[#0b7894] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting ? (
@@ -343,7 +399,7 @@ export const MobileMeetingRoom: React.FC = () => {
               '确认预订'
             )}
           </button>
-        </div>
+        </footer>
       </div>
     );
   }
@@ -378,27 +434,31 @@ export const MobileMeetingRoom: React.FC = () => {
       <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
         <button
           onClick={() => navigate(-1)}
-          className="p-1 -ml-1"
+          className="min-h-11 min-w-11 p-1 -ml-1"
           aria-label="返回"
         >
           <ChevronLeft size={24} className="text-cf-muted" />
         </button>
         <h1 className="text-lg font-semibold text-cf-title flex-1">会议室预订</h1>
+        <button type="button" aria-label="刷新会议室" onClick={handleRefresh} disabled={isRefreshing} className="min-h-11 min-w-11 p-2"><RefreshCw size={20} /></button>
+        <button type="button" aria-label="筛选会议室" onClick={() => { setFilterDraft(searchQuery); setFilterOpen(true); }} className="min-h-11 min-w-11 p-2"><SlidersHorizontal size={20} /></button>
       </div>
 
-      {/* Search */}
-      <div className="bg-[var(--cf-surface-strong)] border-b border-slate-200 px-4 py-3">
+      <MobileFilterDrawer open={filterOpen} title="筛选会议室" onClose={() => setFilterOpen(false)} onReset={() => setFilterDraft('')} onApply={() => { setSearchQuery(filterDraft.trim()); setFilterOpen(false); }}>
+        <label htmlFor="meeting-room-keyword" className="mb-2 block text-sm text-cf-body">会议室名称或位置</label>
         <div className="relative">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-cf-faint" />
           <input
+            id="meeting-room-keyword"
             type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            value={filterDraft}
+            onChange={e => setFilterDraft(e.target.value)}
             placeholder="搜索会议室名称或位置"
             className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d95b5]"
           />
         </div>
-      </div>
+      </MobileFilterDrawer>
+      {searchQuery && <p className="px-4 pt-3 text-sm text-cf-muted">筛选：{searchQuery}</p>}
 
       {/* Room List */}
       <div className="p-4 space-y-3">
@@ -407,13 +467,16 @@ export const MobileMeetingRoom: React.FC = () => {
             <div
               key={room.id}
               onClick={() => handleSelectRoom(room)}
+              onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleSelectRoom(room); } }}
               className={`bg-[var(--cf-surface-strong)] rounded-lg p-4 shadow-none border transition-colors ${
                 room.status === 'available'
                   ? 'border-slate-100 active:bg-[var(--cf-bg)] cursor-pointer'
                   : 'border-slate-200 opacity-60'
               }`}
               role="button"
-              tabIndex={0}
+              tabIndex={canBook && room.status === 'available' ? 0 : -1}
+              aria-disabled={!canBook || room.status !== 'available'}
+              data-meeting-room-id={room.id}
             >
               <div className="flex items-start justify-between mb-3">
                 <div>
@@ -456,6 +519,7 @@ export const MobileMeetingRoom: React.FC = () => {
           </div>
         )}
       </div>
+      {conflictDialog}
     </div>
   );
 };

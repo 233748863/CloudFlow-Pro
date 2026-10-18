@@ -3,6 +3,9 @@ import {
   PlayCircle,
   UserCheck,
   GitBranch,
+  GitMerge,
+  Split,
+  Route,
   Layers,
   Flag,
   Bell,
@@ -17,7 +20,10 @@ import { NodeType } from "../../types";
 export const NODE_TYPE_LABELS: Record<string, string> = {
   [NodeType.START]: "开始",
   [NodeType.APPROVAL]: "审批",
-  [NodeType.CONDITION]: "条件判断",
+  [NodeType.CONDITION]: "排他网关",
+  [NodeType.GATEWAY]: "网关",
+  [NodeType.INCLUSIVE]: "包含网关",
+  [NodeType.ROUTE]: "路由网关",
   [NodeType.PARALLEL]: "同时处理",
   [NodeType.END]: "完成",
   [NodeType.NOTIFICATION]: "通知",
@@ -32,6 +38,9 @@ export const APPROVER_TYPE_LABELS: Record<string, string> = {
   ROLE: "按角色",
   USER: "指定人员",
   USERS: "指定多人",
+  USER_LIST: "指定多人（原有列表）",
+  INITIATOR_SELECTED: "发起人自选审批人",
+  MULTI_LEVEL_MANAGER: "多级部门主管",
   INITIATOR: "发起人",
   DEPT_MANAGER: "部门负责人",
   DIRECT_LEADER: "直属上级",
@@ -42,6 +51,8 @@ export const APPROVER_TYPE_LABELS: Record<string, string> = {
 export const BRANCH_STRATEGY_LABELS: Record<string, string> = {
   EXCLUSIVE: "单选分支",
   PARALLEL: "并行处理",
+  INCLUSIVE: "包含分支",
+  ROUTE: "路由分支",
 };
 
 const neutralNodeVisual = {
@@ -65,6 +76,9 @@ export const NODE_VISUAL: Record<
   [NodeType.START]: { ...neutralNodeVisual, icon: PlayCircle, label: "开始" },
   [NodeType.APPROVAL]: { ...neutralNodeVisual, icon: UserCheck, label: "审批" },
   [NodeType.CONDITION]: { ...neutralNodeVisual, icon: GitBranch, label: "条件" },
+  [NodeType.GATEWAY]: { ...neutralNodeVisual, icon: GitMerge, label: "网关" },
+  [NodeType.INCLUSIVE]: { ...neutralNodeVisual, icon: Split, label: "包含" },
+  [NodeType.ROUTE]: { ...neutralNodeVisual, icon: Route, label: "路由" },
   [NodeType.PARALLEL]: { ...neutralNodeVisual, icon: Layers, label: "并行" },
   [NodeType.END]: { ...neutralNodeVisual, icon: Flag, label: "完成" },
   [NodeType.NOTIFICATION]: { ...neutralNodeVisual, icon: Bell, label: "通知" },
@@ -76,13 +90,13 @@ export const NODE_VISUAL: Record<
 };
 
 export const studioSidePanelClassName =
-  "fixed right-0 top-0 z-50 flex h-full w-[20rem] flex-col border-l border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950";
+  "fixed right-0 top-0 z-[100] flex h-dvh w-full flex-col border-l border-slate-200 bg-[var(--cf-surface-strong)] dark:border-slate-800 dark:bg-slate-950 sm:w-[20rem]";
 
 export const studioSubtleBlockClassName =
   "border border-slate-200 bg-[var(--cf-surface-strong)] p-3 dark:border-slate-800 dark:bg-slate-950";
 
 export const studioQuickAddMenuClassName =
-  "workflow-quick-add-menu absolute left-1/2 z-[100] min-w-[176px] -translate-x-1/2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 dark:border-slate-800 dark:bg-slate-950";
+  "workflow-quick-add-menu absolute left-1/2 z-[100] max-h-[min(70dvh,32rem)] min-w-[176px] -translate-x-1/2 overflow-y-auto rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] p-2 dark:border-slate-800 dark:bg-slate-950";
 
 export const studioSectionTitleClassName =
   "text-[11px] font-medium text-cyan-700 dark:text-cyan-300";

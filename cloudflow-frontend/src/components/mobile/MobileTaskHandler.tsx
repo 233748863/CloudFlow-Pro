@@ -3,6 +3,10 @@ import { Task, TaskStatus } from '../../types';
 import { completeTask } from '../../services/api/workflow';
 import { Check, X, ArrowLeft, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import { allowsRejection, canHandleWorkflowTask, getTaskAgentMode } from '@/utils/workflowPermissions';
+import { TaskSemanticBadge } from '../workflow/TaskSemanticBadge';
+import { WorkflowAgentActions } from '../workflow/WorkflowAgentActions';
+import { useAuth } from '@/context/AuthContext';
 
 interface MobileTaskHandlerProps {
   task: Task;
@@ -19,12 +23,25 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
   onComplete,
   onBack,
 }) => {
+  const { user } = useAuth();
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showCommentBox, setShowCommentBox] = useState(false);
+  const canReject = allowsRejection(task.nodePermissions, task.rejectStrategy);
+  const canAct = canHandleWorkflowTask(task, user);
+  const agentMode = getTaskAgentMode(task, user?.id);
 
   const handleAction = async (action: 'APPROVE' | 'REJECT') => {
-    if (submitting) return;
+    if (submitting || !canAct) return;
+    if (action === 'REJECT' && !canReject) {
+      toast.error('当前节点不允许回退');
+      return;
+    }
+    if (action === 'REJECT' && task.rejectStrategy && !comment.trim()) {
+      setShowCommentBox(true);
+      toast.error('请填写驳回原因');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -49,7 +66,7 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
     <div className="flex h-full flex-col bg-[var(--cf-bg)] text-[var(--cf-text)]">
       {/* 顶部导航栏 */}
       <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
-        <button onClick={onBack} className="p-1">
+        <button onClick={onBack} disabled={submitting} aria-label="返回待办" className="flex min-h-11 min-w-11 items-center justify-center p-1">
           <ArrowLeft size={20} className="text-cf-muted" />
         </button>
         <h2 className="flex-1 truncate text-base font-semibold text-cf-title">
@@ -68,6 +85,7 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
 
       {/* 任务信息 */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <TaskSemanticBadge taskType={task.taskType} />
         {/* 基本信息 */}
         <div className="space-y-3">
           <div className="flex justify-between items-center">
@@ -108,7 +126,7 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
         )}
 
         {/* 审批意见 */}
-        {showCommentBox && (
+        {showCommentBox && canAct && (
           <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
             <label className="mb-2 block text-sm font-medium text-cf-body">审批意见</label>
             <textarea
@@ -120,10 +138,11 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
             />
           </div>
         )}
+        {user && agentMode && <WorkflowAgentActions key={`${user.tenantId}:${user.id}:${task.id}:${task.version}`} task={task} currentUser={user} disabled={submitting} onBusyChange={setSubmitting} onChanged={onComplete} />}
       </div>
 
       {/* 底部操作栏 */}
-      {task.status === TaskStatus.PENDING && (
+      {canAct && (
         <div className="safe-area-bottom sticky bottom-0 border-t border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 dark:border-slate-800">
           {!showCommentBox && (
             <button
@@ -135,6 +154,7 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
             </button>
           )}
           <div className="flex gap-3">
+            {canReject && (
             <button
               onClick={() => handleAction('REJECT')}
               disabled={submitting}
@@ -143,6 +163,7 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
               <X size={16} />
               拒绝
             </button>
+            )}
             <button
               onClick={() => handleAction('APPROVE')}
               disabled={submitting}
