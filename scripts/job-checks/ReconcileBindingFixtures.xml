@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="reconcileFixtures">
+    <!-- Identifiers are validated from the independent, fixed fixture catalogue. Values are always bound. -->
+    <insert id="insertRow">
+        INSERT INTO ${table}
+        <foreach collection="values" index="column" item="value" open="(" separator="," close=")">${column}</foreach>
+        VALUES
+        <foreach collection="values" item="value" open="(" separator="," close=")">#{value}</foreach>
+    </insert>
+    <update id="updateRow">
+        UPDATE ${table} SET
+        <foreach collection="values" index="column" item="value" separator=",">${column}=#{value}</foreach>
+        WHERE ${idField}=#{id} AND tenant_id=#{tenant}
+    </update>
+    <select id="countMarker" resultType="long">
+        SELECT COUNT(*) FROM ${table} WHERE ${processField} LIKE #{marker}
+    </select>
+</mapper>

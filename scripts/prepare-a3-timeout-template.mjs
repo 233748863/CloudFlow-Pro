@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const run=path.join(root,'.cloudflow-runtime/batch-g-integration/9799534e1a3a47b5958330f14ae16dc7');
+const state=JSON.parse((await fs.readFile(path.join(run,'state.json'),'utf8')).replace(/^\uFEFF/,''));
+assert.equal(state.status,'RUNNING');assert.equal(await fs.realpath(state.run),await fs.realpath(run));
+const env={...process.env};delete env.MYSQL_PWD;
+const database=statement=>{const result=spawnSync('mysql.exe',['--no-defaults','--protocol=TCP','--host=127.0.0.1',`--port=${state.mysqlPort}`,'--user=root','--batch','--raw','--skip-column-names','--default-character-set=utf8mb4','cloud_flow_db'],{input:statement,encoding:'utf8',windowsHide:true,env,timeout:30000});assert.equal(result.status,0,'Owned template operation failed');return result.stdout.trim();};
+assert.equal(await fs.realpath(database('SELECT @@datadir;')),await fs.realpath(path.join(run,'mysql-data')));
+const read=()=>JSON.parse(database("SELECT JSON_OBJECT('id',template_id,'tenant',tenant_id,'title',title_template,'content',content_template,'params',params_declare,'version',version) FROM sys_message_template WHERE template_code='WF_TASK_TIMEOUT' AND tenant_id=100000 AND deleted=0;"));
+const old=read();assert.equal(old.id,102);assert.equal(old.title,'任务已超时：${processTitle}');assert.equal(old.content,'任务 ${nodeName} 已超过处理时限。');assert.equal(old.version,0);
+const next={title:'${title}',content:'${content}',params:JSON.stringify([{name:'processTitle',required:true},{name:'title',required:true},{name:'content',required:true}])};
+const seed=await fs.readFile(path.join(root,'cloudflow-backend/DB/06.cloudflow-business-seed.sql'),'utf8');
+assert.ok(seed.includes("'WF_TASK_TIMEOUT', '任务超时通知', 'INTERNAL', 'workflow', 'TODO', '${title}', '${content}', '"+next.params+"'"));
+const output=path.join(root,'.cloudflow-runtime/full-prd-20260915/approved-runtime/a3-task-timeout-template-20261003-r1.json');
+await fs.writeFile(output,JSON.stringify({old,next,ownedRun:run,scope:'Only approved WF_TASK_TIMEOUT seed template in owned fixture'},null,2),{flag:'wx'});
+const sql=value=>'CONVERT(0x'+Buffer.from(value).toString('hex')+' USING utf8mb4)';
+assert.equal(database('UPDATE sys_message_template SET title_template='+sql(next.title)+',content_template='+sql(next.content)+',params_declare='+sql(next.params)+",version=version+1,update_by='A3_TIMEOUT_TEMPLATE',update_time=NOW() WHERE template_id=102 AND tenant_id=100000 AND template_code='WF_TASK_TIMEOUT' AND version=0; SELECT ROW_COUNT();"),'1');
+const actual=read();assert.equal(actual.title,next.title);assert.equal(actual.content,next.content);assert.equal(actual.params,next.params);assert.equal(actual.version,1);
+console.log('A3_TIMEOUT_TEMPLATE_READY: template_id=102; tenant_id=100000; approved_seed_matched=true; affected=1; snapshot_retained=true; production_modified=false');
