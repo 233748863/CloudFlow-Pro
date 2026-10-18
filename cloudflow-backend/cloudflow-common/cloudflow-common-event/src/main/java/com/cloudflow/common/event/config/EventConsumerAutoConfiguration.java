@@ -3,16 +3,18 @@ package com.cloudflow.common.event.config;
 import com.cloudflow.common.event.core.BusinessEventConsumer;
 import com.cloudflow.common.event.core.BusinessEventDispatcher;
 import com.cloudflow.common.event.core.BusinessEventEnvelope;
+import com.cloudflow.common.event.core.BusinessEventEnvelopeCodec;
 import com.cloudflow.common.event.core.DeadLetterPublisher;
 import com.cloudflow.common.event.core.BusinessEventIdempotentStore;
+import com.cloudflow.common.event.core.BusinessEventPendingReclaimer;
 import com.cloudflow.common.tenant.TenantBroker;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -23,14 +25,10 @@ import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 import org.springframework.data.redis.stream.Subscription;
 import org.springframework.core.env.Environment;
 
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.Duration;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ScheduledFuture;
 
 /**
  * 业务事件消费自动配置。
@@ -52,12 +50,12 @@ public class EventConsumerAutoConfiguration {
         return new DeadLetterPublisher(redisStreamUtil, properties.getDlqStreamKey());
     }
 
-    @Bean
+    @Bean(destroyMethod = "close")
     public BusinessEventIdempotentStore businessEventIdempotentStore(StringRedisTemplate stringRedisTemplate) {
         return new BusinessEventIdempotentStore(stringRedisTemplate);
     }
 
-    @Bean
+    @Bean(destroyMethod = "stop")
     public StreamMessageListenerContainer<String, MapRecord<String, String, String>> businessEventContainer(
             RedisConnectionFactory factory) {
         StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, String, String>> options =
@@ -81,16 +79,36 @@ public class EventConsumerAutoConfiguration {
             ObjectMapper objectMapper,
             OutboxProperties properties,
             Environment environment) {
+        properties.validateConsumer();
         String applicationName = environment.getProperty("spring.application.name", "application");
         String consumerGroup = resolveConsumerGroup(properties, applicationName);
         redisStreamUtil.createGlobalGroup(properties.getStreamKey(), consumerGroup);
         String consumerName = properties.getConsumerPrefix() + "-" + applicationName + "-" + UUID.randomUUID().toString().substring(0, 8);
-        return businessEventContainer.receive(
-                Consumer.from(consumerGroup, consumerName),
-                StreamOffset.create(properties.getStreamKey(), ReadOffset.lastConsumed()),
+        StreamMessageListenerContainer.ConsumerStreamReadRequest<String> request = StreamMessageListenerContainer.StreamReadRequest.builder(
+                        StreamOffset.create(properties.getStreamKey(), ReadOffset.lastConsumed()))
+                .consumer(Consumer.from(consumerGroup, consumerName))
+                .autoAcknowledge(false)
+                .cancelOnError(failure -> false)
+                .errorHandler(failure -> log.warn("业务事件读取暂不可用，继续重试: app={}, type={}", applicationName, failure.getClass().getSimpleName()))
+                .build();
+        return businessEventContainer.register(request,
                 message -> onMessage(message, dispatcher, deadLetterPublisher, callbackIdempotentStore,
                         objectMapper, properties, redisStreamUtil, consumerGroup, applicationName)
         );
+    }
+
+    @Bean(initMethod = "start", destroyMethod = "close")
+    @DependsOn("businessEventSubscription")
+    @ConditionalOnBean(BusinessEventDispatcher.class)
+    public BusinessEventPendingReclaimer businessEventPendingReclaimer(StringRedisTemplate redis,
+            com.cloudflow.common.redis.core.RedisStreamUtil redisStreamUtil, BusinessEventDispatcher dispatcher,
+            DeadLetterPublisher deadLetterPublisher, BusinessEventIdempotentStore idempotentStore,
+            ObjectMapper objectMapper, OutboxProperties properties, Environment environment) {
+        String application = environment.getProperty("spring.application.name", "application");
+        String group = resolveConsumerGroup(properties, application);
+        return new BusinessEventPendingReclaimer(redis, properties, group,
+                message -> onMessage(message, dispatcher, deadLetterPublisher, idempotentStore,
+                        objectMapper, properties, redisStreamUtil, group, application));
     }
 
     void onMessage(MapRecord<String, String, String> message,
@@ -103,156 +121,110 @@ public class EventConsumerAutoConfiguration {
                    String consumerGroup,
                    String applicationName) {
         String msgId = message.getId().getValue();
-        Map<String, String> body = message.getValue();
-        BusinessEventEnvelope envelope = null;
+        BusinessEventEnvelope envelope;
         try {
-            envelope = readEnvelopePayload(body != null ? body.get("payload") : null, objectMapper);
-            if (!callbackIdempotentStore.acquire(consumerGroup, envelope.getEventId(),
-                    Duration.ofHours(properties.getIdempotentTtlHours()))) {
-                redisStreamUtil.ackGlobal(properties.getStreamKey(), consumerGroup, msgId);
-                return;
+            envelope = readEnvelopePayload(message.getValue() == null ? null : message.getValue().get("payload"), objectMapper);
+            if (envelope.getTenantId() == null || envelope.getTenantId() <= 0) {
+                throw new IllegalArgumentException("业务事件租户无效");
             }
-            final boolean[] handled = {false};
-            BusinessEventEnvelope eventEnvelope = envelope;
-            TenantBroker.runAs(eventEnvelope.getTenantId(), ignored -> {
+        } catch (Exception failure) {
+            quarantine(message, null, deadLetterPublisher, callbackIdempotentStore, properties, redisStreamUtil, consumerGroup, failure, 1);
+            return;
+        }
+        if (!dispatcher.supports(envelope.getEventType())) {
+            try {
+                redisStreamUtil.ackGlobal(properties.getStreamKey(), consumerGroup, msgId);
+            } catch (Exception unavailable) {
+                log.warn("未订阅事件确认未成功，保持待处理: msgId={}, type={}", msgId, unavailable.getClass().getSimpleName());
+            }
+            return;
+        }
+        Duration processingTtl = Duration.ofSeconds(properties.getConsumerProcessingLeaseSeconds());
+        Duration retentionTtl = Duration.ofHours(properties.getIdempotentTtlHours());
+        BusinessEventIdempotentStore.Lease lease;
+        try {
+            lease = callbackIdempotentStore.acquire(consumerGroup, envelope, processingTtl, retentionTtl);
+        } catch (Exception unavailable) {
+            log.warn("业务事件处理租约未取得，保留待处理消息: app={}, msgId={}, type={}", applicationName, msgId, unavailable.getClass().getSimpleName());
+            return;
+        }
+        if (lease.state() == BusinessEventIdempotentStore.State.PROCESSING) return;
+        if (lease.state() == BusinessEventIdempotentStore.State.CONFLICT) {
+            quarantine(message, null, deadLetterPublisher, callbackIdempotentStore, properties, redisStreamUtil, consumerGroup,
+                    new IllegalArgumentException("BUSINESS_EVENT_PAYLOAD_CONFLICT"), 1);
+            return;
+        }
+        if (lease.state() == BusinessEventIdempotentStore.State.DONE) {
+            acknowledgeDone(message, lease, callbackIdempotentStore, properties, consumerGroup);
+            return;
+        }
+        ScheduledFuture<?> renewal = null;
+        try {
+            renewal = callbackIdempotentStore.keepAlive(lease, processingTtl, retentionTtl);
+            TenantBroker.runAs(envelope.getTenantId(), ignored -> {
                 try {
-                    handled[0] = dispatcher.dispatch(eventEnvelope);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    dispatcher.dispatch(envelope);
+                } catch (Exception failure) {
+                    throw new RuntimeException(failure);
                 }
             });
-            if (!handled[0]) {
-                log.debug("当前应用未注册该事件消费者，直接确认消息: app={}, eventType={}, msgId={}",
-                        applicationName, envelope.getEventType(), msgId);
+            if (callbackIdempotentStore.complete(lease, retentionTtl)) {
+                acknowledgeDone(message, lease, callbackIdempotentStore, properties, consumerGroup);
+            } else {
+                log.warn("业务事件旧租约不能标记完成，保留待处理消息: app={}, msgId={}", applicationName, msgId);
             }
-            redisStreamUtil.ackGlobal(properties.getStreamKey(), consumerGroup, msgId);
-        } catch (Exception ex) {
-            log.error("业务事件消费失败: msgId={}", msgId, ex);
-            if (publishDeadLetter(deadLetterPublisher, envelope, body, msgId, consumerGroup,
-                    properties.getStreamKey(), ex)) {
-                redisStreamUtil.ackGlobal(properties.getStreamKey(), consumerGroup, msgId);
+        } catch (Exception failure) {
+            log.error("业务事件消费未完成: app={}, msgId={}, attempt={}, type={}", applicationName, msgId, lease.attempts(), failure.getClass().getSimpleName());
+            try {
+                if (callbackIdempotentStore.renew(lease, processingTtl, retentionTtl)
+                        && lease.attempts() >= properties.getConsumerMaxRetry()) {
+                    quarantine(message, lease, deadLetterPublisher, callbackIdempotentStore, properties, redisStreamUtil,
+                            consumerGroup, failure, (int) Math.min(Integer.MAX_VALUE, lease.attempts()));
+                }
+            } catch (Exception unavailable) {
+                log.warn("业务事件失败状态未确认，消息仍待处理: msgId={}, type={}", msgId, unavailable.getClass().getSimpleName());
+            } finally {
+                try {
+                    callbackIdempotentStore.release(lease);
+                } catch (Exception unavailable) {
+                    log.warn("业务事件租约未释放，等待到期后接管: msgId={}, type={}", msgId, unavailable.getClass().getSimpleName());
+                }
             }
+        } finally {
+            if (renewal != null) renewal.cancel(false);
         }
     }
 
     static BusinessEventEnvelope readEnvelopePayload(String rawPayload, ObjectMapper objectMapper) throws Exception {
-        if (rawPayload == null || rawPayload.isBlank()) {
-            throw new IllegalArgumentException("business event payload is blank");
-        }
-
-        JsonNode node = objectMapper.readTree(rawPayload);
-        if (node != null && node.isTextual()) {
-            String nestedPayload = node.asText();
-            if (nestedPayload == null || nestedPayload.isBlank()) {
-                throw new IllegalArgumentException("business event payload text is blank");
-            }
-            node = objectMapper.readTree(nestedPayload);
-        }
-        if (node == null || !node.isObject()) {
-            throw new IllegalArgumentException("business event payload must be a JSON object");
-        }
-
-        BusinessEventEnvelope envelope = toEnvelope(node, objectMapper);
-        if (envelope.getEventId() == null || envelope.getEventId().isBlank()) {
-            throw new IllegalArgumentException("business event eventId is blank");
-        }
-        if (envelope.getEventType() == null || envelope.getEventType().isBlank()) {
-            throw new IllegalArgumentException("business event eventType is blank");
-        }
-        return envelope;
+        return BusinessEventEnvelopeCodec.read(rawPayload, objectMapper);
     }
 
-    private static BusinessEventEnvelope toEnvelope(JsonNode node, ObjectMapper objectMapper) throws Exception {
-        BusinessEventEnvelope envelope = new BusinessEventEnvelope();
-        envelope.setEventId(textValue(node, "eventId"));
-        envelope.setEventType(textValue(node, "eventType"));
-        envelope.setSourceModule(textValue(node, "sourceModule"));
-        envelope.setSourceId(longValue(node, "sourceId"));
-        envelope.setPayload(payloadValue(node.get("payload"), objectMapper));
-        envelope.setOccurredAt(localDateTimeValue(node, "occurredAt"));
-        envelope.setTenantId(longValue(node, "tenantId"));
-        return envelope;
-    }
-
-    private static String textValue(JsonNode node, String fieldName) {
-        JsonNode value = node.get(fieldName);
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        return value.asText();
-    }
-
-    private static Long longValue(JsonNode node, String fieldName) {
-        JsonNode value = node.get(fieldName);
-        if (value == null || value.isNull() || (value.isTextual() && value.asText().isBlank())) {
-            return null;
-        }
-        return value.asLong();
-    }
-
-    private static String payloadValue(JsonNode payload, ObjectMapper objectMapper) throws Exception {
-        if (payload == null || payload.isNull()) {
-            return null;
-        }
-        if (payload.isTextual()) {
-            return payload.asText();
-        }
-        return objectMapper.writeValueAsString(payload);
-    }
-
-    private static LocalDateTime localDateTimeValue(JsonNode node, String fieldName) {
-        String value = textValue(node, fieldName);
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return parseLocalDateTime(value);
-    }
-
-    private static LocalDateTime parseLocalDateTime(String value) {
-        String text = value.trim();
+    private void acknowledgeDone(MapRecord<String, String, String> message, BusinessEventIdempotentStore.Lease lease,
+            BusinessEventIdempotentStore idempotentStore, OutboxProperties properties, String group) {
         try {
-            return LocalDateTime.parse(text, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        } catch (DateTimeParseException ignored) {
-            // Fall through to legacy formats.
-        }
-        try {
-            return OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalDateTime();
-        } catch (DateTimeParseException ignored) {
-            // Fall through to legacy formats.
-        }
-        try {
-            return LocalDateTime.parse(text, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException("business event occurredAt is invalid: " + text, ex);
+            idempotentStore.acknowledgeDone(lease, properties.getStreamKey(), group, message.getId().getValue());
+        } catch (Exception failure) {
+            log.warn("业务事件已完成，消息确认失败将由重领恢复: msgId={}, type={}", message.getId().getValue(), failure.getClass().getSimpleName());
         }
     }
 
-    private boolean publishDeadLetter(DeadLetterPublisher deadLetterPublisher,
-                                      BusinessEventEnvelope envelope,
-                                      Map<String, String> body,
-                                      String msgId,
-                                      String consumerGroup,
-                                      String streamKey,
-                                      Exception ex) {
+    private void quarantine(MapRecord<String, String, String> message, BusinessEventIdempotentStore.Lease lease,
+            DeadLetterPublisher deadLetterPublisher, BusinessEventIdempotentStore idempotentStore, OutboxProperties properties,
+            com.cloudflow.common.redis.core.RedisStreamUtil streams, String group, Exception failure, int attempts) {
+        String messageId = message.getId().getValue();
         try {
-            String lastError = truncate(ex.getMessage(), 500);
-            if (envelope != null) {
-                deadLetterPublisher.publish(envelope, lastError, 1);
+            String category = "BUSINESS_EVENT_PAYLOAD_CONFLICT".equals(failure.getMessage())
+                    ? "BUSINESS_EVENT_PAYLOAD_CONFLICT" : failure.getClass().getName();
+            deadLetterPublisher.publishRaw(messageId, properties.getStreamKey(), group, message.getValue(), category, attempts);
+            if (lease == null) {
+                streams.ackGlobal(properties.getStreamKey(), group, messageId);
             } else {
-                deadLetterPublisher.publishRaw(msgId, streamKey, consumerGroup, body, lastError, 1);
+                idempotentStore.acknowledgeFailure(lease, properties.getStreamKey(), group, messageId);
             }
-            return true;
-        } catch (Exception dlqEx) {
-            log.error("业务事件写入 DLQ 失败，消息保留待重试: msgId={}", msgId, dlqEx);
-            return false;
+            log.warn("业务事件已转存失败队列: group={}, msgId={}, reason={}", group, messageId, category);
+        } catch (Exception unavailable) {
+            log.error("业务事件失败消息尚未安全转存，保留待处理: msgId={}, type={}", messageId, unavailable.getClass().getSimpleName());
         }
-    }
-
-    private String truncate(String str, int maxLen) {
-        if (str == null || str.length() <= maxLen) {
-            return str;
-        }
-        return str.substring(0, maxLen);
     }
 
     private String resolveConsumerGroup(OutboxProperties properties, String applicationName) {

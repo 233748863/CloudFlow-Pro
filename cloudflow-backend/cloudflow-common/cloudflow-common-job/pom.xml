@@ -13,6 +13,12 @@
     <description>CloudFlow 定时任务模块（基于 Spring Scheduling + 分布式锁）</description>
 
     <dependencies>
+        <!-- Existing platform Servlet API; supplied by each service's web container. -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- CloudFlow 核心模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
@@ -33,6 +39,27 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <!-- Reuse the platform's existing service discovery and instance selection. -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-commons</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-security</artifactId>
         </dependency>
 
         <!-- 直接使用了 RedissonClient / RLock 接口 -->

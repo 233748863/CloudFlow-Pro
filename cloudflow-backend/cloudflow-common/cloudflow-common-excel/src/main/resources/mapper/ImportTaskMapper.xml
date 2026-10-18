@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.common.excel.importing.mapper.ImportTaskMapper">
+    <sql id="owner">
+        tenant_id = #{tenantId} AND operator_id = #{operatorId} AND task_id = #{taskId}
+    </sql>
+    <sql id="errorOwner">
+        error.tenant_id = #{tenantId} AND error.task_id = #{taskId}
+        AND task.tenant_id = #{tenantId} AND task.operator_id = #{operatorId}
+    </sql>
+    <select id="owned" resultType="com.cloudflow.common.excel.importing.model.ImportTask">
+        SELECT * FROM sys_import_task WHERE <include refid="owner"/>
+    </select>
+    <select id="ownedForUpdate" resultType="com.cloudflow.common.excel.importing.model.ImportTask">
+        SELECT * FROM sys_import_task WHERE <include refid="owner"/> FOR UPDATE
+    </select>
+    <select id="pageOwned" resultType="com.cloudflow.common.excel.importing.model.ImportTask">
+        SELECT * FROM sys_import_task WHERE tenant_id = #{tenantId} AND operator_id = #{operatorId}
+        AND biz_type IN <foreach collection="types" item="type" open="(" separator="," close=")">#{type}</foreach>
+        <if test="bizType != null and bizType != ''">AND biz_type = #{bizType}</if>
+        <if test="status != null and status != ''">AND status = #{status}</if>
+        ORDER BY task_id DESC
+    </select>
+    <update id="transition">
+        UPDATE sys_import_task SET status = #{status}, error_message = #{message}, end_time = NOW(),
+            duration_ms = CASE WHEN start_time IS NULL THEN 0 ELSE TIMESTAMPDIFF(MICROSECOND, start_time, NOW()) DIV 1000 END,
+            update_time = NOW()
+        WHERE <include refid="owner"/> AND status = #{previous}
+    </update>
+    <update id="beginValidation">
+        UPDATE sys_import_task SET status = 'VALIDATING', valid_rows = 0, invalid_rows = 0,
+            error_message = NULL, start_time = NOW(), end_time = NULL, duration_ms = NULL, job_log_id = NULL, update_time = NOW()
+        WHERE <include refid="owner"/> AND status IN ('UPLOADED', 'FAILED', 'VALIDATED')
+            AND success_rows = 0 AND fail_rows = 0 AND file_url != 'PENDING'
+    </update>
+    <update id="beginImport">
+        UPDATE sys_import_task SET status = 'IMPORTING', error_message = NULL, start_time = NOW(),
+            end_time = NULL, duration_ms = NULL, job_log_id = NULL, update_time = NOW()
+        WHERE <include refid="owner"/> AND status IN ('VALIDATED', 'FAILED')
+            AND valid_rows + invalid_rows = total_rows AND file_url != 'PENDING'
+    </update>
+    <update id="setFile">
+        UPDATE sys_import_task SET
+        <choose><when test="errorFile">error_file_url = #{reference}</when><otherwise>file_url = #{reference}</otherwise></choose>,
+            update_time = NOW()
+        WHERE <include refid="owner"/>
+    </update>
+    <update id="setJob">
+        UPDATE sys_import_task SET job_log_id = #{jobLogId}, update_time = NOW()
+        WHERE <include refid="owner"/> AND status IN ('VALIDATING', 'IMPORTING') AND job_log_id IS NULL
+    </update>
+    <update id="addValidation">
+        UPDATE sys_import_task SET valid_rows = valid_rows + #{valid}, invalid_rows = invalid_rows + #{invalid}, update_time = NOW()
+        WHERE <include refid="owner"/> AND status = 'VALIDATING' AND valid_rows + invalid_rows = #{expected}
+    </update>
+    <update id="addProgress">
+        UPDATE sys_import_task SET success_rows = success_rows + #{success}, fail_rows = fail_rows + #{failure}, update_time = NOW()
+        WHERE <include refid="owner"/> AND status = 'IMPORTING' AND success_rows + fail_rows = #{expected}
+    </update>
+    <insert id="addErrors">
+        INSERT INTO sys_import_error (tenant_id, task_id, row_no, column_name, cell_value, error_type, error_message, create_time) VALUES
+        <foreach collection="errors" item="error" separator=",">
+            (#{tenantId}, #{taskId}, #{error.rowNo}, #{error.columnName}, #{error.cellValue}, #{error.errorType}, #{error.errorMessage}, NOW())
+        </foreach>
+    </insert>
+    <delete id="clearErrors">
+        DELETE FROM sys_import_error WHERE tenant_id = #{tenantId} AND task_id = #{taskId}
+            AND EXISTS (SELECT 1 FROM sys_import_task WHERE <include refid="owner"/>)
+    </delete>
+    <select id="pageErrors" resultType="com.cloudflow.common.excel.importing.model.ImportErrorRecord">
+        SELECT error.* FROM sys_import_error error INNER JOIN sys_import_task task
+            ON task.task_id = error.task_id AND task.tenant_id = error.tenant_id
+        WHERE <include refid="errorOwner"/> ORDER BY error.row_no, error.error_id
+    </select>
+    <select id="invalidRows" resultType="java.lang.Integer">
+        SELECT DISTINCT error.row_no FROM sys_import_error error INNER JOIN sys_import_task task
+            ON task.task_id = error.task_id AND task.tenant_id = error.tenant_id
+        WHERE <include refid="errorOwner"/> ORDER BY error.row_no
+    </select>
+    <select id="errorsInRange" resultType="com.cloudflow.common.excel.importing.model.ImportErrorRecord">
+        SELECT error.* FROM sys_import_error error INNER JOIN sys_import_task task
+            ON task.task_id = error.task_id AND task.tenant_id = error.tenant_id
+        WHERE <include refid="errorOwner"/> AND error.row_no BETWEEN #{firstRow} AND #{lastRow}
+        ORDER BY error.row_no, error.error_id
+    </select>
+    <select id="errorCounts" resultType="java.util.LinkedHashMap">
+        SELECT error.error_type AS errorType, COUNT(*) AS errorCount
+        FROM sys_import_error error INNER JOIN sys_import_task task
+            ON task.task_id = error.task_id AND task.tenant_id = error.tenant_id
+        WHERE <include refid="errorOwner"/> GROUP BY error.error_type ORDER BY error.error_type
+    </select>
+    <select id="expired" resultType="com.cloudflow.common.excel.importing.model.ImportTask">
+        SELECT * FROM sys_import_task WHERE tenant_id = #{tenantId}
+            AND status IN ('SUCCESS', 'PARTIAL', 'FAILED', 'CANCELLED', 'UPLOADED', 'VALIDATED')
+            AND create_time &lt; #{cutoff} ORDER BY task_id LIMIT 100
+    </select>
+    <delete id="discardTask">
+        DELETE FROM sys_import_task WHERE <include refid="owner"/>
+            AND status NOT IN ('IMPORTING', 'VALIDATING')
+    </delete>
+    <select id="jobStatus" resultType="java.lang.String">
+        SELECT execute_status FROM sys_job_log WHERE tenant_id = #{tenantId} AND log_id = #{jobLogId}
+    </select>
+    <select id="completedOriginals" resultType="com.cloudflow.common.excel.importing.model.ImportTask">
+        SELECT * FROM sys_import_task WHERE tenant_id = #{tenantId} AND task_id &gt; #{afterId}
+            AND status IN ('SUCCESS', 'PARTIAL') AND success_rows + fail_rows = total_rows
+            AND file_url IS NOT NULL AND file_url NOT IN ('PENDING', 'REMOVED')
+            AND biz_type IN <foreach collection="types" item="type" open="(" separator="," close=")">#{type}</foreach>
+        ORDER BY task_id LIMIT 100
+    </select>
+</mapper>

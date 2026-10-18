@@ -28,7 +28,7 @@ public class DeadLetterPublisher {
         body.put("sourceModule", envelope.getSourceModule());
         body.put("lastError", lastError);
         body.put("retryCount", retryCount);
-        redisStreamUtil.publishGlobal(dlqStreamKey, body);
+        publishConfirmed(body);
     }
 
     public void publishRaw(String streamMsgId,
@@ -51,6 +51,13 @@ public class DeadLetterPublisher {
         body.put("rawEventType", rawBody != null ? rawBody.get("eventType") : null);
         body.put("lastError", lastError);
         body.put("retryCount", retryCount);
-        redisStreamUtil.publishGlobal(dlqStreamKey, body);
+        publishConfirmed(body);
+    }
+
+    private void publishConfirmed(Map<String, Object> body) {
+        String recordId = redisStreamUtil.publishGlobal(dlqStreamKey, body);
+        if (recordId == null || recordId.isBlank()) {
+            throw new IllegalStateException("业务事件失败队列写入未确认");
+        }
     }
 }

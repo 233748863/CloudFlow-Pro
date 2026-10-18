@@ -1,5 +1,6 @@
 package com.cloudflow.common.event.core;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -40,7 +41,10 @@ public class BusinessEventEnvelope implements Serializable {
     /** 事件负载 JSON（业务自定义结构），订阅方反序列化为具体 DTO */
     private String payload;
 
+    private String payloadDigest;
+
     /** 事件发生时间（业务时间，非 outbox 写入时间） */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private LocalDateTime occurredAt;
 
     /** 租户 ID（多租户场景，订阅方需显式 TenantBroker.runAs） */

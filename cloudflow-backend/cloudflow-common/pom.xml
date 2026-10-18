@@ -33,6 +33,8 @@
         <module>cloudflow-common-workflow-callback</module>
         <module>cloudflow-common-statemachine</module>
         <module>cloudflow-common-event</module>
+        <module>cloudflow-common-message</module>
+        <module>cloudflow-common-holiday</module>
         <module>cloudflow-common-static-rules</module>
     </modules>
 

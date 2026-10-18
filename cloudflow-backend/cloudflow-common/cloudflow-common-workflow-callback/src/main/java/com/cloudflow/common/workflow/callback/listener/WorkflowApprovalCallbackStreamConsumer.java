@@ -6,17 +6,18 @@ import com.cloudflow.common.workflow.callback.config.WorkflowCallbackProperties;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.service.CallbackIdempotentStore;
 import com.cloudflow.common.workflow.callback.service.WorkflowCallbackService;
-import lombok.RequiredArgsConstructor;
+import com.cloudflow.common.workflow.callback.util.WorkflowCallbackMetadata;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.stream.MapRecord;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.stream.StreamListener;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.concurrent.ScheduledFuture;
 
 @Slf4j
-@RequiredArgsConstructor
 public class WorkflowApprovalCallbackStreamConsumer
         implements StreamListener<String, MapRecord<String, String, String>> {
 
@@ -26,43 +27,101 @@ public class WorkflowApprovalCallbackStreamConsumer
     private final CallbackIdempotentStore idempotentStore;
     private final DeadLetterHandler deadLetterHandler;
 
+    public WorkflowApprovalCallbackStreamConsumer(WorkflowCallbackService workflowCallbackService, RedisStreamUtil redisStreamUtil,
+            WorkflowCallbackProperties properties, CallbackIdempotentStore idempotentStore, DeadLetterHandler deadLetterHandler) {
+        properties.validate();
+        this.workflowCallbackService = workflowCallbackService;
+        this.redisStreamUtil = redisStreamUtil;
+        this.properties = properties;
+        this.idempotentStore = idempotentStore;
+        this.deadLetterHandler = deadLetterHandler;
+    }
+
     @Override
     public void onMessage(MapRecord<String, String, String> message) {
         String msgId = message.getId().getValue();
         Map<String, String> body = message.getValue();
-        String processInstanceId = normalize(body.get("processInstanceId"));
-
-        if (!idempotentStore.acquire(processInstanceId, Duration.ofHours(properties.getIdempotentTtlHours()))) {
-            log.warn("重复消息已跳过: streamKey={}, msgId={}, processInstanceId={}", properties.getStreamKey(), msgId, processInstanceId);
-            redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
-            redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
+        ApprovalResultDTO dto;
+        try {
+            dto = buildDto(body);
+        } catch (Exception invalid) {
+            fail(message, null, invalid);
             return;
         }
-
+        CallbackIdempotentStore.Lease lease;
+        Duration processingTtl = Duration.ofSeconds(properties.getProcessingLeaseSeconds());
         try {
-            ApprovalResultDTO dto = buildDto(body);
-            // Stream 消费线程没有 HTTP/Sa-Token 上下文，必须显式补租户，
-            // 否则 MP TenantLineInnerInterceptor 拿到 null 直接 ignoreTable 跨租户裸跑。
-            TenantBroker.runAs(dto.getTenantId(), tid -> {
-                workflowCallbackService.handleApprovalResult(dto);
-            });
-            redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
-            redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
-            log.info("审批结果消费成功: streamKey={}, msgId={}, businessType={}, businessId={}, result={}",
-                    properties.getStreamKey(), msgId, dto.getBusinessType(), dto.getBusinessId(), dto.getApprovalResult());
-        } catch (Exception e) {
-            idempotentStore.release(processInstanceId);
-            // B13: 重试次数取 Redis Stream pending 的 deliveryCount（XPENDING），
-            // 由 Redis 维护，多实例部署、服务重启后依然准确，替代原进程内存计数
-            long deliveryCount = redisStreamUtil.pendingDeliveryCountGlobal(
-                    properties.getStreamKey(), properties.getGroup(), msgId);
-            log.error("消费审批结果失败(第{}次投递): streamKey={}, msgId={}", deliveryCount, properties.getStreamKey(), msgId, e);
-            if (deliveryCount >= properties.getMaxRetry()) {
-                deadLetterHandler.record(properties.getStreamKey(), processInstanceId, body, (int) deliveryCount, e.getMessage());
-                redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
-                redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
+            lease = idempotentStore.acquire(dto.getTenantId(), dto.getProcessInstanceId(), processingTtl);
+        } catch (Exception unavailable) {
+            log.error("回调租约获取失败，消息保持待处理: msgId={}", msgId, unavailable);
+            return;
+        }
+        if (lease.state() == CallbackIdempotentStore.State.PROCESSING) return;
+        if (lease.state() == CallbackIdempotentStore.State.DONE) {
+            acknowledgeDone(lease, msgId);
+            return;
+        }
+        ScheduledFuture<?> renewal = null;
+        try {
+            renewal = idempotentStore.keepAlive(lease, processingTtl);
+            try {
+                TenantBroker.runAs(dto.getTenantId(), tenantId -> workflowCallbackService.handleApprovalResult(dto));
+            } catch (Exception failure) {
+                fail(message, lease, failure);
+                return;
             }
-            // 未达上限：不 ACK，让 pending 重投
+            if (idempotentStore.complete(lease, Duration.ofHours(properties.getIdempotentTtlHours()))) {
+                acknowledgeDone(lease, msgId);
+            } else {
+                log.warn("回调处理租约已失效，旧持有者不确认消息: msgId={}", msgId);
+            }
+        } catch (Exception unavailable) {
+            log.error("回调完成标记未确认，消息保持待处理: msgId={}", msgId, unavailable);
+        } finally {
+            if (renewal != null) renewal.cancel(false);
+        }
+    }
+
+    private void acknowledgeDone(CallbackIdempotentStore.Lease lease, String msgId) {
+        try {
+            idempotentStore.acknowledgeDone(lease, properties.getStreamKey(), properties.getGroup(), msgId);
+        } catch (Exception failure) {
+            log.warn("回调业务已完成，确认失败将由后续重领恢复: msgId={}", msgId, failure);
+        }
+    }
+
+    private void fail(MapRecord<String, String, String> message, CallbackIdempotentStore.Lease lease, Exception failure) {
+        String msgId = message.getId().getValue();
+        try {
+            if (lease != null && !idempotentStore.renew(lease, Duration.ofSeconds(properties.getProcessingLeaseSeconds()))) return;
+            long deliveryCount = redisStreamUtil.pendingDeliveryCountGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
+            log.error("回调消费失败(第{}次投递): streamKey={}, msgId={}", deliveryCount, properties.getStreamKey(), msgId, failure);
+            if (deliveryCount >= properties.getMaxRetry()) {
+                String instanceId;
+                try {
+                    instanceId = normalize(message.getValue().get("processInstanceId"));
+                } catch (IllegalArgumentException invalid) {
+                    instanceId = null;
+                }
+                deadLetterHandler.record(properties.getStreamKey(), instanceId, message.getValue(),
+                        (int) Math.min(Integer.MAX_VALUE, deliveryCount), failure.getMessage());
+                if (lease == null) {
+                    redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
+                    redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
+                } else {
+                    idempotentStore.acknowledgeFailure(lease, properties.getStreamKey(), properties.getGroup(), msgId);
+                }
+            }
+        } catch (Exception deliveryFailure) {
+            log.error("回调失败消息尚未安全转存，保持待处理: msgId={}", msgId, deliveryFailure);
+        } finally {
+            if (lease != null) {
+                try {
+                    idempotentStore.release(lease);
+                } catch (Exception releaseFailure) {
+                    log.warn("回调处理租约释放失败，将等待到期: msgId={}", msgId, releaseFailure);
+                }
+            }
         }
     }
 
@@ -78,6 +137,18 @@ public class WorkflowApprovalCallbackStreamConsumer
         dto.setApproverId(parseLong(body.get("approverId")));
         dto.setApproverName(normalize(body.get("approverName")));
         dto.setApprovalTime(parseLong(body.get("approvalTime")));
+        if (dto.getTenantId() == null || dto.getTenantId() <= 0 || dto.getBusinessId() == null || dto.getBusinessId() <= 0
+                || dto.getProcessInstanceId() == null || dto.getProcessInstanceId().isBlank()
+                || dto.getBusinessType() == null || dto.getBusinessType().isBlank()
+                || dto.getApprovalResult() == null || !Set.of("APPROVED", "REJECTED").contains(dto.getApprovalResult())) {
+            throw new IllegalArgumentException("审批回调身份或结果无效");
+        }
+        Map<String, Object> metadata = new HashMap<>();
+        if (body.containsKey(WorkflowCallbackMetadata.OA_REQUEST_TOKEN)) {
+            metadata.put(WorkflowCallbackMetadata.OA_REQUEST_TOKEN,
+                    WorkflowCallbackMetadata.decodeStreamValue(body.get(WorkflowCallbackMetadata.OA_REQUEST_TOKEN)));
+        }
+        dto.setVariables(WorkflowCallbackMetadata.variables(dto.getBusinessType(), metadata));
         return dto;
     }
 
@@ -88,11 +159,7 @@ public class WorkflowApprovalCallbackStreamConsumer
     }
 
     private String normalize(String value) {
-        if (value == null) return null;
-        String v = value.trim();
-        if (v.length() >= 2 && v.startsWith("\"") && v.endsWith("\"")) {
-            v = v.substring(1, v.length() - 1);
-        }
-        return v;
+        String decoded = WorkflowCallbackMetadata.decodeStreamValue(value);
+        return decoded == null ? null : decoded.trim();
     }
 }

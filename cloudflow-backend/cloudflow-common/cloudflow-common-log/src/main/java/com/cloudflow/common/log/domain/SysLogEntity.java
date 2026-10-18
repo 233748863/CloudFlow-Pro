@@ -24,6 +24,15 @@ public class SysLogEntity {
     /** 租户ID */
     private Long tenantId;
 
+    private String traceId;
+    private String serviceName;
+    private String requestMethod;
+    private String requestUrl;
+    private Long durationMs;
+    private Integer resultCode;
+    private String clientIp;
+    private Integer slowFlag;
+
     /** 日志类型（0正常 9错误） */
     private String logType;
 

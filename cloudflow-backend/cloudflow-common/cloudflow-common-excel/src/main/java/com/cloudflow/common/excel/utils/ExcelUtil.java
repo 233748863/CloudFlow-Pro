@@ -148,7 +148,8 @@ public class ExcelUtil {
      */
     private static void resetResponse(String sheetName, HttpServletResponse response) {
         String filename = encodingFilename(sheetName);
-        response.reset();
+        response.resetBuffer();
+        response.setStatus(HttpServletResponse.SC_OK);
         // 设置 Content-Type 为 Excel 格式
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

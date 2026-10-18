@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.common.holiday.mapper.HolidayResolverMapper">
+    <select id="selectEmployeeDeptId" resultType="long">
+        SELECT dept_id FROM hr_employee WHERE id = #{employeeId} AND tenant_id = #{tenantId} AND deleted = 0
+    </select>
+    <sql id="assignedSchedule">
+        FROM hr_schedule_assignment assignment
+        LEFT JOIN hr_attendance_rule rule ON rule.id = assignment.rule_id AND rule.tenant_id = assignment.tenant_id
+        JOIN hr_employee employee ON employee.id = #{employeeId} AND employee.tenant_id = #{tenantId} AND employee.deleted = 0
+        WHERE assignment.tenant_id = #{tenantId}
+          AND ((assignment.target_type = 'EMPLOYEE' AND assignment.target_id = employee.id)
+            OR (assignment.target_type = 'DEPT' AND assignment.target_id = employee.dept_id))
+          AND (assignment.schedule_date = #{date}
+            OR (assignment.schedule_date IS NULL AND assignment.effective_start &lt;= #{date}
+                AND (assignment.effective_end IS NULL OR assignment.effective_end &gt;= #{date})))
+          AND assignment.status IN ('ACTIVE', 'PUBLISHED')
+        ORDER BY CASE WHEN assignment.target_type = 'EMPLOYEE' THEN 0 ELSE 1 END,
+                 CASE WHEN assignment.schedule_date IS NOT NULL THEN 0 ELSE 1 END,
+                 assignment.effective_start DESC, assignment.id DESC
+        LIMIT 1
+    </sql>
+    <select id="selectAssignedShiftId" resultType="long">
+        SELECT COALESCE(assignment.shift_id, rule.shift_id)
+        <include refid="assignedSchedule"/>
+    </select>
+    <select id="selectEmployeeCalendarAssignments" resultType="com.cloudflow.common.holiday.domain.EmployeeCalendarAssignment">
+        SELECT assignment.schedule_date, assignment.effective_start, assignment.effective_end,
+               COALESCE(assignment.shift_id, rule.shift_id) AS shift_id,
+               shift.holiday_calendar_id AS calendar_id
+        FROM hr_employee employee
+        JOIN hr_schedule_assignment assignment ON assignment.tenant_id = #{tenantId}
+            AND ((assignment.target_type = 'EMPLOYEE' AND assignment.target_id = employee.id)
+                OR (assignment.target_type = 'DEPT' AND assignment.target_id = employee.dept_id))
+        LEFT JOIN hr_attendance_rule rule ON rule.id = assignment.rule_id AND rule.tenant_id = assignment.tenant_id
+        LEFT JOIN hr_shift shift ON shift.id = COALESCE(assignment.shift_id, rule.shift_id) AND shift.tenant_id = #{tenantId}
+        WHERE employee.id = #{employeeId} AND employee.tenant_id = #{tenantId} AND employee.deleted = 0
+            AND assignment.status IN ('ACTIVE', 'PUBLISHED')
+            AND (assignment.schedule_date BETWEEN #{firstDate} AND #{lastDate}
+                OR (assignment.schedule_date IS NULL AND assignment.effective_start &lt;= #{lastDate}
+                    AND (assignment.effective_end IS NULL OR assignment.effective_end &gt;= #{firstDate})))
+        ORDER BY CASE WHEN assignment.target_type = 'EMPLOYEE' THEN 0 ELSE 1 END,
+                 CASE WHEN assignment.schedule_date IS NOT NULL THEN 0 ELSE 1 END,
+                 assignment.effective_start DESC, assignment.id DESC
+    </select>
+    <select id="selectAssignedRuleId" resultType="long">
+        SELECT assignment.rule_id
+        <include refid="assignedSchedule"/>
+    </select>
+    <select id="selectShiftCalendarId" resultType="long">
+        SELECT holiday_calendar_id FROM hr_shift WHERE id = #{shiftId} AND tenant_id = #{tenantId}
+    </select>
+    <select id="selectDeptCalendarId" resultType="long">
+        SELECT holiday_calendar_id FROM sys_dept WHERE dept_id = #{deptId} AND tenant_id = #{tenantId} AND deleted = 0
+    </select>
+    <select id="hasShiftCalendarColumn" resultType="boolean">
+        SELECT COUNT(*) &gt; 0
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'hr_shift'
+          AND column_name = 'holiday_calendar_id'
+    </select>
+    <select id="countDeptCalendarReferences" resultType="long">
+        SELECT COUNT(*) FROM sys_dept
+        WHERE tenant_id = #{tenantId} AND holiday_calendar_id = #{calendarId} AND deleted = 0
+    </select>
+    <select id="countShiftCalendarReferences" resultType="long">
+        SELECT COUNT(*) FROM hr_shift
+        WHERE tenant_id = #{tenantId} AND holiday_calendar_id = #{calendarId}
+    </select>
+    <select id="hasCrmSlaCalendarColumn" resultType="boolean">
+        SELECT COUNT(*) &gt; 0
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'crm_sla_policy'
+          AND column_name = 'holiday_calendar_id'
+    </select>
+    <select id="countCrmSlaCalendarReferences" resultType="long">
+        SELECT COUNT(*) FROM crm_sla_policy
+        WHERE tenant_id = #{tenantId} AND holiday_calendar_id = #{calendarId}
+    </select>
+</mapper>

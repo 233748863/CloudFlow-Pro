@@ -37,4 +37,6 @@ public @interface SysLog {
      * @return SPEL 表达式字符串
      */
     String expression() default "";
+
+    boolean logParams() default true;
 }

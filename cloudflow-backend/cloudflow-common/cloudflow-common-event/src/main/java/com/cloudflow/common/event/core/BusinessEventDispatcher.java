@@ -24,4 +24,8 @@ public class BusinessEventDispatcher {
         consumer.consume(envelope);
         return true;
     }
+
+    public boolean supports(String eventType) {
+        return consumers.containsKey(eventType);
+    }
 }

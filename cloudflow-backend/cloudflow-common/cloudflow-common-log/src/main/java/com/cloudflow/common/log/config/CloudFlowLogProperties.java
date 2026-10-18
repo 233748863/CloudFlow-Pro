@@ -36,6 +36,8 @@ public class CloudFlowLogProperties {
     /** 请求参数最大记录长度，超出截断 */
     private int maxLength = 2000;
 
+    private long slowThresholdMs = 1000;
+
     /**
      * 扩展敏感字段名，日志记录时会一并走统一脱敏。
      */

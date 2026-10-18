@@ -12,6 +12,9 @@ import java.util.List;
  */
 @Mapper
 public interface OutboxEventMapper extends BaseMapper<OutboxEvent> {
+    String lockExistingEvent(@Param("eventId") String eventId, @Param("tenantId") Long tenantId);
+
+    OutboxEvent lockExistingPayload(@Param("eventId") String eventId, @Param("tenantId") Long tenantId);
 
     int claimBatch(@Param("owner") String owner,
                    @Param("now") LocalDateTime now,

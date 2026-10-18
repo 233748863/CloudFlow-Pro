@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.List;
 
 /**
  * 业务类型注册项。
@@ -37,6 +38,14 @@ public class BusinessTypeDef {
     /** 业务表的主键列名。默认 id。 */
     @Builder.Default
     private String idField = "id";
+
+    /** 本审批阶段仍等待流程结果的业务状态；使用绑定参数参与对账查询。 */
+    @Builder.Default
+    private List<String> pendingStatuses = List.of("PENDING_APPROVAL", "PENDING", "APPROVING", "IN_APPROVAL", "SUBMITTED");
+
+    /** 本审批阶段已经结束的业务状态，包含审批通过后的后续办理状态。 */
+    @Builder.Default
+    private List<String> finishedStatuses = List.of("APPROVED", "REJECTED", "COMPLETED", "CANCELLED");
 
     /** 用于前端展示的可读名称（如"招聘需求审批"）。 */
     private String displayName;

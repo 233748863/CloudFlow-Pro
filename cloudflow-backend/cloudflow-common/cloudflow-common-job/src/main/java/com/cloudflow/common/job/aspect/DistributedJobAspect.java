@@ -1,6 +1,8 @@
 package com.cloudflow.common.job.aspect;
 
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.job.config.JobInvocationContext;
+import com.cloudflow.common.core.context.TraceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -36,6 +38,15 @@ public class DistributedJobAspect {
      */
     @Around("@annotation(distributedJob)")
     public Object around(ProceedingJoinPoint joinPoint, DistributedJob distributedJob) throws Throwable {
+        try (TraceContext.Scope scope = TraceContext.scope()) {
+            return executeLocked(joinPoint, distributedJob);
+        }
+    }
+
+    private Object executeLocked(ProceedingJoinPoint joinPoint, DistributedJob distributedJob) throws Throwable {
+        if (JobInvocationContext.consumePlatformLock()) {
+            return joinPoint.proceed();
+        }
         // 获取任务名称
         String jobName = distributedJob.name();
         if (jobName.isEmpty()) {

@@ -17,11 +17,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Outbox 调度器。每 5s 扫 outbox_event 表 PENDING 记录，发到 Redis Stream。
+ * Outbox 调度器。每 5s 领取到期的待发、失败和租约过期的处理中记录，发到 Redis Stream。
  * <ul>
  *   <li>成功：status → PUBLISHED，publishedAt = now</li>
  *   <li>失败：retryCount++，nextRetryAt = now + 指数退避（base * 2^retryCount，max 1h）</li>
- *   <li>超过 maxRetry=8：status → FAILED，lastError 记录原因</li>
+ *   <li>超过 maxRetry=8：status → DLQ，lastError 记录原因</li>
  * </ul>
  */
 @Slf4j
@@ -111,7 +111,7 @@ public class OutboxScheduler {
 
     private com.cloudflow.common.event.core.BusinessEventEnvelope readEnvelope(OutboxEvent event) {
         try {
-            return objectMapper.readValue(event.getPayloadJson(), com.cloudflow.common.event.core.BusinessEventEnvelope.class);
+            return com.cloudflow.common.event.core.BusinessEventEnvelopeCodec.read(event.getPayloadJson(), objectMapper);
         } catch (Exception e) {
             com.cloudflow.common.event.core.BusinessEventEnvelope envelope = new com.cloudflow.common.event.core.BusinessEventEnvelope();
             envelope.setEventId(event.getEventId());

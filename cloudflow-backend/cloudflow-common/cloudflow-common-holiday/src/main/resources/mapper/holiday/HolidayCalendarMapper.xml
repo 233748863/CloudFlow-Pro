@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.common.holiday.mapper.HolidayCalendarMapper">
+    <select id="selectEnabledById" resultType="com.cloudflow.common.holiday.domain.HolidayCalendar">
+        SELECT * FROM sys_holiday_calendar
+        WHERE tenant_id = #{tenantId} AND calendar_id = #{calendarId} AND status = 'ENABLED' AND deleted = 0
+    </select>
+    <select id="selectDefaultEnabled" resultType="com.cloudflow.common.holiday.domain.HolidayCalendar">
+        SELECT * FROM sys_holiday_calendar
+        WHERE tenant_id = #{tenantId} AND default_flag = 1 AND status = 'ENABLED' AND deleted = 0
+    </select>
+</mapper>

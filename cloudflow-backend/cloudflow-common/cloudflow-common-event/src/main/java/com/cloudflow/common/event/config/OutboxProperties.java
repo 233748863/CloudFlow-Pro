@@ -48,4 +48,20 @@ public class OutboxProperties {
 
     /** Stream 保留的最大长度，0 表示不主动 trim */
     private long streamMaxLen = 200000;
+
+    private long consumerProcessingLeaseSeconds = 60;
+    private long consumerPendingPollIntervalSeconds = 5;
+    private long consumerPendingMinIdleSeconds = 60;
+    private int consumerPendingBatchSize = 100;
+    private int consumerMaxRetry = 8;
+
+    public void validateConsumer() {
+        if (streamKey == null || streamKey.isBlank() || dlqStreamKey == null || dlqStreamKey.isBlank()
+                || consumerProcessingLeaseSeconds <= 0 || consumerPendingPollIntervalSeconds <= 0
+                || consumerPendingMinIdleSeconds <= 0 || consumerPendingBatchSize <= 0 || consumerMaxRetry <= 0
+                || idempotentTtlHours <= 0
+                || java.time.Duration.ofHours(idempotentTtlHours).compareTo(java.time.Duration.ofSeconds(consumerProcessingLeaseSeconds)) <= 0) {
+            throw new IllegalArgumentException("业务事件消费配置无效");
+        }
+    }
 }

@@ -68,7 +68,7 @@ public class SysLogListener {
         try {
             sysLogMapper.insert(sysLog);
         } catch (Exception e) {
-            log.error("操作日志入库失败: {}", e.getMessage(), e);
+            log.error("操作日志入库失败: traceId={}, exception={}", sysLog.getTraceId(), e.getClass().getSimpleName());
         }
     }
 }

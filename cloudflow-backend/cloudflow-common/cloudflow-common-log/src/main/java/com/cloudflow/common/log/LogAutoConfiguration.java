@@ -11,6 +11,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import com.cloudflow.common.log.web.ApiLogWebConfiguration;
+import com.cloudflow.common.log.event.ApiErrorLogListener;
+import com.cloudflow.common.log.mapper.SysApiErrorLogMapper;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
@@ -24,17 +28,23 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @EnableAsync
 @Configuration
+@Import(ApiLogWebConfiguration.class)
 @EnableConfigurationProperties(CloudFlowLogProperties.class)
 @MapperScan("com.cloudflow.common.log.mapper")
 @ConditionalOnProperty(prefix = "cloudflow.log", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class LogAutoConfiguration {
 
+    @Bean
+    public ApiErrorLogListener apiErrorLogListener(SysApiErrorLogMapper mapper) {
+        return new ApiErrorLogListener(mapper);
+    }
+
     /**
      * 操作日志切面
      */
     @Bean
-    public SysLogAspect sysLogAspect(ApplicationEventPublisher eventPublisher, ObjectMapper objectMapper) {
-        return new SysLogAspect(eventPublisher, objectMapper);
+    public SysLogAspect sysLogAspect(ApplicationEventPublisher eventPublisher, ObjectMapper objectMapper, CloudFlowLogProperties properties) {
+        return new SysLogAspect(eventPublisher, objectMapper, properties);
     }
 
     /**

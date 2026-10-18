@@ -5,24 +5,28 @@ import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
 import com.cloudflow.common.workflow.callback.listener.DeadLetterHandler;
 import com.cloudflow.common.workflow.callback.listener.DefaultDeadLetterHandler;
 import com.cloudflow.common.workflow.callback.listener.WorkflowApprovalCallbackStreamConsumer;
+import com.cloudflow.common.workflow.callback.listener.WorkflowCallbackPendingReclaimer;
 import com.cloudflow.common.workflow.callback.service.CallbackIdempotentStore;
 import com.cloudflow.common.workflow.callback.service.DefaultWorkflowCallbackDispatcher;
 import com.cloudflow.common.workflow.callback.service.WorkflowCallbackService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 import org.springframework.data.redis.stream.Subscription;
-import org.springframework.util.Assert;
 
 import java.time.Duration;
 import java.util.List;
@@ -36,6 +40,7 @@ import java.util.UUID;
  *
  * <p>若业务服务自定义了 {@link WorkflowCallbackService} Bean（如 HR），则跳过默认 Dispatcher。
  */
+@Slf4j
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "cloudflow.workflow.callback", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(WorkflowCallbackProperties.class)
@@ -66,7 +71,7 @@ public class WorkflowCallbackAutoConfiguration {
         return container;
     }
 
-    @Bean
+    @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean(CallbackIdempotentStore.class)
     public CallbackIdempotentStore callbackIdempotentStore(StringRedisTemplate stringRedisTemplate) {
         return new CallbackIdempotentStore(stringRedisTemplate);
@@ -93,20 +98,50 @@ public class WorkflowCallbackAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(name = "workflowApprovalCallbackSubscription")
     public Subscription workflowApprovalCallbackSubscription(
+            @Qualifier("workflowApprovalCallbackContainer")
             StreamMessageListenerContainer<String, MapRecord<String, String, String>> workflowApprovalCallbackContainer,
-            RedisStreamUtil redisStreamUtil,
+            StringRedisTemplate stringRedisTemplate,
             WorkflowApprovalCallbackStreamConsumer consumer,
             WorkflowCallbackProperties properties) {
-        Assert.hasText(properties.getStreamKey(), "cloudflow.workflow.callback.stream-key 不能为空");
-        Assert.hasText(properties.getGroup(), "cloudflow.workflow.callback.group 不能为空");
-
-        redisStreamUtil.createGlobalGroup(properties.getStreamKey(), properties.getGroup());
+        properties.validate();
+        try {
+            stringRedisTemplate.execute((RedisCallback<String>) connection -> connection.streamCommands().xGroupCreate(
+                    stringRedisTemplate.getStringSerializer().serialize(properties.getStreamKey()), properties.getGroup(),
+                    ReadOffset.from("0-0"), true));
+        } catch (RuntimeException failure) {
+            boolean exists = false;
+            for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+                if (cause.getMessage() != null && cause.getMessage().contains("BUSYGROUP")) exists = true;
+            }
+            if (!exists) throw failure;
+        }
 
         String consumerName = properties.getConsumerPrefix() + "-" + UUID.randomUUID().toString().substring(0, 8);
-        return workflowApprovalCallbackContainer.receive(
-                Consumer.from(properties.getGroup(), consumerName),
-                StreamOffset.create(properties.getStreamKey(), ReadOffset.lastConsumed()),
-                consumer
-        );
+        StreamMessageListenerContainer.ConsumerStreamReadRequest<String> request = StreamMessageListenerContainer.StreamReadRequest
+                .builder(StreamOffset.create(properties.getStreamKey(), ReadOffset.lastConsumed()))
+                .consumer(Consumer.from(properties.getGroup(), consumerName))
+                .autoAcknowledge(false)
+                .cancelOnError(failure -> false)
+                .errorHandler(failure -> retryApprovalCallbackRead(failure, properties))
+                .build();
+        return workflowApprovalCallbackContainer.register(request, consumer);
+    }
+
+    private void retryApprovalCallbackRead(Throwable failure, WorkflowCallbackProperties properties) {
+        log.warn("审批回调读取失败，将在1秒后重试: streamKey={}, errorType={}",
+                properties.getStreamKey(), failure.getClass().getSimpleName());
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @Bean(initMethod = "start", destroyMethod = "close")
+    @DependsOn("workflowApprovalCallbackSubscription")
+    @ConditionalOnMissingBean(WorkflowCallbackPendingReclaimer.class)
+    public WorkflowCallbackPendingReclaimer workflowCallbackPendingReclaimer(StringRedisTemplate stringRedisTemplate,
+            WorkflowCallbackProperties properties, WorkflowApprovalCallbackStreamConsumer consumer) {
+        return new WorkflowCallbackPendingReclaimer(stringRedisTemplate, properties, consumer);
     }
 }

@@ -63,10 +63,29 @@
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
         <maven.dependency.plugin.version>3.7.0</maven.dependency.plugin.version>
         <jsr305.version>3.0.2</jsr305.version>
+        <velocity.version>2.3</velocity.version>
+        <ical4j.version>4.3.0</ical4j.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <commons-codec.version>1.17.0</commons-codec.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.mnode.ical4j</groupId>
+                <artifactId>ical4j</artifactId>
+                <version>${ical4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>${commons-codec.version}</version>
+            </dependency>
             <!-- ==================== Spring 框架 BOM ==================== -->
             <!-- Spring Boot Dependencies -->
             <dependency>
@@ -203,6 +222,16 @@
                 <artifactId>cloudflow-common-event</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-message</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-holiday</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- ==================== 第三方依赖版本管理 ==================== -->
             <!-- Hutool 工具集 -->
@@ -210,6 +239,13 @@
                 <groupId>cn.hutool</groupId>
                 <artifactId>hutool-all</artifactId>
                 <version>${hutool.version}</version>
+            </dependency>
+
+            <!-- 代码生成器模板引擎 -->
+            <dependency>
+                <groupId>org.apache.velocity</groupId>
+                <artifactId>velocity-engine-core</artifactId>
+                <version>${velocity.version}</version>
             </dependency>
 
             <!-- Jackson：显式锁定关键组件，避免被 Spring Boot BOM 回落到较低版本 -->
@@ -439,6 +475,14 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <version>${spring-boot.version}</version>
+                    <executions>
+                        <execution>
+                            <id>repackage</id>
+                            <goals>
+                                <goal>repackage</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                     <configuration>
                         <jvmArguments>-Dfile.encoding=UTF-8</jvmArguments>
                         <excludes>
