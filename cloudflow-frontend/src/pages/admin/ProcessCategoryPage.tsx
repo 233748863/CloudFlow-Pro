@@ -6,6 +6,7 @@ import {
   FolderKanban,
   FolderTree,
   Layers,
+  Eye,
   Pencil,
   Plus,
   RefreshCw,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog } from '@/components/common';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
@@ -203,6 +204,7 @@ const ProcessCategoryPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<ProcessCategory>({ ...emptyForm });
   const [deleteTarget, setDeleteTarget] = useState<ProcessCategory | null>(null);
+  const [detailCategory, setDetailCategory] = useState<ProcessCategory | null>(null);
 
   const filteredFlatList = useMemo(() => {
     const normalizedKeyword = query.keyword.trim().toLowerCase();
@@ -586,6 +588,17 @@ const ProcessCategoryPage: React.FC = () => {
                       <div className="admin-users-row-actions">
                         <button
                           type="button"
+                          data-tooltip="查看详情"
+                          aria-label="查看详情"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setDetailCategory(item);
+                          }}
+                        >
+                          <Eye size={15} />
+                        </button>
+                        <button
+                          type="button"
                           data-tooltip="编辑"
                           aria-label="编辑分类"
                           onClick={(event) => {
@@ -801,6 +814,31 @@ const ProcessCategoryPage: React.FC = () => {
         danger
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
+      />
+
+      <DetailDialog
+        open={Boolean(detailCategory)}
+        title="流程分类详情"
+        onClose={() => setDetailCategory(null)}
+        heading={detailCategory?.categoryName}
+        subheading={detailCategory?.categoryCode}
+        headingAside={detailCategory ? (
+          <span className="text-xs text-cf-subtle">{(detailCategory.status || '0') === '0' ? '正常' : '停用'}</span>
+        ) : undefined}
+        sections={detailCategory ? [
+          {
+            title: '分类信息',
+            items: [
+              { label: '分类名称', value: detailCategory.categoryName },
+              { label: '分类编码', value: detailCategory.categoryCode },
+              { label: '上级分类', value: detailCategory.parentName || '顶级分类' },
+              { label: '图标', value: iconOptions.find((option) => option.value === detailCategory.icon)?.label || detailCategory.icon },
+              { label: '排序', value: detailCategory.sortOrder === undefined ? '' : String(detailCategory.sortOrder) },
+              { label: '状态', value: (detailCategory.status || '0') === '0' ? '正常' : '停用' },
+              { label: '备注', value: detailCategory.remark, wide: true },
+            ],
+          },
+        ] : []}
       />
     </>
   );

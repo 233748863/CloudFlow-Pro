@@ -20,6 +20,8 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AuthCaptchaDialog } from '@/components/auth/AuthExperienceShell';
+import { ImLoginEntry } from '@/components/auth/ImLoginEntry';
+import { ImLoginReturn } from '@/components/auth/ImLoginReturn';
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common';
 import { TotpLoginModal } from '@/components/profile/TotpLoginModal';
 import { useAuth } from '@/context/AuthContext';
@@ -821,7 +823,8 @@ export const AuthPage: React.FC = () => {
   };
 
   const isLogin = mode === 'login';
-  const currentError = isLogin ? loginError : registerError;
+  const imReturn = isLogin ? new URLSearchParams(location.search).get('im') : null;
+  const currentError = isLogin ? loginError || (imReturn === 'error' ? '企业微信登录未完成，请重新发起；也可使用原账号登录' : '') : registerError;
   const currentYear = new Date().getFullYear();
   const formsDisabled = !agreementAccepted;
   const tenantSelectDisabled = formsDisabled || tenantLoading || tenantOptions.length === 0;
@@ -843,6 +846,8 @@ export const AuthPage: React.FC = () => {
       </Button>
     </div>
   ) : null;
+
+  if (imReturn === 'totp') return <ImLoginReturn />;
 
   return (
     <>
@@ -1133,6 +1138,7 @@ export const AuthPage: React.FC = () => {
                         </>
                       )}
                     </Button>
+                    <ImLoginEntry tenantCode={loginForm.tenantCode} legalReleaseCode={legalRelease?.releaseCode || ''} disabled={!canSubmit || tenantLoading || Boolean(totpChallenge)} />
                   </form>
                 ) : (
                   <form onSubmit={handleRegisterSubmit} className="cf-auth-source-form">

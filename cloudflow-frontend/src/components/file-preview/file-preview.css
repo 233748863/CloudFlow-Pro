@@ -1,0 +1,123 @@
+.file-preview-dialog {
+  animation: file-preview-enter 200ms ease-out;
+}
+
+.file-preview-dialog button, .file-preview-dialog input, .file-preview-download {
+  min-height: 44px;
+  min-width: 44px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.file-preview-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem;
+  border: 1px solid var(--cf-border);
+  border-radius: 0.5rem;
+  color: var(--cf-fg-body);
+}
+
+.file-preview-message {
+  display: flex;
+  min-height: 16rem;
+  height: 100%;
+  padding: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.file-preview-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.file-preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem;
+  border-bottom: 1px solid var(--cf-border);
+  background: var(--cf-surface-strong);
+  flex-shrink: 0;
+}
+
+.file-preview-toolbar .file-preview-page-input {
+  flex: 0 0 4rem;
+  width: 4rem;
+}
+
+.file-preview-toolbar .file-preview-search-input {
+  flex: 1;
+  width: auto;
+  min-width: 6rem;
+}
+
+.file-preview-image-stage, .file-preview-pdf-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem;
+  background: var(--cf-surface-muted);
+  overscroll-behavior: contain;
+}
+
+.file-preview-image-canvas { position: relative; }
+
+.file-preview-image-stage img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  transform-origin: center;
+}
+
+.file-preview-pdf-page {
+  position: relative;
+  margin-inline: auto;
+  background: white;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+  --user-unit: 1;
+  --min-font-size: 1;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+}
+
+.file-preview-pdf-page canvas { display: block; }
+.file-preview-pdf-page .file-preview-text-match {
+  --highlight-bg-color: rgb(255 210 55 / 50%);
+  --highlight-selected-bg-color: rgb(255 140 20 / 70%);
+}
+.file-preview-render-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.file-preview-dialog :focus-visible {
+  outline: 2px solid var(--cf-primary);
+  outline-offset: 2px;
+}
+
+@keyframes file-preview-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-preview-dialog, .file-preview-dialog button, .file-preview-download { animation: none; transition: none; }
+}

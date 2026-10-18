@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   Edit,
+  Eye,
   File,
   Folder,
   Layout,
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog } from '@/components/common';
 import {
   Button,
   Input,
@@ -27,6 +28,7 @@ import {
 } from '@/components/common';
 import { addMenu, deleteMenu, getMenuList, updateMenu, type SysMenu } from '../../services/api/auth';
 import { cn } from '@/utils/cn';
+import { normalizeMenuRoutePath } from '@/utils/menuRouteFixes';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import './MenuList.css';
 
@@ -179,6 +181,7 @@ export const MenuList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMenu, setEditingMenu] = useState<MenuNode | null>(null);
   const [pendingDeleteMenu, setPendingDeleteMenu] = useState<MenuNode | null>(null);
+  const [detailMenu, setDetailMenu] = useState<MenuNode | null>(null);
   const [formData, setFormData] = useState<MenuFormData>(DEFAULT_FORM_DATA);
 
   const normalizeMenuListResponse = (response: any): MenuNode[] => {
@@ -342,7 +345,7 @@ export const MenuList = () => {
         ...formData,
         menuName: formData.menuName.trim(),
         orderNum: Number(formData.orderNum || 0),
-        path: formData.path.trim(),
+        path: formData.menuType === 'F' ? formData.path.trim() : normalizeMenuRoutePath(formData.path),
         component: formData.component.trim(),
         perms: formData.perms.trim(),
         icon: formData.icon.trim(),
@@ -471,6 +474,9 @@ export const MenuList = () => {
 
             <td className="text-right">
               <div className="admin-users-row-actions">
+                <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailMenu(node)}>
+                  <Eye size={15} />
+                </button>
                 <button type="button" data-tooltip="编辑菜单" aria-label="编辑菜单" onClick={() => handleOpenModal(node)}>
                   <Edit size={15} />
                 </button>
@@ -793,6 +799,33 @@ export const MenuList = () => {
         </form>
       </BaseDialog>
 
+      <DetailDialog
+        open={Boolean(detailMenu)}
+        title="菜单详情"
+        onClose={() => setDetailMenu(null)}
+        heading={detailMenu?.menuName}
+        subheading={detailMenu?.path}
+        headingAside={detailMenu ? (
+          <span className="text-xs text-cf-subtle">{detailMenu.menuType === 'M' ? '目录' : detailMenu.menuType === 'C' ? '菜单' : '按钮'}</span>
+        ) : undefined}
+        sections={detailMenu ? [
+          {
+            title: '菜单信息',
+            items: [
+              { label: '菜单名称', value: detailMenu.menuName },
+              { label: '菜单类型', value: detailMenu.menuType === 'M' ? '目录' : detailMenu.menuType === 'C' ? '菜单' : '按钮' },
+              { label: '路由地址', value: detailMenu.path },
+              { label: '组件路径', value: detailMenu.component },
+              { label: '权限标识', value: detailMenu.perms },
+              { label: '图标', value: detailMenu.icon },
+              { label: '显示顺序', value: detailMenu.orderNum == null ? '' : String(detailMenu.orderNum) },
+              { label: '显示状态', value: detailMenu.visible === '0' ? '显示' : '隐藏' },
+              { label: '菜单状态', value: detailMenu.status === '0' ? '正常' : '停用' },
+              { label: '父级编号', value: detailMenu.parentId == null ? '顶级' : String(detailMenu.parentId) },
+            ],
+          },
+        ] : []}
+      />
       <ConfirmDialog
         open={Boolean(pendingDeleteMenu)}
         title="删除菜单"

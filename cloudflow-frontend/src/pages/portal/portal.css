@@ -1,0 +1,40 @@
+.portal-controls {
+  --cf-density-control-height: 44px;
+  --cf-density-control-height-sm: 44px;
+  min-width: 0;
+}
+.portal-controls :is(button, input, select) { min-height: 44px !important; }
+.portal-controls button { min-width: 44px; transition: background-color 150ms ease, opacity 150ms ease; }
+.portal-controls :is(button, input, select):focus-visible { outline: 2px solid var(--cf-primary); outline-offset: 2px; }
+.portal-page { min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: var(--cf-surface-muted); color: var(--cf-fg); }
+.portal-card { width: 100%; max-width: 480px; padding: 28px; border: 1px solid var(--cf-border); border-radius: 16px; background: var(--cf-surface); }
+.portal-knowledge-card { max-width: 900px; }
+.portal-header { display: flex; align-items: center; gap: 14px; }
+.portal-field { display: flex; flex-direction: column; gap: 8px; color: var(--cf-fg-muted); font-size: 14px; }
+.portal-notice { margin-top: 16px; padding: 12px; border: 1px solid var(--cf-border); border-radius: 8px; color: var(--cf-fg-muted); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.portal-user-list { display: grid; gap: 12px; }
+.portal-user-card { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--cf-border); border-radius: 12px; }
+.portal-ticket-page { grid-template-columns: minmax(0, 1fr); }
+.portal-ticket-page > .portal-card { min-width: 0; }
+.portal-ticket-filters { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.portal-ticket-filters .portal-field { min-width: 0; }
+.portal-ticket-filters :is(input, select) { width: 100%; min-width: 0; }
+.portal-ticket-search { grid-column: 1 / -1; }
+.portal-ticket-heading { min-width: 0; overflow-wrap: anywhere; }
+.portal-ticket-file { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid var(--cf-border); border-radius: 8px; overflow-wrap: anywhere; }
+.portal-ticket-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.75; }
+.portal-ticket-dates { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; overflow-wrap: anywhere; }
+.portal-ticket-status { border: 1px solid var(--cf-border); border-radius: 8px; padding: 4px 8px; font-size: 12px; color: var(--cf-fg-muted); }
+.table-scroll-container .portal-ticket-table { display: none; }
+.portal-ticket-cards { display: block; }
+@media (min-width: 1024px) { .table-scroll-container .portal-ticket-table { display: table; } .portal-ticket-cards { display: none; } }
+.portal-ticket-toolbar .portal-ticket-queue { display: flex; min-height: 44px; min-width: 0; align-items: center; gap: 8px; cursor: pointer; }
+.portal-ticket-toolbar .portal-ticket-queue input[type="checkbox"] { flex: 0 0 20px; width: 20px; min-width: 20px; max-width: 20px; height: 20px; min-height: 20px; max-height: 20px; margin: 0; padding: 0; }
+@media (max-width: 1023px) { .portal-ticket-toolbar .portal-ticket-queue { width: 100%; } }
+@media (min-width: 640px) { .portal-ticket-filters { grid-template-columns: minmax(0, 1fr) minmax(132px, auto) auto; } .portal-ticket-search { grid-column: auto; } }
+.portal-controls textarea:focus-visible { outline: 2px solid var(--cf-primary); outline-offset: 2px; }
+.portal-controls .modal-content { transition: opacity 200ms ease; }
+@media (min-width: 768px) { .portal-ticket-dates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .portal-user-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr); align-items: center; } }
+@media (max-width: 375px) { .portal-card { padding: 20px 16px; } }
+@media (prefers-reduced-motion: reduce) { .portal-controls button, .portal-controls .modal-content { transition: none; } }

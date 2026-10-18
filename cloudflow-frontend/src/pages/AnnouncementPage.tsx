@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bell, CheckCheck, Inbox, RefreshCw, Shield } from 'lucide-react';
+import { Bell, CheckCheck, Filter, Inbox, RefreshCw, Shield } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { AnnouncementManageView } from '@/components/admin/announcements';
 import { AnnouncementDetailModal, AnnouncementListItem } from '@/components/common';
 import '@/components/common/announcement-overlays.css';
-import { Button } from '@/components/common';
+import { Button, Pagination } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import {
   useAnnouncementStore,
@@ -14,6 +14,8 @@ import { AnnouncementScope, type Announcement } from '@/types';
 import { formatAnnouncementRelativeWithDateTime } from '@/utils/announcementFormat';
 import { useAnnouncementPriorityMeta } from '@/utils/announcementMeta';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { MobileFilterDrawer } from '@/components/mobile/MobileFilterDrawer';
 
 type ViewMode = 'user' | 'manage';
 
@@ -41,6 +43,7 @@ const InlineState: React.FC<{
 );
 
 export const AnnouncementPage = () => {
+  const mobile = useBreakpoint() === 'mobile';
   const location = useLocation();
   const { hasPermission } = useAuth();
   const getAnnouncementPriorityMeta = useAnnouncementPriorityMeta();
@@ -60,7 +63,12 @@ export const AnnouncementPage = () => {
     location.state?.viewMode === 'manage' && canManage ? 'manage' : 'user',
   );
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [unreadDraft, setUnreadDraft] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+  useEffect(() => { if (!mobile) setFilterOpen(false); }, [mobile]);
 
   useEffect(() => {
     if (viewMode === 'user') {
@@ -86,6 +94,11 @@ export const AnnouncementPage = () => {
 
     return announcements;
   }, [announcements, showUnreadOnly]);
+  const lastPage = Math.max(1, Math.ceil(displayList.length / pageSize));
+  const currentPage = Math.min(page, lastPage);
+  const pageList = displayList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  useEffect(() => { setPage(1); }, [showUnreadOnly]);
+  useEffect(() => { if (page !== currentPage) setPage(currentPage); }, [currentPage, page]);
 
   const stats = useMemo(
     () => [
@@ -162,7 +175,7 @@ export const AnnouncementPage = () => {
             <RefreshCw size={16} className={loading ? 'animate-spin' : undefined} />
             刷新
           </Button>
-          {unreadCount > 0 ? (
+          {!mobile && unreadCount > 0 ? (
             <Button size="sm" onClick={() => void handleMarkAllAsRead()}>
               <CheckCheck size={16} />
               全部已读
@@ -192,7 +205,9 @@ export const AnnouncementPage = () => {
     </div>
   );
 
-  const pageFilters = (
+  const pageFilters = mobile ? (
+    <Button className="min-h-11" variant="outline" aria-label="筛选公告" onClick={() => { setUnreadDraft(showUnreadOnly); setFilterOpen(true); }}><Filter size={16} />{showUnreadOnly ? '仅看未读' : '全部公告'}</Button>
+  ) : (
       <section className="card admin-users-toolbar">
         <div className="admin-source-tabs">
           <button
@@ -223,7 +238,7 @@ export const AnnouncementPage = () => {
         />
       ) : displayList.length > 0 ? (
         <div className="admin-announcements-grid">
-          {displayList.map((item) => (
+          {pageList.map((item) => (
             <AnnouncementListItem
               key={item.announcementId}
               announcement={item}
@@ -249,6 +264,11 @@ export const AnnouncementPage = () => {
         filters={pageFilters}
         table={pageContent}
       />
+      <Pagination page={currentPage} pageSize={pageSize} total={displayList.length} onPageChange={setPage} onPageSizeChange={value => { setPageSize(value); setPage(1); }} />
+      {mobile && <MobileFilterDrawer open={filterOpen} title="筛选公告" onClose={() => setFilterOpen(false)} onApply={() => { setShowUnreadOnly(unreadDraft); setFilterOpen(false); }} onReset={() => setUnreadDraft(false)}>
+        <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={unreadDraft} onChange={event => setUnreadDraft(event.target.checked)} />仅看未读公告</label>
+      </MobileFilterDrawer>}
+      {mobile && unreadCount > 0 && <div className="cf-mobile-primary-space"><footer className="cf-mobile-primary-footer"><Button className="min-h-11 w-full" disabled={loading} onClick={() => void handleMarkAllAsRead()}><CheckCheck size={16} />全部已读</Button></footer></div>}
 
       <AnnouncementDetailModal
         announcement={selectedAnnouncement}

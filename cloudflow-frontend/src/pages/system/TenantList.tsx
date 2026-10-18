@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import {
   Building2,
   Calendar,
   Edit,
+  Eye,
   HardDrive,
   Plus,
   Power,
@@ -15,7 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog, Pagination, PermissionGuard } from '@/components/common';
 import {
   Button,
   DatePicker,
@@ -32,17 +33,25 @@ import {
   addTenant,
   changeTenantStatus,
   deleteTenant,
-  getTenantList,
+  getTenantPage,
   getTenantStatisticsBatch,
   refreshTenantStorageUsage,
   updateTenant,
   type SysTenant,
   type TenantStatistics,
   type TenantStatisticsItem,
+  type TenantSave,
 } from '../../services/api/tenant';
+import type { TenantPackageSelection } from '@/services/api/tenantPackage';
+import { platformHttpStatus } from '@/services/api/platformAccess';
+import { getAuthToken } from '@/utils/authStorage';
+import { getErrorMessage } from '@/utils/errorMessage';
+import { PlatformOperationGate } from './_components/PlatformOperationGate';
+import { TenantPackageAssignment } from './_components/TenantPackageAssignment';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import './TenantList.css';
+import './tenant-package.css';
 
 interface TenantView extends SysTenant, TenantStatistics {
   tenantId: number;
@@ -230,8 +239,9 @@ const TableStateRow: React.FC<{
   </tr>
 );
 
-export const TenantList: React.FC = () => {
+const TenantWorkspace: React.FC<{ invalidate: () => void }> = ({ invalidate }) => {
   const [allTenants, setAllTenants] = useState<TenantView[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<TenantFilters>({ keyword: '' });
@@ -243,15 +253,35 @@ export const TenantList: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantView | null>(null);
   const [pendingDeleteTenant, setPendingDeleteTenant] = useState<TenantView | null>(null);
+  const [detailTenant, setDetailTenant] = useState<TenantView | null>(null);
   const [formData, setFormData] = useState<TenantFormData>(DEFAULT_FORM_DATA);
   const [refreshingTenantId, setRefreshingTenantId] = useState<number | null>(null);
+  const [selectingPackage, setSelectingPackage] = useState(false);
+  const [packageSelection, setPackageSelection] = useState<TenantPackageSelection>();
+  const [packageReady, setPackageReady] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uncertain, setUncertain] = useState(false);
+  const active = useRef(true);
+  const token = useRef(getAuthToken());
+  const mutation = useRef(false);
+  const fetchSequence = useRef(0);
+  const current = () => active.current && token.current === getAuthToken();
+  const assignmentChanged = useCallback((selection: TenantPackageSelection | undefined, ready: boolean) => { setPackageSelection(selection); setPackageReady(ready); }, []);
+  const fail = (failure: unknown, fallback: string) => {
+    if (!current()) return;
+    if ([401, 403].includes(platformHttpStatus(failure) ?? 0)) invalidate();
+    else toast.error(getErrorMessage(failure, fallback));
+  };
+  useEffect(() => { active.current = true; return () => { active.current = false; fetchSequence.current++; }; }, []);
 
   const fetchTenants = async (keyword: string) => {
+    const sequence = ++fetchSequence.current;
     setLoading(true);
     setError(null);
 
     try {
-      const response = await getTenantList({ tenantName: keyword || undefined });
+      const response = await getTenantPage({ current: query.pageNum, size: query.pageSize, tenantName: keyword || undefined });
+      if (!current() || sequence !== fetchSequence.current) return;
       const baseTenants = normalizeTenantListResponse(response);
       const tenantIds = baseTenants
         .map((tenant) => tenant.tenantId)
@@ -263,6 +293,7 @@ export const TenantList: React.FC = () => {
           const statisticsList = await getTenantStatisticsBatch(tenantIds);
           statisticsMap = new Map(statisticsList.map((item) => [item.tenantId, item]));
         } catch (statisticsError) {
+          if ([401, 403].includes(platformHttpStatus(statisticsError) ?? 0)) { if (current()) invalidate(); return; }
           console.warn('批量读取租户统计失败，将回退到基础统计。', statisticsError);
         }
       }
@@ -287,28 +318,30 @@ export const TenantList: React.FC = () => {
         } satisfies TenantView;
       });
 
-      setAllTenants(enrichedTenants);
+      if (current() && sequence === fetchSequence.current) { setAllTenants(enrichedTenants); setTotalCount(response.total); }
     } catch (fetchError) {
+      if (!current() || sequence !== fetchSequence.current) return;
       console.error(fetchError);
       const message = '加载租户失败，请稍后重试';
       setError(message);
       setAllTenants([]);
-      toast.error(message);
+      setTotalCount(0);
+      fail(fetchError, message);
     } finally {
-      setLoading(false);
+      if (current() && sequence === fetchSequence.current) setLoading(false);
     }
   };
 
   useEffect(() => {
     void fetchTenants(query.keyword);
-  }, [query.keyword]);
+  }, [query.keyword, query.pageNum, query.pageSize]);
 
   useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(allTenants.length / query.pageSize));
+    const totalPages = Math.max(1, Math.ceil(totalCount / query.pageSize));
     if (query.pageNum > totalPages) {
       setQuery((current) => ({ ...current, pageNum: totalPages }));
     }
-  }, [allTenants.length, query.pageNum, query.pageSize]);
+  }, [totalCount, query.pageNum, query.pageSize]);
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -333,6 +366,8 @@ export const TenantList: React.FC = () => {
   };
 
   const handleOpenModal = (tenant?: TenantView) => {
+    if (mutation.current) return;
+    setUncertain(false); setSelectingPackage(!tenant); setPackageSelection(undefined); setPackageReady(false);
     if (tenant) {
       setEditingTenant(tenant);
       setFormData({
@@ -343,9 +378,9 @@ export const TenantList: React.FC = () => {
         contactEmail: tenant.contactEmail || '',
         domain: tenant.domain || '',
         status: tenant.status || '0',
-        expireTime: tenant.expireTime ? tenant.expireTime.split(' ')[0] : '',
-        userLimit: tenant.userLimit || 100,
-        storageLimit: tenant.storageLimit || 10240,
+        expireTime: tenant.expireTime?.slice(0, 10) ?? '',
+        userLimit: tenant.userLimit ?? 100,
+        storageLimit: tenant.storageLimit ?? 10240,
         remark: tenant.remark || '',
       });
     } else {
@@ -357,12 +392,16 @@ export const TenantList: React.FC = () => {
   };
 
   const handleCloseModal = () => {
+    if (mutation.current) return;
     setIsModalOpen(false);
     setEditingTenant(null);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (mutation.current || uncertain || !current()) return;
+    if (selectingPackage && (!packageSelection || !packageReady)) { toast.error('请明确选择有效套餐并处理覆盖冲突'); return; }
+    if (editingTenant && !Number.isInteger(editingTenant.version)) { toast.error('租户版本缺失，请关闭并刷新后重试'); return; }
 
     if (!formData.tenantName.trim()) {
       toast.error('请输入租户名称');
@@ -374,69 +413,84 @@ export const TenantList: React.FC = () => {
       return;
     }
 
+    mutation.current = true; setSaving(true);
     try {
-      const payload = {
-        ...formData,
+      const payload: TenantSave = {
         tenantCode: formData.tenantCode.trim(),
         tenantName: formData.tenantName.trim(),
+        contactName: formData.contactName,
+        contactPhone: formData.contactPhone,
+        contactEmail: formData.contactEmail,
+        domain: formData.domain,
+        status: formData.status,
+        remark: formData.remark,
+        expireTime: formData.expireTime && formData.expireTime !== editingTenant?.expireTime?.slice(0, 10) ? `${formData.expireTime} 00:00:00` : undefined,
+        ...(selectingPackage ? { packageSelection } : !editingTenant?.packageId ? { userLimit: formData.userLimit, storageLimit: formData.storageLimit } : {}),
       };
       if (editingTenant) {
-        await updateTenant({ ...payload, tenantId: editingTenant.tenantId });
-        toast.success('租户更新成功');
+        await updateTenant({ ...payload, tenantId: editingTenant.tenantId, version: editingTenant.version });
+        if (current()) toast.success('租户更新成功');
       } else {
         await addTenant(payload);
-        toast.success('租户创建成功');
+        if (current()) toast.success('租户创建成功');
       }
 
-      handleCloseModal();
+      if (!current()) return;
+      setIsModalOpen(false); setEditingTenant(null);
       await fetchTenants(query.keyword);
-    } catch (submitError: any) {
-      console.error(submitError);
-      toast.error(submitError?.message || '保存租户失败');
-    }
+    } catch (submitError) {
+      if (!current()) return;
+      const status = platformHttpStatus(submitError);
+      setUncertain(status == null || status >= 500 || status === 409);
+      fail(submitError, '保存结果未确认，请关闭并刷新核对后再操作');
+    } finally { mutation.current = false; if (current()) setSaving(false); }
   };
 
   const handleDelete = async () => {
-    if (!pendingDeleteTenant) {
+    if (!pendingDeleteTenant || mutation.current || !current()) {
       return;
     }
 
+    mutation.current = true; setSaving(true);
     try {
       await deleteTenant([pendingDeleteTenant.tenantId]);
+      if (!current()) return;
       toast.success('租户删除成功');
       setPendingDeleteTenant(null);
       await fetchTenants(query.keyword);
-    } catch (deleteError: any) {
-      console.error(deleteError);
-      toast.error(deleteError?.message || '删除租户失败');
-    }
+    } catch (deleteError) { if (current()) { setPendingDeleteTenant(null); fail(deleteError, '删除结果未确认，请刷新核对'); await fetchTenants(query.keyword); } }
+    finally { mutation.current = false; if (current()) setSaving(false); }
   };
 
   const handleToggleStatus = async (tenant: TenantView) => {
+    if (mutation.current || !current()) return;
     const nextStatus = tenant.status === '0' ? '1' : '0';
 
+    mutation.current = true; setSaving(true);
     try {
       await changeTenantStatus({ tenantId: tenant.tenantId, status: nextStatus });
+      if (!current()) return;
       toast.success(nextStatus === '0' ? '租户已启用' : '租户已停用');
       await fetchTenants(query.keyword);
-    } catch (statusError: any) {
-      console.error(statusError);
-      toast.error(statusError?.message || '更新租户状态失败');
-    }
+    } catch (statusError) { if (current()) { fail(statusError, '状态修改结果未确认，请刷新核对'); await fetchTenants(query.keyword); } }
+    finally { mutation.current = false; if (current()) setSaving(false); }
   };
 
   const handleRefreshStorage = async (tenantId: number) => {
+    if (mutation.current || !current()) return;
+    mutation.current = true; setSaving(true);
     setRefreshingTenantId(tenantId);
 
     try {
       await refreshTenantStorageUsage(tenantId);
+      if (!current()) return;
       toast.success('存储使用量已刷新');
       await fetchTenants(query.keyword);
-    } catch (refreshError: any) {
-      console.error(refreshError);
-      toast.error(refreshError?.message || '刷新存储使用量失败');
+    } catch (refreshError) {
+      fail(refreshError, '刷新存储使用量失败');
     } finally {
-      setRefreshingTenantId(null);
+      mutation.current = false;
+      if (current()) { setRefreshingTenantId(null); setSaving(false); }
     }
   };
 
@@ -455,17 +509,14 @@ export const TenantList: React.FC = () => {
     }).length;
 
     return {
-      total: allTenants.length,
+      total: totalCount,
       active: allTenants.filter((tenant) => tenant.status === '0' && !tenant.expired).length,
       expiringSoon: expiringSoonTenants,
       warning: warningTenants,
     };
-  }, [allTenants]);
+  }, [allTenants, totalCount]);
 
-  const pagedTenants = useMemo(() => {
-    const start = (query.pageNum - 1) * query.pageSize;
-    return allTenants.slice(start, start + query.pageSize);
-  }, [allTenants, query.pageNum, query.pageSize]);
+  const pagedTenants = allTenants;
 
   const hasActiveFilters = Boolean(query.keyword);
   const isEdit = Boolean(editingTenant);
@@ -479,21 +530,21 @@ export const TenantList: React.FC = () => {
         tone: 'blue',
       },
       {
-        label: '有效租户',
+        label: '本页有效租户',
         value: String(summary.active),
         meta: '可正常使用',
         icon: <Power size={18} />,
         tone: 'green',
       },
       {
-        label: '即将到期',
+        label: '本页即将到期',
         value: String(summary.expiringSoon),
         meta: '30 天内',
         icon: <Calendar size={18} />,
         tone: 'amber',
       },
       {
-        label: '风险租户',
+        label: '本页风险租户',
         value: String(summary.warning),
         meta: '配额或有效期异常',
         icon: <HardDrive size={18} />,
@@ -516,10 +567,10 @@ export const TenantList: React.FC = () => {
             <RefreshCw size={16} className={cn(loading && 'animate-spin')} />
             刷新
           </Button>
-          <Button size="sm" onClick={() => handleOpenModal()}>
+          <PermissionGuard permissions={['system:tenant:add']} hidden><Button size="sm" onClick={() => handleOpenModal()}>
             <Plus size={16} />
             新增租户
-          </Button>
+          </Button></PermissionGuard>
         </div>
       </header>
 
@@ -658,7 +709,7 @@ export const TenantList: React.FC = () => {
                           </span>
                           {tenant.userLimitReached ? (
                             <span className="text-xs text-rose-600 dark:text-rose-300">
-                              已达到上限
+                              {(tenant.userLimit ?? 0) > 0 && tenant.userCount > (tenant.userLimit ?? 0) ? '已超额，禁止新增用户' : '已达到上限，禁止新增用户'}
                             </span>
                           ) : null}
                         </div>
@@ -676,6 +727,9 @@ export const TenantList: React.FC = () => {
                           >
                             {storagePercent.toFixed(0)}%
                           </span>
+                          {(tenant.storageLimit ?? 0) > 0 && (tenant.storageUsed ?? 0) > (tenant.storageLimit ?? 0) && (
+                            <span className="text-xs text-rose-600 dark:text-rose-300">已超额，禁止新增文件</span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -727,11 +781,15 @@ export const TenantList: React.FC = () => {
 
                     <td className="text-right">
                       <div className="admin-users-row-actions">
-                        <button type="button" data-tooltip="编辑租户" aria-label="编辑租户" onClick={() => handleOpenModal(tenant)}>
+                        <PermissionGuard permissions={['system:tenant:query']} hidden><button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailTenant(tenant)}>
+                          <Eye size={15} />
+                        </button></PermissionGuard>
+                        <PermissionGuard permissions={['system:tenant:edit']} hidden><button type="button" disabled={saving} data-tooltip="编辑租户" aria-label="编辑租户" onClick={() => handleOpenModal(tenant)}>
                           <Edit size={15} />
                         </button>
                         <button
                           type="button"
+                          disabled={saving}
                           data-tooltip={tenant.status === '0' ? '停用租户' : '启用租户'} aria-label={tenant.status === '0' ? '停用租户' : '启用租户'}
                           onClick={() => void handleToggleStatus(tenant)}
                         >
@@ -741,21 +799,22 @@ export const TenantList: React.FC = () => {
                           type="button"
                           data-tooltip="刷新存储" aria-label="刷新存储"
                           onClick={() => void handleRefreshStorage(tenant.tenantId)}
-                          disabled={refreshingTenantId === tenant.tenantId}
+                          disabled={saving || refreshingTenantId === tenant.tenantId}
                         >
                           <RefreshCw
                             size={15}
                             className={cn(refreshingTenantId === tenant.tenantId && 'animate-spin')}
                           />
-                        </button>
-                        <button
+                        </button></PermissionGuard>
+                        <PermissionGuard permissions={['system:tenant:remove']} hidden><button
                           type="button"
+                          disabled={saving}
                           className="danger"
                           data-tooltip="删除租户" aria-label="删除租户"
                           onClick={() => setPendingDeleteTenant(tenant)}
                         >
                           <Trash2 size={15} />
-                        </button>
+                        </button></PermissionGuard>
                       </div>
                     </td>
                   </tr>
@@ -785,7 +844,7 @@ export const TenantList: React.FC = () => {
 
   return (
     <>
-      <section className="admin-source-page admin-tenants-page">
+      <section className="admin-source-page admin-tenants-page tenant-package-workspace">
         <TablePageLayout
           actions={pageActions}
           filters={pageFilters}
@@ -799,18 +858,20 @@ export const TenantList: React.FC = () => {
         title={isEdit ? '编辑租户' : '新增租户'}
         onClose={handleCloseModal}
         maxWidthClassName="max-w-3xl"
+        panelClassName="tenant-package-dialog"
         footer={
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={handleCloseModal}>
+            <Button variant="outline" disabled={saving} onClick={handleCloseModal}>
               取消
             </Button>
-            <Button type="submit" form="tenant-form">
+            <Button type="submit" form="tenant-form" disabled={saving || uncertain || selectingPackage && !packageReady}>
               {isEdit ? '保存修改' : '创建租户'}
             </Button>
           </div>
         }
       >
         <form id="tenant-form" onSubmit={handleSubmit} className="admin-source-form-grid">
+          <fieldset disabled={saving || uncertain} className="contents">
             <label>
               <span className={fieldLabelClassName}>
                 租户编码 <span className="text-red-500">*</span>
@@ -878,11 +939,11 @@ export const TenantList: React.FC = () => {
               />
             </label>
 
-            <label>
+            {!selectingPackage && !editingTenant?.packageId && <label>
               <span className={fieldLabelClassName}>用户数量限制</span>
               <Input
                 type="number"
-                min="1"
+                min="0"
                 value={formData.userLimit}
                 onChange={(event) =>
                   setFormData((current) => ({
@@ -891,13 +952,13 @@ export const TenantList: React.FC = () => {
                   }))
                 }
               />
-            </label>
+            </label>}
 
-            <label>
+            {!selectingPackage && !editingTenant?.packageId && <label>
               <span className={fieldLabelClassName}>存储空间限制 (MB)</span>
               <Input
                 type="number"
-                min="1"
+                min="0"
                 value={formData.storageLimit}
                 onChange={(event) =>
                   setFormData((current) => ({
@@ -906,7 +967,7 @@ export const TenantList: React.FC = () => {
                   }))
                 }
               />
-            </label>
+            </label>}
 
             <label>
               <span className={fieldLabelClassName}>到期时间</span>
@@ -949,9 +1010,52 @@ export const TenantList: React.FC = () => {
               }
             />
           </div>
+          <div className="admin-source-form-wide space-y-4">
+            {editingTenant && <>
+              <p className="text-sm">{editingTenant.packageId ? `现有套餐${editingTenant.packageId}，已应用版本${editingTenant.packageVersion}；当前上限${editingTenant.userLimit}人 / ${editingTenant.storageLimit} MB。` : '此租户尚未分配套餐，保留原授权；旧额度0表示不限。'}</p>
+              <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={selectingPackage} onChange={event => { setSelectingPackage(event.target.checked); setPackageSelection(undefined); setPackageReady(false); }} />明确改选套餐或调整个别覆盖</label>
+              {!selectingPackage && <p className="text-sm text-cf-muted">保存资料将保留原套餐、已应用版本、覆盖及有效功能，不自动应用最新模板。</p>}
+            </>}
+            {selectingPackage && <PermissionGuard permissions={['system:tenant-package:list']} fallback={<p role="alert">选择套餐需要套餐列表权限，当前无法保存本次分配。</p>}><TenantPackageAssignment originalOverride={editingTenant?.packageOverride} disabled={saving || uncertain} onChange={assignmentChanged} invalidate={invalidate} /></PermissionGuard>}
+            {uncertain && <p role="alert">保存结果或版本未确认，请关闭并刷新核对，勿重复提交。</p>}
+          </div>
+          </fieldset>
         </form>
       </BaseDialog>
 
+      <DetailDialog
+        open={Boolean(detailTenant)}
+        title="租户详情"
+        onClose={() => setDetailTenant(null)}
+        heading={detailTenant?.tenantName}
+        subheading={detailTenant?.tenantCode}
+        headingAside={detailTenant ? (
+          <span className="text-xs text-cf-subtle">{detailTenant.status === '0' ? '正常' : '停用'}</span>
+        ) : undefined}
+        sections={detailTenant ? [
+          {
+            title: '租户信息',
+            items: [
+              { label: '租户名称', value: detailTenant.tenantName },
+              { label: '租户编码', value: detailTenant.tenantCode },
+              { label: '公司名称', value: detailTenant.companyName },
+              { label: '联系人', value: detailTenant.contactName },
+              { label: '联系电话', value: detailTenant.contactPhone },
+              { label: '联系邮箱', value: detailTenant.contactEmail },
+              { label: '域名', value: detailTenant.domain },
+              { label: '到期时间', value: detailTenant.expireTime },
+              { label: '账号上限', value: detailTenant.accountCount == null ? '' : String(detailTenant.accountCount) },
+              { label: '用户上限', value: detailTenant.userLimit == null ? '' : String(detailTenant.userLimit) },
+              { label: '存储上限', value: detailTenant.storageLimit == null ? '' : String(detailTenant.storageLimit) },
+              { label: '已用存储', value: detailTenant.storageUsed == null ? '' : String(detailTenant.storageUsed) },
+              { label: '状态', value: detailTenant.status === '0' ? '正常' : '停用' },
+              { label: '地址', value: detailTenant.address, wide: true },
+              { label: '备注', value: detailTenant.remark, wide: true },
+              { label: '创建时间', value: detailTenant.createTime },
+            ],
+          },
+        ] : []}
+      />
       <ConfirmDialog
         open={Boolean(pendingDeleteTenant)}
         title="确认删除租户"
@@ -963,11 +1067,13 @@ export const TenantList: React.FC = () => {
         confirmText="确认删除"
         cancelText="取消"
         danger={true}
-        onCancel={() => setPendingDeleteTenant(null)}
+        onCancel={() => { if (!mutation.current) setPendingDeleteTenant(null); }}
         onConfirm={() => void handleDelete()}
       />
     </>
   );
 };
+
+export const TenantList: React.FC = () => <div className="space-y-5"><PlatformOperationGate permission="system:tenant:list">{invalidate => <TenantWorkspace invalidate={invalidate} />}</PlatformOperationGate></div>;
 
 export default TenantList;

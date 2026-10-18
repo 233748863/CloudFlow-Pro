@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Edit, Plus, Power, RefreshCw, RotateCcw, Search, Trash2, Zap } from 'lucide-react';
+import { Edit, Eye, Plus, Power, RefreshCw, RotateCcw, Search, Trash2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
@@ -17,7 +17,7 @@ import {
   type IpAclMode,
   type IpAclStatus,
 } from '@/services/api/acl';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog, Pagination } from '@/components/common';
 import {
   Button,
   DatePicker,
@@ -106,6 +106,7 @@ export const IpAclPage = () => {
   const [editing, setEditing] = useState<SysIpAcl | null>(null);
   const [formData, setFormData] = useState<SysIpAcl>(DEFAULT_FORM);
   const [pendingDelete, setPendingDelete] = useState<SysIpAcl | null>(null);
+  const [detailRule, setDetailRule] = useState<SysIpAcl | null>(null);
   const [republishing, setRepublishing] = useState(false);
 
   const fetchRules = async (next = query) => {
@@ -508,6 +509,13 @@ export const IpAclPage = () => {
                     <div className="admin-users-row-actions">
                       <button
                         type="button"
+                        data-tooltip="查看详情" aria-label="查看详情"
+                        onClick={() => setDetailRule(rule)}
+                      >
+                        <Eye size={15} />
+                      </button>
+                      <button
+                        type="button"
                         data-tooltip={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'} aria-label={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'}
                         onClick={() => handleToggle(rule)}
                       >
@@ -705,6 +713,42 @@ export const IpAclPage = () => {
         confirmText="删除"
         danger
         onConfirm={handleDelete}
+      />
+
+      <DetailDialog
+        open={Boolean(detailRule)}
+        title="IP 规则详情"
+        onClose={() => setDetailRule(null)}
+        heading={detailRule?.ruleName}
+        subheading={detailRule?.ruleCode}
+        headingAside={detailRule ? (
+          <span className="text-xs text-cf-subtle">{detailRule.status === 'ACTIVE' ? '启用' : '停用'}</span>
+        ) : undefined}
+        sections={detailRule ? [
+          {
+            title: '规则信息',
+            items: [
+              { label: '规则名称', value: detailRule.ruleName },
+              { label: '规则编码', value: detailRule.ruleCode },
+              { label: 'IP 模式', value: <span className="font-mono text-xs">{detailRule.ipPattern}</span> },
+              { label: '匹配方式', value: RULE_TYPE_OPTIONS.find((o) => o.value === detailRule.ruleType)?.label ?? detailRule.ruleType },
+              { label: '名单类型', value: detailRule.mode === 'BLACK' ? '黑名单' : '白名单' },
+              { label: '优先级', value: String(detailRule.priority) },
+              { label: '状态', value: detailRule.status === 'ACTIVE' ? '启用' : '停用' },
+              { label: '过期时间', value: formatDateTimeDisplay(detailRule.expireAt) || '永久有效' },
+              { label: '添加原因', value: detailRule.reason, wide: true },
+            ],
+          },
+          {
+            title: '变更记录',
+            items: [
+              { label: '创建人', value: detailRule.createBy },
+              { label: '创建时间', value: formatDateTimeDisplay(detailRule.createTime) },
+              { label: '更新人', value: detailRule.updateBy },
+              { label: '更新时间', value: formatDateTimeDisplay(detailRule.updateTime) },
+            ],
+          },
+        ] : []}
       />
     </>
   );

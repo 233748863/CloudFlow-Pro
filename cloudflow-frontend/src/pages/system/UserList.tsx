@@ -4,6 +4,7 @@ import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import {
   Building2,
   Edit,
+  Eye,
   KeyRound,
   Plus,
   RefreshCw,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog, Pagination } from '@/components/common';
 import {
   Button,
   Input,
@@ -36,7 +37,7 @@ import {
   resetUserPassword,
   updateUser,
 } from '../../services/api/auth';
-import { getTenantList } from '../../services/api/tenant';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
@@ -89,7 +90,6 @@ type UserQuery = UserFilters & {
   pageSize: number;
 };
 
-const DEFAULT_TENANT_VALUE = '__DEFAULT_TENANT__';
 const fieldLabelClassName = 'input-label';
 
 const flattenDepts = (
@@ -155,10 +155,12 @@ const TableStateRow: React.FC<{
 );
 
 export const UserList = () => {
+  const { user: currentUser } = useAuth();
   const [allUsers, setAllUsers] = useState<UserItem[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [deptTree, setDeptTree] = useState<DeptItem[]>([]);
-  const [tenants, setTenants] = useState<TenantItem[]>([]);
+  const tenants = useMemo<TenantItem[]>(() => currentUser?.tenantId == null ? [] : [{ tenantId: currentUser.tenantId,
+    tenantName: currentUser.tenantName || `租户 ${currentUser.tenantId}`, status: '0' }], [currentUser?.tenantId, currentUser?.tenantName]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<UserFilters>({
@@ -176,6 +178,7 @@ export const UserList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
   const [pendingDeleteUser, setPendingDeleteUser] = useState<UserItem | null>(null);
+  const [detailUser, setDetailUser] = useState<UserItem | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<UserItem | null>(null);
   const [resetPasswordForm, setResetPasswordForm] = useState({
     password: '',
@@ -253,22 +256,10 @@ export const UserList = () => {
     }
   };
 
-  const fetchTenants = async () => {
-    try {
-      const response = await getTenantList({ pageNum: 1, pageSize: 200 });
-      const normalized = normalizePagedResponse<TenantItem>(response);
-      setTenants(normalized.rows);
-    } catch (fetchError) {
-      console.error(fetchError);
-      toast.error(getErrorMessage(fetchError, '加载租户失败'));
-    }
-  };
-
   useEffect(() => {
     void fetchUsers();
     void fetchRoles();
     void fetchDeptTree();
-    void fetchTenants();
   }, []);
 
   const deptOptions = useMemo(() => flattenDepts(deptTree), [deptTree]);
@@ -340,7 +331,6 @@ export const UserList = () => {
     void fetchUsers();
     void fetchRoles();
     void fetchDeptTree();
-    void fetchTenants();
   };
 
   const handleOpenModal = (user?: UserItem) => {
@@ -422,6 +412,7 @@ export const UserList = () => {
       if (editingUser) {
         const updateData: any = {
           ...formData,
+          tenantId: currentUser?.tenantId,
           userId: editingUser.userId,
           roleIds: selectedRoleIds,
         };
@@ -434,6 +425,7 @@ export const UserList = () => {
       } else {
         const createData: any = {
           ...formData,
+          tenantId: currentUser?.tenantId,
           roleIds: selectedRoleIds,
         };
         if (!createData.password) {
@@ -512,7 +504,7 @@ export const UserList = () => {
   };
 
   const tenantNameById = (tenantId?: number) =>
-    tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || '默认租户';
+    tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || (tenantId == null ? '租户未指定' : `租户 ${tenantId}`);
 
   const stats = useMemo(
     () => [
@@ -540,7 +532,7 @@ export const UserList = () => {
       {
         label: '租户范围',
         value: String(Math.max(tenants.length, 1)),
-        meta: '含默认租户',
+        meta: '仅当前登录租户',
         icon: <Building2 size={18} />,
         tone: 'violet',
       },
@@ -729,6 +721,9 @@ export const UserList = () => {
                     </td>
                     <td>
                       <div className="admin-users-row-actions">
+                        <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailUser(user)}>
+                          <Eye size={15} />
+                        </button>
                         <button type="button" data-tooltip="编辑用户" aria-label="编辑用户" onClick={() => handleOpenModal(user)}>
                           <Edit size={15} />
                         </button>
@@ -902,27 +897,7 @@ export const UserList = () => {
 
             <label>
               <span className={fieldLabelClassName}>所属租户</span>
-              <Select
-                value={formData.tenantId ? String(formData.tenantId) : DEFAULT_TENANT_VALUE}
-                onValueChange={(value) =>
-                  setFormData((current) => ({
-                    ...current,
-                    tenantId: value === DEFAULT_TENANT_VALUE ? undefined : Number(value),
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择租户" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={DEFAULT_TENANT_VALUE}>默认租户</SelectItem>
-                  {tenants.map((tenant) => (
-                    <SelectItem key={tenant.tenantId} value={String(tenant.tenantId)}>
-                      {tenant.tenantName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input aria-label="所属租户" readOnly value={tenantNameById(currentUser?.tenantId)} />
             </label>
 
             <label>
@@ -1068,6 +1043,32 @@ export const UserList = () => {
         </form>
       </BaseDialog>
 
+      <DetailDialog
+        open={Boolean(detailUser)}
+        title="用户详情"
+        onClose={() => setDetailUser(null)}
+        heading={detailUser?.nickName}
+        subheading={detailUser?.userName}
+        headingAside={detailUser ? (
+          <span className="text-xs text-cf-subtle">{detailUser.status === '0' ? '正常' : '停用'}</span>
+        ) : undefined}
+        sections={detailUser ? [
+          {
+            title: '账号信息',
+            items: [
+              { label: '用户账号', value: detailUser.userName },
+              { label: '用户昵称', value: detailUser.nickName },
+              { label: '所属部门', value: detailUser.deptName },
+              { label: '邮箱', value: detailUser.email },
+              { label: '手机号码', value: detailUser.phonenumber },
+              { label: '性别', value: detailUser.sex === '0' ? '男' : detailUser.sex === '1' ? '女' : '未知' },
+              { label: '状态', value: detailUser.status === '0' ? '正常' : '停用' },
+              { label: '角色', value: detailUser.role },
+              { label: '备注', value: detailUser.remark, wide: true },
+            ],
+          },
+        ] : []}
+      />
       <ConfirmDialog
         open={Boolean(pendingDeleteUser)}
         title="删除用户"

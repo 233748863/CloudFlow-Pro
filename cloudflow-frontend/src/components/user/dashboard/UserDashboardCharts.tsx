@@ -11,22 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/common';
+import { Chart, type ChartTheme } from '@/components/charts/Chart';
+import { LineChart } from '@/components/charts/presets';
+import { ChartDataTable, ChartViewToggle } from '@/components/charts/ChartDataTable';
 import './UserDashboardCharts.css';
 import '../../../styles/features/dashboard-chart.css';
 
-/**
- * 图表分类色槽。取值是 index.css 里 `--cf-chart-1..8` 的槽位号，
- * 不是颜色名 —— 那套色板亮暗两套取值不同（槽 2 亮色是橙、槽 3 是紫），
- * 继续叫 'emerald' / 'amber' 会变成误导。
- *
- * 槽位**按固定顺序分配、不循环**：第 9 个系列不是再生成一个色，
- * 而是并进「其它」或改用分面。
- */
+/** 图表颜色槽位固定为 1-8，调用方不写死颜色值。 */
 export type ChartSlot = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-type TrendSeriesKey = keyof Pick<
-  UserDashboardTrendPoint,
-  'tasks' | 'applications' | 'announcements' | 'schedules'
->;
+type TrendSeriesKey = keyof Pick<UserDashboardTrendPoint, 'tasks' | 'applications' | 'announcements' | 'schedules'>;
 
 export interface UserDashboardDistributionItem {
   label: string;
@@ -57,16 +50,6 @@ interface UserDashboardChartsProps {
   onRefresh: () => void;
 }
 
-/** 槽位 → 描边/实心色。走 CSS 变量，亮暗切换由 index.css 负责，这里不判断主题。 */
-function slotColor(slot: ChartSlot): string {
-  return `var(--cf-chart-${slot})`;
-}
-
-/** 槽位 → 面积填充色（同色 12% 不透明度，与改造前的 rgba(...,0.12) 等价）。 */
-function slotFill(slot: ChartSlot): string {
-  return `color-mix(in srgb, var(--cf-chart-${slot}), transparent 88%)`;
-}
-
 const seriesMeta: Array<{ key: TrendSeriesKey; label: string; slot: ChartSlot }> = [
   { key: 'tasks', label: '待办审批', slot: 1 },
   { key: 'applications', label: '我的申请', slot: 2 },
@@ -74,207 +57,115 @@ const seriesMeta: Array<{ key: TrendSeriesKey; label: string; slot: ChartSlot }>
   { key: 'schedules', label: '日程安排', slot: 4 },
 ];
 
-const DONUT_SIZE = 176;
-const DONUT_STROKE_WIDTH = 22;
-const DONUT_CENTER = DONUT_SIZE / 2;
-const DONUT_RADIUS = (DONUT_SIZE - DONUT_STROKE_WIDTH) / 2;
+/**
+ * CSS 变量形式的槽位色。只能给 CSS 属性用（如列表圆点的 backgroundColor），
+ * 浏览器会解析 var()。
+ */
+const slotColor = (slot: ChartSlot) => `var(--cf-chart-${slot})`;
 
-const formatTrendValue = (value: number) => value.toLocaleString('zh-CN');
+/**
+ * 槽位色的**已解析**值，专供 ECharts 使用。
+ *
+ * ECharts 用 canvas 渲染，fillStyle/strokeStyle 收到 'var(--cf-chart-3)' 这种字符串
+ * 无法解析，会退化成黑色——这张图从内联 SVG 迁到 ECharts 时就是漏了这一步，
+ * 环整个是黑的，而右侧列表圆点因为走 CSS backgroundColor 所以颜色正常。
+ *
+ * Chart.tsx 的 readTheme() 已经按 --cf-chart-1..8 的顺序把它们读成了具体色值，
+ * 并且在 html.dark 变化时重新读一次，所以这里直接按槽位取下标即可，暗色自动跟随。
+ */
+const resolvedSlotColor = (theme: ChartTheme, slot: ChartSlot) =>
+  theme.colors[slot - 1] || undefined;
 
-const getTooltipTransform = (xPercent: number) => {
-  if (xPercent <= 18) {
-    return 'translateX(0)';
-  }
+const formatValue = (value: number) => Number(value || 0).toLocaleString('zh-CN');
 
-  if (xPercent >= 82) {
-    return 'translateX(-100%)';
-  }
-
-  return 'translateX(-50%)';
-};
-
-const polarToCartesian = (centerX: number, centerY: number, radius: number, angle: number) => {
-  const angleInRadians = ((angle - 90) * Math.PI) / 180;
-  return {
-    x: centerX + radius * Math.cos(angleInRadians),
-    y: centerY + radius * Math.sin(angleInRadians),
-  };
-};
-
-const describeArc = (
-  centerX: number,
-  centerY: number,
-  radius: number,
-  startAngle: number,
-  endAngle: number,
-) => {
-  const start = polarToCartesian(centerX, centerY, radius, startAngle);
-  const end = polarToCartesian(centerX, centerY, radius, endAngle);
-  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-
-  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
-};
+/** 环图内圈半径。中间「总计」白圆按同一个百分比取宽高，两者才能严丝合缝。 */
+const DOUGHNUT_INNER_RADIUS = '62%';
 
 const DistributionCard: React.FC<{
   loading: boolean;
   items: UserDashboardDistributionItem[];
 }> = ({ loading, items }) => {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const total = items.reduce((sum, item) => sum + item.count, 0);
-
-  const segments = useMemo(() => {
-    let startAngle = 0;
-
-    return items.map((item) => {
-      const percentage = total === 0 ? 0 : Math.round((item.count / total) * 100);
-      const angle = total === 0 ? 0 : (item.count / total) * 360;
-      const segment = {
-        ...item,
-        percentage,
-        startAngle,
-        endAngle: startAngle + angle,
-      };
-      startAngle += angle;
-      return segment;
-    });
-  }, [items, total]);
-
-  const activeSegment =
-    hoveredIndex !== null && hoveredIndex >= 0 && hoveredIndex < segments.length
-      ? segments[hoveredIndex]
-      : null;
+  const [tableView, setTableView] = useState(false);
+  const total = items.reduce((sum, item) => sum + Number(item.count || 0), 0);
+  // 这个环图只占 dashboard-model-chart 的第一列（9.75rem ≈ 156px），
+  // 放不下 ECharts 的外置标签和底部 legend：标签带引导线往两侧甩、legend 在窄列里
+  // 折成四行，两者都会溢出到卡片外。右侧 dashboard-model-list 已经把名称、说明、
+  // 数量/占比逐项列全了，环图只负责画比例，所以标签和 legend 一并关掉，信息不丢。
+  const option = useMemo(() => (theme: ChartTheme) => ({
+    // appendTo: 'body' 是必须的：tooltip 默认渲染在图表容器内部，而外层
+    // .dashboard-chart-card 有 overflow: hidden（dashboard-chart.css:51，给圆角服务），
+    // 环图容器本身又只有 156px，tooltip 一探头就被裁掉。挂到 body 才能完整显示。
+    // 6.1.0 里 appendToBody 已废弃，用 appendTo。
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)', appendTo: 'body' },
+    legend: { show: false },
+    series: [{
+      name: '工作负载',
+      type: 'pie',
+      radius: [DOUGHNUT_INNER_RADIUS, '80%'],
+      // 圆心必须是 50%/50%，才能和中间「总计」那个白圆对齐（它在容器里居中）。
+      center: ['50%', '50%'],
+      label: { show: false },
+      labelLine: { show: false },
+      data: items.map((item) => ({
+        name: item.label,
+        value: item.count,
+        itemStyle: { color: resolvedSlotColor(theme, item.slot) },
+      })),
+    }],
+  }), [items]);
 
   return (
     <article className="dashboard-chart-card">
-      {loading ? (
-        <div className="dashboard-loading-overlay">
-          <LoadingSpinner size="lg" />
-        </div>
-      ) : null}
-
+      {loading ? <div className="dashboard-loading-overlay"><LoadingSpinner size="lg" /></div> : null}
       <div className="dashboard-chart-heading">
-        <h3 className="inline-flex items-center gap-2">
-          <PieChart size={18} className="text-cf-faint" />
-          工作负载分布
-        </h3>
-        <span>{items.length} types</span>
+        <h3 className="inline-flex items-center gap-2"><PieChart size={18} className="text-cf-faint" />工作负载分布</h3>
+        <ChartViewToggle tableView={tableView} onChange={setTableView} />
       </div>
-
       {total === 0 ? (
-        <EmptyState
-          title="当前时间范围没有数据"
-          description="尝试调整时间范围，或刷新后重新查看。"
-          className="px-0 py-6"
-        />
-      ) : (
+        <EmptyState title="当前时间范围没有数据" description="尝试调整时间范围，或刷新后重新查看。" className="px-0 py-6" />
+      ) : tableView ? <ChartDataTable label="工作负载分布" data={{ columns: ['事项', '数量', '占比', '说明'],
+        rows: items.map(item => [item.label, item.count, `${(item.count / total * 100).toFixed(2)}%`, item.description]) }} /> : (
         <div className="dashboard-model-chart">
-          <div
-            className="dashboard-doughnut relative"
-            onMouseLeave={() => setHoveredIndex(null)}
-          >
-              {activeSegment ? (
-                <div className="pointer-events-none absolute left-1/2 top-2 z-10 min-w-[176px] -translate-x-1/2 rounded-md border border-slate-800/80 bg-slate-950 px-3 py-2 text-xs shadow-none">
-                  <div className="mb-2 text-[11px] font-semibold text-white">
-                    {activeSegment.label}
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-slate-300">数量</span>
-                      <span className="font-medium text-white">
-                        {formatTrendValue(activeSegment.count)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-slate-300">占比</span>
-                      <span className="font-medium text-white">
-                        {activeSegment.percentage}%
-                      </span>
-                    </div>
-                    <div className="border-t border-white/10 pt-1.5 text-[11px] leading-5 text-slate-300">
-                      {activeSegment.description}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              <svg
-                viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`}
-                className="h-full w-full"
-                aria-label="工作负载分布"
-              >
-                <circle
-                  cx={DONUT_CENTER}
-                  cy={DONUT_CENTER}
-                  r={DONUT_RADIUS}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={DONUT_STROKE_WIDTH}
-                  className="text-slate-200 dark:text-slate-800"
-                />
-
-                {segments.map((segment, index) => {
-                  if (segment.count <= 0 || segment.endAngle <= segment.startAngle) {
-                    return null;
-                  }
-
-                  const active = hoveredIndex === index;
-
-                  return (
-                    <path
-                      key={segment.label}
-                      d={describeArc(
-                        DONUT_CENTER,
-                        DONUT_CENTER,
-                        DONUT_RADIUS,
-                        segment.startAngle,
-                        segment.endAngle,
-                      )}
-                      fill="none"
-                      stroke={slotColor(segment.slot)}
-                      strokeWidth={active ? DONUT_STROKE_WIDTH + 4 : DONUT_STROKE_WIDTH}
-                      strokeLinecap="butt"
-                      style={{
-                        filter: undefined,
-                        transition: 'stroke-width 160ms ease',
-                      }}
-                      onMouseEnter={() => setHoveredIndex(index)}
-                      onMouseMove={() => setHoveredIndex(index)}
-                    />
-                  );
-                })}
-              </svg>
-
-              <div className="absolute inset-[22px] flex flex-col items-center justify-center rounded-full border border-slate-200 bg-[var(--cf-surface-strong)] text-center dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-[11px] font-medium text-cf-faint">
-                  总计
-                </div>
-                <div className="mt-2 text-[1.75rem] font-semibold leading-none text-cf-title">
-                  {total}
-                </div>
-                <div className="mt-1 text-xs text-cf-subtle">
-                  命中事项
-                </div>
-              </div>
+          {/* 尺寸分两段：
+              ≥768px 由 index.css 未分层区的 .dashboard-doughnut 定死 9.75rem 正方（该处未分层，
+              压过 @layer 内 1024px 那条 11.875rem，也压过这里的 Tailwind 尺寸类）；
+              <768px 没有任何 CSS 给尺寸，靠这里的 aspect-square + max-w 兜出正方并限高。
+              必须是正方：环图半径按短边算，容器扁了中间白圆就成椭圆、且和圆环内圈错开。
+              改造前 Chart 写死 h-56(224px) 塞进 156px 的容器，画布竖向溢出 68px，
+              叠上 center 43% 与白圆 50% 的差值，就是截图里圆环上缘露出、下缘被压的原因。 */}
+          <div className="dashboard-doughnut relative mx-auto aspect-square w-full max-w-[13.75rem]">
+            {/* minHeight 必须走内联 style：Chart 内部默认类名带 min-h-[220px]（Chart.tsx:133），
+                而 cn() 只是字符串拼接、不是 tailwind-merge，传 min-h-0 会和它并存、
+                胜负取决于生成 CSS 的源序而非书写顺序。内联 style 才能确定性压掉。
+                不压的话画布是 156×220，圆心落在 220 的一半 110px，
+                而白圆在 156 容器里居中是 78px，两者差 32px —— 就是环和白圆不同心的原因。 */}
+            <Chart
+              className="aspect-square w-full"
+              style={{ minHeight: 0 }}
+              option={option}
+              ariaLabel="工作负载分布"
+              seriesCount={items.length}
+            />
+            <div
+              className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border border-slate-200 bg-[var(--cf-surface-strong)] text-center dark:border-slate-800 dark:bg-slate-950"
+              style={{ width: DOUGHNUT_INNER_RADIUS, height: DOUGHNUT_INNER_RADIUS }}
+            >
+              <div className="text-[11px] font-medium text-cf-faint">总计</div>
+              <div className="mt-1 text-[1.5rem] font-semibold leading-none text-cf-title">{formatValue(total)}</div>
+              <div className="mt-1 text-[11px] text-cf-subtle">协同事项</div>
+            </div>
           </div>
-
           <div className="dashboard-model-list">
-            {segments.map((item, index) => {
+            {items.map((item) => {
+              const percentage = total === 0 ? 0 : Math.round((item.count / total) * 100);
               return (
-                <div
-                  key={item.label}
-                  className="dashboard-model-row"
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                >
-                  <span
-                    className="dashboard-model-dot"
-                    style={{ backgroundColor: slotColor(item.slot) }}
-                  />
+                <div key={item.label} className="dashboard-model-row">
+                  <span className="dashboard-model-dot" style={{ backgroundColor: slotColor(item.slot) }} />
                   <div className="min-w-0 flex-1">
-                    <p data-tooltip={item.label}>{item.label}</p>
+                    <p>{item.label}</p>
                     <span>{item.description}</span>
                   </div>
-                  <strong>{item.count} / {item.percentage}%</strong>
+                  <strong>{formatValue(item.count)} / {percentage}%</strong>
                 </div>
               );
             })}
@@ -290,241 +181,22 @@ const TrendCard: React.FC<{
   trend: UserDashboardTrendPoint[];
   granularity: 'day' | 'hour';
 }> = ({ loading, trend, granularity }) => {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const width = 960;
-  const height = 420;
-  const padding = { top: 18, right: 24, bottom: 52, left: 42 };
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
-  const maxValue = Math.max(
-    1,
-    ...trend.map((item) =>
-      Math.max(item.tasks, item.applications, item.announcements, item.schedules),
-    ),
-  );
-
-  const labelStep = Math.max(1, Math.ceil(trend.length / (granularity === 'hour' ? 12 : 8)));
-  const x = (index: number) =>
-    padding.left + (index / Math.max(trend.length - 1, 1)) * chartWidth;
-  const y = (value: number) =>
-    padding.top + chartHeight - (value / maxValue) * chartHeight;
-  const activeIndex =
-    hoveredIndex !== null && hoveredIndex >= 0 && hoveredIndex < trend.length ? hoveredIndex : null;
-  const activePoint = activeIndex !== null ? trend[activeIndex] : null;
-  const activeX = activeIndex !== null ? x(activeIndex) : null;
-  const activeXPercent = activeX !== null ? (activeX / width) * 100 : 0;
-
-  const getHoverZone = (index: number) => {
-    if (trend.length <= 1) {
-      return { x: padding.left, width: chartWidth };
-    }
-
-    const currentX = x(index);
-    const previousBoundary =
-      index === 0 ? padding.left : (x(index - 1) + currentX) / 2;
-    const nextBoundary =
-      index === trend.length - 1 ? width - padding.right : (currentX + x(index + 1)) / 2;
-
-    return {
-      x: previousBoundary,
-      width: nextBoundary - previousBoundary,
-    };
-  };
-
-  const linePath = (key: TrendSeriesKey) =>
-    trend
-      .map((item, index) => `${index === 0 ? 'M' : 'L'}${x(index)},${y(item[key])}`)
-      .join(' ');
-
-  const areaPath = (key: TrendSeriesKey) =>
-    `${linePath(key)} L${x(trend.length - 1)},${y(0)} L${x(0)},${y(0)} Z`;
+  const maxValue = Math.max(1, ...trend.map((item) => Math.max(item.tasks, item.applications, item.announcements, item.schedules)));
 
   return (
     <article className="dashboard-chart-card no-divider">
-      {loading ? (
-        <div className="dashboard-loading-overlay">
-          <LoadingSpinner size="lg" />
-        </div>
-      ) : null}
-
+      {loading ? <div className="dashboard-loading-overlay"><LoadingSpinner size="lg" /></div> : null}
       <div className="dashboard-chart-heading">
-        <h3 className="inline-flex items-center gap-2">
-          <TrendingUp size={18} className="text-cf-faint" />
-          协同趋势
-        </h3>
-
-        <div className="flex flex-wrap items-center gap-3 text-xs text-cf-subtle">
-          {seriesMeta.map((item) => (
-            <span key={item.key} className="inline-flex items-center gap-1.5">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{ backgroundColor: slotColor(item.slot) }}
-              />
-              {item.label}
-            </span>
-          ))}
-        </div>
+        <h3 className="inline-flex items-center gap-2"><TrendingUp size={18} className="text-cf-faint" />协同趋势</h3>
       </div>
-
       {trend.length === 0 ? (
-        <EmptyState
-          title="没有可绘制的趋势数据"
-          description="当前筛选区间内没有命中任何待办、申请、公告或日程。"
-          className="px-0 py-6"
-        />
+        <EmptyState title="没有可绘制的趋势数据" description="当前筛选区间内没有命中任何待办、申请、公告或日程。" className="px-0 py-6" />
       ) : (
-        <div
-          className="chart-canvas-wrap dashboard-trend-chart"
-          onMouseLeave={() => setHoveredIndex(null)}
-        >
-          {activePoint && activeX !== null ? (
-            <div
-              className="pointer-events-none absolute z-10 min-w-[176px] rounded-md border border-slate-800/80 bg-slate-950 px-3 py-2 text-xs shadow-none"
-              style={{
-                left: `${activeXPercent}%`,
-                top: 12,
-                transform: getTooltipTransform(activeXPercent),
-              }}
-            >
-              <div className="mb-2 text-[11px] font-semibold text-white">
-                {activePoint.label}
-              </div>
-              <div className="space-y-1.5">
-                {seriesMeta.map((series) => (
-                  <div key={series.key} className="flex items-center justify-between gap-4">
-                    <span className="inline-flex items-center gap-1.5 text-slate-200">
-                      <span
-                        className="inline-block h-2 w-2 rounded-sm"
-                        style={{ backgroundColor: slotColor(series.slot) }}
-                      />
-                      {series.label}
-                    </span>
-                    <span className="font-medium text-white">
-                      {formatTrendValue(activePoint[series.key])}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <svg viewBox={`0 0 ${width} ${height}`} className="block h-full w-full">
-            {Array.from({ length: 5 }, (_, index) => {
-              const value = Math.round((maxValue / 4) * index);
-              const lineY = y(value);
-              return (
-                <g key={`grid-${index}-${value}`}>
-                  <line
-                    x1={padding.left}
-                    y1={lineY}
-                    x2={width - padding.right}
-                    y2={lineY}
-                    stroke="currentColor"
-                    strokeWidth={1}
-                    className="text-slate-200 dark:text-slate-800"
-                  />
-                  <text
-                    x={padding.left - 8}
-                    y={lineY + 4}
-                    textAnchor="end"
-                    fontSize={10}
-                    fill="currentColor"
-                    className="text-cf-faint"
-                  >
-                    {value}
-                  </text>
-                </g>
-              );
-            })}
-
-            {seriesMeta.map((series, index) => (
-              <g key={series.key}>
-                {index === 0 ? (
-                  <path d={areaPath(series.key)} fill={slotFill(series.slot)} />
-                ) : null}
-                <path
-                  d={linePath(series.key)}
-                  fill="none"
-                  stroke={slotColor(series.slot)}
-                  strokeWidth={2}
-                />
-                {trend.map((item, pointIndex) => (
-                  <circle
-                    key={`${series.key}-${item.label}-${pointIndex}`}
-                    cx={x(pointIndex)}
-                    cy={y(item[series.key])}
-                    r={2.75}
-                    fill={slotColor(series.slot)}
-                  />
-                ))}
-              </g>
-            ))}
-
-            {activeX !== null ? (
-              <line
-                x1={activeX}
-                y1={padding.top}
-                x2={activeX}
-                y2={padding.top + chartHeight}
-                stroke="currentColor"
-                strokeWidth={1.25}
-                strokeDasharray="5 5"
-                className="text-slate-300 dark:text-slate-700"
-              />
-            ) : null}
-
-            {activePoint && activeIndex !== null
-              ? seriesMeta.map((series) => (
-                  <g key={`active-${series.key}`}>
-                    <circle
-                      cx={x(activeIndex)}
-                      cy={y(activePoint[series.key])}
-                      r={5.5}
-                      fill="white"
-                      fillOpacity={0.96}
-                    />
-                    <circle
-                      cx={x(activeIndex)}
-                      cy={y(activePoint[series.key])}
-                      r={3.5}
-                      fill={slotColor(series.slot)}
-                    />
-                  </g>
-                ))
-              : null}
-
-            {trend.map((item, index) =>
-              index % labelStep === 0 || index === trend.length - 1 ? (
-                <text
-                  key={`${item.label}-${index}`}
-                  x={x(index)}
-                  y={height - 12}
-                  textAnchor="middle"
-                  fontSize={10}
-                  fill="currentColor"
-                  className="text-cf-faint"
-                >
-                  {item.shortLabel}
-                </text>
-              ) : null,
-            )}
-
-            {trend.map((item, index) => {
-              const zone = getHoverZone(index);
-              return (
-                <rect
-                  key={`hover-zone-${item.label}-${index}`}
-                  x={zone.x}
-                  y={padding.top}
-                  width={zone.width}
-                  height={chartHeight}
-                  fill="transparent"
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onMouseMove={() => setHoveredIndex(index)}
-                />
-              );
-            })}
-          </svg>
+        <div className="chart-canvas-wrap dashboard-trend-chart" style={{ height: 'auto', overflow: 'visible' }}>
+          <LineChart height={420} ariaLabel="协同趋势图" max={maxValue} categoryAxisName={granularity === 'hour' ? '小时' : '日期'}
+            categories={trend.map(item => item.label)} series={seriesMeta.map((series, index) => ({
+              name: series.label, values: trend.map(item => item[series.key]), slot: series.slot, area: index === 0,
+            }))} />
         </div>
       )}
     </article>
@@ -550,50 +222,26 @@ export const UserDashboardCharts: React.FC<UserDashboardChartsProps> = ({
           <div className="dashboard-filter dashboard-range-filter">
             <span>时间范围</span>
             <div className="dashboard-date-range-controls">
-              <DatePicker
-                id="dashboard-start-date"
-                type="date"
-                className="date-range-input"
-                value={startDate}
-                onChange={(event) => onStartDateChange(event.target.value)}
-              />
+              <DatePicker id="dashboard-start-date" type="date" className="date-range-input" value={startDate} onChange={(event) => onStartDateChange(event.target.value)} />
               <span className="dashboard-date-separator">至</span>
-              <DatePicker
-                id="dashboard-end-date"
-                type="date"
-                className="date-range-input"
-                value={endDate}
-                onChange={(event) => onEndDateChange(event.target.value)}
-              />
+              <DatePicker id="dashboard-end-date" type="date" className="date-range-input" value={endDate} onChange={(event) => onEndDateChange(event.target.value)} />
             </div>
           </div>
-
           <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
-            <RefreshCw size={15} className={loading ? 'animate-spin' : undefined} />
-            刷新
+            <RefreshCw size={15} className={loading ? 'animate-spin' : undefined} />刷新
           </Button>
         </div>
-
         <div className="dashboard-filter dashboard-granularity-filter">
           <span>粒度</span>
           <div className="dashboard-granularity-control">
-            <Select
-              value={granularity}
-              onValueChange={(value) => onGranularityChange(value as 'day' | 'hour')}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="选择粒度" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="day">按天</SelectItem>
-                <SelectItem value="hour">按小时</SelectItem>
-              </SelectContent>
+            <Select value={granularity} onValueChange={(value) => onGranularityChange(value as 'day' | 'hour')}>
+              <SelectTrigger><SelectValue placeholder="选择粒度" /></SelectTrigger>
+              <SelectContent><SelectItem value="day">按天</SelectItem><SelectItem value="hour">按小时</SelectItem></SelectContent>
             </Select>
           </div>
         </div>
       </div>
     </div>
-
     <div className="dashboard-chart-surface">
       <DistributionCard loading={loading} items={distribution} />
       <TrendCard loading={loading} trend={trend} granularity={granularity} />

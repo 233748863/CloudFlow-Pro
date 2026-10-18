@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   Edit,
+  Eye,
   Plus,
   RefreshCw,
   Search,
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog, Pagination } from '@/components/common';
 import {
   Button,
   Input,
@@ -41,7 +42,6 @@ import {
   type RoleOption,
   updateRole,
 } from '../../services/api/auth';
-import { getTenantList } from '../../services/api/tenant';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
@@ -79,7 +79,6 @@ type RoleQuery = {
   roleKey: string;
 };
 
-const DEFAULT_TENANT_VALUE = '__DEFAULT_TENANT__';
 const EMPTY_SELECT_VALUE = '__EMPTY__';
 
 const dsTypeMap: Record<number, string> = {
@@ -227,7 +226,8 @@ export const RoleList = () => {
   const [menuTree, setMenuTree] = useState<TreeNode[]>([]);
   const [flatMenus, setFlatMenus] = useState<TreeNode[]>([]);
   const [deptTree, setDeptTree] = useState<TreeNode[]>([]);
-  const [tenants, setTenants] = useState<any[]>([]);
+  const tenants = useMemo(() => user?.tenantId == null ? [] : [{ tenantId: user.tenantId,
+    tenantName: user.tenantName || `租户 ${user.tenantId}` }], [user?.tenantId, user?.tenantName]);
   const [loading, setLoading] = useState(false);
   const [roleDetailLoading, setRoleDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -245,6 +245,7 @@ export const RoleList = () => {
   const [isMutexDialogOpen, setIsMutexDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
   const [pendingDeleteRole, setPendingDeleteRole] = useState<RoleRecord | null>(null);
+  const [detailRole, setDetailRole] = useState<RoleRecord | null>(null);
   const [pendingDeleteMutexRule, setPendingDeleteMutexRule] = useState<RoleMutexRule | null>(null);
   const roleDetailRequestRef = useRef(0);
   const [mutexRules, setMutexRules] = useState<RoleMutexRule[]>([]);
@@ -352,17 +353,6 @@ export const RoleList = () => {
     }
   };
 
-  const fetchTenants = async () => {
-    try {
-      const response = await getTenantList({ pageNum: 1, pageSize: 200 });
-      const normalized = normalizePagedResponse<any>(response);
-      setTenants(normalized.rows);
-    } catch (fetchError) {
-      console.error(fetchError);
-      toast.error(getErrorMessage(fetchError, '加载租户失败'));
-    }
-  };
-
   const fetchRoleOptions = async () => {
     try {
       const response = await getRoleOptions();
@@ -395,7 +385,6 @@ export const RoleList = () => {
   useEffect(() => {
     void fetchMenus();
     void fetchDepts();
-    void fetchTenants();
     void fetchRoleOptions();
   }, []);
 
@@ -433,7 +422,7 @@ export const RoleList = () => {
       {
         label: '租户范围',
         value: String(Math.max(tenants.length, 1)),
-        meta: '含默认租户',
+        meta: '仅当前登录租户',
         icon: <Building2 size={18} />,
         tone: 'amber',
       },
@@ -452,7 +441,6 @@ export const RoleList = () => {
     void fetchRoles();
     void fetchMenus();
     void fetchDepts();
-    void fetchTenants();
     void fetchRoleOptions();
     if (isMutexDialogOpen) {
       void fetchMutexRules();
@@ -640,6 +628,7 @@ export const RoleList = () => {
     try {
       const payload = {
         ...formData,
+        tenantId: user?.tenantId,
         roleName: formData.roleName.trim(),
         roleKey: formData.roleKey.trim(),
       };
@@ -738,7 +727,7 @@ export const RoleList = () => {
   };
 
   const tenantNameById = (tenantId?: number) =>
-    tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || '默认租户';
+    tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || (tenantId == null ? '租户未指定' : `租户 ${tenantId}`);
 
   const pageActions = (
     <div className="grid gap-5">
@@ -908,6 +897,9 @@ export const RoleList = () => {
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRole(role)}>
+                        <Eye size={15} />
+                      </button>
                       {canEditRole ? (
                         <button type="button" data-tooltip="编辑角色" aria-label="编辑角色" onClick={() => handleOpenModal(role)}>
                           <Edit size={15} />
@@ -1030,27 +1022,7 @@ export const RoleList = () => {
 
             <div className="admin-dialog-field">
               <Label>所属租户</Label>
-              <Select
-                value={formData.tenantId ? String(formData.tenantId) : DEFAULT_TENANT_VALUE}
-                onValueChange={(value) =>
-                  setFormData((current) => ({
-                    ...current,
-                    tenantId: value === DEFAULT_TENANT_VALUE ? undefined : Number(value),
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择租户" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={DEFAULT_TENANT_VALUE}>默认租户</SelectItem>
-                  {tenants.map((tenant) => (
-                    <SelectItem key={tenant.tenantId} value={String(tenant.tenantId)}>
-                      {tenant.tenantName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input aria-label="所属租户" readOnly value={tenantNameById(user?.tenantId)} />
             </div>
 
             <div className="admin-dialog-field">
@@ -1286,6 +1258,28 @@ export const RoleList = () => {
         </div>
       </BaseDialog>
 
+      <DetailDialog
+        open={Boolean(detailRole)}
+        title="角色详情"
+        onClose={() => setDetailRole(null)}
+        heading={detailRole?.roleName}
+        subheading={detailRole?.roleKey}
+        headingAside={detailRole ? (
+          <span className="text-xs text-cf-subtle">{detailRole.status === '0' ? '正常' : '停用'}</span>
+        ) : undefined}
+        sections={detailRole ? [
+          {
+            title: '角色信息',
+            items: [
+              { label: '角色名称', value: detailRole.roleName },
+              { label: '权限字符', value: detailRole.roleKey },
+              { label: '显示顺序', value: String(detailRole.roleSort) },
+              { label: '状态', value: detailRole.status === '0' ? '正常' : '停用' },
+              { label: '数据范围', value: dsTypeMap[Number(detailRole.dsType)] || '未设置' },
+            ],
+          },
+        ] : []}
+      />
       <ConfirmDialog
         open={Boolean(pendingDeleteRole)}
         title="删除角色"

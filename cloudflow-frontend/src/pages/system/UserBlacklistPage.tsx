@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Edit, Plus, RefreshCw, RotateCcw, ShieldOff, Search, Trash2, UserX } from 'lucide-react';
+import { Edit, Eye, Plus, RefreshCw, RotateCcw, ShieldOff, Search, Trash2, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
@@ -14,7 +14,7 @@ import {
   type SysUserBlacklist,
   type UserBlacklistStatus,
 } from '@/services/api/acl';
-import { BaseDialog, ConfirmDialog, Pagination, UserSelector } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog, Pagination, UserSelector } from '@/components/common';
 import {
   Button,
   DatePicker,
@@ -81,6 +81,7 @@ export const UserBlacklistPage = () => {
   const [editing, setEditing] = useState<SysUserBlacklist | null>(null);
   const [formData, setFormData] = useState<SysUserBlacklist>(DEFAULT_FORM);
   const [pendingDelete, setPendingDelete] = useState<SysUserBlacklist | null>(null);
+  const [detailRow, setDetailRow] = useState<SysUserBlacklist | null>(null);
 
   const fetchRows = async (next = query) => {
     setLoading(true);
@@ -386,6 +387,9 @@ export const UserBlacklistPage = () => {
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRow(row)}>
+                        <Eye size={15} />
+                      </button>
                       {row.status === 'ACTIVE' ? (
                         <button type="button" data-tooltip="解除拉黑" aria-label="解除拉黑" onClick={() => handleUnban(row)}>
                           <ShieldOff size={15} />
@@ -517,6 +521,39 @@ export const UserBlacklistPage = () => {
         confirmText="删除"
         danger
         onConfirm={handleDelete}
+      />
+
+      <DetailDialog
+        open={Boolean(detailRow)}
+        title="黑名单详情"
+        onClose={() => setDetailRow(null)}
+        heading={detailRow?.userName || (detailRow ? `#${detailRow.userId}` : undefined)}
+        subheading={detailRow ? `用户 ID ${detailRow.userId}` : undefined}
+        headingAside={detailRow ? (
+          <span className="text-xs text-cf-subtle">{detailRow.status === 'ACTIVE' ? '拉黑中' : '已解除'}</span>
+        ) : undefined}
+        sections={detailRow ? [
+          {
+            title: '黑名单信息',
+            items: [
+              { label: '用户账号', value: detailRow.userName },
+              { label: '用户 ID', value: String(detailRow.userId) },
+              { label: '状态', value: detailRow.status === 'ACTIVE' ? '拉黑中' : '已解除' },
+              { label: '到期时间', value: detailRow.expireAt ? formatDateTimeDisplay(detailRow.expireAt) : '长期' },
+              { label: '操作人', value: detailRow.opUserName || (detailRow.opUserId ? `#${detailRow.opUserId}` : '') },
+              { label: '拉黑原因', value: detailRow.reason, wide: true },
+            ],
+          },
+          {
+            title: '变更记录',
+            items: [
+              { label: '创建人', value: detailRow.createBy },
+              { label: '创建时间', value: formatDateTimeDisplay(detailRow.createTime) },
+              { label: '更新人', value: detailRow.updateBy },
+              { label: '更新时间', value: formatDateTimeDisplay(detailRow.updateTime) },
+            ],
+          },
+        ] : []}
       />
     </>
   );

@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { CheckCircle2, Edit, History, ListChecks, Play, RefreshCw, RotateCcw, Search, Undo2 } from 'lucide-react';
+import { CheckCircle2, Edit, Eye, History, ListChecks, Play, RefreshCw, RotateCcw, Search, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BaseDialog,
   Button,
   ConfirmDialog,
+  DetailDialog,
   Input,
   Label,
   LoadingSpinner,
@@ -17,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
+  Table,
   Textarea,
 } from '@/components/common';
 import {
@@ -73,6 +75,8 @@ export const BusinessRulePage = () => {
   const [activeTab, setActiveTab] = useState('rules');
   const workflowDefStatusDict = useDict('workflow_definition_status');
   const effectDict = useDict('oa_business_rule_effect');
+  const hitResultDict = useDict('oa_business_rule_hit_result');
+  const hitResultOptions = hitResultDict.getOptions();
   const [rows, setRows] = useState<BusinessRule[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -90,9 +94,11 @@ export const BusinessRulePage = () => {
   const [hits, setHits] = useState<BusinessRuleHitRecord[]>([]);
   const [hitTotal, setHitTotal] = useState(0);
   const [hitLoading, setHitLoading] = useState(false);
-  const [hitQuery, setHitQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), ruleCode: '', businessType: '', hitResult: '' });
+  const [hitQuery, setHitQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), ruleCode: '', businessType: '', hitResult: '', deduplicate: false });
   const [hitFilters, setHitFilters] = useState({ ruleCode: '', businessType: '', hitResult: '' });
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [detailRule, setDetailRule] = useState<BusinessRule | null>(null);
+  const [detailVersion, setDetailVersion] = useState<BusinessRuleVersion | null>(null);
 
   const fetchRules = async () => {
     setLoading(true);
@@ -146,6 +152,7 @@ export const BusinessRulePage = () => {
         ruleCode: hitQuery.ruleCode || undefined,
         businessType: hitQuery.businessType || undefined,
         hitResult: hitQuery.hitResult || undefined,
+        deduplicate: hitQuery.deduplicate,
       });
       const normalized = normalizeListResponse<BusinessRuleHitRecord>(response);
       setHits(normalized.rows);
@@ -278,6 +285,13 @@ export const BusinessRulePage = () => {
               <td className="max-w-[260px] truncate text-sm text-cf-subtle" data-tooltip={rule.remark}>{rule.remark || '-'}</td>
               <td>
                 <div className="admin-users-row-actions">
+                  <button
+                    type="button"
+                    data-tooltip="查看详情" aria-label="查看详情"
+                    onClick={() => setDetailRule(rule)}
+                  >
+                    <Eye size={15} />
+                  </button>
                   <button
                     type="button"
                     data-tooltip="编辑规则" aria-label="编辑规则"
@@ -491,18 +505,23 @@ export const BusinessRulePage = () => {
           <label>
             <span className="input-label">命中结果</span>
             <Select value={hitFilters.hitResult || ALL_VALUE} onValueChange={(value) => setHitFilters((current) => ({ ...current, hitResult: value === ALL_VALUE ? '' : value }))}>
-              <SelectTrigger className="h-[42px]"><SelectValue placeholder="全部结果" /></SelectTrigger>
+              <SelectTrigger className="h-[42px]" aria-label="命中结果"><SelectValue placeholder="全部结果" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL_VALUE}>全部结果</SelectItem>
-                {effectDict.getOptions().map((opt) => (
+                {hitResultOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
+                {!hitResultOptions.some((option) => option.value === 'BYPASSED') ? <SelectItem value="BYPASSED">例外放行</SelectItem> : null}
               </SelectContent>
             </Select>
           </label>
           <div className="admin-users-toolbar-actions">
             <span className="admin-users-filter-count">当前 {hitTotal} 项</span>
             <Button type="submit" size="sm">查询</Button>
+          </div>
+          <div className="col-span-full flex min-h-11 items-center gap-2">
+            <Switch id="business-rule-latest-only" checked={hitQuery.deduplicate} onCheckedChange={(deduplicate) => setHitQuery((current) => ({ ...current, pageNum: 1, deduplicate }))} />
+            <Label htmlFor="business-rule-latest-only">每张单据仅看最新结果</Label>
           </div>
         </form>
       ) : null}
@@ -542,6 +561,9 @@ export const BusinessRulePage = () => {
               <td className="max-w-[240px] truncate text-sm text-cf-subtle" data-tooltip={version.remark}>{version.remark || '-'}</td>
               <td>
                 <div className="admin-users-row-actions">
+                  <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailVersion(version)}>
+                    <Eye size={15} />
+                  </button>
                   {version.status === 'DRAFT' ? (
                     <button type="button" data-tooltip="发布版本" aria-label="发布版本" onClick={() => setConfirmState({ type: 'publish', version })}>
                       <Play size={15} />
@@ -563,7 +585,7 @@ export const BusinessRulePage = () => {
 
   const hitTable = (
     <InnerTableSurface>
-      <table className="unity-data-table admin-source-table min-w-[980px]">
+      <Table disableScrollWrapper aria-label="业务规则命中记录" className="admin-source-table min-w-[980px]">
         <thead>
           <tr>
             <th>规则编码</th>
@@ -587,12 +609,12 @@ export const BusinessRulePage = () => {
               <td>{hit.thresholdValue ?? '-'}</td>
               <td>{hit.actualValue ?? '-'}</td>
               <td><DictBadge dictType="oa_business_rule_effect" value={String(hit.effect || '')} /></td>
-              <td><DictBadge dictType="oa_business_rule_hit_result" value={String(hit.hitResult || '')} /></td>
+              <td><DictBadge dictType="oa_business_rule_hit_result" value={String(hit.hitResult || '')} fallback={hit.hitResult === 'BYPASSED' ? '例外放行' : undefined} /></td>
               <td>{formatDateTime(hit.createdTime)}</td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </Table>
     </InnerTableSurface>
   );
 
@@ -676,6 +698,65 @@ export const BusinessRulePage = () => {
           </form>
         ) : null}
       </BaseDialog>
+
+      <DetailDialog
+        open={Boolean(detailRule)}
+        title="业务规则详情"
+        onClose={() => setDetailRule(null)}
+        heading={detailRule?.ruleName}
+        subheading={detailRule?.ruleCode}
+        headingAside={detailRule ? (
+          <span className="text-xs text-cf-subtle">{detailRule.enabled === 1 ? '启用' : '停用'}</span>
+        ) : undefined}
+        sections={detailRule ? [
+          {
+            title: '规则信息',
+            items: [
+              { label: '规则名称', value: detailRule.ruleName },
+              { label: '规则编码', value: detailRule.ruleCode },
+              { label: '所属模块', value: detailRule.module },
+              { label: '阈值', value: detailRule.thresholdValue === undefined ? '' : String(detailRule.thresholdValue) },
+              { label: '效果', value: <DictBadge dictType="oa_business_rule_effect" value={String(detailRule.effect || '')} /> },
+              { label: '优先级', value: String(detailRule.priority) },
+              { label: '状态', value: detailRule.enabled === 1 ? '启用' : '停用' },
+              { label: '备注', value: detailRule.remark, wide: true },
+            ],
+          },
+          {
+            title: '变更记录',
+            items: [
+              { label: '创建时间', value: formatDateTime(detailRule.createTime) },
+              { label: '更新时间', value: formatDateTime(detailRule.updateTime) },
+            ],
+          },
+        ] : []}
+      />
+
+      <DetailDialog
+        open={Boolean(detailVersion)}
+        title="规则版本详情"
+        onClose={() => setDetailVersion(null)}
+        heading={detailVersion ? `${detailVersion.ruleCode} v${detailVersion.versionNo}` : undefined}
+        headingAside={detailVersion ? (
+          <DictBadge dictType="workflow_definition_status" value={detailVersion.status || ''} />
+        ) : undefined}
+        sections={detailVersion ? [
+          {
+            title: '版本信息',
+            items: [
+              { label: '规则编码', value: detailVersion.ruleCode },
+              { label: '版本号', value: `v${detailVersion.versionNo}` },
+              { label: '阈值', value: detailVersion.thresholdValue === undefined ? '' : String(detailVersion.thresholdValue) },
+              { label: '效果', value: <DictBadge dictType="oa_business_rule_effect" value={String(detailVersion.effect || '')} /> },
+              { label: '优先级', value: String(detailVersion.priority) },
+              { label: '启用状态', value: detailVersion.enabled === 1 ? '启用' : '停用' },
+              { label: '发布人', value: detailVersion.publisherName },
+              { label: '发布时间', value: formatDateTime(detailVersion.publishedTime) },
+              { label: '备注', value: detailVersion.remark, wide: true },
+            ],
+          },
+        ] : []}
+      />
 
       <ConfirmDialog
         open={Boolean(confirmState)}

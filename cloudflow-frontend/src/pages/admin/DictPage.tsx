@@ -3,7 +3,7 @@ import { Edit, Eye, Plus, RefreshCw, RotateCcw, Search, Tag, Trash2 } from 'luci
 import { toast } from 'sonner';
 import { DictApprovalDialog } from '@/components/admin/DictApprovalDialog';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog } from '@/components/common';
 import {
   Button,
   Input,
@@ -184,6 +184,7 @@ export const DictPage: React.FC = () => {
   const [typeForm, setTypeForm] = useState<DictTypeFormState>(createTypeForm);
   const [dataForm, setDataForm] = useState<DictDataFormState>(createDataForm);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [detailData, setDetailData] = useState<SysDictData | null>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [latestPendingResult, setLatestPendingResult] = useState<DictChangeResult | null>(null);
 
@@ -795,6 +796,14 @@ export const DictPage: React.FC = () => {
                     <div className="admin-users-row-actions">
                       <button
                         type="button"
+                        data-tooltip="查看详情"
+                        aria-label="查看详情"
+                        onClick={() => setDetailData(item)}
+                      >
+                        <Eye size={15} />
+                      </button>
+                      <button
+                        type="button"
                         data-tooltip="编辑数据"
                         aria-label="编辑数据"
                         onClick={() => openDataModal(item)}
@@ -1083,6 +1092,35 @@ export const DictPage: React.FC = () => {
         danger
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
+      />
+
+      <DetailDialog
+        open={Boolean(detailData)}
+        title="字典数据详情"
+        onClose={() => setDetailData(null)}
+        heading={detailData?.dictLabel}
+        subheading={detailData?.dictType}
+        headingAside={detailData ? (
+          <span className="text-xs text-cf-subtle">{(detailData.status || '0') === '0' ? '正常' : '停用'}</span>
+        ) : undefined}
+        sections={detailData ? [
+          {
+            title: '字典数据',
+            items: [
+              { label: '字典标签', value: detailData.dictLabel },
+              { label: '字典键值', value: detailData.dictValue },
+              { label: '字典类型', value: detailData.dictType },
+              { label: '显示顺序', value: detailData.dictSort === undefined ? '' : String(detailData.dictSort) },
+              { label: '是否默认', value: detailData.isDefault === 'Y' ? '是' : '否' },
+              { label: '状态', value: (detailData.status || '0') === '0' ? '正常' : '停用' },
+              { label: '风险等级', value: detailData.riskLevel },
+              { label: '样式属性', value: detailData.cssClass },
+              { label: '回显样式', value: detailData.listClass },
+              { label: '创建时间', value: detailData.createTime },
+              { label: '备注', value: detailData.remark, wide: true },
+            ],
+          },
+        ] : []}
       />
     </section>
   );

@@ -445,15 +445,13 @@ export const VersionRollbackManagement: React.FC = () => {
                   <div className="text-sm text-cf-muted">{version.createdTime}</div>
                   <div className="text-sm text-cf-muted">{version.createdBy}</div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => void handleViewSnapshot(version)}>
-                      <Eye className="h-4 w-4" />
-                      查看快照
-                    </Button>
-                    <Button size="sm" onClick={() => void handlePrepareRollback(version)}>
-                      <RotateCcw className="h-4 w-4" />
-                      回滚到此版本
-                    </Button>
+                  <div className="admin-users-row-actions">
+                    <button type="button" data-tooltip="查看快照" aria-label="查看快照" onClick={() => void handleViewSnapshot(version)}>
+                      <Eye size={15} />
+                    </button>
+                    <button type="button" data-tooltip="回滚到此版本" aria-label="回滚到此版本" onClick={() => void handlePrepareRollback(version)}>
+                      <RotateCcw size={15} />
+                    </button>
                   </div>
                 </div>
               );

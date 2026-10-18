@@ -1,0 +1,56 @@
+.tenant-package-workspace .btn,
+.tenant-package-workspace .pagination-btn,
+.tenant-package-workspace .select-trigger.select-trigger,
+.tenant-package-dialog .btn,
+.tenant-package-dialog .modal-close,
+.tenant-package-dialog input:not([type="checkbox"]),
+.tenant-package-dialog .select-trigger.select-trigger {
+  min-height: 44px;
+}
+
+.tenant-package-workspace .pagination-btn,
+.tenant-package-dialog .modal-close {
+  min-width: 44px;
+}
+
+.tenant-package-workspace .btn,
+.tenant-package-dialog .btn {
+  transition-duration: 150ms;
+}
+
+.package-feature-grid {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.package-feature {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--cf-border);
+  border-radius: 6px;
+}
+
+.package-feature input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.package-feature .select-trigger {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .package-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tenant-package-workspace .btn,
+  .tenant-package-dialog,
+  .tenant-package-dialog .btn { animation: none; transition: none; }
+}

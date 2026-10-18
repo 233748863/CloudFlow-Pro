@@ -1,23 +1,24 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowRight, FileText, LayoutGrid, LayoutList, Search, Tags } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import type { FormDefinition, WorkflowDefinition } from '@/types';
-import { Role } from '@/types';
+import type { FormDefinition } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { useWorkflowDraftList } from '@/hooks/useWorkflowDraftList';
+import { workflowDraftIdentity } from '@/hooks/useWorkflowDraft';
+import { getWorkflowBusinessEntry } from '@/services/api/workflow/businessEntry';
 import {
   WorkflowCatalogGrid,
   WorkflowLaunchDialog,
   mapWorkflowBackendForm,
   normalizeWorkflowTags,
+  type WorkflowCatalogItem,
 } from '@/components/workflow/catalog';
 import {
   getFormDefinition,
-  getFormDefinitions,
-  getProcessDefinitions,
+  getStartableProcessDefinitions,
   startProcess,
 } from '@/services/api/workflow';
-import { parseWorkflowGraphDefinition } from '@/utils/workflowGraph';
 import {
   WORKFLOW_CATEGORY_OPTIONS,
   getWorkflowCategoryLabel,
@@ -46,17 +47,6 @@ import {
 } from '@/components/common';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
-const parseWorkflowGraph = (
-  rawModelJson: unknown,
-  workflowName: string,
-): WorkflowDefinition['graph'] => {
-  const graph = parseWorkflowGraphDefinition(rawModelJson);
-  if (!graph) {
-    throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
-  }
-  return graph;
-};
-
 const getApiErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -65,118 +55,76 @@ const getApiErrorMessage = (error: unknown, fallback: string): string => {
 };
 
 export const Workplace = () => {
-  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowCatalogItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [targetWorkflow, setTargetWorkflow] = useState<WorkflowDefinition | null>(null);
+  const [targetWorkflow, setTargetWorkflow] = useState<WorkflowCatalogItem | null>(null);
   const [savedForms, setSavedForms] = useState<FormDefinition[]>([]);
   const [loadingBoundForm, setLoadingBoundForm] = useState(false);
   const [boundFormError, setBoundFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [invalidModelCount, setInvalidModelCount] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const identity = workflowDraftIdentity(user);
+  const currentIdentity = useRef(identity);
+  currentIdentity.current = identity;
+  const launchGeneration = useRef(0);
+  const launchOwner = useRef('');
+  const formCacheOwner = useRef('');
+  const [legacyFormRequested, setLegacyFormRequested] = useState(false);
+  const canUseDraft = hasPermission(['workflow:draft:view', 'workflow:draft:save', 'workflow:draft:submit', 'workflow:process:start'], true);
+  const drafts = useWorkflowDraftList({ pageNum: 1, pageSize: 1 });
   const navigate = useNavigate();
 
   useEffect(() => {
+    let active = true;
+    setSavedForms([]);
     const loadData = async () => {
       setLoading(true);
       try {
-        const response = await getProcessDefinitions({ status: 'PUBLISHED', latestOnly: false });
-        if (Array.isArray(response)) {
-          const publishedOnly = response.some((item: any) => !!item?.status)
-            ? response.filter((item: any) => String(item?.status || '').toUpperCase() === 'PUBLISHED')
-            : response;
-
-          const latestPublishedMap = new Map<string, any>();
-          for (const item of publishedOnly) {
-            const processKey = String(item?.processKey || '').trim();
-            if (!processKey) continue;
-            const current = latestPublishedMap.get(processKey);
-            const currentVersion = Number(current?.version || 0);
-            const nextVersion = Number(item?.version || 0);
-            if (!current || nextVersion >= currentVersion) {
-              latestPublishedMap.set(processKey, item);
-            }
-          }
-
-          let skippedModelCount = 0;
-          const mapped: WorkflowDefinition[] = Array.from(latestPublishedMap.values())
-            .filter(
-              (item: any) =>
-                typeof item?.definitionId === 'string' && item.definitionId.trim() !== '',
-            )
-            .filter((item: any) => typeof item?.processKey === 'string' && item.processKey.trim() !== '')
-            .map((item: any): WorkflowDefinition | null => {
-              const workflowName = item.processName || item.processKey || '未命名流程';
-              try {
-                return {
-                  id: item.definitionId,
-                  name: workflowName,
-                  key: item.processKey,
-                  version: item.version,
-                  formId: item.formId,
-                  category: normalizeWorkflowCategory(item.category),
-                  tags:
-                    typeof item.tags === 'string'
-                      ? item.tags
-                      : JSON.stringify(normalizeWorkflowTags(item.tags)),
-                  description: item.description || '',
-                  graph: parseWorkflowGraph(item.modelJson, workflowName),
-                };
-              } catch (error) {
-                skippedModelCount += 1;
-                console.warn(`[Workplace] 跳过模型异常流程: ${workflowName}`, error);
-                return null;
-              }
-            })
-            .filter((item): item is WorkflowDefinition => item !== null);
-
-          setWorkflows(mapped);
-          setInvalidModelCount(skippedModelCount);
-        } else {
-          setWorkflows([]);
-          setInvalidModelCount(0);
-        }
+        const response = await getStartableProcessDefinitions();
+        if (!active || currentIdentity.current !== identity) return;
+        const valid = response.filter((item) => item.modelValid);
+        setWorkflows(valid.map((item) => ({
+          id: item.definitionId,
+          name: item.processName || item.processKey || '未命名流程',
+          key: item.processKey,
+          version: item.version,
+          formId: item.formId,
+          category: normalizeWorkflowCategory(item.category),
+          tags: item.tags || '[]',
+          description: item.description || '',
+        })));
+        setInvalidModelCount(response.length - valid.length);
       } catch (error) {
+        if (!active || currentIdentity.current !== identity) return;
         console.error('加载流程列表失败:', error);
         toast.error('加载流程列表失败，请稍后重试');
         setWorkflows([]);
         setInvalidModelCount(0);
       } finally {
-        setLoading(false);
+        if (active && currentIdentity.current === identity) setLoading(false);
       }
     };
 
     void loadData();
 
-    if (!user || user.role !== Role.ADMIN) {
-      setSavedForms([]);
-      return;
-    }
-
-    void getFormDefinitions()
-      .then((response) => {
-        if (Array.isArray(response)) {
-          setSavedForms(response.map((item: any) => mapWorkflowBackendForm(item)));
-        }
-      })
-      .catch(() => {
-        setSavedForms([]);
-      });
-  }, [user]);
+    return () => { active = false; };
+  }, [identity]);
 
   useEffect(() => {
-    if (!isFormOpen || !targetWorkflow?.formId) {
+    if (!isFormOpen || launchOwner.current !== identity || !targetWorkflow?.formId || (canUseDraft && !legacyFormRequested)) {
       setLoadingBoundForm(false);
       setBoundFormError(null);
       return;
     }
 
     const formId = targetWorkflow.formId;
-    if (savedForms.some((form) => form.id === formId)) {
+    const formOwner = `${identity}:${targetWorkflow.id}`;
+    if (formCacheOwner.current === formOwner && savedForms.some((form) => form.id === formId)) {
       setLoadingBoundForm(false);
       setBoundFormError(null);
       return;
@@ -186,10 +134,11 @@ export const Workplace = () => {
     setLoadingBoundForm(true);
     setBoundFormError(null);
 
-    void getFormDefinition(formId)
+    void getFormDefinition(formId, { definitionId: targetWorkflow.id })
       .then((response) => {
-        if (cancelled) return;
+        if (cancelled || currentIdentity.current !== identity) return;
         const mapped = mapWorkflowBackendForm(response);
+        formCacheOwner.current = formOwner;
         setSavedForms((prev) => {
           const exists = prev.some((item) => item.id === mapped.id);
           if (exists) {
@@ -199,11 +148,11 @@ export const Workplace = () => {
         });
       })
       .catch((error) => {
-        if (cancelled) return;
+        if (cancelled || currentIdentity.current !== identity) return;
         setBoundFormError(error instanceof Error ? error.message : '加载绑定表单失败');
       })
       .finally(() => {
-        if (!cancelled) {
+        if (!cancelled && currentIdentity.current === identity) {
           setLoadingBoundForm(false);
         }
       });
@@ -211,11 +160,19 @@ export const Workplace = () => {
     return () => {
       cancelled = true;
     };
-  }, [isFormOpen, savedForms, targetWorkflow?.formId]);
+  }, [isFormOpen, savedForms, targetWorkflow?.formId, targetWorkflow?.id, identity, canUseDraft, legacyFormRequested]);
+
+  const visibleWorkflows = useMemo(
+    () => workflows.filter((workflow) => {
+      const entry = getWorkflowBusinessEntry(workflow.key);
+      return !entry || hasPermission(entry.permission);
+    }),
+    [workflows, hasPermission],
+  );
 
   const filteredWorkflows = useMemo(
     () =>
-      workflows.filter((workflow) => {
+      visibleWorkflows.filter((workflow) => {
         const matchesSearch = workflow.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = !selectedCategory || workflow.category === selectedCategory;
         const workflowTags = normalizeWorkflowTags(workflow.tags);
@@ -224,12 +181,12 @@ export const Workplace = () => {
 
         return matchesSearch && matchesCategory && matchesTags;
       }),
-    [searchTerm, selectedCategory, selectedTags, workflows],
+    [searchTerm, selectedCategory, selectedTags, visibleWorkflows],
   );
 
   const allTags = useMemo(
-    () => Array.from(new Set(workflows.flatMap((workflow) => normalizeWorkflowTags(workflow.tags)))),
-    [workflows],
+    () => Array.from(new Set(visibleWorkflows.flatMap((workflow) => normalizeWorkflowTags(workflow.tags)))),
+    [visibleWorkflows],
   );
 
   const categoryFilters = useMemo(
@@ -238,7 +195,7 @@ export const Workplace = () => {
   );
   const selectedCategoryLabel = categoryFilters.find((item) => item.value === selectedCategory)?.label || '全部';
 
-  const boundForm = targetWorkflow?.formId
+  const boundForm = formCacheOwner.current === `${identity}:${targetWorkflow?.id}` && targetWorkflow?.formId
     ? savedForms.find((form) => form.id === targetWorkflow.formId)
     : undefined;
 
@@ -249,16 +206,34 @@ export const Workplace = () => {
         .join(' · ')
     : '';
   const statCards = [
-    { label: '已发布流程', value: String(workflows.length), detail: '启动大厅', icon: LayoutGrid, tone: 'blue' },
+    { label: '已发布流程', value: String(visibleWorkflows.length), detail: '启动大厅', icon: LayoutGrid, tone: 'blue' },
     { label: '当前符合', value: String(filteredWorkflows.length), detail: selectedCategoryLabel, icon: Search, tone: 'green' },
     { label: '流程分类', value: String(Math.max(categoryFilters.length - 1, 0)), detail: '业务域', icon: FileText, tone: 'amber' },
     { label: '标签', value: String(allTags.length), detail: selectedTags.length ? `已选 ${selectedTags.length}` : '全部标签', icon: Tags, tone: 'violet' },
   ];
 
-  const handleStartClick = (workflow: WorkflowDefinition) => {
+  const openBusinessWorkflow = (workflow: WorkflowCatalogItem): boolean => {
+    const entry = getWorkflowBusinessEntry(workflow.key);
+    if (!entry) return false;
+    if (hasPermission(entry.permission)) navigate(entry.path);
+    else toast.error(`当前账号没有“${entry.label}”权限`);
+    return true;
+  };
+
+  const handleStartClick = (workflow: WorkflowCatalogItem) => {
+    if (openBusinessWorkflow(workflow)) return;
+    launchGeneration.current += 1;
+    launchOwner.current = identity;
+    setLegacyFormRequested(false);
     setBoundFormError(null);
     setTargetWorkflow(workflow);
     setIsFormOpen(true);
+  };
+
+  const closeLaunchDialog = () => {
+    launchGeneration.current += 1;
+    setIsFormOpen(false);
+    setTargetWorkflow(null);
   };
 
   const clearFilters = () => {
@@ -275,8 +250,14 @@ export const Workplace = () => {
     );
   };
 
-  const handleStartProcess = async (formData: Record<string, any>) => {
+  const handleStartProcess = async (formData: Record<string, any>, nodeAssignees?: Record<string, string[]>) => {
     if (!targetWorkflow || !user) return;
+    if (openBusinessWorkflow(targetWorkflow)) {
+      closeLaunchDialog();
+      return;
+    }
+    const generation = launchGeneration.current;
+    const owner = identity;
 
     try {
       await startProcess({
@@ -286,15 +267,17 @@ export const Workplace = () => {
         startUserId: user.id,
         startUserName: user.name,
         variables: { ...formData },
+        nodeAssignees,
       });
 
+      if (generation !== launchGeneration.current || currentIdentity.current !== owner) return;
       toast.success('流程发起成功');
-      setIsFormOpen(false);
-      setTargetWorkflow(null);
+      closeLaunchDialog();
       navigate('/my-apps');
     } catch (error) {
-      console.error('流程发起失败:', error);
+      if (generation !== launchGeneration.current || currentIdentity.current !== owner) return;
       toast.error(getApiErrorMessage(error, '流程发起失败，请重试'));
+      throw error;
     }
   };
 
@@ -391,11 +374,10 @@ export const Workplace = () => {
                 </TableCell>
 
                 <TableCell>
-                  <div className="flex justify-end">
-                    <Button size="sm" className="gap-1.5" onClick={() => handleStartClick(workflow)}>
-                      发起
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
+                  <div className="admin-users-row-actions">
+                    <button type="button" data-tooltip="发起流程" aria-label="发起流程" onClick={() => handleStartClick(workflow)}>
+                      <ArrowRight size={15} />
+                    </button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -427,6 +409,7 @@ export const Workplace = () => {
           ) : null}
         </div>
         <div className="admin-source-controls">
+          {drafts.allowed ? <Button variant="outline" size="sm" onClick={() => navigate('/workflow/drafts')}><FileText size={14} className="mr-1.5" />我的草稿{drafts.loading || drafts.error ? '' : `(${drafts.total})`}</Button> : null}
           {hasActiveFilters ? (
             <Button
               variant="outline"
@@ -564,13 +547,18 @@ export const Workplace = () => {
   return (
     <section className="admin-source-page">
       <WorkflowLaunchDialog
-        open={isFormOpen}
+        open={isFormOpen && launchOwner.current === identity}
         workflow={targetWorkflow}
         boundForm={boundForm}
         loadingBoundForm={loadingBoundForm}
         boundFormError={boundFormError}
-        onClose={() => setIsFormOpen(false)}
+        onClose={closeLaunchDialog}
         onSubmit={handleStartProcess}
+        draftCount={drafts.loading || drafts.error ? undefined : drafts.total}
+        onDraftChanged={drafts.reload}
+        onDraftSubmitted={() => { toast.success('流程发起成功'); closeLaunchDialog(); navigate('/my-apps'); }}
+        onDraftPermissionUnavailable={() => setLegacyFormRequested(true)}
+        onOpenDrafts={drafts.allowed ? () => navigate('/workflow/drafts') : undefined}
       />
 
       <TablePageLayout

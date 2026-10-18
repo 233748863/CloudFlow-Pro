@@ -37,7 +37,7 @@
   .dashboard-model-row p {
       margin: 0;
       overflow: hidden;
-      color: #0a0a0a;
+      color: var(--cf-fg-title);
       font-size: 0.8125rem;
       font-weight: 600;
       text-overflow: ellipsis;
@@ -48,14 +48,14 @@
       display: block;
       margin-top: 0.25rem;
       overflow: hidden;
-      color: #737373;
+      color: var(--cf-fg-subtle);
       font-size: 0.75rem;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
   .dashboard-model-row strong {
-      color: #059669;
+      color: var(--cf-fg-body);
       font-size: 0.8125rem;
       font-weight: 600;
       white-space: nowrap;

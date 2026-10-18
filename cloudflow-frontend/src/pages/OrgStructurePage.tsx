@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, CheckCircle2, RefreshCw, Search, Users } from 'lucide-react';
+import { Building2, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/common';
 import { OrgStructure, type OrgStructureStats } from '../components/OrgStructure';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
@@ -20,7 +20,11 @@ export const OrgStructurePage = () => {
   const [stats, setStats] = useState<OrgStructureStats>(createInitialStats);
   const [refreshSignal, setRefreshSignal] = useState(0);
 
-  const currentDeptLabel = stats.selectedDeptName || '全部用户';
+  const currentDeptLabel = stats.selectedDeptName || '全组织';
+  const deptCount = stats.deptSearch ? stats.filteredDepartments : stats.totalDepartments;
+  const memberCount = stats.userSearch ? stats.filteredUsers : stats.scopedUsers;
+  const inactiveDepartments = Math.max(stats.totalDepartments - stats.activeDepartments, 0);
+  const inactiveMembers = Math.max(memberCount - stats.activeUsers, 0);
 
   const pageActions = (
     <div className="grid gap-5">
@@ -38,51 +42,36 @@ export const OrgStructurePage = () => {
         </div>
       </header>
 
-      <section className="admin-source-stat-grid">
-        <article className="card admin-source-stat admin-source-tone-blue">
-          <span className="admin-source-stat-icon"><Building2 size={20} /></span>
-          <div className="min-w-0">
-            <p>部门</p>
-            <strong>{stats.deptSearch ? stats.filteredDepartments : stats.totalDepartments}</strong>
-            <span>{stats.deptSearch ? '当前筛选结果' : '全部部门'}</span>
-          </div>
-        </article>
-        <article className="card admin-source-stat admin-source-tone-green">
-          <span className="admin-source-stat-icon"><CheckCircle2 size={20} /></span>
-          <div className="min-w-0">
-            <p>启用部门</p>
-            <strong>{stats.activeDepartments}</strong>
-            <span>组织状态正常</span>
-          </div>
-        </article>
-        <article className="card admin-source-stat admin-source-tone-amber">
-          <span className="admin-source-stat-icon"><Users size={20} /></span>
-          <div className="min-w-0">
-            <p>成员</p>
-            <strong>{stats.userSearch ? stats.filteredUsers : stats.scopedUsers}</strong>
-            <span>{currentDeptLabel}</span>
-          </div>
-        </article>
-        <article className="card admin-source-stat admin-source-tone-violet">
-          <span className="admin-source-stat-icon"><Search size={20} /></span>
-          <div className="min-w-0">
-            <p>启用成员</p>
-            <strong>{stats.activeUsers}</strong>
-            <span>{stats.userSearch || stats.deptSearch ? '筛选中' : '当前范围'}</span>
-          </div>
-        </article>
+      {/* 原来是四张统计卡，撑掉近 200px 首屏，而四个数字（部门/启用部门/成员/启用成员）
+          在演示数据下全是 50，信息量极低；下面还有一条 filter 条重复同样的数字。
+          压成一条信息带，省下的高度还给部门树 —— 深层级组织最缺的就是垂直空间。
+          停用数只在真的有停用时才出现，避免又是一个恒为 0 的噪音数字。 */}
+      <section className="card flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5 text-xs">
+        <span className="inline-flex items-center gap-1.5 font-semibold text-cf-title">
+          <Building2 size={14} className="text-[#0d95b5]" />
+          {currentDeptLabel}
+        </span>
+        <span className="text-cf-subtle">
+          部门 <strong className="font-semibold tabular-nums text-cf-body">{deptCount}</strong>
+          {stats.deptSearch ? <span className="ml-1 text-cf-faint">（筛选中）</span> : null}
+        </span>
+        <span className="text-cf-subtle">
+          成员 <strong className="font-semibold tabular-nums text-cf-body">{memberCount}</strong>
+          {stats.userSearch ? <span className="ml-1 text-cf-faint">（筛选中）</span> : null}
+        </span>
+        {inactiveDepartments > 0 ? (
+          <span className="text-cf-subtle">停用部门 <strong className="font-semibold tabular-nums text-amber-600">{inactiveDepartments}</strong></span>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-cf-subtle">
+            <CheckCircle2 size={13} className="text-emerald-500" />
+            组织状态正常
+          </span>
+        )}
+        {inactiveMembers > 0 ? (
+          <span className="text-cf-subtle">停用成员 <strong className="font-semibold tabular-nums text-amber-600">{inactiveMembers}</strong></span>
+        ) : null}
       </section>
     </div>
-  );
-
-  const pageFilters = (
-      <section className="card admin-users-toolbar">
-        <div className="admin-users-toolbar-actions justify-start">
-          <span className="admin-users-filter-count">{currentDeptLabel}</span>
-          <span className="text-xs text-cf-subtle">部门 {stats.deptSearch ? stats.filteredDepartments : stats.totalDepartments}</span>
-          <span className="text-xs text-cf-subtle">成员 {stats.userSearch ? stats.filteredUsers : stats.scopedUsers}</span>
-        </div>
-      </section>
   );
 
   const pageContent = (
@@ -93,7 +82,6 @@ export const OrgStructurePage = () => {
     <section className="admin-source-page">
       <TablePageLayout
         actions={pageActions}
-        filters={pageFilters}
         table={pageContent}
       />
     </section>

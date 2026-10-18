@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Edit, Plus, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Edit, Eye, Plus, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -11,7 +11,7 @@ import {
 } from '../../services/api/system';
 import { clearConfigCache, getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog, Pagination } from '@/components/common';
 import {
   Button,
   Input,
@@ -145,6 +145,7 @@ export const ConfigList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<SysConfig | null>(null);
   const [pendingDeleteConfig, setPendingDeleteConfig] = useState<SysConfig | null>(null);
+  const [detailConfig, setDetailConfig] = useState<SysConfig | null>(null);
   const [formData, setFormData] = useState<SysConfig>(DEFAULT_FORM_DATA);
 
   const normalizeConfigListResponse = (response: any) => {
@@ -593,6 +594,10 @@ export const ConfigList = () => {
                   </td>
                   <td className="admin-config-actions-col">
                     <div className="admin-users-row-actions">
+                      {/* 查看只读，不设权限门禁；编辑/删除仍各自受限。 */}
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailConfig(config)}>
+                        <Eye size={15} />
+                      </button>
                       <button type="button" data-tooltip="编辑参数" aria-label="编辑参数" onClick={() => handleOpenModal(config)}>
                         <Edit size={15} />
                       </button>
@@ -772,6 +777,33 @@ export const ConfigList = () => {
           </form>
       </BaseDialog>
 
+      <DetailDialog
+        open={Boolean(detailConfig)}
+        title="参数详情"
+        onClose={() => setDetailConfig(null)}
+        heading={detailConfig?.configName}
+        subheading={detailConfig?.configKey}
+        headingAside={detailConfig ? (
+          <span className="text-xs text-cf-subtle">{detailConfig.configType === 'Y' ? '系统内置' : '自定义'}</span>
+        ) : undefined}
+        sections={detailConfig ? [
+          {
+            title: '参数信息',
+            items: [
+              { label: '参数名称', value: detailConfig.configName },
+              { label: '参数键名', value: detailConfig.configKey },
+              { label: '参数键值', value: detailConfig.configValue, wide: true },
+              { label: '系统内置', value: detailConfig.configType === 'Y' ? '是' : '否' },
+              { label: '配置范围', value: detailConfig.configScope === '0' ? '全局' : '租户' },
+              { label: '创建人', value: detailConfig.createBy },
+              { label: '创建时间', value: detailConfig.createTime },
+              { label: '更新人', value: detailConfig.updateBy },
+              { label: '更新时间', value: detailConfig.updateTime },
+              { label: '备注', value: detailConfig.remark, wide: true },
+            ],
+          },
+        ] : []}
+      />
       <ConfirmDialog
         open={Boolean(pendingDeleteConfig)}
         title="删除参数"

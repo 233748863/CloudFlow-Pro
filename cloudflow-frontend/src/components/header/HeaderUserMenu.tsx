@@ -10,6 +10,7 @@ export const HeaderUserMenu: React.FC = () => {
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
 
   useEffect(() => {
     if (!dropdownOpen) {
@@ -75,8 +76,9 @@ export const HeaderUserMenu: React.FC = () => {
         aria-haspopup="menu"
       >
         <div className="app-avatar">
-          {avatar ? (
-            <img src={avatar} alt={displayName} className="h-full w-full object-cover" />
+          {avatar && avatar !== failedAvatar ? (
+            <img key={avatar} src={avatar} alt={displayName} className="h-full w-full object-cover"
+              onError={() => setFailedAvatar(avatar)} />
           ) : (
             <DefaultAvatar label={displayName} size="xs" />
           )}

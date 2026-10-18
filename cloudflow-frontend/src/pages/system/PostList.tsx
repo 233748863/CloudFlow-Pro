@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { BriefcaseBusiness, Edit, Plus, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { BriefcaseBusiness, Edit, Eye, Plus, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { addPost, deletePost, getPostList, updatePost, type SysPost } from '../../services/api/system';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog, Pagination } from '@/components/common';
 import {
   Button,
   Input,
@@ -91,6 +91,7 @@ export const PostList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<SysPost | null>(null);
   const [pendingDeletePost, setPendingDeletePost] = useState<SysPost | null>(null);
+  const [detailPost, setDetailPost] = useState<SysPost | null>(null);
   const [formData, setFormData] = useState<SysPost>(DEFAULT_FORM_DATA);
 
   const normalizePostListResponse = (response: any) => {
@@ -458,6 +459,9 @@ export const PostList = () => {
                   <td className="text-sm text-cf-subtle">{post.createTime || '-'}</td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailPost(post)}>
+                        <Eye size={15} />
+                      </button>
                       <button type="button" data-tooltip="编辑岗位" aria-label="编辑岗位" onClick={() => handleOpenModal(post)}>
                         <Edit size={15} />
                       </button>
@@ -613,6 +617,32 @@ export const PostList = () => {
           </form>
       </BaseDialog>
 
+      <DetailDialog
+        open={Boolean(detailPost)}
+        title="岗位详情"
+        onClose={() => setDetailPost(null)}
+        heading={detailPost?.postName}
+        subheading={detailPost?.postCode}
+        headingAside={detailPost ? (
+          <span className="text-xs text-cf-subtle">{detailPost.status === '0' ? '正常' : '停用'}</span>
+        ) : undefined}
+        sections={detailPost ? [
+          {
+            title: '岗位信息',
+            items: [
+              { label: '岗位名称', value: detailPost.postName },
+              { label: '岗位编码', value: detailPost.postCode },
+              { label: '显示顺序', value: String(detailPost.postSort) },
+              { label: '状态', value: detailPost.status === '0' ? '正常' : '停用' },
+              { label: '创建人', value: detailPost.createBy },
+              { label: '创建时间', value: detailPost.createTime },
+              { label: '更新人', value: detailPost.updateBy },
+              { label: '更新时间', value: detailPost.updateTime },
+              { label: '备注', value: detailPost.remark, wide: true },
+            ],
+          },
+        ] : []}
+      />
       <ConfirmDialog
         open={Boolean(pendingDeletePost)}
         title="删除岗位"

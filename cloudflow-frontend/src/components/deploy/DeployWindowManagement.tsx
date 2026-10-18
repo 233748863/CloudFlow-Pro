@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Clock3, Edit2, Plus, Power, PowerOff, RefreshCw, Trash2 } from 'lucide-react';
+import { Clock3, Edit2, Eye, Plus, Power, PowerOff, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   BaseDialog,
   ConfirmDialog,
+  DetailDialog,
 } from '@/components/common';
 import { Button, Input, Textarea } from '@/components/common';
 import { DatePicker } from '@/components/common/date-picker';
@@ -145,6 +146,7 @@ export const DeployWindowManagement: React.FC = () => {
   const [editingWindow, setEditingWindow] = useState<DeployWindow | null>(null);
   const [formData, setFormData] = useState<DeployWindow>(emptyFormData);
   const [deleteTarget, setDeleteTarget] = useState<DeployWindow | null>(null);
+  const [detailWindow, setDetailWindow] = useState<DeployWindow | null>(null);
 
   const resetDialog = () => {
     setEditingWindow(null);
@@ -349,6 +351,9 @@ export const DeployWindowManagement: React.FC = () => {
                     <td><span className={`badge ${window.isEnabled ? 'badge-success' : 'badge-gray'}`}>{window.isEnabled ? '启用' : '禁用'}</span></td>
                     <td>
                       <div className="admin-users-row-actions justify-end">
+                        <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailWindow(window)}>
+                          <Eye size={15} />
+                        </button>
                         <button type="button" data-tooltip="编辑窗口" aria-label="编辑窗口" onClick={() => handleEdit(window)}>
                           <Edit2 size={15} />
                         </button>
@@ -567,6 +572,31 @@ export const DeployWindowManagement: React.FC = () => {
         danger
         onConfirm={() => handleDelete(deleteTarget)}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <DetailDialog
+        open={Boolean(detailWindow)}
+        title="发布窗口详情"
+        onClose={() => setDetailWindow(null)}
+        heading={detailWindow?.windowName}
+        subheading={detailWindow ? WINDOW_TYPES.find((item) => item.value === detailWindow.windowType)?.label : undefined}
+        headingAside={detailWindow ? (
+          <span className="text-xs text-cf-subtle">{detailWindow.isEnabled ? '启用' : '禁用'}</span>
+        ) : undefined}
+        sections={detailWindow ? [
+          {
+            title: '窗口信息',
+            items: [
+              { label: '窗口名称', value: detailWindow.windowName },
+              { label: '窗口类型', value: WINDOW_TYPES.find((item) => item.value === detailWindow.windowType)?.label || detailWindow.windowType },
+              { label: '开始时间', value: detailWindow.startTime },
+              { label: '结束时间', value: detailWindow.endTime },
+              { label: '生效日程', value: getScheduleLabel(detailWindow) },
+              { label: '状态', value: detailWindow.isEnabled ? '启用' : '禁用' },
+              { label: '说明', value: detailWindow.description, wide: true },
+            ],
+          },
+        ] : []}
       />
     </>
   );

@@ -1,0 +1,47 @@
+.oauth2-workspace .btn,
+.oauth2-workspace .pagination-btn,
+.oauth2-workspace .pagination-actions .select-trigger.select-trigger,
+.oauth2-dialog .btn,
+.oauth2-dialog .modal-close,
+.oauth2-dialog input:not([type="checkbox"]),
+.oauth2-dialog textarea,
+.oauth2-dialog .select-trigger.select-trigger {
+  min-height: 44px;
+}
+
+.oauth2-workspace .pagination-btn,
+.oauth2-dialog .modal-close {
+  min-width: 44px;
+}
+
+.oauth2-workspace .btn,
+.oauth2-workspace .pagination-btn,
+.oauth2-dialog .btn,
+.oauth2-dialog .modal-close {
+  transition-duration: 150ms;
+}
+
+.oauth2-dialog {
+  animation-duration: 200ms;
+}
+
+.oauth2-dialog textarea {
+  width: 100%;
+  border: 1px solid var(--cf-border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: var(--cf-surface);
+  color: inherit;
+  resize: vertical;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oauth2-workspace .btn,
+  .oauth2-workspace .pagination-btn,
+  .oauth2-dialog,
+  .oauth2-dialog .btn,
+  .oauth2-dialog .modal-close {
+    animation: none;
+    transition: none;
+  }
+}

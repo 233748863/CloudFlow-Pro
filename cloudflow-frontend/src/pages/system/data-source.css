@@ -1,0 +1,36 @@
+.data-source-workspace .btn,
+.data-source-workspace .pagination-btn,
+.data-source-workspace .pagination-actions .select-trigger.select-trigger,
+.data-source-dialog .btn,
+.data-source-dialog .modal-close,
+.data-source-dialog input:not([type="checkbox"]),
+.data-source-dialog .select-trigger.select-trigger {
+  min-height: 44px;
+}
+
+.data-source-workspace .pagination-btn,
+.data-source-dialog .modal-close {
+  min-width: 44px;
+}
+
+.data-source-workspace .btn,
+.data-source-workspace .pagination-btn,
+.data-source-dialog .btn,
+.data-source-dialog .modal-close {
+  transition-duration: 150ms;
+}
+
+.data-source-dialog {
+  animation-duration: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .data-source-workspace .btn,
+  .data-source-workspace .pagination-btn,
+  .data-source-dialog,
+  .data-source-dialog .btn,
+  .data-source-dialog .modal-close {
+    animation: none;
+    transition: none;
+  }
+}

@@ -28,6 +28,7 @@ import { useConfigInt, getConfigIntSync } from '../../hooks/useSystemConfig';
 import { useDict } from '@/hooks/useDict';
 import {
   deleteFile,
+  downloadAuthorizedFile,
   getFileList,
   getFileStorageSummary,
   refreshFileStorageSummary,
@@ -42,6 +43,9 @@ import {
   SYSTEM_FILE_TYPE_FILTER_OPTIONS,
 } from '@/utils/enumLabels';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import FilePreviewButton from '@/components/file-preview/FilePreviewButton';
+import { useAuth } from '@/context/AuthContext';
+import { downloadBlob } from '@/utils/download';
 
 interface SysFile {
   fileId: number;
@@ -168,7 +172,12 @@ const normalizeListResponse = (response: any): { rows: SysFile[]; total: number 
 };
 
 export const FileList = () => {
+  const { user, hasPermission } = useAuth();
+  const downloadScope = JSON.stringify([user?.tenantId, user?.id]);
+  const pendingDownloads = useRef(new Map<number, AbortController>());
+  const [downloading, setDownloading] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const listRequestVersion = useRef(0);
   const fileTypeDict = useDict('sys_file_type');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +199,36 @@ export const FileList = () => {
   });
 
   const [maxFileSizeMB] = useConfigInt(SYS_UPLOAD_MAX_FILE_SIZE, 50);
+  useEffect(() => {
+    const cancelDownloads = () => {
+      pendingDownloads.current.forEach(controller => controller.abort());
+      pendingDownloads.current.clear();
+    };
+    setDownloading(new Set());
+    window.addEventListener('cloudflow:auth-expired', cancelDownloads);
+    return () => {
+      cancelDownloads();
+      window.removeEventListener('cloudflow:auth-expired', cancelDownloads);
+    };
+  }, [downloadScope]);
+
+  const handleDownload = async (file: SysFile) => {
+    if (pendingDownloads.current.has(file.fileId) || !hasPermission('system:file:preview')) return;
+    const controller = new AbortController();
+    pendingDownloads.current.set(file.fileId, controller);
+    setDownloading(current => new Set(current).add(file.fileId));
+    try {
+      const blob = await downloadAuthorizedFile({ bizType: 'PUBLIC', fileId: file.fileId }, controller.signal);
+      if (!controller.signal.aborted) downloadBlob(blob, file.fileName);
+    } catch (failure) {
+      if (!controller.signal.aborted && !(failure instanceof DOMException && failure.name === 'AbortError')) toast.error(getErrorMessage(failure, '文件下载失败'));
+    } finally {
+      if (pendingDownloads.current.get(file.fileId) === controller) {
+        pendingDownloads.current.delete(file.fileId);
+        setDownloading(current => { const next = new Set(current); next.delete(file.fileId); return next; });
+      }
+    }
+  };
   const fileTypeOptions = useMemo(() => {
     const dictOptions = fileTypeDict.getOptions();
     return [FILE_TYPE_OPTIONS[0], ...(dictOptions.length > 0 ? dictOptions : FILE_TYPE_OPTIONS.slice(1))];
@@ -202,15 +241,18 @@ export const FileList = () => {
   };
 
   const fetchData = async (nextQuery: QueryState) => {
+    const requestVersion = ++listRequestVersion.current;
     setLoading(true);
     setError(null);
 
     try {
       const response = await getFileList(nextQuery);
+      if (requestVersion !== listRequestVersion.current) return;
       const normalized = normalizeListResponse(response);
       setData(normalized.rows);
       setTotal(normalized.total);
     } catch (fetchError) {
+      if (requestVersion !== listRequestVersion.current) return;
       console.error(fetchError);
       const message = '加载文件列表失败，请稍后重试';
       setError(message);
@@ -218,7 +260,7 @@ export const FileList = () => {
       setTotal(0);
       toast.error(message);
     } finally {
-      setLoading(false);
+      if (requestVersion === listRequestVersion.current) setLoading(false);
     }
   };
 
@@ -238,6 +280,7 @@ export const FileList = () => {
 
   useEffect(() => {
     void fetchData(query);
+    return () => { listRequestVersion.current += 1; };
   }, [query]);
 
   useEffect(() => {
@@ -542,10 +585,13 @@ export const FileList = () => {
                   </td>
                   <td>
                     <div className="admin-users-row-actions">
+                      <FilePreviewButton request={{ bizType: 'PUBLIC', fileId: file.fileId }} fileName={file.fileName}
+                        download={signal => downloadAuthorizedFile({ bizType: 'PUBLIC', fileId: file.fileId }, signal)} iconOnly />
                       <button
                         type="button"
                         data-tooltip="下载文件" aria-label="下载文件"
-                        onClick={() => window.open(file.url, '_blank', 'noopener,noreferrer')}
+                        disabled={downloading.has(file.fileId) || !hasPermission('system:file:preview')}
+                        onClick={() => void handleDownload(file)}
                       >
                         <Download size={15} />
                       </button>

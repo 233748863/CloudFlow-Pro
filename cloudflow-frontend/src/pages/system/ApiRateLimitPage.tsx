@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { Edit, Gauge, Plus, Power, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Zap } from 'lucide-react';
+import { Edit, Eye, Gauge, Plus, Power, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -17,7 +17,7 @@ import {
   type RateLimitStatus,
   type RateLimitStrategy,
 } from '@/services/api/apiRateLimit';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DetailDialog, Pagination } from '@/components/common';
 import {
   Button,
   Input,
@@ -120,6 +120,7 @@ export const ApiRateLimitPage = () => {
   const [editing, setEditing] = useState<SysApiRatelimitRule | null>(null);
   const [formData, setFormData] = useState<SysApiRatelimitRule>(DEFAULT_FORM);
   const [pendingDelete, setPendingDelete] = useState<SysApiRatelimitRule | null>(null);
+  const [detailRule, setDetailRule] = useState<SysApiRatelimitRule | null>(null);
   const [republishing, setRepublishing] = useState(false);
 
   const fetchRules = async (next = query) => {
@@ -543,6 +544,9 @@ export const ApiRateLimitPage = () => {
                   </td>
                   <td className="text-right">
                     <div className="admin-users-row-actions">
+                      <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRule(rule)}>
+                        <Eye size={15} />
+                      </button>
                       <button
                         type="button"
                         data-tooltip={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'} aria-label={rule.status === 'ACTIVE' ? '停用规则' : '启用规则'}
@@ -776,6 +780,51 @@ export const ApiRateLimitPage = () => {
         confirmText="删除"
         danger
         onConfirm={handleDelete}
+      />
+
+      <DetailDialog
+        open={Boolean(detailRule)}
+        title="限流规则详情"
+        onClose={() => setDetailRule(null)}
+        heading={detailRule?.ruleName}
+        subheading={detailRule?.ruleCode}
+        headingAside={detailRule ? (
+          <span className="text-xs text-cf-subtle">{detailRule.status === 'ACTIVE' ? '启用' : '停用'}</span>
+        ) : undefined}
+        sections={detailRule ? [
+          {
+            title: '基础信息',
+            items: [
+              { label: '规则名称', value: detailRule.ruleName },
+              { label: '规则编码', value: detailRule.ruleCode },
+              { label: '服务名', value: detailRule.serviceName },
+              { label: '请求方法', value: detailRule.httpMethod },
+              { label: '路径模式', value: <span className="font-mono text-xs">{detailRule.pathPattern}</span>, wide: true },
+            ],
+          },
+          {
+            title: '限流配置',
+            items: [
+              { label: '限流维度', value: DIMENSION_OPTIONS.find((o) => o.value === detailRule.dimension)?.label ?? detailRule.dimension },
+              { label: '每秒请求数', value: String(detailRule.rps) },
+              { label: '突发容量', value: detailRule.burst === undefined ? '' : String(detailRule.burst) },
+              { label: '统计窗口', value: detailRule.windowSeconds === undefined ? '' : `${detailRule.windowSeconds} 秒` },
+              { label: '超额策略', value: STRATEGY_LABEL[detailRule.rejectStrategy] ?? detailRule.rejectStrategy },
+              { label: '优先级', value: String(detailRule.priority) },
+              { label: '状态', value: detailRule.status === 'ACTIVE' ? '启用' : '停用' },
+              { label: '备注', value: detailRule.remark, wide: true },
+            ],
+          },
+          {
+            title: '变更记录',
+            items: [
+              { label: '创建人', value: detailRule.createBy },
+              { label: '创建时间', value: detailRule.createTime },
+              { label: '更新人', value: detailRule.updateBy },
+              { label: '更新时间', value: detailRule.updateTime },
+            ],
+          },
+        ] : []}
       />
     </>
   );

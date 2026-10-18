@@ -319,17 +319,18 @@ export const DeployApprovalManagement: React.FC = () => {
                       <div className="mt-1">完成时间 · {approval.completeTime || '处理中'}</div>
                     </td>
                     <td className="align-top">
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => void handleViewDetail(approval)}>
-                          <Eye className="h-4 w-4" />
-                          查看详情
-                        </Button>
+                      <div className="admin-users-row-actions">
+                        <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => void handleViewDetail(approval)}>
+                          <Eye size={15} />
+                        </button>
 
                         {activeView === 'pending' && approval.approvalStatus === 'PENDING' ? (
                           <>
-                            <Button
-                              size="sm"
-                              className="bg-emerald-600 shadow-none hover:bg-emerald-700"
+                            <button
+                              type="button"
+                              className="tone-success"
+                              data-tooltip="通过"
+                              aria-label="通过"
                               onClick={() =>
                                 setApproveModal({
                                   approvalId: approval.id,
@@ -338,12 +339,13 @@ export const DeployApprovalManagement: React.FC = () => {
                                 })
                               }
                             >
-                              <CheckCircle className="h-4 w-4" />
-                              通过
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
+                              <CheckCircle size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="tone-danger"
+                              data-tooltip="驳回"
+                              aria-label="驳回"
                               onClick={() =>
                                 setApproveModal({
                                   approvalId: approval.id,
@@ -352,22 +354,21 @@ export const DeployApprovalManagement: React.FC = () => {
                                 })
                               }
                             >
-                              <XCircle className="h-4 w-4" />
-                              驳回
-                            </Button>
+                              <XCircle size={15} />
+                            </button>
                           </>
                         ) : null}
 
                         {activeView === 'submitted' && approval.approvalStatus === 'PENDING' ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:text-rose-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-200"
+                          <button
+                            type="button"
+                            className="danger"
+                            data-tooltip="取消审批"
+                            aria-label="取消审批"
                             onClick={() => setCancelTarget(approval)}
                           >
-                            <X className="h-4 w-4" />
-                            取消审批
-                          </Button>
+                            <X size={15} />
+                          </button>
                         ) : null}
                       </div>
                     </td>

@@ -1,0 +1,80 @@
+.im-config-workspace .btn,
+.im-sync-workspace .btn,
+.im-sync-workspace .select-trigger.select-trigger,
+.im-sync-workspace .pagination-btn,
+.im-sync-workspace .pagination-actions .select-trigger.select-trigger,
+.im-sync-dialog .btn,
+.im-sync-dialog .modal-close,
+.im-sync-dialog .pagination-btn,
+.im-sync-dialog .pagination-actions .select-trigger.select-trigger,
+.im-config-workspace .pagination-btn,
+.im-sync-workspace .pagination-btn,
+.im-sync-dialog .pagination-btn,
+.im-sync-dialog .modal-close,
+.im-config-workspace .pagination-actions .select-trigger.select-trigger,
+.im-config-dialog .btn,
+.im-config-dialog .modal-close,
+.im-config-dialog input:not([type="checkbox"]),
+.im-config-dialog .select-trigger.select-trigger {
+  min-height: 44px;
+}
+
+.im-config-workspace .pagination-btn,
+.im-config-dialog .modal-close {
+  min-width: 44px;
+}
+
+.im-config-workspace .btn,
+.im-sync-workspace .btn,
+.im-sync-dialog .btn,
+.im-config-dialog .btn,
+.im-config-dialog .modal-close {
+  transition-duration: 150ms;
+}
+
+.im-config-dialog {
+  animation-duration: 200ms;
+}
+
+.im-sync-dialog {
+  animation-duration: 200ms;
+}
+
+.im-sync-workspace,
+.im-scope-fields {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .im-binding-workspace,
+  .im-config-workspace,
+  .im-sync-workspace {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .im-binding-workspace .btn,
+  .im-config-workspace .btn,
+  .im-sync-workspace .btn,
+  .im-sync-dialog,
+  .im-sync-dialog .btn,
+  .im-config-dialog,
+  .im-config-dialog .btn,
+  .im-config-dialog .modal-close {
+    animation: none;
+    transition: none;
+  }
+}
+.im-binding-workspace .btn,
+.im-binding-workspace input {
+  min-height: 44px;
+}
+
+.im-binding-workspace .btn {
+  transition-duration: 150ms;
+}
+
+.im-binding-workspace {
+  min-width: 0;
+}
