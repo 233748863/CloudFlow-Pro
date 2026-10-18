@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CircleDollarSign, FileText, FolderKanban, Handshake, LifeBuoy, ReceiptText, RefreshCcw, Target, UserRound } from 'lucide-react';
+import { ArrowLeft, Check, CircleDollarSign, FileText, FolderKanban, Handshake, LifeBuoy, ReceiptText, RefreshCcw, Target, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common';
 import { crmApi, CrmCustomerWorkspace, CrmRemoteProjectLink } from '@/services/api/crm';
@@ -10,11 +10,18 @@ import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getThresholdStatusLabel } from '@/utils/enumLabels';
 import { useDict } from '@/hooks/useDict';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import { CustomerTimeline } from '@/components/crm/operations/CustomerTimeline';
+import { EmailPanel } from '@/components/crm/email/EmailPanel';
+import { CreditPanel } from '@/components/crm/operations/CreditPanel';
+import { labelOf, ticketPriorities, useAccess } from '@/components/crm/operations/OperationsKit';
 
-type WorkspaceTab = 'overview' | 'contact' | 'opportunity' | 'quote' | 'cashflow' | 'renewal' | 'ticket' | 'project';
+type WorkspaceTab = 'overview' | 'timeline' | 'email' | 'credit' | 'contact' | 'opportunity' | 'quote' | 'cashflow' | 'renewal' | 'ticket' | 'project';
 
 const tabLabelMap: Array<{ value: WorkspaceTab; label: string; icon: React.ReactNode }> = [
   { value: 'overview', label: '概览', icon: <Handshake size={14} /> },
+  { value: 'timeline', label: '经营时间线', icon: <RefreshCcw size={14} /> },
+  { value: 'email', label: '客户邮件', icon: <FileText size={14} /> },
+  { value: 'credit', label: '信用额度', icon: <CircleDollarSign size={14} /> },
   { value: 'contact', label: '联系人与跟进', icon: <UserRound size={14} /> },
   { value: 'opportunity', label: '商机', icon: <Target size={14} /> },
   { value: 'quote', label: '报价与合同', icon: <FileText size={14} /> },
@@ -144,6 +151,7 @@ const renderProjectCard = (
 
 export default function CrmCustomerWorkspacePage() {
   const navigate = useNavigate();
+  const can = useAccess();
   const { customerId } = useParams();
   const [tab, setTab] = useState<WorkspaceTab>('overview');
   const [workspace, setWorkspace] = useState<CrmCustomerWorkspace | null>(null);
@@ -158,11 +166,11 @@ export default function CrmCustomerWorkspacePage() {
   const [selectedBindReceivableId, setSelectedBindReceivableId] = useState('');
 
   const numericCustomerId = Number(customerId || 0);
+  const canReadInvoices = can('oa:invoice:list');
 
   const invoiceStatusDict = useDict('invoice_status');
-  const severityDict = useDict('severity_level');
   const renderInvoiceStatus = (status?: string) => invoiceStatusDict.getLabel(status || '') || '-';
-  const renderSeverity = (severity?: string) => severityDict.getLabel(severity || '') || '-';
+  const renderSeverity = (severity?: string) => labelOf(ticketPriorities, severity);
 
   const load = async () => {
     if (!numericCustomerId) return;
@@ -182,18 +190,22 @@ export default function CrmCustomerWorkspacePage() {
   }, [numericCustomerId]);
 
   useEffect(() => {
-    if (!numericCustomerId) return;
+    let active = true;
+    setInvoiceCandidates([]);
+    setSelectedBindInvoiceId('');
+    if (!numericCustomerId || !canReadInvoices) return;
     void invoiceApi.list({
       pageNum: 1,
       pageSize: 100,
       invoiceDirection: 'OUTPUT',
       customerId: numericCustomerId,
     }).then((result) => {
-      setInvoiceCandidates(result.rows || []);
+      if (active) setInvoiceCandidates(result.rows || []);
     }).catch((error) => {
-      toast.error(getErrorMessage(error, '加载可绑定发票失败'));
+      if (active) toast.error(getErrorMessage(error, '加载可绑定发票失败'));
     });
-  }, [numericCustomerId]);
+    return () => { active = false; };
+  }, [numericCustomerId, canReadInvoices]);
 
   const metrics = useMemo(() => {
     if (!workspace?.customer) return [];
@@ -311,8 +323,10 @@ export default function CrmCustomerWorkspacePage() {
 
   const confirmReceivable = async (receivableId?: number) => {
     if (!numericCustomerId || !receivableId) return;
+    const receivable = workspace?.receivables.find((item) => item.receivableId === receivableId);
     try {
-      await crmApi.confirmWorkspaceReceivable(numericCustomerId, receivableId);
+      if (receivable?.invoiceId != null) throw new Error('已绑定发票，请在发票页面登记收款；此处只查看到账结果。');
+      await crmApi.confirmWorkspaceReceivable(numericCustomerId, receivableId, receivable?.version);
       toast.success('回款已确认');
       await load();
     } catch (error) {
@@ -364,7 +378,7 @@ export default function CrmCustomerWorkspacePage() {
   const pageActions = (
     <div className="grid gap-5">
       <header className="admin-source-header">
-        <div>
+        <div className="min-w-0 max-w-full flex-1 [overflow-wrap:anywhere]">
           <p className="admin-source-kicker">CRM CUSTOMER 360</p>
           <h2>{workspace.customer.customerName}</h2>
           <span>负责人 {workspace.customer.ownerName || '-'}，最近跟进 {formatDateTimeDisplay(workspace.customer.lastFollowUpTime)}</span>
@@ -405,7 +419,7 @@ export default function CrmCustomerWorkspacePage() {
   const pageFilters = (
         <section className="card admin-users-toolbar">
           <TabsList className="w-full justify-start overflow-x-auto">
-            {tabLabelMap.map((item) => (
+            {tabLabelMap.filter(item => (item.value !== 'credit' || can('crm:credit:query')) && (item.value !== 'email' || can('crm:email:list'))).map((item) => (
               <TabsTrigger key={item.value} value={item.value} className="gap-1.5">
                 {item.icon}
                 {item.label}
@@ -417,6 +431,9 @@ export default function CrmCustomerWorkspacePage() {
 
   const pageContent = (
       <>
+        <TabsContent value="timeline" className="admin-source-content-grid admin-crm-workspace-tab"><CustomerTimeline key={numericCustomerId} customerId={numericCustomerId} /></TabsContent>
+        {can('crm:email:list') && <TabsContent value="email" className="admin-source-content-grid admin-crm-workspace-tab"><EmailPanel key={numericCustomerId} bizType="CUSTOMER" bizId={numericCustomerId} /></TabsContent>}
+        {can('crm:credit:query') && <TabsContent value="credit" className="admin-source-content-grid admin-crm-workspace-tab"><CreditPanel key={numericCustomerId} customerId={numericCustomerId} /></TabsContent>}
         <TabsContent value="overview" className="admin-source-content-grid admin-crm-workspace-tab">
           <div className="grid gap-4 xl:grid-cols-3">
             <WorkspacePanel title="健康原因" description="点击跳转到对应业务分区。">
@@ -770,7 +787,7 @@ export default function CrmCustomerWorkspacePage() {
               </InnerTableSurface>
             ) : <EmptyPanel>暂无 OA 发票摘要</EmptyPanel>}
           </WorkspacePanel>
-          <WorkspacePanel title="回款确认" description="客户360内直接确认 CRM 回款。">
+          <WorkspacePanel title="回款确认" description="未绑定发票的计划可确认收款；已绑定发票的计划在发票页登记，此处只查看到账结果。">
             {workspace.receivables.length ? (
               <InnerTableSurface>
                 <table className="unity-data-table admin-source-table admin-crm-table min-w-[720px]">
@@ -788,12 +805,20 @@ export default function CrmCustomerWorkspacePage() {
                       <tr key={`confirm-${item.receivableId}`}>
                         <td><strong>{item.receivableName}</strong></td>
                         <td>{renderStatus(item.status)}</td>
-                        <td>{item.outstandingAmount || 0}</td>
+                        <td><strong>{item.outstandingAmount || 0}</strong><small>已到账 {item.receivedAmount || 0}</small></td>
                         <td>{item.dueDate || '-'}</td>
                         <td>
-                          <Button size="sm" variant="outline" onClick={() => void confirmReceivable(item.receivableId)} disabled={item.status === 'RECEIVED'}>
-                            {item.status === 'RECEIVED' ? '已确认' : '确认回款'}
-                          </Button>
+                          <div className="admin-users-row-actions">
+                            {item.invoiceId != null ? <span className="text-xs text-cf-muted">已绑定发票，请在发票页面登记收款；此处只查看到账结果。</span> : can('crm:receivable:confirm') ? <button
+                              type="button"
+                              data-tooltip={item.status === 'RECEIVED' ? '已确认' : '确认回款'}
+                              aria-label={item.status === 'RECEIVED' ? '已确认' : '确认回款'}
+                              disabled={item.status === 'RECEIVED'}
+                              onClick={() => void confirmReceivable(item.receivableId)}
+                            >
+                              <Check size={15} />
+                            </button> : null}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -845,10 +870,10 @@ export default function CrmCustomerWorkspacePage() {
                   <thead>
                     <tr>
                       <th>工单</th>
-                      <th>严重度</th>
+                      <th>优先级</th>
                       <th>状态</th>
                       <th>负责人</th>
-                      <th>截止时间</th>
+                      <th>服务时限</th>
                       <th>说明</th>
                     </tr>
                   </thead>
@@ -857,9 +882,9 @@ export default function CrmCustomerWorkspacePage() {
                       <tr key={item.ticketId}>
                         <td><strong>{item.ticketTitle}</strong></td>
                         <td>{renderSeverity(item.severity)}</td>
-                        <td>{renderStatus(item.status)}</td>
+                        <td>{item.status === 'WAITING_CUSTOMER' ? '等待客户' : renderStatus(item.status)}</td>
                         <td>{item.ownerName || '-'}</td>
-                        <td>{formatDateTimeDisplay(item.dueTime)}</td>
+                        <td>响应：{formatDateTimeDisplay(item.firstResponseDue)}<br />解决：{formatDateTimeDisplay(item.resolutionDue)}{item.pauseStartTime && <div>暂停中</div>}{Boolean(item.responseBreachedFlag || item.resolutionBreachedFlag) && <div className="text-rose-600">已违约</div>}</td>
                         <td>{item.description || '-'}</td>
                       </tr>
                     ))}

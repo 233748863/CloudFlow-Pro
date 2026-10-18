@@ -1,0 +1,8 @@
+.crm-deal-team { min-width: 0; }
+.crm-deal-team :is(button, input, select, textarea) { min-height: 44px; }
+.crm-deal-team button { transition: background-color 150ms ease, opacity 150ms ease; }
+.crm-deal-member { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); padding: 16px; border: 1px solid var(--cf-border); border-radius: 12px; background: var(--cf-surface); transition: background-color 200ms ease; }
+.crm-deal-summary { display: grid; align-content: center; gap: 4px; font-size: 14px; color: var(--cf-text-muted); }
+.crm-deal-summary strong { font-size: 20px; color: var(--cf-fg-title); font-variant-numeric: tabular-nums; }
+@media (min-width: 768px) { .crm-deal-member { grid-template-columns: minmax(120px, 1.3fr) minmax(110px, 1fr) minmax(100px, .8fr) minmax(100px, 1fr) auto; align-items: center; } }
+@media (prefers-reduced-motion: reduce) { .crm-deal-team button, .crm-deal-member { transition: none; } }

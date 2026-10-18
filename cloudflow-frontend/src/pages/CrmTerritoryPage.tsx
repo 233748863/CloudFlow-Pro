@@ -1,0 +1,25 @@
+import React, { useState } from 'react';
+import { BaseDialog, Button, Input, Textarea, UserSelector } from '@/components/common';
+import { crmOperations, type Territory } from '@/services/api/crm/operations';
+import { Field, OperationsPage, OpsSelect, OpsTable, useAccess, useMutation, useRemote } from '@/components/crm/operations/OperationsKit';
+
+export default function CrmTerritoryPage() {
+  const can = useAccess();
+  const source = useRemote(crmOperations.territories);
+  const mutation = useMutation();
+  const [form, setForm] = useState<Territory>();
+  const [dragged, setDragged] = useState<Territory>();
+  const nodes = source.data || [];
+  const ordered: Territory[] = [];
+  const visited = new Set<number>();
+  const append = (parentId: number, depth: number) => { if (depth > 5) return; nodes.filter(node => node.parentId === parentId).forEach(node => { if (!node.territoryId || visited.has(node.territoryId)) return; visited.add(node.territoryId); ordered.push(node); append(node.territoryId, depth + 1); }); };
+  append(0, 1);
+  ordered.push(...nodes.filter(node => node.territoryId && !visited.has(node.territoryId)));
+  const patch = (fields: Partial<Territory>) => setForm(previous => previous ? { ...previous, ...fields } : previous);
+  const move = (parentId: number) => { if (!dragged || dragged.parentId === parentId) return; if (window.confirm(`将“${dragged.territoryName}”及下级区域移动到${parentId ? nodes.find(node => node.territoryId === parentId)?.territoryName : '根目录'}？`)) void mutation.run(() => crmOperations.saveTerritory({ ...dragged, parentId }), source.refresh); setDragged(undefined); };
+  return <OperationsPage title="销售区域" description="维护最多五级区域；拖动区域行可移动整个分支，也可在编辑中选择上级。" loading={source.loading} error={source.error} refresh={source.refresh} actions={can('crm:territory:edit') && <Button onClick={() => setForm({ territoryCode: '', territoryName: '', parentId: 0, sortNo: 0, status: 'ACTIVE' })}>新增区域</Button>}>
+    {can('crm:territory:edit') && <div className="rounded-lg border border-dashed p-4 text-sm text-cf-muted" onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); move(0); }}>根目录 · 拖到这里移为一级区域</div>}
+    <OpsTable headers={['区域', '编码', '负责人', '层级', '状态', '操作']} empty={!source.loading && !nodes.length}>{ordered.map(node => <tr key={node.territoryId} draggable={can('crm:territory:edit') && !mutation.busy} onDragStart={() => setDragged(node)} onDragEnd={() => setDragged(undefined)} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); move(node.territoryId!); }}><td><span style={{ paddingLeft: Math.max(0, (node.levelPath?.split('/').filter(Boolean).length || 1) - 1) * 20 }}>{node.parentId ? '└ ' : ''}{node.territoryName}</span></td><td>{node.territoryCode}</td><td>{node.ownerId ? <UserSelector single value={String(node.ownerId)} disabled onChange={() => undefined} /> : '—'}</td><td>{node.levelPath?.split('/').filter(Boolean).length || 1}</td><td>{node.status === 'ACTIVE' ? '启用' : '停用'}</td><td>{can('crm:territory:edit') && <div className="crm-ops-actions"><Button variant="ghost" size="sm" onClick={() => setForm({ ...node })}>编辑 / 移动</Button><Button variant="ghost" size="sm" disabled={mutation.busy || !can('crm:territory:remove')} onClick={() => { if (window.confirm(`确认删除“${node.territoryName}”？已被引用或存在下级时无法删除。`)) void mutation.run(() => crmOperations.deleteTerritory(node.territoryId!), source.refresh); }}>删除</Button></div>}</td></tr>)}</OpsTable>
+    {form && <BaseDialog open title={form.territoryId ? '编辑区域' : '新增区域'} onClose={() => setForm(undefined)} footer={<Button disabled={mutation.busy || !form.territoryName.trim() || !form.territoryCode.trim()} onClick={() => void mutation.run(() => crmOperations.saveTerritory(form), () => { setForm(undefined); source.refresh(); })}>保存</Button>}><div className="grid gap-4"><Field label="名称"><Input maxLength={120} value={form.territoryName} onChange={event => patch({ territoryName: event.target.value })} /></Field><Field label="编码"><Input maxLength={50} value={form.territoryCode} onChange={event => patch({ territoryCode: event.target.value })} /></Field><Field label="上级区域"><OpsSelect label="上级区域" value={form.parentId} options={{ '0': '根目录', ...Object.fromEntries(ordered.filter(node => !form.territoryId || !node.levelPath?.split('/').includes(String(form.territoryId))).map(node => [String(node.territoryId), node.territoryName])) }} onChange={value => patch({ parentId: Number(value) })} /></Field><Field label="负责人"><UserSelector single value={form.ownerId ? String(form.ownerId) : null} onChange={id => patch({ ownerId: id ? Number(id) : undefined })} /></Field><Field label="排序"><Input type="number" value={form.sortNo} onChange={event => patch({ sortNo: Number(event.target.value) })} /></Field><Field label="状态"><OpsSelect label="区域状态" value={form.status} options={{ ACTIVE: '启用', INACTIVE: '停用' }} onChange={status => patch({ status })} /></Field><Field label="备注"><Textarea value={form.remark || ''} onChange={event => patch({ remark: event.target.value })} /></Field></div></BaseDialog>}
+  </OperationsPage>;
+}

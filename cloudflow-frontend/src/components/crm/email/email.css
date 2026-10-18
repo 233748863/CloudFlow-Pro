@@ -1,0 +1,16 @@
+.crm-email-compose button,
+.crm-email-compose select,
+.crm-email-compose input:not([type="hidden"]) {
+  min-height: 44px;
+}
+
+.crm-email-compose select,
+.crm-email-compose input,
+.crm-email-compose textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.crm-email-compose .modal-header > div:last-child {
+  margin-left: 0;
+}

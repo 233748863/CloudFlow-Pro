@@ -6,6 +6,7 @@ import { useCrmManagement } from './store';
 import type { DashboardTone } from './types';
 import { formatDashboardCurrency, formatDashboardDate, renderHealthLabel, renderSeverity, renderStatus } from './helpers';
 import { DashboardActionCard, DashboardFeedItem, DashboardMetricTile, DashboardSection, DashboardStageCard } from './dashboard-cards';
+import { LostCharts } from '@/pages/CrmLostAnalysisPage';
 
 export const DashboardTab: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export const DashboardTab: React.FC = () => {
     board,
     navigateToTab,
     openCustomerWorkspace,
+    hasPermission,
   } = useCrmManagement();
 
   if (!dashboard) return null;
@@ -387,6 +389,7 @@ export const DashboardTab: React.FC = () => {
           )}
         </div>
       </DashboardSection>
+      {hasPermission('crm:lost:report') && dashboard.lostAnalysis && <LostCharts report={dashboard.lostAnalysis} />}
     </section>
   );
 };

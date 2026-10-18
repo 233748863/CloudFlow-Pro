@@ -47,7 +47,7 @@ export const emptyQuoteLine: CrmQuoteLine = { quantity: 1, unitPrice: 0, discoun
 export const emptyQuote: CrmQuote = { customerId: 0, quoteName: '', totalAmount: 0, taxAmount: 0, currency: 'CNY', status: 'DRAFT', quoteLines: [emptyQuoteLine] };
 export const emptyReceivable: CrmReceivable = { customerId: 0, receivableName: '', plannedAmount: 0, invoiceStatus: 'NONE', status: 'PLANNED' };
 export const emptyRenewal: CrmRenewal = { customerId: 0, renewalName: '', renewalAmount: 0, status: 'PLANNED' };
-export const emptyTicket: CrmTicket = { customerId: 0, ticketTitle: '', severity: 'LOW', issueType: 'OTHER', status: 'OPEN' };
+export const emptyTicket: CrmTicket = { customerId: 0, ticketTitle: '', severity: 'P4', issueType: 'OTHER', status: 'OPEN' };
 export const emptyContact: CrmContact = { customerId: 0, contactName: '', status: 'ACTIVE', primaryFlag: 0 };
 export const emptyFollowUp: CrmFollowUp = { customerId: 0, content: '', followUpType: 'VISIT' };
 
@@ -107,10 +107,10 @@ export const invoiceStatusLabelMap: Record<string, string> = {
 };
 
 export const severityLabelMap: Record<string, string> = {
-  LOW: '低',
-  MEDIUM: '中',
-  HIGH: '高',
-  CRITICAL: '严重',
+  P1: 'P1 紧急',
+  P2: 'P2 高',
+  P3: 'P3 中',
+  P4: 'P4 低',
 };
 
 export const nativeSelectClassName = 'cf-control h-10 w-full rounded-md px-4 py-2.5 text-sm appearance-auto';

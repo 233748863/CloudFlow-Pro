@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { Boxes, PackagePlus, RefreshCcw, Search, Trash2 } from 'lucide-react';
+import { Boxes, Eye, PackagePlus, RefreshCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -19,12 +19,14 @@ import {
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DetailDialog } from '@/components/common/DetailDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { CrmProduct, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
+import { useDict } from '@/hooks/useDict';
 
 const statusOptions = ['ACTIVE', 'INACTIVE'];
 const CURRENCY_DICT_TYPE = 'sys_currency';
@@ -37,6 +39,7 @@ const emptyProduct: CrmProduct = {
 };
 
 export default function CrmProductPage() {
+  const currencyDict = useDict(CURRENCY_DICT_TYPE);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<CrmProduct[]>([]);
   const [pageNum, setPageNum] = useState(1);
@@ -48,6 +51,7 @@ export default function CrmProductPage() {
   const [form, setForm] = useState<CrmProduct>(emptyProduct);
   const [editing, setEditing] = useState<CrmProduct | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CrmProduct | null>(null);
+  const [detailProduct, setDetailProduct] = useState<CrmProduct | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / 10));
   const stats = useMemo(
     () => [
@@ -206,7 +210,7 @@ export default function CrmProductPage() {
                     <td>{row.ownerName || '-'}</td>
                     <td><span className={row.status === 'ACTIVE' ? 'badge badge-success' : 'badge badge-gray'}>{getCrmGenericStatusLabel(row.status)}</span></td>
                     <td>{formatDateTimeDisplay((row as CrmProduct & { updateTime?: string }).updateTime) || '-'}</td>
-                    <td><div className="admin-users-row-actions"><button type="button" data-tooltip="编辑产品" aria-label="编辑产品" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><Boxes size={15} /></button><button type="button" className="danger" data-tooltip="删除产品" aria-label="删除产品" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
+                    <td><div className="admin-users-row-actions"><button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailProduct(row)}><Eye size={15} /></button><button type="button" data-tooltip="编辑产品" aria-label="编辑产品" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><Boxes size={15} /></button><button type="button" className="danger" data-tooltip="删除产品" aria-label="删除产品" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -304,6 +308,41 @@ export default function CrmProductPage() {
         tone="danger"
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete ? void removeProduct(confirmDelete) : undefined}
+      />
+
+      <DetailDialog
+        open={Boolean(detailProduct)}
+        title="产品详情"
+        onClose={() => setDetailProduct(null)}
+        heading={detailProduct?.productName}
+        subheading={detailProduct?.productNo}
+        headingAside={detailProduct ? (
+          <span className="text-xs text-cf-subtle">{getCrmGenericStatusLabel(detailProduct.status)}</span>
+        ) : undefined}
+        sections={detailProduct ? [
+          {
+            title: '产品信息',
+            items: [
+              { label: '产品名称', value: detailProduct.productName },
+              { label: '产品编号', value: detailProduct.productNo },
+              { label: '产品分类', value: detailProduct.category },
+              { label: '规格型号', value: detailProduct.spec },
+              { label: '计量单位', value: detailProduct.unit },
+              { label: '标准价', value: detailProduct.standardPrice === undefined ? '' : Number(detailProduct.standardPrice).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+              { label: '币种', value: detailProduct.currency ? currencyDict.getLabel(detailProduct.currency) || detailProduct.currency : '' },
+              { label: '负责人', value: detailProduct.ownerName },
+              { label: '状态', value: getCrmGenericStatusLabel(detailProduct.status) },
+              { label: '备注', value: detailProduct.remark, wide: true },
+            ],
+          },
+          {
+            title: '变更记录',
+            items: [
+              { label: '创建时间', value: formatDateTimeDisplay(detailProduct.createTime) },
+              { label: '更新时间', value: formatDateTimeDisplay(detailProduct.updateTime) },
+            ],
+          },
+        ] : []}
       />
     </>
   );

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { ListOrdered, RefreshCcw, Search, Settings2, ShieldCheck, Trash2 } from 'lucide-react';
+import { Eye, ListOrdered, RefreshCcw, Search, Settings2, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -20,6 +20,7 @@ import {
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DetailDialog } from '@/components/common/DetailDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { CrmAssignmentRule, crmApi } from '@/services/api/crm';
@@ -55,6 +56,7 @@ export default function CrmAssignmentRulePage() {
   const [form, setForm] = useState<CrmAssignmentRule>(emptyRule);
   const [editing, setEditing] = useState<CrmAssignmentRule | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CrmAssignmentRule | null>(null);
+  const [detailRule, setDetailRule] = useState<CrmAssignmentRule | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / 10));
   const stats = useMemo(
     () => [
@@ -226,6 +228,7 @@ export default function CrmAssignmentRulePage() {
                       <td>{formatDateTimeDisplay(row.updateTime) || '-'}</td>
                       <td>
                         <div className="admin-users-row-actions">
+                          <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRule(row)}><Eye size={15} /></button>
                           <button type="button" data-tooltip="编辑规则" aria-label="编辑规则" onClick={() => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }}><Settings2 size={15} /></button>
                           <button type="button" className="danger" data-tooltip="删除规则" aria-label="删除规则" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button>
                         </div>
@@ -346,6 +349,56 @@ export default function CrmAssignmentRulePage() {
         tone="danger"
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete ? void removeRule(confirmDelete) : undefined}
+      />
+
+      <DetailDialog
+        open={Boolean(detailRule)}
+        title="分配规则详情"
+        onClose={() => setDetailRule(null)}
+        heading={detailRule?.ruleName}
+        subheading={detailRule ? ruleTypeDict.getLabel(detailRule.ruleType) || detailRule.ruleType : undefined}
+        headingAside={detailRule ? (
+          <span className="text-xs text-cf-subtle">{getCrmGenericStatusLabel(detailRule.status || '')}</span>
+        ) : undefined}
+        sections={detailRule ? [
+          {
+            title: '规则信息',
+            items: [
+              { label: '规则名称', value: detailRule.ruleName },
+              { label: '规则类型', value: ruleTypeDict.getLabel(detailRule.ruleType) || detailRule.ruleType },
+              { label: '优先级', value: detailRule.priority === undefined ? '' : String(detailRule.priority) },
+              { label: '状态', value: getCrmGenericStatusLabel(detailRule.status || '') },
+              {
+                label: '未跟进天数',
+                value: detailRule.inactiveDays === undefined ? '' : `${detailRule.inactiveDays} 天`,
+                visible: detailRule.ruleType === 'AUTO_RELEASE',
+              },
+              {
+                label: '单人持有上限',
+                value: detailRule.maxPerOwner === undefined ? '' : String(detailRule.maxPerOwner),
+                visible: detailRule.ruleType === 'CLAIM_LIMIT',
+              },
+            ],
+          },
+          {
+            title: '适用范围',
+            items: [
+              { label: '适用部门', value: detailRule.deptName || '全部' },
+              { label: '客户等级', value: detailRule.customerLevel ? customerLevelDict.getLabel(detailRule.customerLevel) || detailRule.customerLevel : '全部' },
+              { label: '客户标签', value: detailRule.customerTags },
+              { label: '生效开始', value: detailRule.effectiveStart },
+              { label: '生效结束', value: detailRule.effectiveEnd },
+              { label: '备注', value: detailRule.remark, wide: true },
+            ],
+          },
+          {
+            title: '变更记录',
+            items: [
+              { label: '创建时间', value: formatDateTimeDisplay(detailRule.createTime) },
+              { label: '更新时间', value: formatDateTimeDisplay(detailRule.updateTime) },
+            ],
+          },
+        ] : []}
       />
     </>
   );

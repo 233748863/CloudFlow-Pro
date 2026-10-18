@@ -1,0 +1,18 @@
+.crm-operations { --fc-border-color: var(--cf-border); --fc-page-bg-color: transparent; --fc-neutral-bg-color: transparent; }
+.crm-ops-section { border: 1px solid var(--cf-border); border-radius: 12px; padding: 20px; }
+.crm-ops-field { display: flex; flex-direction: column; gap: 7px; font-size: 13px; color: var(--cf-fg-muted); min-width: 0; }
+.crm-ops-metric { border: 1px solid var(--cf-border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 7px; }
+.crm-ops-metric span, .crm-ops-metric small { font-size: 12px; color: var(--cf-fg-muted); }
+.crm-ops-metric strong { font-size: 24px; font-variant-numeric: tabular-nums; color: var(--cf-fg); }
+.crm-ops-warning { border: 1px solid var(--cf-chart-warning); border-radius: 8px; padding: 12px; color: var(--cf-fg-muted); font-size: 13px; line-height: 1.7; }
+.crm-ops-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.crm-operations .fc .fc-toolbar { flex-wrap: wrap; gap: 12px; }
+.crm-operations .fc .fc-toolbar-title { font-size: 18px; }
+.crm-operations .fc .fc-button { font-size: 12px; border-radius: 6px; }
+.crm-operations .fc .fc-event { cursor: pointer; }
+.crm-ops-section button { transition: opacity 150ms ease; }
+.crm-email-panel :is(button, input:not([type="checkbox"]), select) { min-height: 44px; }
+.crm-email-panel label:has(input[type="checkbox"]) { min-height: 44px; }
+.crm-email-panel { min-width: 0; }
+@media (max-width: 640px) { .crm-ops-section { padding: 12px; } .crm-operations .fc .fc-toolbar { justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .crm-ops-section button { transition: none; } }

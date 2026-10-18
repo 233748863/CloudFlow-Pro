@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { BookOpenText, BookPlus, RefreshCcw, Search, Trash2 } from 'lucide-react';
+import { BookOpenText, BookPlus, Eye, RefreshCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -20,12 +20,14 @@ import {
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DetailDialog } from '@/components/common/DetailDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { CrmPriceBook, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
+import { useDict } from '@/hooks/useDict';
 
 const statusOptions = ['ACTIVE', 'INACTIVE'];
 const CURRENCY_DICT_TYPE = 'sys_currency';
@@ -42,6 +44,7 @@ const formatDateOnly = (value?: string) => {
 };
 
 export default function CrmPriceBookPage() {
+  const currencyDict = useDict(CURRENCY_DICT_TYPE);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<CrmPriceBook[]>([]);
   const [pageNum, setPageNum] = useState(1);
@@ -52,6 +55,7 @@ export default function CrmPriceBookPage() {
   const [form, setForm] = useState<CrmPriceBook>(emptyPriceBook);
   const [editing, setEditing] = useState<CrmPriceBook | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CrmPriceBook | null>(null);
+  const [detailBook, setDetailBook] = useState<CrmPriceBook | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / 10));
   const stats = useMemo(
     () => [
@@ -203,7 +207,7 @@ export default function CrmPriceBookPage() {
                     <td>{row.ownerName || '-'}</td>
                     <td><span className={row.status === 'ACTIVE' ? 'badge badge-success' : 'badge badge-gray'}>{getCrmGenericStatusLabel(row.status)}</span></td>
                     <td>{formatDateTimeDisplay((row as CrmPriceBook & { updateTime?: string }).updateTime) || '-'}</td>
-                    <td><div className="admin-users-row-actions"><button type="button" data-tooltip="编辑价目表" aria-label="编辑价目表" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><BookOpenText size={15} /></button><button type="button" className="danger" data-tooltip="删除价目表" aria-label="删除价目表" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
+                    <td><div className="admin-users-row-actions"><button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailBook(row)}><Eye size={15} /></button><button type="button" data-tooltip="编辑价目表" aria-label="编辑价目表" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><BookOpenText size={15} /></button><button type="button" className="danger" data-tooltip="删除价目表" aria-label="删除价目表" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -293,6 +297,39 @@ export default function CrmPriceBookPage() {
         tone="danger"
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete ? void removePriceBook(confirmDelete) : undefined}
+      />
+
+      <DetailDialog
+        open={Boolean(detailBook)}
+        title="价目表详情"
+        onClose={() => setDetailBook(null)}
+        heading={detailBook?.priceBookName}
+        subheading={detailBook?.priceBookNo}
+        headingAside={detailBook ? (
+          <span className="text-xs text-cf-subtle">{getCrmGenericStatusLabel(detailBook.status)}</span>
+        ) : undefined}
+        sections={detailBook ? [
+          {
+            title: '价目表信息',
+            items: [
+              { label: '价目表名称', value: detailBook.priceBookName },
+              { label: '价目表编号', value: detailBook.priceBookNo },
+              { label: '币种', value: detailBook.currency ? currencyDict.getLabel(detailBook.currency) || detailBook.currency : '' },
+              { label: '负责人', value: detailBook.ownerName },
+              { label: '开始日期', value: formatDateOnly(detailBook.startDate) },
+              { label: '结束日期', value: formatDateOnly(detailBook.endDate) },
+              { label: '状态', value: getCrmGenericStatusLabel(detailBook.status) },
+              { label: '备注', value: detailBook.remark, wide: true },
+            ],
+          },
+          {
+            title: '变更记录',
+            items: [
+              { label: '创建时间', value: formatDateTimeDisplay(detailBook.createTime) },
+              { label: '更新时间', value: formatDateTimeDisplay(detailBook.updateTime) },
+            ],
+          },
+        ] : []}
       />
     </>
   );

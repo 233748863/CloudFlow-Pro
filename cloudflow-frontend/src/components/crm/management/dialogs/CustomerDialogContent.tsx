@@ -1,6 +1,7 @@
 import React from 'react';
 import { Input, Textarea } from '@/components/common';
 import { useCrmManagement } from '../store';
+import { ProfileFields } from '../../operations/ProfileFields';
 
 export const CustomerDialogContent: React.FC = () => {
   const { customerForm, setCustomerForm } = useCrmManagement();
@@ -12,6 +13,9 @@ export const CustomerDialogContent: React.FC = () => {
       <Input value={customerForm.customerTags || ''} onChange={(e) => setCustomerForm((prev) => ({ ...prev, customerTags: e.target.value }))} placeholder="标签示例：重点客户,续约客户" />
       <Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="联系电话" />
       <Input value={customerForm.email || ''} onChange={(e) => setCustomerForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="联系邮箱" />
+      <Input aria-label="行业" value={customerForm.industry || ''} onChange={event => setCustomerForm(previous => ({ ...previous, industry: event.target.value }))} placeholder="行业" />
+      <Input aria-label="客户等级" value={customerForm.levelCode || ''} onChange={event => setCustomerForm(previous => ({ ...previous, levelCode: event.target.value }))} placeholder="客户等级" />
+      <ProfileFields value={customerForm} onChange={fields => setCustomerForm(previous => ({ ...previous, ...fields }))} />
       <Textarea className="md:col-span-2" value={customerForm.remark || ''} onChange={(e) => setCustomerForm((prev) => ({ ...prev, remark: e.target.value }))} placeholder="客户说明、当前合作情况、重点提醒" />
     </div>
   );

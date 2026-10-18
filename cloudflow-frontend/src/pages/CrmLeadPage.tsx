@@ -26,6 +26,11 @@ import { useNavigate } from 'react-router-dom';
 
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import { crmOperations } from '@/services/api/crm/operations';
+import { ProfileFields } from '@/components/crm/operations/ProfileFields';
+import { LeadConversionDialog, LeadQualificationDialog } from '@/components/crm/operations/LeadActions';
+import { LeadDetailDialog } from '@/components/crm/operations/LeadDetailDialog';
+import { Field, labelOf, OpsSelect, qualificationStatuses, useAccess, useMutation, useRemote } from '@/components/crm/operations/OperationsKit';
 
 const statusOptions = ['NEW', 'FOLLOWING', 'QUALIFIED', 'CONVERTED', 'CLOSED'];
 
@@ -36,6 +41,10 @@ const emptyLead: CrmLead = {
 
 export default function CrmLeadPage() {
   const navigate = useNavigate();
+  const can = useAccess();
+  const mutation = useMutation();
+  const territories = useRemote(() => can('crm:territory:list') ? crmOperations.territories() : Promise.resolve([]));
+  const segments = useDict('crm_market_segment');
   const leadStatusDict = useDict('crm_lead_status');
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<CrmLead[]>([]);
@@ -49,7 +58,17 @@ export default function CrmLeadPage() {
   const [editing, setEditing] = useState<CrmLead | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CrmLead | null>(null);
   const [confirmConvert, setConfirmConvert] = useState<CrmLead | null>(null);
-  const totalPages = Math.max(1, Math.ceil(total / 10));
+  const [qualification, setQualification] = useState<CrmLead>();
+  const [viewedId, setViewedId] = useState<number>();
+  const [qualificationStatus, setQualificationStatus] = useState('');
+  const [territoryId, setTerritoryId] = useState('');
+  const [marketSegment, setMarketSegment] = useState('');
+  const [scoreMin, setScoreMin] = useState('');
+  const [scoreMax, setScoreMax] = useState('');
+  const [scoreOrder, setScoreOrder] = useState('');
+  const [selected, setSelected] = useState<number[]>([]);
+  const pageSize = getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const stats = useMemo(
     () => [
       { label: '线索总数', value: String(total), meta: `当前第 ${pageNum} 页`, icon: <Target size={18} />, tone: 'blue' },
@@ -62,6 +81,7 @@ export default function CrmLeadPage() {
 
   const load = async () => {
     setLoading(true);
+    setSelected([]);
     try {
       const result = await crmApi.listLeads({
         pageNum,
@@ -69,6 +89,12 @@ export default function CrmLeadPage() {
         leadName: leadName || undefined,
         companyName: companyName || undefined,
         status: status === 'ALL' ? undefined : status,
+        qualificationStatus: qualificationStatus || undefined,
+        territoryId: territoryId ? Number(territoryId) : undefined,
+        marketSegment: marketSegment || undefined,
+        scoreMin: scoreMin ? Number(scoreMin) : undefined,
+        scoreMax: scoreMax ? Number(scoreMax) : undefined,
+        scoreOrder: scoreOrder || undefined,
       });
       setRows(result.rows || []);
       setTotal(result.total || 0);
@@ -81,12 +107,16 @@ export default function CrmLeadPage() {
 
   useEffect(() => {
     void load();
-  }, [pageNum, leadName, companyName, status]);
+  }, [pageNum, leadName, companyName, status, qualificationStatus, territoryId, marketSegment, scoreMin, scoreMax, scoreOrder]);
 
   const saveLead = async () => {
     try {
       if (editing?.leadId) {
-        await crmApi.editLead({ ...form, leadId: editing.leadId });
+        const update = { ...form, leadId: editing.leadId };
+        for (const field of ['mobile', 'phone', 'email'] as const) {
+          if (form[field] === editing[field]) delete update[field];
+        }
+        await crmApi.editLead(update);
         toast.success('线索已更新');
       } else {
         await crmApi.addLead(form);
@@ -98,29 +128,6 @@ export default function CrmLeadPage() {
       await load();
     } catch (error) {
       toast.error(getErrorMessage(error, '保存线索失败'));
-    }
-  };
-
-  const convertLead = async (lead: CrmLead) => {
-    if (!lead.leadId) return;
-    try {
-      const customerId = await crmApi.convertLead({
-        leadId: lead.leadId,
-        customerName: lead.companyName || lead.leadName,
-        industry: lead.industry,
-        source: lead.source,
-        ownerId: lead.ownerId,
-        ownerName: lead.ownerName,
-        phone: lead.mobile || lead.phone,
-        email: lead.email,
-        remark: lead.remark,
-      });
-      toast.success(`已转客户 #${customerId}`);
-      setConfirmConvert(null);
-      await load();
-      navigate(`/office/crm/customer/${customerId}`);
-    } catch (error) {
-      toast.error(getErrorMessage(error, '线索转客户失败'));
     }
   };
 
@@ -149,10 +156,11 @@ export default function CrmLeadPage() {
               <RefreshCcw size={16} className={loading ? 'animate-spin' : undefined} />
               刷新
             </Button>
-            <Button size="sm" onClick={() => { setEditing(null); setForm(emptyLead); setDialogOpen(true); }}>
+            {can('crm:lead:score') && <Button size="sm" variant="outline" disabled={mutation.busy || !selected.length} onClick={() => void mutation.run(() => crmOperations.batchScore(selected), () => setSelected([]), '重算请求已加入后台队列，完成后刷新查看')}>重算已选评分（{selected.length}）</Button>}
+            {can('crm:lead:add') && <Button size="sm" onClick={() => { setEditing(null); setForm(emptyLead); setDialogOpen(true); }}>
               <Plus size={16} />
               新增线索
-            </Button>
+            </Button>}
           </div>
         </header>
 
@@ -174,6 +182,12 @@ export default function CrmLeadPage() {
   const pageFilters = (
         <section className="card admin-users-toolbar admin-crm-toolbar">
           <div className="admin-users-filter-grid">
+            <Field label="资质状态"><OpsSelect label="资质筛选" value={qualificationStatus} empty="全部资质" options={qualificationStatuses} onChange={value => { setQualificationStatus(value); setPageNum(1); }} /></Field>
+            <Field label="区域"><OpsSelect label="线索区域筛选" value={territoryId} empty="全部区域" options={Object.fromEntries((territories.data || []).map(node => [String(node.territoryId), node.territoryName]))} onChange={value => { setTerritoryId(value); setPageNum(1); }} /></Field>
+            <Field label="细分市场"><OpsSelect label="线索市场筛选" value={marketSegment} empty="全部市场" options={Object.fromEntries(segments.getOptions().map(option => [option.value, option.label]))} onChange={value => { setMarketSegment(value); setPageNum(1); }} /></Field>
+            <Field label="最低分"><Input type="number" value={scoreMin} onChange={event => { setScoreMin(event.target.value); setPageNum(1); }} /></Field>
+            <Field label="最高分"><Input type="number" value={scoreMax} onChange={event => { setScoreMax(event.target.value); setPageNum(1); }} /></Field>
+            <Field label="评分排序"><OpsSelect label="评分排序" value={scoreOrder} empty="默认排序" options={{ DESC: '高分优先', ASC: '低分优先' }} onChange={value => { setScoreOrder(value); setPageNum(1); }} /></Field>
             <label className="admin-source-search">
               <span className="input-label">搜索线索</span>
               <div className="admin-source-search-field">
@@ -206,12 +220,12 @@ export default function CrmLeadPage() {
             <table className="unity-data-table admin-source-table admin-crm-table min-w-[1100px]">
               <thead>
                 <tr>
+                  <th><input type="checkbox" aria-label="全选本页线索" checked={rows.length > 0 && selected.length === rows.length} onChange={event => setSelected(event.target.checked ? rows.map(row => row.leadId!) : [])} /> 线索 / 公司</th>
                   <th>线索编号</th>
-                  <th>线索 / 公司</th>
                   <th>联系人</th>
                   <th>负责人 / 部门</th>
                   <th>来源 / 行业</th>
-                  <th>状态</th>
+                  <th>状态 / 资质 / 评分</th>
                   <th>下次跟进</th>
                   <th className="text-right">操作</th>
                 </tr>
@@ -224,19 +238,22 @@ export default function CrmLeadPage() {
                 ) : (
                   rows.map((row) => (
                     <tr key={row.leadId}>
+                      <td style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}><div className="flex items-start gap-2"><input type="checkbox" className="mt-1 shrink-0" aria-label={`选择${row.leadName}`} checked={selected.includes(row.leadId!)} onChange={event => setSelected(previous => event.target.checked ? [...previous, row.leadId!] : previous.filter(id => id !== row.leadId))} /><div className="min-w-0 w-[min(16rem,calc(100vw-15rem))] shrink-0"><strong className="block" style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{row.leadName}</strong><small className="block" style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{row.companyName || '-'}</small></div></div></td>
                       <td className="font-mono text-xs">{row.leadNo || '-'}</td>
-                      <td><strong>{row.leadName}</strong><small>{row.companyName || '-'}</small></td>
                       <td><strong>{row.contactName || '-'}</strong><small>{row.mobile || row.phone || '-'}</small></td>
                       <td><strong>{row.ownerName || '-'}</strong><small>{row.deptName || '-'}</small></td>
                       <td><strong>{row.source || '-'}</strong><small>{row.industry || '-'}</small></td>
-                      <td><DictBadge dictType="crm_lead_status" value={row.status || ''} /></td>
+                      <td><DictBadge dictType="crm_lead_status" value={row.status || ''} /><div className="text-xs">{labelOf(qualificationStatuses, row.qualificationStatus)} · {row.leadScore ?? 0} 分</div>{row.disqualifyReason && <div className="max-w-xs whitespace-normal text-xs text-cf-muted">{row.disqualifyReason}</div>}</td>
                       <td>{formatDateTimeDisplay(row.nextFollowUpTime) || '-'}</td>
                       <td>
-                        <div className="admin-users-row-actions">
+                        <div className="admin-users-row-actions max-lg:!grid max-lg:!grid-cols-2 max-lg:!w-[94px] max-lg:[&>button]:!h-11 max-lg:[&>button]:!w-11">
+                          <button type="button" className="!min-h-11 !min-w-11" data-tooltip="查看线索" aria-label="查看线索" onClick={() => setViewedId(row.leadId)}><Eye size={15} /></button>
                           {row.convertedCustomerId ? <button type="button" data-tooltip="查看客户工作台" aria-label="查看客户工作台" onClick={() => navigate(`/office/crm/customer/${row.convertedCustomerId}`)}><Eye size={15} /></button> : null}
-                          <button type="button" data-tooltip="编辑线索" aria-label="编辑线索" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><UserRound size={15} /></button>
-                          {!row.convertedCustomerId && row.status !== 'CONVERTED' ? <button type="button" data-tooltip="转为客户" aria-label="转为客户" onClick={() => setConfirmConvert(row)}><Target size={15} /></button> : null}
-                          <button type="button" className="danger" data-tooltip="删除线索" aria-label="删除线索" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button>
+                          {can('crm:lead:edit') && <button type="button" data-tooltip="编辑线索" aria-label="编辑线索" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><UserRound size={15} /></button>}
+                          {can('crm:lead:qualify') && !row.convertedCustomerId && <Button size="sm" variant="ghost" onClick={() => setQualification(row)}>评估</Button>}
+                          {can('crm:lead:score') && <Button size="sm" variant="ghost" disabled={mutation.busy} onClick={() => void mutation.run(() => crmOperations.recalculateLead(row.leadId!), () => void load())}>重算</Button>}
+                          {can('crm:lead:convert') && !row.convertedCustomerId && row.status !== 'CONVERTED' ? <button type="button" data-tooltip="转为客户" aria-label="转为客户" onClick={() => setConfirmConvert(row)}><Target size={15} /></button> : null}
+                          {can('crm:lead:remove') && <button type="button" className="danger" data-tooltip="删除线索" aria-label="删除线索" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button>}
                         </div>
                       </td>
                     </tr>
@@ -248,7 +265,7 @@ export default function CrmLeadPage() {
   );
 
   const pagePagination = total > 0
-    ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} />
+    ? <Pagination total={total} page={pageNum} pageSize={pageSize} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} />
     : null;
 
   return (
@@ -270,6 +287,9 @@ export default function CrmLeadPage() {
         footer={<><Button variant="outline" onClick={() => setDialogOpen(false)}>取消</Button><Button onClick={() => void saveLead()}>保存</Button></>}
       >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <ProfileFields value={form} onChange={fields => setForm(previous => ({ ...previous, ...fields }))} />
+          <Field label="职务"><Input value={form.jobTitle || ''} onChange={event => setForm(previous => ({ ...previous, jobTitle: event.target.value }))} /></Field>
+          <Field label="网站"><Input type="url" value={form.website || ''} onChange={event => setForm(previous => ({ ...previous, website: event.target.value }))} /></Field>
           <div>
             <Label>线索名称</Label>
             <Input value={form.leadName || ''} onChange={(e) => setForm((prev) => ({ ...prev, leadName: e.target.value }))} placeholder="例如：景曜科技采购意向" />
@@ -328,14 +348,9 @@ export default function CrmLeadPage() {
         onConfirm={() => confirmDelete ? void removeLead(confirmDelete) : undefined}
       />
 
-      <ConfirmDialog
-        open={!!confirmConvert}
-        title="线索转客户"
-        description={`确定将线索“${confirmConvert?.leadName || ''}”转为客户并进入 CRM 工作台吗？`}
-        confirmText="确认转化"
-        onCancel={() => setConfirmConvert(null)}
-        onConfirm={() => confirmConvert ? void convertLead(confirmConvert) : undefined}
-      />
+      {confirmConvert && <LeadConversionDialog key={confirmConvert.leadId} lead={confirmConvert} onClose={() => setConfirmConvert(null)} onConverted={id => { setConfirmConvert(null); navigate(`/office/crm/customer/${id}`); }} />}
+      {viewedId !== undefined && <LeadDetailDialog key={viewedId} leadId={viewedId} onClose={() => setViewedId(undefined)} />}
+      {qualification && <LeadQualificationDialog key={qualification.leadId} lead={qualification} onClose={() => setQualification(undefined)} onSaved={() => void load()} />}
     </>
   );
 }

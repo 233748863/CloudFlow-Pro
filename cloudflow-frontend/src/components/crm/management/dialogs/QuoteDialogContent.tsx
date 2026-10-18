@@ -1,13 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button, DatePicker, DictSelect, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, UserSelector } from '@/components/common';
 import { useCrmManagement } from '../store';
 import { emptyQuoteLine } from '../constants';
+import { EmailBusinessButton } from '../../email/EmailPanel';
+import { crmApi, type CrmQuote } from '@/services/api/crm';
+import { money, useMutation } from '../../operations/OperationsKit';
 
 export const QuoteDialogContent: React.FC = () => {
   const {
     quoteForm,
     setQuoteForm,
+    quoteSaveError,
+    quoteReady,
+    quoteLoading,
+    saving,
+    dialog,
+    openDialog,
     customerOptions,
     opportunityOptions,
     productOptions,
@@ -17,8 +26,17 @@ export const QuoteDialogContent: React.FC = () => {
     addQuoteLine,
     removeQuoteLine,
   } = useCrmManagement();
+  const [latest, setLatest] = useState<CrmQuote>();
+  const mutation = useMutation();
+  useEffect(() => { setLatest(undefined); }, [quoteForm.quoteId]);
+  if (!quoteReady) return <div className="space-y-3">
+    {quoteLoading ? <p role="status">正在读取报价及当前币种限制，请稍候。</p> : <><p role="alert">{quoteSaveError || '报价尚未读取，不能保存。'}</p><Button variant="outline" onClick={() => openDialog(dialog)}>重新读取报价</Button></>}
+  </div>;
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <fieldset disabled={saving} className="grid min-w-0 gap-4 md:grid-cols-2">
+      {quoteSaveError && <div className="crm-ops-warning space-y-2 md:col-span-2"><p role="alert">{quoteSaveError}；未保存输入仍保留。</p>{quoteForm.quoteId && <Button variant="outline" disabled={mutation.busy || saving} onClick={() => void mutation.run(() => crmApi.getQuoteDetail(quoteForm.quoteId!), setLatest, '')}>读取最新报价（保留草稿）</Button>}</div>}
+      {latest && <div className="crm-ops-warning space-y-2 md:col-span-2"><p>草稿版本 {quoteForm.version}；最新版本 {latest.version}；已保存金额 {money(latest.totalAmount)} {latest.currency}；负责人 {latest.ownerName || latest.ownerId}；状态 {latest.status}。</p><Button variant="outline" disabled={saving || latest.version == null} onClick={() => { setQuoteForm(previous => ({ ...previous, version: latest.version, status: latest.status, currencyLocked: latest.currencyLocked, currency: latest.currencyLocked ? latest.currency : previous.currency })); setLatest(undefined); }}>已核对，保留输入并采用最新版本</Button></div>}
+      {quoteForm.quoteId && <div className="md:col-span-2"><EmailBusinessButton bizType="QUOTE" bizId={quoteForm.quoteId} /><p className="mt-2 text-xs text-cf-muted">邮件关联已保存的报价；当前报价表单修改需另行保存。</p></div>}
       <div className="md:col-span-2">
         <Select value={quoteForm.customerId ? String(quoteForm.customerId) : ''} onValueChange={(value) => setQuoteForm((prev) => ({ ...prev, customerId: Number(value) }))}>
           <SelectTrigger><SelectValue placeholder="选择客户" /></SelectTrigger>
@@ -49,21 +67,27 @@ export const QuoteDialogContent: React.FC = () => {
             {opportunityOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        {!quoteForm.quoteId && quoteForm.opportunityId && <p className="mt-2 text-sm text-cf-muted">创建时复制该商机当前团队及负责人，比例按报价金额重新分配；后续团队调整互不影响。</p>}
       </div>
       <Input value={quoteForm.quoteName || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, quoteName: e.target.value }))} placeholder="报价名称" />
       <UserSelector
         single
         allowClear
+        disabled={!quoteForm.quoteId && Boolean(quoteForm.opportunityId)}
         value={quoteForm.ownerId ? String(quoteForm.ownerId) : null}
         onChange={(id, picked) => setQuoteForm((prev) => ({ ...prev, ownerId: id ? Number(id) : undefined, ownerName: picked?.name || '' }))}
         placeholder="选择负责人"
       />
-      <DictSelect
-        dictType="sys_currency"
-        value={quoteForm.currency || 'CNY'}
-        onChange={(value) => setQuoteForm((prev) => ({ ...prev, currency: value }))}
-        placeholder="选择币种"
-      />
+      <div className="space-y-2">
+        <DictSelect
+          dictType="sys_currency"
+          value={quoteForm.currency || 'CNY'}
+          disabled={quoteForm.currencyLocked === true}
+          onChange={(value) => setQuoteForm((prev) => ({ ...prev, currency: value }))}
+          placeholder="选择币种"
+        />
+        {quoteForm.currencyLocked && <p className="text-sm text-cf-muted" role="status">已有历史分成记录，币种已锁定；换币种请另建报价。</p>}
+      </div>
       <DatePicker className="h-11" type="date" value={quoteForm.validUntil || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, validUntil: e.target.value }))} placeholder="有效期至" />
       <div className="p-4 md:col-span-2 border border-slate-200 dark:border-slate-800">
         <div className="mb-3 flex items-center justify-between">
@@ -110,6 +134,6 @@ export const QuoteDialogContent: React.FC = () => {
       <Input type="number" value={String(quoteForm.totalAmount || 0)} readOnly placeholder="总金额" />
       <Input type="number" value={String(quoteForm.taxAmount || 0)} readOnly placeholder="税额" />
       <Textarea className="md:col-span-2" value={quoteForm.remark || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, remark: e.target.value }))} placeholder="报价说明、商务条款、附件说明" rows={3} />
-    </div>
+    </fieldset>
   );
 };

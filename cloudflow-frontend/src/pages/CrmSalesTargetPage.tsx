@@ -1,349 +1,157 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { getConfigIntSync } from '../hooks/useSystemConfig';
-import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { Gauge, Goal, RefreshCcw, Search, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Eye, Gauge, Goal, RefreshCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Button,
-  DeptSelector,
-  Input,
-  Label,
-  LoadingSpinner,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Textarea,
-  UserSelector,
-} from '@/components/common';
+import { Button, Input, Label, LoadingSpinner, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
-import { CrmSalesTarget, crmApi } from '@/services/api/crm';
+import CrmSalesTargetEditor, { salesTargetBasisLabel, salesTargetMoney } from '@/components/crm/CrmSalesTargetEditor';
+import { useAuth } from '@/context/AuthContext';
+import { getConfigIntSync } from '@/hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '@/constants/sysConfig';
+import { crmApi, type CrmSalesTarget } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
-import { useDict } from '@/hooks/useDict';
-
-const statusOptions = ['ACTIVE', 'INACTIVE'];
-const dimensionOptions = ['OWNER', 'DEPT'];
-const periodTypeOptions = ['MONTH', 'QUARTER', 'YEAR'];
-
-const currentYear = new Date().getFullYear();
-
-const emptySalesTarget: CrmSalesTarget = {
-  targetName: '',
-  dimensionType: 'OWNER',
-  periodType: 'MONTH',
-  targetYear: currentYear,
-  targetPeriod: new Date().getMonth() + 1,
-  targetAmount: 0,
-  status: 'ACTIVE',
-};
-
-const formatCurrency = (value?: number) => Number(value || 0).toLocaleString('zh-CN', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 export default function CrmSalesTargetPage() {
-  const dimensionDict = useDict('crm_sales_target_dimension');
-  const periodTypeDict = useDict('crm_period_type');
-  const [loading, setLoading] = useState(false);
+  const { hasPermission } = useAuth();
+  const canRead = hasPermission('crm:sales-target:list');
+  const [pageSize] = useState(() => getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10));
   const [rows, setRows] = useState<CrmSalesTarget[]>([]);
   const [pageNum, setPageNum] = useState(1);
   const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [targetName, setTargetName] = useState('');
-  const [dimensionType, setDimensionType] = useState('ALL');
-  const [periodType, setPeriodType] = useState('ALL');
-  const [targetYear, setTargetYear] = useState(String(currentYear));
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState<CrmSalesTarget>(emptySalesTarget);
-  const [editing, setEditing] = useState<CrmSalesTarget | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<CrmSalesTarget | null>(null);
-  const totalPages = Math.max(1, Math.ceil(total / 10));
-  const stats = useMemo(
-    () => [
-      { label: '目标总数', value: String(total), meta: `当前第 ${pageNum} 页`, icon: <Goal size={18} />, tone: 'blue' },
-      { label: '目标金额', value: formatCurrency(rows.reduce((sum, row) => sum + Number(row.targetAmount || 0), 0)), meta: '当前页合计', icon: <Gauge size={18} />, tone: 'green' },
-      { label: '实际回款', value: formatCurrency(rows.reduce((sum, row) => sum + Number(row.achievedAmount || 0), 0)), meta: '当前页合计', icon: <Goal size={18} />, tone: 'amber' },
-      { label: '分页', value: `${pageNum}/${totalPages}`, meta: `每页 ${getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10)} 条`, icon: <RefreshCcw size={18} />, tone: 'violet' },
-    ],
-    [pageNum, rows, total, totalPages],
-  );
+  const [basis, setBasis] = useState('TEAM_V2');
+  const [currency, setCurrency] = useState('CNY');
+  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [dimension, setDimension] = useState('ALL');
+  const [editor, setEditor] = useState<{ id?: number }>();
+  const [detail, setDetail] = useState<{ id: number; row?: CrmSalesTarget; error?: string }>();
+  const [removing, setRemoving] = useState<CrmSalesTarget>();
+  const [removeBusy, setRemoveBusy] = useState(false);
+  const [removeError, setRemoveError] = useState('');
+  const generation = useRef(0);
+  const detailGeneration = useRef(0);
+  const removingOperation = useRef(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    if (!canRead) return;
+    const current = ++generation.current;
+    setRows([]); setTotal(0); setError('');
+    if (!/^[A-Z]{3}$/.test(currency) || !/^\d{4}$/.test(year) || Number(year) < 1000) {
+      setError('请选择三个大写字母的币种，并填写1000至9999的年份'); setLoading(false); return;
+    }
     setLoading(true);
     try {
-      const result = await crmApi.listSalesTargets({
-        pageNum,
-        pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
-        targetName: targetName || undefined,
-        dimensionType: dimensionType === 'ALL' ? undefined : dimensionType,
-        periodType: periodType === 'ALL' ? undefined : periodType,
-        targetYear: targetYear ? Number(targetYear) : undefined,
-      });
-      setRows(result.rows || []);
-      setTotal(result.total || 0);
-    } catch (error) {
-      toast.error(getErrorMessage(error, '加载销售目标失败'));
-    } finally {
-      setLoading(false);
-    }
+      const result = await crmApi.listSalesTargets({ pageNum, pageSize, targetName: targetName || undefined,
+        dimensionType: dimension === 'ALL' ? undefined : dimension, targetYear: Number(year), calculationBasis: basis, currency });
+      if (current === generation.current) { setRows(result.rows || []); setTotal(result.total || 0); }
+    } catch (failure) { if (current === generation.current) setError(getErrorMessage(failure, '销售目标读取失败')); }
+    finally { if (current === generation.current) setLoading(false); }
+  }, [canRead, pageNum, pageSize, targetName, dimension, year, basis, currency]);
+  useEffect(() => { void load(); return () => { generation.current++; }; }, [load]);
+
+  const closeEditor = useCallback(() => setEditor(undefined), []);
+  const saved = (row: CrmSalesTarget) => {
+    setEditor(undefined); setPageNum(1);
+    setBasis(row.calculationBasis || 'TEAM_V2'); setCurrency(row.currency || 'CNY'); setYear(String(row.targetYear));
+    if (row.calculationBasis === basis && row.currency === currency && String(row.targetYear) === year && pageNum === 1) void load();
   };
-
-  useEffect(() => {
-    void load();
-  }, [pageNum, targetName, dimensionType, periodType, targetYear]);
-
-  const saveSalesTarget = async () => {
+  const showDetail = async (id: number) => {
+    const current = ++detailGeneration.current;
+    setDetail({ id });
+    try { const row = await crmApi.getSalesTarget(id); if (current === detailGeneration.current) setDetail({ id, row }); }
+    catch (failure) { if (current === detailGeneration.current) setDetail({ id, error: getErrorMessage(failure, '目标详情读取失败') }); }
+  };
+  const remove = async () => {
+    if (removingOperation.current || !removing?.salesTargetId || removing.version == null) return;
+    removingOperation.current = true; setRemoveBusy(true); setRemoveError('');
     try {
-      if (editing?.salesTargetId) {
-        await crmApi.editSalesTarget({ ...form, salesTargetId: editing.salesTargetId });
-        toast.success('销售目标已更新');
-      } else {
-        await crmApi.addSalesTarget(form);
-        toast.success('销售目标已创建');
-      }
-      setDialogOpen(false);
-      setEditing(null);
-      setForm(emptySalesTarget);
-      await load();
-    } catch (error) {
-      toast.error(getErrorMessage(error, '保存销售目标失败'));
-    }
+      await crmApi.removeSalesTarget([removing.salesTargetId], [removing.version]);
+      setRemoving(undefined); toast.success('销售目标已删除'); await load();
+    } catch (failure) { setRemoveError(getErrorMessage(failure, '删除结果未确认，请核对目标后再操作')); }
+    finally { removingOperation.current = false; setRemoveBusy(false); }
   };
-
-  const removeSalesTarget = async (salesTarget: CrmSalesTarget) => {
-    if (!salesTarget.salesTargetId) return;
-    try {
-      await crmApi.removeSalesTarget([salesTarget.salesTargetId]);
-      toast.success('销售目标已删除');
-      setConfirmDelete(null);
-      await load();
-    } catch (error) {
-      toast.error(getErrorMessage(error, '删除销售目标失败'));
-    }
+  const refreshRemoval = async () => {
+    if (removingOperation.current || !removing?.salesTargetId) return;
+    removingOperation.current = true; setRemoveBusy(true);
+    try { setRemoving(await crmApi.getSalesTarget(removing.salesTargetId)); setRemoveError('已读取最新记录，请核对名称、金额和版本后重新确认删除。'); }
+    catch (failure) { setRemoveError(getErrorMessage(failure, '当前目标不可读取，请关闭后刷新列表核对')); }
+    finally { removingOperation.current = false; setRemoveBusy(false); }
   };
+  if (!canRead) return <p role="alert">无权查看销售目标。</p>;
 
-  const renderPeriodValuePlaceholder = () => {
-    if (form.periodType === 'YEAR') return '年度无需填写';
-    if (form.periodType === 'QUARTER') return '填写 1-4';
-    return '填写 1-12';
-  };
-
-  const pageActions = (
-    <>
-        <header className="admin-source-header">
-          <div>
-            <p className="admin-source-kicker">SALES TARGETS</p>
-            <h2>销售目标</h2>
-            <span>管理个人或部门配额、周期目标、回款完成率和差额</span>
-          </div>
+  return <>
+    <section className="admin-source-page admin-crm-page admin-crm-sales-targets-page [--cf-density-control-height:44px] [--cf-density-control-height-sm:44px] [&_button]:!min-h-[44px] [&_button]:!min-w-[44px]">
+      <TablePageLayout
+        actions={<header className="admin-source-header">
+          <div><p className="admin-source-kicker">SALES TARGETS</p><h2>销售目标</h2><span>回款按所选口径及币种核算；团队历史分配不随人员或比例调整改写。</span></div>
           <div className="admin-source-controls">
-            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-              <RefreshCcw size={16} className={loading ? 'animate-spin' : undefined} />
-              刷新
-            </Button>
-            <Button size="sm" onClick={() => { setEditing(null); setForm(emptySalesTarget); setDialogOpen(true); }}>
-              <Goal size={16} />
-              新增销售目标
-            </Button>
+            <Button className="min-h-[44px]" variant="outline" disabled={loading} onClick={() => void load()}><RefreshCcw size={16} />刷新</Button>
+            {hasPermission('crm:sales-target:add') && <Button className="min-h-[44px]" onClick={() => setEditor({})}><Goal size={16} />新增销售目标</Button>}
           </div>
-        </header>
-
-        <section className="admin-source-stat-grid admin-crm-stat-grid">
-          {stats.map((stat) => (
-            <article key={stat.label} className={`card admin-source-stat admin-source-tone-${stat.tone}`}>
-              <div className="admin-source-stat-icon">{stat.icon}</div>
-              <div><p>{stat.label}</p><strong>{stat.value}</strong><span>{stat.meta}</span></div>
-            </article>
-          ))}
-        </section>
-    </>
-  );
-
-  const pageFilters = (
-        <section className="card admin-users-toolbar admin-crm-toolbar">
-          <div className="admin-users-filter-grid">
-            <label className="admin-source-search">
-              <span className="input-label">搜索目标</span>
-              <div className="admin-source-search-field">
-                <Search size={16} />
-                <Input className="h-[42px]" value={targetName} onChange={(e) => { setPageNum(1); setTargetName(e.target.value); }} placeholder="目标名称" type="search" />
-              </div>
-            </label>
-            <label>
-              <span className="input-label">维度</span>
-              <Select value={dimensionType} onValueChange={(value) => { setPageNum(1); setDimensionType(value); }}>
-                <SelectTrigger className="h-[42px]"><SelectValue placeholder="维度" /></SelectTrigger>
-                <SelectContent><SelectItem value="ALL">全部维度</SelectItem>{dimensionOptions.map((item) => <SelectItem key={item} value={item}>{dimensionDict.getLabel(item)}</SelectItem>)}</SelectContent>
-              </Select>
-            </label>
-            <label>
-              <span className="input-label">周期</span>
-              <Select value={periodType} onValueChange={(value) => { setPageNum(1); setPeriodType(value); }}>
-                <SelectTrigger className="h-[42px]"><SelectValue placeholder="周期" /></SelectTrigger>
-                <SelectContent><SelectItem value="ALL">全部周期</SelectItem>{periodTypeOptions.map((item) => <SelectItem key={item} value={item}>{periodTypeDict.getLabel(item)}</SelectItem>)}</SelectContent>
-              </Select>
-            </label>
-            <label>
-              <span className="input-label">年份</span>
-              <Input value={targetYear} onChange={(e) => { setPageNum(1); setTargetYear(e.target.value); }} placeholder="年份" />
-            </label>
-            <div className="admin-users-toolbar-actions">
-            </div>
+        </header>}
+        filters={<section className="card p-4">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div><Label htmlFor="sales-target-search">搜索目标</Label><Input id="sales-target-search" className="min-h-[44px]" value={targetName} onChange={event => { setPageNum(1); setTargetName(event.target.value); }} type="search" placeholder="目标名称" /></div>
+            <div><Label htmlFor="sales-target-basis">考核口径</Label><Select value={basis} onValueChange={value => { setPageNum(1); setBasis(value); }}>
+              <SelectTrigger id="sales-target-basis" className="min-h-[44px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="TEAM_V2">团队分成</SelectItem><SelectItem value="OWNER_V1">旧负责人口径</SelectItem></SelectContent>
+            </Select></div>
+            <div><Label htmlFor="sales-target-currency">考核币种</Label><Input id="sales-target-currency" className="min-h-[44px]" maxLength={3} value={currency} onChange={event => { setPageNum(1); setCurrency(event.target.value.toUpperCase()); }} /></div>
+            <div><Label htmlFor="sales-target-dimension">维度</Label><Select value={dimension} onValueChange={value => { setPageNum(1); setDimension(value); }}>
+              <SelectTrigger id="sales-target-dimension" className="min-h-[44px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">全部维度</SelectItem><SelectItem value="OWNER">个人</SelectItem><SelectItem value="DEPT">部门</SelectItem></SelectContent>
+            </Select></div>
+            <div><Label htmlFor="sales-target-year">年份</Label><Input id="sales-target-year" className="min-h-[44px]" inputMode="numeric" maxLength={4} value={year} onChange={event => { setPageNum(1); setYear(event.target.value); }} /></div>
           </div>
-        </section>
-  );
-
-  const pageTable = (
-        <InnerTableSurface className="admin-crm-table-panel">
-            <table className="unity-data-table admin-source-table admin-crm-table min-w-[1280px]">
-              <thead>
-                <tr>
-                  <th>目标编号</th>
-                  <th>目标</th>
-                  <th>维度对象</th>
-                  <th>周期</th>
-                  <th className="text-right">目标金额</th>
-                  <th className="text-right">实际回款</th>
-                  <th className="text-right">完成率</th>
-                  <th className="text-right">差额</th>
-                  <th>更新时间</th>
-                  <th className="text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={10} className="px-4 py-10 text-center"><LoadingSpinner size="lg" className="mx-auto mb-3" /><span className="text-sm text-cf-subtle">正在加载销售目标...</span></td></tr>
-                ) : rows.length === 0 ? (
-                  <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-cf-subtle"><Goal className="mx-auto mb-3 h-4 w-4" />暂无销售目标</td></tr>
-                ) : rows.map((row) => (
-                  <tr key={row.salesTargetId}>
-                    <td className="font-mono text-xs">{row.targetNo || '-'}</td>
-                    <td><strong>{row.targetName}</strong><small>{getCrmGenericStatusLabel(row.status)}</small></td>
-                    <td><strong>{dimensionDict.getLabel(row.dimensionType || '') || '-'}</strong><small>{row.ownerName || row.deptName || '-'}</small></td>
-                    <td><strong>{periodTypeDict.getLabel(row.periodType || '') || '-'}</strong><small>{row.periodLabel || '-'}</small></td>
-                    <td className="text-right tabular-nums">{formatCurrency(row.targetAmount)}</td>
-                    <td className="text-right tabular-nums">{formatCurrency(row.achievedAmount)}</td>
-                    <td className="text-right tabular-nums">{Number(row.completionRate || 0).toFixed(2)}%</td>
-                    <td className="text-right tabular-nums">{formatCurrency(row.gapAmount)}</td>
-                    <td>{formatDateTimeDisplay(row.updateTime) || '-'}</td>
-                    <td><div className="admin-users-row-actions"><button type="button" data-tooltip="编辑目标" aria-label="编辑目标" onClick={() => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }}><Gauge size={15} /></button><button type="button" className="danger" data-tooltip="删除目标" aria-label="删除目标" onClick={() => setConfirmDelete(row)}><Trash2 size={15} /></button></div></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-        </InnerTableSurface>
-  );
-
-  const pagePagination = total > 0
-    ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} />
-    : null;
-
-  return (
-    <>
-      <section className="admin-source-page admin-crm-page admin-crm-sales-targets-page">
-        <TablePageLayout
-          actions={pageActions}
-          filters={pageFilters}
-          table={pageTable}
-          pagination={pagePagination}
-        />
-      </section>
-
-      <BaseDialog
-        open={dialogOpen}
-        title={editing ? '编辑销售目标' : '新增销售目标'}
-        onClose={() => setDialogOpen(false)}
-        width="wide"
-        footer={<><Button variant="outline" onClick={() => setDialogOpen(false)}>取消</Button><Button onClick={() => void saveSalesTarget()}>保存</Button></>}
-      >
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div>
-            <Label>目标名称</Label>
-            <Input value={form.targetName || ''} onChange={(e) => setForm((prev) => ({ ...prev, targetName: e.target.value }))} placeholder="例如：华东大区 5 月回款目标" />
-          </div>
-          <div>
-            <Label>维度类型</Label>
-            <Select value={form.dimensionType || 'OWNER'} onValueChange={(value) => setForm((prev) => ({ ...prev, dimensionType: value as CrmSalesTarget['dimensionType'] }))}>
-              <SelectTrigger><SelectValue placeholder="选择维度" /></SelectTrigger>
-              <SelectContent>
-                {dimensionOptions.map((item) => <SelectItem key={item} value={item}>{dimensionDict.getLabel(item)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>周期类型</Label>
-            <Select value={form.periodType || 'MONTH'} onValueChange={(value) => setForm((prev) => ({ ...prev, periodType: value as CrmSalesTarget['periodType'], targetPeriod: value === 'YEAR' ? undefined : prev.targetPeriod }))}>
-              <SelectTrigger><SelectValue placeholder="选择周期" /></SelectTrigger>
-              <SelectContent>
-                {periodTypeOptions.map((item) => <SelectItem key={item} value={item}>{periodTypeDict.getLabel(item)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>目标年份</Label>
-            <Input type="number" value={String(form.targetYear || currentYear)} onChange={(e) => setForm((prev) => ({ ...prev, targetYear: Number(e.target.value || currentYear) }))} placeholder="目标年份" />
-          </div>
-          <div>
-            <Label>周期值</Label>
-            <Input type="number" value={form.targetPeriod == null ? '' : String(form.targetPeriod)} onChange={(e) => setForm((prev) => ({ ...prev, targetPeriod: e.target.value ? Number(e.target.value) : undefined }))} placeholder={renderPeriodValuePlaceholder()} disabled={form.periodType === 'YEAR'} />
-          </div>
-          <div>
-            <Label>目标金额</Label>
-            <Input type="number" value={String(form.targetAmount || 0)} onChange={(e) => setForm((prev) => ({ ...prev, targetAmount: Number(e.target.value || 0) }))} placeholder="目标金额" />
-          </div>
-          {form.dimensionType === 'DEPT' ? (
-            <div className="md:col-span-2">
-              <Label>部门</Label>
-              <DeptSelector
-                single
-                value={form.deptId ?? null}
-                onChange={(id, picked) => setForm((prev) => ({ ...prev, deptId: id ?? undefined, deptName: picked?.deptName || '' }))}
-                placeholder="选择部门"
-              />
-            </div>
-          ) : (
-            <div className="md:col-span-2">
-              <Label>负责人</Label>
-              <UserSelector
-                single
-                value={form.ownerId == null ? null : String(form.ownerId)}
-                onChange={(id, picked) => setForm((prev) => ({ ...prev, ownerId: id ? Number(id) : undefined, ownerName: picked?.name || '' }))}
-                placeholder="选择负责人，留空默认当前用户"
-                allowClear
-              />
-            </div>
-          )}
-          <div>
-            <Label>状态</Label>
-            <Select value={form.status || 'ACTIVE'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}>
-              <SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="md:col-span-2 xl:col-span-3">
-            <Label>备注</Label>
-            <Textarea value={form.remark || ''} onChange={(e) => setForm((prev) => ({ ...prev, remark: e.target.value }))} placeholder="记录目标口径、区域范围、口径说明等" rows={4} />
-          </div>
-        </div>
-      </BaseDialog>
-
-      <ConfirmDialog
-        open={!!confirmDelete}
-        title="删除销售目标"
-        description={`确定删除销售目标“${confirmDelete?.targetName || ''}”吗？`}
-        confirmText="删除"
-        tone="danger"
-        onCancel={() => setConfirmDelete(null)}
-        onConfirm={() => confirmDelete ? void removeSalesTarget(confirmDelete) : undefined}
+          <p className="mt-3 text-sm text-cf-subtle">{basis === 'TEAM_V2' ? '仅计真实逐笔到账及原分配退款；期初快照单列，缺少逐笔来源的旧累计不补造分配。' : '旧口径：按当前负责人及最后到账日期计累计到账，不表示当时的团队贡献。'}</p>
+          {error && <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        </section>}
+        table={<InnerTableSurface className="admin-crm-table-panel">
+          <table className="unity-data-table admin-source-table admin-crm-table min-w-[1120px]">
+            <thead><tr><th>目标</th><th>维度对象</th><th>周期</th><th>口径及币种</th><th className="text-right">目标金额</th><th className="text-right">实际回款</th><th className="text-right">完成率</th><th className="text-right">差额</th><th>更新时间</th><th>操作</th></tr></thead>
+            <tbody>{loading ? <tr><td colSpan={10} className="py-10 text-center"><LoadingSpinner />正在加载销售目标…</td></tr>
+              : rows.length === 0 ? <tr><td colSpan={10} className="py-10 text-center text-cf-subtle">{error ? '当前查询未取得结果' : '所选口径、币种及年份下暂无目标'}</td></tr>
+                : rows.map(row => <tr key={row.salesTargetId}>
+                  <td><strong>{row.targetName}</strong><small>{row.targetNo} · {row.status === 'ACTIVE' ? '启用' : '停用'}</small></td>
+                  <td><strong>{row.dimensionType === 'OWNER' ? '个人' : '部门'}</strong><small>{row.ownerName || row.deptName || '—'}</small></td>
+                  <td>{row.periodLabel}</td><td>{salesTargetBasisLabel(row.calculationBasis)} · {row.currency}</td>
+                  <td className="text-right tabular-nums">{salesTargetMoney(row.targetAmount)}</td>
+                  <td className="text-right tabular-nums">{salesTargetMoney(row.achievedAmount)}<small>期初：{salesTargetMoney(row.baselineAmount)}</small></td>
+                  <td className="text-right tabular-nums">{salesTargetMoney(row.completionRate)}%</td>
+                  <td className="text-right tabular-nums">{salesTargetMoney(row.gapAmount)}</td>
+                  <td>{formatDateTimeDisplay(row.updateTime) || '—'}</td>
+                  <td><div className="flex flex-wrap gap-1">
+                    <Button className="min-h-[44px] min-w-[44px]" variant="ghost" aria-label="查看目标详情" onClick={() => row.salesTargetId && void showDetail(row.salesTargetId)}><Eye size={16} /></Button>
+                    {hasPermission('crm:sales-target:edit') && <Button className="min-h-[44px] min-w-[44px]" variant="ghost" aria-label="编辑目标" onClick={() => row.salesTargetId && setEditor({ id: row.salesTargetId })}><Gauge size={16} /></Button>}
+                    {hasPermission('crm:sales-target:remove') && <Button className="min-h-[44px] min-w-[44px]" variant="ghost" aria-label="删除目标" onClick={() => { setRemoving(row); setRemoveError(''); }}><Trash2 size={16} /></Button>}
+                  </div></td>
+                </tr>)}</tbody>
+          </table>
+        </InnerTableSurface>}
+        pagination={total > 0 ? <Pagination total={total} page={pageNum} pageSize={pageSize} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} /> : undefined}
       />
-    </>
-  );
+    </section>
+    {editor && <CrmSalesTargetEditor id={editor.id} onClose={closeEditor} onSaved={saved} />}
+    {detail && <BaseDialog open title="销售目标详情" onClose={() => { detailGeneration.current++; setDetail(undefined); }} width="normal"
+      panelClassName="[&_button]:!min-h-[44px] [&_button]:!min-w-[44px]">
+      {detail.error ? <p role="alert">{detail.error}</p> : !detail.row ? <p role="status">正在读取目标详情…</p> : <div className="space-y-2 text-sm">
+        <h4 className="font-semibold">{detail.row.targetName}</h4><p>{detail.row.targetNo} · 版本{detail.row.version}</p>
+        <p>{detail.row.ownerName || detail.row.deptName} · {detail.row.periodLabel}</p>
+        <p>{salesTargetBasisLabel(detail.row.calculationBasis)} · {detail.row.currency}</p>
+        <p>目标金额：{salesTargetMoney(detail.row.targetAmount)}；实际回款：{salesTargetMoney(detail.row.achievedAmount)}</p>
+        <p>完成率：{salesTargetMoney(detail.row.completionRate)}%；差额：{salesTargetMoney(detail.row.gapAmount)}</p>
+        <p>期初快照：{salesTargetMoney(detail.row.baselineAmount)}，未计入本期团队回款。</p>
+        <p className="whitespace-pre-wrap">{detail.row.remark}</p>
+      </div>}
+    </BaseDialog>}
+    {removing && <BaseDialog open title="删除销售目标" width="narrow" onClose={() => { if (!removingOperation.current) setRemoving(undefined); }}
+      panelClassName="[&_button]:!min-h-[44px] [&_button]:!min-w-[44px]"
+      footer={<><Button className="min-h-[44px]" variant="outline" disabled={removeBusy} onClick={() => setRemoving(undefined)}>取消</Button>
+        <Button className="min-h-[44px]" variant="destructive" disabled={removeBusy || removing.version == null} onClick={() => void remove()}>{removeBusy ? '正在处理…' : '确认删除目标'}</Button></>}>
+      <p className="text-sm">确认删除“{removing.targetName}”？目标金额 {salesTargetMoney(removing.targetAmount)} {removing.currency}，版本{removing.version}。</p>
+      {removeError && <><p role="alert" className="mt-3 text-sm">{removeError}</p><Button className="mt-3 min-h-[44px]" variant="outline" disabled={removeBusy} onClick={() => void refreshRemoval()}>重新读取目标后核对</Button></>}
+    </BaseDialog>}
+  </>;
 }

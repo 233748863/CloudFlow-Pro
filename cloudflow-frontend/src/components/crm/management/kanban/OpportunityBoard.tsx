@@ -3,8 +3,8 @@ import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { useCrmManagement } from '../store';
 import { DroppableStageColumn } from './DroppableStageColumn';
 
-export const OpportunityBoard: React.FC = () => {
-  const { board, opportunities, openDialog, handleBoardDragEnd } = useCrmManagement();
+export const OpportunityBoard: React.FC<{ onOpen: (id: number) => void }> = ({ onOpen }) => {
+  const { board, hasPermission, handleBoardDragEnd } = useCrmManagement();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   return (
@@ -14,18 +14,8 @@ export const OpportunityBoard: React.FC = () => {
           <DroppableStageColumn
             key={column.stage}
             column={column}
-            onCardClick={(card) => {
-              const matched = opportunities.find((item) => item.opportunityId === card.opportunityId);
-              openDialog({
-                type: 'opportunity',
-                item: matched || {
-                  customerId: card.customerId || 0,
-                  opportunityId: card.opportunityId,
-                  opportunityName: card.opportunityName || '',
-                  customerName: card.customerName,
-                },
-              });
-            }}
+            draggable={!['WON', 'LOST'].includes(column.stage || '') && (hasPermission('crm:opportunity:edit') || hasPermission('crm:opportunity:win') || hasPermission('crm:approval:opportunity-downgrade'))}
+            onCardClick={card => { if (card.opportunityId) onOpen(card.opportunityId); }}
           />
         ))}
       </div>

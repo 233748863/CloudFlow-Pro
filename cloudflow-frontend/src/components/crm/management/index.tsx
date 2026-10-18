@@ -18,7 +18,9 @@ import { OpportunityDialogContent } from './dialogs/OpportunityDialogContent';
 import { QuoteDialogContent } from './dialogs/QuoteDialogContent';
 import { ReceivableDialogContent } from './dialogs/ReceivableDialogContent';
 import { RenewalDialogContent } from './dialogs/RenewalDialogContent';
-import { TicketDialogContent } from './dialogs/TicketDialogContent';
+import { TicketEditorDialog } from './dialogs/TicketEditorDialog';
+import { OpportunityOutcomeDialog } from './dialogs/OpportunityOutcomeDialog';
+import { OpportunityStageDialog } from './dialogs/OpportunityStageDialog';
 import { tabLabelMap } from './constants';
 
 const DialogShell: React.FC = () => {
@@ -32,17 +34,18 @@ const DialogShell: React.FC = () => {
     followUpForm,
     opportunityForm,
     quoteForm,
+    quoteReady,
     receivableForm,
+    receivableReady,
     renewalForm,
-    ticketForm,
   } = useCrmManagement();
 
   if (!dialog) return null;
 
   const footer = (
     <div className="flex items-center justify-end gap-2">
-      <Button variant="outline" onClick={() => openDialog(null)}>取消</Button>
-      <Button onClick={() => void saveDialog()} disabled={saving}>{saving ? '保存中...' : '保存'}</Button>
+      <Button className={dialog.type === 'receivable' ? '!min-h-[44px] !min-w-[44px]' : undefined} variant="outline" onClick={() => openDialog(null)} disabled={['quote', 'receivable'].includes(dialog.type) && saving}>取消</Button>
+      <Button className={dialog.type === 'receivable' ? '!min-h-[44px] !min-w-[44px]' : undefined} onClick={() => void saveDialog()} disabled={saving || dialog.type === 'quote' && !quoteReady || dialog.type === 'receivable' && !receivableReady}>{saving ? '保存中...' : '保存'}</Button>
     </div>
   );
 
@@ -76,14 +79,14 @@ const DialogShell: React.FC = () => {
   }
   if (dialog.type === 'quote') {
     return (
-      <BaseDialog open title={quoteForm.quoteId ? '编辑报价' : '新增报价'} onClose={() => openDialog(null)} footer={footer} width="wide">
+      <BaseDialog open title={quoteForm.quoteId ? '编辑报价' : '新增报价'} onClose={() => { if (!saving) openDialog(null); }} footer={footer} width="wide">
         <QuoteDialogContent />
       </BaseDialog>
     );
   }
   if (dialog.type === 'receivable') {
     return (
-      <BaseDialog open title={receivableForm.receivableId ? '编辑回款' : '新增回款'} onClose={() => openDialog(null)} footer={footer} width="wide">
+      <BaseDialog open title={receivableForm.receivableId ? '编辑回款' : '新增回款'} onClose={() => { if (!saving) openDialog(null); }} footer={footer} width="wide">
         <ReceivableDialogContent />
       </BaseDialog>
     );
@@ -95,19 +98,7 @@ const DialogShell: React.FC = () => {
       </BaseDialog>
     );
   }
-  return (
-    <BaseDialog
-      open
-      title={ticketForm.ticketId ? '编辑工单' : '新增工单'}
-      onClose={() => openDialog(null)}
-      footer={footer}
-      width="wide"
-      bodyClassName="overflow-visible"
-      panelClassName="overflow-visible"
-    >
-      <TicketDialogContent />
-    </BaseDialog>
-  );
+  return <TicketEditorDialog />;
 };
 
 const CrmManagementShell: React.FC = () => {
@@ -122,11 +113,13 @@ const CrmManagementShell: React.FC = () => {
     opportunities,
     quotes,
     tickets,
+    ticketListError,
     board,
+    stageChange,
   } = useCrmManagement();
 
   // 首屏加载（仅在 dashboard 数据尚未到达且正在加载时显示，避免切换 tab 时反复闪烁）
-  if (loading && !dashboard) {
+  if (loading && !dashboard && tab !== 'ticket') {
     return <PageLoading tip="销售数据加载中…" />;
   }
 
@@ -166,7 +159,7 @@ const CrmManagementShell: React.FC = () => {
         </article>
         <article className="card admin-source-stat admin-source-tone-violet">
           <div className="admin-source-stat-icon"><LifeBuoy size={18} /></div>
-          <div><p>待处理工单</p><strong>{activeTicketCount}</strong><span>服务风险与客户响应</span></div>
+          <div><p>待处理工单（本页）</p><strong>{loading ? '…' : ticketListError ? '—' : activeTicketCount}</strong><span>仅统计当前工单分页</span></div>
         </article>
       </section>
     </div>
@@ -201,7 +194,7 @@ const CrmManagementShell: React.FC = () => {
   );
 
   return (
-    <section className="admin-source-page admin-crm-page admin-crm-management-page">
+    <section className={`admin-source-page admin-crm-page admin-crm-management-page${tab === 'opportunity' ? ' crm-opportunity-page' : ''}`}>
       <TablePageLayout
         actions={pageActions}
         filters={pageFilters}
@@ -211,13 +204,17 @@ const CrmManagementShell: React.FC = () => {
       <DialogShell />
 
       <ConfirmDialog
-        open={Boolean(confirm)}
+        open={Boolean(confirm && !['winOpportunity', 'loseOpportunity'].includes(confirm.action))}
         title="确认操作"
-        message="执行后将更新 CRM 当前状态。"
+        message={confirm?.action === 'confirmReceivable'
+          ? `确认“${confirm.item.receivableName}”剩余未收金额 ${(Number(confirm.item.plannedAmount || 0) - Number(confirm.item.receivedAmount || 0)).toFixed(2)} 已全部到账？金额以当前已保存记录为准。`
+          : '执行后将更新 CRM 当前状态。'}
         confirmText="确认"
         onCancel={() => setConfirm(null)}
         onConfirm={() => void executeConfirm()}
       />
+      {confirm && ['winOpportunity', 'loseOpportunity'].includes(confirm.action) && <OpportunityOutcomeDialog key={`${confirm.item.opportunityId}:${confirm.action}`} opportunity={confirm.item} lost={confirm.action === 'loseOpportunity'} />}
+      {stageChange && <OpportunityStageDialog key={stageChange.opportunity.opportunityId} opportunity={stageChange.opportunity} initialStage={stageChange.targetStage} />}
     </section>
   );
 };
