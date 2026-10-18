@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+
+// Re-deliver the already-paid OA event verbatim. Never create a payment or principal fixture.
+assert.ok(process.argv.includes('--recover-d3-funded-payment'));
+const round=process.argv[process.argv.indexOf('--round')+1];assert.match(round,/^r[1-9][0-9]*$/);
+const root='D:/CloudFlowPro',run=path.join(root,'.cloudflow-runtime/batch-g-integration/9799534e1a3a47b5958330f14ae16dc7');
+const evidence=path.join(root,'.cloudflow-runtime/full-prd-20260915/approved-runtime');
+const read=file=>JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));
+const state=read(path.join(run,'state.json')),fixture=read(path.join(evidence,'d3-funded-encashment-20261006-r4/fixture.json'));
+assert.equal(state.status,'RUNNING');assert.equal(fs.realpathSync(state.run),fs.realpathSync(run));
+assert.equal(fixture.loanId,'199');assert.equal(fixture.paymentId,'9043');
+const output=path.join(evidence,'d3-funded-payment-recovery-20261006-'+round+'.json');assert.ok(!fs.existsSync(output));
+const env={...process.env};delete env.MYSQL_PWD;
+const db=statement=>{assert.match(statement,/^SELECT /);const result=spawnSync('mysql.exe',['--no-defaults','--protocol=TCP','--host=127.0.0.1','--port='+state.mysqlPort,'--user=root','--skip-password','--batch','--raw','--skip-column-names','--default-character-set=utf8mb4','cloud_flow_db'],{input:statement,encoding:'utf8',windowsHide:true,env,timeout:30000});assert.equal(result.status,0,'Owned recovery read failed');return result.stdout.trim();};
+assert.equal(fs.realpathSync(db('SELECT @@datadir')),fs.realpathSync(path.join(run,'mysql-data')));
+const hash=value=>createHash('sha256').update(value).digest('hex');
+const raw=db("SELECT payload_json FROM outbox_event WHERE tenant_id=100000 AND aggregate_id='9043' AND event_type='HR_ADVANCE_PAYMENT_PAID'");
+const envelope=JSON.parse(raw),payload=JSON.parse(envelope.payload);
+assert.equal(envelope.eventType,'HR_ADVANCE_PAYMENT_PAID');assert.equal(envelope.sourceModule,'cloudflow-oa');assert.equal(String(payload.advanceId),'199');assert.equal(String(payload.paymentId),'9043');assert.equal(String(payload.tenantId),'100000');assert.equal(payload.amount,'100.01');
+assert.equal(db('SELECT status FROM biz_payment_request WHERE tenant_id=100000 AND id=9043'),'PAID');
+const paymentBefore=hash(db('SELECT * FROM biz_payment_request WHERE tenant_id=100000 AND id=9043'));
+const loan=()=>JSON.parse(db("SELECT JSON_OBJECT('status',status,'approval',approval_status,'outstanding',CAST(outstanding_amount AS CHAR),'reserved',CAST(reserved_amount AS CHAR),'repaid',CAST(repaid_amount AS CHAR)) FROM hr_employee_advance WHERE tenant_id=100000 AND advance_id=199"));
+const before=loan();assert.ok(['APPROVED','PAID'].includes(before.status));
+const port=state.services.find(service=>service.name==='hr').port;assert.ok(Number.isInteger(port)&&port>1024&&port<65536);
+const response=await fetch('http://127.0.0.1:'+port+'/inner/hr/advance/payment-event',{method:'POST',headers:{'Content-Type':'application/json','X-Inner-Call':'true','X-From-Service':'cloudflow-service-oa','X-Tenant-Id':'100000'},body:envelope.payload,signal:AbortSignal.timeout(30000)});
+const body=await response.json(),after=loan();
+const report={passed:response.status===200&&body.code===200&&after.status==='PAID'&&after.outstanding==='100.01',httpStatus:response.status,code:body.code,traceId:response.headers.get('X-Trace-Id'),before,after,originalEventDigest:hash(raw),originalPaymentUnchanged:paymentBefore===hash(db('SELECT * FROM biz_payment_request WHERE tenant_id=100000 AND id=9043')),eventUnchanged:hash(raw)===hash(db("SELECT payload_json FROM outbox_event WHERE tenant_id=100000 AND aggregate_id='9043' AND event_type='HR_ADVANCE_PAYMENT_PAID'")),fundedAudits:Number(db("SELECT COUNT(*) FROM hr_audit_log WHERE tenant_id=100000 AND business_domain='HR_ADVANCE' AND business_id=199 AND operation_type='FUNDED'")),originalFailureRetained:true};
+assert.ok(report.originalPaymentUnchanged&&report.eventUnchanged);fs.writeFileSync(output,JSON.stringify(report,null,2),{flag:'wx'});console.log('D3_FUNDED_PAYMENT_RECOVERY: '+JSON.stringify(report));if(!report.passed)process.exitCode=1;

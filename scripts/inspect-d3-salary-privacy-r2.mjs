@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+
+const root = 'D:/CloudFlowPro';
+const run = path.join(root, '.cloudflow-runtime/batch-g-integration/9799534e1a3a47b5958330f14ae16dc7');
+const read = file => JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+const state = read(path.join(run, 'state.json'));
+assert.equal(state.status, 'RUNNING');
+assert.equal(fs.realpathSync(state.run), fs.realpathSync(run));
+const env = { ...process.env }; delete env.MYSQL_PWD;
+const db = statement => {
+  assert.match(statement, /^SELECT\s/i);
+  assert.ok(!/;\s*\S|\bINTO\s+(?:OUTFILE|DUMPFILE)\b/i.test(statement));
+  const result = spawnSync('mysql.exe', ['--no-defaults', '--protocol=TCP', '--host=127.0.0.1', `--port=${state.mysqlPort}`, '--user=root', '--skip-password', '--batch', '--raw', '--skip-column-names', '--default-character-set=utf8mb4', 'cloud_flow_db'], { input: statement, encoding: 'utf8', windowsHide: true, env, timeout: 30000, maxBuffer: 16 * 1024 * 1024 });
+  assert.equal(result.status, 0, 'Owned read failed'); return result.stdout.trim();
+};
+assert.equal(fs.realpathSync(db('SELECT @@datadir')), fs.realpathSync(path.join(run, 'mysql-data')));
+const rows = statement => db(statement).split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
+const fixture = read(path.join(root, '.cloudflow-runtime/full-prd-20260915/approved-runtime/d3-salary-privacy-20261006-r2/fixture.json'));
+const hash = value => createHash('sha256').update(value).digest('hex');
+const protectedRows = fixture.allowedChanges.map(({ table, selected, allowed }) => {
+  assert.match(table, /^[a-z_]+$/); assert.match(selected, /^\d+$/);
+  const columns = db(`SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='cloud_flow_db' AND TABLE_NAME='${table}' ORDER BY ORDINAL_POSITION`).split(/\r?\n/).filter(column => !allowed.includes(column));
+  assert.ok(columns.every(column => /^[a-z_][a-z0-9_]*$/.test(column)));
+  const key = { hr_tax_slab: 'slab_id', hr_payroll_period: 'period_id' }[table] || 'id';
+  const current = hash(db(`SELECT ${columns.map(column => '`' + column + '`').join(',')} FROM ${table} WHERE ${key}=${selected}`));
+  return { table, selected, matches: current === fixture.protectedDigest[table + ':' + selected], current };
+});
+console.log(JSON.stringify({ targets: fixture.targets, protectedRows }, null, 2));
+console.log('AUDIT_COLUMNS: ' + db("SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='cloud_flow_db' AND TABLE_NAME='hr_audit_log'"));
+console.log('EMPLOYEE_CREATOR: ' + JSON.stringify(rows("SELECT JSON_OBJECT('id',CAST(id AS CHAR),'createBy',create_by,'createTime',create_time,'unbound',user_id IS NULL) FROM hr_employee WHERE id IN (98209282285,98209282286)")));
+console.log('UPDATE_TIMES: ' + JSON.stringify(rows("SELECT JSON_OBJECT('id',CAST(id AS CHAR),'employee',business_id,'beforeUpdated',JSON_EXTRACT(before_data,'$.updateTime'),'afterUpdated',JSON_EXTRACT(after_data,'$.updateTime')) FROM hr_audit_log WHERE business_domain='hr_employee' AND business_id IN ('98209282285','98209282286') ORDER BY id")));
+console.log('JOB_CONFIG: ' + JSON.stringify(rows("SELECT JSON_OBJECT('id',CAST(job_id AS CHAR),'tenant',CAST(tenant_id AS CHAR),'service',service_name,'handler',handler_name,'status',status,'deleted',deleted,'generic',handler_param IS NULL OR handler_param='') FROM sys_job WHERE handler_name='hrPayrollBatchCalculate' ORDER BY tenant_id,job_id")));
+console.log('R3_CALCULATION: ' + JSON.stringify(rows("SELECT JSON_OBJECT('batch',CAST(batch_id AS CHAR),'employee',CAST(employee_id AS CHAR),'status',calc_status,'error',error_message) FROM hr_payroll_batch_employee WHERE batch_id=152")));
+console.log('R3_JOB_RESULT: ' + db("SELECT result_msg FROM sys_job_log WHERE execute_no='4286730e-0522-42cd-b567-774bb4b3e859'"));
+console.log('ERROR_COLUMNS: '+db("SELECT GROUP_CONCAT(COLUMN_NAME) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='cloud_flow_db' AND TABLE_NAME='sys_api_error_log'"));
+console.log('CONFIRM_ROLES: '+db("SELECT GROUP_CONCAT(CONCAT(rm.role_id,':',IF(existing.menu_id IS NULL,'missing','present')) ORDER BY rm.role_id) FROM sys_role_menu rm LEFT JOIN sys_role_menu existing ON existing.tenant_id=rm.tenant_id AND existing.role_id=rm.role_id AND existing.menu_id=1014 WHERE rm.tenant_id=100000 AND rm.menu_id=729"));
+console.log('FOREIGN_PREVIEW_ERROR: '+JSON.stringify(rows("SELECT JSON_OBJECT('type',exception_class,'message',exception_message) FROM sys_api_error_log WHERE trace_id='7f33b3697516430f800be8683d912f0f'")));
+console.log('AUDIT_SHAPES: ' + JSON.stringify(rows("SELECT JSON_OBJECT('id',CAST(audit_id AS CHAR),'beforeKeys',JSON_KEYS(before_json),'afterKeys',JSON_KEYS(after_json),'time',create_time) FROM sys_audit_log WHERE audit_name='HR记录更新' AND (before_json LIKE '%98209282286%' OR after_json LIKE '%98209282286%') ORDER BY audit_id DESC LIMIT 6")));
+console.log('OWNED_EMPLOYEE_AUDIT: ' + JSON.stringify(rows("SELECT JSON_OBJECT('id',CAST(id AS CHAR),'employee',business_id,'operation',operation_type,'beforeCreator',JSON_EXTRACT(before_data,'$.createBy'),'afterCreator',JSON_EXTRACT(after_data,'$.createBy'),'beforeCreated',JSON_EXTRACT(before_data,'$.createTime'),'afterCreated',JSON_EXTRACT(after_data,'$.createTime'),'time',create_time) FROM hr_audit_log WHERE business_domain='hr_employee' AND business_id IN ('98209282285','98209282286') ORDER BY id")));
