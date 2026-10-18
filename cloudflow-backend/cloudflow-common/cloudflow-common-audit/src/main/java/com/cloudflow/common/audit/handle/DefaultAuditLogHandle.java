@@ -53,6 +53,7 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
         handle(audit, changes, oldVal, newVal, null);
     }
 
+    @Override
     public void handle(Audit audit, Changes changes, Object oldVal, Object newVal, Class<?> sourceClass) {
         // 无变更则跳过
         if (changes.isEmpty()) {

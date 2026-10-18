@@ -42,7 +42,8 @@ public class SensitiveJsonSerializer extends StdSerializer<Object> implements Co
             provider.defaultSerializeNull(gen);
             return;
         }
-        gen.writeString(maskValue(value));
+        gen.writeString(Boolean.TRUE.equals(provider.getAttribute("cloudflow.message.internal-payload"))
+                ? String.valueOf(value) : maskValue(value));
     }
 
     @Override
@@ -64,6 +65,7 @@ public class SensitiveJsonSerializer extends StdSerializer<Object> implements Co
         String text = String.valueOf(value);
         return switch (sensitiveType) {
             case SECRET -> SensitiveUtils.maskSecret(text);
+            case SECRET_LAST_FOUR -> text.isBlank() ? text : text.length() <= 4 ? "****" : "****" + text.substring(text.length() - 4);
             case PHONE -> SensitiveUtils.maskPhone(text);
             case EMAIL -> SensitiveUtils.maskEmail(text);
             case ID_CARD -> SensitiveUtils.maskIdCard(text);

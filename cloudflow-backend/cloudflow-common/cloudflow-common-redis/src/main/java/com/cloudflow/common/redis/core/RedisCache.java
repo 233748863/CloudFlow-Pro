@@ -114,6 +114,13 @@ public class RedisCache {
         return redisTemplate.delete(getTenantKey(key));
     }
 
+    public long deleteObjects(final Collection<String> keys) {
+        if (keys.isEmpty()) return 0;
+        Long removed = redisTemplate.delete(keys.stream().map(this::getTenantKey).distinct().toList());
+        if (removed == null) throw new IllegalStateException("Redis deletion result unavailable");
+        return removed;
+    }
+
     /**
      * 缓存Set
      *

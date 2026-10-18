@@ -21,7 +21,9 @@ import java.util.regex.Pattern;
 public class StaticRuleScanner {
 
     private static final Pattern METHOD_SIGNATURE = Pattern.compile(
-            "^(public|protected|private)\\s+.*\\(.*\\)\\s*(\\{|throws\\s+.*)?$");
+            "^(public|protected|private)\\s+.*\\(.*\\)\\s*(\\{.*|throws\\s+.*)?$");
+    private static final Pattern MYBATIS_SQL_ANNOTATION = Pattern.compile(
+            "^@(?:org\\.apache\\.ibatis\\.annotations\\.)?(?:Select|Update|Insert|Delete)(?:Provider)?\\s*\\(");
     private static final String CLASSPATH_WHITELIST = "static-rules/static-rules-whitelist.txt";
     private static final String AUDIT_IMMUTABLE_MARKER = "ERR.AUDIT_IMMUTABLE";
     private static final String[] WRITE_KEYWORDS = {
@@ -88,6 +90,9 @@ public class StaticRuleScanner {
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
             String trimmed = line.trim();
+            if (isMybatisSqlAnnotation(trimmed) && !isWhitelisted(whitelist, file, i + 1)) {
+                findings.add(format(file, i + 1, "MYBATIS_ANNOTATION_SQL", trimmed));
+            }
             if (trimmed.startsWith("@")) {
                 pendingAnnotations.add(trimmed);
                 continue;
@@ -143,11 +148,8 @@ public class StaticRuleScanner {
                 findings.add(format(file, i + 1, "TXN_WORKFLOW", line.trim()));
             }
             if ((line.contains("SELECT ") || line.contains("UPDATE ") || line.contains("DELETE ") || line.contains("INSERT "))
-                    && line.contains("+")) {
+                    && line.contains("+") && !isWhitelisted(whitelist, file, i + 1)) {
                 findings.add(format(file, i + 1, "SQL_CONCAT", line.trim()));
-            }
-            if (isMybatisSqlAnnotation(trimmed) && !isWhitelisted(whitelist, file, i + 1)) {
-                findings.add(format(file, i + 1, "MYBATIS_ANNOTATION_SQL", trimmed));
             }
             if (line.contains(".last(") && !isWhitelisted(whitelist, file, i + 1)) {
                 findings.add(format(file, i + 1, "MP_SQL_LAST", line.trim()));
@@ -247,14 +249,7 @@ public class StaticRuleScanner {
     }
 
     private boolean isMybatisSqlAnnotation(String line) {
-        return line.startsWith("@Select(")
-                || line.startsWith("@Update(")
-                || line.startsWith("@Insert(")
-                || line.startsWith("@Delete(")
-                || line.startsWith("@SelectProvider(")
-                || line.startsWith("@UpdateProvider(")
-                || line.startsWith("@InsertProvider(")
-                || line.startsWith("@DeleteProvider(");
+        return MYBATIS_SQL_ANNOTATION.matcher(line).find();
     }
 
     private boolean isWorkflowInvocationLine(String line) {

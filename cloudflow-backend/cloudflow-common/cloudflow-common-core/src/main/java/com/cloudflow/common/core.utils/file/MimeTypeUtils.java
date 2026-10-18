@@ -15,6 +15,7 @@ public class MimeTypeUtils {
     public static final String IMAGE_JPEG = "image/jpeg";
     public static final String IMAGE_BMP = "image/bmp";
     public static final String IMAGE_GIF = "image/gif";
+    public static final String IMAGE_WEBP = "image/webp";
     public static final String APPLICATION_PDF = "application/pdf";
     public static final String APPLICATION_ZIP = "application/zip";
     public static final String APPLICATION_ZIP_COMPRESSED = "application/x-zip-compressed";
@@ -35,6 +36,7 @@ public class MimeTypeUtils {
     public static final String APPLICATION_REALMEDIA_VBR = "application/vnd.rn-realmedia-vbr";
     public static final String APPLICATION_FLASH = "application/x-shockwave-flash";
     public static final String TEXT_PLAIN = "text/plain";
+    public static final String TEXT_CSV = "text/csv";
     public static final String TEXT_HTML = "text/html";
     public static final String VIDEO_MP4 = "video/mp4";
     public static final String VIDEO_AVI = "video/x-msvideo";
@@ -46,12 +48,12 @@ public class MimeTypeUtils {
     public static final String AUDIO_MIDI = "audio/midi";
     public static final String AUDIO_MIDI_ALT = "audio/x-midi";
 
-    public static final String[] IMAGE_EXTENSION = { "bmp", "gif", "jpg", "jpeg", "png" };
+    public static final String[] IMAGE_EXTENSION = { "bmp", "gif", "jpg", "jpeg", "png", "webp" };
     public static final String[] FLASH_EXTENSION = { "swf", "flv" };
     public static final String[] MEDIA_EXTENSION = { "swf", "flv", "mp3", "wav", "wma", "wmv", "mid", "avi", "mpg", "asf", "rm", "rmvb" };
     public static final String[] DEFAULT_ALLOWED_EXTENSION = {
-            "bmp", "gif", "jpg", "jpeg", "png",
-            "doc", "docx", "xls", "xlsx", "ppt", "pptx", "html", "htm", "txt",
+            "bmp", "gif", "jpg", "jpeg", "png", "webp",
+            "doc", "docx", "xls", "xlsx", "csv", "ppt", "pptx", "html", "htm", "txt",
             "rar", "zip", "gz", "bz2",
             "mp4", "avi", "rmvb",
             "pdf" };
@@ -66,6 +68,7 @@ public class MimeTypeUtils {
         register("jpeg", setOf(IMAGE_JPEG, IMAGE_JPG, APPLICATION_OCTET_STREAM), setOf(IMAGE_JPEG));
         register("bmp", setOf(IMAGE_BMP, APPLICATION_OCTET_STREAM), setOf(IMAGE_BMP));
         register("gif", setOf(IMAGE_GIF, APPLICATION_OCTET_STREAM), setOf(IMAGE_GIF));
+        register("webp", setOf(IMAGE_WEBP, APPLICATION_OCTET_STREAM), setOf(IMAGE_WEBP));
         register("pdf", setOf(APPLICATION_PDF, APPLICATION_OCTET_STREAM), setOf(APPLICATION_PDF));
         register("zip", setOf(APPLICATION_ZIP, APPLICATION_ZIP_COMPRESSED, APPLICATION_OCTET_STREAM), setOf(APPLICATION_ZIP));
         register("rar", setOf(APPLICATION_RAR, APPLICATION_RAR_COMPRESSED, APPLICATION_OCTET_STREAM), setOf(APPLICATION_RAR));
@@ -76,6 +79,7 @@ public class MimeTypeUtils {
         register("ppt", setOf(APPLICATION_MSPOWERPOINT, APPLICATION_OCTET_STREAM), setOf(APPLICATION_COMPOUND_FILE));
         register("docx", setOf(APPLICATION_DOCX, APPLICATION_OCTET_STREAM), setOf(APPLICATION_DOCX));
         register("xlsx", setOf(APPLICATION_XLSX, APPLICATION_OCTET_STREAM), setOf(APPLICATION_XLSX));
+        register("csv", setOf(TEXT_CSV, TEXT_PLAIN, APPLICATION_MSEXCEL, APPLICATION_OCTET_STREAM), setOf(TEXT_PLAIN));
         register("pptx", setOf(APPLICATION_PPTX, APPLICATION_OCTET_STREAM), setOf(APPLICATION_PPTX));
         register("txt", setOf(TEXT_PLAIN), Collections.emptySet());
         register("html", setOf(TEXT_HTML), Collections.emptySet());
@@ -107,6 +111,8 @@ public class MimeTypeUtils {
                 return "bmp";
             case IMAGE_GIF:
                 return "gif";
+            case IMAGE_WEBP:
+                return "webp";
             case APPLICATION_PDF:
                 return "pdf";
             case APPLICATION_ZIP:
@@ -124,6 +130,8 @@ public class MimeTypeUtils {
                 return "doc";
             case APPLICATION_MSEXCEL:
                 return "xls";
+            case TEXT_CSV:
+                return "csv";
             case APPLICATION_MSPOWERPOINT:
                 return "ppt";
             case APPLICATION_DOCX:

@@ -39,4 +39,6 @@ public @interface EncryptField {
      * 加密算法，默认 AES
      */
     AlgorithmType algorithm() default AlgorithmType.AES;
+
+    boolean jsonStorage() default false;
 }

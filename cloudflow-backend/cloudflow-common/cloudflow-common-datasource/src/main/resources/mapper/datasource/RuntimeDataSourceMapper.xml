@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.common.datasource.mapper.RuntimeDataSourceMapper">
+    <sql id="configColumns">
+        config_id, tenant_id, config_name, ds_key, url, driver_class, username, password_encrypted,
+        init_size, max_active, target_services, status, remark, deleted, version,
+        create_by, create_time, update_by, update_time
+    </sql>
+    <select id="find" resultType="com.cloudflow.common.datasource.domain.RuntimeDataSourceConfig">
+        SELECT <include refid="configColumns"/> FROM sys_data_source_config
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND deleted = 0
+    </select>
+    <select id="lock" resultType="com.cloudflow.common.datasource.domain.RuntimeDataSourceConfig">
+        SELECT <include refid="configColumns"/> FROM sys_data_source_config
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="page" resultType="com.cloudflow.common.datasource.domain.RuntimeDataSourceConfig">
+        SELECT <include refid="configColumns"/> FROM sys_data_source_config
+        WHERE tenant_id = #{tenantId} AND deleted = 0 ORDER BY config_id DESC LIMIT #{offset}, #{limit}
+    </select>
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM sys_data_source_config WHERE tenant_id = #{tenantId} AND deleted = 0
+    </select>
+    <select id="scan" resultType="com.cloudflow.common.datasource.domain.RuntimeDataSourceConfig">
+        SELECT <include refid="configColumns"/> FROM sys_data_source_config
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND config_id &gt; #{afterId} ORDER BY config_id LIMIT 100
+    </select>
+    <select id="countKey" resultType="long">
+        SELECT COUNT(*) FROM sys_data_source_config WHERE tenant_id = #{tenantId} AND ds_key = #{dsKey}
+    </select>
+    <insert id="insertConfig" useGeneratedKeys="true" keyProperty="configId">
+        INSERT INTO sys_data_source_config
+            (tenant_id, config_name, ds_key, url, driver_class, username, password_encrypted,
+             init_size, max_active, target_services, status, remark, deleted, version,
+             create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{configName}, #{dsKey}, #{url}, #{driverClass}, #{username}, #{passwordEncrypted},
+                #{initSize}, #{maxActive}, #{targetServices}, #{status}, #{remark}, 0, 0,
+                #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <update id="updateConfig">
+        UPDATE sys_data_source_config SET config_name = #{configName}, url = #{url}, username = #{username},
+            password_encrypted = #{passwordEncrypted}, max_active = #{maxActive}, target_services = #{targetServices},
+            remark = #{remark}, version = version + 1, update_by = #{updateBy}, update_time = #{updateTime}
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND deleted = 0 AND version = #{version}
+    </update>
+    <update id="updateActivation">
+        UPDATE sys_data_source_config SET status = #{status}, target_services = #{targetServices},
+            version = version + 1, update_by = #{operator}, update_time = #{now}
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND deleted = 0 AND version = #{version}
+    </update>
+    <select id="registrations" resultType="com.cloudflow.common.datasource.domain.RuntimeDataSourceRegistration">
+        SELECT registration_id, tenant_id, config_id, service_name, instance_key, applied_version,
+               status, error_code, checked_time, create_by, create_time, update_by, update_time
+        FROM sys_data_source_registration WHERE tenant_id = #{tenantId} AND config_id = #{configId}
+        ORDER BY service_name, instance_key
+    </select>
+    <insert id="recordRegistration">
+        INSERT INTO sys_data_source_registration
+            (tenant_id, config_id, service_name, instance_key, applied_version, status, error_code, checked_time,
+             create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{configId}, #{serviceName}, #{instanceKey}, #{appliedVersion}, #{status}, #{errorCode},
+                #{checkedTime}, 'runtime', #{checkedTime}, 'runtime', #{checkedTime})
+        ON DUPLICATE KEY UPDATE applied_version = VALUES(applied_version), status = VALUES(status),
+            error_code = VALUES(error_code), checked_time = VALUES(checked_time),
+            update_by = 'runtime', update_time = VALUES(checked_time)
+    </insert>
+    <update id="markUnavailable">
+        UPDATE sys_data_source_registration SET status = #{status}, error_code = #{errorCode},
+            checked_time = #{now}, update_by = 'reconcile', update_time = #{now}
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND service_name = #{serviceName}
+            AND instance_key = #{instanceKey}
+            AND (checked_time &lt; #{before} OR (status = 'STALE' AND error_code = 'PENDING'))
+    </update>
+</mapper>

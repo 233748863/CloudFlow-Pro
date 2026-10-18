@@ -13,6 +13,7 @@ public class UserDataScopeSnapshot implements Serializable {
 
     private Long tenantId;
     private Long userId;
+    private Integer userVersion;
     private Integer dsType;
     private List<Long> dsDeptIds;
     private LocalDateTime refreshedAt;

@@ -1,14 +1,35 @@
 # POST_NO_REPEAT: 认证入口不要求重复提交防护
-cloudflow-auth/src/main/java/com/cloudflow/auth/controller/AuthController.java:46
-cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:33
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/AuthController.java:136
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:27
 
 # AUTH_NO_RATE: 滑块校验与验证码发送由上游网关限流
-cloudflow-auth/src/main/java/com/cloudflow/auth/controller/AuthController.java:46
-cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:33
-cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:44
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/AuthController.java:136
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:27
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:39
 
 # PERMISSION_GUARD: 内部远程调用入口或公开认证接口
-cloudflow-auth/src/main/java/com/cloudflow/auth/controller/AuthController.java:46
-cloudflow-auth/src/main/java/com/cloudflow/auth/controller/BusinessRuleController.java:43
-cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:33
-cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:44
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/AuthController.java:136
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/BusinessRuleController.java:44
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:27
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/CaptchaController.java:39
+
+# PERMISSION_GUARD: 登陆后由业务数据提供器校验具体权限、租户和记录身份
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/SysPrintController.java:33
+
+# PERMISSION_GUARD: 文件控制器要求登录，服务层校验租户、业务对象和文件所有权
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/system/FileDownloadController.java:30
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/system/FileDownloadController.java:39
+cloudflow-auth/src/main/java/com/cloudflow/auth/controller/system/FileDownloadController.java:45
+
+# MYBATIS_ANNOTATION_SQL: 静态 SQL，所有外部值均使用绑定参数
+cloudflow-auth/src/main/java/com/cloudflow/auth/mapper/SysPrintTemplateMapper.java:12
+cloudflow-auth/src/main/java/com/cloudflow/auth/mapper/SysPrintTemplateMapper.java:17
+cloudflow-auth/src/main/java/com/cloudflow/auth/mapper/SysPrintTemplateMapper.java:20
+
+# MP_SQL_LAST: 固定锁语句，用于串行化业务任务初始化
+cloudflow-auth/src/main/java/com/cloudflow/auth/service/JobPlatformService.java:448
+
+# SQL_CONCAT: 动态标识符来自固定日志类型定义，归档表名另有格式与保留表校验
+cloudflow-common/cloudflow-common-audit/src/main/java/com/cloudflow/common/audit/service/AuditLogArchiveService.java:214
+cloudflow-common/cloudflow-common-audit/src/main/java/com/cloudflow/common/audit/service/AuditLogArchiveService.java:252
+cloudflow-common/cloudflow-common-audit/src/main/java/com/cloudflow/common/audit/service/AuditLogArchiveService.java:266

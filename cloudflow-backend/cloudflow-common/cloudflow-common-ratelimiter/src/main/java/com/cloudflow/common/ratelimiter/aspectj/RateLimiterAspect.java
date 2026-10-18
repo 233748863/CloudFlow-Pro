@@ -90,7 +90,7 @@ public class RateLimiterAspect {
         if (limitType == LimitType.IP) {
             sb.append(":").append(getIpAddr());
         } else if (limitType == LimitType.USER) {
-            sb.append(":").append(getUserId());
+            sb.append(":tenant:").append(UserContext.getTenantId()).append(":user:").append(getUserId());
         }
 
         return sb.toString();

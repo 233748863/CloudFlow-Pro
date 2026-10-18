@@ -8,6 +8,7 @@ import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.redis.core.UserDataScopeStore;
 import com.cloudflow.common.security.cookie.AuthCookieSupport;
 import com.cloudflow.common.security.core.TokenService;
+import com.cloudflow.common.security.service.CurrentPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -34,11 +35,16 @@ public class UserContextInterceptor implements HandlerInterceptor {
     @Autowired
     private TokenService tokenService;
 
+    @Autowired
+    private CurrentPermissionService currentPermissions;
+
     @Autowired(required = false)
     private UserDataScopeStore userDataScopeStore;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if (com.cloudflow.common.security.portal.PortalPaths.portal(request.getRequestURI())) return true;
+        if (com.cloudflow.common.security.oauth2.OAuthPaths.offloaded(request.getRequestURI())) return true;
         if (UserContext.getUserId() != null) {
             return true;
         }
@@ -48,6 +54,7 @@ public class UserContextInterceptor implements HandlerInterceptor {
             Map<String, Object> loginUser = tokenService.verifyToken(token);
             if (loginUser != null) {
                 refreshDynamicDataScope(loginUser);
+                loginUser.put("permissions", currentPermissions.permissions(loginUser));
                 fillContext(loginUser, token);
                 fillTenant(loginUser, request);
                 return true;
@@ -68,7 +75,9 @@ public class UserContextInterceptor implements HandlerInterceptor {
             return;
         }
         UserDataScopeSnapshot snapshot = userDataScopeStore.get(tenantId, userId);
-        if (snapshot == null) {
+        if (snapshot == null || !tenantId.equals(snapshot.getTenantId()) || !userId.equals(snapshot.getUserId())
+                || snapshot.getUserVersion() == null
+                || !snapshot.getUserVersion().toString().equals(String.valueOf(loginUser.get("userVersion")))) {
             return;
         }
         if (snapshot.getDsType() != null) {
@@ -76,9 +85,6 @@ public class UserContextInterceptor implements HandlerInterceptor {
         }
         if (snapshot.getDsDeptIds() != null) {
             loginUser.put("dsDeptIds", snapshot.getDsDeptIds());
-        }
-        if (snapshot.getTenantId() != null) {
-            loginUser.put("tenantId", snapshot.getTenantId());
         }
     }
 

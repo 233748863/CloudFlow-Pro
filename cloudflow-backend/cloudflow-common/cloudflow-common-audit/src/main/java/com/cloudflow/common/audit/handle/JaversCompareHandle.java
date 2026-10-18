@@ -36,12 +36,8 @@ public class JaversCompareHandle implements ICompareHandle {
 
         // 如果存在审计日志处理器，则交给它处理（M0-5：传递 oldVal/newVal 用于 diff=true）
         auditLogHandleOptional.ifPresent(handle -> {
-            if (handle instanceof com.cloudflow.common.audit.handle.DefaultAuditLogHandle defaultHandle) {
-                Class<?> sourceClass = joinPoint.getTarget() == null ? null : AopUtils.getTargetClass(joinPoint.getTarget());
-                defaultHandle.handle(audit, changes, oldVal, newVal, sourceClass);
-            } else {
-                handle.handle(audit, changes);
-            }
+            Class<?> sourceClass = joinPoint.getTarget() == null ? null : AopUtils.getTargetClass(joinPoint.getTarget());
+            handle.handle(audit, changes, oldVal, newVal, sourceClass);
         });
 
         return changes;

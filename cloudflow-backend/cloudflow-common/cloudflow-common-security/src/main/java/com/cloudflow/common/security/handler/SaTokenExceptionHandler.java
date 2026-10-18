@@ -5,6 +5,7 @@ import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.exception.NotRoleException;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
+import com.cloudflow.common.core.utils.SensitiveLogPolicy;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,13 +27,19 @@ public class SaTokenExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(NotLoginException.class)
     public R<?> handleNotLoginException(NotLoginException e, HttpServletRequest request) {
-        log.warn("登录态校验失败 - 请求地址: {}, 错误信息: {}", request.getRequestURI(), e.getMessage());
+        if (!SensitiveLogPolicy.logException(log, request, e, ErrorCodeConstants.UNAUTHORIZED)) {
+            log.warn("登录态校验失败 - 请求地址: {}, 错误类型: {}, 错误码: {}",
+                    SensitiveLogPolicy.requestPath(request), e.getClass().getSimpleName(), ErrorCodeConstants.UNAUTHORIZED);
+        }
         return R.fail(ErrorCodeConstants.UNAUTHORIZED, "登录状态已失效，请重新登录");
     }
 
     @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(NotPermissionException.class)
     public R<?> handleNotPermissionException(NotPermissionException e, HttpServletRequest request) {
+        if (SensitiveLogPolicy.logException(log, request, e, ErrorCodeConstants.FORBIDDEN)) {
+            return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
+        }
         log.warn("权限校验失败 - 请求地址: {}, 错误信息: {}", request.getRequestURI(), e.getMessage());
         return R.fail(ErrorCodeConstants.FORBIDDEN, "权限不足：" + e.getPermission());
     }
@@ -40,6 +47,9 @@ public class SaTokenExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(NotRoleException.class)
     public R<?> handleNotRoleException(NotRoleException e, HttpServletRequest request) {
+        if (SensitiveLogPolicy.logException(log, request, e, ErrorCodeConstants.FORBIDDEN)) {
+            return R.fail(ErrorCodeConstants.FORBIDDEN, "无权访问当前资源");
+        }
         log.warn("角色校验失败 - 请求地址: {}, 错误信息: {}", request.getRequestURI(), e.getMessage());
         return R.fail(ErrorCodeConstants.FORBIDDEN, "角色不足：" + e.getRole());
     }

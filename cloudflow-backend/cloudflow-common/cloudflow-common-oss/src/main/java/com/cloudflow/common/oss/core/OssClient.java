@@ -72,6 +72,7 @@ public class OssClient {
      * @param ossProperties OSS 配置属性
      */
     public OssClient(String configKey, OssProperties ossProperties) {
+        ossProperties.requirePrivateAccess();
         this.configKey = configKey;
         this.properties = ossProperties;
         try {
@@ -167,6 +168,17 @@ public class OssClient {
         }
     }
 
+    public InputStream open(String objectKey) {
+        try {
+            return client.getObject(
+                    software.amazon.awssdk.services.s3.model.GetObjectRequest.builder()
+                            .bucket(properties.getBucketName()).key(objectKey).build(),
+                    software.amazon.awssdk.core.async.AsyncResponseTransformer.toBlockingInputStream()).join();
+        } catch (RuntimeException exception) {
+            throw new OssException("对象文件读取失败", exception);
+        }
+    }
+
     /**
      * 上传字节数组到 OSS
      *
@@ -239,6 +251,10 @@ public class OssClient {
         String endpoint = properties.getEndpoint();
         String protocol = getProtocol();
 
+        if (domain != null && (domain.startsWith("https://") || domain.startsWith("http://"))) {
+            return domain;
+        }
+
         // 云服务商
         if (containsAny(endpoint, OssConstant.CLOUD_SERVICE)) {
             return (domain != null && !domain.isEmpty()) ? protocol + domain : protocol + endpoint;
@@ -263,6 +279,9 @@ public class OssClient {
 
         // 云服务商：bucket.endpoint 格式
         if (containsAny(endpoint, OssConstant.CLOUD_SERVICE)) {
+            if (domain != null && (domain.startsWith("https://") || domain.startsWith("http://"))) {
+                return domain;
+            }
             return protocol + ((domain != null && !domain.isEmpty()) ? domain : properties.getBucketName() + "." + endpoint);
         }
         // MinIO：endpoint/bucket 格式
@@ -310,6 +329,17 @@ public class OssClient {
     /**
      * 获取配置键
      */
+    public void testConnection() {
+        properties.requirePrivateAccess();
+        String objectKey = getPath(properties.getPrefix(), ".connection-check");
+        byte[] content = "cloudflow-storage-check".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        try {
+            upload(new ByteArrayInputStream(content), objectKey, (long) content.length, "application/octet-stream");
+        } finally {
+            delete(objectKey);
+        }
+    }
+
     public String getConfigKey() {
         return configKey;
     }

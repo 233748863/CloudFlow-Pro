@@ -1,8 +1,6 @@
 package com.cloudflow.common.core.exception;
 
-import org.slf4j.MDC;
-
-import java.util.UUID;
+import com.cloudflow.common.core.context.TraceContext;
 
 public final class SafeErrorResponse {
 
@@ -10,10 +8,6 @@ public final class SafeErrorResponse {
     }
 
     public static String withTraceId(String message) {
-        String traceId = MDC.get("traceId");
-        if (traceId == null || traceId.isBlank()) {
-            traceId = UUID.randomUUID().toString();
-        }
-        return message + "，traceId=" + traceId;
+        return message + "，traceId=" + TraceContext.currentOrCreate();
     }
 }

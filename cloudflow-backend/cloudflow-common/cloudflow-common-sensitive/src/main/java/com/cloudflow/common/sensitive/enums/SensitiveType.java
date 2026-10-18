@@ -6,6 +6,7 @@ package com.cloudflow.common.sensitive.enums;
 public enum SensitiveType {
     AUTO,
     SECRET,
+    SECRET_LAST_FOUR,
     PHONE,
     EMAIL,
     ID_CARD,

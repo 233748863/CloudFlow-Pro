@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.common.tenant.session.mapper.LoginSessionMapper">
+    <select id="active" resultType="int" useCache="false" flushCache="true">
+        SELECT COUNT(*) FROM sys_user account
+        JOIN sys_tenant owner ON owner.tenant_id = account.tenant_id AND owner.deleted = 0 AND owner.status = '0'
+        JOIN sys_tenant target ON target.tenant_id = #{tenantId} AND target.deleted = 0 AND target.status = '0'
+        WHERE account.tenant_id = #{ownerTenantId} AND account.user_id = #{userId} AND account.version = #{userVersion}
+            AND account.deleted = 0 AND account.status = '0'
+            AND (owner.expire_time IS NULL OR owner.expire_time > NOW())
+            AND (target.expire_time IS NULL OR target.expire_time > NOW())
+            AND (#{ownerTenantId} = #{tenantId} OR EXISTS (
+                SELECT 1 FROM sys_user_role binding
+                JOIN sys_role role_row ON role_row.role_id = binding.role_id AND role_row.tenant_id = #{ownerTenantId}
+                WHERE binding.tenant_id = #{ownerTenantId} AND binding.user_id = #{userId}
+                    AND role_row.status = '0' AND role_row.deleted = 0 AND role_row.role_key = 'admin'
+            ))
+            AND NOT EXISTS (
+                SELECT 1 FROM sys_im_sync_run sync_run WHERE sync_run.tenant_id IN (#{ownerTenantId}, #{tenantId})
+                    AND sync_run.mode = 'APPLY' AND sync_run.status = 'RUNNING'
+                    AND (COALESCE(JSON_TYPE(JSON_EXTRACT(sync_run.result_summary, '$.effectsPending')), 'NULL') != 'BOOLEAN'
+                        OR JSON_UNQUOTE(JSON_EXTRACT(sync_run.result_summary, '$.effectsPending')) != 'false')
+            )
+    </select>
+</mapper>

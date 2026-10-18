@@ -4,13 +4,17 @@ import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.context.SaHolder;
 import cn.dev33.satoken.SaManager;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.dev33.satoken.strategy.SaAnnotationStrategy;
 import com.cloudflow.common.core.constant.SecurityConstants;
 import com.cloudflow.common.security.cookie.AuthCookieSupport;
 import com.cloudflow.common.security.interceptor.UserContextInterceptor;
+import com.cloudflow.common.security.portal.PortalPaths;
+import com.cloudflow.common.security.portal.PortalRequestInterceptor;
 import com.cloudflow.common.tenant.TenantInterceptor;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -30,6 +34,12 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
     private static final String SA_JUST_CREATED_KEY = "JUST_CREATED_";
 
     private static final String[] EXCLUDE_PATHS = {
+            "/im/callback/{configId:[1-9][0-9]{0,18}}", "/auth/im/callback/{configId:[1-9][0-9]{0,18}}",
+            "/im/WECOM/availability", "/auth/im/WECOM/availability",
+            "/im/WECOM/auth-url", "/auth/im/WECOM/auth-url",
+            "/im/WECOM/callback", "/auth/im/WECOM/callback",
+            "/im/WECOM/binding-callback", "/auth/im/WECOM/binding-callback",
+            "/im/WECOM/totp", "/auth/im/WECOM/totp",
             "/login",
             "/login/totp",
             "/auth/login",
@@ -58,9 +68,25 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
     @Autowired
     private TenantInterceptor tenantInterceptor;
 
+    @Autowired
+    private PortalRequestInterceptor portalRequestInterceptor;
+
+    @Autowired
+    private com.cloudflow.common.security.oauth2.OAuthRequestInterceptor oauthRequestInterceptor;
+
+    @Bean
+    public SaAnnotationStrategy saAnnotationStrategy() {
+        return SaAnnotationStrategy.instance;
+    }
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(portalRequestInterceptor).addPathPatterns("/**").order(-110);
+        registry.addInterceptor(oauthRequestInterceptor).addPathPatterns("/**").order(-109);
         registry.addInterceptor(new SaInterceptor(handler -> {
+                    ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+                    if (attributes != null && PortalPaths.portal(attributes.getRequest().getRequestURI())) return;
+                    if (attributes != null && com.cloudflow.common.security.oauth2.OAuthPaths.offloaded(attributes.getRequest().getRequestURI())) return;
                     if (isTrustedInnerRequest()) {
                         return;
                     }
@@ -78,6 +104,7 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
 
         registry.addInterceptor(tenantInterceptor)
                 .addPathPatterns("/**")
+                .excludePathPatterns("/oauth2/token", "/oauth2/revoke", "/auth/oauth2/token", "/auth/oauth2/revoke")
                 .excludePathPatterns(Arrays.asList(EXCLUDE_PATHS))
                 .order(1);
     }

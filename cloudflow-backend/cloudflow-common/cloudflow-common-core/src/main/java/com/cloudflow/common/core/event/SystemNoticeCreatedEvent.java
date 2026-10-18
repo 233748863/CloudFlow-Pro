@@ -19,5 +19,6 @@ public class SystemNoticeCreatedEvent implements Serializable {
     private String content;
     private String type;
     private String status;
+    private String linkUrl;
     private LocalDateTime createTime;
 }

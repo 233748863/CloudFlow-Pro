@@ -49,6 +49,7 @@ public class OssProperties {
     /**
      * SECRET_KEY（访问密钥密码）
      */
+    @lombok.ToString.Exclude
     private String secretKey;
 
     /**
@@ -72,5 +73,11 @@ public class OssProperties {
      * 桶权限类型
      * 0=private（私有），1=public（公共读），2=custom（自定义）
      */
-    private String accessPolicy = "1";
+    private String accessPolicy = "0";
+
+    public void requirePrivateAccess() {
+        if (!"0".equals(accessPolicy)) {
+            throw new IllegalStateException("对象存储必须配置为私有访问：accessPolicy=0");
+        }
+    }
 }

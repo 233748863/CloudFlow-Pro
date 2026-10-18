@@ -14,6 +14,22 @@
     <description>CloudFlow 公共多数据源模块 - 基于 dynamic-datasource 实现多数据源切换，Mapper 层通过 @DS 注解指定数据源</description>
 
     <dependencies>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-message</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-commons</artifactId>
+        </dependency>
         <!-- 公共数据模块（MyBatis-Plus、MySQL 驱动等） -->
         <dependency>
             <groupId>com.cloudflow</groupId>

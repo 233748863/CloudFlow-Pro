@@ -52,7 +52,9 @@ public class TenantConfigProperties {
              "sys_dict_type",
              "sys_dict_data",
              "sys_config",
-             "sys_audit_archive_policy"
+             "sys_audit_archive_policy",
+             // Handler 是代码级全局注册表，DDL 明确不含 tenant_id。
+             "sys_job_handler"
      ));
 
     /**

@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.common.report.ReportSqlMapper">
+    <sql id="field">
+        <choose>
+            <when test="field == 'DEFINITION'">fact.definition</when>
+            <when test="field == 'STATUS'">fact.status</when>
+            <when test="field == 'BUSINESS_DATE'">fact.business_date</when>
+            <when test="field == 'DEPARTMENT'">fact.department</when>
+            <when test="field == 'INSTANCE_COUNT'">fact.instance_count</when>
+            <when test="field == 'DURATION_SECONDS'">fact.duration_seconds</when>
+            <when test="field == 'NODE'">fact.node</when>
+            <when test="field == 'HANDLER'">fact.handler</when>
+            <when test="field == 'FACT_TYPE'">fact.fact_type</when>
+            <when test="field == 'TODO_COUNT'">fact.todo_count</when>
+            <when test="field == 'HANDLED_COUNT'">fact.handled_count</when>
+            <when test="field == 'STAGE'">fact.stage</when>
+            <when test="field == 'OWNER'">fact.owner</when>
+            <when test="field == 'OPPORTUNITY_COUNT'">fact.opportunity_count</when>
+            <when test="field == 'EXPECTED_AMOUNT'">fact.expected_amount</when>
+            <when test="field == 'WEIGHTED_AMOUNT'">fact.weighted_amount</when>
+            <when test="field == 'CUSTOMER'">fact.customer</when>
+            <when test="field == 'AGING_BUCKET'">fact.aging_bucket</when>
+            <when test="field == 'PLANNED_AMOUNT'">fact.planned_amount</when>
+            <when test="field == 'RECEIVED_AMOUNT'">fact.received_amount</when>
+            <when test="field == 'OUTSTANDING_AMOUNT'">fact.outstanding_amount</when>
+            <when test="field == 'EMPLOYEE'">fact.employee</when>
+            <when test="field == 'RECORD_COUNT'">fact.record_count</when>
+            <when test="field == 'LATE_MINUTES'">fact.late_minutes</when>
+            <when test="field == 'EARLY_MINUTES'">fact.early_minutes</when>
+            <when test="field == 'OVERTIME_MINUTES'">fact.overtime_minutes</when>
+            <when test="field == 'LEAVE_TYPE'">fact.leave_type</when>
+            <when test="field == 'UNIT'">fact.unit</when>
+            <when test="field == 'PERIOD'">fact.period</when>
+            <when test="field == 'TOTAL_QUOTA'">fact.total_quota</when>
+            <when test="field == 'USED_QUOTA'">fact.used_quota</when>
+            <when test="field == 'FROZEN_QUOTA'">fact.frozen_quota</when>
+            <when test="field == 'AVAILABLE_QUOTA'">fact.available_quota</when>
+            <when test="field == 'EXPENSE_TYPE'">fact.expense_type</when>
+            <when test="field == 'CLAIM_COUNT'">fact.claim_count</when>
+            <when test="field == 'CLAIM_AMOUNT'">fact.claim_amount</when>
+            <when test="field == 'APPROVED_AMOUNT'">fact.approved_amount</when>
+            <when test="field == 'PAID_AMOUNT'">fact.paid_amount</when>
+            <when test="field == 'SUBJECT'">fact.subject</when>
+            <when test="field == 'BUDGET_AMOUNT'">fact.budget_amount</when>
+            <when test="field == 'RESERVED_AMOUNT'">fact.reserved_amount</when>
+            <when test="field == 'ACTUAL_AMOUNT'">fact.actual_amount</when>
+            <when test="field == 'AVAILABLE_AMOUNT'">fact.available_amount</when>
+            <when test="field == 'CATEGORY'">fact.category</when>
+            <when test="field == 'CUSTODIAN'">fact.custodian</when>
+            <when test="field == 'ASSET_COUNT'">fact.asset_count</when>
+            <when test="field == 'PURCHASE_AMOUNT'">fact.purchase_amount</when>
+            <when test="field == 'DEPRECIATION_AMOUNT'">fact.depreciation_amount</when>
+            <when test="field == 'NET_AMOUNT'">fact.net_amount</when>
+            <otherwise>NULL</otherwise>
+        </choose>
+    </sql>
+    <sql id="label">
+        <choose>
+            <when test="field == 'DEFINITION'">fact.definition_name</when>
+            <when test="field == 'DEPARTMENT'">fact.department_name</when>
+            <when test="field == 'NODE'">fact.node_name</when>
+            <when test="field == 'HANDLER'">fact.handler_name</when>
+            <when test="field == 'STAGE'">fact.stage_name</when>
+            <when test="field == 'OWNER'">fact.owner_name</when>
+            <when test="field == 'CUSTOMER'">fact.customer_name</when>
+            <when test="field == 'AGING_BUCKET'">fact.aging_bucket_name</when>
+            <when test="field == 'EMPLOYEE'">fact.employee_name</when>
+            <when test="field == 'LEAVE_TYPE'">fact.leave_type_name</when>
+            <when test="field == 'PERIOD'">fact.period_name</when>
+            <when test="field == 'SUBJECT'">fact.subject_name</when>
+            <when test="field == 'CATEGORY'">fact.category_name</when>
+            <when test="field == 'CUSTODIAN'">fact.custodian_name</when>
+            <otherwise>CAST(<include refid="com.cloudflow.common.report.ReportSqlMapper.field"/> AS CHAR)</otherwise>
+        </choose>
+    </sql>
+    <sql id="aggregate">
+        <choose>
+            <when test="aggregate == 'COUNT'">COUNT(DISTINCT <include refid="com.cloudflow.common.report.ReportSqlMapper.field"/>)</when>
+            <when test="aggregate == 'SUM'">COALESCE(SUM(<include refid="com.cloudflow.common.report.ReportSqlMapper.field"/>), 0)</when>
+            <when test="aggregate == 'AVG'">AVG(<include refid="com.cloudflow.common.report.ReportSqlMapper.field"/>)</when>
+            <when test="aggregate == 'MIN'">MIN(<include refid="com.cloudflow.common.report.ReportSqlMapper.field"/>)</when>
+            <when test="aggregate == 'MAX'">MAX(<include refid="com.cloudflow.common.report.ReportSqlMapper.field"/>)</when>
+            <otherwise>NULL</otherwise>
+        </choose>
+    </sql>
+    <sql id="projection">
+        <choose>
+            <when test="query.dimensions.size() &gt; 0">
+                <bind name="field" value="query.dimensions[0]"/>
+                CAST(<include refid="com.cloudflow.common.report.ReportSqlMapper.field"/> AS CHAR) AS dimension1,
+                MIN(<include refid="com.cloudflow.common.report.ReportSqlMapper.label"/>) AS label1,
+            </when>
+            <otherwise>NULL AS dimension1, NULL AS label1,</otherwise>
+        </choose>
+        <choose>
+            <when test="query.dimensions.size() &gt; 1">
+                <bind name="field" value="query.dimensions[1]"/>
+                CAST(<include refid="com.cloudflow.common.report.ReportSqlMapper.field"/> AS CHAR) AS dimension2,
+                MIN(<include refid="com.cloudflow.common.report.ReportSqlMapper.label"/>) AS label2,
+            </when>
+            <otherwise>NULL AS dimension2, NULL AS label2,</otherwise>
+        </choose>
+        <choose>
+            <when test="query.measures.size() &gt; 0">
+                <bind name="field" value="query.measures[0].field"/>
+                <bind name="aggregate" value="query.measures[0].aggregate"/>
+                <include refid="com.cloudflow.common.report.ReportSqlMapper.aggregate"/> AS measure1,
+            </when>
+            <otherwise>NULL AS measure1,</otherwise>
+        </choose>
+        <choose>
+            <when test="query.measures.size() &gt; 1">
+                <bind name="field" value="query.measures[1].field"/>
+                <bind name="aggregate" value="query.measures[1].aggregate"/>
+                <include refid="com.cloudflow.common.report.ReportSqlMapper.aggregate"/> AS measure2,
+            </when>
+            <otherwise>NULL AS measure2,</otherwise>
+        </choose>
+        <choose>
+            <when test="query.measures.size() &gt; 2">
+                <bind name="field" value="query.measures[2].field"/>
+                <bind name="aggregate" value="query.measures[2].aggregate"/>
+                <include refid="com.cloudflow.common.report.ReportSqlMapper.aggregate"/> AS measure3,
+            </when>
+            <otherwise>NULL AS measure3,</otherwise>
+        </choose>
+        <choose>
+            <when test="query.measures.size() &gt; 3">
+                <bind name="field" value="query.measures[3].field"/>
+                <bind name="aggregate" value="query.measures[3].aggregate"/>
+                <include refid="com.cloudflow.common.report.ReportSqlMapper.aggregate"/> AS measure4,
+            </when>
+            <otherwise>NULL AS measure4,</otherwise>
+        </choose>
+        <choose>
+            <when test="query.measures.size() &gt; 4">
+                <bind name="field" value="query.measures[4].field"/>
+                <bind name="aggregate" value="query.measures[4].aggregate"/>
+                <include refid="com.cloudflow.common.report.ReportSqlMapper.aggregate"/> AS measure5,
+            </when>
+            <otherwise>NULL AS measure5,</otherwise>
+        </choose>
+        COUNT(*) AS source_rows, MAX(fact.integrity_error) AS integrity_error
+    </sql>
+    <sql id="predicate">
+        <bind name="field" value="condition.field"/>
+        (<include refid="com.cloudflow.common.report.ReportSqlMapper.field"/>
+        <choose>
+            <when test="condition.operator == 'EQ'">= #{condition.values[0]}</when>
+            <when test="condition.operator == 'NE'">&lt;&gt; #{condition.values[0]}</when>
+            <when test="condition.operator == 'GT'">&gt; #{condition.values[0]}</when>
+            <when test="condition.operator == 'GE'">&gt;= #{condition.values[0]}</when>
+            <when test="condition.operator == 'LT'">&lt; #{condition.values[0]}</when>
+            <when test="condition.operator == 'LE'">&lt;= #{condition.values[0]}</when>
+            <when test="condition.operator == 'LIKE'">LIKE #{condition.values[0]} ESCAPE '!'</when>
+            <when test="condition.operator == 'IS_NULL'">IS NULL</when>
+            <when test="condition.operator == 'BETWEEN'">BETWEEN #{condition.values[0]} AND #{condition.values[1]}</when>
+            <when test="condition.operator == 'IN'">
+                IN <foreach collection="condition.values" item="value" open="(" separator="," close=")">#{value}</foreach>
+            </when>
+            <otherwise>IS NULL AND 1 = 2</otherwise>
+        </choose>)
+    </sql>
+    <sql id="filters">
+        WHERE 1 = 1
+        <if test="query.startDate != null">
+            AND fact.business_date BETWEEN #{query.startDate} AND #{query.endDate}
+        </if>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.conditions"/>
+    </sql>
+    <sql id="conditions">
+        <if test="query.filters != null">
+            AND (
+            <foreach collection="query.filters.conditions" item="condition" index="conditionIndex">
+                <if test="conditionIndex &gt; 0"><choose><when test="query.filters.junction == 'OR'">OR</when><otherwise>AND</otherwise></choose></if>
+                <include refid="com.cloudflow.common.report.ReportSqlMapper.predicate"/>
+            </foreach>
+            <foreach collection="query.filters.groups" item="filterGroup" index="groupIndex">
+                <if test="groupIndex &gt; 0 or !query.filters.conditions.isEmpty()"><choose><when test="query.filters.junction == 'OR'">OR</when><otherwise>AND</otherwise></choose></if>
+                (
+                <foreach collection="filterGroup.conditions" item="condition" index="conditionIndex">
+                    <if test="conditionIndex &gt; 0"><choose><when test="filterGroup.junction == 'OR'">OR</when><otherwise>AND</otherwise></choose></if>
+                    <include refid="com.cloudflow.common.report.ReportSqlMapper.predicate"/>
+                </foreach>
+                )
+            </foreach>
+            )
+        </if>
+    </sql>
+    <sql id="grouping">
+        <if test="!query.dimensions.isEmpty()">
+            GROUP BY
+            <foreach collection="query.dimensions" item="field" separator=","><include refid="com.cloudflow.common.report.ReportSqlMapper.field"/></foreach>
+        </if>
+    </sql>
+    <sql id="orderBy">
+        ORDER BY integrity_error DESC
+        <foreach collection="query.sorts" item="sort">
+            , <choose>
+                <when test="sort.column == 'dimension1'">dimension1</when>
+                <when test="sort.column == 'dimension2'">dimension2</when>
+                <when test="sort.column == 'measure1'">measure1</when>
+                <when test="sort.column == 'measure2'">measure2</when>
+                <when test="sort.column == 'measure3'">measure3</when>
+                <when test="sort.column == 'measure4'">measure4</when>
+                <when test="sort.column == 'measure5'">measure5</when>
+                <otherwise>dimension1</otherwise>
+            </choose>
+            <choose><when test="sort.direction == 'DESC'">DESC</when><otherwise>ASC</otherwise></choose>
+        </foreach>
+        , dimension1 ASC, dimension2 ASC
+    </sql>
+    <sql id="ordering">
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.orderBy"/>
+        LIMIT #{query.fetchRows}
+    </sql>
+</mapper>

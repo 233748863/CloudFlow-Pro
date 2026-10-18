@@ -1,5 +1,8 @@
 package com.cloudflow.common.core.aspect;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.cloudflow.common.core.utils.LogSanitizer;
+import com.cloudflow.common.core.utils.SensitiveLogPolicy;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
@@ -14,8 +17,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Aspect
 @Component
@@ -29,7 +32,7 @@ public class RequestLogAspect {
         this.objectMapper = objectMapper;
     }
 
-    @Pointcut("execution(public * com.cloudflow..controller..*.*(..))")
+    @Pointcut("execution(public * com.cloudflow..*(..)) && @within(org.springframework.web.bind.annotation.RestController)")
     public void controllerLog() {
     }
 
@@ -41,29 +44,36 @@ public class RequestLogAspect {
         }
         HttpServletRequest request = attributes.getRequest();
 
-        log.info("========================================== 开始 ==========================================");
-        log.info("请求 URL     : {}", request.getRequestURL().toString());
-        log.info("HTTP 方法    : {}", request.getMethod());
-        log.info("类方法       : {}.{}", joinPoint.getSignature().getDeclaringTypeName(), joinPoint.getSignature().getName());
-        log.info("来源 IP      : {}", request.getRemoteAddr());
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Class<?> targetClass = joinPoint.getTarget() == null ? signature.getDeclaringType() : joinPoint.getTarget().getClass();
+        if (SensitiveLogPolicy.isSensitive(request) || SensitiveLogPolicy.isSensitive(signature.getMethod(), targetClass)) {
+            SensitiveLogPolicy.logRequest(log, request);
+            return;
+        }
 
+        String requestBody = null;
         try {
             Object[] args = joinPoint.getArgs();
-            List<Object> logArgs = new ArrayList<>();
-            for (Object arg : args) {
+            Map<String, Object> logArgs = new LinkedHashMap<>();
+            String[] names = ((MethodSignature) joinPoint.getSignature()).getParameterNames();
+            for (int index = 0; index < args.length; index++) {
+                Object arg = args[index];
                 if (arg instanceof HttpServletRequest || arg instanceof HttpServletResponse || arg instanceof MultipartFile) {
                     continue;
                 }
-                logArgs.add(arg);
+                String name = names != null && index < names.length ? names[index] : "argument" + index;
+                logArgs.put(name, LogSanitizer.sensitiveKey(name) ? "[REDACTED]" : arg);
             }
 
             if (!logArgs.isEmpty()) {
-                String requestBody = objectMapper.writeValueAsString(logArgs);
-                log.info("请求参数 :\n{}", requestBody);
+                requestBody = LogSanitizer.json(logArgs, objectMapper, 2000);
+                request.setAttribute(LogSanitizer.REQUEST_PARAMS_ATTRIBUTE, requestBody);
             }
         } catch (Exception e) {
-            log.warn("解析请求体失败: {}", e.getMessage());
+            log.warn("请求参数无法安全记录");
         }
-        log.info("=========================================== 结束 ===========================================");
+        log.info("请求 URL: {}; HTTP 方法: {}; 类方法: {}.{}; 来源 IP: {}; 请求参数: {}",
+                LogSanitizer.limit(request.getRequestURI(), 500), request.getMethod(),
+                signature.getDeclaringTypeName(), signature.getName(), request.getRemoteAddr(), requestBody);
     }
 }

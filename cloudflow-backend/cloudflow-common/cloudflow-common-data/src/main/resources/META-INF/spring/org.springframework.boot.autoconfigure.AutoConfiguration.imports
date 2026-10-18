@@ -1,1 +1,4 @@
 com.cloudflow.common.tenant.support.CommonTenantSupportAutoConfiguration
+com.cloudflow.common.tenant.entitlement.TenantEntitlementConfiguration
+com.cloudflow.common.tenant.quota.TenantQuotaConfiguration
+com.cloudflow.common.tenant.session.LoginSessionConfiguration

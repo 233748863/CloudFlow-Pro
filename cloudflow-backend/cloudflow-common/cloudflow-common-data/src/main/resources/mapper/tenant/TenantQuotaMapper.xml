@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.common.tenant.quota.mapper.TenantQuotaMapper">
+    <select id="lockTenant" resultType="com.cloudflow.common.tenant.quota.TenantQuotaRow" useCache="false" flushCache="true">
+        SELECT tenant_id, user_limit, storage_limit FROM sys_tenant
+        WHERE tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="countUsers" resultType="long" useCache="false" flushCache="true">
+        SELECT COUNT(*) FROM sys_user WHERE tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="storageBytes" resultType="java.math.BigDecimal" useCache="false" flushCache="true">
+        SELECT COALESCE(SUM(physical.object_size), 0) FROM (
+            SELECT MAX(GREATEST(COALESCE(file_size, 0), 0)) AS object_size FROM sys_file
+            WHERE tenant_id = #{tenantId} AND deleted = 0
+            GROUP BY storage_type, config_id, CAST(COALESCE(NULLIF(file_path, ''), CAST(file_id AS CHAR)) AS BINARY)
+            FOR UPDATE
+        ) physical
+    </select>
+    <update id="refreshStorage">
+        UPDATE sys_tenant SET storage_used = #{usedMb} WHERE tenant_id = #{tenantId} AND deleted = 0
+    </update>
+</mapper>

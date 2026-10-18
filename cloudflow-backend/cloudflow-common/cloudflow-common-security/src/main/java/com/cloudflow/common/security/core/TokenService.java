@@ -5,6 +5,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import com.cloudflow.common.redis.config.SysConfigKeys;
 import com.cloudflow.common.redis.core.SysConfigHelper;
+import com.cloudflow.common.core.permission.LoginSessionPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -32,6 +33,15 @@ public class TokenService {
 
     @Autowired(required = false)
     private SysConfigHelper sysConfigHelper;
+
+    @Autowired(required = false)
+    private LoginSessionPolicy loginSessionPolicy;
+
+    public TokenService() { }
+
+    public TokenService(LoginSessionPolicy loginSessionPolicy) {
+        this.loginSessionPolicy = loginSessionPolicy;
+    }
 
     /**
      * 获取 Token 过期时间，单位：分钟。
@@ -66,6 +76,14 @@ public class TokenService {
      * 创建登录态并返回原始 Token。
      */
     public String createToken(Map<String, Object> loginUser) {
+        return createToken(loginUser, false);
+    }
+
+    public String createDetachedToken(Map<String, Object> loginUser) {
+        return createToken(loginUser, true);
+    }
+
+    private String createToken(Map<String, Object> loginUser, boolean detached) {
         if (loginUser == null || loginUser.isEmpty()) {
             throw new IllegalArgumentException("登录用户信息不能为空");
         }
@@ -74,6 +92,7 @@ public class TokenService {
         if (userId == null) {
             throw new IllegalArgumentException("登录用户缺少 userId");
         }
+        if (!currentSession(loginUser)) throw new com.cloudflow.common.core.exception.ServiceException("账号或组织信息已变化，请重新登录", 401);
 
         long timeoutSeconds = getExpirationSeconds();
 
@@ -82,16 +101,26 @@ public class TokenService {
                 .setIsConcurrent(false)
                 .setIsShare(false);
 
-        StpUtil.login(userId, loginParameter);
-
-        String token = StpUtil.getTokenValue();
+        String token;
+        if (detached) {
+            token = StpUtil.getStpLogic().createLoginSession(userId, loginParameter);
+        } else {
+            StpUtil.login(userId, loginParameter);
+            token = StpUtil.getTokenValue();
+        }
         Map<String, Object> sessionUser = new HashMap<>(loginUser);
         sessionUser.put("userId", userId);
         sessionUser.put("token", token);
         sessionUser.put("login_time", System.currentTimeMillis());
         sessionUser.put("expire_time", System.currentTimeMillis() + timeoutSeconds * MILLIS_SECOND);
 
-        StpUtil.getSession().set(LOGIN_USER_SESSION_KEY, sessionUser);
+        try {
+            if (detached) StpUtil.getSessionByLoginId(userId).set(LOGIN_USER_SESSION_KEY, sessionUser);
+            else StpUtil.getSession().set(LOGIN_USER_SESSION_KEY, sessionUser);
+        } catch (RuntimeException failure) {
+            if (detached) deleteToken(token);
+            throw failure;
+        }
         return token;
     }
 
@@ -115,15 +144,15 @@ public class TokenService {
                 return null;
             }
 
+            Map<String, Object> loginUser = getLoginUserByLoginId(loginId);
+            if (loginUser == null) {
+                return null;
+            }
+
             long refreshThresholdSeconds = getRefreshTime() * SECONDS_PER_MINUTE;
             if (remainingSeconds > 0 && remainingSeconds <= refreshThresholdSeconds) {
                 StpUtil.renewTimeout(rawToken, getExpiration() * SECONDS_PER_MINUTE);
                 remainingSeconds = StpUtil.getTokenTimeout(rawToken);
-            }
-
-            Map<String, Object> loginUser = getLoginUserByLoginId(loginId);
-            if (loginUser == null) {
-                return null;
             }
 
             loginUser.put("token", rawToken);
@@ -155,7 +184,8 @@ public class TokenService {
             return null;
         }
 
-        return new HashMap<>((Map<String, Object>) userMap);
+        Map<String, Object> copy = new HashMap<>((Map<String, Object>) userMap);
+        return currentSession(copy) ? copy : null;
     }
 
     /**
@@ -216,7 +246,7 @@ public class TokenService {
         }
         try {
             Object loginId = StpUtil.getLoginIdByToken(rawToken);
-            if (loginId == null) {
+            if (loginId == null || getLoginUserByLoginId(loginId) == null) {
                 return -2L;
             }
             long timeoutSeconds = getExpiration() * SECONDS_PER_MINUTE;
@@ -271,6 +301,19 @@ public class TokenService {
             return token;
         }
         return token.startsWith("Bearer ") ? token.substring(7) : token;
+    }
+
+    private boolean currentSession(Map<String, Object> loginUser) {
+        if (loginSessionPolicy == null) return true;
+        try {
+            String owner = String.valueOf(loginUser.get("ownerTenantId"));
+            String tenant = String.valueOf(loginUser.get("tenantId"));
+            String user = String.valueOf(loginUser.get("userId"));
+            String version = String.valueOf(loginUser.get("userVersion"));
+            if (!owner.matches("[1-9][0-9]{0,18}") || !tenant.matches("[1-9][0-9]{0,18}")
+                    || !user.matches("[1-9][0-9]{0,18}") || !version.matches("0|[1-9][0-9]{0,9}")) return false;
+            return loginSessionPolicy.accepts(Long.parseLong(owner), Long.parseLong(tenant), Long.parseLong(user), Integer.parseInt(version));
+        } catch (RuntimeException unavailable) { return false; }
     }
 
     private Long toLong(Object obj) {

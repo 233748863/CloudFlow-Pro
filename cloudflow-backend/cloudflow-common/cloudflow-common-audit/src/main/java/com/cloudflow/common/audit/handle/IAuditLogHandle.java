@@ -25,6 +25,10 @@ public interface IAuditLogHandle {
      */
     void handle(Audit audit, Changes changes);
 
+    default void handle(Audit audit, Changes changes, Object oldVal, Object newVal, Class<?> sourceClass) {
+        handle(audit, changes);
+    }
+
     /**
      * 异步批量保存审计日志
      *

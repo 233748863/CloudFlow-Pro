@@ -1,71 +1,75 @@
 package com.cloudflow.common.config;
 
+import com.cloudflow.common.core.context.TraceContext;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantContext;
+import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.lang.NonNull;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-/**
- * 异步任务装饰器
- * 用于将主线程的 UserContext 和 TenantContext 传递给 @Async 线程
- * 
- * 注意：由于 UserContext 和 TenantContext 已升级为 TransmittableThreadLocal，
- * 如果使用 TtlExecutors.getTtlExecutorService() 包装线程池，则上下文会自动传递，
- * 此装饰器作为兜底方案，确保在未使用 TTL 包装的线程池中也能正确传递上下文。
- * 
- * @author CloudFlow
- */
 public class ContextTaskDecorator implements TaskDecorator {
-
     @Override
     @NonNull
     public Runnable decorate(@NonNull Runnable runnable) {
-        // 1. 捕获主线程的上下文
-        Long userId = UserContext.getUserId();
-        String userName = UserContext.getUserName();
-        Set<String> roles = UserContext.getRoles();
-        Long deptId = UserContext.getDeptId();
-        String deptName = UserContext.getDeptName();
-        Long tenantId = UserContext.getTenantId();
-        Set<String> permissions = UserContext.getPermissions();
-        String authToken = UserContext.getAuthToken();
-        Integer dsType = UserContext.getDsType();
-        List<Long> dsDeptIds = UserContext.getDsDeptIds();
-        Long tenantContextId = TenantContext.getTenantId();
-        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
-
+        Thread submittingThread = Thread.currentThread();
+        Snapshot submitted = Snapshot.capture(false);
+        submitted.mdc().putIfAbsent(TraceContext.MDC_KEY, TraceContext.normalize(null));
         return () -> {
+            Snapshot caller = Thread.currentThread() == submittingThread ? Snapshot.capture(true) : null;
+            clear();
             try {
-                // 2. 在子线程中恢复上下文
-                if (userId != null) UserContext.setUserId(userId);
-                if (userName != null) UserContext.setUserName(userName);
-                if (roles != null) UserContext.setRoles(roles);
-                if (deptId != null) UserContext.setDeptId(deptId);
-                if (deptName != null) UserContext.setDeptName(deptName);
-                if (tenantId != null) UserContext.setTenantId(tenantId);
-                if (permissions != null && !permissions.isEmpty()) UserContext.setPermissions(permissions);
-                if (authToken != null) UserContext.setAuthToken(authToken);
-                if (dsType != null) UserContext.setDsType(dsType);
-                if (dsDeptIds != null && !dsDeptIds.isEmpty()) UserContext.setDsDeptIds(dsDeptIds);
-                if (tenantContextId != null) TenantContext.setTenantId(tenantContextId);
-                if (requestAttributes != null) {
-                    // 关键补齐：异步线程也保留请求上下文，审计日志才能拿到真实 IP / User-Agent
-                    RequestContextHolder.setRequestAttributes(requestAttributes, true);
-                }
-
-                // 3. 执行任务
+                submitted.install();
                 runnable.run();
             } finally {
-                // 4. 清理子线程上下文
-                RequestContextHolder.resetRequestAttributes();
-                UserContext.clear();
-                TenantContext.clear();
+                clear();
+                if (caller != null) caller.install();
             }
         };
+    }
+
+    private static void clear() {
+        RequestContextHolder.resetRequestAttributes();
+        UserContext.clear();
+        TenantContext.clear();
+        MDC.clear();
+    }
+
+    private record Snapshot(Long userId, String userName, Set<String> roles, Long deptId, String deptName,
+                            Long tenantId, Set<String> permissions, String authToken, Integer dsType,
+                            List<Long> dsDeptIds, Long contextTenantId, boolean tenantSkip,
+                            RequestAttributes requestAttributes, Map<String, String> mdc) {
+        static Snapshot capture(boolean includeRequest) {
+            Map<String, String> context = MDC.getCopyOfContextMap();
+            Set<String> roles = UserContext.getRoles();
+            return new Snapshot(UserContext.getUserId(), UserContext.getUserName(), roles == null ? Set.of() : Set.copyOf(roles),
+                    UserContext.getDeptId(), UserContext.getDeptName(), UserContext.getTenantId(),
+                    Set.copyOf(UserContext.getPermissions()), UserContext.getAuthToken(), UserContext.getDsType(),
+                    List.copyOf(UserContext.getDsDeptIds()), TenantContext.getTenantId(), TenantContext.getTenantSkip(),
+                    includeRequest ? RequestContextHolder.getRequestAttributes() : null, context == null ? new HashMap<>() : new HashMap<>(context));
+        }
+
+        void install() {
+            UserContext.setUserId(userId);
+            UserContext.setUserName(userName);
+            UserContext.setRoles(roles);
+            UserContext.setDeptId(deptId);
+            UserContext.setDeptName(deptName);
+            UserContext.setTenantId(tenantId);
+            UserContext.setPermissions(permissions);
+            UserContext.setAuthToken(authToken);
+            UserContext.setDsType(dsType);
+            UserContext.setDsDeptIds(dsDeptIds);
+            TenantContext.setTenantId(contextTenantId);
+            if (tenantSkip) TenantContext.setTenantSkip();
+            if (requestAttributes != null) RequestContextHolder.setRequestAttributes(requestAttributes);
+            MDC.setContextMap(mdc);
+        }
     }
 }

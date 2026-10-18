@@ -1,6 +1,5 @@
 package com.cloudflow.common.idempotent.support;
 
-import cn.hutool.crypto.SecureUtil;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.exception.ErrorCodeConstants;
 import com.cloudflow.common.core.exception.ServiceException;
@@ -14,12 +13,15 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,6 +42,15 @@ public class RepeatSubmitKeyResolver {
         this.objectMapper = objectMapper.copy();
         this.objectMapper.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true);
         this.objectMapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+    }
+
+    public void prepareRequestTypes(Collection<Type> requestTypes) {
+        objectMapper.canDeserialize(objectMapper.constructType(Object.class));
+        objectMapper.canSerialize(ArrayList.class);
+        objectMapper.canSerialize(TreeMap.class);
+        for (Type requestType : requestTypes) {
+            objectMapper.canSerialize(objectMapper.constructType(requestType).getRawClass());
+        }
     }
 
     public String resolve(String prefix, JoinPoint joinPoint, RepeatSubmit repeatSubmit, HttpServletRequest request) {
@@ -83,7 +94,7 @@ public class RepeatSubmitKeyResolver {
             return "none";
         }
         try {
-            return SecureUtil.md5(objectMapper.writeValueAsString(normalizedArgs));
+            return DigestUtils.md5DigestAsHex(objectMapper.writeValueAsString(normalizedArgs).getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             throw new ServiceException("生成幂等参数摘要失败", ErrorCodeConstants.INTERNAL_SERVER_ERROR, e);
         }

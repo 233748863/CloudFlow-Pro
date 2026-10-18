@@ -1,6 +1,8 @@
 package com.cloudflow.common.security.aspect;
 
 import com.cloudflow.common.core.constant.SecurityConstants;
+import com.cloudflow.common.core.exception.ErrorCodeConstants;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.security.annotation.Inner;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +17,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,7 +64,7 @@ public class InnerAspect {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
             log.warn("@Inner 校验失败：无法获取请求上下文，方法: {}", point.getSignature().getName());
-            throw new AccessDeniedException("内部调用校验失败：无法获取请求上下文");
+            throw new ServiceException("内部调用校验失败：无法获取请求上下文", ErrorCodeConstants.FORBIDDEN);
         }
 
         HttpServletRequest request = attributes.getRequest();
@@ -73,7 +74,7 @@ public class InnerAspect {
         if (!SecurityConstants.INNER_CALL_VALUE.equals(innerCallHeader)) {
             String method = point.getSignature().getDeclaringTypeName() + "." + point.getSignature().getName();
             log.warn("@Inner 校验失败：接口 {} 仅允许内部调用，来源IP: {}", method, request.getRemoteAddr());
-            throw new AccessDeniedException("该接口仅允许内部服务调用");
+            throw new ServiceException("该接口仅允许内部服务调用", ErrorCodeConstants.FORBIDDEN);
         }
 
         // 校验来源服务（如果指定了 allowedServices）
@@ -83,7 +84,7 @@ public class InnerAspect {
             List<String> resolved = resolveAllowedServices(allowedServices);
             if (fromService == null || resolved.stream().noneMatch(s -> s.equals(fromService))) {
                 log.warn("@Inner 校验失败：来源服务 {} 不在允许列表 {} 中", fromService, resolved);
-                throw new AccessDeniedException("该接口不允许来自 " + fromService + " 的调用");
+                throw new ServiceException("该接口不允许当前来源服务调用", ErrorCodeConstants.FORBIDDEN);
             }
         }
 

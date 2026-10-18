@@ -3,6 +3,7 @@ package com.cloudflow.common.redis.core;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -39,6 +40,13 @@ public class UserDataScopeStore {
             return;
         }
         redisCache.deleteObject(buildKey(tenantId, userId));
+    }
+
+    public void deleteAll(Long tenantId, Collection<Long> userIds) {
+        if (tenantId == null || tenantId <= 0 || userIds == null || userIds.stream().anyMatch(userId -> userId == null || userId <= 0)) {
+            throw new IllegalArgumentException("Valid tenant and user identifiers required");
+        }
+        redisCache.deleteObjects(userIds.stream().map(userId -> buildKey(tenantId, userId)).toList());
     }
 
     private String buildKey(Long tenantId, Long userId) {
