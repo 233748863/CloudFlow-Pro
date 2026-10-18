@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.ImMapper">
+    <select id="managedBindings" resultType="com.cloudflow.auth.im.ImBindingRow">
+        SELECT mapping_id, tenant_id, config_id, user_id, im_type, im_user_id, bind_type, bind_time, last_sync_time, status, version
+        FROM sys_im_user_mapping WHERE tenant_id = #{tenantId} AND im_type = 'WECOM'
+        ORDER BY mapping_id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countManagedBindings" resultType="long">
+        SELECT COUNT(*) FROM sys_im_user_mapping WHERE tenant_id = #{tenantId} AND im_type = 'WECOM'
+    </select>
+    <select id="managedBinding" resultType="com.cloudflow.auth.im.ImBindingRow">
+        SELECT mapping_id, tenant_id, config_id, user_id, im_type, im_user_id, bind_type, bind_time, last_sync_time, status, version
+        FROM sys_im_user_mapping WHERE tenant_id = #{tenantId} AND mapping_id = #{mappingId} AND im_type = 'WECOM'
+    </select>
+    <update id="changeManagedBinding">
+        UPDATE sys_im_user_mapping SET status = #{afterStatus}, version = version + 1, update_by = #{operator}, update_time = NOW()
+        WHERE tenant_id = #{tenantId} AND mapping_id = #{mappingId} AND version = #{version}
+          AND version &lt; 2147483647 AND im_type = 'WECOM' AND bind_type = 'AUTO_SYNC' AND status = #{beforeStatus}
+          AND ((#{afterStatus} = 'DISABLED' AND status IN ('ACTIVE', 'OUT_OF_SCOPE'))
+            OR (#{afterStatus} = 'ACTIVE' AND status = 'DISABLED'))
+    </update>
+    <select id="ownBindings" resultType="com.cloudflow.auth.im.ImBindingRow">
+        SELECT mapping_id, tenant_id, config_id, user_id, im_type, im_user_id, bind_type, bind_time, last_sync_time, status, version
+        FROM sys_im_user_mapping WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND im_type = 'WECOM' LIMIT 2
+    </select>
+    <select id="bindingConflicts" resultType="com.cloudflow.auth.im.ImBindingRow">
+        SELECT mapping_id, tenant_id, config_id, user_id, im_type, im_user_id, bind_type, bind_time, last_sync_time, status, version
+        FROM sys_im_user_mapping WHERE tenant_id = #{tenantId} AND im_type = 'WECOM'
+          AND (user_id = #{userId} OR (config_id = #{configId} AND im_user_id = #{externalUserId}))
+        FOR UPDATE
+    </select>
+    <insert id="insertBinding" useGeneratedKeys="true" keyProperty="mappingId">
+        INSERT INTO sys_im_user_mapping(tenant_id, config_id, user_id, im_type, im_user_id, bind_type, bind_time,
+            status, version, create_by, create_time, update_by, update_time)
+        VALUES(#{tenantId}, #{configId}, #{userId}, 'WECOM', #{imUserId}, 'SCAN_BIND', #{bindTime},
+            'ACTIVE', 0, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <delete id="removeOwnBinding">
+        DELETE FROM sys_im_user_mapping
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND mapping_id = #{mappingId}
+          AND version = #{version} AND im_type = 'WECOM' AND bind_type IN ('SCAN_BIND', 'MANUAL_BIND')
+    </delete>
+    <select id="loginTenants" resultType="java.lang.Long">
+        SELECT tenant_id FROM sys_tenant WHERE CAST(tenant_code AS BINARY) = CAST(#{tenantCode} AS BINARY) AND deleted = 0 LIMIT 2
+    </select>
+    <select id="loginConfigurations" resultType="com.cloudflow.auth.im.ImConfigRow">
+        SELECT * FROM sys_im_config WHERE tenant_id = #{tenantId} AND im_type = 'WECOM' AND deleted = 0 LIMIT 2
+    </select>
+    <select id="loginBindings" resultType="com.cloudflow.auth.im.ImLoginAccounts$Binding">
+        SELECT mapping_id, tenant_id, config_id, user_id, im_user_id AS external_user_id, status, version
+        FROM sys_im_user_mapping
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND im_type = 'WECOM'
+          AND CAST(im_user_id AS BINARY) = CAST(#{externalUserId} AS BINARY) LIMIT 2
+    </select>
+    <select id="loginUser" resultType="com.cloudflow.auth.domain.SysUser">
+        SELECT * FROM sys_user WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+    </select>
+    <select id="lockLoginTenant" resultType="com.cloudflow.auth.domain.SysTenant">
+        SELECT * FROM sys_tenant WHERE tenant_id = #{tenantId} FOR UPDATE
+    </select>
+    <select id="lockLoginBinding" resultType="java.lang.Long">
+        SELECT mapping_id FROM sys_im_user_mapping WHERE tenant_id = #{tenantId} AND mapping_id = #{mappingId} FOR UPDATE
+    </select>
+    <select id="lockLoginTotp" resultType="java.lang.Long">
+        SELECT id FROM sys_user_totp WHERE tenant_id = #{tenantId} AND user_id = #{userId} FOR UPDATE
+    </select>
+    <select id="lockLoginMenus" resultType="java.lang.Long">
+        SELECT menu_id FROM sys_menu WHERE menu_id IN
+        <foreach collection="menuIds" item="menuId" open="(" separator="," close=")">#{menuId}</foreach>
+        FOR SHARE
+    </select>
+    <select id="loginIpRules" resultType="com.cloudflow.auth.im.ImLoginRequests$IpRule">
+        SELECT ip_pattern AS pattern, rule_type AS type, mode FROM sys_ip_acl
+        WHERE deleted = 0 AND status = 'ACTIVE' AND (expire_at IS NULL OR expire_at > NOW())
+        ORDER BY COALESCE(priority, 100), id LIMIT 10001
+    </select>
+    <select id="user" resultType="com.cloudflow.auth.domain.SysUser">
+        SELECT user_id, tenant_id, status, deleted, pwd_reset_required FROM sys_user
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+    </select>
+    <select id="lockUser" resultType="com.cloudflow.auth.domain.SysUser">
+        SELECT user_id, tenant_id, status, deleted, pwd_reset_required FROM sys_user
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} FOR UPDATE
+    </select>
+    <select id="tenant" resultType="com.cloudflow.auth.domain.SysTenant">
+        SELECT * FROM sys_tenant WHERE tenant_id = #{tenantId}
+    </select>
+    <select id="permissions" resultType="java.lang.String">
+        SELECT DISTINCT menu.perms FROM sys_menu menu
+        JOIN sys_role_menu role_menu ON role_menu.menu_id = menu.menu_id AND role_menu.tenant_id = #{tenantId}
+        JOIN sys_role role_row ON role_row.role_id = role_menu.role_id AND role_row.tenant_id = #{tenantId}
+        JOIN sys_user_role user_role ON user_role.role_id = role_row.role_id AND user_role.tenant_id = #{tenantId}
+        WHERE user_role.user_id = #{userId} AND role_row.status = '0' AND role_row.deleted = 0
+          AND menu.status = '0' AND menu.perms IS NOT NULL AND menu.perms != ''
+    </select>
+    <select id="administrator" resultType="int">
+        SELECT COUNT(*) FROM sys_role role_row
+        JOIN sys_user_role user_role ON user_role.role_id = role_row.role_id AND user_role.tenant_id = #{tenantId}
+        WHERE role_row.tenant_id = #{tenantId} AND user_role.user_id = #{userId} AND role_row.role_key = 'admin'
+          AND role_row.status = '0' AND role_row.deleted = 0
+    </select>
+    <select id="config" resultType="com.cloudflow.auth.im.ImConfigRow">
+        SELECT * FROM sys_im_config WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND deleted = 0
+    </select>
+    <select id="lockConfig" resultType="com.cloudflow.auth.im.ImConfigRow">
+        SELECT * FROM sys_im_config WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="configurations" resultType="com.cloudflow.auth.im.ImConfigRow">
+        SELECT * FROM sys_im_config WHERE tenant_id = #{tenantId} AND deleted = 0
+        ORDER BY config_id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countConfigurations" resultType="long">
+        SELECT COUNT(*) FROM sys_im_config WHERE tenant_id = #{tenantId} AND deleted = 0
+    </select>
+    <select id="countProvider" resultType="int">
+        SELECT COUNT(*) FROM sys_im_config WHERE tenant_id = #{tenantId} AND im_type = #{imType}
+    </select>
+    <insert id="insertConfig" useGeneratedKeys="true" keyProperty="configId">
+        INSERT INTO sys_im_config
+            (tenant_id, im_type, corp_id, agent_id, app_key_encrypted, app_secret_encrypted, token_encrypted,
+             aes_key_encrypted, callback_url, sync_enabled, sync_cron, login_enabled, message_enabled, todo_enabled,
+             sync_scope, status, deleted, version, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{imType}, #{corpId}, #{agentId}, #{appKeyEncrypted}, #{appSecretEncrypted}, #{tokenEncrypted},
+                #{aesKeyEncrypted}, #{callbackUrl}, #{syncEnabled}, #{syncCron}, #{loginEnabled}, #{messageEnabled}, #{todoEnabled},
+                #{syncScope}, #{status}, 0, 0, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <update id="updateConfig">
+        UPDATE sys_im_config SET corp_id = #{corpId}, agent_id = #{agentId}, app_key_encrypted = #{appKeyEncrypted},
+            app_secret_encrypted = #{appSecretEncrypted}, token_encrypted = #{tokenEncrypted}, aes_key_encrypted = #{aesKeyEncrypted},
+            callback_url = #{callbackUrl}, sync_enabled = #{syncEnabled}, sync_cron = #{syncCron}, login_enabled = #{loginEnabled},
+            message_enabled = #{messageEnabled}, todo_enabled = #{todoEnabled}, sync_scope = #{syncScope}, status = #{status},
+            version = version + 1, update_by = #{updateBy}, update_time = #{updateTime}
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND im_type = #{imType} AND version = #{version} AND deleted = 0
+    </update>
+    <select id="references" resultType="long">
+        SELECT
+            (SELECT COUNT(*) FROM sys_im_user_mapping WHERE tenant_id = #{tenantId} AND config_id = #{configId}) +
+            (SELECT COUNT(*) FROM sys_im_dept_mapping WHERE tenant_id = #{tenantId} AND config_id = #{configId}) +
+            (SELECT COUNT(*) FROM sys_im_todo_mapping WHERE tenant_id = #{tenantId} AND config_id = #{configId}) +
+            (SELECT COUNT(*) FROM sys_im_sync_run WHERE tenant_id = #{tenantId} AND config_id = #{configId}) +
+            (SELECT COUNT(*) FROM sys_im_callback_event WHERE tenant_id = #{tenantId} AND config_id = #{configId})
+    </select>
+    <select id="department" resultType="com.cloudflow.auth.domain.SysDept">
+        SELECT * FROM sys_dept WHERE tenant_id = #{tenantId} AND dept_id = #{deptId} AND deleted = 0 AND status = '0'
+    </select>
+    <select id="organizationDepartments" resultType="com.cloudflow.auth.im.ImLocalOrganization$Department">
+        SELECT tenant_id, dept_id AS id, parent_id, ancestors, dept_name AS name, order_num AS `order`, status, deleted, version
+        FROM sys_dept WHERE tenant_id = #{tenantId} ORDER BY dept_id LIMIT #{limit}
+    </select>
+    <select id="scopeDepartments" resultType="com.cloudflow.auth.im.ImViews$DepartmentOption">
+        SELECT dept_id AS id, parent_id, dept_name AS name FROM sys_dept
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0' AND parent_id IS NOT NULL
+          AND (#{keyword} = '' OR LOCATE(#{keyword}, dept_name) > 0)
+        ORDER BY dept_id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countScopeDepartments" resultType="long">
+        SELECT COUNT(*) FROM sys_dept
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0' AND parent_id IS NOT NULL
+          AND (#{keyword} = '' OR LOCATE(#{keyword}, dept_name) > 0)
+    </select>
+    <select id="organizationUsers" resultType="com.cloudflow.auth.im.ImLocalOrganization$User">
+        SELECT tenant_id, user_id AS id, dept_id AS department_id, user_name AS username, nick_name AS name,
+            phonenumber AS mobile, email, avatar, status, deleted, version
+        FROM sys_user WHERE tenant_id = #{tenantId} ORDER BY user_id LIMIT #{limit}
+    </select>
+    <select id="organizationDepartmentMappings" resultType="com.cloudflow.auth.im.ImLocalOrganization$DepartmentMapping">
+        SELECT tenant_id, mapping_id AS id, config_id, dept_id AS department_id, im_dept_id AS external_id,
+            im_parent_dept_id AS external_parent_id, status, version
+        FROM sys_im_dept_mapping WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND im_type = 'WECOM'
+        ORDER BY mapping_id LIMIT #{limit}
+    </select>
+    <select id="organizationUserMappings" resultType="com.cloudflow.auth.im.ImLocalOrganization$UserMapping">
+        SELECT tenant_id, mapping_id AS id, config_id, user_id, im_user_id AS external_id, bind_type, last_sync_time, status, version
+        FROM sys_im_user_mapping WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND im_type = 'WECOM'
+        ORDER BY mapping_id LIMIT #{limit}
+    </select>
+    <select id="protectedOrganizationUsers" resultType="long">
+        SELECT DISTINCT user_role.user_id FROM sys_user_role user_role
+        JOIN sys_role role_row ON role_row.role_id = user_role.role_id AND role_row.tenant_id = #{tenantId}
+        WHERE user_role.tenant_id = #{tenantId} AND role_row.role_key IN ('admin', 'administrator')
+        UNION
+        SELECT service_user_id FROM sys_oauth2_client WHERE tenant_id = #{tenantId} AND service_user_id IS NOT NULL
+    </select>
+    <insert id="insertSyncRun" useGeneratedKeys="true" keyProperty="syncRunId">
+        INSERT INTO sys_im_sync_run
+            (tenant_id, config_id, config_version, mode, snapshot_encrypted, snapshot_hash, full_snapshot_flag,
+             progress_cursor, result_summary, status, requested_by, started_time, completed_time,
+             create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{configId}, #{configVersion}, #{mode}, #{snapshotEncrypted}, #{snapshotHash}, #{fullSnapshotFlag},
+             #{progressCursor}, #{resultSummary}, #{status}, #{requestedBy}, #{startedTime}, #{completedTime},
+             #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <select id="syncRun" resultType="com.cloudflow.auth.im.ImSyncRunRow">
+        SELECT * FROM sys_im_sync_run WHERE tenant_id = #{tenantId} AND sync_run_id = #{syncRunId}
+    </select>
+    <select id="syncRuns" resultType="com.cloudflow.auth.im.ImSyncRunRow">
+        SELECT sync_run_id, tenant_id, config_id, config_version, mode, full_snapshot_flag, status,
+            requested_by, started_time, completed_time, create_time, update_time
+        FROM sys_im_sync_run WHERE tenant_id = #{tenantId} AND config_id = #{configId}
+        ORDER BY sync_run_id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countSyncRuns" resultType="long">
+        SELECT COUNT(*) FROM sys_im_sync_run WHERE tenant_id = #{tenantId} AND config_id = #{configId}
+    </select>
+    <select id="scheduledJobs" resultType="com.cloudflow.auth.domain.SysJob">
+        SELECT * FROM sys_job WHERE tenant_id = #{tenantId} AND handler_name = 'imOrganizationSync'
+        FOR UPDATE
+    </select>
+    <insert id="insertScheduledJob" useGeneratedKeys="true" keyProperty="jobId">
+        INSERT INTO sys_job (tenant_id, job_name, job_group, service_name, handler_name, handler_param, trigger_type,
+            cron_expression, status, concurrent_flag, misfire_strategy, retry_count, dispatch_retry_count,
+            timeout_seconds, lock_time_seconds, log_success_flag, alarm_on_fail_flag, deleted, version,
+            create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, '企业微信定时组织同步', 'AUTH', 'auth', 'imOrganizationSync', #{handlerParam}, 'CRON',
+            #{cronExpression}, #{status}, 0, 'IGNORE', 0, 3, 240, 300, 1, 1, 0, 0,
+            #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <update id="updateScheduledJob">
+        UPDATE sys_job SET handler_param = #{handlerParam}, cron_expression = #{cronExpression}, status = #{status},
+            deleted = 0, version = version + 1, next_fire_time = NULL, update_by = #{updateBy}, update_time = #{updateTime}
+        WHERE tenant_id = #{tenantId} AND job_id = #{jobId} AND handler_name = 'imOrganizationSync' AND version = #{version}
+    </update>
+    <select id="scheduledJob" resultType="com.cloudflow.auth.domain.SysJob">
+        SELECT * FROM sys_job WHERE tenant_id = #{tenantId} AND job_id = #{jobId}
+            AND handler_name = 'imOrganizationSync' AND deleted = 0
+    </select>
+    <select id="scheduledLog" resultType="com.cloudflow.auth.domain.SysJobLog">
+        SELECT * FROM sys_job_log WHERE tenant_id = #{tenantId} AND job_id = #{jobId} AND execute_no = #{executeNo}
+            AND handler_name = 'imOrganizationSync'
+    </select>
+    <select id="lockScheduledLog" resultType="com.cloudflow.auth.domain.SysJobLog">
+        SELECT * FROM sys_job_log WHERE tenant_id = #{tenantId} AND job_id = #{jobId} AND execute_no = #{executeNo}
+            AND handler_name = 'imOrganizationSync' FOR UPDATE
+    </select>
+    <update id="linkScheduledRun">
+        UPDATE sys_job_log SET result_msg = #{reference}
+        WHERE tenant_id = #{tenantId} AND job_id = #{jobId} AND execute_no = #{executeNo}
+            AND handler_name = 'imOrganizationSync' AND execute_status = 'RUNNING' AND result_msg IS NULL
+    </update>
+    <select id="runningSynchronizations" resultType="int">
+        SELECT COUNT(*) FROM sys_im_sync_run WHERE tenant_id = #{tenantId} AND mode = 'APPLY' AND status = 'RUNNING'
+    </select>
+    <update id="markSynchronized">
+        UPDATE sys_im_config SET last_sync_time = #{completedAt}
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND version = #{version} AND deleted = 0 AND status = 'ENABLED'
+    </update>
+</mapper>

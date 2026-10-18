@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.ImCallbackMapper">
+    <select id="configurationTenant" resultType="java.lang.Long">
+        SELECT tenant_id FROM sys_im_config WHERE config_id = #{configId} AND im_type = 'WECOM' AND deleted = 0
+    </select>
+    <select id="todo" resultType="com.cloudflow.auth.im.ImTodoRow">
+        SELECT * FROM sys_im_todo_mapping WHERE tenant_id = #{tenantId} AND mapping_id = #{mappingId}
+    </select>
+    <select id="event" resultType="com.cloudflow.auth.im.ImCallbackRow">
+        SELECT * FROM sys_im_callback_event
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND event_key = #{eventKey}
+    </select>
+    <select id="card" resultType="java.lang.Long">
+        SELECT mapping_id FROM sys_im_todo_mapping
+        WHERE tenant_id = #{tenantId} AND config_id = #{configId} AND card_key_hash = #{cardKeyHash} AND im_type = 'WECOM'
+    </select>
+    <insert id="insertEvent" useGeneratedKeys="true" keyProperty="callbackId">
+        INSERT INTO sys_im_callback_event(tenant_id, config_id, event_key, payload_hash, event_type,
+            im_user_id, task_mapping_id, action_type, status, result_code, source_ip, occurred_time, processed_time,
+            create_by, create_time, update_by, update_time)
+        VALUES(#{tenantId}, #{configId}, #{eventKey}, #{payloadHash}, 'template_card_event',
+            #{imUserId}, #{taskMappingId}, #{actionType}, #{status}, #{resultCode}, #{sourceIp}, #{occurredTime},
+            CASE WHEN #{status} = 'REJECTED' THEN NOW() ELSE NULL END, 'im-callback', NOW(), 'im-callback', NOW())
+    </insert>
+    <select id="pending" resultType="java.lang.Long">
+        SELECT callback_id FROM sys_im_callback_event WHERE tenant_id = #{tenantId}
+          AND (status = 'RECEIVED' OR (status IN ('RETRYABLE', 'PROCESSING') AND claim_until &lt;= NOW()))
+        ORDER BY callback_id LIMIT #{limit}
+    </select>
+    <select id="recoveryTargets" resultType="com.cloudflow.auth.im.ImCallbackRecovery$Target">
+        SELECT tenant_id, callback_id FROM sys_im_callback_event WHERE callback_id &gt; #{after}
+          AND (status = 'RECEIVED' OR (status IN ('RETRYABLE', 'PROCESSING') AND claim_until &lt;= NOW()))
+        ORDER BY callback_id LIMIT #{limit}
+    </select>
+    <update id="claim">
+        UPDATE sys_im_callback_event SET status = 'PROCESSING',
+            claim_until = GREATEST(DATE_ADD(NOW(), INTERVAL 60 SECOND), DATE_ADD(COALESCE(claim_until, NOW()), INTERVAL 1 SECOND)),
+            update_by = 'im-callback', update_time = NOW()
+        WHERE tenant_id = #{tenantId} AND callback_id = #{callbackId}
+          AND (status = 'RECEIVED' OR (status IN ('RETRYABLE', 'PROCESSING') AND claim_until &lt;= NOW()))
+    </update>
+    <select id="claimed" resultType="com.cloudflow.auth.im.ImCallbackRow">
+        SELECT * FROM sys_im_callback_event WHERE tenant_id = #{tenantId} AND callback_id = #{callbackId}
+    </select>
+    <update id="finish">
+        UPDATE sys_im_callback_event SET status = #{status}, result_code = #{resultCode},
+            processed_time = CASE WHEN #{status} = 'RETRYABLE' THEN NULL ELSE NOW() END,
+            claim_until = CASE WHEN #{status} = 'RETRYABLE' THEN claim_until ELSE NULL END,
+            update_by = 'im-callback', update_time = NOW()
+        WHERE tenant_id = #{tenantId} AND callback_id = #{callbackId} AND status = 'PROCESSING'
+          AND claim_until = #{claimUntil} AND claim_until &gt; NOW()
+    </update>
+</mapper>

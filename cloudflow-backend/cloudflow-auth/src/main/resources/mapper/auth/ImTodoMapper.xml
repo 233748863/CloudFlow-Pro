@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.ImTodoMapper">
+    <select id="enabledConfigurations" resultType="int">
+        SELECT COUNT(*) FROM sys_im_config config
+        INNER JOIN sys_tenant tenant ON tenant.tenant_id = config.tenant_id
+        WHERE config.im_type = 'WECOM' AND config.deleted = 0 AND config.status = 'ENABLED' AND config.todo_enabled = 1
+          AND tenant.deleted = 0 AND tenant.status = '0' AND (tenant.expire_time IS NULL OR tenant.expire_time &gt; NOW())
+    </select>
+    <select id="existing" resultType="com.cloudflow.auth.im.ImTodoRow">
+        SELECT * FROM sys_im_todo_mapping WHERE tenant_id = #{tenantId} AND config_id = #{configId}
+          AND task_id = #{taskId} AND assignment_version = #{assignmentVersion} AND receiver_user_id = #{receiver}
+    </select>
+    <select id="byDelivery" resultType="com.cloudflow.auth.im.ImTodoRow">
+        SELECT * FROM sys_im_todo_mapping WHERE tenant_id = #{tenantId} AND delivery_id = #{deliveryId}
+    </select>
+    <select id="byRecord" resultType="com.cloudflow.auth.im.ImTodoRow">
+        SELECT todo.* FROM sys_im_todo_mapping todo
+        INNER JOIN sys_message_delivery delivery ON delivery.tenant_id = todo.tenant_id AND delivery.delivery_id = todo.delivery_id
+        WHERE todo.tenant_id = #{tenantId} AND delivery.record_id = #{recordId}
+    </select>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="mappingId">
+        INSERT INTO sys_im_todo_mapping(tenant_id, config_id, task_id, assignment_version, receiver_user_id,
+            im_type, im_user_id, card_key_hash, status, version, create_by, create_time, update_by, update_time)
+        VALUES(#{tenantId}, #{configId}, #{taskId}, #{assignmentVersion}, #{receiverUserId},
+            'WECOM', #{imUserId}, #{cardKeyHash}, 'PENDING', 0, 'im-todo', NOW(), 'im-todo', NOW())
+    </insert>
+    <update id="link">
+        UPDATE sys_im_todo_mapping SET delivery_id = #{deliveryId}, update_time = NOW(), update_by = 'im-todo'
+        WHERE tenant_id = #{tenantId} AND mapping_id = #{mappingId} AND delivery_id IS NULL AND status = 'PENDING'
+    </update>
+    <update id="state">
+        UPDATE sys_im_todo_mapping SET status = #{status}, im_todo_id = COALESCE(#{providerId}, im_todo_id),
+            version = version + 1, update_time = NOW(), update_by = 'im-todo'
+        WHERE tenant_id = #{tenantId} AND mapping_id = #{mappingId} AND version = #{version}
+          AND status IN ('PENDING', 'SENT', 'UNKNOWN')
+    </update>
+    <select id="pending" resultType="com.cloudflow.auth.im.ImTodoRow">
+        SELECT * FROM sys_im_todo_mapping WHERE mapping_id &gt; #{after} AND delivery_id IS NOT NULL
+          AND status IN ('PENDING', 'SENT', 'UNKNOWN') ORDER BY mapping_id LIMIT 100
+    </select>
+    <select id="owned" resultType="com.cloudflow.auth.im.ImTodoRow">
+        SELECT todo.*, COALESCE(NULLIF(member.nick_name, ''), member.user_name, '已移除账号') AS receiver_name
+        FROM sys_im_todo_mapping todo
+        LEFT JOIN sys_user member ON member.tenant_id = todo.tenant_id AND member.user_id = todo.receiver_user_id AND member.deleted = 0
+        WHERE todo.tenant_id = #{tenantId} AND todo.mapping_id = #{mappingId}
+    </select>
+    <select id="page" resultType="com.cloudflow.auth.im.ImTodoRow">
+        SELECT todo.*, COALESCE(NULLIF(member.nick_name, ''), member.user_name, '已移除账号') AS receiver_name
+        FROM sys_im_todo_mapping todo
+        LEFT JOIN sys_user member ON member.tenant_id = todo.tenant_id AND member.user_id = todo.receiver_user_id AND member.deleted = 0
+        WHERE todo.tenant_id = #{tenantId} AND todo.config_id = #{configId}
+        ORDER BY todo.mapping_id DESC LIMIT #{offset}, #{limit}
+    </select>
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM sys_im_todo_mapping WHERE tenant_id = #{tenantId} AND config_id = #{configId}
+    </select>
+</mapper>

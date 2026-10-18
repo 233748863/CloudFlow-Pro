@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.OAuthMapper">
+    <select id="clientByKey" resultType="com.cloudflow.auth.oauth2.OAuthClient">
+        SELECT * FROM sys_oauth2_client WHERE client_key = #{clientKey} AND deleted = 0
+    </select>
+    <select id="client" resultType="com.cloudflow.auth.oauth2.OAuthClient">
+        SELECT * FROM sys_oauth2_client WHERE client_id = #{clientId} AND deleted = 0
+    </select>
+    <select id="lockClient" resultType="com.cloudflow.auth.oauth2.OAuthClient">
+        SELECT * FROM sys_oauth2_client WHERE client_id = #{clientId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="clients" resultType="com.cloudflow.auth.oauth2.OAuthClient">
+        SELECT * FROM sys_oauth2_client WHERE deleted = 0 ORDER BY client_id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="clientCount" resultType="long">
+        SELECT COUNT(*) FROM sys_oauth2_client WHERE deleted = 0
+    </select>
+    <select id="user" resultType="com.cloudflow.auth.domain.SysUser">
+        SELECT user_id, tenant_id, dept_id, user_name, nick_name, status, deleted, version, pwd_reset_required
+        FROM sys_user WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+    </select>
+    <select id="lockUser" resultType="com.cloudflow.auth.domain.SysUser">
+        SELECT user_id, tenant_id, dept_id, user_name, nick_name, status, deleted, version, pwd_reset_required
+        FROM sys_user WHERE tenant_id = #{tenantId} AND user_id = #{userId} FOR UPDATE
+    </select>
+    <select id="tenant" resultType="com.cloudflow.auth.domain.SysTenant">
+        SELECT tenant_id, tenant_name, tenant_code, status, deleted, expire_time
+        FROM sys_tenant WHERE tenant_id = #{tenantId}
+    </select>
+    <select id="roles" resultType="com.cloudflow.auth.domain.SysRole">
+        SELECT role.* FROM sys_role role
+        JOIN sys_user_role binding ON binding.role_id = role.role_id AND binding.tenant_id = role.tenant_id
+        WHERE role.tenant_id = #{tenantId} AND binding.user_id = #{userId} AND role.status = '0' AND role.deleted = 0
+    </select>
+    <select id="permissions" resultType="String">
+        SELECT DISTINCT menu.perms FROM sys_menu menu
+        JOIN sys_role_menu grant_row ON grant_row.menu_id = menu.menu_id
+        JOIN sys_role role ON role.role_id = grant_row.role_id AND role.tenant_id = grant_row.tenant_id
+        JOIN sys_user_role binding ON binding.role_id = role.role_id AND binding.tenant_id = role.tenant_id
+        WHERE role.tenant_id = #{tenantId} AND binding.user_id = #{userId}
+          AND role.status = '0' AND role.deleted = 0 AND menu.status = '0'
+          AND menu.perms IS NOT NULL AND menu.perms != ''
+    </select>
+    <select id="departments" resultType="com.cloudflow.auth.domain.SysDept">
+        SELECT dept_id, tenant_id, ancestors, status, deleted FROM sys_dept WHERE tenant_id = #{tenantId} AND deleted = 0
+    </select>
+    <select id="request" resultType="com.cloudflow.auth.oauth2.OAuthCode">
+        SELECT * FROM sys_oauth2_code WHERE request_hash = #{requestHash}
+    </select>
+    <select id="lockRequest" resultType="com.cloudflow.auth.oauth2.OAuthCode">
+        SELECT * FROM sys_oauth2_code WHERE client_id = #{clientId} AND request_hash = #{requestHash} FOR UPDATE
+    </select>
+    <select id="lockCode" resultType="com.cloudflow.auth.oauth2.OAuthCode">
+        SELECT * FROM sys_oauth2_code WHERE client_id = #{clientId} AND code_hash = #{codeHash} FOR UPDATE
+    </select>
+    <select id="code" resultType="com.cloudflow.auth.oauth2.OAuthCode">
+        SELECT * FROM sys_oauth2_code WHERE client_id = #{clientId} AND code_hash = #{codeHash}
+    </select>
+    <select id="approval" resultType="com.cloudflow.auth.oauth2.OAuthApproval">
+        SELECT * FROM sys_oauth2_approve WHERE tenant_id = #{tenantId} AND client_id = #{clientId} AND user_id = #{userId}
+    </select>
+    <select id="approvalById" resultType="com.cloudflow.auth.oauth2.OAuthApproval">
+        SELECT * FROM sys_oauth2_approve WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND approve_id = #{approveId}
+    </select>
+    <select id="approvals" resultType="com.cloudflow.auth.oauth2.OAuthApproval">
+        SELECT * FROM sys_oauth2_approve WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+        ORDER BY approve_id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="approvalCount" resultType="long">
+        SELECT COUNT(*) FROM sys_oauth2_approve WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+    </select>
+    <select id="access" resultType="com.cloudflow.auth.oauth2.OAuthAccessToken">
+        SELECT * FROM sys_oauth2_access_token WHERE token_hash = #{tokenHash}
+    </select>
+    <select id="refresh" resultType="com.cloudflow.auth.oauth2.OAuthRefreshToken">
+        SELECT * FROM sys_oauth2_refresh_token WHERE token_hash = #{tokenHash}
+    </select>
+    <select id="lockRefresh" resultType="com.cloudflow.auth.oauth2.OAuthRefreshToken">
+        SELECT * FROM sys_oauth2_refresh_token WHERE client_id = #{clientId} AND token_hash = #{tokenHash} FOR UPDATE
+    </select>
+    <sql id="tokenScope">
+        tenant_id = #{tenantId}
+        <choose>
+            <when test="clientId != null">AND client_id = #{clientId}</when>
+            <otherwise>AND user_id = #{userId}</otherwise>
+        </choose>
+        <if test="userId != null">AND user_id = #{userId}</if>
+    </sql>
+    <select id="activeHashes" resultType="String">
+        SELECT token_hash FROM sys_oauth2_access_token WHERE <include refid="tokenScope"/> AND revoked_time IS NULL
+        <if test="familyId != null">AND refresh_family_id = #{familyId}</if>
+        FOR UPDATE
+    </select>
+    <select id="userAccessPage" resultType="com.cloudflow.auth.oauth2.OAuthAccessToken">
+        SELECT access_token_id, token_hash FROM sys_oauth2_access_token
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND access_token_id > #{afterId}
+        ORDER BY access_token_id LIMIT 200
+    </select>
+    <update id="revokeAccess">
+        UPDATE sys_oauth2_access_token SET revoked_time = #{now}, revoke_reason = #{reason}
+        WHERE <include refid="tokenScope"/> AND revoked_time IS NULL
+        <if test="familyId != null">AND refresh_family_id = #{familyId}</if>
+    </update>
+    <update id="revokeRefresh">
+        UPDATE sys_oauth2_refresh_token SET status = 'REVOKED', revoked_time = #{now}, update_time = #{now}
+        WHERE <include refid="tokenScope"/> AND revoked_time IS NULL
+        <if test="familyId != null">AND family_id = #{familyId}</if>
+    </update>
+    <update id="revokeAccessHash">
+        UPDATE sys_oauth2_access_token SET revoked_time = #{now}, revoke_reason = 'CLIENT_REVOCATION'
+        WHERE tenant_id = #{tenantId} AND client_id = #{clientId} AND token_hash = #{tokenHash} AND revoked_time IS NULL
+    </update>
+    <update id="revokeApprovals">
+        UPDATE sys_oauth2_approve SET revoked_time = #{now}, version = version + 1, update_time = #{now}
+        WHERE <include refid="tokenScope"/> AND revoked_time IS NULL
+    </update>
+    <update id="denyCodes">
+        UPDATE sys_oauth2_code SET status = 'DENIED', update_time = #{now}
+        WHERE <include refid="tokenScope"/> AND status IN ('PENDING', 'ISSUED')
+    </update>
+    <insert id="insertClient" useGeneratedKeys="true" keyProperty="clientId">
+        INSERT INTO sys_oauth2_client (tenant_id, client_key, client_secret_encrypted, client_type, client_name, logo_file_id, description, service_user_id, access_token_validity_seconds, refresh_token_validity_seconds, redirect_uris, grant_types, scopes, auto_approve_scopes, authorities, resource_ids, status, deleted, version, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{clientKey}, #{clientSecretEncrypted}, #{clientType}, #{clientName}, #{logoFileId}, #{description}, #{serviceUserId}, #{accessTokenValiditySeconds}, #{refreshTokenValiditySeconds}, #{redirectUris}, #{grantTypes}, #{scopes}, #{autoApproveScopes}, #{authorities}, #{resourceIds}, #{status}, #{deleted}, #{version}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <insert id="insertCode" useGeneratedKeys="true" keyProperty="codeId">
+        INSERT INTO sys_oauth2_code (tenant_id, client_id, user_id, request_hash, session_binding_hash, code_hash, redirect_uri, requested_scopes, approved_scopes, state_value, code_challenge, code_challenge_method, client_version, status, expires_time, consumed_time, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{clientId}, #{userId}, #{requestHash}, #{sessionBindingHash}, #{codeHash}, #{redirectUri}, #{requestedScopes}, #{approvedScopes}, #{stateValue}, #{codeChallenge}, #{codeChallengeMethod}, #{clientVersion}, #{status}, #{expiresTime}, #{consumedTime}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <insert id="insertApproval" useGeneratedKeys="true" keyProperty="approveId">
+        INSERT INTO sys_oauth2_approve (tenant_id, client_id, user_id, scopes, client_version, approved_time, expires_time, revoked_time, version, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{clientId}, #{userId}, #{scopes}, #{clientVersion}, #{approvedTime}, #{expiresTime}, #{revokedTime}, #{version}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <insert id="insertAccess" useGeneratedKeys="true" keyProperty="accessTokenId">
+        INSERT INTO sys_oauth2_access_token (tenant_id, client_id, user_id, token_hash, grant_type, scopes, client_version, refresh_family_id, issued_time, expires_time, revoked_time, revoke_reason, create_by, create_time)
+        VALUES (#{tenantId}, #{clientId}, #{userId}, #{tokenHash}, #{grantType}, #{scopes}, #{clientVersion}, #{refreshFamilyId}, #{issuedTime}, #{expiresTime}, #{revokedTime}, #{revokeReason}, #{createBy}, #{createTime})
+    </insert>
+    <insert id="insertRefresh" useGeneratedKeys="true" keyProperty="refreshTokenId">
+        INSERT INTO sys_oauth2_refresh_token (tenant_id, client_id, user_id, token_hash, family_id, scopes, client_version, previous_token_id, replaced_by_id, status, issued_time, expires_time, consumed_time, revoked_time, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{clientId}, #{userId}, #{tokenHash}, #{familyId}, #{scopes}, #{clientVersion}, #{previousTokenId}, #{replacedById}, #{status}, #{issuedTime}, #{expiresTime}, #{consumedTime}, #{revokedTime}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+    <update id="updateClient">
+        UPDATE sys_oauth2_client SET client_name = #{clientName}, description = #{description}, logo_file_id = #{logoFileId}, client_secret_encrypted = #{clientSecretEncrypted}, service_user_id = #{serviceUserId}, access_token_validity_seconds = #{accessTokenValiditySeconds}, refresh_token_validity_seconds = #{refreshTokenValiditySeconds}, redirect_uris = #{redirectUris}, grant_types = #{grantTypes}, scopes = #{scopes}, auto_approve_scopes = #{autoApproveScopes}, authorities = #{authorities}, resource_ids = #{resourceIds}, status = #{status}, update_by = #{updateBy}, update_time = #{updateTime}, version = version + 1
+        WHERE client_id = #{clientId} AND tenant_id = #{tenantId} AND version = #{version} AND deleted = 0
+    </update>
+    <update id="updateCode">
+        UPDATE sys_oauth2_code SET code_hash = #{codeHash}, approved_scopes = #{approvedScopes}, status = #{status}, expires_time = #{expiresTime}, consumed_time = #{consumedTime}, update_by = #{updateBy}, update_time = #{updateTime}
+        WHERE code_id = #{codeId} AND tenant_id = #{tenantId}
+    </update>
+    <update id="updateApproval">
+        UPDATE sys_oauth2_approve SET scopes = #{scopes}, client_version = #{clientVersion}, approved_time = #{approvedTime}, expires_time = #{expiresTime}, revoked_time = #{revokedTime}, update_by = #{updateBy}, update_time = #{updateTime}, version = version + 1
+        WHERE approve_id = #{approveId} AND tenant_id = #{tenantId} AND version = #{version}
+    </update>
+    <update id="updateRefresh">
+        UPDATE sys_oauth2_refresh_token SET replaced_by_id = #{replacedById}, status = #{status}, consumed_time = #{consumedTime}, revoked_time = #{revokedTime}, update_by = #{updateBy}, update_time = #{updateTime}
+        WHERE refresh_token_id = #{refreshTokenId} AND tenant_id = #{tenantId}
+    </update>
+</mapper>

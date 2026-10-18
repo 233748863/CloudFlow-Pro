@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.ImOrganizationMapper">
+    <select id="lockTenant" resultType="java.lang.Long">
+        SELECT tenant_id FROM sys_tenant WHERE tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockRecoveryTenant" resultType="java.lang.Long">
+        SELECT tenant_id FROM sys_tenant WHERE tenant_id = #{tenantId} FOR UPDATE
+    </select>
+    <select id="lockRun" resultType="com.cloudflow.auth.im.ImSyncRunRow">
+        SELECT * FROM sys_im_sync_run WHERE tenant_id = #{tenantId} AND sync_run_id = #{runId} FOR UPDATE
+    </select>
+    <select id="otherRunning" resultType="int">
+        SELECT COUNT(*) FROM sys_im_sync_run WHERE tenant_id = #{tenantId} AND sync_run_id != #{runId}
+            AND mode = 'APPLY' AND status = 'RUNNING'
+    </select>
+    <select id="recoveryTargets" resultType="com.cloudflow.auth.im.ImSyncRunner$Target">
+        SELECT tenant_id, sync_run_id AS run_id FROM sys_im_sync_run
+        WHERE mode = 'APPLY' AND status = 'RUNNING' AND full_snapshot_flag = 1 AND sync_run_id &gt; #{afterId}
+        ORDER BY sync_run_id LIMIT #{limit}
+    </select>
+    <update id="checkpoint">
+        UPDATE sys_im_sync_run SET mode = #{row.mode}, snapshot_encrypted = #{row.snapshotEncrypted},
+            progress_cursor = #{row.progressCursor}, result_summary = #{row.resultSummary}, status = #{row.status},
+            completed_time = #{row.completedTime}, update_by = #{row.updateBy}, update_time = #{row.updateTime}
+        WHERE tenant_id = #{row.tenantId} AND sync_run_id = #{row.syncRunId} AND config_id = #{row.configId}
+            AND config_version = #{row.configVersion} AND snapshot_hash = #{row.snapshotHash} AND full_snapshot_flag = 1
+            AND mode = #{mode} AND (progress_cursor = #{cursor} OR (progress_cursor IS NULL AND #{cursor} IS NULL))
+    </update>
+    <insert id="insertDepartment" useGeneratedKeys="true" keyProperty="row.deptId">
+        INSERT INTO sys_dept (tenant_id, parent_id, ancestors, dept_name, order_num, status, deleted, version,
+            create_by, create_time, update_by, update_time)
+        VALUES (#{row.tenantId}, #{row.parentId}, #{row.ancestors}, #{row.deptName}, #{row.orderNum}, '0', 0, 0,
+            #{actor}, #{now}, #{actor}, #{now})
+    </insert>
+    <update id="updateDepartment">
+        UPDATE sys_dept SET parent_id = #{row.parentId}, ancestors = #{row.ancestors}, dept_name = #{row.deptName},
+            order_num = #{row.orderNum}, version = version + 1, update_by = #{actor}, update_time = #{now}
+        WHERE tenant_id = #{row.tenantId} AND dept_id = #{row.deptId} AND version = #{row.version} AND deleted = 0 AND status = '0'
+    </update>
+    <update id="updateAncestors">
+        UPDATE sys_dept SET ancestors = #{ancestors}, version = version + 1, update_by = #{actor}, update_time = #{now}
+        WHERE tenant_id = #{tenantId} AND dept_id = #{id} AND version = #{version}
+    </update>
+    <insert id="insertDepartmentMapping">
+        INSERT INTO sys_im_dept_mapping (tenant_id, config_id, dept_id, im_type, im_dept_id, im_dept_name,
+            im_parent_dept_id, sync_time, status, version, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{configId}, #{deptId}, 'WECOM', #{source.id}, #{source.name}, #{source.parentId},
+            #{now}, 'ACTIVE', 0, #{actor}, #{now}, #{actor}, #{now})
+    </insert>
+    <update id="updateDepartmentMapping">
+        UPDATE sys_im_dept_mapping SET im_dept_name = #{source.name}, im_parent_dept_id = #{source.parentId},
+            sync_time = #{now}, version = version + 1, update_by = #{actor}, update_time = #{now}
+        WHERE tenant_id = #{mapping.tenantId} AND config_id = #{mapping.configId} AND mapping_id = #{mapping.id}
+            AND dept_id = #{mapping.departmentId} AND im_dept_id = #{mapping.externalId}
+            AND im_type = 'WECOM' AND status = 'ACTIVE' AND version = #{mapping.version}
+    </update>
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="row.userId">
+        INSERT INTO sys_user (tenant_id, dept_id, user_name, nick_name, phonenumber, email, avatar, password,
+            sex, status, deleted, version, pwd_reset_required, create_by, create_time, update_by, update_time)
+        VALUES (#{row.tenantId}, #{row.deptId}, #{row.userName}, #{row.nickName}, #{row.phonenumber}, #{row.email},
+            #{row.avatar}, #{row.password}, '2', #{row.status}, 0, 0, '1', #{actor}, #{now}, #{actor}, #{now})
+    </insert>
+    <update id="updateUser">
+        UPDATE sys_user SET dept_id = #{row.deptId}, nick_name = #{row.nickName}, phonenumber = #{row.phonenumber},
+            email = #{row.email}, avatar = #{row.avatar}, status = #{row.status}, version = version + 1,
+            update_by = #{actor}, update_time = #{now}
+        WHERE tenant_id = #{row.tenantId} AND user_id = #{row.userId} AND version = #{row.version} AND deleted = 0
+            AND status IN ('0', '1') AND (status = '0' OR #{row.status} = '1')
+    </update>
+    <update id="advanceUserRevisions">
+        UPDATE sys_user SET version = version + 1 WHERE tenant_id = #{tenantId} AND deleted = 0
+            AND version >= 0 AND version &lt; 2147483647
+    </update>
+    <insert id="insertUserMapping">
+        INSERT INTO sys_im_user_mapping (tenant_id, config_id, user_id, im_type, im_user_id, im_name, im_avatar,
+            bind_type, bind_time, last_sync_time, status, version, create_by, create_time, update_by, update_time)
+        VALUES (#{tenantId}, #{configId}, #{userId}, 'WECOM', #{source.id}, #{source.name}, #{source.avatar.value},
+            'AUTO_SYNC', #{now}, #{now}, 'ACTIVE', 0, #{actor}, #{now}, #{actor}, #{now})
+    </insert>
+    <update id="updateUserMapping">
+        UPDATE sys_im_user_mapping SET im_name = #{source.name},
+            im_avatar = CASE WHEN #{source.avatar.available} THEN #{source.avatar.value} ELSE im_avatar END,
+            status = 'ACTIVE', last_sync_time = #{now}, version = version + 1, update_by = #{actor}, update_time = #{now}
+        WHERE tenant_id = #{mapping.tenantId} AND config_id = #{mapping.configId} AND mapping_id = #{mapping.id}
+            AND user_id = #{mapping.userId} AND im_user_id = #{mapping.externalId}
+            AND im_type = 'WECOM' AND status = #{mapping.status} AND status IN ('ACTIVE', 'OUT_OF_SCOPE') AND version = #{mapping.version}
+    </update>
+    <update id="releaseUserMapping">
+        UPDATE sys_im_user_mapping SET status = 'OUT_OF_SCOPE', last_sync_time = #{now}, version = version + 1,
+            update_by = #{actor}, update_time = #{now}
+        WHERE tenant_id = #{mapping.tenantId} AND config_id = #{mapping.configId} AND mapping_id = #{mapping.id}
+            AND user_id = #{mapping.userId} AND im_user_id = #{mapping.externalId}
+            AND im_type = 'WECOM' AND status = 'ACTIVE' AND last_sync_time IS NOT NULL AND version = #{mapping.version}
+    </update>
+</mapper>

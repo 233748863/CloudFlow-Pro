@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.auth.mapper.SysPortalUserMapper">
+    <select id="lockAccount" resultType="com.cloudflow.auth.domain.SysPortalUser">
+        SELECT * FROM sys_portal_user WHERE tenant_id = #{tenantId} AND login_account = #{account} FOR UPDATE
+    </select>
+    <select id="lockContact" resultType="com.cloudflow.auth.domain.SysPortalUser">
+        SELECT * FROM sys_portal_user WHERE tenant_id = #{tenantId} AND ref_biz_type = 'CRM_CONTACT'
+            AND ref_biz_id = #{contactId} FOR UPDATE
+    </select>
+    <select id="lockId" resultType="com.cloudflow.auth.domain.SysPortalUser">
+        SELECT * FROM sys_portal_user WHERE tenant_id = #{tenantId} AND portal_user_id = #{portalUserId} FOR UPDATE
+    </select>
+    <select id="lockActivation" resultType="com.cloudflow.auth.domain.SysPortalUser">
+        SELECT * FROM sys_portal_user WHERE tenant_id = #{tenantId} AND activate_token_hash = #{activationHash} FOR UPDATE
+    </select>
+    <update id="writeState">
+        UPDATE sys_portal_user SET customer_id = #{user.customerId}, email = #{user.email}, phone = #{user.phone},
+            password_hash = #{user.passwordHash}, status = #{user.status}, fail_count = #{user.failCount},
+            locked_until = #{user.lockedUntil}, activate_token_hash = #{user.activateTokenHash},
+            activate_expire_time = #{user.activateExpireTime}, activate_consumed_time = #{user.activateConsumedTime},
+            session_version = #{user.sessionVersion}, last_login_time = #{user.lastLoginTime},
+            last_login_ip = #{user.lastLoginIp}, update_by = #{user.updateBy}, update_time = #{user.updateTime}, version = version + 1
+        WHERE tenant_id = #{user.tenantId} AND portal_user_id = #{user.portalUserId} AND version = #{user.version} AND deleted = 0
+    </update>
+    <select id="latestDelivery" resultType="com.cloudflow.auth.portal.PortalDeliveryView">
+        SELECT send_status, skip_reason, error_msg FROM sys_message_record
+        WHERE tenant_id = #{tenantId} AND biz_type = 'PORTAL_ACTIVATION' AND biz_id = CAST(#{portalUserId} AS CHAR)
+        ORDER BY record_id DESC LIMIT 1
+    </select>
+</mapper>
