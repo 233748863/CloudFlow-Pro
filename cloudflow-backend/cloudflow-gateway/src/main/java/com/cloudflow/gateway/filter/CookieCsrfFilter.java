@@ -41,8 +41,10 @@ public class CookieCsrfFilter implements GlobalFilter, Ordered {
             "/auth/login/totp",
             "/auth/register",
             "/auth/captcha/**",
+            "/auth/sms/code/**",
             "/auth/tenant/options",
             "/auth/legal/public/**",
+            "/crm/track/unsubscribe",
             "/ws/**"
     );
 
@@ -75,6 +77,9 @@ public class CookieCsrfFilter implements GlobalFilter, Ordered {
             return true;
         }
         String path = request.getURI().getPath();
+        if (com.cloudflow.common.security.im.ImLoginPaths.publicEndpoint(request.getMethod().name(), path)) return true;
+        if (com.cloudflow.common.security.portal.PortalPaths.portal(path)) return true;
+        if (com.cloudflow.common.security.oauth2.OAuthPaths.publicEndpoint(request.getMethod().name(), path)) return true;
         for (String pattern : EXCLUDE_PATHS) {
             if (pathMatcher.match(pattern, path)) {
                 return true;

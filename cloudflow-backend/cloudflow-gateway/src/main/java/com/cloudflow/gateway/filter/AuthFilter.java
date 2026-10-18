@@ -20,10 +20,12 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 网关认证过滤器
@@ -53,10 +55,20 @@ public class AuthFilter implements GlobalFilter, Ordered {
     @Autowired
     private TenantStatusChecker tenantStatusChecker;
 
+    @Autowired
+    private PortalGatewayAccess portalGatewayAccess;
+
+    @Autowired
+    private OAuthGatewayAccess oauthGatewayAccess;
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+        if (com.cloudflow.common.security.im.ImLoginPaths.publicEndpoint(request.getMethod().name(), path)) return chain.filter(exchange);
+        if (com.cloudflow.common.security.oauth2.OAuthPaths.offloaded(path)) return oauthGatewayAccess.filter(exchange, chain);
+        if (com.cloudflow.common.security.portal.PortalPaths.portal(path) || path.equals("/auth/portal")
+                || path.startsWith("/auth/portal/")) return portalGatewayAccess.filter(exchange, chain);
 
         // 跳过白名单（每次取最新生效配置，支持 Nacos @RefreshScope 动态刷新）
         List<String> whiteList = authProperties.effectiveWhitelist();
@@ -71,17 +83,25 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange);
         }
 
-        Map<String, Object> loginUser = tokenService.verifyToken(rawToken);
-        if (loginUser == null) {
-            return unauthorized(exchange);
-        }
+        return Mono.fromCallable(() -> Optional.ofNullable(tokenService.verifyToken(rawToken)))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(loginUser -> loginUser
+                        .map(user -> authenticated(exchange, chain, rawToken, user))
+                        .orElseGet(() -> unauthorized(exchange)));
+    }
 
+    private Mono<Void> authenticated(ServerWebExchange exchange, GatewayFilterChain chain,
+                                     String rawToken, Map<String, Object> loginUser) {
+        ServerHttpRequest request = exchange.getRequest();
         if (hasAuthCookie(exchange)) {
             refreshAuthCookies(exchange, rawToken);
         }
 
         String tenantIdStr = resolveTenantId(loginUser);
         Long tenantId = parseTenantId(tenantIdStr);
+        Object userName = loginUser.getOrDefault("userName", loginUser.get("username"));
+        exchange.getAttributes().put(TraceGlobalFilter.IDENTITY, new TraceGlobalFilter.Identity(tenantId == null ? 0L : tenantId,
+                com.cloudflow.common.core.utils.LogSanitizer.limit(userName == null ? null : String.valueOf(userName), 64)));
 
         return tenantStatusChecker.isAvailable(tenantId)
                 .flatMap(ok -> {

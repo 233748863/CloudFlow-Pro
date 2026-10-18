@@ -24,6 +24,8 @@ COPY cloudflow-gateway/pom.xml cloudflow-gateway/
 COPY cloudflow-auth/pom.xml cloudflow-auth/
 COPY cloudflow-service-workflow/pom.xml cloudflow-service-workflow/
 COPY cloudflow-service-oa/pom.xml cloudflow-service-oa/
+COPY cloudflow-service-crm/pom.xml cloudflow-service-crm/
+COPY cloudflow-service-hr/pom.xml cloudflow-service-hr/
 
 # 复制源代码
 COPY cloudflow-common/ cloudflow-common/
@@ -31,6 +33,8 @@ COPY cloudflow-gateway/ cloudflow-gateway/
 COPY cloudflow-auth/ cloudflow-auth/
 COPY cloudflow-service-workflow/ cloudflow-service-workflow/
 COPY cloudflow-service-oa/ cloudflow-service-oa/
+COPY cloudflow-service-crm/ cloudflow-service-crm/
+COPY cloudflow-service-hr/ cloudflow-service-hr/
 
 # 编译指定模块及其依赖
 RUN mvn clean package -DskipTests -pl ${MODULE_NAME} -am

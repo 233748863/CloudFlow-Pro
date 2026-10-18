@@ -1,4 +1,6 @@
 package com.cloudflow.gateway.handler;
+import com.cloudflow.common.core.context.TraceContext;
+import com.cloudflow.common.core.utils.LogSanitizer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,7 +56,8 @@ public class GatewayExceptionHandler implements ErrorWebExceptionHandler {
 
         response.setStatusCode(HttpStatus.resolve(code) != null ? HttpStatus.resolve(code) : HttpStatus.INTERNAL_SERVER_ERROR);
 
-        log.error("[网关异常处理] 请求路径: {}, 异常信息: {}", exchange.getRequest().getPath(), ex.getMessage(), ex);
+        log.error("网关异常: traceId={}, path={}, exception={}", response.getHeaders().getFirst(TraceContext.HEADER),
+                LogSanitizer.limit(exchange.getRequest().getPath().value(), 500), LogSanitizer.stack(ex));
 
         return response.writeWith(Mono.fromSupplier(() -> {
             DataBufferFactory bufferFactory = response.bufferFactory();
@@ -65,7 +68,7 @@ public class GatewayExceptionHandler implements ErrorWebExceptionHandler {
                 result.put("data", null);
                 return bufferFactory.wrap(objectMapper.writeValueAsBytes(result));
             } catch (JsonProcessingException e) {
-                log.error("序列化异常响应失败", e);
+                log.error("序列化异常响应失败: {}", e.getClass().getSimpleName());
                 String fallback = "{\"code\":500,\"msg\":\"系统异常\",\"data\":null}";
                 return bufferFactory.wrap(fallback.getBytes());
             }

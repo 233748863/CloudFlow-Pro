@@ -37,8 +37,12 @@ public class GatewayAuthProperties implements SysConfigChangeListener {
             "/auth/tenant/options",
             "/auth/legal/public/**",
             "/auth/captcha/**",
+            "/auth/sms/code/**",
             "/oa/announcement/public",
             "/oa/announcement/public/**",
+            "/crm/track/open",
+            "/crm/track/click",
+            "/crm/track/unsubscribe",
             "/ws/**"
     );
 

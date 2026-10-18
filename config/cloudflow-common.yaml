@@ -88,6 +88,14 @@ cloudflow:
   encrypt:
     enabled: false
 
+  job:
+    service-endpoints: true
+    auth-url: ${CLOUDFLOW_JOB_AUTH_URL:http://localhost:9001}
+    report-enabled: true
+    handler-report-interval-ms: 60000
+    handler-offline-threshold-seconds: 180
+    alarm-escalation-threshold: 3
+
   # ==================== 网关层运营管控 ====================
   # 网关侧每请求校验"租户运营状态"（停用 / 过期）
   # 缓存命中走 Caffeine 本地，未命中回 auth 服务 /inner/auth/tenant/status/{id}
@@ -124,6 +132,7 @@ cloudflow:
       - template_category
       - wf_callback_dead_letter
       - wf_reconcile_alert
+      - sys_job_handler
 
   # M4 审计归档默认 dry-run：只统计候选行，不建冷表、不迁移、不删除。
   # 运维完成一周 dry-run 观测后，显式改为 false 才执行真实归档。

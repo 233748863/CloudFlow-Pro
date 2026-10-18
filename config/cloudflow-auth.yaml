@@ -8,6 +8,23 @@ spring:
     openfeign:
       circuitbreaker:
         enabled: true
+      client:
+        config:
+          jobAuthExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
+          jobWorkflowExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
+          jobOaExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
+          jobCrmExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
+          jobHrExecution:
+            connectTimeout: 3000
+            readTimeout: 10000
   # ==================== 多数据源配置（dynamic-datasource） ====================
   # 使用 @DS("数据源名") 注解在 Mapper 层切换数据源
   # 不加 @DS 注解的 Mapper 默认使用 primary 指定的数据源
@@ -52,6 +69,12 @@ spring:
 
 # Sa-Token 配置（SecurityProperties 使用 cloudflow.security 前缀）
 cloudflow:
+  job:
+    service-endpoints: true
+    auth-url: ${CLOUDFLOW_JOB_AUTH_URL:http://localhost:9001}
+    report-enabled: true
+  codegen:
+    enabled: ${CLOUDFLOW_CODEGEN_ENABLED:false}
   # 文件上传存储根路径
   profile: /data/cloudflow/profile
   auth:

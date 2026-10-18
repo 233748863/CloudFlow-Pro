@@ -31,6 +31,14 @@ public class TenantWebFilter implements WebFilter, Ordered {
     
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        if (com.cloudflow.common.security.portal.PortalPaths.portal(exchange.getRequest().getURI().getPath())
+                || com.cloudflow.common.security.oauth2.OAuthPaths.offloaded(exchange.getRequest().getURI().getPath())) {
+            ServerHttpRequest request = exchange.getRequest().mutate().headers(headers -> {
+                headers.remove(SecurityConstants.TENANT_ID_HEADER);
+                headers.remove("X-User-Tenant-Id");
+            }).build();
+            return chain.filter(exchange.mutate().request(request).build());
+        }
         String resolvedTenantId = exchange.getRequest().getHeaders().getFirst(SecurityConstants.TENANT_ID_HEADER);
         if (!StringUtils.hasText(resolvedTenantId)) {
             resolvedTenantId = runtimeSysConfigService.getString(SysConfigKeys.GATEWAY_DEFAULT_TENANT_ID, "100000");
