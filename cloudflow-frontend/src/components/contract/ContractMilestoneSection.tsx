@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, CheckCircle2, CircleDashed, CircleX, CreditCard, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react';
+import { CalendarClock, Check, CheckCircle2, CircleDashed, CircleX, CreditCard, Edit, Eye, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import AttachmentLinks from '@/components/AttachmentLinks';
 import {
   contractMilestoneApi,
   contractPaymentApi,
@@ -15,6 +16,7 @@ import {
   Button,
   ConfirmDialog,
   DatePicker,
+  DetailDialog,
   DictSelect,
   Input,
   Label,
@@ -120,6 +122,8 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
   });
   const [deletingMilestone, setDeletingMilestone] = useState<OaContractMilestone | null>(null);
   const [deletingPayment, setDeletingPayment] = useState<OaContractPaymentSchedule | null>(null);
+  const [detailMilestone, setDetailMilestone] = useState<OaContractMilestone | null>(null);
+  const [detailPayment, setDetailPayment] = useState<OaContractPaymentSchedule | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!contractId) return;
@@ -297,17 +301,17 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                     key={m.id}
                     className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-800"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-cf-title">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className="min-w-0 break-words text-sm font-medium text-cf-title">
                           {m.milestoneName}
                         </span>
-                        <span className="rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-0.5 text-[10px] text-cf-subtle dark:border-slate-700 dark:bg-slate-900/40">
+                        <span className="whitespace-nowrap rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2 py-0.5 text-[10px] text-cf-subtle dark:border-slate-700 dark:bg-slate-900/40">
                           {milestoneTypeDict.getLabel(m.milestoneType)}
                         </span>
                         <span
                           className={cn(
-                            'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium',
+                            'inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-[10px] font-medium',
                             meta.cls,
                           )}
                         >
@@ -315,24 +319,26 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                           {statusLabel(milestoneStatusDict.getLabel(m.status), m.status)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="admin-users-row-actions shrink-0">
+                        <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailMilestone(m)}>
+                          <Eye size={15} />
+                        </button>
                         {m.status !== 'DONE' && m.status !== 'CANCELLED' ? (
-                          <Button size="sm" variant="ghost" onClick={() => void handleComplete(m)}>
-                            标记完成
-                          </Button>
+                          <button type="button" data-tooltip="标记完成" aria-label="标记完成" onClick={() => void handleComplete(m)}>
+                            <Check size={15} />
+                          </button>
                         ) : null}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setMilestoneDialog({ open: true, form: { ...m } })
-                          }
+                        <button
+                          type="button"
+                          data-tooltip="编辑履约节点"
+                          aria-label="编辑履约节点"
+                          onClick={() => setMilestoneDialog({ open: true, form: { ...m } })}
                         >
-                          编辑
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setDeletingMilestone(m)}>
-                          <Trash2 size={13} />
-                        </Button>
+                          <Edit size={15} />
+                        </button>
+                        <button type="button" className="danger" data-tooltip="删除履约节点" aria-label="删除履约节点" onClick={() => setDeletingMilestone(m)}>
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-cf-subtle">
@@ -368,36 +374,40 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
                     key={p.id}
                     className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-800"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-cf-title">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className="min-w-0 break-words text-sm font-medium text-cf-title">
                           {p.paymentName}
                         </span>
                         <span
                           className={cn(
-                            'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium',
+                            'inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-[10px] font-medium',
                             meta.cls,
                           )}
                         >
                           {statusLabel(paymentStatusDict.getLabel(p.status), p.status)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="admin-users-row-actions shrink-0">
+                        <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailPayment(p)}>
+                          <Eye size={15} />
+                        </button>
                         {p.status === 'PENDING' ? (
-                          <Button size="sm" variant="ghost" onClick={() => void handlePay(p)}>
-                            标记已付
-                          </Button>
+                          <button type="button" data-tooltip="标记已付" aria-label="标记已付" onClick={() => void handlePay(p)}>
+                            <CreditCard size={15} />
+                          </button>
                         ) : null}
-                        <Button
-                          size="sm"
-                          variant="ghost"
+                        <button
+                          type="button"
+                          data-tooltip="编辑付款节点"
+                          aria-label="编辑付款节点"
                           onClick={() => setPaymentDialog({ open: true, form: { ...p } })}
                         >
-                          编辑
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setDeletingPayment(p)}>
-                          <Trash2 size={13} />
-                        </Button>
+                          <Edit size={15} />
+                        </button>
+                        <button type="button" className="danger" data-tooltip="删除付款节点" aria-label="删除付款节点" onClick={() => setDeletingPayment(p)}>
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-cf-subtle">
@@ -652,6 +662,84 @@ export const ContractMilestoneSection: React.FC<Props> = ({ contractId }) => {
         danger
         onCancel={() => setDeletingPayment(null)}
         onConfirm={handleDeletePayment}
+      />
+
+      {/* 这一段本身嵌在合同详情弹窗（z-50）里，详情要再抬一层才不会被压住。 */}
+      <DetailDialog
+        open={Boolean(detailMilestone)}
+        title="履约节点详情"
+        onClose={() => setDetailMilestone(null)}
+        zIndex={60}
+        heading={detailMilestone?.milestoneName}
+        subheading={detailMilestone ? milestoneTypeDict.getLabel(detailMilestone.milestoneType) : undefined}
+        sections={detailMilestone ? [
+          {
+            title: '节点信息',
+            items: [
+              { label: '节点名称', value: detailMilestone.milestoneName },
+              { label: '节点序号', value: detailMilestone.milestoneNo == null ? '' : String(detailMilestone.milestoneNo) },
+              { label: '节点类型', value: milestoneTypeDict.getLabel(detailMilestone.milestoneType) },
+              {
+                label: '状态',
+                value: statusLabel(milestoneStatusDict.getLabel(detailMilestone.status), detailMilestone.status),
+              },
+              { label: '计划日期', value: detailMilestone.plannedDate },
+              { label: '实际日期', value: detailMilestone.actualDate },
+              { label: '金额', value: detailMilestone.amount == null ? '' : `¥${Number(detailMilestone.amount).toLocaleString()}` },
+              { label: '负责人', value: detailMilestone.ownerName },
+              { label: '完成备注', value: <span className="whitespace-pre-wrap">{detailMilestone.completionRemark}</span>, wide: true },
+            ],
+          },
+          {
+            title: '附件',
+            visible: Boolean(detailMilestone.attachmentUrl),
+            items: [
+              {
+                label: '附件',
+                value: detailMilestone.attachmentUrl ? (
+                  <AttachmentLinks value={detailMilestone.attachmentUrl} downloadContext={{ bizType: 'OA_CONTRACT_MILESTONE', bizId: String(contractId), childId: detailMilestone.id }} />
+                ) : '',
+                wide: true,
+              },
+            ],
+          },
+        ] : []}
+      />
+
+      <DetailDialog
+        open={Boolean(detailPayment)}
+        title="付款节点详情"
+        onClose={() => setDetailPayment(null)}
+        zIndex={60}
+        heading={detailPayment?.paymentName}
+        subheading={detailPayment ? `计划付款 ${detailPayment.planDate}` : undefined}
+        sections={detailPayment ? [
+          {
+            title: '付款信息',
+            items: [
+              { label: '款项名称', value: detailPayment.paymentName },
+              { label: '款项序号', value: detailPayment.paymentNo == null ? '' : String(detailPayment.paymentNo) },
+              {
+                label: '状态',
+                value: statusLabel(paymentStatusDict.getLabel(detailPayment.status), detailPayment.status),
+              },
+              { label: '币种', value: currencyDict.getLabel(detailPayment.currency || 'CNY') },
+              { label: '计划金额', value: detailPayment.amount == null ? '' : Number(detailPayment.amount).toLocaleString() },
+              { label: '实付金额', value: detailPayment.actualAmount == null ? '' : Number(detailPayment.actualAmount).toLocaleString() },
+              { label: '计划日期', value: detailPayment.planDate },
+              { label: '实际日期', value: detailPayment.actualDate },
+              { label: '收款方', value: detailPayment.payeeName },
+              {
+                label: '关联履约节点',
+                value: detailPayment.milestoneId
+                  ? milestones.find((m) => m.id === detailPayment.milestoneId)?.milestoneName || `#${detailPayment.milestoneId}`
+                  : '',
+              },
+              { label: '关联发票', value: detailPayment.invoiceId == null ? '' : `#${detailPayment.invoiceId}` },
+              { label: '备注', value: <span className="whitespace-pre-wrap">{detailPayment.remark}</span>, wide: true },
+            ],
+          },
+        ] : []}
       />
     </div>
   );

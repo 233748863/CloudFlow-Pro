@@ -1,0 +1,68 @@
+.oa-operations { --fc-border-color: var(--cf-border); --fc-page-bg-color: transparent; --fc-neutral-bg-color: transparent; }
+.oa-ops-section { border: 1px solid var(--cf-border); border-radius: 12px; padding: 20px; }
+.oa-ops-field { display: flex; flex-direction: column; gap: 7px; font-size: 13px; color: var(--cf-fg-muted); min-width: 0; }
+.oa-ops-metric { border: 1px solid var(--cf-border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 7px; }
+.oa-ops-metric span, .oa-ops-metric small { font-size: 12px; color: var(--cf-fg-muted); }
+.oa-ops-metric strong { font-size: 24px; font-variant-numeric: tabular-nums; color: var(--cf-fg); }
+.oa-ops-warning { border: 1px solid var(--cf-chart-warning); border-radius: 8px; padding: 12px; color: var(--cf-fg-muted); font-size: 13px; line-height: 1.7; }
+.oa-ops-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.oa-ops-section button { transition: opacity 150ms ease; }
+@media (prefers-reduced-motion: reduce) { .oa-ops-section button { transition: none; } }
+
+.oa-ops-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.oa-ops-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; }
+.oa-ops-tabs button { white-space: nowrap; }
+.oa-ops-week input { min-width: 64px; width: 74px; }
+.oa-ops-positive { color: var(--cf-chart-success); font-weight: 600; }
+@media (max-width: 640px) { .oa-ops-grid { grid-template-columns: minmax(0, 1fr); } .oa-ops-section { padding: 12px; } }
+
+@media (max-width: 760px) {
+  :is(.oa-quotation-items, .oa-quotation-records) .table-scroll-container,
+  :is(.oa-quotation-items, .oa-quotation-records) .table-wrapper { overflow: visible !important; border: 0; }
+  :is(.oa-quotation-items, .oa-quotation-records) .unity-data-table,
+  :is(.oa-quotation-items, .oa-quotation-records) .unity-data-table tbody {
+    display: block !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  :is(.oa-quotation-items, .oa-quotation-records) .unity-data-table thead { display: none; }
+  :is(.oa-quotation-items, .oa-quotation-records) .unity-data-table tbody > tr {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid var(--cf-border);
+    border-radius: 8px;
+    background: var(--cf-surface-strong);
+  }
+  :is(.oa-quotation-items, .oa-quotation-records) .unity-data-table tbody > tr > td {
+    position: static !important;
+    display: block !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+    border: 0;
+    background: transparent !important;
+    box-shadow: none !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+  :is(.oa-quotation-items, .oa-quotation-records) .unity-data-table td::before {
+    position: static !important;
+    display: block;
+    width: auto;
+    margin-bottom: 8px;
+    color: var(--cf-fg-muted);
+    font-size: 12px;
+    content: attr(data-field-label);
+  }
+  .oa-quotation-items .unity-data-table input {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+  .oa-quotation-items .unity-data-table input + input { margin-top: 8px; }
+  .oa-quotation-records .unity-data-table button { min-width: 44px; min-height: 44px; }
+}

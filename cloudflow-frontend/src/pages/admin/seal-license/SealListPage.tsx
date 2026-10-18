@@ -15,7 +15,6 @@ import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const EDITABLE_SEAL_STATUSES = ['AVAILABLE', 'DISABLED'] as const;
@@ -461,19 +460,13 @@ export const SealListPage: React.FC = () => {
                   <div className="mt-1 text-xs text-cf-faint">{item.borrowDueTime ? formatDateTimeDisplay(item.borrowDueTime) : '-'}</div>
                 </td>
                 <td>
-                  <TableRowActions
-                    iconOnly
-                    buttonLayout="compact"
-                    maxVisibleActions={2}
-                    overflowLabel="更多"
-                    actions={[
-                      { key: 'detail', label: '详情', icon: <Eye size={15} />, isPrimary: true, onClick: () => setDetailSeal(item) },
-                      { key: 'edit', label: '编辑', icon: <Edit size={15} />, priority: 'secondary', hidden: isBorrowLocked(item), permissionKey: 'oa:seal:edit', onClick: () => openEdit(item) },
-                      { key: 'remind', label: '到期提醒', icon: <Bell size={15} />, priority: 'secondary', tone: 'warning', hidden: !canRemindExpiry(item), permissionKey: 'oa:seal:remind', onClick: () => void remindExpiry(item) },
-                      { key: 'renewal', label: '续期', icon: <FileClock size={15} />, priority: 'secondary', tone: 'info', hidden: item.status === 'DISABLED' || isBorrowLocked(item), permissionKey: 'oa:seal-renewal:add', onClick: () => void openRenewalDialog(item) },
-                      { key: 'delete', label: '删除', icon: <Trash2 size={15} />, danger: true, hidden: isBorrowLocked(item), permissionKey: 'oa:seal:remove', onClick: () => item.sealId && setDeleteId(item.sealId) },
-                    ]}
-                  />
+                  <div className="admin-users-row-actions">
+                    <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailSeal(item)}><Eye size={15} /></button>
+                    {!isBorrowLocked(item) && hasPermission('oa:seal:edit') ? <button type="button" data-tooltip="编辑印章" aria-label="编辑印章" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
+                    {canRemindExpiry(item) && hasPermission('oa:seal:remind') ? <button type="button" data-tooltip="到期提醒" aria-label="到期提醒" onClick={() => void remindExpiry(item)}><Bell size={15} /></button> : null}
+                    {item.status !== 'DISABLED' && !isBorrowLocked(item) && hasPermission('oa:seal-renewal:add') ? <button type="button" data-tooltip="续期" aria-label="续期" onClick={() => void openRenewalDialog(item)}><FileClock size={15} /></button> : null}
+                    {!isBorrowLocked(item) && hasPermission('oa:seal:remove') ? <button type="button" className="danger" data-tooltip="删除印章" aria-label="删除印章" onClick={() => item.sealId && setDeleteId(item.sealId)}><Trash2 size={15} /></button> : null}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -649,7 +642,7 @@ export const SealListPage: React.FC = () => {
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailSeal.createTime)} />
             </DialogPanel>
             <DialogPanel title="附件">
-              <AttachmentLinks value={detailSeal.attachmentUrl} />
+              <AttachmentLinks value={detailSeal.attachmentUrl} downloadContext={{ bizType: 'OA_SEAL', bizId: String(detailSeal.sealId) }} />
             </DialogPanel>
             {detailSeal.remark ? (
               <DialogPanel title="备注">
@@ -705,7 +698,7 @@ export const SealListPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-2 text-sm leading-6 text-cf-muted">{item.renewalReason || '-'}</div>
-                  {getAttachmentList(item.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={item.attachmentUrl} compact /></div> : null}
+                  {getAttachmentList(item.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={item.attachmentUrl} compact downloadContext={{ bizType: 'OA_SEAL_RENEWAL', bizId: String(item.id) }} /></div> : null}
                 </div>
               )) : <div className="py-6 text-center text-sm text-cf-faint">暂无续期记录</div>}
             </div>

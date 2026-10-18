@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ImportButton } from '@/components/import/ImportButton';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
-import { Edit, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Edit, Eye, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supplierApi, Supplier } from '@/services/api/purchase';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useAuth } from '@/context/AuthContext';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DetailDialog } from '@/components/common/DetailDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -22,6 +24,8 @@ import {
 } from '@/components/common';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
+import SupplierProfileFields from '@/components/oa/operations/SupplierProfileFields';
+import SupplierGovernancePanel from '@/components/oa/operations/SupplierGovernancePanel';
 
 const createDefaultForm = (): Supplier => ({
   supplierName: '',
@@ -53,6 +57,7 @@ const SupplierPage: React.FC = () => {
   const [currentSupplier, setCurrentSupplier] = useState<Supplier | null>(null);
   const [formData, setFormData] = useState<Supplier>(createDefaultForm());
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [detailSupplier, setDetailSupplier] = useState<Supplier | null>(null);
 
   useEffect(() => {
     void fetchSuppliers();
@@ -149,6 +154,7 @@ const SupplierPage: React.FC = () => {
               <RotateCcw size={16} className={loading ? 'animate-spin' : ''} />
               刷新
             </Button>
+            <ImportButton bizType="SUPPLIER" permission="oa:supplier:import" onSuccess={() => void fetchSuppliers()} />
             <Button size="sm" onClick={openAdd} disabled={!hasPermission('oa:supplier:add')}>
               <Plus size={16} />
               新增供应商
@@ -257,6 +263,7 @@ const SupplierPage: React.FC = () => {
                     <td>{statusBadge(item.status)}</td>
                     <td>
                       <div className="admin-users-row-actions">
+                        <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailSupplier(item)}><Eye size={15} /></button>
                         {hasPermission('oa:supplier:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
                         {hasPermission('oa:supplier:remove') ? <button type="button" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteId(item.supplierId!)}><Trash2 size={15} /></button> : null}
                       </div>
@@ -335,6 +342,7 @@ const SupplierPage: React.FC = () => {
             <Input value={formData.bankAccount || ''} onChange={(event) => setFormData((prev) => ({ ...prev, bankAccount: event.target.value }))} />
           </div>
         </div>
+        <SupplierProfileFields value={formData} onChange={setFormData} />
       </BaseDialog>
 
       <ConfirmDialog
@@ -345,6 +353,34 @@ const SupplierPage: React.FC = () => {
         danger
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteId(null)}
+      />
+
+      <DetailDialog
+        open={Boolean(detailSupplier)}
+        title="供应商详情"
+        width="extra-wide"
+        onClose={() => setDetailSupplier(null)}
+        heading={detailSupplier?.supplierName}
+        subheading={detailSupplier?.contactName}
+        headingAside={detailSupplier ? statusBadge(detailSupplier.status) : undefined}
+        sections={detailSupplier ? [
+          {
+            title: '供应商信息',
+            items: [
+              { label: '供应商名称', value: detailSupplier.supplierName },
+              { label: '状态', value: statusDict.getLabel(detailSupplier.status || 'ACTIVE') || detailSupplier.status },
+              { label: '联系人', value: detailSupplier.contactName },
+              { label: '联系电话', value: detailSupplier.contactPhone },
+              /* 开户行和银行账号列表里本来就明文展示（开户信息列），
+                 详情弹窗带上不扩大可见范围。 */
+              { label: '开户行', value: detailSupplier.bankName },
+              { label: '银行账号', value: detailSupplier.bankAccount },
+              { label: '创建时间', value: detailSupplier.createTime },
+              { label: '更新时间', value: detailSupplier.updateTime },
+            ],
+          },
+          { title: '供应商经营', content: detailSupplier.supplierId ? <SupplierGovernancePanel supplierId={detailSupplier.supplierId} onChanged={() => void fetchSuppliers()} /> : null },
+        ] : []}
       />
     </>
   );

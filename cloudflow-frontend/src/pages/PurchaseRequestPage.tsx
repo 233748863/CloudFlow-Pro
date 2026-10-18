@@ -1,3 +1,4 @@
+import { PrintButton } from '@/components/printing/PrintButton';
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
@@ -30,7 +31,8 @@ import {
 } from '@/services/api/purchase';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
+import { isSupplierBlacklistBlocked, supplierBlacklistNotice } from '@/utils/supplierAdmission';
+import AttachmentLinks from '@/components/AttachmentLinks';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ListResultFooter } from '@/components/common/ListResultFooter';
@@ -80,9 +82,6 @@ const formatAmount = (value?: number | null) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) return '-';
   return `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
-
-const getAttachmentList = (attachmentUrl?: string) =>
-  normalizeAttachmentUrls(attachmentUrl);
 
 const getStatusBadge = (status?: string) => (
   <DictBadge dictType="oa_purchase_request_status" value={String(status || 'DRAFT')} />
@@ -203,6 +202,8 @@ export const PurchaseRequestPage: React.FC = () => {
   const [projectOptions, setProjectOptions] = useState<Project[]>([]);
   const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
   const [budgetSubjectOptions, setBudgetSubjectOptions] = useState<BudgetSubject[]>([]);
+  const selectedSupplier = useMemo(() => suppliers.find(supplier => supplier.supplierId === formData.supplierId),
+    [suppliers, formData.supplierId]);
 
   useEffect(() => {
     void fetchPurchases();
@@ -640,12 +641,16 @@ export const PurchaseRequestPage: React.FC = () => {
                 <SelectTrigger className="h-11"><SelectValue placeholder="请选择供应商" /></SelectTrigger>
                 <SelectContent>
                   {suppliers.map((supplier) => (
-                    <SelectItem key={supplier.supplierId} value={String(supplier.supplierId)}>
-                      {supplier.supplierName}
+                    <SelectItem key={supplier.supplierId} value={String(supplier.supplierId)} label={supplier.supplierName}
+                      disabled={isSupplierBlacklistBlocked(supplier)}
+                      className={supplier.blacklistFlag === 1 ? '!text-red-700 dark:!text-red-300 !opacity-100' : undefined}>
+                      <span className="block whitespace-normal break-words">{supplier.supplierName}</span>
+                      {supplier.blacklistFlag === 1 && <span className="block whitespace-normal break-words text-xs">{supplierBlacklistNotice(supplier)}</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedSupplier?.blacklistFlag === 1 && <p className="text-xs leading-5 text-red-700 dark:text-red-300">{supplierBlacklistNotice(selectedSupplier)}</p>}
             </div>
             <div className="admin-dialog-field">
               <Label>期望到货日期</Label>
@@ -856,7 +861,7 @@ export const PurchaseRequestPage: React.FC = () => {
         headerAside={detailPurchase && !detailLoading ? getStatusBadge(detailPurchase.status) : null}
         panelClassName="max-h-[92vh]"
         bodyClassName="admin-dialog-stack admin-purchase-detail-dialog-body"
-        footer={<Button variant="outline" onClick={() => setDetailPurchase(null)}>关闭</Button>}
+        footer={<>{detailPurchase && <PrintButton bizType="PURCHASE_ORDER" bizId={detailPurchase.id} disabled={detailLoading} />}<Button variant="outline" onClick={() => setDetailPurchase(null)}>关闭</Button></>}
       >
         {detailLoading ? (
           <InlineState title="正在加载采购详情..." icon={<Clock3 className="h-4 w-4 animate-spin" />} />
@@ -911,16 +916,7 @@ export const PurchaseRequestPage: React.FC = () => {
               ) : <InlineState title="暂无采购明细" className="py-6" />}
             </PurchaseDetailSection>
             <PurchaseDetailSection title="附件">
-              {getAttachmentList(detailPurchase.attachmentUrl).length ? (
-                <div className="admin-dialog-link-list">
-                  {getAttachmentList(detailPurchase.attachmentUrl).map((url) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer" className="admin-dialog-link-card">
-                      <Paperclip size={14} />
-                      <span className="truncate">{getAttachmentDisplayName(url)}</span>
-                    </a>
-                  ))}
-                </div>
-              ) : <InlineState title="暂无附件" className="py-5" icon={<Paperclip className="h-4 w-4" />} />}
+              <AttachmentLinks value={detailPurchase.attachmentUrl} downloadContext={{ bizType: 'OA_PURCHASE_REQUEST', bizId: String(detailPurchase.id) }} />
             </PurchaseDetailSection>
           </>
         ) : null}

@@ -3,6 +3,21 @@
    随对应页面的懒加载 chunk 按需加载，不再阻塞首屏。 */
 
 @layer components {
+  .admin-knowledge-page .admin-source-header,
+  .admin-knowledge-page .admin-source-header > div {
+      min-width: 0;
+      width: 100%;
+    }
+
+  .admin-knowledge-page .admin-source-header {
+      align-items: flex-start;
+    }
+
+  .admin-knowledge-page .admin-source-header :is(h2, span) {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
   .admin-knowledge-toolbar {
       align-items: stretch;
       gap: 0;

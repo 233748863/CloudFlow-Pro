@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from 'react-router-dom';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
 import {
@@ -6,6 +7,7 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Edit,
+  Eye,
   History,
   Loader2,
   Package,
@@ -18,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { BaseDialog } from "@/components/common/BaseDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { DetailDialog } from "@/components/common/DetailDialog";
 import { Pagination } from "@/components/common/Pagination";
 import { InnerTableSurface, TablePageLayout } from "@/components/layout/TablePageLayout";
 import {
@@ -42,6 +45,9 @@ import {
 import { purchaseRequestApi, supplierApi, Supplier } from "@/services/api/purchase";
 import { useAuth } from "@/context/AuthContext";
 import { getErrorMessage } from "@/utils/errorMessage";
+import { consumableRequestApi, type ConsumableCategory } from '@/services/api/consumableLedger';
+import { ConsumableSelect, moneyText, positiveQuantity } from './consumableUi';
+import ConsumableStockDialog from './ConsumableStockDialog';
 
 const createDefaultForm = (): Consumable => ({
   name: "",
@@ -50,10 +56,15 @@ const createDefaultForm = (): Consumable => ({
   lowStockThreshold: 10,
   targetStock: 20,
   warnEnabled: 1,
+  status: 'ACTIVE',
 });
 
 const ConsumablePage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const navigate = useNavigate();
+  const [categories, setCategories] = useState<ConsumableCategory[]>([]);
+  const [searchCategory, setSearchCategory] = useState('');
+  const [searchStatus, setSearchStatus] = useState('');
   const [list, setList] = useState<Consumable[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,17 +72,17 @@ const ConsumablePage: React.FC = () => {
   const [searchName, setSearchName] = useState("");
   const [searchParams, setSearchParams] = useState({
     name: "",
+    categoryId: '',
+    status: '',
     pageNum: 1,
     pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [showForm, setShowForm] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockAction, setStockAction] = useState<"add" | "reduce">("add");
-  const [stockOutType, setStockOutType] = useState<"ISSUE" | "LOSS">("ISSUE");
-  const [stockQuantity, setStockQuantity] = useState(1);
-  const [stockRemark, setStockRemark] = useState("");
   const [currentItem, setCurrentItem] = useState<Consumable | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Consumable | null>(null);
+  const [detailItem, setDetailItem] = useState<Consumable | null>(null);
   const [logTarget, setLogTarget] = useState<Consumable | null>(null);
   const [stockLogs, setStockLogs] = useState<ConsumableStockLog[]>([]);
   const [suggestions, setSuggestions] = useState<ConsumableReplenishmentSuggestion[]>([]);
@@ -88,10 +99,12 @@ const ConsumablePage: React.FC = () => {
   const fetchList = useCallback(async () => {
     setLoading(true);
     try {
-      const data: any = await consumableApi.list({
+      const data = await consumableApi.list({
         pageNum: searchParams.pageNum,
         pageSize: searchParams.pageSize,
         name: searchParams.name || undefined,
+        categoryId: searchParams.categoryId || undefined,
+        status: searchParams.status || undefined,
       });
       setList(data?.records || data?.rows || []);
       setTotal(data?.total || 0);
@@ -107,7 +120,8 @@ const ConsumablePage: React.FC = () => {
   }, [fetchList]);
 
   useEffect(() => {
-    void fetchSuppliers();
+    if (hasPermission('oa:supplier:list')) void fetchSuppliers();
+    consumableRequestApi.categories().then(setCategories).catch((error) => toast.error(getErrorMessage(error, '加载耗材分类失败')));
   }, []);
 
   const fetchSuppliers = async () => {
@@ -128,18 +142,18 @@ const ConsumablePage: React.FC = () => {
     () => list.filter((item) => isLowStock(item)).length,
     [list],
   );
-  const totalQuantity = useMemo(
-    () => list.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+  const activeCount = useMemo(
+    () => list.filter((item) => item.status === 'ACTIVE').length,
     [list],
   );
   const warnEnabledCount = useMemo(
     () => list.filter((item) => Number(item.warnEnabled ?? 1) === 1).length,
     [list],
   );
-  const hasActiveFilters = Boolean(searchParams.name);
+  const hasActiveFilters = Boolean(searchParams.name || searchParams.categoryId || searchParams.status);
   const metrics = [
     { label: "耗材", value: String(total), meta: `当前页 ${list.length}`, icon: <Package size={18} />, tone: "blue" },
-    { label: "库存量", value: String(totalQuantity), meta: "当前页合计", icon: <ArrowUpCircle size={18} />, tone: "green" },
+    { label: "启用品种", value: String(activeCount), meta: "当前页，不跨单位合计库存", icon: <ArrowUpCircle size={18} />, tone: "green" },
     { label: "低库存", value: String(lowStockCount), meta: "触发补货", icon: <AlertTriangle size={18} />, tone: "red" },
     { label: "预警项", value: String(warnEnabledCount), meta: `第 ${searchParams.pageNum}/${totalPages} 页`, icon: <ShoppingCart size={18} />, tone: "amber" },
   ];
@@ -148,13 +162,16 @@ const ConsumablePage: React.FC = () => {
     setSearchParams((prev) => ({
       ...prev,
       name: searchName.trim(),
+      categoryId: searchCategory,
+      status: searchStatus,
       pageNum: 1,
     }));
   };
 
   const handleReset = () => {
     setSearchName("");
-    setSearchParams((prev) => ({ ...prev, name: "", pageNum: 1 }));
+    setSearchCategory(''); setSearchStatus('');
+    setSearchParams((prev) => ({ ...prev, name: "", categoryId: '', status: '', pageNum: 1 }));
   };
 
   const handleAdd = () => {
@@ -174,6 +191,12 @@ const ConsumablePage: React.FC = () => {
       toast.error("请输入耗材名称");
       return;
     }
+    try {
+      positiveQuantity(formData.lowStockThreshold ?? 0, true);
+      positiveQuantity(formData.targetStock ?? 0, true);
+      if (formData.maxStock != null) positiveQuantity(formData.maxStock, true);
+      if (!formData.unit?.trim()) throw new Error('计量单位不能为空');
+    } catch (error) { toast.error(getErrorMessage(error, '主数据参数无效')); return; }
 
     setSubmitting(true);
     try {
@@ -208,9 +231,6 @@ const ConsumablePage: React.FC = () => {
   const openStockModal = (item: Consumable, action: "add" | "reduce") => {
     setCurrentItem(item);
     setStockAction(action);
-    setStockOutType("ISSUE");
-    setStockQuantity(1);
-    setStockRemark("");
     setShowStockModal(true);
   };
 
@@ -252,6 +272,7 @@ const ConsumablePage: React.FC = () => {
   };
 
   const handleCreateSuggestionPurchase = async () => {
+    if (!hasPermission('oa:purchase:add')) { toast.error('没有新建采购申请权限'); return; }
     const source = suggestionTarget ? [suggestionTarget] : suggestions;
     const items = source
       .map((item) => ({
@@ -284,56 +305,6 @@ const ConsumablePage: React.FC = () => {
     }
   };
 
-  const handleStock = async () => {
-    if (!currentItem?.consumableId || stockQuantity <= 0) {
-      toast.error("数量必须大于 0");
-      return;
-    }
-    if (!stockRemark.trim()) {
-      toast.error(`${stockAction === "add" ? "入库" : "出库"}原因不能为空`);
-      return;
-    }
-
-    if (
-      stockAction === "reduce" &&
-      stockQuantity > Number(currentItem.quantity || 0)
-    ) {
-      toast.error("出库数量不能超过当前库存");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      if (stockAction === "add") {
-        await consumableApi.addStock(
-          currentItem.consumableId,
-          stockQuantity,
-          stockRemark.trim(),
-        );
-        toast.success(`入库成功，数量: ${stockQuantity}`);
-      } else {
-        await consumableApi.reduceStock(
-          currentItem.consumableId,
-          stockQuantity,
-          stockOutType,
-          stockRemark.trim(),
-        );
-        toast.success(`出库成功，数量: ${stockQuantity}`);
-      }
-      setShowStockModal(false);
-      await fetchList();
-    } catch (error) {
-      toast.error(
-        getErrorMessage(
-          error,
-          stockAction === "add" ? "入库失败" : "出库失败",
-        ),
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const pageActions = (
     <>
         <header className="admin-source-header">
@@ -343,6 +314,8 @@ const ConsumablePage: React.FC = () => {
             <span>维护耗材库存、预警阈值、供应商、入库出库和补货建议</span>
           </div>
           <div className="admin-source-controls">
+              {hasPermission('oa:consumable-request:dispatch') && <Button variant="outline" size="sm" onClick={() => navigate('/admin/consumable-request?scope=DISPATCH')}>领用发料</Button>}
+              {hasPermission('oa:consumable-ledger:list') && <Button variant="outline" size="sm" onClick={() => navigate('/admin/consumable-ledger')}>耗材台账</Button>}
               <Button variant="outline" size="sm" onClick={() => void openSuggestion()}>
                 <ShoppingCart size={16} />
                 补货建议
@@ -387,6 +360,8 @@ const ConsumablePage: React.FC = () => {
                 />
               </div>
             </label>
+            <label><span className="input-label">分类</span><ConsumableSelect label="耗材分类筛选" value={searchCategory} onChange={setSearchCategory} options={[{ value: '', label: '全部分类' }, ...categories.map((category) => ({ value: category.categoryId, label: category.label }))]} /></label>
+            <label><span className="input-label">启用状态</span><ConsumableSelect label="耗材状态筛选" value={searchStatus} onChange={setSearchStatus} options={[{ value: '', label: '全部状态' }, { value: 'ACTIVE', label: '启用' }, { value: 'INACTIVE', label: '停用' }]} /></label>
             <div className="admin-users-toolbar-actions">
               <span className="admin-users-filter-count">{hasActiveFilters ? searchParams.name : "全部耗材"}</span>
               <Button variant="outline" size="sm" onClick={handleSearch}>
@@ -447,6 +422,8 @@ const ConsumablePage: React.FC = () => {
                         <div className="mt-1 text-xs text-cf-faint">
                           ID {item.consumableId || "-"}
                         </div>
+                        <div className="mt-1 text-xs text-cf-faint">{categories.find((category) => category.categoryId === String(item.categoryId))?.label || '未分类'}{item.brand ? ` · ${item.brand}` : ''}</div>
+                        {item.storageLocation && <div className="mt-1 text-xs text-cf-faint">{item.storageLocation}</div>}
                       </td>
                       <td>
                         {item.model || "-"}
@@ -475,6 +452,7 @@ const ConsumablePage: React.FC = () => {
                         {suppliers.find((supplier) => supplier.supplierId === item.defaultSupplierId)?.supplierName || "-"}
                       </td>
                       <td>
+                        <div className="mb-1 text-xs text-cf-subtle">{item.status === 'INACTIVE' ? '已停用' : '已启用'}</div>
                         {Number(item.warnEnabled ?? 1) !== 1 ? (
                           <span className="inline-flex items-center rounded-md border border-slate-200 bg-[var(--cf-surface-muted)] px-2.5 py-1 text-xs font-semibold text-cf-subtle dark:border-slate-800 dark:bg-slate-900">
                             未预警
@@ -492,9 +470,11 @@ const ConsumablePage: React.FC = () => {
                       </td>
                       <td>
                         <div className="admin-users-row-actions">
+                          <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailItem(item)}><Eye size={15} /></button>
                           {isLowStock(item) ? <button type="button" data-tooltip="采购" aria-label="采购" onClick={() => void openSuggestion(item)}><ShoppingCart size={15} /></button> : null}
                           {hasPermission("oa:consumable:add-stock") ? <button type="button" data-tooltip="入库" aria-label="入库" onClick={() => openStockModal(item, "add")}><ArrowUpCircle size={15} /></button> : null}
-                          {hasPermission("oa:consumable:reduce-stock") ? <button type="button" data-tooltip="出库" aria-label="出库" onClick={() => openStockModal(item, "reduce")}><ArrowDownCircle size={15} /></button> : null}
+                          {hasPermission("oa:consumable:reduce-stock") ? <button type="button" data-tooltip="盘亏出库" aria-label="盘亏出库" onClick={() => openStockModal(item, "reduce")}><ArrowDownCircle size={15} /></button> : null}
+                          {hasPermission('oa:consumable-ledger:list') && <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/consumable-ledger?consumableId=${item.consumableId}`)}>台账</Button>}
                           <button type="button" data-tooltip="流水" aria-label="流水" onClick={() => void openLogs(item)}><History size={15} /></button>
                           {hasPermission("oa:consumable:edit") ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => handleEdit(item)}><Edit size={15} /></button> : null}
                           {hasPermission("oa:consumable:remove") ? <button type="button" data-tooltip="删除" aria-label="删除" onClick={() => setDeleteTarget(item)}><Trash2 size={15} /></button> : null}
@@ -588,7 +568,13 @@ const ConsumablePage: React.FC = () => {
               }
               placeholder="如 个/箱/包"
             />
+            <span className="text-xs text-cf-subtle">已有台账、采购或领用引用后，单位由服务端禁止修改。</span>
           </div>
+          <div className="admin-dialog-field"><Label>耗材分类</Label><ConsumableSelect label="耗材分类" value={formData.categoryId == null ? '' : String(formData.categoryId)} onChange={(value) => setFormData((previous) => ({ ...previous, categoryId: value || undefined }))} options={[{ value: '', label: '不分类' }, ...categories.map((category) => ({ value: category.categoryId, label: category.label }))]} /></div>
+          <div className="admin-dialog-field"><Label>品牌</Label><Input value={formData.brand || ''} maxLength={100} onChange={(event) => setFormData((previous) => ({ ...previous, brand: event.target.value }))} /></div>
+          <div className="admin-dialog-field"><Label>存放说明</Label><Input value={formData.storageLocation || ''} maxLength={100} onChange={(event) => setFormData((previous) => ({ ...previous, storageLocation: event.target.value }))} placeholder="仅作存放说明，不作为独立库存库位" /></div>
+          <div className="admin-dialog-field"><Label>最高库存（可选）</Label><Input type="number" min={0} step={1} max={2147483647} value={formData.maxStock ?? ''} onChange={(event) => setFormData((previous) => ({ ...previous, maxStock: event.target.value === '' ? undefined : Number(event.target.value) }))} /></div>
+          {currentItem && <div className="admin-dialog-field"><Label>启用状态</Label><ConsumableSelect label="启用状态" value={formData.status ?? 'ACTIVE'} onChange={(value) => setFormData((previous) => ({ ...previous, status: value as Consumable['status'] }))} options={[{ value: 'ACTIVE', label: '启用' }, { value: 'INACTIVE', label: '停用（保留历史记录）' }]} /></div>}
           <div className="admin-dialog-field">
             <Label>低库存预警</Label>
             <Input
@@ -599,7 +585,7 @@ const ConsumablePage: React.FC = () => {
                 setFormData((prev) => ({
                   ...prev,
                   lowStockThreshold:
-                    Number.parseInt(event.target.value, 10) || 0,
+                    Number(event.target.value),
                 }))
               }
             />
@@ -613,7 +599,7 @@ const ConsumablePage: React.FC = () => {
               onChange={(event) =>
                 setFormData((prev) => ({
                   ...prev,
-                  targetStock: Number.parseInt(event.target.value, 10) || 0,
+                  targetStock: Number(event.target.value),
                 }))
               }
             />
@@ -648,7 +634,7 @@ const ConsumablePage: React.FC = () => {
                 启用库存预警
               </div>
               <div className="mt-1 text-xs text-cf-faint">
-                低于阈值后进入补货建议。
+                库存小于或等于阈值时进入预警；停用品不自动补货。
               </div>
             </div>
             <Switch
@@ -672,7 +658,7 @@ const ConsumablePage: React.FC = () => {
             <Button variant="outline" onClick={() => setShowSuggestionModal(false)}>
               取消
             </Button>
-            <Button onClick={() => void handleCreateSuggestionPurchase()} disabled={submitting || suggestionLoading}>
+            <Button onClick={() => void handleCreateSuggestionPurchase()} disabled={submitting || suggestionLoading || !hasPermission('oa:purchase:add')}>
               {submitting ? <Loader2 size={16} className="mr-1.5 animate-spin" /> : null}
               生成采购草稿
             </Button>
@@ -764,68 +750,10 @@ const ConsumablePage: React.FC = () => {
         </div>
       </BaseDialog>
 
-      <BaseDialog
-        open={showStockModal && Boolean(currentItem)}
-        title={`${stockAction === "add" ? "入库" : "出库"} - ${currentItem?.name || ""}`}
-        description={`当前库存：${currentItem?.quantity ?? 0} ${currentItem?.unit || "个"}`}
-        onClose={() => setShowStockModal(false)}
-        width="narrow"
-        bodyClassName="admin-dialog-stack"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setShowStockModal(false)}>
-              取消
-            </Button>
-            <Button
-              onClick={() => void handleStock()}
-              disabled={submitting || stockQuantity <= 0 || !hasPermission(stockAction === "add" ? 'oa:consumable:add-stock' : 'oa:consumable:reduce-stock')}
-            >
-              {submitting ? (
-                <Loader2 size={16} className="mr-1.5 animate-spin" />
-              ) : null}
-              确认{stockAction === "add" ? "入库" : "出库"}
-            </Button>
-          </>
-        }
-      >
-        <div className="admin-dialog-stack">
-          {stockAction === "reduce" ? (
-            <div className="admin-dialog-field">
-              <Label>出库类型</Label>
-              <Select value={stockOutType} onValueChange={(value) => setStockOutType(value as "ISSUE" | "LOSS")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ISSUE">领用出库</SelectItem>
-                  <SelectItem value="LOSS">盘亏调整</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-          <div className="admin-dialog-field">
-            <Label>{stockAction === "add" ? "入库" : "出库"}数量</Label>
-            <Input
-              type="number"
-              min={1}
-              max={stockAction === "reduce" ? currentItem?.quantity : undefined}
-              value={stockQuantity}
-              onChange={(event) =>
-                setStockQuantity(Number.parseInt(event.target.value, 10) || 0)
-              }
-            />
-          </div>
-          <div className="admin-dialog-field">
-            <Label>{stockAction === "add" ? "入库" : "出库"}原因</Label>
-            <Textarea
-              value={stockRemark}
-              onChange={(event) => setStockRemark(event.target.value)}
-              placeholder={stockAction === "add" ? "如 初始库存、采购入库、盘盈调整" : "如 部门领用、盘点盘亏"}
-              rows={3}
-            />
-          </div>
-        </div>
-      </BaseDialog>
+      {showStockModal && currentItem?.consumableId && <ConsumableStockDialog
+        key={`${currentItem.consumableId}:${stockAction}`}
+        id={String(currentItem.consumableId)} action={stockAction === 'add' ? 'inbound' : 'loss'}
+        onClose={() => setShowStockModal(false)} onSaved={() => void fetchList()} />}
 
       <BaseDialog
         open={Boolean(logTarget)}
@@ -890,6 +818,52 @@ const ConsumablePage: React.FC = () => {
         danger
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <DetailDialog
+        open={Boolean(detailItem)}
+        title="耗材详情"
+        onClose={() => setDetailItem(null)}
+        heading={detailItem?.name}
+        subheading={detailItem?.model}
+        headingAside={detailItem ? (
+          <span className="text-xs text-cf-subtle">
+            {isLowStock(detailItem) ? '库存偏低' : '库存正常'}
+          </span>
+        ) : undefined}
+        sections={detailItem ? [
+          {
+            title: '耗材信息',
+            items: [
+              { label: '耗材名称', value: detailItem.name },
+              { label: '规格型号', value: detailItem.model },
+              { label: '计量单位', value: detailItem.unit },
+              { label: '分类', value: categories.find((category) => category.categoryId === String(detailItem.categoryId))?.label },
+              { label: '品牌', value: detailItem.brand },
+              { label: '存放说明', value: detailItem.storageLocation },
+              { label: '启用状态', value: detailItem.status === 'INACTIVE' ? '停用' : '启用' },
+              { label: '当前版本', value: String(detailItem.version ?? '') },
+              { label: '当前库存', value: String(detailItem.quantity ?? 0) },
+              { label: '低库存阈值', value: detailItem.lowStockThreshold === undefined ? '' : String(detailItem.lowStockThreshold) },
+              { label: '目标库存', value: detailItem.targetStock === undefined ? '' : String(detailItem.targetStock) },
+              { label: '最高库存', value: detailItem.maxStock === undefined ? '未设置' : String(detailItem.maxStock) },
+              ...(hasPermission('oa:consumable-ledger:cost') && detailItem.stockAmount !== undefined ? [
+                { label: '库存成本', value: moneyText(detailItem.stockAmount) },
+                { label: '移动平均单价', value: moneyText(detailItem.avgCost) },
+                { label: '最近采购单价', value: detailItem.lastPurchasePrice == null ? '无采购记录' : moneyText(detailItem.lastPurchasePrice) },
+              ] : []),
+              { label: '缺货预警', value: detailItem.warnEnabled === 1 ? '开启' : '关闭' },
+              { label: '默认供应商', value: detailItem.defaultSupplierName },
+            ],
+          },
+          {
+            title: '变更记录',
+            items: [
+              { label: '创建人', value: detailItem.createBy },
+              { label: '创建时间', value: detailItem.createTime },
+            ],
+          },
+        ] : []}
       />
     </>
   );

@@ -112,7 +112,6 @@ const AttendanceCheckIn: React.FC = () => {
   const [ruleLoading, setRuleLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; msg: string } | null>(null);
-  const [autoLocationRequested, setAutoLocationRequested] = useState(false);
   const {
     loading: eligibilityLoading,
     canStartSelfService,
@@ -168,14 +167,6 @@ const AttendanceCheckIn: React.FC = () => {
       { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 },
     );
   };
-
-  useEffect(() => {
-    if (autoLocationRequested || eligibilityLoading || !canStartSelfService) {
-      return;
-    }
-    setAutoLocationRequested(true);
-    getLocation();
-  }, [autoLocationRequested, canStartSelfService, eligibilityLoading]);
 
   const selfServiceLocked = eligibilityLoading || !canStartSelfService;
 

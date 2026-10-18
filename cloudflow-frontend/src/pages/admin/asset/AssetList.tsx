@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ImportButton } from '@/components/import/ImportButton';
 import { getConfigIntSync } from '../../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
 import {
@@ -23,11 +24,13 @@ import { Pagination } from '@/components/common/Pagination';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import { useAuth } from '@/context/AuthContext';
+import { useBusinessSearchFocus } from '@/hooks/useBusinessSearchFocus';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   borrowAsset,
   deleteAsset,
   getAssetCategories,
+  getAssetDetail,
   getAssetList,
   getAssetLogs,
   getAssetQrCodeBlob,
@@ -52,6 +55,9 @@ import {
   Textarea,
 } from '@/components/common';
 import AssetForm from './AssetForm';
+import AssetLifecyclePanel from '@/components/oa/operations/AssetLifecyclePanel';
+import { UserSelector } from '@/components/common/UserSelector';
+import type { OaAssetCategory } from '@/services/api/oaOperations';
 
 interface InlineStateProps {
   title: string;
@@ -90,22 +96,36 @@ interface DetailFieldProps {
 const ALL_FILTER_VALUE = '__all__';
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
-  '1': {
+  'IDLE': {
     label: '闲置',
     className: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
   },
-  '2': {
+  'IN_USE': {
     label: '在用',
     className: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
   },
-  '3': {
+  'MAINTENANCE': {
     label: '维修',
     className: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
   },
-  '4': {
+  'SCRAPPED': {
     label: '报废',
     className: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
   },
+
+  'LOST': {
+    label: '丢失',
+    className: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300',
+  },
+  DISPOSED: { label: '已处置', className: 'border border-slate-200 text-slate-500' },
+};
+
+// 取值域外的 status 一律降级显示，不再让 meta 为 undefined。
+
+
+const UNKNOWN_STATUS_META = {
+  label: '未知',
+  className: 'border border-slate-200 bg-[var(--cf-surface-muted)] text-cf-muted dark:border-slate-700 dark:bg-slate-900',
 };
 
 const InlineState: React.FC<InlineStateProps> = ({
@@ -187,7 +207,7 @@ const DetailSection: React.FC<{
   </DialogPanel>
 );
 
-const formatAmount = (value?: number | null) => {
+const formatAmount = (value?: number | string | null) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
     return '-';
   }
@@ -216,19 +236,25 @@ const AssetList: React.FC = () => {
     pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     name: '',
     assetCode: '',
-    category: '',
+    categoryId: undefined,
     status: '',
   });
   const [searchNameInput, setSearchNameInput] = useState('');
   const [searchCodeInput, setSearchCodeInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
   const [statusInput, setStatusInput] = useState('');
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<OaAssetCategory[]>([]);
   const [stats, setStats] = useState<AssetStatistics | null>(null);
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [assetFormSubmitting, setAssetFormSubmitting] = useState(false);
   const [detailAsset, setDetailAsset] = useState<Asset | null>(null);
+  const cancelSearchFocus = useBusinessSearchFocus(async (identifier, signal) => {
+    const asset = await getAssetDetail(identifier, signal);
+    if (signal.aborted) return;
+    if (!asset || Number(asset.assetId) !== identifier) throw new Error('资产已删除或无权查看。');
+    setDetailAsset(asset);
+  }, () => setDetailAsset(null));
   const [qrAsset, setQrAsset] = useState<Asset | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [qrCodeLoading, setQrCodeLoading] = useState(false);
@@ -344,7 +370,7 @@ const AssetList: React.FC = () => {
 
   const loadCategories = async () => {
     try {
-      const result = await getAssetCategories() as string[];
+      const result = await getAssetCategories();
       setCategories(result || []);
     } catch (error) {
       toast.error(getErrorMessage(error, '加载资产分类失败'));
@@ -362,7 +388,7 @@ const AssetList: React.FC = () => {
       pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
       name: searchNameInput.trim(),
       assetCode: searchCodeInput.trim(),
-      category: categoryInput,
+      categoryId: categoryInput ? Number(categoryInput) : undefined,
       status: statusInput,
     });
   };
@@ -377,7 +403,7 @@ const AssetList: React.FC = () => {
       pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
       name: '',
       assetCode: '',
-      category: '',
+      categoryId: undefined,
       status: '',
     });
   };
@@ -567,7 +593,7 @@ const AssetList: React.FC = () => {
   };
 
   const getStatusBadge = (status?: string) => {
-    const meta = STATUS_META[status || '1'];
+    const meta = STATUS_META[status || 'IDLE'] || UNKNOWN_STATUS_META;
     return (
       <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${meta.className}`}>
         {meta.label}
@@ -577,18 +603,18 @@ const AssetList: React.FC = () => {
 
   const totalPages = Math.max(1, Math.ceil(total / (searchParams.pageSize || 10)));
   const hasActiveFilters = Boolean(
-    searchParams.name || searchParams.assetCode || searchParams.category || searchParams.status,
+    searchParams.name || searchParams.assetCode || searchParams.categoryId || searchParams.status,
   );
   const currentStatusLabel = searchParams.status
     ? STATUS_META[searchParams.status]?.label || searchParams.status
     : '全部状态';
-  const currentCategoryLabel = searchParams.category || '全部分类';
+  const currentCategoryLabel = categories.find(item => String(item.categoryId) === String(searchParams.categoryId))?.categoryName || '全部分类';
   const currentNameLabel = searchParams.name || '全部名称';
   const currentCodeLabel = searchParams.assetCode || '全部编码';
   const metrics = [
     { label: '资产总数', value: String(stats?.total ?? total), meta: `当前页 ${assets.length}`, icon: <Package size={18} />, tone: 'blue' },
-    { label: '闲置', value: String(stats?.statusCount?.idle ?? assets.filter((item) => item.status === '1').length), meta: '可领用', icon: <UserCheck size={18} />, tone: 'green' },
-    { label: '在用', value: String(stats?.statusCount?.inUse ?? assets.filter((item) => item.status === '2').length), meta: '待归还', icon: <History size={18} />, tone: 'violet' },
+    { label: '闲置', value: String(stats?.statusCount?.idle ?? assets.filter((item) => item.status === 'IDLE').length), meta: '可领用', icon: <UserCheck size={18} />, tone: 'green' },
+    { label: '在用', value: String(stats?.statusCount?.inUse ?? assets.filter((item) => item.status === 'IN_USE').length), meta: '待归还', icon: <History size={18} />, tone: 'violet' },
     { label: '总价值', value: formatAmount(stats?.totalValue ?? 0), meta: '资产账面', icon: <QrCode size={18} />, tone: 'amber' },
   ];
   const renderDetailValue = (value?: string | number | null) => {
@@ -612,6 +638,7 @@ const AssetList: React.FC = () => {
                 <RotateCcw size={16} className={loading ? 'animate-spin' : ''} />
                 刷新
               </Button>
+              <ImportButton bizType="ASSET" permission="oa:asset:import" onSuccess={() => void refreshPage()} />
               <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:asset:add')}>
                 <Plus size={16} />
                 新增资产
@@ -679,8 +706,8 @@ const AssetList: React.FC = () => {
                 <SelectContent>
                   <SelectItem value={ALL_FILTER_VALUE}>全部分类</SelectItem>
                   {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                    <SelectItem key={category.categoryId} value={String(category.categoryId)}>
+                      {category.categoryName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -751,14 +778,14 @@ const AssetList: React.FC = () => {
                         <td>
  <div className="font-medium text-cf-title">{asset.name}</div>
  <div className="mt-1 text-xs text-cf-faint">
-                            {[asset.category || '-', asset.model || '-'].join(' / ')}
+                            {[categories.find(item => String(item.categoryId) === String(asset.categoryId))?.categoryName || '-', asset.model || '-'].join(' / ')}
                           </div>
                         </td>
                         <td>
                           {getStatusBadge(asset.status)}
                         </td>
                         <td>
- <div className="font-medium text-cf-title">{formatAmount(asset.price)}</div>
+ <div className="font-medium text-cf-title">{formatAmount(asset.purchaseAmount)}</div>
  <div className="mt-1 text-xs text-cf-faint">
                             {asset.location || '-'}
                           </div>
@@ -767,8 +794,8 @@ const AssetList: React.FC = () => {
                           <div className="admin-users-row-actions">
                             <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => handleShowDetail(asset)}><Eye size={15} /></button>
                             {hasPermission('oa:asset:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => handleEdit(asset)}><Edit size={15} /></button> : null}
-                            {asset.status === '1' && hasPermission('oa:asset:borrow') ? <button type="button" data-tooltip="领用" aria-label="领用" onClick={() => openBorrowDialog(asset)}><UserCheck size={15} /></button> : null}
-                            {asset.status === '2' && hasPermission('oa:asset:return') ? <button type="button" data-tooltip="归还" aria-label="归还" onClick={() => openReturnConfirm(asset)}><RotateCcw size={15} /></button> : null}
+                            {asset.status === 'IDLE' && hasPermission('oa:asset:borrow') ? <button type="button" data-tooltip="领用" aria-label="领用" onClick={() => openBorrowDialog(asset)}><UserCheck size={15} /></button> : null}
+                            {asset.status === 'IN_USE' && hasPermission('oa:asset:return') ? <button type="button" data-tooltip="归还" aria-label="归还" onClick={() => openReturnConfirm(asset)}><RotateCcw size={15} /></button> : null}
                           </div>
                         </td>
                       </tr>
@@ -844,13 +871,13 @@ const AssetList: React.FC = () => {
       <BaseDialog
         open={Boolean(detailAsset)}
         title={detailAsset?.name || '资产详情'}
-        onClose={() => setDetailAsset(null)}
+        onClose={cancelSearchFocus}
         maxWidthClassName="max-w-xl"
         headerAside={detailAsset ? getStatusBadge(detailAsset.status) : null}
         bodyClassName="admin-dialog-stack"
         footer={(
           <>
-            <Button variant="outline" onClick={() => setDetailAsset(null)}>
+            <Button variant="outline" onClick={cancelSearchFocus}>
               关闭
             </Button>
             {detailAsset ? (
@@ -864,7 +891,7 @@ const AssetList: React.FC = () => {
                 编辑
               </Button>
             ) : null}
-            {detailAsset?.status === '1' ? (
+            {detailAsset?.status === 'IDLE' ? (
               <Button
                 onClick={() => {
                   setDetailAsset(null);
@@ -874,7 +901,7 @@ const AssetList: React.FC = () => {
                 领用
               </Button>
             ) : null}
-            {detailAsset?.status === '2' ? (
+            {detailAsset?.status === 'IN_USE' ? (
               <Button
                 onClick={() => {
                   setDetailAsset(null);
@@ -906,7 +933,7 @@ const AssetList: React.FC = () => {
                 <History size={14} className="mr-1.5" />
                 日志
               </Button>
-              {detailAsset.status !== '3' && detailAsset.status !== '4' ? (
+              {detailAsset.status !== 'MAINTENANCE' && detailAsset.status !== 'SCRAPPED' ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -919,7 +946,7 @@ const AssetList: React.FC = () => {
                   送修
                 </Button>
               ) : null}
-              {detailAsset.status !== '4' ? (
+              {detailAsset.status !== 'SCRAPPED' ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -932,7 +959,7 @@ const AssetList: React.FC = () => {
                   报废
                 </Button>
               ) : null}
-              {detailAsset.status !== '2' ? (
+              {detailAsset.status !== 'IN_USE' ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -950,12 +977,12 @@ const AssetList: React.FC = () => {
 
             <DetailSection title="基础信息" bodyClassName="admin-asset-detail-grid">
               <DetailField label="资产编码" value={renderDetailValue(detailAsset.assetCode)} />
-              <DetailField label="分类" value={renderDetailValue(detailAsset.category)} />
+              <DetailField label="分类" value={renderDetailValue(categories.find(item => String(item.categoryId) === String(detailAsset.categoryId))?.categoryName)} />
               <DetailField label="规格型号" value={renderDetailValue(detailAsset.model)} />
             </DetailSection>
 
             <DetailSection title="台账信息" bodyClassName="admin-asset-detail-grid">
-              <DetailField label="价格" value={formatAmount(detailAsset.price)} />
+              <DetailField label="价格" value={formatAmount(detailAsset.purchaseAmount)} />
               <DetailField label="存放位置" value={renderDetailValue(detailAsset.location)} />
               <DetailField label="购入日期" value={renderDetailValue(detailAsset.purchaseDate)} />
             </DetailSection>
@@ -968,6 +995,7 @@ const AssetList: React.FC = () => {
               </DetailSection>
             ) : null}
 
+            <AssetLifecyclePanel asset={detailAsset} onChanged={() => { void refreshPage(); if (detailAsset.assetId) void getAssetDetail(detailAsset.assetId).then(setDetailAsset).catch(error => toast.error(getErrorMessage(error, '刷新资产失败'))); }} />
             <BusinessTimeline businessType="ASSET" businessId={detailAsset.assetId} />
           </>
         ) : null}
@@ -1098,12 +1126,8 @@ const AssetList: React.FC = () => {
             </DialogPanel>
           ) : null}
           <div className="admin-dialog-field">
-            <Label>领用人 ID</Label>
-            <Input
-              value={borrowUserId}
-              onChange={(event) => setBorrowUserId(event.target.value)}
-              className="h-11"
-            />
+            <Label>领用人</Label>
+            <UserSelector single value={borrowUserId || null} onChange={userId => setBorrowUserId(userId || '')} />
           </div>
         </div>
       </BaseDialog>

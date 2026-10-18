@@ -1,0 +1,35 @@
+.meeting-page { display: grid; gap: 1rem; }
+.meeting-page button, .meeting-dialog button { min-height: 44px; }
+.meeting-dialog button { min-width: 44px; }
+.meeting-field { display: grid; align-content: start; gap: .5rem; }
+.meeting-field input, .meeting-field select { min-height: 44px; }
+.meeting-fields { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.meeting-select { width: 100%; min-height: 44px; border: 1px solid var(--cf-border, #d4d4d8); border-radius: .5rem; background: var(--cf-surface, #fff); padding: .5rem .75rem; color: var(--cf-text-body, inherit); }
+.meeting-alert { border: 1px solid var(--cf-danger, #b45309); border-radius: .5rem; padding: .75rem 1rem; color: var(--cf-text-body, inherit); white-space: pre-line; background: var(--cf-surface-muted, #fafafa); }
+.meeting-review { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--cf-border, #d4d4d8); border-radius: .75rem; background: var(--cf-surface-muted, #fafafa); }
+.meeting-checkbox { display: flex; align-items: center; gap: .625rem; min-height: 44px; font-size: .875rem; }
+.meeting-checkbox input { width: 18px; height: 18px; min-height: 18px; flex-shrink: 0; }
+.meeting-people { display: grid; gap: .75rem; border: 1px solid var(--cf-border, #d4d4d8); border-radius: .5rem; padding: .75rem; }
+.meeting-board-desktop { display: none; overflow-x: auto; border: 1px solid var(--cf-border, #d4d4d8); border-radius: .75rem; }
+.meeting-resource-table { width: 100%; min-width: 1100px; border-collapse: collapse; }
+.meeting-resource-table th, .meeting-resource-table td { border-bottom: 1px solid var(--cf-border, #d4d4d8); padding: .75rem; vertical-align: middle; }
+.meeting-resource-table th:first-child { width: 220px; position: sticky; left: 0; z-index: 2; background: var(--cf-surface, #fff); text-align: left; }
+.meeting-hour-labels { display: flex; justify-content: space-between; font-size: .75rem; color: var(--cf-text-secondary, #71717a); }
+.meeting-track { display: grid; grid-template-columns: repeat(96, minmax(8px, 1fr)); min-height: 74px; position: relative; }
+.meeting-empty-slot { grid-row: 1; height: 74px; min-width: 0; border-left: 1px solid var(--cf-border, #d4d4d8); opacity: .5; background: transparent; transition: background-color 150ms; }
+.meeting-empty-slot:hover { background: var(--cf-surface-muted, #f4f4f5); opacity: 1; }
+.meeting-occupied { grid-row: 1; z-index: 1; align-self: center; min-width: 0; height: 52px; padding: .25rem .375rem; overflow: hidden; border-radius: .375rem; border: 1px solid var(--cf-border, #d4d4d8); background: var(--cf-primary-soft, #e0f2fe); color: var(--cf-text-title, #0c4a6e); text-align: left; font-size: .75rem; }
+.meeting-occupied[data-status="PENDING"] { background: var(--cf-warning-soft, #fef3c7); color: var(--cf-warning-text, #92400e); }
+.meeting-occupied[data-status="COMPLETED"] { background: var(--cf-surface-muted, #f4f4f5); color: var(--cf-text-secondary, #71717a); }
+.meeting-buffer { grid-row: 1; align-self: center; height: 52px; border: 1px dashed var(--cf-border, #a1a1aa); background: var(--cf-surface-muted, #f4f4f5); }
+.meeting-room-mobile { display: grid; gap: 1rem; }
+.meeting-room-card { padding: 1rem; border: 1px solid var(--cf-border, #d4d4d8); border-radius: .75rem; background: var(--cf-surface, #fff); display: grid; gap: .75rem; }
+.meeting-page :focus-visible, .meeting-dialog :focus-visible { outline: 2px solid var(--cf-primary, #0891b2); outline-offset: 3px; }
+.meeting-photo { max-width: 100%; max-height: 320px; object-fit: contain; border-radius: .5rem; }
+.meeting-chip { display: inline-flex; align-items: center; min-height: 24px; border: 1px solid var(--cf-border, #d4d4d8); border-radius: .375rem; padding: .125rem .5rem; font-size: .75rem; }
+.dark .meeting-select, .dark .meeting-resource-table th:first-child, .dark .meeting-room-card { background: var(--cf-surface, #18181b); color: var(--cf-text-body, #e4e4e7); }
+.dark .meeting-review, .dark .meeting-alert, .dark .meeting-buffer { background: var(--cf-surface-muted, #27272a); }
+.dark .meeting-occupied { background: var(--cf-primary-soft, #164e63); color: var(--cf-text-title, #ecfeff); }
+.dark .meeting-occupied[data-status="PENDING"] { background: var(--cf-warning-soft, #78350f); color: var(--cf-warning-text, #fef3c7); }
+@media (min-width: 900px) { .meeting-board-desktop { display: block; } .meeting-room-mobile { display: none; } }
+@media (prefers-reduced-motion: reduce) { .meeting-empty-slot { transition: none; } }

@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
-import { FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Eye, FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   BaseDialog,
   Button,
   ConfirmDialog,
+  DetailDialog,
   Input,
   LoadingSpinner,
   Pagination,
@@ -81,6 +82,7 @@ export const ContractThresholdPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [detailRow, setDetailRow] = useState<OaContractAmountThreshold | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -196,6 +198,7 @@ export const ContractThresholdPage: React.FC = () => {
         <td className="text-xs text-cf-subtle">{row.updateTime || '—'}</td>
         <td>
           <div className="admin-users-row-actions">
+            <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailRow(row)}><Eye size={15} /></button>
             <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openEdit(row)}><Pencil size={15} /></button>
             <button type="button" className="danger" data-tooltip="删除" aria-label="删除" onClick={() => row.id && setConfirmId(row.id)}><Trash2 size={15} /></button>
           </div>
@@ -473,6 +476,40 @@ export const ContractThresholdPage: React.FC = () => {
         description="删除后该区间将不再参与合同审批路由匹配。"
         onCancel={() => setConfirmId(null)}
         onConfirm={() => confirmId && onRemove(confirmId)}
+      />
+
+      <DetailDialog
+        open={Boolean(detailRow)}
+        title="合同阈值详情"
+        onClose={() => setDetailRow(null)}
+        heading={detailRow?.businessUnit || '全部业务单元'}
+        subheading={detailRow ? `${detailRow.thresholdMin} ~ ${detailRow.thresholdMax ?? '∞'}` : undefined}
+        headingAside={detailRow ? (
+          <DictBadge dictType="oa_contract_threshold_status" value={String(detailRow.status || '')} />
+        ) : undefined}
+        sections={detailRow ? [
+          {
+            title: '阈值规则',
+            items: [
+              { label: '业务单元', value: detailRow.businessUnit || '全部' },
+              { label: '金额下限', value: String(detailRow.thresholdMin) },
+              { label: '金额上限', value: detailRow.thresholdMax === undefined ? '无上限' : String(detailRow.thresholdMax) },
+              { label: '金额档位', value: tierDict.getLabel(detailRow.amountTier) || detailRow.amountTier },
+              { label: '审批角色', value: roleDict.getLabel(detailRow.approverRole) || detailRow.approverRole },
+              { label: '状态', value: <DictBadge dictType="oa_contract_threshold_status" value={String(detailRow.status || '')} /> },
+              { label: '备注', value: detailRow.remark, wide: true },
+            ],
+          },
+          {
+            title: '变更记录',
+            items: [
+              { label: '创建人', value: detailRow.createBy },
+              { label: '创建时间', value: detailRow.createTime },
+              { label: '更新人', value: detailRow.updateBy },
+              { label: '更新时间', value: detailRow.updateTime },
+            ],
+          },
+        ] : []}
       />
     </section>
   );

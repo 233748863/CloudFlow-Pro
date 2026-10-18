@@ -1,0 +1,22 @@
+.knowledge-external-controls { min-width: 0; }
+.knowledge-external-controls :is(button, select, input:not([type=checkbox])) { min-height: 44px !important; }
+.knowledge-external-controls button { min-width: 44px; transition: background-color 150ms ease, opacity 150ms ease; }
+.knowledge-external-controls fieldset { min-inline-size: 0; max-width: 100%; }
+.knowledge-external-controls fieldset label { min-width: 0; }
+.knowledge-external-controls fieldset label > span { overflow-wrap: anywhere; }
+.knowledge-external-controls input[type=checkbox] { flex-shrink: 0; }
+.knowledge-external-controls .cf-dialog-footer { flex-wrap: wrap; }
+.knowledge-external-controls :is(button, input, select):focus-visible { outline: 2px solid var(--cf-primary); outline-offset: 2px; }
+.knowledge-external-content { overflow-wrap: anywhere; line-height: 1.75; white-space: pre-wrap; }
+.knowledge-external-content :is(p, ul, ol, blockquote) { margin: 0.75rem 0; }
+.knowledge-external-content :is(ul, ol) { padding-left: 1.5rem; }
+.knowledge-external-content ul { list-style: disc; }
+.knowledge-external-content ol { list-style: decimal; }
+.knowledge-external-content :is(h1, h2, h3) { margin: 1rem 0 0.5rem; font-weight: 600; }
+.knowledge-external-content table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.knowledge-external-content :is(td, th) { padding: 0.5rem; border: 1px solid var(--cf-border); }
+@media (max-width: 600px) {
+  .knowledge-external-controls .cf-dialog-footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .knowledge-external-controls .cf-dialog-footer button { width: 100%; white-space: normal; overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-motion: reduce) { .knowledge-external-controls button { transition: none; } }

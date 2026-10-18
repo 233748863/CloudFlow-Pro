@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import FileUpload from '@/components/FileUpload';
+import KnowledgeExternalDialog from '@/components/knowledge/KnowledgeExternalDialog';
 import {
   AnnouncementTargetingEditor,
   type DeptItem,
@@ -55,7 +56,7 @@ import {
 } from '@/services/api/knowledge';
 import { renderAnnouncementHtml } from '@/utils/announcementContent';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
-import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
+import AttachmentLinks from '@/components/AttachmentLinks';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
@@ -154,32 +155,6 @@ const StatusBadge: React.FC<{ status?: string }> = ({ status }) => (
   <DictBadge dictType="oa_knowledge_status" value={String(status || 'DRAFT')} />
 );
 
-const AttachmentLinks: React.FC<{ value?: string }> = ({ value }) => {
-  const files = normalizeAttachmentUrls(value);
-  if (!files.length) {
-    return <span className="text-sm text-cf-faint">无附件</span>;
-  }
-  return (
-    <div className="flex flex-wrap gap-2">
-      {files.map((url) => {
-        const label = getAttachmentDisplayName(url);
-        return (
-          <a
-            key={url}
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="cf-side-link cf-side-link-sm inline-flex max-w-full items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium"
-          >
-            <FileText className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{label}</span>
-          </a>
-        );
-      })}
-    </div>
-  );
-};
-
 const parseScopeValues = (value?: string) => (
   value?.split(',').map((item) => item.trim()).filter(Boolean) ?? []
 );
@@ -229,6 +204,7 @@ const KnowledgePage: React.FC = () => {
   const scopeDict = useDict('oa_knowledge_scope');
 
   const [viewMode, setViewMode] = useState<ViewMode>('library');
+  const [externalDocumentId, setExternalDocumentId] = useState<number>();
   const [library, setLibrary] = useState<KnowledgeDocument[]>([]);
   const [submissions, setSubmissions] = useState<KnowledgeDocument[]>([]);
   const [manageRows, setManageRows] = useState<KnowledgeDocument[]>([]);
@@ -759,6 +735,7 @@ const KnowledgePage: React.FC = () => {
                 <button type="button" data-tooltip="详情" aria-label="查看详情" onClick={() => void openDetail(item)}>
                   <Eye size={15} />
                 </button>
+                {hasPermission('oa:knowledge:external-publish') && item.documentId && <button type="button" data-tooltip="对外发布" aria-label="对外发布知识版本" onClick={() => setExternalDocumentId(item.documentId)}><Globe2 size={15} /></button>}
                 {(viewMode === 'mine' || viewMode === 'manage') && (item.status === 'DRAFT' || item.status === 'REJECTED') && hasPermission('oa:knowledge:edit') ? (
                   <button type="button" data-tooltip="编辑" aria-label="编辑文档" onClick={() => openEdit(item)}>
                     <Pencil size={15} />
@@ -1019,7 +996,7 @@ const KnowledgePage: React.FC = () => {
               />
               <div>
                 <div className="mb-2 text-sm font-medium text-cf-title">附件</div>
-                <AttachmentLinks value={detail.attachmentUrl} />
+                <AttachmentLinks value={detail.attachmentUrl} previewContext={{ bizType: 'OA_KNOWLEDGE', bizId: String(detail.documentId) }} />
               </div>
             </div>
           ) : null}
@@ -1125,6 +1102,7 @@ const KnowledgePage: React.FC = () => {
                         <div className="text-xs text-cf-subtle">
                           {v.operatorName || '-'} · {v.publishTime || v.createTime || '-'} · {v.changeSummary || '无变更说明'}
                         </div>
+                        <AttachmentLinks value={v.attachmentUrl} compact previewContext={{ bizType: 'OA_KNOWLEDGE', bizId: String(versionDocId), versionNo: v.versionNo }} />
                       </div>
                       <Button size="sm" variant="outline" onClick={() => void handleVersionRollback(v.versionNo)}>
                         回滚到此版本
@@ -1165,6 +1143,7 @@ const KnowledgePage: React.FC = () => {
           </div>
       </BaseDialog>
 
+      {externalDocumentId && <KnowledgeExternalDialog key={externalDocumentId} documentId={externalDocumentId} onClose={() => setExternalDocumentId(undefined)} onChanged={() => void fetchData()} />}
       <ConfirmDialog
         open={Boolean(confirmState)}
         title={confirmState?.title || '确认操作'}

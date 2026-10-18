@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CalendarRange, Edit, Eye, FolderKanban, Plus, Send, Trash2, Users, AlertTriangle, ListTree, Target, Archive, Link2, RefreshCcw, ArrowRightLeft, Search } from 'lucide-react';
+import { CalendarRange, CircleDollarSign, Coins, Edit, Eye, FolderKanban, Hash, Plus, Send, Trash2, Users, AlertTriangle, ListTree, Target, Archive, Link2, RefreshCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { DndContext, DragEndEvent, PointerSensor, useDraggable, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -15,7 +15,6 @@ import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import { Pagination } from '@/components/common/Pagination';
 import { Button, DatePicker, DeptSelector, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, UserSelector } from '@/components/common';
@@ -23,6 +22,11 @@ import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { useDict } from '@/hooks/useDict';
 import { cn } from '@/utils/cn';
 import './ProjectManagementPage.css';
+import ProjectTaskFields from '@/components/oa/operations/ProjectTaskFields';
+import ProjectOperationsPanel from '@/components/oa/operations/ProjectOperationsPanel';
+import ProjectTaskTree from '@/components/oa/operations/ProjectTaskTree';
+import ProjectGanttDependencies, { projectDependencyLabels } from '@/components/oa/operations/ProjectGanttDependencies';
+import { FormFields, optionsOf } from '@/components/oa/operations/RecordEditor';
 
 const STATUS_OPTIONS = ['DRAFT', 'PENDING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'ARCHIVED'] as const;
 const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
@@ -56,17 +60,19 @@ const emptyMember: ProjectMember = {
 };
 
 const emptyMilestone: ProjectMilestone = {
-  milestoneName: '',
-  status: 'PLANNED',
+  subject: '',
+  status: 'NOT_STARTED',
+  isMilestoneFlag: 1,
+  taskWeight: 3,
   progress: 0,
 };
 
 const emptyWbs: ProjectWbsTask = {
-  title: '',
-  status: 'TODO',
+  subject: '',
+  status: 'NOT_STARTED',
   priority: 1,
   progress: 0,
-  estimatedHours: 0,
+  plannedHours: 0,
   actualHours: 0,
 };
 
@@ -78,9 +84,9 @@ const emptyRisk: ProjectRisk = {
 };
 
 const emptyDependency: ProjectDependency = {
-  predecessorType: 'WBS',
-  successorType: 'WBS',
-  dependencyType: 'FS',
+
+
+  dependencyType: 'FINISH_TO_START',
   lagDays: 0,
 };
 
@@ -103,13 +109,19 @@ const GANTT_COMPACT_LABEL_MIN_WIDTH = 96;
 const GANTT_SHORT_LABEL_MIN_WIDTH = 48;
 const GANTT_MARKER_SIZE = 16;
 const formatMoney = (value?: number) => `¥${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const ProjectDetailMetric: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <article className="card admin-source-stat admin-source-tone-blue admin-project-detail-metric">
-    <span className="admin-source-stat-icon"><FolderKanban size={18} /></span>
+const ProjectDetailMetric: React.FC<{
+  label: string;
+  value: React.ReactNode;
+  meta?: React.ReactNode;
+  icon: React.ReactNode;
+  tone?: 'blue' | 'green' | 'amber' | 'violet';
+}> = ({ label, value, meta, icon, tone = 'blue' }) => (
+  <article className={cn('card admin-source-stat', `admin-source-tone-${tone}`, 'admin-project-detail-metric')}>
+    <span className="admin-source-stat-icon">{icon}</span>
     <div className="min-w-0">
       <p>{label}</p>
-      <strong>{value}</strong>
-      <span>项目详情</span>
+      <strong title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}>{value}</strong>
+      {meta ? <span>{meta}</span> : null}
     </div>
   </article>
 );
@@ -170,13 +182,13 @@ const renderUserOption = (user: SysUser) => {
   );
 };
 const addDays = (dateString: string, days: number) => {
-  const date = new Date(`${dateString}T00:00:00`);
-  date.setDate(date.getDate() + days);
+  const date = new Date(`${dateString}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 };
 const diffDays = (start: string, end: string) => {
-  const left = new Date(`${start}T00:00:00`).getTime();
-  const right = new Date(`${end}T00:00:00`).getTime();
+  const left = new Date(`${start}T00:00:00Z`).getTime();
+  const right = new Date(`${end}T00:00:00Z`).getTime();
   return Math.round((right - left) / (24 * 60 * 60 * 1000));
 };
 
@@ -207,8 +219,9 @@ const DraggableGanttBar: React.FC<{
   shortLabel: string;
   kind: 'milestone' | 'wbs';
   timelineWidth: number;
-}> = ({ id, width, left, baselineLeft, baselineWidth, colorClassName, fullLabel, compactLabel, shortLabel, kind, timelineWidth }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
+  disabled: boolean;
+}> = ({ id, width, left, baselineLeft, baselineWidth, colorClassName, fullLabel, compactLabel, shortLabel, kind, timelineWidth, disabled }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id, disabled });
   const markerLeft = left + Math.max(0, width / 2 - GANTT_MARKER_SIZE / 2);
   const baseStyle = {
     transform: CSS.Translate.toString(transform),
@@ -241,7 +254,9 @@ const DraggableGanttBar: React.FC<{
             className={`absolute top-1/2 z-10 h-4 w-4 -translate-y-1/2 rounded-[4px] rotate-45 transition ${colorClassName}`}
             style={{ ...baseStyle, left: `${markerLeft}px` }}
             data-tooltip={`${fullLabel}，拖动可按日改期`}
-            aria-label={`${fullLabel}，拖动可按日改期`}
+            aria-label={disabled ? `${fullLabel}，当前排期` : `${fullLabel}，拖动可按日改期`}
+            data-gantt-task={Number(id.slice(2))}
+            disabled={disabled}
             {...listeners}
             {...attributes}
           />
@@ -260,7 +275,9 @@ const DraggableGanttBar: React.FC<{
             className={`absolute top-1/2 z-10 h-8 -translate-y-1/2 rounded-md px-3 text-left text-xs font-medium text-white transition ${colorClassName}`}
             style={{ ...baseStyle, width: `${width}px`, left: `${left}px` }}
             data-tooltip={`${fullLabel}，拖动可按日改期`}
-            aria-label={`${fullLabel}，拖动可按日改期`}
+            aria-label={disabled ? `${fullLabel}，当前排期` : `${fullLabel}，拖动可按日改期`}
+            data-gantt-task={Number(id.slice(2))}
+            disabled={disabled}
             {...listeners}
             {...attributes}
           >
@@ -287,6 +304,7 @@ const DraggableGanttBar: React.FC<{
 
 export default function ProjectManagementPage() {
   const { hasPermission } = useAuth();
+  const canViewCosts = hasPermission('oa:activity-cost:list');
   const statusDict = useDict('oa_project_status');
   const sourceTypeDict = useDict('oa_project_source_type');
   const severityDict = useDict('severity_level');
@@ -336,6 +354,7 @@ export default function ProjectManagementPage() {
   };
 
   const loadReferences = async () => {
+    if (!hasPermission('oa:project:add') && !hasPermission('oa:project:edit')) return;
     try {
       const [customerResult, contractResult, userResult, deptTreeResult] = await Promise.all([
         crmApi.listCustomers({ pageNum: 1, pageSize: 200 }),
@@ -380,7 +399,8 @@ export default function ProjectManagementPage() {
 
   const refreshDetail = async (projectId: number) => {
     const result = await projectApi.getDetail(projectId);
-    setDetail(result);
+    setDetail(previous => previous?.project.projectId === projectId ? result : previous);
+    return result.wbsTasks;
   };
 
   const saveProject = async () => {
@@ -427,7 +447,7 @@ export default function ProjectManagementPage() {
       }
       if (childDialog.type === 'milestone') {
         const payload = { ...milestoneForm, projectId: detail.project.projectId };
-        if (milestoneForm.milestoneId) await projectApi.editMilestone(payload); else await projectApi.addMilestone(payload);
+        if (milestoneForm.taskId) await projectApi.editMilestone(payload); else await projectApi.addMilestone(payload);
       }
       if (childDialog.type === 'wbs') {
         const payload = { ...wbsForm, projectId: detail.project.projectId };
@@ -466,31 +486,32 @@ export default function ProjectManagementPage() {
     }
   };
 
+  const ganttContainer = useRef<HTMLDivElement>(null);
   const ganttRows = useMemo(() => {
     if (!detail) return [];
     const milestoneRows = detail.milestones.map((item) => ({
-      key: `m-${item.milestoneId}`,
-      label: `里程碑 / ${item.milestoneName}`,
-      compactLabel: compactGanttText(item.milestoneName || '里程碑', 10),
+      key: `m-${item.taskId}`,
+      label: `里程碑 / ${item.subject}`,
+      compactLabel: compactGanttText(item.subject || '里程碑', 10),
       shortLabel: '里程碑',
-      start: item.plannedDate || '',
-      end: item.actualDate || item.plannedDate || '',
-      baselineStart: item.baselineDate || item.plannedDate || '',
-      baselineEnd: item.baselineDate || item.plannedDate || '',
+      start: item.plannedEnd?.slice(0, 10) || '',
+      end: item.plannedEnd?.slice(0, 10) || '',
+      baselineStart: (item.baselineEnd || item.plannedEnd)?.slice(0, 10) || '',
+      baselineEnd: (item.baselineEnd || item.plannedEnd)?.slice(0, 10) || '',
       kind: 'milestone' as const,
-      overdue: item.plannedDate ? diffDays(item.plannedDate, new Date().toISOString().slice(0, 10)) > 0 && !item.actualDate : false,
+      overdue: item.plannedEnd ? diffDays(item.plannedEnd, new Date().toISOString().slice(0, 10)) > 0 && !item.actualEnd : false,
     }));
-    const wbsRows = detail.wbsTasks.map((item) => ({
+    const wbsRows = detail.wbsTasks.filter(item => !item.isMilestoneFlag).map((item) => ({
       key: `w-${item.taskId}`,
-      label: `WBS / ${item.wbsCode || '-'} ${item.title || ''}`,
-      compactLabel: `${item.wbsCode || 'WBS'} ${compactGanttText(item.title || '任务', 12)}`,
-      shortLabel: item.wbsCode || compactGanttText(item.title || '任务', 4),
-      start: item.plannedStartTime ? String(item.plannedStartTime).slice(0, 10) : '',
-      end: item.plannedEndTime ? String(item.plannedEndTime).slice(0, 10) : '',
-      baselineStart: item.baselineStartTime ? String(item.baselineStartTime).slice(0, 10) : '',
-      baselineEnd: item.baselineEndTime ? String(item.baselineEndTime).slice(0, 10) : '',
+      label: `WBS / ${item.taskNo || '-'} ${item.subject || ''}`,
+      compactLabel: `${item.taskNo || 'WBS'} ${compactGanttText(item.subject || '任务', 12)}`,
+      shortLabel: item.taskNo || compactGanttText(item.subject || '任务', 4),
+      start: item.plannedStart ? String(item.plannedStart).slice(0, 10) : '',
+      end: item.plannedEnd ? String(item.plannedEnd).slice(0, 10) : '',
+      baselineStart: item.baselineStart ? String(item.baselineStart).slice(0, 10) : '',
+      baselineEnd: item.baselineEnd ? String(item.baselineEnd).slice(0, 10) : '',
       kind: 'wbs' as const,
-      overdue: item.plannedEndTime ? diffDays(String(item.plannedEndTime).slice(0, 10), new Date().toISOString().slice(0, 10)) > 0 && !item.actualEndTime : false,
+      overdue: item.plannedEnd ? diffDays(String(item.plannedEnd).slice(0, 10), new Date().toISOString().slice(0, 10)) > 0 && !item.actualEnd : false,
     }));
     return [...milestoneRows, ...wbsRows].filter((item) => item.start && item.end);
   }, [detail]);
@@ -505,32 +526,33 @@ export default function ProjectManagementPage() {
   }, [ganttRows]);
 
   const handleGanttDragEnd = async (event: DragEndEvent) => {
-    if (!event.delta?.x || !detail?.project.projectId || !ganttDateColumns.length) return;
+    if (!hasPermission('oa:project:wbs') || !event.delta?.x || !detail?.project.projectId || !ganttDateColumns.length) return;
     const offsetDays = Math.round(event.delta.x / DAY_WIDTH);
     if (!offsetDays) return;
     const blockKey = String(event.active.id);
     try {
       if (blockKey.startsWith('m-')) {
-        const milestoneId = Number(blockKey.replace('m-', ''));
-        const milestone = detail.milestones.find((item) => item.milestoneId === milestoneId);
-        if (!milestone?.plannedDate) return;
+        const taskId = Number(blockKey.replace('m-', ''));
+        const milestone = detail.milestones.find((item) => item.taskId === taskId);
+        if (!milestone?.plannedEnd) return;
         await projectApi.editMilestone({
           ...milestone,
           projectId: detail.project.projectId,
-          plannedDate: addDays(milestone.plannedDate, offsetDays),
+          plannedStart: `${addDays(milestone.plannedEnd.slice(0, 10), offsetDays)} 00:00:00`,
+          plannedEnd: `${addDays(milestone.plannedEnd.slice(0, 10), offsetDays)} 00:00:00`,
         });
       }
       if (blockKey.startsWith('w-')) {
         const taskId = Number(blockKey.replace('w-', ''));
         const task = detail.wbsTasks.find((item) => item.taskId === taskId);
-        if (!task?.plannedStartTime || !task?.plannedEndTime) return;
-        const start = addDays(String(task.plannedStartTime).slice(0, 10), offsetDays);
-        const end = addDays(String(task.plannedEndTime).slice(0, 10), offsetDays);
+        if (!task?.plannedStart || !task?.plannedEnd) return;
+        const start = addDays(String(task.plannedStart).slice(0, 10), offsetDays);
+        const end = addDays(String(task.plannedEnd).slice(0, 10), offsetDays);
         await projectApi.editWbs({
           ...task,
           projectId: detail.project.projectId,
-          plannedStartTime: `${start} 00:00:00`,
-          plannedEndTime: `${end} 00:00:00`,
+          plannedStart: `${start} 00:00:00`,
+          plannedEnd: `${end} 00:00:00`,
         });
       }
       toast.success('排期已改期');
@@ -551,13 +573,7 @@ export default function ProjectManagementPage() {
     ];
   }, [detail]);
 
-  const dependencyTargetOptions = useMemo(() => {
-    if (!detail) return [];
-    return [
-      ...detail.milestones.map((item) => ({ label: `里程碑 / ${item.milestoneName}`, value: item.milestoneId || 0, type: 'MILESTONE' })),
-      ...detail.wbsTasks.map((item) => ({ label: `WBS / ${item.wbsCode || '-'} ${item.title || ''}`, value: item.taskId || 0, type: 'WBS' })),
-    ];
-  }, [detail]);
+
 
   const pageActions = (
     <div className="grid gap-5">
@@ -668,77 +684,31 @@ export default function ProjectManagementPage() {
                   </div>
                 </td>
                 <td><div>{row.ownerName || '-'}</div><div className="text-xs text-cf-subtle">{row.deptName || '-'}</div></td>
-                <td><div>{formatMoney(row.budgetAmount)}</div><div className="text-xs text-cf-subtle">成本 {formatMoney(row.actualCostAmount)}</div></td>
+                <td><div>{formatMoney(row.budgetAmount)}</div>{canViewCosts && <div className="text-xs text-cf-subtle">成本 {formatMoney(row.actualCostAmount)}</div>}</td>
                 <td><div>{row.progress || 0}%</div><div className="text-xs text-cf-subtle">{severityDict.getLabel(row.riskLevel || '') || '-'}</div></td>
                 <td><div>{row.sourceName || sourceTypeDict.getLabel(row.sourceType || 'MANUAL') || '-'}</div><div className="text-xs text-cf-subtle">基线 {row.baselineVersion || 0}</div></td>
                 <td>
-                  <TableRowActions
-                    iconOnly
-                    buttonLayout="compact"
-                    maxVisibleActions={2}
-                    overflowLabel="更多"
-                    actions={[
-                      {
-                        key: 'detail',
-                        label: '查看详情',
-                        icon: <Eye size={15} />,
-                        isPrimary: true,
-                        onClick: async () => {
-                          try {
-                            setDetail(await projectApi.getDetail(row.projectId!));
-                          } catch (error) {
-                            toast.error(getErrorMessage(error, '加载项目详情失败'));
-                          }
-                        },
-                      },
-                      {
-                        key: 'edit',
-                        label: '编辑项目',
-                        icon: <Edit size={15} />,
-                        priority: 'secondary',
-                        permissionKey: 'oa:project:edit',
-                        onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); },
-                      },
-                      {
-                        key: 'submit',
-                        label: '提交立项',
-                        icon: <Send size={15} />,
-                        priority: 'secondary',
-                        tone: 'success',
-                        hidden: row.status !== 'DRAFT' && row.status !== 'REJECTED',
-                        permissionKey: 'oa:project:submit',
-                        onClick: () => setConfirm({ type: 'submit', row }),
-                      },
-                      {
-                        key: 'baseline',
-                        label: '基线快照',
-                        icon: <RefreshCcw size={15} />,
-                        priority: 'tertiary',
-                        tone: 'info',
-                        hidden: row.status === 'ARCHIVED',
-                        permissionKey: 'oa:project:baseline',
-                        onClick: () => setConfirm({ type: 'baseline', row }),
-                      },
-                      {
-                        key: 'archive',
-                        label: '归档项目',
-                        icon: <Archive size={15} />,
-                        priority: 'tertiary',
-                        tone: 'warning',
-                        hidden: !['APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(row.status || ''),
-                        permissionKey: 'oa:project:archive',
-                        onClick: () => setConfirm({ type: 'archive', row }),
-                      },
-                      {
-                        key: 'delete',
-                        label: '删除项目',
-                        icon: <Trash2 size={15} />,
-                        danger: true,
-                        permissionKey: 'oa:project:remove',
-                        onClick: () => setConfirm({ type: 'delete', row }),
-                      },
-                    ]}
-                  />
+                  <div className="admin-users-row-actions">
+                    <button
+                      type="button"
+                      data-tooltip="查看详情"
+                      aria-label="查看详情"
+                      onClick={async () => {
+                        try {
+                          setDetail(await projectApi.getDetail(row.projectId!));
+                        } catch (error) {
+                          toast.error(getErrorMessage(error, '加载项目详情失败'));
+                        }
+                      }}
+                    >
+                      <Eye size={15} />
+                    </button>
+                    {hasPermission('oa:project:edit') ? <button type="button" data-tooltip="编辑项目" aria-label="编辑项目" onClick={() => { setEditing(row); setForm(row); setDialogOpen(true); }}><Edit size={15} /></button> : null}
+                    {(row.status === 'DRAFT' || row.status === 'REJECTED') && hasPermission('oa:project:submit') ? <button type="button" data-tooltip="提交立项" aria-label="提交立项" onClick={() => setConfirm({ type: 'submit', row })}><Send size={15} /></button> : null}
+                    {row.status !== 'ARCHIVED' && hasPermission('oa:project:baseline') ? <button type="button" data-tooltip="基线快照" aria-label="基线快照" onClick={() => setConfirm({ type: 'baseline', row })}><RefreshCcw size={15} /></button> : null}
+                    {['APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(row.status || '') && hasPermission('oa:project:archive') ? <button type="button" data-tooltip="归档项目" aria-label="归档项目" onClick={() => setConfirm({ type: 'archive', row })}><Archive size={15} /></button> : null}
+                    {hasPermission('oa:project:remove') ? <button type="button" className="danger" data-tooltip="删除项目" aria-label="删除项目" onClick={() => setConfirm({ type: 'delete', row })}><Trash2 size={15} /></button> : null}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -842,6 +812,11 @@ export default function ProjectManagementPage() {
               <Label className={fieldLabelClassName}>预算金额（元）</Label>
               <Input type="number" min={0} value={String(form.budgetAmount || 0)} onChange={(e) => setForm((prev) => ({ ...prev, budgetAmount: Number(e.target.value || 0) }))} placeholder="例如：368000" />
             </div>
+            <FormFields value={form} onChange={setForm} fields={[
+              { key: 'percentCompleteMode', label: '进度计算方式', type: 'select', options: { MANUAL: '手工填写', TASK_COMPLETION: '按任务完成数量', TASK_PROGRESS: '按任务进度加权' } },
+              { key: 'estimatedCost', label: '预计成本（元）', type: 'number', min: 0, step: 0.01 },
+              { key: 'progress', label: '手工进度（0–100%）', type: 'number', min: 0, max: 100, step: 0.01, when: value => value.percentCompleteMode === 'MANUAL' },
+            ]} />
             <div>
               <Label className={fieldLabelClassName}>来源类型</Label>
               <Input value={sourceTypeDict.getLabel(form.sourceType || 'MANUAL') || '手工创建'} disabled />
@@ -865,9 +840,9 @@ export default function ProjectManagementPage() {
       <BaseDialog open={Boolean(detail)} title={detail?.project.projectName || '项目详情'} onClose={() => setDetail(null)} width="extra-wide" bodyClassName="admin-project-detail-dialog-body overflow-hidden">
         {detail ? (
           <div className="admin-project-detail-shell">
-            <Tabs value={detailTab} onValueChange={(value) => setDetailTab(value as DetailTab)} className="admin-source-content admin-project-detail-tabs">
+            <Tabs value={!canViewCosts && detailTab === 'cost' ? 'overview' : detailTab} onValueChange={(value) => setDetailTab(value as DetailTab)} className="admin-source-content admin-project-detail-tabs">
               <TabsList className="admin-project-detail-tabbar w-full justify-start overflow-x-auto">
-                {tabs.map((tab) => (
+                {tabs.filter(tab => canViewCosts || tab.value !== 'cost').map((tab) => (
                   <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5">
                     {tab.icon}
                     {tab.label}
@@ -877,22 +852,22 @@ export default function ProjectManagementPage() {
 
               <TabsContent value="overview" className="admin-source-content-grid admin-project-detail-tab">
                 <div className="admin-source-stat-grid">
-                  <ProjectDetailMetric label="项目编号" value={detail.project.projectNo || '-'} />
-                  <ProjectDetailMetric label="状态" value={statusDict.getLabel(detail.project.status || 'DRAFT') || '-'} />
-                  <ProjectDetailMetric label="预算 / 成本" value={`${formatMoney(detail.project.budgetAmount)} / ${formatMoney(detail.costSummary?.totalAmount || detail.project.actualCostAmount)}`} />
-                  <ProjectDetailMetric label="基线版本" value={detail.baselineVersion || detail.project.baselineVersion || 0} />
+                  <ProjectDetailMetric label="项目编号" value={detail.project.projectNo || '-'} meta="立项编号" icon={<Hash size={18} />} tone="blue" />
+                  <ProjectDetailMetric label="状态" value={statusDict.getLabel(detail.project.status || 'DRAFT') || '-'} meta={`基线 v${detail.baselineVersion || detail.project.baselineVersion || 0}`} icon={<Target size={18} />} tone="amber" />
+                  <ProjectDetailMetric label="立项预算" value={formatMoney(detail.project.budgetAmount)} meta="预算合计" icon={<CircleDollarSign size={18} />} tone="green" />
+                  <ProjectDetailMetric label="已发生成本" value={canViewCosts ? formatMoney(detail.costSummary?.totalAmount ?? detail.project.actualCostAmount) : '仅管理者可见'} meta={canViewCosts ? '人力 / 采购 / 其他' : '内部成本'} icon={<Coins size={18} />} tone="violet" />
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-2">
-                  <ProjectDetailPanel title="来源与 KPI" contentClassName="admin-project-detail-stack text-sm">
-                      <div>客户：{detail.project.customerName || '-'}</div>
-                      <div>合同：{detail.project.contractNo || '-'}</div>
-                      <div>来源：{detail.project.sourceName || sourceTypeDict.getLabel(detail.project.sourceType || 'MANUAL') || '-'} / {detail.project.sourceId || '-'}</div>
-                      <div>逾期里程碑：{detail.kpi?.overdueMilestoneCount || 0}</div>
-                      <div>逾期任务：{detail.kpi?.overdueTaskCount || 0}</div>
-                      <div>开放风险：{detail.kpi?.openRiskCount || 0}</div>
-                      <div>排期偏差：{detail.kpi?.scheduleVarianceDays || 0} 天</div>
-                      <div>成本执行率：{Number(detail.kpi?.costExecutionRate || 0).toFixed(1)}%</div>
+                  <ProjectDetailPanel title="来源与 KPI" contentClassName="admin-project-detail-facts">
+                      <div><span>客户</span><strong>{detail.project.customerName || '-'}</strong></div>
+                      <div><span>合同</span><strong>{detail.project.contractNo || '-'}</strong></div>
+                      <div><span>来源</span><strong>{detail.project.sourceName || sourceTypeDict.getLabel(detail.project.sourceType || 'MANUAL') || '-'}{detail.project.sourceId ? ` / ${detail.project.sourceId}` : ''}</strong></div>
+                      <div><span>逾期里程碑</span><strong>{detail.kpi?.overdueMilestoneCount || 0}</strong></div>
+                      <div><span>逾期任务</span><strong>{detail.kpi?.overdueTaskCount || 0}</strong></div>
+                      <div><span>开放风险</span><strong>{detail.kpi?.openRiskCount || 0}</strong></div>
+                      <div><span>排期偏差</span><strong>{detail.kpi?.scheduleVarianceDays || 0} 天</strong></div>
+                      <div><span>成本执行率</span><strong>{canViewCosts ? Number(detail.kpi?.costExecutionRate || 0).toFixed(1) + '%' : '仅管理者可见'}</strong></div>
                   </ProjectDetailPanel>
 
                   <ProjectDetailPanel title="项目成员" contentClassName="admin-project-detail-stack">
@@ -927,13 +902,13 @@ export default function ProjectManagementPage() {
                     </div>
                     {ganttRows.length ? (
                       <DndContext sensors={sensors} onDragEnd={handleGanttDragEnd}>
-                        <div className="admin-horizontal-scroll">
+                        <div className="admin-horizontal-scroll" tabIndex={0} aria-label="项目排期，可横向滚动">
                           <div style={{ minWidth: `${260 + ganttDateColumns.length * DAY_WIDTH}px` }}>
                             <div className="grid border-b border-slate-200 pb-2 text-xs text-cf-subtle dark:border-slate-800" style={{ gridTemplateColumns: `260px repeat(${ganttDateColumns.length}, ${DAY_WIDTH}px)` }}>
                               <div>任务 / 里程碑</div>
-                              {ganttDateColumns.map((date) => <div key={date} className="text-center">{date.slice(5)}</div>)}
+                              {ganttDateColumns.map((date) => <div key={date} data-gantt-date={date} className="text-center">{date.slice(5)}</div>)}
                             </div>
-                            <div className="admin-project-gantt-rows pt-3">
+                            <div ref={ganttContainer} className="admin-project-gantt-rows relative pt-3">
                               {ganttRows.map((item) => {
                                 const left = diffDays(ganttDateColumns[0], item.start) * DAY_WIDTH;
                                 const width = Math.max(1, diffDays(item.start, item.end) + 1) * DAY_WIDTH;
@@ -963,33 +938,43 @@ export default function ProjectManagementPage() {
                                         shortLabel={item.shortLabel}
                                         kind={item.kind}
                                         timelineWidth={ganttDateColumns.length * DAY_WIDTH}
+                                        disabled={!hasPermission('oa:project:wbs') || ['ARCHIVED', 'CANCELLED'].includes(detail.project.status || '')}
                                       />
                                     </div>
                                   </div>
                                 );
                               })}
+                              <ProjectGanttDependencies container={ganttContainer} dependencies={detail.dependencies} tasks={detail.wbsTasks} />
                             </div>
                           </div>
                         </div>
                       </DndContext>
                     ) : <div className="text-sm text-cf-subtle">暂无可渲染的排期数据。先新增里程碑或 WBS 任务。</div>}
+                    <section aria-label="任务依赖说明" className="space-y-3">
+                      <h3 className="font-semibold text-cf-title">任务依赖</h3>
+                      {detail.dependencies.length ? detail.dependencies.map(dependency => <div key={dependency.dependencyId}
+                        className="rounded-lg border border-[var(--cf-border)] p-3 text-sm [overflow-wrap:anywhere]" data-dependency-description={dependency.dependencyId}>
+                        <p>{detail.wbsTasks.find(task => task.taskId === dependency.predecessorTaskId)?.subject || '前置任务'} → {detail.wbsTasks.find(task => task.taskId === dependency.successorTaskId)?.subject || '后置任务'}</p>
+                        <p className="mt-1 text-cf-muted">{projectDependencyLabels[dependency.dependencyType || ''] || dependency.dependencyType} · 间隔 {dependency.lagDays || 0} 天</p>
+                      </div>) : <p className="text-sm text-cf-muted">暂无任务依赖</p>}
+                    </section>
                 </ProjectDetailPanel>
               </TabsContent>
 
               <TabsContent value="milestone" className="admin-source-content-grid admin-project-detail-tab">
                 <ProjectDetailPanel title="里程碑维护" contentClassName="admin-project-detail-stack">
                     {detail.milestones.length ? detail.milestones.map((item) => (
-                      <div key={item.milestoneId} className="admin-project-detail-row text-sm">
+                      <div key={item.taskId} className="admin-project-detail-row text-sm">
                         <div>
-                          <div>{item.milestoneName}</div>
-                          <div className="text-xs text-cf-subtle">计划 {item.plannedDate || '-'} / 基线 {item.baselineDate || '-'} / 实际 {item.actualDate || '-'} / {item.status || '-'}</div>
+                          <div>{item.subject}</div>
+                          <div className="text-xs text-cf-subtle">计划 {item.plannedEnd || '-'} / 基线 {item.baselineEnd || '-'} / 实际 {item.actualEnd || '-'} / {item.status || '-'}</div>
                         </div>
                         {hasPermission('oa:project:edit') ? (
                           <div className="admin-users-row-actions">
                             <button type="button" data-tooltip="编辑里程碑" aria-label="编辑里程碑" onClick={() => openChildDialog({ type: 'milestone', item })}>
                               <Edit size={15} />
                             </button>
-                            <button className="danger" type="button" data-tooltip="删除里程碑" aria-label="删除里程碑" onClick={() => void removeChild('milestone', item.milestoneId!)}>
+                            <button className="danger" type="button" data-tooltip="删除里程碑" aria-label="删除里程碑" onClick={() => void removeChild('milestone', item.taskId!)}>
                               <Trash2 size={15} />
                             </button>
                           </div>
@@ -1001,101 +986,77 @@ export default function ProjectManagementPage() {
               </TabsContent>
 
               <TabsContent value="wbs" className="admin-source-content-grid admin-project-detail-tab">
+                <ProjectOperationsPanel project={detail.project} onChanged={() => { void refreshDetail(detail.project.projectId!); void load(); }} />
                 <ProjectDetailPanel title="WBS 树维护" contentClassName="admin-project-detail-stack">
-                    {detail.wbsTasks.length ? detail.wbsTasks.map((item) => (
-                      <div key={item.taskId} className="admin-project-detail-row text-sm">
-                        <div>
-                          <div>{item.wbsCode || '-'} {item.title || '-'}</div>
-                          <div className="text-xs text-cf-subtle">计划 {item.plannedStartTime ? String(item.plannedStartTime).slice(0, 10) : '-'} ~ {item.plannedEndTime ? String(item.plannedEndTime).slice(0, 10) : '-'} / 基线 {item.baselineStartTime ? String(item.baselineStartTime).slice(0, 10) : '-'} ~ {item.baselineEndTime ? String(item.baselineEndTime).slice(0, 10) : '-'}</div>
-                        </div>
-                        {hasPermission('oa:project:wbs') ? (
-                          <div className="admin-users-row-actions">
-                            <button type="button" data-tooltip="编辑 WBS" aria-label="编辑 WBS" onClick={() => openChildDialog({ type: 'wbs', item })}>
-                              <Edit size={15} />
-                            </button>
-                            <button className="danger" type="button" data-tooltip="删除 WBS" aria-label="删除 WBS" onClick={() => void removeChild('wbs', item.taskId!)}>
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        ) : <span className="text-sm text-slate-300">-</span>}
-                      </div>
-                    )) : <div className="text-sm text-cf-subtle">暂无 WBS 任务</div>}
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" onClick={() => openChildDialog({ type: 'wbs' })} disabled={!hasPermission('oa:project:wbs')}><Plus size={14} className="mr-1.5" />新增 WBS</Button>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        if (!detail?.project.projectId) return;
-                        const treePayload = detail.wbsTasks.map((item, index) => ({ taskId: item.taskId, parentId: item.parentId, sortOrder: index + 1 }));
-                        void projectApi.updateWbsTree(detail.project.projectId, treePayload).then(async () => {
-                          toast.success('WBS 树顺序已重排');
-                          await refreshDetail(detail.project.projectId!);
-                        }).catch((error) => toast.error(getErrorMessage(error, 'WBS 树保存失败')));
-                      }} disabled={!hasPermission('oa:project:wbs')}><ArrowRightLeft size={14} className="mr-1.5" />保存当前顺序</Button>
-                    </div>
+                  <ProjectTaskTree key={detail.project.projectId} projectId={detail.project.projectId!} tasks={detail.wbsTasks}
+                    editable={hasPermission('oa:project:wbs') && !['ARCHIVED', 'CANCELLED'].includes(detail.project.status || '')}
+                    onCreate={() => openChildDialog({ type: 'wbs' })}
+                    onEdit={item => openChildDialog({ type: 'wbs', item })}
+                    onRemove={item => { void removeChild('wbs', item.taskId!); }}
+                    onReload={() => refreshDetail(detail.project.projectId!)} />
                 </ProjectDetailPanel>
               </TabsContent>
 
               <TabsContent value="cost" className="admin-source-content-grid admin-project-detail-tab">
-                {(() => {
-                  const expense = Number(detail.costSummary?.expenseAmount || 0);
-                  const purchase = Number(detail.costSummary?.purchaseAmount || 0);
-                  const payment = Number(detail.costSummary?.paymentAmount || 0);
-                  const total = Number(detail.costSummary?.totalAmount || (expense + purchase + payment));
-                  const budget = Number(detail.project.budgetAmount || 0);
-                  const execRate = budget > 0 ? (total / budget) * 100 : Number(detail.kpi?.costExecutionRate || 0);
-                  const pct = (value: number) => (total > 0 ? (value / total) * 100 : 0);
+                {canViewCosts && (() => {
+                  const labor = Number(detail.costSummary?.laborAmount ?? detail.project.laborCostAmount ?? 0);
+                  const purchase = Number(detail.costSummary?.purchaseAmount ?? detail.project.purchaseCostAmount ?? 0);
+                  const other = Number(detail.costSummary?.otherAmount ?? detail.project.otherCostAmount ?? 0);
+                  const total = Number(detail.costSummary?.totalAmount ?? detail.project.actualCostAmount ?? (labor + purchase + other));
+                  const budget = Number(detail.project.budgetAmount ?? 0);
+                  const billable = Number(detail.costSummary?.billableAmount ?? detail.project.billableAmount ?? 0);
+                  const billed = Number(detail.costSummary?.billedAmount ?? detail.project.billedAmount ?? 0);
+                  const margin = Number(detail.project.grossMargin ?? (billable - total));
+                  const marginRate = billable === 0 ? null : Number(detail.project.grossMarginRate ?? (margin / billable));
+                  const execRate = budget > 0 ? (total / budget) * 100 : 0;
+                  const pct = (value: number) => total > 0 ? (value / total) * 100 : 0;
                   const composition = [
-                    { label: '报销成本', value: expense, color: '#0d95b5' },
+                    { label: '人力成本', value: labor, color: '#0d95b5' },
                     { label: '采购成本', value: purchase, color: '#059669' },
-                    { label: '付款成本', value: payment, color: '#d97706' },
+                    { label: '其他成本', value: other, color: '#d97706' },
                   ];
                   return (
                     <>
                       <div className="admin-source-stat-grid">
-                        <ProjectDetailMetric label="总成本" value={formatMoney(total)} />
-                        <ProjectDetailMetric label="报销成本" value={formatMoney(expense)} />
-                        <ProjectDetailMetric label="采购成本" value={formatMoney(purchase)} />
-                        <ProjectDetailMetric label="付款成本" value={formatMoney(payment)} />
+                        <ProjectDetailMetric label="总成本" value={formatMoney(total)} meta="人力、采购与其他成本合计" icon={<Archive size={18} />} tone="blue" />
+                        <ProjectDetailMetric label="人力成本" value={formatMoney(labor)} meta="已审批工时的内部成本" icon={<Users size={18} />} tone="green" />
+                        <ProjectDetailMetric label="采购成本" value={formatMoney(purchase)} meta="已完成收货的采购" icon={<CircleDollarSign size={18} />} tone="violet" />
+                        <ProjectDetailMetric label="其他成本" value={formatMoney(other)} meta="项目登记的其他成本" icon={<Coins size={18} />} tone="amber" />
                       </div>
-
                       <div className="grid gap-4 xl:grid-cols-2">
                         <ProjectDetailPanel title="预算执行" contentClassName="admin-project-detail-stack text-sm">
                           <div>预算合计：{formatMoney(budget)}</div>
+                          <div>预计成本：{formatMoney(detail.project.estimatedCost)}</div>
                           <div>已用成本：{formatMoney(total)}</div>
-                          <div>成本执行率：{execRate.toFixed(1)}%</div>
-                          <div className="admin-project-cost-track" role="img" aria-label={`成本执行率 ${execRate.toFixed(1)}%`}>
-                            <span
-                              className={cn('admin-project-cost-track-fill', execRate > 100 && 'is-over')}
-                              style={{ width: `${Math.min(execRate, 100)}%` }}
-                            />
+                          <div>成本执行率：{budget > 0 ? execRate.toFixed(1) + '%' : '未设置预算'}</div>
+                          <div className="admin-project-cost-track" role="img" aria-label={'成本执行率 ' + (budget > 0 ? execRate.toFixed(1) + '%' : '未设置预算')}>
+                            <span className={cn('admin-project-cost-track-fill', execRate > 100 && 'is-over')}
+                              style={{ width: Math.min(Math.max(execRate, 0), 100) + '%' }} />
                           </div>
                         </ProjectDetailPanel>
-
                         <ProjectDetailPanel title="成本构成" contentClassName="admin-project-detail-stack text-sm">
                           {total > 0 ? (
                             <>
                               <div className="admin-project-cost-bar" role="img" aria-label="成本构成占比">
-                                {composition.map((item) => item.value > 0 && (
-                                  <span
-                                    key={item.label}
-                                    style={{ width: `${pct(item.value)}%`, background: item.color }}
-                                    data-tooltip={`${item.label} ${formatMoney(item.value)}`}
-                                  />
-                                ))}
+                                {composition.map(item => item.value > 0 && <span key={item.label}
+                                  style={{ width: pct(item.value) + '%', background: item.color }}
+                                  data-tooltip={item.label + ' ' + formatMoney(item.value)} />)}
                               </div>
-                              {composition.map((item) => (
-                                <div key={item.label} className="admin-project-detail-row">
-                                  <span className="inline-flex items-center gap-2">
-                                    <span className="admin-project-cost-dot" style={{ background: item.color }} />
-                                    {item.label}
-                                  </span>
-                                  <span>{formatMoney(item.value)} · {pct(item.value).toFixed(1)}%</span>
-                                </div>
-                              ))}
+                              {composition.map(item => <div key={item.label} className="admin-project-detail-row">
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="admin-project-cost-dot" style={{ background: item.color }} />{item.label}
+                                </span>
+                                <span>{formatMoney(item.value)} · {pct(item.value).toFixed(1)}%</span>
+                              </div>)}
                             </>
-                          ) : (
-                            <div className="text-sm text-cf-subtle">暂无成本数据</div>
-                          )}
+                          ) : <div className="text-sm text-cf-subtle">暂无成本数据</div>}
                         </ProjectDetailPanel>
+                      </div>
+                      <div className="admin-source-stat-grid" aria-label="项目计费与毛利">
+                        <ProjectDetailMetric label="可计费额" value={formatMoney(billable)} meta="已审批工时的对客计费" icon={<CircleDollarSign size={18} />} tone="blue" />
+                        <ProjectDetailMetric label="已开票金额" value={formatMoney(billed)} meta="关联合同有效销项发票" icon={<Send size={18} />} tone="green" />
+                        <ProjectDetailMetric label="毛利" value={formatMoney(margin)} meta="可计费额减去总成本" icon={<Coins size={18} />} tone="violet" />
+                        <ProjectDetailMetric label="毛利率" value={marginRate == null ? '—' : (marginRate * 100).toFixed(2) + '%'} meta="毛利占可计费额的比例" icon={<Target size={18} />} tone="amber" />
                       </div>
                     </>
                   );
@@ -1130,7 +1091,7 @@ export default function ProjectManagementPage() {
                       {detail.dependencies.length ? detail.dependencies.map((item) => (
                         <div key={item.dependencyId} className="admin-project-detail-row text-sm">
                           <div>
-                            <div>{item.predecessorType} {item.predecessorId} → {item.successorType} {item.successorId}</div>
+                            <div>{detail.wbsTasks.find(task => String(task.taskId) === String(item.predecessorTaskId))?.subject} → {detail.wbsTasks.find(task => String(task.taskId) === String(item.successorTaskId))?.subject}</div>
                             <div className="text-xs text-cf-subtle">{item.dependencyType || 'FS'} / 延迟 {item.lagDays || 0} 天</div>
                           </div>
                           {hasPermission('oa:project:edit') ? (
@@ -1151,11 +1112,13 @@ export default function ProjectManagementPage() {
               </TabsContent>
 
               <TabsContent value="linkage" className="admin-source-content-grid admin-project-detail-tab">
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  {linkageCards.map((item) => (
-                    <ProjectDetailMetric key={item.label} label={item.label} value={item.value} />
-                  ))}
-                </div>
+                <ProjectDetailPanel title="联动摘要" contentClassName={linkageCards.length ? 'admin-project-detail-facts' : undefined}>
+                  {linkageCards.length
+                    ? linkageCards.map((item) => (
+                      <div key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>
+                    ))
+                    : <div className="text-sm text-cf-subtle">暂无业务联动摘要</div>}
+                </ProjectDetailPanel>
                 <ProjectDetailPanel title="业务跳转" contentClassName="flex flex-wrap gap-2">
                     {detail.project.customerId ? <Button size="sm" variant="outline" onClick={() => navigate(`/office/crm/customer/${detail.project.customerId}`)}>打开客户360</Button> : null}
                     {detail.project.contractId ? <Button size="sm" variant="outline" onClick={() => navigate('/office/contracts', { state: { focusContractId: detail.project.contractId } })}>打开 OA 合同</Button> : null}
@@ -1172,7 +1135,7 @@ export default function ProjectManagementPage() {
         open={Boolean(childDialog)}
         title={
           childDialog?.type === 'member' ? (memberForm.id ? '编辑项目成员' : '新增项目成员')
-            : childDialog?.type === 'milestone' ? (milestoneForm.milestoneId ? '编辑里程碑' : '新增里程碑')
+            : childDialog?.type === 'milestone' ? (milestoneForm.taskId ? '编辑里程碑' : '新增里程碑')
               : childDialog?.type === 'wbs' ? (wbsForm.taskId ? '编辑 WBS' : '新增 WBS')
                 : childDialog?.type === 'risk' ? (riskForm.riskId ? '编辑风险' : '新增风险')
                   : dependencyForm.dependencyId ? '编辑依赖' : '新增依赖'
@@ -1203,43 +1166,9 @@ export default function ProjectManagementPage() {
           </div>
         ) : null}
 
-        {childDialog?.type === 'milestone' ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label className={fieldLabelClassName}>里程碑名称</Label>
-              <Input value={milestoneForm.milestoneName || ''} onChange={(e) => setMilestoneForm((prev) => ({ ...prev, milestoneName: e.target.value }))} placeholder="例如：完成一期上线验收" />
-            </div>
-            <div>
-              <Label className={fieldLabelClassName}>计划日期</Label>
-              <DatePicker value={toDateInput(milestoneForm.plannedDate)} onChange={(e) => setMilestoneForm((prev) => ({ ...prev, plannedDate: e.target.value }))} />
-            </div>
-            <div>
-              <Label className={fieldLabelClassName}>实际完成日期</Label>
-              <DatePicker value={toDateInput(milestoneForm.actualDate)} onChange={(e) => setMilestoneForm((prev) => ({ ...prev, actualDate: e.target.value || undefined }))} />
-            </div>
-          </div>
-        ) : null}
+        {childDialog?.type === 'milestone' ? <ProjectTaskFields task={milestoneForm} tasks={detail?.wbsTasks || []} onChange={setMilestoneForm} /> : null}
 
-        {childDialog?.type === 'wbs' ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label className={fieldLabelClassName}>任务标题</Label>
-              <Input value={wbsForm.title || ''} onChange={(e) => setWbsForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="例如：完成主数据初始化" />
-            </div>
-            <div>
-              <Label className={fieldLabelClassName}>WBS 编码</Label>
-              <Input value={wbsForm.wbsCode || ''} onChange={(e) => setWbsForm((prev) => ({ ...prev, wbsCode: e.target.value }))} placeholder="留空自动生成" />
-            </div>
-            <div>
-              <Label className={fieldLabelClassName}>计划开始</Label>
-              <DatePicker value={toDateInput(wbsForm.plannedStartTime)} onChange={(e) => setWbsForm((prev) => ({ ...prev, plannedStartTime: e.target.value ? `${e.target.value} 00:00:00` : '' }))} />
-            </div>
-            <div>
-              <Label className={fieldLabelClassName}>计划结束</Label>
-              <DatePicker value={toDateInput(wbsForm.plannedEndTime)} onChange={(e) => setWbsForm((prev) => ({ ...prev, plannedEndTime: e.target.value ? `${e.target.value} 00:00:00` : '' }))} />
-            </div>
-          </div>
-        ) : null}
+        {childDialog?.type === 'wbs' ? <ProjectTaskFields task={wbsForm} tasks={detail?.wbsTasks || []} onChange={setWbsForm} /> : null}
 
         {childDialog?.type === 'risk' ? (
           <div className="grid gap-4 md:grid-cols-2">
@@ -1263,55 +1192,12 @@ export default function ProjectManagementPage() {
           </div>
         ) : null}
 
-        {childDialog?.type === 'dependency' ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label className={fieldLabelClassName}>前置对象</Label>
-              <Select value={dependencyForm.predecessorId ? `${dependencyForm.predecessorType}:${dependencyForm.predecessorId}` : 'NONE'} onValueChange={(value) => {
-                if (value === 'NONE') {
-                  setDependencyForm((prev) => ({ ...prev, predecessorType: 'WBS', predecessorId: undefined }));
-                  return;
-                }
-                const [type, id] = value.split(':');
-                setDependencyForm((prev) => ({ ...prev, predecessorType: type, predecessorId: Number(id) }));
-              }}>
-                <SelectTrigger><SelectValue placeholder="选择前置对象" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE">选择前置对象</SelectItem>
-                  {dependencyTargetOptions.map((item) => <SelectItem key={`pre-${item.type}-${item.value}`} value={`${item.type}:${item.value}`}>{item.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className={fieldLabelClassName}>后置对象</Label>
-              <Select value={dependencyForm.successorId ? `${dependencyForm.successorType}:${dependencyForm.successorId}` : 'NONE'} onValueChange={(value) => {
-                if (value === 'NONE') {
-                  setDependencyForm((prev) => ({ ...prev, successorType: 'WBS', successorId: undefined }));
-                  return;
-                }
-                const [type, id] = value.split(':');
-                setDependencyForm((prev) => ({ ...prev, successorType: type, successorId: Number(id) }));
-              }}>
-                <SelectTrigger><SelectValue placeholder="选择后置对象" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE">选择后置对象</SelectItem>
-                  {dependencyTargetOptions.map((item) => <SelectItem key={`suc-${item.type}-${item.value}`} value={`${item.type}:${item.value}`}>{item.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className={fieldLabelClassName}>依赖类型</Label>
-              <Select value={dependencyForm.dependencyType || 'FS'} onValueChange={(value) => setDependencyForm((prev) => ({ ...prev, dependencyType: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="FS">FS 完成-开始</SelectItem></SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className={fieldLabelClassName}>延迟天数</Label>
-              <Input type="number" value={String(dependencyForm.lagDays || 0)} onChange={(e) => setDependencyForm((prev) => ({ ...prev, lagDays: Number(e.target.value || 0) }))} placeholder="例如：2" />
-            </div>
-          </div>
-        ) : null}
+        {childDialog?.type === 'dependency' ? <FormFields value={dependencyForm} onChange={setDependencyForm} fields={[
+          { key: 'predecessorTaskId', label: '前置任务', type: 'select', numeric: true, options: optionsOf(detail?.wbsTasks, 'taskId', 'subject'), required: true },
+          { key: 'successorTaskId', label: '后置任务', type: 'select', numeric: true, options: optionsOf(detail?.wbsTasks, 'taskId', 'subject'), required: true },
+          { key: 'dependencyType', label: '依赖类型', type: 'select', options: { FINISH_TO_START: '完成后开始', START_TO_START: '开始后开始', FINISH_TO_FINISH: '完成后完成' }, required: true },
+          { key: 'lagDays', label: '延迟天数', type: 'number', step: 1 }, { key: 'remark', label: '说明', type: 'textarea', maxLength: 500, wide: true },
+        ]} /> : null}
       </BaseDialog>
 
       <ConfirmDialog

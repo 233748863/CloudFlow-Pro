@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import {
   CheckCheck,
   ClipboardList,
   Clock3,
+  Edit,
   FileText,
   LoaderCircle,
   Plus,
@@ -44,7 +46,7 @@ import {
   type OaMeetingMinutes,
 } from '@/services/api/meetingMinutes';
 import { useAuth } from '@/context/AuthContext';
-import { createEvent } from '@/services/api/schedule';
+import { meetingApi } from '@/services/api/meeting';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay, toBackendDateString } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -133,7 +135,8 @@ const emptyAttendance = (minutesId: number): OaMeetingAttendance => ({
 
 const MeetingMinutesPage: React.FC = () => {
   const { hasPermission } = useAuth();
-  const canEdit = hasPermission?.('oa:meeting:edit') ?? true;
+  const canEdit = hasPermission('oa:meeting:edit');
+  const [searchParams] = useSearchParams();
   const statusDict = useDict('oa_meeting_minutes_status');
   const attendDict = useDict('oa_meeting_attend_status');
 
@@ -159,7 +162,8 @@ const MeetingMinutesPage: React.FC = () => {
   const [pendingAttendDelete, setPendingAttendDelete] = useState<OaMeetingAttendance | null>(null);
   const [pendingDispatch, setPendingDispatch] = useState<OaMeetingMinutes | null>(null);
   const [pendingConfirmRow, setPendingConfirmRow] = useState<OaMeetingMinutes | null>(null);
-  const [bookingConflict, setBookingConflict] = useState<{ payload: OaMeetingMinutes; message: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [linkError, setLinkError] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -217,6 +221,8 @@ const MeetingMinutesPage: React.FC = () => {
   };
 
   const persistMinutes = async (payload: OaMeetingMinutes) => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (payload.id) {
         await meetingMinutesApi.edit(payload);
@@ -229,8 +235,44 @@ const MeetingMinutesPage: React.FC = () => {
       void fetchData();
     } catch (err) {
       toast.error(getErrorMessage(err, '保存失败'));
+    } finally {
+      setSaving(false);
     }
   };
+
+  useEffect(() => {
+    let current = true;
+    const load = async () => {
+      const minutesId = searchParams.get('minutesId');
+      const eventId = searchParams.get('eventId');
+      if (!minutesId && !eventId) return;
+      setLinkError('');
+      let linkedMinutes = minutesId && /^[1-9]\d{0,18}$/.test(minutesId) ? Number(minutesId) : undefined;
+      if (!linkedMinutes && eventId && /^[1-9]\d{0,18}$/.test(eventId)) {
+        const linked = await meetingApi.detail(eventId);
+        linkedMinutes = linked.minutesId ? Number(linked.minutesId) : undefined;
+        if (!linkedMinutes) {
+          if (!canEdit) throw new Error('当前账号没有会议纪要维护权限');
+          const event = linked.event;
+          const occurred = ['IN_PROGRESS', 'COMPLETED'].includes(event.status) || event.status === 'CANCELLED' && ['APPROVED', 'NOT_REQUIRED'].includes(event.approvalStatus);
+          if (!occurred || event.recurrenceRole === 'SERIES') throw new Error('纪要只能关联已经开始的实际会议');
+          if (current) {
+            setFormData({ ...emptyForm(), meetingId: Number(event.eventId), scheduleEventId: Number(event.eventId), meetingTitle: event.title,
+              meetingTime: event.startTime, roomId: event.roomId == null ? '' : String(event.roomId), organizerId: Number(event.creatorId),
+              organizerName: linked.invitations.find((invitation) => String(invitation.userId) === String(event.creatorId))?.userName || '' });
+            setDecisions([]); setFormOpen(true);
+          }
+          return;
+        }
+      }
+      if (linkedMinutes) {
+        const [note, people] = await Promise.all([meetingMinutesApi.detail(linkedMinutes), meetingMinutesApi.listAttendance(linkedMinutes)]);
+        if (current) { setDetail(note); setDetailDecisions(parseDecisions(note.decisions)); setAttendance(people); setDetailOpen(true); }
+      }
+    };
+    load().catch((failure) => { if (current) setLinkError(getErrorMessage(failure, '关联会议纪要读取失败')); });
+    return () => { current = false; };
+  }, [searchParams, canEdit]);
 
   const saveForm = async () => {
     if (!formData.meetingTitle.trim()) {
@@ -241,40 +283,9 @@ const MeetingMinutesPage: React.FC = () => {
       toast.error('请输入纪要内容');
       return;
     }
-    const payload: OaMeetingMinutes = { ...formData, decisions: stringifyDecisions(decisions) };
-
-    // 如果选择了会议室和会议时间，自动创建会议室预约
-    let scheduleEventId = payload.scheduleEventId;
-    if (payload.roomId && payload.meetingTime) {
-      try {
-        const startDate = new Date(payload.meetingTime);
-        const endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // 默认1.5小时
-        const startStr = toBackendDateString(startDate);
-        const endStr = toBackendDateString(endDate);
-        if (startStr && endStr) {
-          await createEvent({
-            title: payload.meetingTitle,
-            startTime: startStr,
-            endTime: endStr,
-            type: 'MEETING',
-            roomId: payload.roomId,
-          });
-          toast.success('会议室已自动预约');
-        }
-      } catch (bookingErr: any) {
-        const msg = bookingErr?.response?.data?.msg || bookingErr?.message || '';
-        if (msg.includes('已被预订')) {
-          // 冲突：弹窗询问是否仍保存纪要（不关联预约）
-          setBookingConflict({ payload: { ...payload, scheduleEventId: undefined }, message: msg });
-          return;
-        }
-        // 其他预约失败，仍保存纪要
-        console.warn('会议室预约失败，仅保存纪要:', msg);
-        scheduleEventId = undefined;
-      }
-    }
-
-    await persistMinutes({ ...payload, scheduleEventId });
+    const payload: OaMeetingMinutes = { ...formData, decisions: stringifyDecisions(decisions),
+      meetingTime: formData.meetingTime ? toBackendDateString(new Date(formData.meetingTime.replace(' ', 'T'))) || undefined : undefined };
+    await persistMinutes(payload);
   };
 
   const handleDelete = async () => {
@@ -543,6 +554,7 @@ const MeetingMinutesPage: React.FC = () => {
 
   return (
     <div className="admin-source-page admin-meeting-minutes-page">
+      {linkError && <p role="alert" className="rounded-md border p-4">{linkError}</p>}
       <TablePageLayout
         actions={pageActions}
         filters={filters}
@@ -559,17 +571,19 @@ const MeetingMinutesPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
-            <Button onClick={() => void saveForm()}>保存</Button>
+            <Button disabled={saving} onClick={() => void saveForm()}>{saving ? '保存中…' : '保存'}</Button>
           </>
         )}
       >
         <div className="admin-dialog-stack">
+          {formData.scheduleEventId && <p className="text-sm text-cf-subtle">已关联本次实际会议，纪要直接复用原邀请和签到记录；保存纪要不会新增会议室预约。</p>}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="admin-dialog-field">
               <Label>会议标题</Label>
               <Input
                 className="!h-11 min-h-11"
                 value={formData.meetingTitle}
+                disabled={saving || Boolean(formData.scheduleEventId)}
                 onChange={(e) => setFormData((f) => ({ ...f, meetingTitle: e.target.value }))}
               />
             </div>
@@ -577,6 +591,7 @@ const MeetingMinutesPage: React.FC = () => {
               <Label>组织者</Label>
               <UserSelector
                 single
+                disabled={saving || Boolean(formData.scheduleEventId)}
                 allowClear
                 value={formData.organizerId ? String(formData.organizerId) : null}
                 onChange={(id, picked) => setFormData((f) => ({
@@ -592,6 +607,7 @@ const MeetingMinutesPage: React.FC = () => {
               <DatePicker
                 className="!h-11 min-h-11"
                 type="datetime-local"
+                disabled={saving || Boolean(formData.scheduleEventId)}
                 value={formData.meetingTime || ''}
                 onChange={(e) => setFormData((f) => ({ ...f, meetingTime: e.target.value }))}
               />
@@ -599,6 +615,7 @@ const MeetingMinutesPage: React.FC = () => {
             <div className="admin-dialog-field">
               <Label>地点</Label>
               <MeetingRoomSelector
+                disabled={saving || Boolean(formData.scheduleEventId)}
                 value={formData.roomId || null}
                 onChange={(id, room) => setFormData((f) => ({
                   ...f,
@@ -762,11 +779,13 @@ const MeetingMinutesPage: React.FC = () => {
                         {a.remark ? <span className="text-xs text-cf-faint">· {a.remark}</span> : null}
                       </div>
                       {canEdit ? (
-                        <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => openAttendanceEdit(a)}>编辑</Button>
-                          <Button size="sm" variant="ghost" onClick={() => setPendingAttendDelete(a)}>
-                            <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                          </Button>
+                        <div className="admin-users-row-actions">
+                          <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => openAttendanceEdit(a)}>
+                            <Edit size={15} />
+                          </button>
+                          <button type="button" className="tone-danger" data-tooltip="删除" aria-label="删除" onClick={() => setPendingAttendDelete(a)}>
+                            <Trash2 size={15} />
+                          </button>
                         </div>
                       ) : null}
                     </li>
@@ -860,25 +879,13 @@ const MeetingMinutesPage: React.FC = () => {
 
       <ConfirmDialog
         open={!!pendingAttendDelete}
-        title="删除出席记录"
-        message={`确认删除「${pendingAttendDelete?.userName}」的出席记录？`}
+        title={pendingAttendDelete?.scheduleEventId ? '清除签到记录' : '删除出席记录'}
+        message={pendingAttendDelete?.scheduleEventId ? `确认清除「${pendingAttendDelete.userName}」的实际签到？会前邀请和接受状态保持不变。` : `确认删除「${pendingAttendDelete?.userName}」的出席记录？`}
         danger
         onCancel={() => setPendingAttendDelete(null)}
         onConfirm={handleAttendDelete}
       />
 
-      <ConfirmDialog
-        open={!!bookingConflict}
-        title="会议室预约失败"
-        message={`会议室预约失败：${bookingConflict?.message ?? ''}\n\n是否仍要保存会议纪要（不关联会议室预约）？`}
-        confirmText="仍要保存"
-        onCancel={() => setBookingConflict(null)}
-        onConfirm={() => {
-          const payload = bookingConflict?.payload;
-          setBookingConflict(null);
-          if (payload) void persistMinutes(payload);
-        }}
-      />
     </div>
   );
 };

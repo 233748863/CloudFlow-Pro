@@ -1,0 +1,16 @@
+.finance-controls { min-width: 0; --cf-density-control-height: 44px; --cf-density-control-height-sm: 44px; }
+.finance-controls button, .finance-controls input:not([type="checkbox"]) { min-height: 44px !important; }
+.finance-controls button { min-width: 44px; transition: background-color 150ms ease, opacity 150ms ease; }
+.finance-controls :is(button, input):focus-visible { outline: 2px solid var(--cf-primary); outline-offset: 2px; }
+.finance-controls fieldset { min-width: 0; }
+.finance-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; font-size: 14px; }
+.finance-fields dt { color: var(--cf-fg-muted); font-size: 12px; }
+.finance-fields dd { margin: 4px 0 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.finance-choice { display: flex; min-width: 0; min-height: 44px; align-items: center; gap: 12px; cursor: pointer; overflow-wrap: anywhere; }
+.finance-choice span { min-width: 0; overflow-wrap: anywhere; }
+.finance-choice input[type="checkbox"] { flex: 0 0 20px; width: 20px; height: 20px; min-height: 20px !important; }
+.finance-item { min-width: 0; border: 1px solid var(--cf-border); border-radius: 10px; padding: 16px; background: var(--cf-surface); }
+.finance-preview { display: block; width: 100%; min-height: 360px; border: 0; object-fit: contain; }
+.finance-controls .modal-content { transition: opacity 200ms ease; }
+@media (min-width: 768px) { .finance-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .finance-controls button, .finance-controls .modal-content { transition: none; } }

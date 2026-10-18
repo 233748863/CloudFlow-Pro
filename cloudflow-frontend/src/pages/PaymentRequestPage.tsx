@@ -12,7 +12,7 @@ import FileUpload from '@/components/FileUpload';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
+import AttachmentLinks from '@/components/AttachmentLinks';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ListResultFooter } from '@/components/common/ListResultFooter';
@@ -134,9 +134,6 @@ const formatAmount = (value?: number | null) => {
     maximumFractionDigits: 2,
   })}`;
 };
-
-const getAttachmentList = (attachmentUrl?: string) =>
-  normalizeAttachmentUrls(attachmentUrl);
 
 export const PaymentRequestPage: React.FC = () => {
   const { hasPermission } = useAuth();
@@ -815,27 +812,7 @@ export const PaymentRequestPage: React.FC = () => {
             </PaymentPanel>
 
             <PaymentPanel title="附件">
-              {getAttachmentList(detailPayment.attachmentUrl).length ? (
-                <div className="admin-dialog-stack">
-                  {getAttachmentList(detailPayment.attachmentUrl).map((url) => {
-                    const label = getAttachmentDisplayName(url);
-                    return (
-                      <a
-                        key={url}
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="admin-option-surface flex items-center gap-2 rounded-md border border-slate-200 bg-[var(--cf-surface-strong)] px-4 py-3 text-sm text-cf-body dark:border-slate-800 dark:bg-slate-950"
-                      >
-                        <Paperclip size={14} />
-                        <span className="truncate">{label}</span>
-                      </a>
-                    );
-                  })}
-                </div>
-              ) : (
-                <InlineState title="暂无附件" className="py-5" icon={<Paperclip className="h-4 w-4" />} />
-              )}
+              <AttachmentLinks value={detailPayment.attachmentUrl} downloadContext={{ bizType: 'OA_PAYMENT_REQUEST', bizId: String(detailPayment.id) }} />
             </PaymentPanel>
           </>
         ) : null}

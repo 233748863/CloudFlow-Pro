@@ -1,0 +1,50 @@
+@media (max-width: 760px) {
+  .oa-timesheet-matrix .table-scroll-container,
+  .oa-timesheet-matrix .table-wrapper {
+    overflow: visible !important;
+    border: 0;
+  }
+  .oa-timesheet-matrix .unity-data-table,
+  .oa-timesheet-matrix .unity-data-table tbody {
+    display: block !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .oa-timesheet-matrix .unity-data-table thead { display: none; }
+  .oa-timesheet-matrix .unity-data-table tr.oa-ops-week {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--cf-border);
+  }
+  .oa-timesheet-matrix .unity-data-table tr.oa-ops-week td {
+    position: static !important;
+    display: block !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+    border: 0;
+    background: transparent !important;
+    box-shadow: none !important;
+    white-space: normal !important;
+  }
+  .oa-timesheet-matrix .unity-data-table tr.oa-ops-week td:nth-child(-n+3),
+  .oa-timesheet-matrix .unity-data-table tr.oa-ops-week td:last-child { grid-column: 1 / -1; }
+  .oa-timesheet-matrix .unity-data-table tr.oa-ops-week td::before {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--cf-fg-muted);
+    font-size: 12px;
+    content: attr(data-field-label);
+  }
+  .oa-timesheet-matrix .unity-data-table tr.oa-ops-week input,
+  .oa-timesheet-matrix .unity-data-table tr.oa-ops-week select,
+  .oa-timesheet-matrix .unity-data-table tr.oa-ops-week textarea {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+}

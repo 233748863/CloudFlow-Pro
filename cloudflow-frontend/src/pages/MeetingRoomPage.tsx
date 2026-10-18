@@ -19,6 +19,8 @@ import { Button, DatePicker, Input, SegmentedControl, SegmentedControlItem, Sele
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import './admin-meeting.css';
+import MeetingRuleFields, { initialMeetingRule } from './meeting/MeetingRuleFields';
+import { readMeetingEquipment } from '@/utils/meetingEquipment';
 
 // ==================== 类型定义 ====================
 interface UserBrief {
@@ -729,19 +731,19 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
 
 // ==================== 会议室表单弹窗 ====================
 const RoomFormModal: React.FC<{
-  visible: boolean; room: Partial<MeetingRoom> | null; onClose: () => void; onSubmit: (room: Partial<MeetingRoom>) => void;
+  visible: boolean; room: Partial<MeetingRoom> | null; onClose: () => void; onSubmit: (room: Partial<MeetingRoom>) => Promise<void>;
 }> = ({ visible, room, onClose, onSubmit }) => {
   const [form, setForm] = useState<Partial<MeetingRoom>>({ name: '', capacity: 10, location: '', equipment: '[]', status: '1' });
   const [equipmentInput, setEquipmentInput] = useState('');
+  const [rule, setRule] = useState(initialMeetingRule);
+  const [ruleConfirmed, setRuleConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setRule(initialMeetingRule()); setRuleConfirmed(false);
     if (room) { 
       setForm({ ...room }); 
-      try { 
-        setEquipmentInput(JSON.parse(room.equipment || '[]').join(', ')); 
-      } catch { 
-        setEquipmentInput(''); 
-      } 
+      setEquipmentInput(readMeetingEquipment(room.equipment).join(', '));
     } else { 
       setForm({ name: '', capacity: 10, location: '', equipment: '[]', status: '1' }); 
       setEquipmentInput(''); 
@@ -750,12 +752,18 @@ const RoomFormModal: React.FC<{
 
   if (!visible) return null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (saving) return;
     if (!form.name?.trim()) { toast.error('请输入会议室名称'); return; }
     if (!form.location?.trim()) { toast.error('请输入会议室位置'); return; }
     if (!form.capacity || form.capacity <= 0) { toast.error('请输入有效的容纳人数'); return; }
-    const eqArr = equipmentInput.split(/[,，]/).map(s => s.trim()).filter(Boolean);
-    onSubmit({ ...form, equipment: JSON.stringify(eqArr) });
+    if (!room?.roomId && !ruleConfirmed) { toast.error('请先核对并确认新会议室的预约规则'); return; }
+    const equipment = equipmentInput.split(/[,，]/).map((value) => value.trim()).filter(Boolean);
+    const { confirmExistingConflicts: ignoredConfirmation, impactDigest: ignoredImpact, version: ignoredVersion, ...bookingRule } = rule;
+    void ignoredConfirmation; void ignoredImpact; void ignoredVersion;
+    setSaving(true);
+    try { await onSubmit({ ...form, ...(!room?.roomId ? { ...bookingRule, equipmentTags: JSON.stringify(rule.equipmentTags), bookableWeekdays: JSON.stringify(rule.bookableWeekdays) } : {}), equipment: JSON.stringify(equipment) }); }
+    finally { setSaving(false); }
   };
 
   const isEdit = room && room.roomId;
@@ -776,20 +784,21 @@ const RoomFormModal: React.FC<{
           会议室配置
         </span>
       )}
-      onClose={onClose}
-      maxWidthClassName="w-full max-w-lg"
-      bodyClassName="admin-dialog-stack"
+      onClose={() => { if (!saving) onClose(); }}
+      maxWidthClassName={isEdit ? 'w-full max-w-lg' : 'w-full max-w-4xl'}
+      bodyClassName="admin-dialog-stack meeting-dialog"
       footer={(
         <>
-          <Button variant="outline" size="lg" onClick={onClose}>
+          <Button variant="outline" size="lg" disabled={saving} onClick={onClose}>
             取消
           </Button>
-          <Button size="lg" onClick={handleSubmit}>
-            <CheckCircle2 size={16} className="mr-2" />{isEdit ? '保存修改' : '确认新增'}
+          <Button size="lg" disabled={saving || (!isEdit && !ruleConfirmed)} onClick={() => void handleSubmit()}>
+            <CheckCircle2 size={16} className="mr-2" />{saving ? '保存中…' : isEdit ? '保存修改' : '确认新增'}
           </Button>
         </>
       )}
     >
+          <fieldset disabled={saving} className="admin-dialog-stack">
           <div className="admin-dialog-field">
             <label className="text-xs font-medium text-cf-subtle">会议室名称 <span className="text-red-500">*</span></label>
             <Input className="h-12" type="text" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：大会议室A" />
@@ -821,12 +830,20 @@ const RoomFormModal: React.FC<{
               </SelectContent>
             </Select>
           </div>
+          {isEdit ? <p className="text-sm text-cf-subtle">本次保存基本信息；预约规则和照片在会议室看板中维护，并核对已有预约影响。</p> : <section className="space-y-5 border-t border-cf-border pt-5">
+            <h3 className="font-medium">新会议室预约规则</h3>
+            <MeetingRuleFields rule={rule} busy={saving} onChange={(values) => { setRule((previous) => ({ ...previous, ...values })); setRuleConfirmed(false); }} />
+            <label className="meeting-checkbox"><input type="checkbox" checked={ruleConfirmed} onChange={(event) => setRuleConfirmed(event.target.checked)} />已核对开放时段、时长、审批及会后间隔规则</label>
+            <p className="text-xs text-cf-subtle">保存会议室后，可在会议室看板的预约规则中上传私有照片。</p>
+          </section>}
+          </fieldset>
     </BaseDialog>
   );
 };
 
 // ==================== 主页面 ====================
 export const MeetingRoomPage = () => {
+  const { confirmSchedule, conflictDialog } = useMeetingConflictConsent();
   const [activeTab, setActiveTab] = useState<TabType>('rooms');
   const [rooms, setRooms] = useState<MeetingRoom[]>([]);
   const [loading, setLoading] = useState(false);
@@ -852,6 +869,9 @@ export const MeetingRoomPage = () => {
   const [roomBookingsMap, setRoomBookingsMap] = useState<Record<string, SysScheduleEvent[]>>({});
   const [weekCalendarRoom, setWeekCalendarRoom] = useState<MeetingRoom | null>(null);
   const [myBookings, setMyBookings] = useState<SysScheduleEvent[]>([]);
+  const [cancellingBooking, setCancellingBooking] = useState<SysScheduleEvent | null>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [cancellationPending, setCancellationPending] = useState(false);
   const [bookingsFilter, setBookingsFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming');
   const [stats, setStats] = useState<RoomUsageStats[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | RoomRealtimeStatus>('all');
@@ -996,7 +1016,7 @@ export const MeetingRoomPage = () => {
       return;
     }
     try {
-      await createEvent({
+      const payload: Partial<SysScheduleEvent> = {
         title: bookingForm.title, 
         description: bookingForm.description,
         startTime: startDateTime, 
@@ -1005,7 +1025,10 @@ export const MeetingRoomPage = () => {
         type: 'MEETING', 
         roomId: selectedRoom.roomId,
         attendees: JSON.stringify(selectedAttendees)
-      });
+      };
+      const confirmed = await confirmSchedule(payload);
+      if (confirmed === undefined) return;
+      await createEvent({ ...payload, confirmParticipantConflicts: confirmed });
       toast.success("预订成功");
       setSelectedRoom(null);
       setBookingForm({ title: '', date: getLocalDateString(), startTime: '09:00', endTime: '10:00', description: '' });
@@ -1022,14 +1045,22 @@ export const MeetingRoomPage = () => {
     }
   };
 
-  const handleCancelBooking = async (eventId: string) => {
+  const handleCancelBooking = async () => {
+    if (!cancellingBooking || cancellationPending) return;
+    if (typeof cancellingBooking.version !== 'number') { toast.error('预约版本缺失，请刷新后重试'); return; }
+    if (!cancellationReason.trim()) { toast.error('请填写取消原因'); return; }
+    setCancellationPending(true);
     try {
-      await cancelBooking(Number(eventId));
+      await cancelBooking(cancellingBooking.eventId, cancellingBooking.version, cancellationReason.trim());
       toast.success("预订已取消");
+      setCancellingBooking(null);
+      setCancellationReason('');
       fetchMyBookings();
       setRefreshKey(prev => prev + 1);
     } catch (e: any) {
       toast.error("取消失败: " + (e.response?.data?.msg || e.message || "未知错误"));
+    } finally {
+      setCancellationPending(false);
     }
   };
 
@@ -1068,7 +1099,8 @@ export const MeetingRoomPage = () => {
   const handleDeleteConfirm = async () => {
     if (!deletingRoom) return;
     try {
-      await deleteMeetingRoom(deletingRoom.roomId.toString());
+      if (typeof deletingRoom.version !== 'number') { toast.error('会议室版本缺失，请刷新后重试'); return; }
+      await deleteMeetingRoom(deletingRoom.roomId.toString(), deletingRoom.version);
       toast.success("会议室已删除"); 
       setDeleteConfirmVisible(false); 
       setDeletingRoom(null); 
@@ -1091,18 +1123,10 @@ export const MeetingRoomPage = () => {
     setSelectedAttendees([]);
   };
 
-  const parseEquipment = (json: string) => { 
-    try { 
-      return JSON.parse(json); 
-    } catch { 
-      return []; 
-    } 
-  };
-
   const filteredRooms = rooms.filter(room => {
     const matchesSearch = !searchQuery || 
       room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      room.location.toLowerCase().includes(searchQuery.toLowerCase());
+      (room.location || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     if (!matchesSearch) return false;
     
@@ -1272,7 +1296,7 @@ export const MeetingRoomPage = () => {
           const realtimeStatus = getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []);
           const statusCfg = roomStatusConfig[realtimeStatus];
           const StatusIcon = realtimeStatus === 'available' ? CheckCircle2 : realtimeStatus === 'in-use' ? Clock : XCircle;
-          const equipmentList = parseEquipment(room.equipment);
+          const equipmentList = readMeetingEquipment(room.equipment);
           const todayCount = roomBookingsMap[room.roomId]?.length || 0;
 
           return (
@@ -1392,7 +1416,7 @@ export const MeetingRoomPage = () => {
         {myBookings.map((booking) => {
           const room = rooms.find(r => r.roomId === booking.roomId);
           const start = new Date(booking.startTime);
-          const canCancel = start > now;
+          const canCancel = start > now && booking.status === 'PLANNED';
 
           return (
             <article
@@ -1430,7 +1454,7 @@ export const MeetingRoomPage = () => {
 
                 <div className="flex items-center justify-start lg:justify-end">
                   {canCancel ? (
-                    <Button variant="destructive" size="sm" onClick={() => handleCancelBooking(booking.eventId)}>
+                    <Button variant="destructive" size="sm" onClick={() => { setCancellingBooking(booking); setCancellationReason(''); }}>
                       取消预订
                     </Button>
                   ) : (
@@ -1798,7 +1822,22 @@ export const MeetingRoomPage = () => {
       />
 
       {/* 周日历弹窗 */}
+      <ConfirmDialog
+        open={Boolean(cancellingBooking)}
+        title="取消会议预约"
+        message={`确认取消“${cancellingBooking?.title || ''}”吗？取消记录与已有出席事实保留。`}
+        confirmText={cancellationPending ? '正在取消…' : '确认取消'}
+        danger
+        onConfirm={() => void handleCancelBooking()}
+        onCancel={() => { if (!cancellationPending) setCancellingBooking(null); }}
+      >
+        <label htmlFor="meeting-cancellation-reason" className="text-sm text-cf-muted">取消原因</label>
+        <Textarea id="meeting-cancellation-reason" value={cancellationReason} maxLength={500} disabled={cancellationPending}
+          onChange={event => setCancellationReason(event.target.value)} className="min-h-11" />
+      </ConfirmDialog>
       {weekCalendarRoom && <WeekCalendar room={weekCalendarRoom} onClose={() => setWeekCalendarRoom(null)} onBookRoom={handleWeekCalendarBook} />}
+      {conflictDialog}
     </>
   );
 };
+import { useMeetingConflictConsent } from './meeting/useMeetingConflictConsent';

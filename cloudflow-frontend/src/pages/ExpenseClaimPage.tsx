@@ -1,7 +1,8 @@
+import { PrintButton } from '@/components/printing/PrintButton';
 import React, { useEffect, useMemo, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
-import { CheckCircle2, Clock3, Download, Edit, Eye, Paperclip, Plus, Receipt, RefreshCw, RotateCcw, Search, Send, Trash2 } from 'lucide-react';
+import { CheckCircle2, Clock3, Download, Edit, Eye, Plus, Receipt, RefreshCw, RotateCcw, Search, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '@/services/api/expense';
 import { crmApi, CrmCustomer } from '@/services/api/crm';
@@ -12,7 +13,7 @@ import FileUpload from '@/components/FileUpload';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
+import AttachmentLinks from '@/components/AttachmentLinks';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ListResultFooter } from '@/components/common/ListResultFooter';
@@ -89,9 +90,6 @@ const createDefaultForm = (): ExpenseClaimForm => ({
   description: '',
   items: [createDefaultItem()],
 });
-
-const getReceiptList = (receiptUrl?: string) =>
-  normalizeAttachmentUrls(receiptUrl);
 
 const expenseItemControlClass = '!h-10 h-10 min-h-10';
 
@@ -912,11 +910,10 @@ export const ExpenseClaimPage: React.FC = () => {
         panelClassName="admin-expense-detail-dialog"
         bodyClassName="admin-dialog-stack admin-expense-detail-dialog-body"
         footerClassName="admin-expense-detail-dialog-footer"
-        footer={(
-          <Button variant="outline" onClick={closeDetailDialog}>
-            关闭
-          </Button>
-        )}
+        footer={<>
+          {detailClaim && <PrintButton bizType="EXPENSE_CLAIM" bizId={detailClaim.id} disabled={detailLoading} />}
+          <Button variant="outline" onClick={closeDetailDialog}>关闭</Button>
+        </>}
       >
         {detailLoading ? (
           <InlineState title="正在加载报销详情..." className="py-12" icon={<Clock3 className="h-4 w-4 animate-spin" />} />
@@ -980,27 +977,7 @@ export const ExpenseClaimPage: React.FC = () => {
                           <td>{renderDetailValue(item.expenseDate)}</td>
                           <td>{renderDetailValue(item.description)}</td>
                           <td>
-                            {getReceiptList(item.receiptUrl).length ? (
-                              <div className="flex flex-col gap-1.5">
-                                {getReceiptList(item.receiptUrl).map((url) => {
-                                  const label = getAttachmentDisplayName(url) || '凭证附件';
-                                  return (
-                                    <a
-                                      key={url}
-                                      href={url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="inline-flex items-center gap-1.5 text-cyan-700 underline decoration-dashed underline-offset-4 hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200"
-                                    >
-                                      <Paperclip className="h-3.5 w-3.5" />
-                                      <span className="truncate">{label}</span>
-                                    </a>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              '-'
-                            )}
+                            <AttachmentLinks value={item.receiptUrl} compact emptyText="-" previewContext={{ bizType: 'OA_EXPENSE', bizId: String(detailClaim.id), childId: item.id }} />
                           </td>
                         </tr>
                       ))}

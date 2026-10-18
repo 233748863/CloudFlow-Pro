@@ -22,7 +22,8 @@ import { ProcessTrace } from '@/components/ProcessTrace';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
+import { normalizeAttachmentUrls } from '@/utils/attachment';
+import AttachmentLinks from '@/components/AttachmentLinks';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ListResultFooter } from '@/components/common/ListResultFooter';
@@ -957,21 +958,7 @@ export const BusinessTripPage: React.FC = () => {
             <DetailSection title="附件">
               {getAttachmentList(detailTrip.attachmentUrl).length ? (
                 <div className="admin-dialog-link-list">
-                  {getAttachmentList(detailTrip.attachmentUrl).map((url) => {
-                    const label = getAttachmentDisplayName(url);
-                    return (
-                      <a
-                        key={url}
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="admin-dialog-link-card"
-                      >
-                        <Paperclip size={14} />
-                        <span className="truncate">{label}</span>
-                      </a>
-                    );
-                  })}
+                  <AttachmentLinks value={detailTrip.attachmentUrl} downloadContext={{ bizType: 'OA_BUSINESS_TRIP', bizId: String(detailTrip.id) }} />
                 </div>
               ) : (
                 <InlineState title="暂无附件" className="py-5" icon={<Paperclip className="h-4 w-4" />} />

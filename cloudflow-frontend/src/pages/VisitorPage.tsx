@@ -423,15 +423,11 @@ export const VisitorPage: React.FC = () => {
                   <td className="max-w-xs text-sm"><span className="line-clamp-1">{item.visitReason}</span></td>
                   <td>
                     {item.passCode ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2.5"
-                        onClick={() => setPassVisitor(item)}
-                        title={item.passCode}
-                      >
-                        <QrCode size={14} className="mr-1.5" />查看
-                      </Button>
+                      <div className="admin-users-row-actions">
+                        <button type="button" data-tooltip="查看通行证" aria-label="查看通行证" onClick={() => setPassVisitor(item)}>
+                          <QrCode size={15} />
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-sm text-cf-faint">-</span>
                     )}

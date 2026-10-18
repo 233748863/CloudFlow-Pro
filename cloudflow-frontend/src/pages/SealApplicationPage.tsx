@@ -477,7 +477,7 @@ export const SealApplicationPage: React.FC = () => {
                 </div>
               </div>
               <div>
-                <AttachmentLinks value={detailApplication.attachmentUrl} />
+                <AttachmentLinks value={detailApplication.attachmentUrl} downloadContext={{ bizType: 'OA_SEAL_APPLICATION', bizId: String(detailApplication.id) }} />
               </div>
             </section>
             {detailApplication.contractId ? (

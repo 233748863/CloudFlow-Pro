@@ -491,7 +491,7 @@ export const BorrowManagementPage: React.FC = () => {
                         <span className="text-xs text-cf-faint">{formatDateTimeDisplay(log.actionTime)}</span>
                       </div>
                       <div className="mt-1 text-sm text-cf-muted">{log.operatorName || '-'} / {log.remark || '-'}</div>
-                      {getAttachmentList(log.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={log.attachmentUrl} compact /></div> : null}
+                      {getAttachmentList(log.attachmentUrl).length && detailTarget ? <div className="mt-3"><AttachmentLinks value={log.attachmentUrl} compact downloadContext={{ bizType: detailTarget.kind === 'SEAL' ? 'OA_SEAL_HANDOVER' : 'OA_LICENSE_HANDOVER', bizId: String(detailTarget.id), childId: log.id }} /></div> : null}
                     </div>
                   ))}
                 </div>

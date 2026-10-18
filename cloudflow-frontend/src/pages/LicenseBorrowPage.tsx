@@ -434,7 +434,7 @@ export const LicenseBorrowPage: React.FC = () => {
                 </div>
               </div>
               <div>
-                <AttachmentLinks value={detailBorrow.attachmentUrl} />
+                <AttachmentLinks value={detailBorrow.attachmentUrl} downloadContext={{ bizType: 'OA_LICENSE_BORROW', bizId: String(detailBorrow.id) }} />
               </div>
             </section>
           </div>

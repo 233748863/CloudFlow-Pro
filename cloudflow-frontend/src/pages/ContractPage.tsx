@@ -1,15 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getConfigIntSync } from '../hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Clock3, Edit, Eye, FileSignature, Link2, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
+import { useBusinessSearchFocus } from '@/hooks/useBusinessSearchFocus';
 import { toast } from 'sonner';
 import { AmountInput, BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import { ContractMilestoneSection } from '@/components/contract/ContractMilestoneSection';
 import FileUpload from '@/components/FileUpload';
+import ContractFulfilmentPanel from '@/components/oa/operations/ContractFulfilmentPanel';
+import ContractSettingsFields from '@/components/oa/operations/ContractSettingsFields';
+import ContractPerformancePanel from '@/components/oa/operations/ContractPerformancePanel';
+import ContractPortalPublicationPanel from '@/components/contract/ContractPortalPublicationPanel';
 import { contractApi, contractTemplateApi, OaContract, OaContractTemplate, OaRiskAlert } from '@/services/api/contractRisk';
 import { crmApi, CrmCustomer } from '@/services/api/crm';
 import { projectApi, Project } from '@/services/api/project';
@@ -22,6 +27,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import { ActivityBusinessButton } from '@/components/crm/operations/ActivityBusinessButton';
 
 const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 
@@ -154,7 +160,47 @@ export const ContractPage: React.FC = () => {
   const [sealApplications, setSealApplications] = useState<OaSealApplication[]>([]);
   const [linkSealId, setLinkSealId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formLoaded, setFormLoaded] = useState(true);
+  const [formError, setFormError] = useState('');
+  const [latestForm, setLatestForm] = useState<OaContract>();
+  const formOperation = useRef(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const detailRequest = useRef<AbortController | null>(null);
+  const [detailGuards, setDetailGuards] = useState({ performance: false, publication: false });
+  const detailProtected = detailGuards.performance || detailGuards.publication;
+  const detailProtection = useRef(false);
+  const protectionSources = useRef({ performance: false, publication: false });
+  const updateDetailProtection = useCallback((source: 'performance' | 'publication', protectedDraft: boolean) => {
+    const next = { ...protectionSources.current, [source]: protectedDraft };
+    protectionSources.current = next;
+    detailProtection.current = next.performance || next.publication;
+    setDetailGuards(next);
+  }, []);
+  const protectPerformance = useCallback((protectedDraft: boolean) => updateDetailProtection('performance', protectedDraft), [updateDetailProtection]);
+  const protectPublication = useCallback((protectedDraft: boolean) => updateDetailProtection('publication', protectedDraft), [updateDetailProtection]);
+  const closeDetail = useCallback((identityChanged = false) => {
+    if (identityChanged || !detailProtection.current) {
+      if (identityChanged) {
+        protectionSources.current = { performance: false, publication: false };
+        detailProtection.current = false;
+        setDetailGuards({ performance: false, publication: false });
+      }
+      detailRequest.current?.abort();
+      setDetail(null);
+    }
+  }, []);
+  const cancelSearchFocus = useBusinessSearchFocus(async (identifier, signal) => {
+    if (detailProtection.current) {
+      toast.warning('请先保存或放弃当前合同的修改，再打开搜索详情。');
+      return;
+    }
+    await openDetail({ contractId: identifier } as OaContract, signal);
+  }, closeDetail);
+  const closeFocusedDetail = () => {
+    if (!detailProtection.current) cancelSearchFocus();
+  };
+  useEffect(() => () => detailRequest.current?.abort(), []);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [projectOptions, setProjectOptions] = useState<Project[]>([]);
   const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
@@ -238,18 +284,35 @@ export const ContractPage: React.FC = () => {
   const openRiskCount = useMemo(() => risks.filter((item) => item.riskStatus === 'OPEN' || item.riskStatus === 'HANDLING').length, [risks]);
 
   const openCreate = () => {
+    if (formOperation.current) return;
+    setFormError(''); setLatestForm(undefined); setFormLoaded(true);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
-  const openEdit = (item: OaContract) => {
+  const openEdit = async (item: OaContract) => {
+    if (formOperation.current || !item.contractId) return;
+    formOperation.current = true; setFormLoading(true); setFormLoaded(false); setFormError(''); setLatestForm(undefined);
     setForm({ ...item });
     setDialogOpen(true);
+    try { setForm(await contractApi.getInfo(item.contractId)); setFormLoaded(true); }
+    catch (error) { setFormError(getErrorMessage(error, '读取合同失败，请关闭后重试')); }
+    finally { formOperation.current = false; setFormLoading(false); }
   };
 
   const closeDialog = () => {
+    if (formOperation.current) return;
     setDialogOpen(false);
     setForm(emptyForm);
+    setFormError(''); setLatestForm(undefined);
+  };
+
+  const checkLatestForm = async () => {
+    if (formOperation.current || !form.contractId) return;
+    formOperation.current = true; setFormLoading(true);
+    try { setLatestForm(await contractApi.getInfo(form.contractId)); }
+    catch (error) { setFormError(getErrorMessage(error, '核对最新合同失败，草稿已保留')); }
+    finally { formOperation.current = false; setFormLoading(false); }
   };
 
   const handlePickTemplate = (templateIdStr: string) => {
@@ -300,33 +363,49 @@ export const ContractPage: React.FC = () => {
     }
   };
 
-  const openDetail = async (item: OaContract) => {
+  const openDetail = async (item: OaContract, signal?: AbortSignal) => {
+    detailRequest.current?.abort();
+    const controller = new AbortController();
+    detailRequest.current = controller;
+    const cancel = () => controller.abort();
+    if (signal?.aborted) { controller.abort(); return; }
+    signal?.addEventListener('abort', cancel, { once: true });
     setDetail(item);
     setRisks([]);
+    setSealApplications([]);
     setLinkSealId('');
     setDetailLoading(true);
     try {
       const [contract, riskResult, sealResult] = await Promise.all([
-        contractApi.getInfo(item.contractId!),
-        contractApi.risks(item.contractId!),
-        sealApplicationApi.list({ pageNum: 1, pageSize: 50, status: 'APPROVED' }),
+        contractApi.getInfo(item.contractId!, controller.signal),
+        contractApi.risks(item.contractId!, controller.signal),
+        hasPermission('oa:seal:list')
+          ? sealApplicationApi.list({ pageNum: 1, pageSize: 50, status: 'APPROVED' }, controller.signal)
+          : Promise.resolve({ rows: [], total: 0 } as PageResult<OaSealApplication>),
       ]);
+      if (controller.signal.aborted) return;
+      if (!contract || Number(contract.contractId) !== Number(item.contractId)) throw new Error('合同已删除或无权查看。');
       setDetail(contract);
       setRisks(riskResult);
       setSealApplications(normalizeRows(sealResult));
     } catch (error) {
-      toast.error(getErrorMessage(error, '获取合同详情失败'));
+      if (!controller.signal.aborted) {
+        setDetail(null);
+        toast.error(getErrorMessage(error, '获取合同详情失败'));
+      }
     } finally {
-      setDetailLoading(false);
+      signal?.removeEventListener('abort', cancel);
+      if (detailRequest.current === controller) setDetailLoading(false);
     }
   };
 
   const saveForm = async () => {
+    if (formOperation.current || !formLoaded) return;
     if (!form.contractName.trim() || !form.counterpartyName.trim() || !form.contractType || Number(form.amount) < 0) {
       toast.warning('请补全合同名称、相对方、合同类型和金额');
       return;
     }
-    setSaving(true);
+    formOperation.current = true; setSaving(true); setFormError(''); setLatestForm(undefined);
     try {
       if (form.contractId) {
         await contractApi.edit(form);
@@ -334,12 +413,13 @@ export const ContractPage: React.FC = () => {
         await contractApi.add(form);
       }
       toast.success('保存成功');
-      closeDialog();
+      setDialogOpen(false); setForm(emptyForm);
       await fetchRows();
     } catch (error) {
-      toast.error(getErrorMessage(error, '保存合同失败'));
+      const message = getErrorMessage(error, '保存合同失败');
+      setFormError(message); toast.error(message);
     } finally {
-      setSaving(false);
+      formOperation.current = false; setSaving(false);
     }
   };
 
@@ -544,12 +624,24 @@ export const ContractPage: React.FC = () => {
         width="wide"
         footer={(
           <>
-            <Button variant="outline" onClick={closeDialog}>取消</Button>
-            <Button onClick={() => void saveForm()} disabled={saving}>保存</Button>
+            <Button className="!min-h-[44px] !min-w-[44px]" variant="outline" onClick={closeDialog} disabled={saving || formLoading}>取消</Button>
+            <Button className="!min-h-[44px] !min-w-[44px]" onClick={() => void saveForm()} disabled={saving || formLoading || !formLoaded}>保存</Button>
           </>
         )}
       >
-        <div className="admin-dialog-stack">
+        {formLoading && <p role="status" className="text-sm text-cf-muted">正在读取合同当前版本…</p>}
+        {formError && <div className="space-y-2 rounded-md border p-3 text-sm"><p role="alert">{formError} 未保存内容仍保留。</p>
+          {form.contractId && formLoaded && <Button className="!min-h-[44px]" variant="outline" disabled={saving || formLoading} onClick={() => void checkLatestForm()}>核对最新合同，保留草稿</Button>}</div>}
+        {latestForm && <div className="space-y-2 rounded-md border p-3 text-sm" aria-label="合同版本冲突核对">
+          <p>已保存：{latestForm.contractName} · {latestForm.currency} {latestForm.amount} · 版本 {latestForm.version}；{latestForm.currencyLocked ? '已有历史分成，币种和客户来源已锁定' : '尚未锁定币种'}。</p>
+          <Button className="!min-h-[44px]" variant="outline" disabled={saving || formLoading} onClick={() => {
+            setForm(previous => ({ ...previous, version: latestForm.version, currencyLocked: latestForm.currencyLocked, signedFlag: latestForm.signedFlag,
+              ...(latestForm.currencyLocked || latestForm.signedFlag === 1 ? { currency: latestForm.currency, customerId: latestForm.customerId,
+                customerName: latestForm.customerName, sourceType: latestForm.sourceType, sourceId: latestForm.sourceId } : {}) }));
+            setLatestForm(undefined); setFormError('');
+          }}>采用最新版本及已锁定信息，保留其他草稿</Button>
+        </div>}
+        <fieldset disabled={saving || formLoading || !formLoaded} className="admin-dialog-stack">
           <ContractPanel title="合同信息" bodyClassName="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="admin-dialog-field">
               <Label>合同编号</Label>
@@ -603,6 +695,13 @@ export const ContractPage: React.FC = () => {
                 onValueChange={(amount) => setForm((prev) => ({ ...prev, amount: amount ?? 0 }))}
                 placeholder="0.00"
               />
+            </div>
+            <div className="admin-dialog-field">
+              <Label htmlFor="contract-currency">币种</Label>
+              <Input id="contract-currency" className="!min-h-[44px]" value={form.currency || ''} maxLength={3}
+                disabled={!!form.currencyLocked || form.signedFlag === 1} onChange={event => setForm(previous => ({ ...previous, currency: event.target.value.toUpperCase() }))} />
+              {form.currencyLocked ? <p className="text-xs text-cf-muted">已有历史分成，币种已锁定；换币种请另建合同。</p>
+                : form.signedFlag === 1 ? <p className="text-xs text-cf-muted">已签署合同的币种已锁定。</p> : <p className="text-xs text-cf-muted">填写三位币种代码，如 CNY、USD；系统不自动换算金额。</p>}
             </div>
             <div className="admin-dialog-field">
               <Label>风险等级</Label>
@@ -698,6 +797,7 @@ export const ContractPage: React.FC = () => {
               </Select>
             </div>
           </ContractPanel>
+          <ContractPanel title="履约设置"><ContractSettingsFields value={form} onChange={setForm} /></ContractPanel>
           <ContractPanel title="附件" bodyClassName="grid gap-4 md:grid-cols-2">
             <div className="admin-dialog-field">
               <Label>合同附件</Label>
@@ -714,16 +814,17 @@ export const ContractPage: React.FC = () => {
               <Textarea className="min-h-[100px] resize-none" value={form.remark || ''} onChange={(event) => setForm((prev) => ({ ...prev, remark: event.target.value }))} />
             </div>
           </ContractPanel>
-        </div>
+        </fieldset>
       </BaseDialog>
 
       <BaseDialog
         open={Boolean(detail)}
         title={detail?.contractNo || '合同详情'}
-        onClose={() => setDetail(null)}
+        onClose={closeFocusedDetail}
+        hideCloseButton={detailProtected}
         width="wide"
-        headerAside={detail && !detailLoading ? getStatusBadge(detail.status) : null}
-        footer={<Button variant="outline" onClick={() => setDetail(null)}>关闭</Button>}
+        headerAside={detail && !detailLoading ? <span className="shrink-0 whitespace-nowrap">{getStatusBadge(detail.status)}</span> : null}
+        footer={<Button variant="outline" className="!min-h-[44px] !min-w-[44px]" disabled={detailProtected} onClick={closeFocusedDetail}>关闭</Button>}
       >
         {detailLoading ? (
           <div className="flex items-center justify-center py-12 text-sm text-cf-subtle">
@@ -731,13 +832,25 @@ export const ContractPage: React.FC = () => {
             正在加载合同详情...
           </div>
         ) : detail ? (
-          <div className="admin-dialog-stack">
-            <div className="admin-source-stat-grid">
+          <div className="admin-dialog-stack grid-cols-1">
+            {detail.contractId && <fieldset disabled={detailGuards.publication} className="min-w-0 border-0 p-0"><ContractPerformancePanel key={detail.contractId} contractId={detail.contractId}
+              onProtectionChange={protectPerformance} onConfirmed={result => {
+                setDetail(previous => previous ? { ...previous, startDate: result.startDate, version: result.businessVersion } : previous);
+                void fetchRows();
+              }} /></fieldset>}
+            {detail.contractId && hasPermission('oa:contract:edit') && <fieldset disabled={detailGuards.performance} className="min-w-0 border-0 p-0"><ContractPortalPublicationPanel key={detail.contractId} contractId={detail.contractId}
+              onProtectionChange={protectPublication} onSaved={result => {
+                setDetail(previous => previous ? { ...previous, version: result.version } : previous);
+                void fetchRows();
+              }} /></fieldset>}
+            <fieldset disabled={detailProtected} className="admin-dialog-stack min-w-0 grid-cols-1 border-0 p-0">
+            <div className="flex flex-wrap gap-3"><ActivityBusinessButton bizType="CONTRACT" bizId={detail.contractId} businessName={detail.contractName} customerId={detail.customerId} customerName={detail.customerName} disabled={detailProtected} /></div>
+            <section aria-label="合同概览" className="admin-source-stat-grid">
               <ContractMetric label="合同金额" value={`${detail.currency || 'CNY'} ${Number(detail.amount || 0).toLocaleString()}`} meta="合同详情" icon={<FileSignature size={18} />} tone="blue" />
               <ContractMetric label="风险等级" value={getRiskBadge(detail.riskLevel)} meta={`开放风险 ${openRiskCount}`} icon={<AlertTriangle size={18} />} tone="amber" />
               <ContractMetric label="合同状态" value={getStatusBadge(detail.status)} meta="当前流程" icon={<Send size={18} />} tone="green" />
               <ContractMetric label="附件数量" value={`${getAttachmentList(detail.attachmentUrl).length} 个`} meta="合同附件" icon={<Link2 size={18} />} tone="violet" />
-            </div>
+            </section>
 
             <DetailRows>
               {[
@@ -781,9 +894,9 @@ export const ContractPage: React.FC = () => {
                 </Select>
               </ContractPanel>
               <ContractPanel title="附件">
-                <AttachmentLinks value={detail.attachmentUrl} />
+                <AttachmentLinks value={detail.attachmentUrl} previewContext={{ bizType: 'OA_CONTRACT', bizId: String(detail.contractId), slot: 'attachment' }} />
                 <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-800">
-                  <AttachmentLinks value={detail.archiveAttachmentUrl} />
+                  <AttachmentLinks value={detail.archiveAttachmentUrl} previewContext={{ bizType: 'OA_CONTRACT', bizId: String(detail.contractId), slot: 'archive' }} />
                 </div>
               </ContractPanel>
             </div>
@@ -814,8 +927,10 @@ export const ContractPage: React.FC = () => {
             </ContractPanel>
 
             {detail.contractId ? <ContractMilestoneSection contractId={detail.contractId} /> : null}
+            <ContractFulfilmentPanel contract={detail} onChanged={() => void openDetail(detail)} />
 
             <BusinessTimeline businessType="CONTRACT" businessId={detail.contractId} />
+            </fieldset>
           </div>
         ) : null}
       </BaseDialog>

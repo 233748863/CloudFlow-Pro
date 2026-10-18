@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Edit, ExternalLink, Eye, FileCheck2, Plus, Receipt, RefreshCw, RotateCcw, Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { expenseClaimApi, paymentRequestApi, ExpenseClaim, PaymentRequest } from '@/services/api/expense';
@@ -14,7 +14,10 @@ import { getInvoiceDirectionLabel } from '@/utils/enumLabels';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import AttachmentLinks from '@/components/AttachmentLinks';
+import { FileUpload } from '@/components/FileUpload';
 import './InvoiceManagementPage.css';
+import FinancePublicationPanel from '@/components/finance/FinancePublicationPanel';
 
 type InvoiceDialog =
   | { type: 'invoice'; item?: Invoice | null }
@@ -52,8 +55,17 @@ const emptyWriteoff: InvoiceWriteoff = {
   remark: '',
 };
 
-const formatMoney = (value?: number) =>
-  `¥${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatMoney = (value?: number, currency = 'CNY') =>
+  `${currency === 'CNY' ? '¥' : `${currency} `}${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const InvoiceReceiptSummary: React.FC<{ invoice: Invoice }> = ({ invoice }) => (
+  <div className="invoice-receipt-summary" aria-label="到账汇总" aria-live="polite">
+    <div><span>{invoice.invoiceDirection === 'OUTPUT' ? '累计到账' : '累计核销'}</span><strong data-testid="invoice-received-total">{formatMoney(invoice.receivedAmount, invoice.currency)}</strong></div>
+    <div><span>剩余可登记</span><strong data-testid="invoice-receipt-remaining">{formatMoney(invoice.outstandingAmount, invoice.currency)}</strong></div>
+    {invoice.receivableId ? <p>累计到账已包含绑定前历史到账，请勿重复登记。</p> : null}
+    {Number(invoice.pendingReceivedAmount || 0) > 0 ? <p role="status">其中 {formatMoney(invoice.pendingReceivedAmount, invoice.currency)} 等待同步至CRM，已计入累计，请勿重复登记。</p> : null}
+  </div>
+);
 
 const InvoiceMetric: React.FC<{
   label: string;
@@ -100,11 +112,16 @@ export default function InvoiceManagementPage() {
   const [status, setStatus] = useState('');
   const [direction, setDirection] = useState('');
   const [dialog, setDialog] = useState<InvoiceDialog>(null);
+  const [financeProtected, setFinanceProtected] = useState(false);
   const [invoiceForm, setInvoiceForm] = useState<Invoice>(emptyInvoice);
   const [writeoffForm, setWriteoffForm] = useState<InvoiceWriteoff>(emptyWriteoff);
   const [writeoffHistory, setWriteoffHistory] = useState<InvoiceWriteoff[]>([]);
   const [bindTargetType, setBindTargetType] = useState<BindTargetType>('NONE');
   const [saving, setSaving] = useState(false);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
+  const [writeoffError, setWriteoffError] = useState('');
+  const [latestInvoice, setLatestInvoice] = useState<Invoice | null>(null);
+  const dialogRequest = useRef(0);
   const [voidTarget, setVoidTarget] = useState<Invoice | null>(null);
 
   const invoiceStatusDict = useDict('invoice_status');
@@ -139,8 +156,7 @@ export default function InvoiceManagementPage() {
       const result = await invoiceApi.list({
         pageNum: 1,
         pageSize: 100,
-        invoiceNo: keyword || undefined,
-        invoiceCode: keyword || undefined,
+        keyword: keyword || undefined,
         invoiceDirection: direction || undefined,
         status: status || undefined,
       });
@@ -153,10 +169,10 @@ export default function InvoiceManagementPage() {
   const loadBindings = async () => {
     try {
       const [expenseResult, paymentResult, receivableResult, contractResult] = await Promise.all([
-        expenseClaimApi.list({ pageNum: 1, pageSize: 100 }),
-        paymentRequestApi.list({ pageNum: 1, pageSize: 100 }),
-        crmApi.listReceivables({ pageNum: 1, pageSize: 100 }),
-        contractApi.list({ pageNum: 1, pageSize: 100 }),
+        hasPermission('oa:expense:list') ? expenseClaimApi.list({ pageNum: 1, pageSize: 100 }) : Promise.resolve(undefined),
+        hasPermission('oa:payment:list') ? paymentRequestApi.list({ pageNum: 1, pageSize: 100 }) : Promise.resolve(undefined),
+        hasPermission('crm:receivable:list') ? crmApi.listReceivables({ pageNum: 1, pageSize: 100 }) : Promise.resolve(undefined),
+        hasPermission('oa:contract:list') ? contractApi.list({ pageNum: 1, pageSize: 100 }) : Promise.resolve(undefined),
       ]);
       setExpenseClaims(resolvePageRows(expenseResult));
       setPaymentRequests(resolvePageRows(paymentResult));
@@ -176,7 +192,11 @@ export default function InvoiceManagementPage() {
   }, []);
 
   const openDialog = async (next: InvoiceDialog) => {
+    const requestId = ++dialogRequest.current;
     setDialog(next);
+    setLoadingInvoice(false);
+    setWriteoffError('');
+    setLatestInvoice(null);
     if (!next) {
       setInvoiceForm(emptyInvoice);
       setWriteoffForm(emptyWriteoff);
@@ -197,18 +217,26 @@ export default function InvoiceManagementPage() {
     }
     if (next.type === 'writeoff') {
       setInvoiceForm(next.item);
-      setWriteoffForm({
-        businessType: next.item.receivableId ? 'CRM_RECEIVABLE' : next.item.paymentRequestId ? 'PAYMENT_REQUEST' : 'EXPENSE_CLAIM',
-        businessId: next.item.receivableId || next.item.paymentRequestId || next.item.expenseClaimId || 0,
-        businessNo: next.item.receivableId ? next.item.contractNo : next.item.paymentRequestId ? next.item.paymentRequestId.toString() : next.item.expenseClaimId?.toString(),
-        writeoffAmount: Number(next.item.grossAmount || 0),
-        remark: '',
-      });
+      setWriteoffForm(emptyWriteoff);
+      setWriteoffHistory([]);
+      setLoadingInvoice(true);
       try {
-        const history = await invoiceApi.listWriteoffs(next.item.invoiceId!);
+        const [detail, history] = await Promise.all([invoiceApi.getInfo(next.item.invoiceId!), invoiceApi.listWriteoffs(next.item.invoiceId!)]);
+        if (requestId !== dialogRequest.current) return;
+        setInvoiceForm(detail);
+        setWriteoffForm({
+          businessType: detail.receivableId ? 'CRM_RECEIVABLE' : detail.paymentRequestId ? 'PAYMENT_REQUEST' : 'EXPENSE_CLAIM',
+          businessId: detail.receivableId || detail.paymentRequestId || detail.expenseClaimId || 0,
+          invoiceVersion: detail.version,
+          writeoffAmount: 0,
+          writeoffDate: new Intl.DateTimeFormat('sv-SE').format(new Date()),
+          remark: '',
+        });
         setWriteoffHistory(history);
       } catch (error) {
-        toast.error(getErrorMessage(error, '加载核销历史失败'));
+        if (requestId === dialogRequest.current) setWriteoffError(getErrorMessage(error, '加载最新到账失败，请核对最新到账后重试'));
+      } finally {
+        if (requestId === dialogRequest.current) setLoadingInvoice(false);
       }
       return;
     }
@@ -218,6 +246,7 @@ export default function InvoiceManagementPage() {
           invoiceApi.getInfo(next.item.invoiceId!),
           invoiceApi.listWriteoffs(next.item.invoiceId!),
         ]);
+        if (requestId !== dialogRequest.current) return;
         setInvoiceForm(detail);
         setWriteoffHistory(history);
       } catch (error) {
@@ -269,8 +298,15 @@ export default function InvoiceManagementPage() {
   };
 
   const saveWriteoff = async () => {
-    if (!invoiceForm.invoiceId) return;
+    if (!invoiceForm.invoiceId || saving || loadingInvoice || writeoffForm.invoiceVersion == null) return;
+    if (!Number.isFinite(writeoffForm.writeoffAmount) || writeoffForm.writeoffAmount <= 0
+      || writeoffForm.writeoffAmount > Number(invoiceForm.outstandingAmount || 0)
+      || !/^\d+(?:\.\d{1,2})?$/.test(String(writeoffForm.writeoffAmount))) {
+      setWriteoffError('本次金额须大于0、最多两位小数，且不能超过剩余可登记金额。');
+      return;
+    }
     setSaving(true);
+    setWriteoffError('');
     try {
       await invoiceApi.writeoff(invoiceForm.invoiceId, writeoffForm);
       toast.success('发票已核销');
@@ -278,11 +314,30 @@ export default function InvoiceManagementPage() {
       await load();
       await loadBindings();
     } catch (error) {
-      toast.error(getErrorMessage(error, '发票核销失败'));
+      setWriteoffError(getErrorMessage(error, '发票核销失败，输入已保留，请核对最新到账后重试'));
     } finally {
       setSaving(false);
     }
   };
+
+  const inspectLatestInvoice = async () => {
+    if (!invoiceForm.invoiceId || saving || loadingInvoice) return;
+    const requestId = dialogRequest.current;
+    setLoadingInvoice(true);
+    try {
+      const detail = await invoiceApi.getInfo(invoiceForm.invoiceId);
+      if (requestId === dialogRequest.current) setLatestInvoice(detail);
+    } catch (error) {
+      if (requestId === dialogRequest.current) setWriteoffError(getErrorMessage(error, '读取最新到账失败，输入已保留'));
+    } finally {
+      if (requestId === dialogRequest.current) setLoadingInvoice(false);
+    }
+  };
+
+  const writeoffAllowed = !saving && !loadingInvoice && !writeoffError && writeoffForm.invoiceVersion != null && writeoffForm.businessId > 0
+    && Number.isFinite(writeoffForm.writeoffAmount) && writeoffForm.writeoffAmount > 0
+    && writeoffForm.writeoffAmount <= Number(invoiceForm.outstandingAmount || 0)
+    && /^\d+(?:\.\d{1,2})?$/.test(String(writeoffForm.writeoffAmount)) && invoiceForm.status !== 'VOID';
 
   const statusBadge = (value?: string) => (
     <DictBadge dictType="invoice_status" value={value || ''} className="rounded-md px-2.5 py-1 font-semibold" />
@@ -292,7 +347,7 @@ export default function InvoiceManagementPage() {
     ? '销项发票 = 绑定 CRM 回款计划，自动带出客户和合同，并把核销状态回写到 CRM 回款和 OA 合同。'
     : '进项发票 = 绑定报销单或付款单，绑定和核销后会同步更新 OA 单据的发票汇总状态。';
   const metrics = [
-    { label: '发票总数', value: String(rows.length), meta: `含税 ${formatMoney(rows.reduce((sum, item) => sum + Number(item.grossAmount || 0), 0))}`, icon: <FileCheck2 size={18} />, tone: 'blue' },
+    { label: '发票总数', value: String(rows.length), meta: new Set(rows.map(item => item.currency || 'CNY')).size > 1 ? '多币种金额按票列示' : `含税 ${formatMoney(rows.reduce((sum, item) => sum + Number(item.grossAmount || 0), 0), rows[0]?.currency)}`, icon: <FileCheck2 size={18} />, tone: 'blue' },
     { label: '销项发票', value: String(rows.filter((item) => item.invoiceDirection === 'OUTPUT').length), meta: 'CRM 回款', icon: <Send size={18} />, tone: 'green' },
     { label: '进项发票', value: String(rows.filter((item) => item.invoiceDirection === 'INPUT').length), meta: '报销 / 付款', icon: <Receipt size={18} />, tone: 'violet' },
     { label: '已作废', value: String(rows.filter((item) => item.status === 'VOID').length), meta: '禁止核销', icon: <RotateCcw size={18} />, tone: 'amber' },
@@ -372,7 +427,7 @@ export default function InvoiceManagementPage() {
 
   const pageTable = (
     <InnerTableSurface>
-      <table className="unity-data-table admin-source-table finance-source-table admin-invoice-table">
+      <table role="table" aria-label="发票列表" className="unity-data-table admin-source-table finance-source-table admin-invoice-table">
           <colgroup>
             <col />
             <col />
@@ -382,8 +437,8 @@ export default function InvoiceManagementPage() {
             <col />
             <col />
           </colgroup>
-          <thead>
-            <tr>
+          <thead role="rowgroup">
+            <tr role="row">
               <th>发票</th>
               <th>方向</th>
               <th>金额</th>
@@ -393,37 +448,38 @@ export default function InvoiceManagementPage() {
               <th className="text-right">操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             {rows.map((item) => (
-              <tr key={item.invoiceId}>
-                <td>
+              <tr role="row" className="invoice-record-row" key={item.invoiceId}>
+                <td role="cell" data-label="发票">
                   <strong>{item.invoiceCode} / {item.invoiceNo}</strong>
                   <div className="text-xs text-cf-subtle">{item.invoiceType || '未分类'} / {item.invoiceDate || '-'}</div>
                 </td>
-                <td>{getInvoiceDirectionLabel(item.invoiceDirection || 'OUTPUT')}</td>
-                <td>
-                  <div>{formatMoney(item.grossAmount)}</div>
-                  <div className="text-xs text-cf-subtle">税额 {formatMoney(item.taxAmount)}</div>
+                <td role="cell" data-label="方向">{getInvoiceDirectionLabel(item.invoiceDirection || 'OUTPUT')}</td>
+                <td role="cell" data-label="金额">
+                  <div>{formatMoney(item.grossAmount, item.currency)}</div>
+                  <div className="text-xs text-cf-subtle">税额 {formatMoney(item.taxAmount, item.currency)}</div>
+                  {item.receivableId ? <div className="text-xs text-cf-subtle">累计到账 {formatMoney(item.receivedAmount, item.currency)}</div> : null}
                 </td>
-                <td>
+                <td role="cell" data-label="购方 / 销方">
                   <div>{item.buyerName || '-'}</div>
                   <div className="text-xs text-cf-subtle">{item.sellerName || '-'}</div>
                 </td>
-                <td>
+                <td role="cell" data-label="绑定对象">
                   <div>{item.contractNo || '-'}</div>
                   <div className="text-xs text-cf-subtle">
                     回款 {item.receivableId || '-'} / 报销 {item.expenseClaimId || '-'} / 付款 {item.paymentRequestId || '-'}
                   </div>
                 </td>
-                <td>{statusBadge(item.status)}</td>
-                <td>
+                <td role="cell" data-label="状态">{statusBadge(item.status)}</td>
+                <td role="cell" data-label="操作">
                   <div className="admin-users-row-actions">
-                    <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDialog({ type: 'detail', item })}><Eye size={15} /></button>
-                    {hasPermission('oa:invoice:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'invoice', item })}><Edit size={15} /></button> : null}
-                    {item.status !== 'VOID' && hasPermission('oa:invoice:bind') ? <button type="button" data-tooltip="绑定业务" aria-label="绑定业务" onClick={() => void openDialog({ type: 'bind', item })}><Send size={15} /></button> : null}
-                    {item.status !== 'VOID' && hasPermission('oa:invoice:writeoff') ? <button type="button" data-tooltip="核销发票" aria-label="核销发票" onClick={() => void openDialog({ type: 'writeoff', item })}><Receipt size={15} /></button> : null}
-                    {item.status !== 'VOID' && hasPermission('oa:invoice:void') ? <button type="button" className="danger" data-tooltip="作废发票" aria-label="作废发票" onClick={() => setVoidTarget(item)}><RotateCcw size={15} /></button> : null}
-                    {item.externalLinkUrl ? <button type="button" data-tooltip="打开外链" aria-label="打开外链" onClick={() => window.open(item.externalLinkUrl, '_blank', 'noopener,noreferrer')}><ExternalLink size={15} /></button> : null}
+                    <button type="button" data-tooltip="详情" aria-label="详情" onClick={() => void openDialog({ type: 'detail', item })}><Eye size={15} /><span className="invoice-action-label">详情</span></button>
+                    {hasPermission('oa:invoice:edit') ? <button type="button" data-tooltip="编辑" aria-label="编辑" onClick={() => void openDialog({ type: 'invoice', item })}><Edit size={15} /><span className="invoice-action-label">编辑</span></button> : null}
+                    {item.status !== 'VOID' && hasPermission('oa:invoice:bind') ? <button type="button" data-tooltip="绑定业务" aria-label="绑定业务" onClick={() => void openDialog({ type: 'bind', item })}><Send size={15} /><span className="invoice-action-label">绑定业务</span></button> : null}
+                    {item.status !== 'VOID' && hasPermission('oa:invoice:writeoff') ? <button type="button" data-tooltip="核销发票" aria-label="核销发票" onClick={() => void openDialog({ type: 'writeoff', item })}><Receipt size={15} /><span className="invoice-action-label">核销发票</span></button> : null}
+                    {item.status !== 'VOID' && hasPermission('oa:invoice:void') ? <button type="button" className="danger" data-tooltip="作废发票" aria-label="作废发票" onClick={() => setVoidTarget(item)}><RotateCcw size={15} /><span className="invoice-action-label">作废发票</span></button> : null}
+                    {item.externalLinkUrl ? <button type="button" data-tooltip="打开外链" aria-label="打开外链" onClick={() => window.open(item.externalLinkUrl, '_blank', 'noopener,noreferrer')}><ExternalLink size={15} /><span className="invoice-action-label">打开外链</span></button> : null}
                   </div>
                 </td>
               </tr>
@@ -505,6 +561,8 @@ export default function InvoiceManagementPage() {
               <Input value={invoiceForm.externalLinkUrl || ''} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, externalLinkUrl: e.target.value }))} placeholder="例如：https://tax.example.com/invoice/CRM-INV-8801" />
             </div>
             <div className="md:col-span-2">
+              <Label className={fieldLabelClassName}>发票扫描件</Label>
+              <FileUpload value={invoiceForm.imageUrl || ''} onChange={imageUrl => setInvoiceForm(previous => ({ ...previous, imageUrl }))} maxCount={1} accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" />
               <Label className={fieldLabelClassName}>备注</Label>
               <Textarea value={invoiceForm.remark || ''} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, remark: e.target.value }))} placeholder="例如：景曜科技首期回款对应销项发票" />
             </div>
@@ -515,16 +573,23 @@ export default function InvoiceManagementPage() {
       <BaseDialog
         open={dialog?.type === 'detail'}
         title={`${invoiceForm.invoiceCode || ''} / ${invoiceForm.invoiceNo || '发票详情'}`}
-        onClose={() => void openDialog(null)}
+        onClose={() => { if (!financeProtected) void openDialog(null); }}
+        hideCloseButton={financeProtected}
+        closeOnEscape={!financeProtected}
         width="wide"
       >
         <div className="admin-dialog-stack">
           <div className="admin-source-stat-grid">
             <InvoiceMetric label="发票方向" value={getInvoiceDirectionLabel(invoiceForm.invoiceDirection || 'OUTPUT')} meta="业务流向" icon={<FileCheck2 size={18} />} tone="blue" />
             <InvoiceMetric label="发票状态" value={statusBadge(invoiceForm.status)} meta="当前状态" icon={<Receipt size={18} />} tone="amber" />
-            <InvoiceMetric label="含税金额" value={formatMoney(invoiceForm.grossAmount)} meta="票面金额" icon={<Send size={18} />} tone="green" />
-            <InvoiceMetric label="税额" value={formatMoney(invoiceForm.taxAmount)} meta="税额合计" icon={<RotateCcw size={18} />} tone="violet" />
+            <InvoiceMetric label="含税金额" value={formatMoney(invoiceForm.grossAmount, invoiceForm.currency)} meta="票面金额" icon={<Send size={18} />} tone="green" />
+            <InvoiceMetric label="税额" value={formatMoney(invoiceForm.taxAmount, invoiceForm.currency)} meta="税额合计" icon={<RotateCcw size={18} />} tone="violet" />
           </div>
+          <InvoiceReceiptSummary invoice={invoiceForm} />
+
+          {dialog?.type === 'detail' && invoiceForm.invoiceId && invoiceForm.invoiceId === dialog.item.invoiceId && invoiceForm.invoiceDirection === 'OUTPUT' && hasPermission('crm:portal-finance:manage') &&
+            <FinancePublicationPanel key={invoiceForm.invoiceId} kind="INVOICE" id={invoiceForm.invoiceId} onProtectionChange={setFinanceProtected}
+              onSaved={value => setInvoiceForm(previous => ({ ...previous, version: value.version }))} />}
 
           <div className="grid gap-4 xl:grid-cols-2">
             <InvoicePanel title="绑定对象">
@@ -545,12 +610,15 @@ export default function InvoiceManagementPage() {
             </InvoicePanel>
           </div>
 
+          <InvoicePanel title="发票扫描件">
+            <AttachmentLinks value={invoiceForm.imageUrl} previewContext={{ bizType: 'OA_INVOICE', bizId: String(invoiceForm.invoiceId) }} />
+          </InvoicePanel>
           <InvoicePanel title="核销历史">
             <div className="admin-dialog-stack">
               {writeoffHistory.length ? writeoffHistory.map((item) => (
                 <InvoiceHistoryRow key={item.writeoffId || `${item.businessType}-${item.businessId}-${item.writeoffDate}`}>
                   <div>{item.businessType} / {item.businessNo || item.businessId || '-'}</div>
-                  <div className="text-xs text-cf-subtle">核销金额 {formatMoney(item.writeoffAmount)} / 核销日期 {item.writeoffDate || '-'}</div>
+                  <div className="text-xs text-cf-subtle">核销金额 {formatMoney(item.writeoffAmount, invoiceForm.currency)} / 核销日期 {item.writeoffDate || '-'}</div>
                 </InvoiceHistoryRow>
               )) : <div className="text-sm text-cf-subtle">暂无核销历史。下一步操作：在“核销发票”中录入第一笔核销。</div>}
             </div>
@@ -694,18 +762,40 @@ export default function InvoiceManagementPage() {
       <BaseDialog
         open={dialog?.type === 'writeoff'}
         title="发票核销"
-        onClose={() => void openDialog(null)}
+        onClose={() => { if (!saving) void openDialog(null); }}
+        closeOnEscape={!saving}
+        hideCloseButton={saving}
+        panelClassName="invoice-receipt-dialog"
         width="wide"
-        footer={<><Button variant="outline" onClick={() => void openDialog(null)}>取消</Button><Button onClick={() => void saveWriteoff()} disabled={saving}>{saving ? '核销中...' : '确认核销'}</Button></>}
+        footer={<><Button variant="outline" disabled={saving} onClick={() => void openDialog(null)}>取消</Button><Button onClick={() => void saveWriteoff()} disabled={!writeoffAllowed}>{saving ? '核销中...' : '确认核销'}</Button></>}
       >
         <div className="admin-dialog-stack">
           <InvoiceNote>
-            核销 = 把发票金额冲抵到已绑定业务对象。作废发票禁止继续核销；核销后，OA 单据和 CRM 回款的发票状态会同步刷新。
+            {invoiceForm.invoiceDirection === 'OUTPUT'
+              ? '销项发票核销 = 只登记本次新增到账，累计金额包含绑定前已收到的款项；绑定本身不增加收款。保存后本次金额清空，避免重复登记。'
+              : '进项发票核销 = 把发票金额冲抵到已绑定业务对象。作废发票禁止继续核销；核销后，OA单据的发票状态会同步刷新。'}
           </InvoiceNote>
+          {loadingInvoice ? <p role="status">正在读取最新到账，请稍候。</p> : <InvoiceReceiptSummary invoice={invoiceForm} />}
+          {writeoffError ? <div className="admin-dialog-stack">
+            <p role="alert">{writeoffError}</p>
+            <Button variant="outline" disabled={saving || loadingInvoice} onClick={() => void inspectLatestInvoice()}>核对最新到账</Button>
+          </div> : null}
+          {latestInvoice ? <div className="admin-dialog-stack">
+            <p role="status">最新累计到账 {formatMoney(latestInvoice.receivedAmount, latestInvoice.currency)}，剩余可登记 {formatMoney(latestInvoice.outstandingAmount, latestInvoice.currency)}；本次输入保持不变。</p>
+            <Button variant="outline" disabled={saving || loadingInvoice} onClick={() => {
+              setInvoiceForm(latestInvoice);
+              setWriteoffForm(previous => ({ ...previous, invoiceVersion: latestInvoice.version,
+                businessType: latestInvoice.receivableId ? 'CRM_RECEIVABLE' : latestInvoice.paymentRequestId ? 'PAYMENT_REQUEST' : 'EXPENSE_CLAIM',
+                businessId: latestInvoice.receivableId || latestInvoice.paymentRequestId || latestInvoice.expenseClaimId || 0 }));
+              setLatestInvoice(null);
+              setWriteoffError('');
+            }}>已核对，采用最新版本</Button>
+          </div> : null}
+          <fieldset disabled={saving || loadingInvoice} className="admin-dialog-stack min-w-0" aria-busy={saving || loadingInvoice}>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label className={fieldLabelClassName}>业务类型 <span className="text-red-500">*</span></Label>
-              <Select value={writeoffForm.businessType || 'CRM_RECEIVABLE'} onValueChange={(value) => setWriteoffForm((prev) => ({ ...prev, businessType: value }))}>
+              <Select disabled value={writeoffForm.businessType || 'CRM_RECEIVABLE'}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="CRM_RECEIVABLE">CRM 回款</SelectItem>
@@ -715,14 +805,19 @@ export default function InvoiceManagementPage() {
               </Select>
             </div>
             <div>
-              <Label className={fieldLabelClassName}>核销金额 <span className="text-red-500">*</span></Label>
-              <Input type="number" min={0} value={String(writeoffForm.writeoffAmount || 0)} onChange={(e) => setWriteoffForm((prev) => ({ ...prev, writeoffAmount: Number(e.target.value || 0) }))} placeholder="例如：20000" />
+              <Label htmlFor="invoice-receipt-amount" className={fieldLabelClassName}>{invoiceForm.invoiceDirection === 'OUTPUT' ? '本次新增到账' : '核销金额'} <span className="text-red-500">*</span></Label>
+              <Input id="invoice-receipt-amount" type="number" min={0.01} step="0.01" max={Number(invoiceForm.outstandingAmount || 0)} value={String(writeoffForm.writeoffAmount || 0)} onChange={(event) => setWriteoffForm((prev) => ({ ...prev, writeoffAmount: Number(event.target.value || 0) }))} placeholder="例如：20000" />
+            </div>
+            <div>
+              <Label htmlFor="invoice-receipt-date" className={fieldLabelClassName}>实际收款日期</Label>
+              <Input id="invoice-receipt-date" type="date" value={writeoffForm.writeoffDate || ''} max={new Intl.DateTimeFormat('sv-SE').format(new Date())}
+                onChange={event => setWriteoffForm(previous => ({ ...previous, writeoffDate: event.target.value }))} />
             </div>
           </div>
           <div>
             <Label className={fieldLabelClassName}>业务对象</Label>
             {writeoffForm.businessType === 'CRM_RECEIVABLE' ? (
-              <Select value={writeoffForm.businessId ? String(writeoffForm.businessId) : 'NONE'} onValueChange={(value) => {
+              <Select disabled value={writeoffForm.businessId ? String(writeoffForm.businessId) : 'NONE'} onValueChange={(value) => {
                 const businessId = value === 'NONE' ? 0 : Number(value);
                 const matched = receivables.find((item) => item.receivableId === businessId);
                 setWriteoffForm((prev) => ({ ...prev, businessId, businessNo: matched?.receivableNo || '' }));
@@ -734,7 +829,7 @@ export default function InvoiceManagementPage() {
                 </SelectContent>
               </Select>
             ) : writeoffForm.businessType === 'PAYMENT_REQUEST' ? (
-              <Select value={writeoffForm.businessId ? String(writeoffForm.businessId) : 'NONE'} onValueChange={(value) => {
+              <Select disabled value={writeoffForm.businessId ? String(writeoffForm.businessId) : 'NONE'} onValueChange={(value) => {
                 const businessId = value === 'NONE' ? 0 : Number(value);
                 const matched = paymentRequests.find((item) => item.id === businessId);
                 setWriteoffForm((prev) => ({ ...prev, businessId, businessNo: matched?.paymentNo || '' }));
@@ -746,7 +841,7 @@ export default function InvoiceManagementPage() {
                 </SelectContent>
               </Select>
             ) : (
-              <Select value={writeoffForm.businessId ? String(writeoffForm.businessId) : 'NONE'} onValueChange={(value) => {
+              <Select disabled value={writeoffForm.businessId ? String(writeoffForm.businessId) : 'NONE'} onValueChange={(value) => {
                 const businessId = value === 'NONE' ? 0 : Number(value);
                 const matched = expenseClaims.find((item) => item.id === businessId);
                 setWriteoffForm((prev) => ({ ...prev, businessId, businessNo: matched?.claimNo || '' }));
@@ -765,15 +860,17 @@ export default function InvoiceManagementPage() {
           </div>
 
           <InvoicePanel title="已有核销历史">
+            {invoiceForm.receivableId ? <p className="text-xs text-cf-subtle">此处只列本发票登记的收款；绑定前历史已计入累计到账。</p> : null}
             <div className="admin-dialog-stack">
               {writeoffHistory.length ? writeoffHistory.map((item) => (
                 <InvoiceHistoryRow key={item.writeoffId || `${item.businessType}-${item.businessId}-${item.writeoffDate}`}>
                   <div>{item.businessType} / {item.businessNo || item.businessId || '-'}</div>
-                  <div className="text-xs text-cf-subtle">核销金额 {formatMoney(item.writeoffAmount)} / 核销日期 {item.writeoffDate || '-'}</div>
+                  <div className="text-xs text-cf-subtle">核销金额 {formatMoney(item.writeoffAmount, invoiceForm.currency)} / 核销日期 {item.writeoffDate || '-'}</div>
                 </InvoiceHistoryRow>
               )) : <div className="text-sm text-cf-subtle">暂无核销历史。</div>}
             </div>
           </InvoicePanel>
+          </fieldset>
         </div>
       </BaseDialog>
 

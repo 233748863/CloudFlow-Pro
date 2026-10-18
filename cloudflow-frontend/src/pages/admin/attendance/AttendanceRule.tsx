@@ -54,21 +54,10 @@ import { useDict } from '@/hooks/useDict';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 import './admin-attendance.css';
 
-const WEEKDAYS = [
-  { value: 1, label: '周一' },
-  { value: 2, label: '周二' },
-  { value: 3, label: '周三' },
-  { value: 4, label: '周四' },
-  { value: 5, label: '周五' },
-  { value: 6, label: '周六' },
-  { value: 7, label: '周日' },
-];
-
 const NEW_RULE_VALUE = '__new_rule__';
 
 const defaultConfig = (shiftId?: number): AttendanceRuleConfig => ({
   shiftId,
-  workDays: [1, 2, 3, 4, 5],
   checkMethods: ['GPS', 'WIFI', 'FACE'],
   locationPoints: [{ name: '总部园区', latitude: 39.9042, longitude: 116.4074, radius: 500 }],
   wifiConfigs: [{ ssid: 'CloudFlow-Office' }],
@@ -240,7 +229,7 @@ const AttendanceRulePage: React.FC = () => {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
-  const toggleArrayValue = (key: 'workDays' | 'checkMethods', value: number | string) => {
+  const toggleArrayValue = (key: 'checkMethods', value: string) => {
     setConfig((prev) => {
       const current = Array.isArray(prev[key]) ? [...(prev[key] as Array<number | string>)] : [];
       const next = current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
@@ -493,13 +482,6 @@ const AttendanceRulePage: React.FC = () => {
                     <Input value={draft?.description || ''} onChange={(event) => setDraft((prev) => (prev ? { ...prev, description: event.target.value } : prev))} />
                   </Field>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {WEEKDAYS.map((day) => (
-                    <Button key={day.value} type="button" size="sm" variant={config.workDays?.includes(day.value) ? 'default' : 'outline'} onClick={() => toggleArrayValue('workDays', day.value)}>
-                      {day.label}
-                    </Button>
-                  ))}
-                </div>
               </Panel>
 
               <div className="grid gap-4 xl:grid-cols-2">
@@ -590,9 +572,11 @@ const AttendanceRulePage: React.FC = () => {
                       <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{targetTypeDict.getLabel(item.targetType || '') || '-'}</span>
                       <span className="text-sm font-medium text-cf-title">{item.targetName || item.targetId}</span>
                       <span className="text-xs text-cf-subtle">{item.effectiveStart} 起</span>
-                      <Button className="ml-auto" variant="ghost" size="icon" onClick={() => handleDeleteAssignment(item.id)}>
-                        <Trash2 size={15} />
-                      </Button>
+                      <div className="admin-users-row-actions ml-auto">
+                        <button type="button" className="danger" data-tooltip="删除适用范围" aria-label="删除适用范围" onClick={() => handleDeleteAssignment(item.id)}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -624,9 +608,11 @@ const AttendanceRulePage: React.FC = () => {
                         <div className="mt-1 text-xs text-cf-subtle">{item.dayName || dayTypeDict.getLabel(item.dayType || '') || '-'}</div>
                       </div>
                       <span className="rounded-md bg-[var(--cf-surface-muted)] px-2 py-1 text-xs dark:bg-slate-800">{dayTypeDict.getLabel(item.dayType || '') || '-'}</span>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteCalendar(item.id)}>
-                        <Trash2 size={15} />
-                      </Button>
+                      <div className="admin-users-row-actions">
+                        <button type="button" className="danger" data-tooltip="删除特殊日期" aria-label="删除特殊日期" onClick={() => handleDeleteCalendar(item.id)}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -1,0 +1,10 @@
+.contract-public-content { min-width: 0; overflow-wrap: anywhere; font-size: 14px; line-height: 1.75; }
+.contract-public-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.contract-public-item { min-width: 0; padding: 16px; border: 1px solid var(--cf-border); border-radius: 8px; }
+.contract-portal-panel { min-width: 0; overflow-wrap: anywhere; --cf-density-control-height: 44px; --cf-density-control-height-sm: 44px; }
+.contract-portal-panel button { min-width: 44px; min-height: 44px; transition: background-color 150ms ease, opacity 150ms ease; }
+.contract-portal-choice { display: flex; min-height: 44px; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
+.contract-portal-choice input[type="checkbox"] { flex: 0 0 20px; width: 20px; min-width: 20px; max-width: 20px; height: 20px; min-height: 20px !important; max-height: 20px; margin: 0; padding: 0; }
+.contract-portal-panel :is(button, input):focus-visible { outline: 2px solid var(--cf-primary); outline-offset: 2px; }
+@media (min-width: 640px) { .contract-public-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .contract-portal-panel button { transition: none; } }

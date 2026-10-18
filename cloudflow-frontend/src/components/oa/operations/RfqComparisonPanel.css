@@ -1,0 +1,21 @@
+.rfq-comparison__toolbar, .rfq-comparison__views { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.rfq-comparison__toolbar { justify-content: space-between; }
+.rfq-comparison__views button { min-height: 44px; }
+.rfq-comparison__items { display: grid; min-width: 0; gap: 20px; }
+.rfq-comparison__item { min-width: 0; }
+.rfq-comparison__item h4 { margin: 0 0 8px; font-size: 14px; font-weight: 600; line-height: 1.6; overflow-wrap: anywhere; }
+.rfq-comparison__table { min-width: 0; }
+.rfq-comparison__cards { display: none; }
+.rfq-comparison__card { min-width: 0; padding: 16px; border: 1px solid var(--cf-border); border-radius: 8px; background: var(--cf-surface-strong); }
+.rfq-comparison__card dl { display: grid; gap: 12px; margin: 0; }
+.rfq-comparison__field { display: grid; grid-template-columns: minmax(0, 96px) minmax(0, 1fr); gap: 12px; align-items: start; min-width: 0; }
+.rfq-comparison__field dt { color: var(--cf-text-muted); }
+.rfq-comparison__field dt, .rfq-comparison__field dd { min-width: 0; margin: 0; font-size: 14px; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; }
+.rfq-comparison__field dd { color: var(--cf-text); }
+@media (max-width: 760px) {
+  .rfq-comparison__table { display: none; }
+  .rfq-comparison__cards { display: grid; gap: 12px; min-width: 0; }
+}
+@media (max-width: 360px) {
+  .rfq-comparison__field { grid-template-columns: minmax(0, 80px) minmax(0, 1fr); gap: 8px; }
+}

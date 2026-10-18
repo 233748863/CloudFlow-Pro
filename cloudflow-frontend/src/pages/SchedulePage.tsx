@@ -17,6 +17,7 @@ import {
   Clock3,
   Eye,
   FileText,
+  Filter,
   MapPin,
   Plus,
   RotateCcw,
@@ -56,6 +57,8 @@ import {
 } from '../utils/dateFormat';
 import { cn } from '@/utils/cn';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
+import { MobileFilterDrawer } from '@/components/mobile/MobileFilterDrawer';
+import { getAuthSessionVersion } from '@/utils/authStorage';
 
 type ScheduleEventType = SysScheduleEvent['type'];
 type CalendarViewMode = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
@@ -63,6 +66,7 @@ type ScheduleFilterScope = 'ALL' | 'TODAY' | 'UPCOMING' | 'ALL_DAY';
 type ScheduleTypeFilter = ScheduleEventType | 'ALL';
 
 interface CalendarEventExtendedProps {
+  version?: number;
   originalTitle: string;
   description?: string;
   type: ScheduleEventType;
@@ -334,6 +338,7 @@ const sortEventsByStart = <T extends { extendedProps: { startTime: string } }>(l
 
 const toSelectedEvent = (event: ScheduleCalendarEvent): SelectedEventDetail => ({
   id: event.id,
+  version: event.extendedProps.version,
   title: event.extendedProps.originalTitle,
   description: event.extendedProps.description,
   type: event.extendedProps.type,
@@ -531,7 +536,8 @@ const ScheduleDetailRow: React.FC<{
   </div>
 );
 
-export const SchedulePage = () => {
+export const SchedulePage = ({ mobile = false }: { mobile?: boolean } = {}) => {
+  const { confirmSchedule, conflictDialog } = useMeetingConflictConsent();
   const { user, hasPermission } = useAuth();
   const calendarRef = useRef<FullCalendar | null>(null);
   const currentViewRange = useRef<{ start: Date; end: Date } | null>(null);
@@ -548,13 +554,20 @@ export const SchedulePage = () => {
   const [selectedEvent, setSelectedEvent] = useState<SelectedEventDetail | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string; version?: number } | null>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
   const [form, setForm] = useState<Partial<SysScheduleEvent>>(createDefaultForm());
   const [tableFilters, setTableFilters] = useState<ScheduleTableFilters>(DEFAULT_TABLE_FILTERS);
   const [tablePageNum, setTablePageNum] = useState(1);
   const [activeTab, setActiveTab] = useState('calendar');
   const canCreateSchedule = hasPermission('oa:schedule:add');
   const canDeleteSchedule = hasPermission('oa:schedule:remove');
+  const canReadSchedule = hasPermission('oa:schedule:list');
+  const [mobileDay, setMobileDay] = useState(() => toLocalDateString(new Date()));
+  const [mobileView, setMobileView] = useState<'day' | 'week'>('day');
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [mobileDraft, setMobileDraft] = useState(DEFAULT_TABLE_FILTERS);
+  const mobileRequest = useRef(0);
 
   const getRoomName = (roomId?: string, rooms: MeetingRoom[] = meetingRooms) => {
     if (!roomId) return null;
@@ -563,10 +576,14 @@ export const SchedulePage = () => {
   };
 
   const fetchEvents = async (start: Date, end: Date, rooms: MeetingRoom[] = meetingRooms) => {
+    const sequence = ++mobileRequest.current;
+    const version = getAuthSessionVersion();
+    const isCurrent = () => !mobile || (sequence === mobileRequest.current && version === getAuthSessionVersion());
     setIsLoadingEvents(true);
     setLoadError(null);
     try {
       const response = await getMyEvents(toQueryDateString(start), toQueryDateString(end));
+      if (!isCurrent()) return;
       const eventList = Array.isArray(response) ? response : [];
       setEvents(
         eventList.map(item => {
@@ -583,6 +600,7 @@ export const SchedulePage = () => {
             display: 'block',
             classNames: ['cf-event', `cf-event--${type.toLowerCase()}`],
             extendedProps: {
+              version: item.version,
               originalTitle: item.title,
               description: item.description,
               type,
@@ -595,11 +613,12 @@ export const SchedulePage = () => {
         }),
       );
     } catch (error) {
+      if (!isCurrent()) return;
       console.error('加载日程失败', error);
       setLoadError('当前日程加载失败，请稍后重试');
       toast.error('加载日程失败，请稍后重试');
     } finally {
-      setIsLoadingEvents(false);
+      if (isCurrent()) setIsLoadingEvents(false);
     }
   };
   const refreshCurrentWindow = async () => {
@@ -609,17 +628,21 @@ export const SchedulePage = () => {
   };
 
   useEffect(() => {
+    if (mobile && (!canReadSchedule || !user)) { setMeetingRooms([]); return; }
     let active = true;
+    const sessionVersion = getAuthSessionVersion();
+    const isCurrent = () => active && (!mobile || sessionVersion === getAuthSessionVersion());
     const loadRooms = async () => {
       try {
         const rooms = await getMeetingRooms();
-        if (!active) return;
+        if (!isCurrent()) return;
         const safeRooms = Array.isArray(rooms) ? rooms : [];
         setMeetingRooms(safeRooms);
         if (currentViewRange.current) {
           void fetchEvents(currentViewRange.current.start, currentViewRange.current.end, safeRooms);
         }
       } catch (error) {
+        if (!isCurrent()) return;
         console.error('加载会议室失败', error);
       }
     };
@@ -627,7 +650,45 @@ export const SchedulePage = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [mobile, mobile ? user?.id : null, mobile ? user?.tenantId : null, mobile && canReadSchedule]);
+
+  useEffect(() => {
+    if (!mobile) return;
+    setMeetingRooms([]);
+    setForm(createDefaultForm());
+    setIsSubmitting(false);
+    setIsDeleting(false);
+    setCancellationReason('');
+    setMobileFilterOpen(false);
+    setTableFilters(DEFAULT_TABLE_FILTERS);
+    setMobileDraft(DEFAULT_TABLE_FILTERS);
+  }, [mobile, user?.id, user?.tenantId]);
+
+  useEffect(() => {
+    if (!mobile) return;
+    setSelectedEvent(null);
+    setIsCreateDrawerOpen(false);
+    setPendingDelete(null);
+    setEvents([]);
+    if (!canReadSchedule || !user) {
+      mobileRequest.current++;
+      currentViewRange.current = null;
+      setIsLoadingEvents(false);
+      setLoadError(null);
+      return;
+    }
+    const start = new Date(`${mobileDay}T00:00:00`);
+    const end = new Date(`${mobileDay}T23:59:59`);
+    if (mobileView === 'week') {
+      start.setDate(start.getDate() - (start.getDay() + 6) % 7);
+      end.setTime(start.getTime());
+      end.setDate(end.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+    }
+    currentViewRange.current = { start, end };
+    void fetchEvents(start, end);
+    return () => { mobileRequest.current++; };
+  }, [mobile, mobileDay, mobileView, user?.id, user?.tenantId, canReadSchedule]);
 
   const openCreateDrawer = (range?: { start: Date; end: Date; allDay?: boolean } | null) => {
     if (!canCreateSchedule) {
@@ -662,6 +723,7 @@ export const SchedulePage = () => {
     setIsCreateDrawerOpen(false);
     setSelectedEvent({
       id: String(clickInfo.event.id),
+      version: clickInfo.event.extendedProps.version,
       title: clickInfo.event.extendedProps.originalTitle || clickInfo.event.title,
       description: clickInfo.event.extendedProps.description,
       type: clickInfo.event.extendedProps.type,
@@ -736,6 +798,8 @@ export const SchedulePage = () => {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+    if (!canCreateSchedule) { toast.error('当前账号没有新建日程权限'); return; }
     if (!form.title?.trim()) {
       toast.error('请输入日程主题');
       return;
@@ -757,20 +821,27 @@ export const SchedulePage = () => {
     }
 
     setIsSubmitting(true);
+    const sessionVersion = getAuthSessionVersion();
     try {
-      await createEvent({
+      const payload = {
         ...form,
         title: form.title.trim(),
         description: form.description?.trim() || undefined,
-      });
+      };
+      const confirmed = await confirmSchedule(payload);
+      if (confirmed === undefined) return;
+      if (mobile && sessionVersion !== getAuthSessionVersion()) return;
+      await createEvent({ ...payload, confirmParticipantConflicts: confirmed });
+      if (mobile && sessionVersion !== getAuthSessionVersion()) return;
       toast.success('日程创建成功');
       closeCreateDrawer();
       await refreshCurrentWindow();
     } catch (error) {
+      if (mobile && sessionVersion !== getAuthSessionVersion()) return;
       console.error('创建日程失败', error);
       toast.error('创建失败，可能与已有安排发生时间冲突');
     } finally {
-      setIsSubmitting(false);
+      if (!mobile || sessionVersion === getAuthSessionVersion()) setIsSubmitting(false);
     }
   };
   const handleDeleteSelectedEvent = () => {
@@ -779,7 +850,8 @@ export const SchedulePage = () => {
       toast.error('当前账号没有删除日程权限');
       return;
     }
-    setPendingDelete({ id: selectedEvent.id, title: selectedEvent.title || '该日程' });
+    setCancellationReason('');
+    setPendingDelete({ id: selectedEvent.id, title: selectedEvent.title || '该日程', version: selectedEvent.version });
   };
 
   const handleDeleteFromTable = (event: ScheduleCalendarEvent) => {
@@ -787,26 +859,33 @@ export const SchedulePage = () => {
       toast.error('当前账号没有删除日程权限');
       return;
     }
-    setPendingDelete({ id: event.id, title: event.extendedProps.originalTitle || event.title || '该日程' });
+    setCancellationReason('');
+    setPendingDelete({ id: event.id, title: event.extendedProps.originalTitle || event.title || '该日程', version: event.extendedProps.version });
   };
 
   const handleConfirmDelete = async () => {
-    if (!pendingDelete) return;
-    const { id } = pendingDelete;
+    if (!pendingDelete || isDeleting) return;
+    if (!canDeleteSchedule) { toast.error('当前账号没有删除日程权限'); return; }
+    const { id, version } = pendingDelete;
+    if (typeof version !== 'number') { toast.error('日程版本缺失，请刷新后重试'); return; }
+    if (!cancellationReason.trim()) { toast.error('请填写取消原因'); return; }
     setIsDeleting(true);
+    const sessionVersion = getAuthSessionVersion();
     try {
-      await deleteEvent(id);
-      toast.success('日程已删除');
+      await deleteEvent(id, version, cancellationReason.trim());
+      if (mobile && sessionVersion !== getAuthSessionVersion()) return;
+      toast.success('日程已取消，历史记录保留');
       if (selectedEvent?.id === id) {
         setSelectedEvent(null);
       }
       await refreshCurrentWindow();
       setPendingDelete(null);
     } catch (error) {
+      if (mobile && sessionVersion !== getAuthSessionVersion()) return;
       console.error('删除日程失败', error);
       toast.error('删除失败，请稍后重试');
     } finally {
-      setIsDeleting(false);
+      if (!mobile || sessionVersion === getAuthSessionVersion()) setIsDeleting(false);
     }
   };
 
@@ -1449,9 +1528,48 @@ export const SchedulePage = () => {
     />
   ) : null;
 
+  const openMobileCreate = () => {
+    const start = mobileDay === toLocalDateString(new Date()) ? new Date() : new Date(`${mobileDay}T09:00:00`);
+    openCreateDrawer({ start, end: new Date(start.getTime() + 60 * 60 * 1000) });
+  };
+  const mobileContent = (
+    <section className="min-h-full bg-[var(--cf-bg)] pb-24">
+      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-slate-200 bg-[var(--cf-surface-strong)] p-4">
+        <h1 className="flex-1 text-lg font-semibold text-cf-title">我的日程</h1>
+        <Button variant="outline" aria-label="刷新日程" disabled={isLoadingEvents || !canReadSchedule} onClick={() => void refreshCurrentWindow()}><RotateCcw size={18} /></Button>
+        <Button variant="outline" aria-label="筛选日程" disabled={!canReadSchedule} onClick={() => { setMobileDraft(tableFilters); setMobileFilterOpen(true); }}><Filter size={18} /></Button>
+      </header>
+      {!canReadSchedule ? <p role="alert" className="p-4 text-cf-subtle">当前账号没有查看日程权限</p> : <>
+        <div className="grid gap-3 p-4">
+          <div className="flex gap-2">
+            <Button variant={mobileView === 'day' ? 'default' : 'outline'} className="flex-1" onClick={() => setMobileView('day')}>日视图</Button>
+            <Button variant={mobileView === 'week' ? 'default' : 'outline'} className="flex-1" onClick={() => setMobileView('week')}>周视图</Button>
+          </div>
+          <label className="grid gap-2 text-sm text-cf-muted">查看日期<DatePicker type="date" value={mobileDay} onChange={event => { if (event.target.value && /^\d{4}-\d{2}-\d{2}$/.test(event.target.value)) setMobileDay(event.target.value); }} /></label>
+          <p className="text-xs text-cf-subtle">{mobileView === 'day' ? '所选日期' : '所选日期所在周'} · {tableTotal} 条{tableHasActiveFilters ? ` · ${listSummary}` : ''}</p>
+          {isLoadingEvents ? <p role="status" className="py-8 text-center text-cf-subtle">加载日程...</p> : loadError ? <p role="alert" className="text-red-600">{loadError}</p> : filteredTableEvents.length ? filteredTableEvents.map(event => (
+            <button key={event.id} type="button" data-schedule-id={event.id} className="grid gap-2 rounded-xl border border-slate-200 bg-[var(--cf-surface-strong)] p-4 text-left" onClick={() => openEventDetail(event)}>
+              <span className="flex items-center justify-between gap-2"><strong className="min-w-0 break-words text-sm text-cf-title">{event.extendedProps.originalTitle}</strong><span className={`shrink-0 rounded px-2 py-1 text-xs ${getEventTypeMeta(event.extendedProps.type).badgeClass}`}>{getEventTypeMeta(event.extendedProps.type).label}</span></span>
+              <span className="text-sm text-cf-muted">{formatEventSlot(event)}</span>
+              <span className="text-xs text-cf-subtle">{getEventLocationLabel(event)}</span>
+              {event.extendedProps.description ? <span className="line-clamp-2 text-xs text-cf-subtle">{event.extendedProps.description}</span> : null}
+            </button>
+          )) : <p className="py-10 text-center text-cf-subtle">当前条件下暂无日程</p>}
+        </div>
+        <footer className="sticky bottom-0 border-t border-slate-200 bg-[var(--cf-surface-strong)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"><Button className="w-full" disabled={!canCreateSchedule} onClick={openMobileCreate}><Plus size={18} />新建日程</Button></footer>
+      </>}
+      <MobileFilterDrawer open={mobileFilterOpen} title="日程筛选" onClose={() => setMobileFilterOpen(false)} onApply={() => { setTableFilters({ ...mobileDraft, keyword: mobileDraft.keyword.trim() }); setMobileFilterOpen(false); }} onReset={() => setMobileDraft(DEFAULT_TABLE_FILTERS)}>
+        <div className="grid gap-4">
+          <label className="grid gap-2 text-sm">关键词<Input value={mobileDraft.keyword} maxLength={120} onChange={event => setMobileDraft(prev => ({ ...prev, keyword: event.target.value }))} /></label>
+          <label className="grid gap-2 text-sm">日程类型<select className="min-h-11 rounded-lg border border-slate-200 bg-[var(--cf-surface-strong)] p-2" value={mobileDraft.type} onChange={event => setMobileDraft(prev => ({ ...prev, type: event.target.value as ScheduleTypeFilter }))}><option value="ALL">全部类型</option><option value="PERSONAL">个人事项</option><option value="WORK">工作安排</option><option value="MEETING">会议预约</option></select></label>
+        </div>
+      </MobileFilterDrawer>
+    </section>
+  );
+
   return (
     <>
-      <section className="admin-source-page schedule-page">
+      {mobile ? mobileContent : <section className="admin-source-page schedule-page">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
@@ -1464,7 +1582,7 @@ export const SchedulePage = () => {
             pagination={pagePagination}
           />
         </Tabs>
-      </section>
+      </section>}
 
       <BaseDialog
         open={isCreateDrawerOpen}
@@ -1720,15 +1838,21 @@ export const SchedulePage = () => {
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}
-        title="删除日程"
-        message={pendingDelete ? `确认删除“${pendingDelete.title}”吗？删除后不可恢复。` : ''}
+        title="取消日程"
+        message={pendingDelete ? `确认取消“${pendingDelete.title}”吗？操作记录与已有出席事实保留。` : ''}
         danger
-        confirmText={isDeleting ? '正在删除...' : '确认删除'}
+        confirmText={isDeleting ? '正在取消...' : '确认取消'}
         onCancel={() => {
           if (!isDeleting) setPendingDelete(null);
         }}
         onConfirm={() => void handleConfirmDelete()}
-      />
+      >
+        <label htmlFor="schedule-cancellation-reason" className="text-sm text-cf-muted">取消原因</label>
+        <Textarea id="schedule-cancellation-reason" value={cancellationReason} maxLength={500} disabled={isDeleting}
+          onChange={event => setCancellationReason(event.target.value)} className="min-h-11" />
+      </ConfirmDialog>
+      {conflictDialog}
     </>
   );
 };
+import { useMeetingConflictConsent } from './meeting/useMeetingConflictConsent';

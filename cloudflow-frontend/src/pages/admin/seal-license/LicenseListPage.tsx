@@ -14,7 +14,6 @@ import type { UserBrief } from '@/types/workflow';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDict } from '@/hooks/useDict';
 import { DictBadge } from '@/components/common/DictBadge';
-import { TableRowActions } from '@/components/common/table-row-actions';
 import { InnerTableSurface, TablePageLayout } from '@/components/layout/TablePageLayout';
 
 const EDITABLE_LICENSE_STATUSES = ['AVAILABLE', 'DISABLED'] as const;
@@ -457,19 +456,13 @@ export const LicenseListPage: React.FC = () => {
                 <td>{getAttachmentList(item.attachmentUrl).length ? `${getAttachmentList(item.attachmentUrl).length} 个` : '-'}</td>
                 <td>{getStatusBadge(item.status)}</td>
                 <td>
-                  <TableRowActions
-                    iconOnly
-                    buttonLayout="compact"
-                    maxVisibleActions={2}
-                    overflowLabel="更多"
-                    actions={[
-                      { key: 'detail', label: '详情', icon: <Eye size={15} />, isPrimary: true, onClick: () => setDetailLicense(item) },
-                      { key: 'edit', label: '编辑', icon: <Edit size={15} />, priority: 'secondary', hidden: isBorrowLocked(item), permissionKey: 'oa:license:edit', onClick: () => openEdit(item) },
-                      { key: 'remind', label: '到期提醒', icon: <Bell size={15} />, priority: 'secondary', tone: 'warning', hidden: !canRemindExpiry(item), permissionKey: 'oa:license:remind', onClick: () => void remindExpiry(item) },
-                      { key: 'renewal', label: '续期', icon: <FileClock size={15} />, priority: 'secondary', tone: 'info', hidden: item.status === 'DISABLED' || isBorrowLocked(item), permissionKey: 'oa:license-renewal:add', onClick: () => void openRenewalDialog(item) },
-                      { key: 'delete', label: '删除', icon: <Trash2 size={15} />, danger: true, hidden: isBorrowLocked(item), permissionKey: 'oa:license:remove', onClick: () => item.licenseId && setDeleteId(item.licenseId) },
-                    ]}
-                  />
+                  <div className="admin-users-row-actions">
+                    <button type="button" data-tooltip="查看详情" aria-label="查看详情" onClick={() => setDetailLicense(item)}><Eye size={15} /></button>
+                    {!isBorrowLocked(item) && hasPermission('oa:license:edit') ? <button type="button" data-tooltip="编辑证照" aria-label="编辑证照" onClick={() => openEdit(item)}><Edit size={15} /></button> : null}
+                    {canRemindExpiry(item) && hasPermission('oa:license:remind') ? <button type="button" data-tooltip="到期提醒" aria-label="到期提醒" onClick={() => void remindExpiry(item)}><Bell size={15} /></button> : null}
+                    {item.status !== 'DISABLED' && !isBorrowLocked(item) && hasPermission('oa:license-renewal:add') ? <button type="button" data-tooltip="续期" aria-label="续期" onClick={() => void openRenewalDialog(item)}><FileClock size={15} /></button> : null}
+                    {!isBorrowLocked(item) && hasPermission('oa:license:remove') ? <button type="button" className="danger" data-tooltip="删除证照" aria-label="删除证照" onClick={() => item.licenseId && setDeleteId(item.licenseId)}><Trash2 size={15} /></button> : null}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -640,7 +633,7 @@ export const LicenseListPage: React.FC = () => {
               <DetailField label="创建时间" value={detailLicense.createTime} />
             </DialogPanel>
             <DialogPanel title="附件">
-              <AttachmentLinks value={detailLicense.attachmentUrl} />
+              <AttachmentLinks value={detailLicense.attachmentUrl} previewContext={{ bizType: 'OA_LICENSE', bizId: String(detailLicense.licenseId) }} />
             </DialogPanel>
             {detailLicense.remark ? (
               <DialogPanel title="备注">
@@ -696,7 +689,7 @@ export const LicenseListPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-2 text-sm leading-6 text-cf-muted">{item.renewalReason || '-'}</div>
-                  {getAttachmentList(item.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={item.attachmentUrl} compact /></div> : null}
+                  {getAttachmentList(item.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={item.attachmentUrl} compact downloadContext={{ bizType: 'OA_LICENSE_RENEWAL', bizId: String(item.id) }} /></div> : null}
                 </div>
               )) : <div className="py-6 text-center text-sm text-cf-faint">暂无续期记录</div>}
             </div>
