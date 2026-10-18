@@ -1,0 +1,253 @@
+CREATE TABLE crm_sales_stage (
+  stage_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '销售阶段ID',
+  tenant_id BIGINT(20) NOT NULL COMMENT '租户ID',
+  stage_code VARCHAR(30) NOT NULL COMMENT '稳定阶段编码',
+  stage_name VARCHAR(100) NOT NULL COMMENT '阶段名称',
+  sort_no INT NOT NULL COMMENT '推进顺序',
+  default_win_rate DECIMAL(6,4) NOT NULL COMMENT '默认赢率零至一',
+  allow_skip_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否允许跳入本阶段',
+  required_fields JSON DEFAULT NULL COMMENT '服务器字段白名单内的必填项',
+  required_activity_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否要求有效跟进或活动',
+  overdue_days INT DEFAULT NULL COMMENT '停留超期天数',
+  is_won_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '赢单终态',
+  is_lost_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '丢单终态',
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE或DISABLED',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (stage_id),
+  UNIQUE KEY uk_sales_stage_code (tenant_id, stage_code),
+  KEY idx_sales_stage_order (tenant_id, status, sort_no),
+  CONSTRAINT chk_sales_stage_rate CHECK (default_win_rate BETWEEN 0 AND 1),
+  CONSTRAINT chk_sales_stage_terminal CHECK (is_won_flag + is_lost_flag <= 1),
+  CONSTRAINT chk_sales_stage_overdue CHECK (overdue_days IS NULL OR overdue_days > 0)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='销售阶段及推进要求';
+
+CREATE TABLE crm_opportunity_item (
+  item_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '商机产品明细ID',
+  tenant_id BIGINT(20) NOT NULL COMMENT '租户ID',
+  opportunity_id BIGINT(20) NOT NULL COMMENT '商机ID',
+  sort_no INT NOT NULL DEFAULT 0 COMMENT '排序',
+  product_id BIGINT(20) DEFAULT NULL COMMENT '产品ID',
+  product_no VARCHAR(64) DEFAULT NULL COMMENT '产品编号快照',
+  product_name VARCHAR(200) NOT NULL COMMENT '产品名称快照',
+  spec VARCHAR(200) DEFAULT NULL COMMENT '规格',
+  unit VARCHAR(30) DEFAULT NULL COMMENT '单位',
+  quantity DECIMAL(16,4) NOT NULL COMMENT '数量',
+  unit_price DECIMAL(16,4) NOT NULL COMMENT '单价',
+  discount_rate DECIMAL(7,4) NOT NULL DEFAULT 100 COMMENT '折扣百分数零至一百，与报价一致',
+  tax_rate DECIMAL(7,4) NOT NULL DEFAULT 0 COMMENT '税率百分数零至一百，与报价一致',
+  line_amount DECIMAL(16,2) NOT NULL COMMENT '折后未税行金额',
+  tax_amount DECIMAL(16,2) NOT NULL DEFAULT 0 COMMENT '行税额',
+  remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (item_id),
+  KEY idx_opportunity_item (tenant_id, opportunity_id, sort_no),
+  CONSTRAINT chk_opportunity_item_amount CHECK (quantity > 0 AND unit_price >= 0 AND discount_rate BETWEEN 0 AND 100 AND tax_rate BETWEEN 0 AND 100)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='商机产品明细及报价口径金额';
+
+CREATE TABLE crm_opportunity_stage_history (
+  history_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '阶段变动事实ID',
+  tenant_id BIGINT(20) NOT NULL COMMENT '租户ID',
+  opportunity_id BIGINT(20) NOT NULL COMMENT '商机ID',
+  from_stage VARCHAR(30) DEFAULT NULL COMMENT '原阶段，创建时为空',
+  to_stage VARCHAR(30) NOT NULL COMMENT '目标阶段',
+  entered_time DATETIME NOT NULL COMMENT '原阶段进入时间',
+  changed_time DATETIME NOT NULL COMMENT '变更时间',
+  duration_seconds BIGINT(20) NOT NULL DEFAULT 0 COMMENT '本次原阶段停留秒数',
+  operation_key VARCHAR(128) NOT NULL COMMENT '变动请求或创建事件唯一键',
+  reason VARCHAR(1000) DEFAULT NULL COMMENT '回退或终态恢复原因',
+  snapshot JSON NOT NULL COMMENT '阶段版本、赢率、金额及来源证据快照',
+  operator_id BIGINT(20) NOT NULL COMMENT '真实操作用户ID',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (history_id),
+  UNIQUE KEY uk_opportunity_stage_event (tenant_id, operation_key),
+  KEY idx_opportunity_stage_history (tenant_id, opportunity_id, changed_time),
+  CONSTRAINT chk_stage_duration CHECK (duration_seconds >= 0)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='不可覆盖的商机阶段进入退出历史';
+
+CREATE TABLE crm_deal_team (
+  team_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '团队成员版本ID',
+  tenant_id BIGINT(20) NOT NULL COMMENT '租户ID',
+  biz_type VARCHAR(20) NOT NULL COMMENT 'OPPORTUNITY或QUOTE或CONTRACT或RECEIVABLE',
+  biz_id BIGINT(20) NOT NULL COMMENT '业务ID',
+  team_version INT NOT NULL COMMENT '整组团队版本',
+  current_flag TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否当前团队版本',
+  sales_user_id BIGINT(20) NOT NULL COMMENT '销售成员用户ID',
+  sales_user_name VARCHAR(100) NOT NULL COMMENT '成员姓名快照',
+  dept_id BIGINT(20) NOT NULL COMMENT '成员部门快照',
+  role_type VARCHAR(20) NOT NULL COMMENT 'OWNER或CO_SELLER或PRE_SALES或SUPPORT或MANAGER',
+  allocated_percentage DECIMAL(6,4) NOT NULL COMMENT '分配比例零至一',
+  allocated_amount DECIMAL(14,2) NOT NULL DEFAULT 0 COMMENT '按当前业务金额计算的预览分配额',
+  commission_rate DECIMAL(6,4) DEFAULT NULL COMMENT '经财务核定的提成比例，空表示未核定',
+  commission_amount DECIMAL(14,2) NOT NULL DEFAULT 0 COMMENT '预览提成，实际入账以分配事实为准',
+  current_member_id BIGINT(20) GENERATED ALWAYS AS (CASE WHEN current_flag = 1 THEN sales_user_id ELSE NULL END) STORED COMMENT '当前版本成员唯一键',
+  remark VARCHAR(500) DEFAULT NULL COMMENT '团队或比例调整原因',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (team_id),
+  UNIQUE KEY uk_deal_team_version (tenant_id, biz_type, biz_id, team_version, sales_user_id),
+  UNIQUE KEY uk_deal_team_current (tenant_id, biz_type, biz_id, current_member_id),
+  CONSTRAINT chk_deal_team_rates CHECK (allocated_percentage BETWEEN 0 AND 1 AND (commission_rate IS NULL OR commission_rate BETWEEN 0 AND 1))
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='业务团队整组版本及分成配置';
+
+CREATE TABLE crm_deal_event (
+  event_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '业绩或回款事实ID',
+  tenant_id BIGINT(20) NOT NULL COMMENT '租户ID',
+  event_key VARCHAR(128) NOT NULL COMMENT '源服务业务版本或确认事件唯一键',
+  event_type VARCHAR(20) NOT NULL COMMENT 'WON或CONTRACT或RECEIPT',
+  biz_type VARCHAR(20) NOT NULL COMMENT 'OPPORTUNITY或CONTRACT或RECEIVABLE',
+  biz_id BIGINT(20) NOT NULL COMMENT '来源业务ID',
+  customer_id BIGINT(20) DEFAULT NULL COMMENT '客户ID',
+  amount DECIMAL(14,2) NOT NULL COMMENT '本次确认金额，冲正为负',
+  currency VARCHAR(10) NOT NULL DEFAULT 'CNY' COMMENT '币种，禁止无汇率跨币种求和',
+  occurred_time DATETIME NOT NULL COMMENT '真实业务发生时间',
+  team_version INT NOT NULL COMMENT '事件采用的团队版本',
+  source_snapshot JSON NOT NULL COMMENT '业务状态、实际金额和已核验来源快照',
+  reversal_of_id BIGINT(20) DEFAULT NULL COMMENT '原事实ID，退款可逐笔部分冲减',
+  baseline_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否无完整历史的显式初始快照',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (event_id),
+  UNIQUE KEY uk_deal_event_key (tenant_id, event_key),
+  KEY idx_deal_event_reversal (tenant_id, reversal_of_id),
+  KEY idx_deal_event_period (tenant_id, event_type, occurred_time),
+  KEY idx_deal_event_source (tenant_id, biz_type, biz_id),
+  CONSTRAINT chk_deal_event_amount CHECK ((reversal_of_id IS NULL AND amount >= 0) OR (reversal_of_id IS NOT NULL AND amount <= 0))
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='销售赢单合同和逐次回款的持久事实';
+
+CREATE TABLE crm_deal_allocation (
+  allocation_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '成员业绩及提成事实ID',
+  tenant_id BIGINT(20) NOT NULL COMMENT '租户ID',
+  event_id BIGINT(20) NOT NULL COMMENT '业绩事实ID',
+  sales_user_id BIGINT(20) NOT NULL COMMENT '成员用户ID',
+  employee_id BIGINT(20) DEFAULT NULL COMMENT '经HR核实的员工ID',
+  dept_id BIGINT(20) NOT NULL COMMENT '发生时部门ID',
+  role_type VARCHAR(20) NOT NULL COMMENT '发生时团队角色',
+  allocated_percentage DECIMAL(6,4) NOT NULL COMMENT '发生时比例',
+  allocated_amount DECIMAL(14,2) NOT NULL COMMENT '成员分配金额',
+  commission_rate DECIMAL(6,4) DEFAULT NULL COMMENT '发生时核定提成比例',
+  commission_amount DECIMAL(14,2) DEFAULT NULL COMMENT '回款提成，未核定为空',
+  commission_status VARCHAR(20) NOT NULL DEFAULT 'NOT_APPLICABLE' COMMENT 'NOT_APPLICABLE或UNCONFIRMED或READY或APPROVED或POSTED或PAID或REVERSED',
+  comp_change_id BIGINT(20) DEFAULT NULL COMMENT 'HR薪资变动项ID',
+  reversal_of_id BIGINT(20) DEFAULT NULL COMMENT '原分配事实ID',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (allocation_id),
+  UNIQUE KEY uk_deal_allocation_member (tenant_id, event_id, sales_user_id),
+  KEY idx_deal_allocation_reversal (tenant_id, reversal_of_id),
+  KEY idx_deal_allocation_user (tenant_id, sales_user_id, event_id),
+  KEY idx_deal_allocation_dept (tenant_id, dept_id, event_id),
+  KEY idx_deal_allocation_salary (tenant_id, commission_status, comp_change_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='可聚合的冻结业绩分配和薪资提成入账';
+
+CREATE TABLE crm_email_record (
+  email_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '客户邮件归档ID',
+  tenant_id BIGINT(20) NOT NULL COMMENT '租户ID',
+  message_record_id BIGINT(20) DEFAULT NULL COMMENT '统一消息中心记录ID',
+  operation_key VARCHAR(128) NOT NULL COMMENT '发送或手工归档请求唯一键',
+  direction VARCHAR(20) NOT NULL COMMENT 'OUTBOUND或INBOUND',
+  subject VARCHAR(200) NOT NULL COMMENT '邮件主题',
+  content_summary VARCHAR(2000) DEFAULT NULL COMMENT '脱去活动内容的摘要',
+  sanitized_content MEDIUMTEXT DEFAULT NULL COMMENT '经过白名单净化的邮件正文',
+  from_address VARCHAR(254) DEFAULT NULL COMMENT '发件邮箱',
+  to_addresses JSON NOT NULL COMMENT '收件邮箱集合',
+  cc_addresses JSON DEFAULT NULL COMMENT '抄送邮箱集合',
+  biz_type VARCHAR(20) NOT NULL COMMENT 'CUSTOMER或OPPORTUNITY或TICKET或QUOTE',
+  biz_id BIGINT(20) NOT NULL COMMENT '归档业务ID',
+  customer_id BIGINT(20) NOT NULL COMMENT '已核实所属客户ID',
+  contact_id BIGINT(20) DEFAULT NULL COMMENT '所属客户联系人ID',
+  sender_user_id BIGINT(20) NOT NULL COMMENT '发送或归档操作人',
+  send_time DATETIME DEFAULT NULL COMMENT '实际发送时间，未发送为空',
+  send_status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' COMMENT 'DRAFT或QUEUED或SENDING或SENT或FAILED或UNKNOWN或MANUAL',
+  attachment_count INT NOT NULL DEFAULT 0 COMMENT '私有附件数量',
+  attachment_file_ids JSON DEFAULT NULL COMMENT '私有附件ID，不存公开URL',
+  read_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '跟踪端点收到打开请求，不能视为已读证明',
+  read_time DATETIME DEFAULT NULL COMMENT '首次观测打开时间',
+  remark VARCHAR(500) DEFAULT NULL COMMENT '备注或手工来源说明',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (email_id),
+  UNIQUE KEY uk_crm_email_operation (tenant_id, operation_key),
+  UNIQUE KEY uk_crm_email_message (tenant_id, message_record_id),
+  KEY idx_crm_email_customer (tenant_id, customer_id, create_time),
+  KEY idx_crm_email_business (tenant_id, biz_type, biz_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='客户邮件单向发送与手工来信归档';
+
+CREATE TABLE sys_portal_user (
+  portal_user_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '外部门户用户ID',
+  tenant_id BIGINT(20) NOT NULL COMMENT '租户ID',
+  user_type VARCHAR(30) NOT NULL COMMENT 'CUSTOMER_CONTACT，本期仅保留SUPPLIER_CONTACT扩展类型',
+  ref_biz_type VARCHAR(30) NOT NULL COMMENT 'CRM_CONTACT，本期只启用客户联系人',
+  ref_biz_id BIGINT(20) NOT NULL COMMENT '可信邀请绑定的联系人ID',
+  customer_id BIGINT(20) NOT NULL COMMENT '经CRM核验所属客户ID',
+  login_account VARCHAR(100) NOT NULL COMMENT '租户内规范化登录账号',
+  password_hash VARCHAR(255) DEFAULT NULL COMMENT '加盐密码哈希，未激活时可为空',
+  email VARCHAR(254) NOT NULL COMMENT '邀请及验证邮箱',
+  phone VARCHAR(32) DEFAULT NULL COMMENT '联系电话',
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING或ACTIVE或DISABLED或LOCKED',
+  last_login_time DATETIME DEFAULT NULL COMMENT '上次登录时间',
+  last_login_ip VARCHAR(64) DEFAULT NULL COMMENT '上次登录IP',
+  fail_count INT NOT NULL DEFAULT 0 COMMENT '连续失败次数',
+  locked_until DATETIME DEFAULT NULL COMMENT '锁定截止时间',
+  activate_token_hash CHAR(64) DEFAULT NULL COMMENT '激活令牌SHA256，不存明文',
+  activate_expire_time DATETIME DEFAULT NULL COMMENT '激活令牌失效时间',
+  activate_consumed_time DATETIME DEFAULT NULL COMMENT '激活令牌使用时间',
+  session_version INT NOT NULL DEFAULT 0 COMMENT '禁用或重设密码后的会话撤销版本',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (portal_user_id),
+  UNIQUE KEY uk_portal_account (tenant_id, login_account),
+  UNIQUE KEY uk_portal_contact (tenant_id, ref_biz_type, ref_biz_id),
+  UNIQUE KEY uk_portal_activation (activate_token_hash),
+  CONSTRAINT chk_portal_active_password CHECK (status <> 'ACTIVE' OR password_hash IS NOT NULL)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='与内部账号隔离的客户门户账号';
+
+ALTER TABLE crm_opportunity
+  ADD COLUMN last_stage VARCHAR(30) DEFAULT NULL COMMENT '上一销售阶段',
+  ADD COLUMN weighted_amount DECIMAL(14,2) NOT NULL DEFAULT 0 COMMENT '预计金额乘百分比赢率再除以100',
+  ADD COLUMN stage_duration_days INT NOT NULL DEFAULT 0 COMMENT '当前阶段已停留完整天数缓存',
+  ADD COLUMN team_version INT NOT NULL DEFAULT 0 COMMENT '当前团队整组版本',
+  ADD CONSTRAINT chk_opportunity_win_rate_percentage CHECK (win_rate BETWEEN 0 AND 100);
+
+ALTER TABLE crm_sales_target
+  ADD COLUMN calculation_basis VARCHAR(20) NOT NULL DEFAULT 'OWNER_V1' COMMENT 'OWNER_V1保留旧口径或TEAM_V2新分成口径',
+  ADD COLUMN currency VARCHAR(10) NOT NULL DEFAULT 'CNY' COMMENT '考核币种';
+
+ALTER TABLE oa_knowledge_document
+  ADD COLUMN external_visible_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否明确对客户门户发布',
+  ADD COLUMN external_version_id BIGINT(20) DEFAULT NULL COMMENT '明确发布的知识版本ID，工作草稿不可外显',
+  ADD COLUMN external_attachment_file_ids JSON DEFAULT NULL COMMENT '明确对外公开的版本附件文件ID清单，未选择的不对外提供';
+
+ALTER TABLE oa_contract
+  ADD COLUMN portal_term_ids JSON DEFAULT NULL COMMENT '明确对客户公开的履约条款ID清单，未选择的仅内部可见',
+  ADD COLUMN portal_milestone_ids JSON DEFAULT NULL COMMENT '明确对客户公开的关键节点ID清单，未选择的仅内部可见',
+  ADD COLUMN portal_payment_schedule_ids JSON DEFAULT NULL COMMENT '明确对客户公开的付款计划ID清单，未选择的仅内部可见',
+  ADD KEY idx_contract_portal_customer (tenant_id, customer_id, deleted, signed_flag, contract_id);
+
+ALTER TABLE sys_file
+  ADD COLUMN portal_owner_id BIGINT(20) DEFAULT NULL COMMENT '门户上传者ID，不能作为内部用户ID解释',
+  ADD KEY idx_file_portal_owner (tenant_id, portal_owner_id);
+
+ALTER TABLE crm_service_ticket
+  ADD COLUMN portal_contact_id BIGINT(20) DEFAULT NULL COMMENT '发起工单的可信客户联系人ID',
+  ADD COLUMN portal_solution TEXT DEFAULT NULL COMMENT '明确审核对外发布的解决方案',
+  ADD COLUMN portal_solution_time DATETIME DEFAULT NULL COMMENT '解决方案对外发布时间';
