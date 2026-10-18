@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmRefundWorkflowMapper">
+    <sql id="taskPermission">
+        EXISTS(SELECT 1 FROM sys_user_role memberships
+            JOIN sys_role roles ON roles.role_id = memberships.role_id AND roles.tenant_id = memberships.tenant_id
+            JOIN sys_role_menu role_grants ON role_grants.role_id = roles.role_id AND role_grants.tenant_id = roles.tenant_id
+            JOIN sys_menu menus ON menus.menu_id = role_grants.menu_id
+            WHERE memberships.tenant_id = #{tenantId} AND memberships.user_id = users.user_id
+                AND roles.status = '0' AND roles.deleted = 0 AND menus.status = '0'
+                AND menus.perms = 'workflow:task:complete')
+    </sql>
+    <select id="activeUser" resultType="com.cloudflow.crm.mapper.CrmRefundWorkflowMapper$Participant">
+        SELECT user_id, COALESCE(NULLIF(nick_name, ''), user_name) AS name
+        FROM sys_user WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND status = '0' AND deleted = 0
+    </select>
+    <select id="customerOwner" resultType="com.cloudflow.crm.mapper.CrmRefundWorkflowMapper$Participant">
+        SELECT users.user_id, COALESCE(NULLIF(users.nick_name, ''), users.user_name) AS name
+        FROM crm_customer customers JOIN sys_user users ON users.user_id = customers.owner_id AND users.tenant_id = customers.tenant_id
+        WHERE customers.tenant_id = #{tenantId} AND customers.customer_id = #{customerId} AND customers.deleted = 0
+            AND users.status = '0' AND users.deleted = 0 AND <include refid="taskPermission"/>
+    </select>
+    <select id="financeReviewers" resultType="com.cloudflow.crm.mapper.CrmRefundWorkflowMapper$Participant">
+        SELECT DISTINCT users.user_id, COALESCE(NULLIF(users.nick_name, ''), users.user_name) AS name
+        FROM sys_user users JOIN sys_user_role memberships ON memberships.user_id = users.user_id AND memberships.tenant_id = users.tenant_id
+        JOIN sys_role roles ON roles.role_id = memberships.role_id AND roles.tenant_id = memberships.tenant_id
+        WHERE users.tenant_id = #{tenantId} AND users.status = '0' AND users.deleted = 0
+            AND roles.role_key = 'finance' AND roles.status = '0' AND roles.deleted = 0
+            AND users.user_id != #{applicantId} AND users.user_id != #{ownerId} AND <include refid="taskPermission"/>
+        ORDER BY users.user_id
+    </select>
+    <select id="canComplete" resultType="java.lang.Boolean">
+        SELECT EXISTS(SELECT 1 FROM sys_user users WHERE users.tenant_id = #{tenantId} AND users.user_id = #{userId}
+            AND users.status = '0' AND users.deleted = 0 AND <include refid="taskPermission"/>)
+    </select>
+    <select id="definition" resultType="com.cloudflow.crm.mapper.CrmRefundWorkflowMapper$Definition">
+        SELECT definition_id, process_key, version, model_json FROM wf_process_definition
+        WHERE tenant_id = #{tenantId} AND process_key = 'crm_refund_review' AND status = 'PUBLISHED'
+            AND deleted = 0 AND COALESCE(is_archived, 0) = 0
+        ORDER BY version DESC, definition_id LIMIT 1
+    </select>
+    <select id="definitionById" resultType="com.cloudflow.crm.mapper.CrmRefundWorkflowMapper$Definition">
+        SELECT definition_id, process_key, version, model_json FROM wf_process_definition
+        WHERE tenant_id = #{tenantId} AND definition_id = #{definitionId} AND deleted = 0
+    </select>
+    <select id="instance" resultType="com.cloudflow.crm.mapper.CrmRefundWorkflowMapper$Instance">
+        SELECT instance_id, definition_id, process_def_key, business_key, start_user_id, status, variables
+        FROM wf_process_instance WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId} AND deleted = 0
+    </select>
+    <select id="histories" resultType="com.cloudflow.crm.mapper.CrmRefundWorkflowMapper$History">
+        SELECT task_id, node_key, operator_id, on_behalf_of_user_id, action, task_type, create_time
+        FROM wf_task_history WHERE tenant_id = #{tenantId} AND instance_id = #{instanceId}
+            AND action IN ('APPROVE', 'COUNTERSIGN_APPROVE', 'REJECT', 'COUNTERSIGN_REJECT')
+        ORDER BY create_time, history_id
+    </select>
+</mapper>

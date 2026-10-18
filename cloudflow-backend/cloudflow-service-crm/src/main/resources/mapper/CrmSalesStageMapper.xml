@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmSalesStageMapper">
+    <select id="latestHistory" resultType="com.cloudflow.crm.domain.CrmOpportunityStageHistory">
+        SELECT * FROM crm_opportunity_stage_history WHERE tenant_id = #{tenantId} AND opportunity_id = #{opportunityId}
+        ORDER BY history_id DESC LIMIT 1
+    </select>
+    <select id="pendingNoticeIds" resultType="java.lang.Long">
+        SELECT opportunity.opportunity_id FROM crm_opportunity opportunity JOIN crm_sales_stage stage
+            ON stage.stage_code = opportunity.stage AND stage.tenant_id = opportunity.tenant_id AND stage.deleted = 0
+        WHERE opportunity.tenant_id = #{tenantId} AND opportunity.deleted = 0 AND opportunity.status = 'OPEN'
+            AND opportunity.opportunity_id &gt; #{afterId} AND opportunity.owner_id IS NOT NULL
+            AND stage.status = 'ACTIVE' AND stage.is_won_flag = 0 AND stage.is_lost_flag = 0 AND stage.overdue_days IS NOT NULL
+            AND TIMESTAMPDIFF(SECOND, opportunity.stage_changed_time, #{now}) &gt;= stage.overdue_days * 86400
+            AND EXISTS(SELECT 1 FROM crm_opportunity_stage_history history
+                WHERE history.tenant_id = opportunity.tenant_id AND history.opportunity_id = opportunity.opportunity_id
+                    AND history.to_stage = opportunity.stage AND history.changed_time = opportunity.stage_changed_time)
+        ORDER BY opportunity.opportunity_id LIMIT 200
+    </select>
+    <update id="refreshDurations">
+        UPDATE crm_opportunity SET stage_duration_days = GREATEST(0, TIMESTAMPDIFF(DAY, stage_changed_time, #{now})), update_time = update_time
+        WHERE tenant_id = #{tenantId} AND deleted = 0 AND stage_changed_time IS NOT NULL
+            AND stage_duration_days != GREATEST(0, TIMESTAMPDIFF(DAY, stage_changed_time, #{now}))
+    </update>
+    <select id="recipientPermission" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM sys_user_role membership
+            JOIN sys_role role_entry ON role_entry.role_id = membership.role_id AND role_entry.tenant_id = membership.tenant_id
+                AND role_entry.status = '0' AND role_entry.deleted = 0
+            JOIN sys_role_menu grants ON grants.role_id = role_entry.role_id AND grants.tenant_id = role_entry.tenant_id
+            JOIN sys_menu menu ON menu.menu_id = grants.menu_id AND menu.status = '0' AND menu.perms = 'crm:opportunity:list'
+            WHERE membership.tenant_id = #{tenantId} AND membership.user_id = #{userId})
+    </select>
+    <resultMap id="StageResult" type="com.cloudflow.crm.domain.CrmSalesStage" autoMapping="true">
+        <id column="stage_id" property="stageId" />
+        <result column="required_fields" property="requiredFields" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler" />
+    </resultMap>
+    <select id="lockTenant" resultType="java.lang.Long">
+        SELECT tenant_id FROM sys_tenant WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0' FOR UPDATE
+    </select>
+    <select id="lockCatalog" resultMap="StageResult">
+        SELECT * FROM crm_sales_stage WHERE tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockContact" resultType="com.cloudflow.crm.domain.CrmContact">
+        SELECT * FROM crm_contact WHERE tenant_id = #{tenantId} AND contact_id = #{contactId}
+            AND customer_id = #{customerId} AND deleted = 0 AND status = 'ACTIVE' FOR UPDATE
+    </select>
+    <select id="referenced" resultType="int">
+        SELECT CASE WHEN EXISTS (
+            SELECT 1 FROM crm_opportunity WHERE tenant_id = #{tenantId} AND (stage = #{stageCode} OR last_stage = #{stageCode})
+        ) OR EXISTS (
+            SELECT 1 FROM crm_opportunity_stage_history WHERE tenant_id = #{tenantId} AND (from_stage = #{stageCode} OR to_stage = #{stageCode})
+        ) THEN 1 ELSE 0 END
+    </select>
+    <select id="activityCount" resultType="int">
+        SELECT CASE WHEN EXISTS (
+            SELECT 1 FROM crm_follow_up WHERE tenant_id = #{tenantId} AND opportunity_id = #{opportunityId}
+                AND customer_id = #{customerId} AND deleted = 0 AND follow_up_time &lt;= NOW() AND TRIM(content) != ''
+        ) OR EXISTS (
+            SELECT 1 FROM crm_activity WHERE tenant_id = #{tenantId} AND biz_type = 'OPPORTUNITY' AND biz_id = #{opportunityId}
+                AND deleted = 0 AND status = 'COMPLETED' AND end_time &lt;= NOW()
+        ) THEN 1 ELSE 0 END
+    </select>
+</mapper>

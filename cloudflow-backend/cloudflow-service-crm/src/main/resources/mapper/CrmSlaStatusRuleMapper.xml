@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmSlaStatusRuleMapper">
+    <update id="deactivateChildren">
+        UPDATE crm_sla_status_rule SET deleted = 1 WHERE policy_id = #{parentId}
+    </update>
+    <insert id="upsert">
+        INSERT INTO crm_sla_status_rule (tenant_id, policy_id, rule_type, ticket_status, deleted, create_by, create_time, update_by, update_time)
+        VALUES (#{entity.tenantId}, #{entity.policyId}, #{entity.ruleType}, #{entity.ticketStatus}, #{entity.deleted}, #{entity.createBy}, #{entity.createTime}, #{entity.updateBy}, #{entity.updateTime})
+        ON DUPLICATE KEY UPDATE rule_type = VALUES(rule_type),
+          ticket_status = VALUES(ticket_status),
+          deleted = VALUES(deleted),
+          update_by = VALUES(update_by),
+          update_time = VALUES(update_time)
+    </insert>
+</mapper>
+

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmStaffMapper">
+    <select id="selectUserDept" resultType="java.lang.Long">
+        SELECT dept_id FROM sys_user WHERE user_id = #{userId} AND deleted = 0 AND status = '0'
+    </select>
+    <select id="selectDepartment" resultType="com.cloudflow.crm.mapper.CrmStaffMapper$Department">
+        SELECT dept_id, parent_id, leader FROM sys_dept WHERE dept_id = #{deptId} AND deleted = 0 AND status = '0'
+    </select>
+    <select id="selectLeaderUsers" resultType="java.lang.Long">
+        SELECT user_id FROM sys_user WHERE deleted = 0 AND status = '0'
+          AND (CAST(user_id AS CHAR) = #{leader} OR user_name = #{leader} OR nick_name = #{leader})
+        ORDER BY user_id
+    </select>
+</mapper>

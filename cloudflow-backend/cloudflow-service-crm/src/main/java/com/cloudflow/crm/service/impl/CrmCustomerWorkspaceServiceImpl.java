@@ -2,6 +2,8 @@ package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmContact;
 import com.cloudflow.crm.domain.CrmCustomer;
@@ -76,6 +78,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     private final CrmServiceTicketMapper serviceTicketMapper;
     private final RemoteOaService remoteOaService;
     private final com.cloudflow.common.redis.core.SysDictHelper sysDictHelper;
+    private final CrmLostAnalysisService lostAnalysisService;
 
     @Override
     public CrmCustomerWorkspaceVO getWorkspace(Long customerId) {
@@ -130,6 +133,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     @Override
     public CrmDashboardSummaryVO getDashboardSummary() {
         CrmDashboardSummaryVO summary = new CrmDashboardSummaryVO();
+        summary.setLostAnalysis(lostAnalysisService.report(null, null));
         List<Long> accessibleCustomerIds = accessibleCustomerIds(200);
         summary.setFunnel(buildOpportunityBoard());
         if (accessibleCustomerIds.isEmpty()) {
@@ -174,8 +178,8 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                         .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
                         .in(CrmServiceTicket::getCustomerId, accessibleCustomerIds)
                         .in(CrmServiceTicket::getSeverity,
-                                CrmConstants.TicketSeverity.HIGH,
-                                CrmConstants.TicketSeverity.CRITICAL)
+                        CrmConstants.TicketSeverity.P2,
+                        CrmConstants.TicketSeverity.P1)
                         .notIn(CrmServiceTicket::getStatus,
                                 CrmConstants.TicketStatus.RESOLVED,
                                 CrmConstants.TicketStatus.CLOSED)
@@ -429,7 +433,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
 
     private List<RemoteProjectLinkVO> loadProjects(Long customerId) {
         try {
-            var response = remoteOaService.listProjects(1, 50, customerId, null);
+            R<PageResult<RemoteOaService.ProjectInfo>> response = remoteOaService.listProjects(1, 50, customerId, null);
             if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getRows() == null) {
                 return new ArrayList<>();
             }
@@ -455,7 +459,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
 
     private List<RemoteContractLinkVO> loadContracts(Long customerId) {
         try {
-            var response = remoteOaService.listContracts(1, 50, customerId, null);
+            R<PageResult<RemoteOaService.ContractInfo>> response = remoteOaService.listContracts(1, 50, customerId, null);
             if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getRows() == null) {
                 return new ArrayList<>();
             }
@@ -480,7 +484,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
 
     private List<RemoteInvoiceLinkVO> loadInvoices(Long customerId) {
         try {
-            var response = remoteOaService.listInvoices(1, 100, null, null, null, customerId);
+            R<PageResult<RemoteOaService.InvoiceInfo>> response = remoteOaService.listInvoices(1, 100, null, null, null, customerId);
             if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getRows() == null) {
                 return new ArrayList<>();
             }
@@ -512,7 +516,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 continue;
             }
             try {
-                var response = remoteOaService.listBudgets(1, 20, project.getProjectId(), null);
+                R<PageResult<RemoteOaService.BudgetInfo>> response = remoteOaService.listBudgets(1, 20, project.getProjectId(), null);
                 if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getRows() == null) {
                     continue;
                 }

@@ -6,6 +6,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmReceivable;
+import com.cloudflow.crm.domain.dto.CrmReceivableConfirmDTO;
 import com.cloudflow.crm.domain.dto.CrmReceivableWriteoffDTO;
 import com.cloudflow.crm.domain.vo.CrmReceivableAgingBucketVO;
 import com.cloudflow.crm.service.ICrmReceivableService;
@@ -23,7 +24,6 @@ import java.util.List;
 public class CrmReceivableController {
 
     private final ICrmReceivableService crmReceivableService;
-    private final com.cloudflow.crm.service.ICrmCustomerService customerService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:receivable:list")
@@ -76,9 +76,9 @@ public class CrmReceivableController {
     @RepeatSubmit
     @PostMapping("/{id}/confirm")
     @SaCheckPermission("crm:receivable:confirm")
-    public R<Void> confirm(@PathVariable("id") Long id) {
+    public R<Void> confirm(@PathVariable("id") Long id, @RequestBody CrmReceivableConfirmDTO dto) {
         try {
-            return R.result(crmReceivableService.confirmReceipt(id));
+            return R.result(crmReceivableService.confirmReceipt(id, dto.version()));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -112,19 +112,10 @@ public class CrmReceivableController {
     @DeleteMapping("/{ids}")
     @SaCheckPermission("crm:receivable:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
-        for (Long id : ids) {
-            CrmReceivable persisted;
-            try {
-                persisted = crmReceivableService.getAccessibleReceivable(id);
-            } catch (IllegalArgumentException e) {
-                return R.fail(e.getMessage());
-            }
-            CrmReceivable receivable = new CrmReceivable();
-            receivable.setReceivableId(id);
-            receivable.setDeleted(1);
-            crmReceivableService.updateById(receivable);
-            customerService.refreshHealth(persisted.getCustomerId());
+        try {
+            return R.result(crmReceivableService.removeReceivables(ids));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
         }
-        return R.ok();
     }
 }

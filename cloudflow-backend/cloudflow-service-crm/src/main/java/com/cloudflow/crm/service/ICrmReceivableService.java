@@ -20,13 +20,15 @@ public interface ICrmReceivableService extends IService<CrmReceivable> {
 
     boolean updateReceivable(CrmReceivable receivable);
 
-    boolean confirmReceipt(Long receivableId);
+    boolean confirmReceipt(Long receivableId, Integer version);
 
     boolean writeoffReceivable(Long receivableId, CrmReceivableWriteoffDTO writeoffDTO);
 
     boolean bindInvoice(Long receivableId, Long invoiceId);
 
     boolean syncInvoiceStatus(Long receivableId, ReceivableInvoiceSyncDTO syncDTO);
+
+    boolean removeReceivables(List<Long> ids);
 
     List<CrmReceivableAgingBucketVO> getAgingBuckets();
 }

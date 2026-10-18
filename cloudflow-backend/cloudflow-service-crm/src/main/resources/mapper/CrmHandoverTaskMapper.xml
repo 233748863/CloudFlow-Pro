@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmHandoverTaskMapper">
+    <select id="lockById" resultType="com.cloudflow.crm.domain.CrmHandoverTask">
+        SELECT * FROM crm_handover_task WHERE handover_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockPendingByOwner" resultType="com.cloudflow.crm.domain.CrmHandoverTask">
+        SELECT * FROM crm_handover_task
+        WHERE tenant_id = #{tenantId} AND from_owner_id = #{ownerId} AND status = 'PENDING' AND deleted = 0
+        FOR UPDATE
+    </select>
+    <select id="lockBusinessOwner" resultType="java.lang.Long">
+        <choose>
+            <when test="businessType == 'CRM_CUSTOMER'">
+                SELECT owner_id FROM crm_customer WHERE tenant_id = #{tenantId} AND customer_id = #{id} AND deleted = 0 FOR UPDATE
+            </when>
+            <when test="businessType == 'CRM_LEAD'">
+                SELECT owner_id FROM crm_lead WHERE tenant_id = #{tenantId} AND lead_id = #{id} AND deleted = 0 AND status NOT IN ('CONVERTED', 'CLOSED') FOR UPDATE
+            </when>
+            <when test="businessType == 'CRM_OPPORTUNITY'">
+                SELECT owner_id FROM crm_opportunity WHERE tenant_id = #{tenantId} AND opportunity_id = #{id} AND deleted = 0 AND status = 'OPEN' AND stage NOT IN ('WON', 'LOST') FOR UPDATE
+            </when>
+            <when test="businessType == 'CRM_QUOTE'">
+                SELECT owner_id FROM crm_quote WHERE tenant_id = #{tenantId} AND quote_id = #{id} AND deleted = 0 AND status NOT IN ('ACCEPTED', 'EXPIRED') FOR UPDATE
+            </when>
+            <when test="businessType == 'CRM_RECEIVABLE'">
+                SELECT owner_id FROM crm_receivable WHERE tenant_id = #{tenantId} AND receivable_id = #{id} AND deleted = 0 AND status &lt;&gt; 'RECEIVED' FOR UPDATE
+            </when>
+            <when test="businessType == 'CRM_RENEWAL'">
+                SELECT owner_id FROM crm_renewal WHERE tenant_id = #{tenantId} AND renewal_id = #{id} AND deleted = 0 AND status NOT IN ('WON', 'LOST', 'CLOSED') FOR UPDATE
+            </when>
+            <when test="businessType == 'CRM_SERVICE_TICKET'">
+                SELECT owner_id FROM crm_service_ticket WHERE tenant_id = #{tenantId} AND ticket_id = #{id} AND deleted = 0 AND status NOT IN ('RESOLVED', 'CLOSED') FOR UPDATE
+            </when>
+            <otherwise>SELECT NULL WHERE 1 = 0</otherwise>
+        </choose>
+    </select>
+</mapper>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmDealEventMapper">
+    <select id="lockById" resultType="com.cloudflow.crm.domain.CrmDealEvent">
+        SELECT * FROM crm_deal_event WHERE event_id = #{id} FOR UPDATE
+    </select>
+    <select id="lockByKey" resultType="com.cloudflow.crm.domain.CrmDealEvent">
+        SELECT * FROM crm_deal_event WHERE event_key = #{eventKey} FOR UPDATE
+    </select>
+    <select id="lockReversals" resultType="com.cloudflow.crm.domain.CrmDealEvent">
+        SELECT * FROM crm_deal_event WHERE reversal_of_id = #{eventId} FOR UPDATE
+    </select>
+</mapper>

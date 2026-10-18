@@ -4,6 +4,47 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.crm.mapper.CrmQuoteMapper">
 
+    <sql id="currencyLocked">
+        (EXISTS(SELECT 1 FROM crm_deal_team team WHERE team.tenant_id = t.tenant_id AND team.biz_type = 'QUOTE' AND team.biz_id = t.quote_id)
+        OR EXISTS(SELECT 1 FROM oa_contract contract JOIN crm_deal_team team
+            ON team.tenant_id = contract.tenant_id AND team.biz_type = 'CONTRACT' AND team.biz_id = contract.contract_id
+            WHERE contract.tenant_id = t.tenant_id AND contract.source_type = 'CRM_QUOTE' AND contract.source_id = t.quote_id))
+    </sql>
+    <select id="lockCreatedContract" resultType="com.cloudflow.crm.mapper.CrmQuoteMapper$ContractLink">
+        SELECT contract_id, customer_id, contract_no, currency FROM oa_contract
+        WHERE contract_id = #{contractId} AND tenant_id = #{tenantId} AND source_type = 'CRM_QUOTE' AND source_id = #{id} AND deleted = 0 FOR SHARE
+    </select>
+    <select id="lockConvertedContracts" resultType="java.lang.Long">
+        SELECT contract.contract_id FROM oa_contract contract JOIN crm_deal_team team
+            ON team.tenant_id = contract.tenant_id AND team.biz_type = 'CONTRACT' AND team.biz_id = contract.contract_id
+        WHERE contract.tenant_id = #{tenantId} AND contract.source_type = 'CRM_QUOTE' AND contract.source_id = #{id} FOR SHARE
+    </select>
+    <update id="writeContractLink">
+        UPDATE crm_quote SET contract_id = #{record.contractId}, contract_no = #{record.contractNo}, version = version + 1,
+            update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE quote_id = #{record.quoteId} AND tenant_id = #{record.tenantId} AND deleted = 0 AND contract_id IS NULL AND version = #{expectedVersion}
+    </update>
+    <update id="acceptLinkedContract">
+        UPDATE crm_quote SET status = 'ACCEPTED', version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE quote_id = #{record.quoteId} AND tenant_id = #{record.tenantId} AND deleted = 0 AND contract_id = #{record.contractId}
+            AND status IN ('APPROVED', 'SENT') AND version = #{expectedVersion}
+    </update>
+
+    <select id="lockById" resultType="com.cloudflow.crm.domain.CrmQuote">
+        SELECT * FROM crm_quote WHERE quote_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockAccessible" resultType="com.cloudflow.crm.domain.CrmQuote">
+        SELECT quote.*, customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        FROM crm_quote quote JOIN crm_customer customer ON customer.customer_id = quote.customer_id
+            AND customer.tenant_id = quote.tenant_id AND customer.deleted = 0
+        WHERE quote.quote_id = #{id} AND quote.tenant_id = #{tenantId} AND quote.deleted = 0 FOR UPDATE
+    </select>
+    <update id="writeOwner">
+        UPDATE crm_quote SET owner_id = #{record.ownerId}, owner_name = #{record.ownerName},
+            version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE quote_id = #{record.quoteId} AND tenant_id = #{record.tenantId} AND version = #{expectedVersion} AND deleted = 0
+    </update>
+
     <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmQuote">
         SELECT t.quote_id,
                t.tenant_id,
@@ -17,6 +58,8 @@
                t.total_amount,
                t.tax_amount,
                t.currency,
+               t.version,
+               <include refid="currencyLocked"/> AS currency_locked,
                t.valid_until,
                t.owner_id,
                t.owner_name,
@@ -63,6 +106,8 @@
                t.total_amount,
                t.tax_amount,
                t.currency,
+               t.version,
+               <include refid="currencyLocked"/> AS currency_locked,
                t.valid_until,
                t.owner_id,
                t.owner_name,

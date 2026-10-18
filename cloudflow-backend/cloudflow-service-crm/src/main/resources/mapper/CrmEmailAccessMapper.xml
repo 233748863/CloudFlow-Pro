@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmEmailAccessMapper">
+    <select id="roles" resultType="com.cloudflow.crm.service.email.CrmEmailAccessService$Role">
+        SELECT account.user_id, account.user_name, account.dept_id, role_entry.role_key, role_entry.ds_type, role_entry.ds_scope,
+            EXISTS(SELECT 1 FROM sys_role_menu grant_entry JOIN sys_menu menu_entry ON menu_entry.menu_id = grant_entry.menu_id
+                WHERE grant_entry.tenant_id = #{tenantId} AND grant_entry.role_id = role_entry.role_id
+                    AND menu_entry.status = '0' AND menu_entry.perms = 'crm:campaign:send') AS sending,
+            EXISTS(SELECT 1 FROM sys_role_menu grant_entry JOIN sys_menu menu_entry ON menu_entry.menu_id = grant_entry.menu_id
+                WHERE grant_entry.tenant_id = #{tenantId} AND grant_entry.role_id = role_entry.role_id
+                    AND menu_entry.status = '0' AND menu_entry.perms = 'crm:campaign:assign') AS assigning
+        FROM sys_user account
+        JOIN sys_tenant tenant_entry ON tenant_entry.tenant_id = account.tenant_id
+        JOIN sys_user_role membership ON membership.user_id = account.user_id AND membership.tenant_id = account.tenant_id
+        JOIN sys_role role_entry ON role_entry.role_id = membership.role_id AND role_entry.tenant_id = account.tenant_id
+        WHERE account.tenant_id = #{tenantId} AND account.user_id = #{userId} AND account.deleted = 0 AND account.status = '0'
+            AND role_entry.deleted = 0 AND role_entry.status = '0' AND tenant_entry.deleted = 0 AND tenant_entry.status = '0'
+            AND (tenant_entry.expire_time IS NULL OR tenant_entry.expire_time &gt; NOW())
+        ORDER BY role_entry.role_id
+    </select>
+    <select id="departmentTree" resultType="java.lang.Long">
+        SELECT dept_id FROM sys_dept WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
+            AND (dept_id = #{deptId} OR FIND_IN_SET(#{deptId}, ancestors) &gt; 0)
+        ORDER BY dept_id
+    </select>
+</mapper>

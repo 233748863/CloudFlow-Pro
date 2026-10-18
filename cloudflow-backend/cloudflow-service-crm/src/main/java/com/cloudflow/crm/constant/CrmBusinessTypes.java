@@ -14,4 +14,5 @@ public final class CrmBusinessTypes {
     public static final String CRM_CUSTOMER_LEVEL = "crm_customer_level";
     public static final String CRM_OPPORTUNITY_DOWNGRADE = "crm_opportunity_downgrade";
     public static final String CRM_REFUND = "crm_refund";
+    public static final String CRM_CUSTOMER_CREDIT = "crm_customer_credit";
 }

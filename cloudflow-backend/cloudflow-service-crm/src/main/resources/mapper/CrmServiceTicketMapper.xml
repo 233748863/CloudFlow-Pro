@@ -4,7 +4,13 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.crm.mapper.CrmServiceTicketMapper">
 
+    <select id="lockById" resultType="com.cloudflow.crm.domain.CrmServiceTicket">
+        SELECT * FROM crm_service_ticket WHERE ticket_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+
     <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmServiceTicket">
+        <bind name="currentUserId" value="@com.cloudflow.common.core.context.UserContext@getUserId()" />
+        <bind name="currentDeptId" value="@com.cloudflow.common.core.context.UserContext@getDeptId()" />
         SELECT t.ticket_id,
                t.tenant_id,
                t.customer_id,
@@ -20,18 +26,37 @@
                t.due_time,
                t.description,
                t.solution,
+               t.portal_contact_id,
+               t.portal_solution,
+               t.portal_solution_time,
                t.attachment_url,
                t.status,
+               t.sla_policy_id,
+               t.first_response_due,
+               t.resolution_due,
+               t.first_response_time,
+               t.first_response_minutes,
+               t.resolution_minutes,
+               t.sla_paused_minutes,
+               t.pause_start_time,
+               t.sla_status,
+               t.response_breached_flag,
+               t.resolution_breached_flag,
+               t.version,
                t.deleted,
                t.create_by,
                t.create_time,
                t.update_by,
                t.update_time,
-               c.dept_id AS scope_dept_id,
-               c.owner_id AS scope_owner_id
+               CASE WHEN t.portal_contact_id IS NOT NULL AND t.owner_id = #{currentUserId} THEN #{currentDeptId} ELSE c.dept_id END AS scope_dept_id,
+               CASE WHEN t.portal_contact_id IS NOT NULL AND t.owner_id = #{currentUserId} THEN t.owner_id ELSE c.owner_id END AS scope_owner_id
         FROM crm_service_ticket t
                  INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.deleted = '0'
         WHERE t.deleted = '0'
+        <if test="query != null and query.portalQueue == true">AND t.portal_contact_id IS NOT NULL AND t.owner_id IS NULL AND t.status = 'OPEN'</if>
+        <if test="query != null and query.slaPolicyId != null">AND t.sla_policy_id = #{query.slaPolicyId}</if>
+        <if test="query != null and query.slaStatus != null and query.slaStatus != ''">AND t.sla_status = #{query.slaStatus}</if>
+        <if test="query != null and query.ownerId != null">AND t.owner_id = #{query.ownerId}</if>
         <if test="query != null and query.customerId != null">
             AND t.customer_id = #{query.customerId}
         </if>
@@ -48,6 +73,8 @@
     </select>
 
     <select id="selectByIdWithDataScope" resultType="com.cloudflow.crm.domain.CrmServiceTicket">
+        <bind name="currentUserId" value="@com.cloudflow.common.core.context.UserContext@getUserId()" />
+        <bind name="currentDeptId" value="@com.cloudflow.common.core.context.UserContext@getDeptId()" />
         SELECT t.ticket_id,
                t.tenant_id,
                t.customer_id,
@@ -63,18 +90,50 @@
                t.due_time,
                t.description,
                t.solution,
+               t.portal_contact_id,
+               t.portal_solution,
+               t.portal_solution_time,
                t.attachment_url,
                t.status,
+               t.sla_policy_id,
+               t.first_response_due,
+               t.resolution_due,
+               t.first_response_time,
+               t.first_response_minutes,
+               t.resolution_minutes,
+               t.sla_paused_minutes,
+               t.pause_start_time,
+               t.sla_status,
+               t.response_breached_flag,
+               t.resolution_breached_flag,
+               t.version,
                t.deleted,
                t.create_by,
                t.create_time,
                t.update_by,
                t.update_time,
-               c.dept_id AS scope_dept_id,
-               c.owner_id AS scope_owner_id
+               CASE WHEN t.portal_contact_id IS NOT NULL AND t.owner_id = #{currentUserId} THEN #{currentDeptId} ELSE c.dept_id END AS scope_dept_id,
+               CASE WHEN t.portal_contact_id IS NOT NULL AND t.owner_id = #{currentUserId} THEN t.owner_id ELSE c.owner_id END AS scope_owner_id
         FROM crm_service_ticket t
                  INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.deleted = '0'
         WHERE t.ticket_id = #{ticketId}
           AND t.deleted = '0'
+    </select>
+    <select id="selectSlaReportTickets" resultType="com.cloudflow.crm.domain.CrmServiceTicket">
+        <bind name="currentUserId" value="@com.cloudflow.common.core.context.UserContext@getUserId()" />
+        <bind name="currentDeptId" value="@com.cloudflow.common.core.context.UserContext@getDeptId()" />
+        SELECT ticket.*,
+            CASE WHEN ticket.portal_contact_id IS NOT NULL AND ticket.owner_id = #{currentUserId}
+                THEN #{currentDeptId} ELSE customer.dept_id END AS scope_dept_id,
+            CASE WHEN ticket.portal_contact_id IS NOT NULL AND ticket.owner_id = #{currentUserId}
+                THEN ticket.owner_id ELSE customer.owner_id END AS scope_owner_id
+        FROM crm_service_ticket ticket INNER JOIN crm_customer customer ON customer.customer_id = ticket.customer_id
+          AND customer.tenant_id = ticket.tenant_id AND customer.deleted = 0
+        WHERE ticket.deleted = 0 AND ticket.sla_policy_id IS NOT NULL
+        <if test="query.policyId != null">AND ticket.sla_policy_id = #{query.policyId}</if>
+        <if test="query.ownerId != null">AND ticket.owner_id = #{query.ownerId}</if>
+        <if test="query.severity != null and query.severity != ''">AND ticket.severity = #{query.severity}</if>
+        <if test="query.start != null">AND ticket.opened_time &gt;= #{query.start}</if>
+        <if test="query.end != null">AND ticket.opened_time &lt; DATE_ADD(#{query.end}, INTERVAL 1 DAY)</if>
     </select>
 </mapper>

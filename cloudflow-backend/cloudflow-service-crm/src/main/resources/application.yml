@@ -6,10 +6,19 @@ spring:
     name: cloudflow-service-crm
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
   cloud:
     openfeign:
       circuitbreaker:
         enabled: true
+      client:
+        config:
+          crmFinanceFiles:
+            connect-timeout: 3000
+            read-timeout: 10000
     nacos:
       server-addr: ${NACOS_SERVER:127.0.0.1:8848}
       username: ${NACOS_USERNAME:}
@@ -56,6 +65,24 @@ spring:
           max-idle: 20
           min-idle: 5
           max-wait: -1ms
+
+resilience4j:
+  timelimiter:
+    instances:
+      RemoteFinanceFileServiceuploadStringLongMultipartFile:
+        timeout-duration: 15s
+      RemoteWorkflowServicestartProcessInternalInternalWorkflowStartDTO:
+        timeout-duration: 15s
+      CrmContractTeamClientreadLongInteger:
+        timeout-duration: 15s
+      CrmContractTeamClientupdateLongCrmDealTeamRequest:
+        timeout-duration: 15s
+      RemoteHrServicelistEmployeesByUserIdsList:
+        timeout-duration: 5s
+      RemoteOaServicebindInvoiceLongInvoiceBindRequest:
+        timeout-duration: 15s
+      RemoteOaServicecreateContractStringStringContractDraftRequest:
+        timeout-duration: 15s
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*Mapper.xml
@@ -126,14 +153,21 @@ logging:
     com.cloudflow.crm.mapper: ${LOG_LEVEL_MAPPER:WARN}
     com.baomidou.mybatisplus: ${LOG_LEVEL_MAPPER:WARN}
   pattern:
-    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
-    file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [traceId=%X{traceId}] %logger{50} - %msg%n'
+    file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [traceId=%X{traceId}] %logger{50} - %msg%n'
   file:
     name: logs/crm-service.log
     max-size: 100MB
     max-history: 30
 
 cloudflow:
+  job:
+    internal-auth:
+      keys:
+        cloudflow-auth: ${CLOUDFLOW_JOB_AUTH_KEY:}
+        cloudflow-service-crm: ${CLOUDFLOW_JOB_CRM_KEY:}
+  import:
+    enabled: true
   tenant:
     enabled: true
     column: tenant_id

@@ -12,6 +12,7 @@ import java.util.List;
 
 @Data
 public class CrmDashboardSummaryVO {
+    private com.cloudflow.crm.service.impl.CrmLostAnalysisService.Report lostAnalysis;
     private List<CrmOpportunityBoardColumnVO> funnel = new ArrayList<>();
     private List<CrmQuote> pendingQuotes = new ArrayList<>();
     private List<CrmReceivableAgingBucketVO> agingBuckets = new ArrayList<>();

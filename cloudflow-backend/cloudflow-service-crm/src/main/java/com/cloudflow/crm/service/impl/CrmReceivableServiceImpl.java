@@ -1,37 +1,58 @@
 package com.cloudflow.crm.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.common.redis.core.SysDictHelper;
 import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
+import com.cloudflow.crm.domain.CrmApproval;
+import com.cloudflow.crm.domain.CrmDealEvent;
 import com.cloudflow.crm.domain.CrmReceivable;
 import com.cloudflow.crm.domain.dto.CrmReceivableWriteoffDTO;
 import com.cloudflow.crm.domain.dto.ReceivableInvoiceSyncDTO;
 import com.cloudflow.crm.domain.vo.CrmReceivableAgingBucketVO;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
+import com.cloudflow.crm.mapper.CrmApprovalMapper;
+import com.cloudflow.crm.mapper.CrmDealEventMapper;
+import com.cloudflow.crm.mapper.CrmDealTeamMapper;
 import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmReceivableService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
+import com.cloudflow.crm.service.deal.CrmDealPolicy;
+import com.cloudflow.crm.service.deal.CrmDealTeamStore;
+import com.cloudflow.crm.service.deal.CrmReceivableTeamService;
+import com.cloudflow.crm.service.receivable.CrmReceivableAccessService;
+import com.cloudflow.crm.service.receivable.CrmReceivableAmounts;
+import com.cloudflow.crm.service.receivable.CrmInvoiceReceiptService;
+import com.cloudflow.crm.service.receivable.CrmReceivableReceiptService;
+import com.cloudflow.crm.mapper.CrmInvoiceReceiptMapper;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMapper, CrmReceivable>
@@ -44,6 +65,16 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
     private final RemoteOaService remoteOaService;
     private final SysDictHelper sysDictHelper;
     private final CrmEventPublisher crmEventPublisher;
+    private final CrmReceivableAccessService access;
+    private final CrmReceivableTeamService receivableTeams;
+    private final CrmDealTeamStore teams;
+    private final CrmDealTeamMapper teamRecords;
+    private final CrmDealEventMapper events;
+    private final CrmApprovalMapper approvals;
+    private final CrmAuditTrail auditTrail;
+    private final CrmInvoiceReceiptService invoiceReceipts;
+    private final CrmInvoiceReceiptMapper invoiceSources;
+    private final CrmReceivableReceiptService receiptFacts;
 
     @Override
     public PageResult<CrmReceivable> queryPage(CrmReceivable query, PageQuery pageQuery) {
@@ -55,102 +86,109 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
 
     @Override
     public CrmReceivable getAccessibleReceivable(Long receivableId) {
-        if (receivableId == null) {
-            throw new IllegalArgumentException("回款ID不能为空");
-        }
-        CrmReceivable receivable = baseMapper.selectByIdWithDataScope(
-                receivableId,
-                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
-        if (receivable == null) {
-            throw new IllegalArgumentException("回款计划不存在");
-        }
-        return receivable;
+        return access.read(receivableId);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean createReceivable(CrmReceivable receivable) {
-        fillBindingSnapshot(receivable);
         validate(receivable);
+        validateNewSettlement(receivable);
+        fillBindingSnapshot(receivable);
         if (!StringUtils.hasText(receivable.getReceivableNo())) {
-            receivable.setReceivableNo(Localize.nextNo(CrmConstants.NoPrefix.RECEIVABLE));
+            receivable.setReceivableNo(CrmConstants.NoPrefix.RECEIVABLE + IdUtils.simpleUUID());
         }
-        if (receivable.getOwnerId() == null) {
-            receivable.setOwnerId(UserContext.getUserId());
-        }
-        if (!StringUtils.hasText(receivable.getOwnerName())) {
-            receivable.setOwnerName(currentUserName());
-        }
-        Localize.fillCommonAudit(receivable, currentTenantId(), currentUserName(), now());
-        boolean saved = save(receivable);
-        if (saved) {
-            crmCustomerService.refreshHealth(receivable.getCustomerId());
-        }
-        return saved;
+        receivable.setReceivableNo(CrmRecordSupport.text(receivable.getReceivableNo(), 50, "回款编号"));
+        CrmReceivableTeamService.Initial initialTeam = receivableTeams.prepareCreate(receivable);
+        CrmReceivableAmounts.apply(receivable, BigDecimal.ZERO, null);
+        receivable.setInvoiceStatus(CrmConstants.InvoiceStatus.NONE);
+        CrmRecordSupport.create(receivable, "receivableId");
+        CrmRecordSupport.saved(baseMapper.insert(receivable));
+        receivableTeams.initialize(receivable, initialTeam);
+        crmCustomerService.refreshHealth(receivable.getCustomerId());
+        return true;
     }
 
     @Override
     @Audit(name = "更新应收款")
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateReceivable(CrmReceivable receivable) {
         if (receivable == null || receivable.getReceivableId() == null) {
             throw new IllegalArgumentException("回款ID不能为空");
         }
-        CrmReceivable persisted = getAccessibleReceivable(receivable.getReceivableId());
+        CrmReceivable persisted = access.lockOwned(receivable.getReceivableId());
+        CrmReceivableAmounts.version(persisted, receivable.getVersion());
+        CrmReceivableAmounts.active(persisted);
         validateProtectedSettlementFields(persisted, receivable);
-        fillBindingSnapshot(receivable);
         validate(receivable);
-        // M1-4: 所有权校验
-        DataScopeUtils.assertOwnership(persisted, CrmReceivable::getOwnerId, "应收款");
-        receivable.setTenantId(persisted.getTenantId());
-        if (!StringUtils.hasText(receivable.getReceivableNo())) {
-            receivable.setReceivableNo(persisted.getReceivableNo());
+        boolean bindingChanged = !Objects.equals(persisted.getCustomerId(), receivable.getCustomerId())
+                || !Objects.equals(persisted.getContractId(), receivable.getContractId());
+        if (bindingChanged && hasHistory(persisted)) throw new IllegalArgumentException("回款计划已有业务记录，不能更换客户或合同");
+        CrmReceivableTeamService.Initial initialTeam = null;
+        Long previousCustomer = persisted.getCustomerId();
+        if (bindingChanged) {
+            fillBindingSnapshot(receivable);
+            persisted.setCustomerId(receivable.getCustomerId());
+            persisted.setCustomerName(receivable.getCustomerName());
+            persisted.setContractId(receivable.getContractId());
+            persisted.setContractNo(receivable.getContractNo());
+            initialTeam = receivableTeams.prepareCreate(persisted);
         }
-        receivable.setOwnerId(persisted.getOwnerId());
-        receivable.setOwnerName(persisted.getOwnerName());
-        receivable.setReceivedAmount(persisted.getReceivedAmount());
-        receivable.setOutstandingAmount(persisted.getOutstandingAmount());
-        receivable.setReceivedDate(persisted.getReceivedDate());
-        receivable.setStatus(persisted.getStatus());
-        receivable.setInvoiceStatus(persisted.getInvoiceStatus());
-        receivable.setInvoiceId(persisted.getInvoiceId());
-        receivable.setUpdateBy(currentUserName());
-        receivable.setUpdateTime(now());
-        boolean updated = updateById(receivable);
-        if (updated) {
-            crmCustomerService.refreshHealth(receivable.getCustomerId());
+        BigDecimal received = CrmReceivableAmounts.received(persisted);
+        if (receivable.getPlannedAmount().compareTo(received.add(invoiceSources.pendingAmount(persisted.getReceivableId(), persisted.getTenantId()))) < 0)
+            throw new IllegalArgumentException("计划金额不能小于已到账及等待同步的真实发票收款");
+        persisted.setReceivableName(receivable.getReceivableName());
+        persisted.setPlannedAmount(receivable.getPlannedAmount());
+        persisted.setDueDate(receivable.getDueDate());
+        persisted.setRemark(receivable.getRemark());
+        CrmReceivableAmounts.apply(persisted, received, persisted.getReceivedDate());
+        CrmDealTeamStore.Current currentTeam = teams.inspect("RECEIVABLE", persisted.getReceivableId());
+        if (!currentTeam.rows().isEmpty()) {
+            CrmDealTeamStore.Snapshot snapshot = teams.lock("RECEIVABLE", persisted.getReceivableId(), persisted.getOwnerId(), currentTeam.version());
+            teams.refreshPreview("RECEIVABLE", persisted.getReceivableId(), snapshot, persisted.getPlannedAmount());
         }
-        return updated;
+        CrmRecordSupport.touch(persisted);
+        CrmRecordSupport.saved(baseMapper.writePlan(persisted, receivable.getVersion()));
+        if (initialTeam != null) receivableTeams.initialize(persisted, initialTeam);
+        crmCustomerService.refreshHealth(persisted.getCustomerId());
+        if (!Objects.equals(previousCustomer, persisted.getCustomerId())) crmCustomerService.refreshHealth(previousCustomer);
+        return true;
     }
 
     @Override
-    public boolean confirmReceipt(Long receivableId) {
-        CrmReceivable receivable = getAccessibleReceivable(receivableId);
-        receivable.setReceivedAmount(receivable.getPlannedAmount());
-        receivable.setOutstandingAmount(BigDecimal.ZERO);
-        receivable.setReceivedDate(receivable.getReceivedDate() == null ? java.time.LocalDate.now() : receivable.getReceivedDate());
-        receivable.setStatus(CrmConstants.ReceivableStatus.RECEIVED);
-        receivable.setUpdateBy(currentUserName());
-        receivable.setUpdateTime(now());
-        boolean updated = updateById(receivable);
-        if (updated) {
-            crmCustomerService.refreshHealth(receivable.getCustomerId());
-            publishReceivableConfirmed(receivable);
+    @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "确认剩余回款到账", highRisk = true)
+    public boolean confirmReceipt(Long receivableId, Integer version) {
+        CrmReceivable receivable = access.lockInScope(receivableId);
+        CrmReceivableAmounts.version(receivable, version);
+        CrmReceivableAmounts.active(receivable);
+        requireCrmReceiptEntry(receivable);
+        BigDecimal remaining = CrmReceivableAmounts.remaining(receivable);
+        if (remaining.signum() <= 0) {
+            if (CrmReceivableAmounts.received(receivable).signum() == 0) throw new IllegalArgumentException("当前没有可确认的未收金额");
+            return true;
         }
-        return updated;
+        receiptFacts.recordReceipt(receivable, remaining, LocalDate.now(), "CONFIRM", null);
+        CrmReceivableAmounts.apply(receivable, receivable.getPlannedAmount(), LocalDate.now());
+        saveSettlement(receivable);
+        auditTrail.record("CRM_RECEIVABLE_CONFIRMED", "CRM_RECEIVABLE:" + receivableId,
+                "本次到账=" + remaining.toPlainString() + ",原版本=" + version, true);
+        publishReceivableConfirmed(receivable);
+        return true;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    @Audit(name = "核销本次实际回款", highRisk = true)
     public boolean writeoffReceivable(Long receivableId, CrmReceivableWriteoffDTO writeoffDTO) {
-        CrmReceivable receivable = getAccessibleReceivable(receivableId);
-        if (writeoffDTO == null || writeoffDTO.getAmount() == null) {
-            throw new IllegalArgumentException("核销金额不能为空");
-        }
-        BigDecimal writeoffAmount = zeroIfNull(writeoffDTO.getAmount());
-        if (writeoffAmount.signum() <= 0) {
-            throw new IllegalArgumentException("核销金额必须大于 0");
-        }
-        BigDecimal plannedAmount = zeroIfNull(receivable.getPlannedAmount());
-        BigDecimal currentReceived = zeroIfNull(receivable.getReceivedAmount());
-        BigDecimal outstandingAmount = zeroIfNull(receivable.getOutstandingAmount());
+        CrmRecordSupport.require(writeoffDTO, "核销信息不能为空");
+        CrmReceivable receivable = access.lockInScope(receivableId);
+        CrmReceivableAmounts.version(receivable, writeoffDTO.getVersion());
+        CrmReceivableAmounts.active(receivable);
+        requireCrmReceiptEntry(receivable);
+        BigDecimal writeoffAmount = CrmReceivableAmounts.positive(writeoffDTO.getAmount(), "核销金额");
+        BigDecimal currentReceived = CrmReceivableAmounts.received(receivable);
+        BigDecimal outstandingAmount = CrmReceivableAmounts.remaining(receivable);
         if (outstandingAmount.signum() <= 0) {
             throw new IllegalArgumentException("当前应收款已全部核销");
         }
@@ -158,33 +196,21 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
             throw new IllegalArgumentException("核销金额不能超过剩余未收金额");
         }
 
-        BigDecimal nextReceived = currentReceived.add(writeoffAmount);
-        LocalDate writeoffDate = writeoffDTO.getWriteoffDate() != null ? writeoffDTO.getWriteoffDate() : LocalDate.now();
-        applyReceivableAmounts(receivable, nextReceived, writeoffDate);
-        if (receivable.getInvoiceId() != null) {
-            receivable.setInvoiceStatus(receivable.getOutstandingAmount().signum() == 0
-                    ? CrmConstants.InvoiceStatus.WRITEOFF_FULL
-                    : CrmConstants.InvoiceStatus.WRITEOFF_PARTIAL);
-        }
-        if (StringUtils.hasText(writeoffDTO.getRemark())) {
-            String existingRemark = receivable.getRemark();
-            String writeoffRemark = "writeoff[" + writeoffAmount + "@" + writeoffDate + "] " + writeoffDTO.getRemark();
-            receivable.setRemark(StringUtils.hasText(existingRemark)
-                    ? existingRemark + "\n" + writeoffRemark
-                    : writeoffRemark);
-        }
-        receivable.setUpdateBy(currentUserName());
-        receivable.setUpdateTime(now());
-        boolean updated = updateById(receivable);
-        if (updated) {
-            crmCustomerService.refreshHealth(receivable.getCustomerId());
-        }
-        return updated;
+        validateRemark(writeoffDTO.getRemark());
+        LocalDate writeoffDate = CrmReceivableAmounts.date(writeoffDTO.getWriteoffDate());
+        receiptFacts.recordReceipt(receivable, writeoffAmount, writeoffDate, "WRITEOFF", writeoffDTO.getRemark());
+        CrmReceivableAmounts.apply(receivable, currentReceived.add(writeoffAmount), writeoffDate);
+        saveSettlement(receivable);
+        auditTrail.record("CRM_RECEIVABLE_WRITEOFF", "CRM_RECEIVABLE:" + receivableId,
+                "本次到账=" + writeoffAmount.toPlainString() + ",日期=" + writeoffDate + ",原版本=" + writeoffDTO.getVersion()
+                        + ",说明=" + (writeoffDTO.getRemark() == null ? "" : writeoffDTO.getRemark()), true);
+        return true;
     }
 
     @Override
     public boolean bindInvoice(Long receivableId, Long invoiceId) {
         CrmReceivable receivable = getAccessibleReceivable(receivableId);
+        if (invoiceId == null || invoiceId <= 0) throw new IllegalArgumentException("发票ID无效");
         RemoteOaService.InvoiceBindRequest request = new RemoteOaService.InvoiceBindRequest();
         request.setReceivableId(receivableId);
         request.setCustomerId(receivable.getCustomerId());
@@ -200,38 +226,26 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
 
     @Override
     public boolean syncInvoiceStatus(Long receivableId, ReceivableInvoiceSyncDTO syncDTO) {
-        CrmReceivable receivable = getAccessibleReceivable(receivableId);
+        CrmRecordSupport.require(syncDTO, "发票同步信息不能为空");
+        return invoiceReceipts.synchronize(receivableId, syncDTO.getEventId());
+    }
 
-        String invoiceStatus = normalizeInvoiceStatus(syncDTO == null ? null : syncDTO.getInvoiceStatus());
-        receivable.setInvoiceStatus(invoiceStatus);
-        if (syncDTO != null && syncDTO.getInvoiceId() != null) {
-            receivable.setInvoiceId(syncDTO.getInvoiceId());
+    @Override
+    @Audit(name = "删除无业务历史的回款计划", highRisk = true)
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeReceivables(List<Long> ids) {
+        if (ids == null || ids.isEmpty() || ids.size() > 200 || ids.stream().anyMatch(id -> id == null || id <= 0))
+            throw new IllegalArgumentException("请选择1至200条有效回款计划");
+        for (Long id : ids.stream().distinct().sorted().toList()) {
+            CrmReceivable record = access.lockInScope(id);
+            CrmReceivableAmounts.version(record, record.getVersion());
+            if (!"PLANNED".equals(record.getStatus()) || hasHistory(record))
+                throw new IllegalArgumentException("回款计划已有业务记录，不能删除");
+            CrmRecordSupport.touch(record);
+            CrmRecordSupport.saved(baseMapper.deletePlan(record, record.getVersion()));
+            crmCustomerService.refreshHealth(record.getCustomerId());
         }
-
-        BigDecimal plannedAmount = zeroIfNull(receivable.getPlannedAmount());
-        BigDecimal currentReceived = zeroIfNull(receivable.getReceivedAmount());
-        BigDecimal syncedWriteoffAmount = zeroIfNull(syncDTO == null ? null : syncDTO.getTotalWriteoffAmount());
-        LocalDate syncDate = syncDTO != null && syncDTO.getWriteoffDate() != null ? syncDTO.getWriteoffDate() : LocalDate.now();
-
-        if ("WRITEOFF_FULL".equals(invoiceStatus)) {
-            BigDecimal receivedAmount = plannedAmount.signum() > 0
-                    ? plannedAmount.min(syncedWriteoffAmount.signum() > 0 ? syncedWriteoffAmount : plannedAmount)
-                    : syncedWriteoffAmount;
-            applyReceivableAmounts(receivable, receivedAmount, syncDate);
-        } else if ("WRITEOFF_PARTIAL".equals(invoiceStatus)) {
-            BigDecimal receivedAmount = currentReceived.max(plannedAmount.min(syncedWriteoffAmount));
-            applyReceivableAmounts(receivable, receivedAmount, syncDate);
-        } else {
-            applyReceivableAmounts(receivable, currentReceived, receivable.getReceivedDate());
-        }
-
-        receivable.setUpdateBy("oa-invoice-sync");
-        receivable.setUpdateTime(now());
-        boolean updated = updateById(receivable);
-        if (updated) {
-            crmCustomerService.refreshHealth(receivable.getCustomerId());
-        }
-        return updated;
+        return true;
     }
 
     @Override
@@ -291,27 +305,47 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         if (receivable == null) {
             throw new IllegalArgumentException("回款计划不能为空");
         }
-        if (receivable.getCustomerId() == null) {
+        if (receivable.getCustomerId() == null || receivable.getCustomerId() <= 0) {
             throw new IllegalArgumentException("客户ID不能为空");
         }
-        if (!StringUtils.hasText(receivable.getReceivableName())) {
-            throw new IllegalArgumentException("回款名称不能为空");
-        }
-        if (receivable.getPlannedAmount() == null) {
-            throw new IllegalArgumentException("计划回款金额不能为空");
-        }
-        if (receivable.getReceivedAmount() == null) {
-            receivable.setReceivedAmount(BigDecimal.ZERO);
-        }
-        if (receivable.getOutstandingAmount() == null) {
-            receivable.setOutstandingAmount(receivable.getPlannedAmount().subtract(receivable.getReceivedAmount()));
-        }
-        if (!StringUtils.hasText(receivable.getInvoiceStatus())) {
-            receivable.setInvoiceStatus("NONE");
-        }
-        if (!StringUtils.hasText(receivable.getStatus())) {
-            receivable.setStatus("PLANNED");
-        }
+        receivable.setReceivableName(CrmRecordSupport.text(receivable.getReceivableName(), 120, "回款名称"));
+        receivable.setPlannedAmount(CrmDealPolicy.money(receivable.getPlannedAmount()));
+        validateRemark(receivable.getRemark());
+    }
+
+    private void validateNewSettlement(CrmReceivable receivable) {
+        if (receivable.getReceivableId() != null) throw new IllegalArgumentException("新增回款计划不能指定ID");
+        if (receivable.getReceivedAmount() != null && receivable.getReceivedAmount().signum() != 0
+                || receivable.getOutstandingAmount() != null && receivable.getOutstandingAmount().compareTo(receivable.getPlannedAmount()) != 0
+                || receivable.getReceivedDate() != null || receivable.getInvoiceId() != null
+                || StringUtils.hasText(receivable.getStatus()) && !"PLANNED".equals(receivable.getStatus())
+                || StringUtils.hasText(receivable.getInvoiceStatus()) && !"NONE".equals(receivable.getInvoiceStatus()))
+            throw new IllegalArgumentException("新增计划不能写入到账、退款或发票核销结果，请走专用流程");
+    }
+
+    private void validateRemark(String remark) {
+        if (remark != null && remark.length() > 500) throw new IllegalArgumentException("回款说明最多500字符");
+    }
+
+    private boolean hasHistory(CrmReceivable record) {
+        return CrmReceivableAmounts.received(record).signum() > 0 || record.getInvoiceId() != null
+                || !invoiceSources.boundInvoices(record.getReceivableId(), record.getTenantId()).isEmpty()
+                || !teamRecords.lockVersions("RECEIVABLE", record.getReceivableId()).isEmpty()
+                || events.selectCount(new LambdaQueryWrapper<CrmDealEvent>().eq(CrmDealEvent::getBizType, "RECEIVABLE")
+                        .eq(CrmDealEvent::getBizId, record.getReceivableId())) > 0
+                || approvals.selectCount(new LambdaQueryWrapper<CrmApproval>().eq(CrmApproval::getBusinessRefType, "CRM_RECEIVABLE")
+                        .eq(CrmApproval::getBusinessRefId, record.getReceivableId())) > 0;
+    }
+
+    private void requireCrmReceiptEntry(CrmReceivable receivable) {
+        if (receivable.getInvoiceId() != null || !invoiceSources.boundInvoices(receivable.getReceivableId(), receivable.getTenantId()).isEmpty())
+            throw new IllegalArgumentException("回款计划已绑定发票，请在发票页面登记实际收款；CRM只查看到账结果");
+    }
+
+    private void saveSettlement(CrmReceivable receivable) {
+        CrmRecordSupport.touch(receivable);
+        CrmRecordSupport.saved(baseMapper.writeSettlement(receivable, receivable.getVersion()));
+        crmCustomerService.refreshHealth(receivable.getCustomerId());
     }
 
     private void validateProtectedSettlementFields(CrmReceivable persisted, CrmReceivable input) {
@@ -321,6 +355,8 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         if (input.getOwnerId() != null && !Objects.equals(input.getOwnerId(), persisted.getOwnerId())) {
             throw new IllegalArgumentException("回款负责人变更请走归属调整流程");
         }
+        if (input.getReceivableNo() != null && !Objects.equals(input.getReceivableNo(), persisted.getReceivableNo()))
+            throw new IllegalArgumentException("回款编号创建后不能修改");
         if (input.getReceivedAmount() != null && compareAmount(input.getReceivedAmount(), persisted.getReceivedAmount()) != 0) {
             throw new IllegalArgumentException("回款确认、核销或退款请走专用流程");
         }
@@ -369,46 +405,17 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         fields.put("plannedAmount", receivable.getPlannedAmount());
         fields.put("receivedAmount", receivable.getReceivedAmount());
         fields.put("receivedDate", receivable.getReceivedDate());
-        crmEventPublisher.publish(CrmEventStreamConstants.EVENT_RECEIVABLE_CONFIRMED,
-                tenantId != null ? tenantId : UserContext.getTenantId(), fields);
-    }
-
-    private void applyReceivableAmounts(CrmReceivable receivable, BigDecimal receivedAmount, LocalDate receivedDate) {
-        BigDecimal plannedAmount = zeroIfNull(receivable.getPlannedAmount());
-        BigDecimal normalizedReceived = zeroIfNull(receivedAmount);
-        if (plannedAmount.signum() > 0) {
-            normalizedReceived = normalizedReceived.min(plannedAmount);
-        }
-        if (normalizedReceived.signum() < 0) {
-            normalizedReceived = BigDecimal.ZERO;
-        }
-
-        BigDecimal outstandingAmount = plannedAmount.subtract(normalizedReceived);
-        if (outstandingAmount.signum() < 0) {
-            outstandingAmount = BigDecimal.ZERO;
-        }
-
-        receivable.setReceivedAmount(normalizedReceived);
-        receivable.setOutstandingAmount(outstandingAmount);
-        if (normalizedReceived.signum() > 0) {
-            receivable.setReceivedDate(receivable.getReceivedDate() != null ? receivable.getReceivedDate() : receivedDate);
-        }
-
-        if (plannedAmount.signum() > 0 && outstandingAmount.signum() == 0) {
-            receivable.setStatus("RECEIVED");
-        } else if (normalizedReceived.signum() > 0) {
-            receivable.setStatus("PARTIAL_RECEIVED");
-        } else {
-            receivable.setStatus("PLANNED");
-        }
+        Long eventTenant = tenantId != null ? tenantId : UserContext.getTenantId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() {
+                try { crmEventPublisher.publish(CrmEventStreamConstants.EVENT_RECEIVABLE_CONFIRMED, eventTenant, fields); }
+                catch (Exception failure) { log.error("回款已提交，发票绑定通知失败: receivableId={}", receivable.getReceivableId(), failure); }
+            }
+        });
     }
 
     private BigDecimal zeroIfNull(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
-    }
-
-    private String normalizeInvoiceStatus(String invoiceStatus) {
-        return StringUtils.hasText(invoiceStatus) ? invoiceStatus : "NONE";
     }
 
     private CrmReceivableAgingBucketVO createBucket(String code, String name) {
@@ -426,30 +433,23 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
     }
 
     private void fillBindingSnapshot(CrmReceivable receivable) {
-        if (receivable == null) {
-            return;
-        }
+        CrmCustomer customer = crmCustomerService.getAccessibleCustomer(receivable.getCustomerId());
+        if (!Objects.equals(customer.getTenantId(), CrmRecordSupport.tenantId())) throw new IllegalArgumentException("客户不存在或无权访问");
+        receivable.setCustomerName(customer.getCustomerName());
         if (receivable.getContractId() != null) {
+            if (receivable.getContractId() <= 0) throw new IllegalArgumentException("合同ID无效");
+            R<RemoteOaService.ContractInfo> result;
             try {
-                R<RemoteOaService.ContractInfo> result = remoteOaService.getContract(receivable.getContractId());
-                if (result != null && result.isSuccess() && result.getData() != null) {
-                    RemoteOaService.ContractInfo contract = result.getData();
-                    if (StringUtils.hasText(contract.getContractNo())) {
-                        receivable.setContractNo(contract.getContractNo());
-                    }
-                    if (contract.getCustomerId() != null) {
-                        receivable.setCustomerId(contract.getCustomerId());
-                    }
-                    if (StringUtils.hasText(contract.getCustomerName())) {
-                        receivable.setCustomerName(contract.getCustomerName());
-                    }
-                }
-            } catch (Exception ignored) {
+                result = remoteOaService.getContract(receivable.getContractId());
+            } catch (Exception unavailable) {
+                throw new ServiceException("合同服务暂不可用，回款计划未保存", 503);
             }
-        }
-        if (receivable.getCustomerId() != null && !StringUtils.hasText(receivable.getCustomerName())) {
-            CrmCustomer customer = crmCustomerService.getAccessibleCustomer(receivable.getCustomerId());
-            receivable.setCustomerName(customer.getCustomerName());
-        }
+            if (result == null || !result.isSuccess() || result.getData() == null)
+                throw new ServiceException("合同服务暂不可用或合同不可访问，回款计划未保存", 503);
+            RemoteOaService.ContractInfo contract = result.getData();
+            if (!Objects.equals(contract.getContractId(), receivable.getContractId()) || !Objects.equals(contract.getCustomerId(), customer.getCustomerId()))
+                throw new IllegalArgumentException("合同与回款计划必须属于同一客户");
+            receivable.setContractNo(CrmRecordSupport.text(contract.getContractNo(), 50, "合同编号"));
+        } else receivable.setContractNo(null);
     }
 }

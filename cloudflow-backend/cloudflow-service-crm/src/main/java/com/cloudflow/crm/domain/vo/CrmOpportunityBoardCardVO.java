@@ -12,6 +12,8 @@ public class CrmOpportunityBoardCardVO {
     private String opportunityName;
     private BigDecimal expectedAmount;
     private BigDecimal winRate;
+    private BigDecimal weightedAmount;
+    private Integer version;
     private Integer stageStayDays;
     private String ownerName;
     private String expectedSignDate;

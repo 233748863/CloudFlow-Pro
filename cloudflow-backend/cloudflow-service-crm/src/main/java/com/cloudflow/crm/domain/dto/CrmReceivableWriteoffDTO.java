@@ -8,6 +8,8 @@ import java.time.LocalDate;
 @Data
 public class CrmReceivableWriteoffDTO {
 
+    private Integer version;
+
     private BigDecimal amount;
 
     private LocalDate writeoffDate;

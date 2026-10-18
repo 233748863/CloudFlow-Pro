@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmCampaignLogMapper">
+    <insert id="insertOnce" useGeneratedKeys="true" keyProperty="logId">
+        INSERT INTO crm_campaign_log (tenant_id, campaign_id, mass_email_id, action, action_time, target_type, target_id,
+            target_email, click_url, user_agent, ip_address, message_record_id, test_flag, source_event_key, create_by, create_time)
+        VALUES (#{tenantId}, #{campaignId}, #{massEmailId}, #{action}, #{actionTime}, #{targetType}, #{targetId},
+            #{targetEmail}, #{clickUrl}, #{userAgent}, #{ipAddress}, #{messageRecordId}, #{testFlag}, #{sourceEventKey}, #{createBy}, #{createTime})
+        ON DUPLICATE KEY UPDATE log_id = log_id
+    </insert>
+    <select id="counts" resultType="java.util.LinkedHashMap">
+        SELECT event.action, COUNT(*) AS amount FROM crm_campaign_log event
+        JOIN crm_mass_email_recipient recipient ON recipient.tenant_id = event.tenant_id AND recipient.mass_email_id = event.mass_email_id
+            AND recipient.campaign_id = event.campaign_id AND event.source_event_key = CONCAT('MAIL:', recipient.recipient_id, ':', event.action)
+        WHERE event.tenant_id = #{tenantId} AND event.campaign_id = #{campaignId} AND event.test_flag = 0 AND recipient.test_flag = 0
+            AND event.action IN ('SENT', 'DELIVERED', 'OPENED', 'CLICKED', 'BOUNCED', 'UNSUBSCRIBED')
+            AND (event.action NOT IN ('OPENED', 'CLICKED', 'UNSUBSCRIBED') OR EXISTS (
+                SELECT 1 FROM crm_campaign_log accepted WHERE accepted.tenant_id = event.tenant_id
+                    AND accepted.source_event_key = CONCAT('MAIL:', recipient.recipient_id, ':SENT') AND accepted.test_flag = 0))
+            AND (event.action != 'BOUNCED' OR recipient.status != 'SENT')
+        GROUP BY event.action
+    </select>
+    <select id="selectArchiveCandidateIds" resultType="java.lang.Long">
+        SELECT log_id FROM crm_campaign_log
+        WHERE tenant_id = #{tenantId} AND archive_checked_time IS NULL AND archive_payload IS NULL AND action_time &lt; #{cutoff}
+        ORDER BY action_time, log_id LIMIT #{batchLimit}
+    </select>
+    <select id="lockArchiveCandidate" resultType="com.cloudflow.crm.domain.CrmCampaignLog">
+        SELECT * FROM crm_campaign_log
+        WHERE tenant_id = #{tenantId} AND log_id = #{logId} AND archive_checked_time IS NULL
+            AND archive_payload IS NULL AND action_time &lt; #{cutoff}
+        FOR UPDATE
+    </select>
+    <update id="archiveDetails">
+        UPDATE crm_campaign_log
+        SET target_email = CASE WHEN #{event.archivePayload,jdbcType=BLOB} IS NULL THEN target_email ELSE NULL END,
+            click_url = CASE WHEN #{event.archivePayload,jdbcType=BLOB} IS NULL THEN click_url ELSE NULL END,
+            user_agent = CASE WHEN #{event.archivePayload,jdbcType=BLOB} IS NULL THEN user_agent ELSE NULL END,
+            ip_address = CASE WHEN #{event.archivePayload,jdbcType=BLOB} IS NULL THEN ip_address ELSE NULL END,
+            archive_payload = #{event.archivePayload,jdbcType=BLOB},
+            archive_checksum = #{event.archiveChecksum,jdbcType=BINARY},
+            archived_time = #{event.archivedTime,jdbcType=TIMESTAMP},
+            archive_checked_time = #{event.archiveCheckedTime,jdbcType=TIMESTAMP}
+        WHERE tenant_id = #{tenantId} AND log_id = #{event.logId}
+            AND archive_checked_time IS NULL AND archive_payload IS NULL
+    </update>
+</mapper>

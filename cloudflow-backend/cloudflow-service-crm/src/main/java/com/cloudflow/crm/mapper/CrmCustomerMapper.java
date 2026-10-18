@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface CrmCustomerMapper extends BaseMapper<CrmCustomer> {
+    java.util.List<CrmCustomer> selectAllByDataScope(@Param("dataScope") DataScope dataScope);
 
     Page<CrmCustomer> selectPageByDataScope(Page<CrmCustomer> page,
                                             @Param("query") CrmCustomer query,

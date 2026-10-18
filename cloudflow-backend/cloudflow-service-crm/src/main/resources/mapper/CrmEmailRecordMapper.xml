@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmEmailRecordMapper">
+    <resultMap id="record" type="com.cloudflow.crm.domain.CrmEmailRecord" autoMapping="true">
+        <id column="email_id" property="emailId"/>
+        <result column="to_addresses" property="toAddresses" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="cc_addresses" property="ccAddresses" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="attachment_file_ids" property="attachmentFileIds" typeHandler="com.cloudflow.crm.mapper.handler.CrmEmailFileIdsTypeHandler"/>
+    </resultMap>
+    <sql id="businessJoins">
+        FROM crm_email_record email
+        JOIN crm_customer customer ON customer.customer_id = email.customer_id AND customer.tenant_id = email.tenant_id AND customer.deleted = 0
+        LEFT JOIN crm_opportunity opportunity ON email.biz_type = 'OPPORTUNITY' AND opportunity.opportunity_id = email.biz_id
+            AND opportunity.tenant_id = email.tenant_id AND opportunity.customer_id = email.customer_id AND opportunity.deleted = 0
+        LEFT JOIN crm_quote quote ON email.biz_type = 'QUOTE' AND quote.quote_id = email.biz_id
+            AND quote.tenant_id = email.tenant_id AND quote.customer_id = email.customer_id AND quote.deleted = 0
+        LEFT JOIN crm_service_ticket ticket ON email.biz_type = 'TICKET' AND ticket.ticket_id = email.biz_id
+            AND ticket.tenant_id = email.tenant_id AND ticket.customer_id = email.customer_id AND ticket.deleted = 0
+    </sql>
+    <sql id="validBusiness">
+        ((email.biz_type = 'CUSTOMER' AND email.biz_id = email.customer_id)
+            OR (email.biz_type = 'OPPORTUNITY' AND opportunity.opportunity_id IS NOT NULL)
+            OR (email.biz_type = 'QUOTE' AND quote.quote_id IS NOT NULL)
+            OR (email.biz_type = 'TICKET' AND ticket.ticket_id IS NOT NULL))
+    </sql>
+    <sql id="businessAccess">
+        email.tenant_id = #{tenantId} AND <include refid="validBusiness"/>
+        <choose>
+            <when test="businessTypes != null and !businessTypes.isEmpty()">
+                AND email.biz_type IN <foreach collection="businessTypes" item="businessType" open="(" separator="," close=")">#{businessType}</foreach>
+            </when>
+            <otherwise>AND 1 = 0</otherwise>
+        </choose>
+    </sql>
+    <select id="pageAccessible" resultMap="record">
+        SELECT email.email_id, email.direction, email.subject, email.content_summary, email.from_address, email.to_addresses,
+            email.cc_addresses, email.biz_type, email.biz_id, email.customer_id, email.contact_id, email.sender_user_id,
+            email.message_record_id, email.send_time, email.send_status, email.attachment_count, email.read_flag, email.read_time,
+            email.remark, email.create_time, email.create_by, customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        <include refid="businessJoins"/>
+        WHERE <include refid="businessAccess"/>
+        <if test="query.customerId != null">AND email.customer_id = #{query.customerId}</if>
+        <if test="query.bizType != null">AND email.biz_type = #{query.bizType}</if>
+        <if test="query.bizId != null">AND email.biz_id = #{query.bizId}</if>
+        <if test="query.direction != null">AND email.direction = #{query.direction}</if>
+        <if test="query.sendStatus != null">AND email.send_status = #{query.sendStatus}</if>
+        <if test="query.subject != null and query.subject != ''">AND email.subject LIKE CONCAT('%', #{query.subject}, '%')</if>
+        ORDER BY email.create_time DESC, email.email_id DESC
+    </select>
+    <select id="accessible" resultMap="record">
+        SELECT email.*, customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        <include refid="businessJoins"/>
+        WHERE email.email_id = #{emailId} AND <include refid="businessAccess"/>
+    </select>
+    <select id="lockById" resultMap="record">
+        SELECT * FROM crm_email_record WHERE tenant_id = #{tenantId} AND email_id = #{emailId} FOR UPDATE
+    </select>
+    <select id="lockByOperation" resultMap="record">
+        SELECT * FROM crm_email_record WHERE tenant_id = #{tenantId} AND operation_key = #{operationKey} FOR UPDATE
+    </select>
+    <select id="permissions" resultType="java.lang.String">
+        SELECT DISTINCT menu.perms FROM sys_user account
+        JOIN sys_tenant tenant_entry ON tenant_entry.tenant_id = account.tenant_id AND tenant_entry.deleted = 0 AND tenant_entry.status = '0'
+        JOIN sys_user_role membership ON membership.tenant_id = account.tenant_id AND membership.user_id = account.user_id
+        JOIN sys_role role_entry ON role_entry.role_id = membership.role_id AND role_entry.tenant_id = account.tenant_id
+            AND role_entry.deleted = 0 AND role_entry.status = '0'
+        JOIN sys_role_menu grant_entry ON grant_entry.tenant_id = account.tenant_id AND grant_entry.role_id = role_entry.role_id
+        JOIN sys_menu menu ON menu.menu_id = grant_entry.menu_id AND menu.status = '0'
+        WHERE account.tenant_id = #{tenantId} AND account.user_id = #{userId} AND account.deleted = 0 AND account.status = '0'
+            AND (tenant_entry.expire_time IS NULL OR tenant_entry.expire_time &gt; NOW()) AND menu.perms IS NOT NULL AND menu.perms != ''
+    </select>
+    <select id="lockOperator" resultType="java.lang.Long">
+        SELECT user_id FROM sys_user WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND status = '0' AND deleted = 0 FOR UPDATE
+    </select>
+    <update id="observeOpen">
+        UPDATE crm_email_record SET read_flag = 1, read_time = NOW(), update_by = 'email-observation', update_time = NOW()
+        WHERE tenant_id = #{tenantId} AND email_id = #{emailId} AND direction = 'OUTBOUND' AND read_flag = 0
+            AND send_status IN ('QUEUED', 'SENDING', 'SENT', 'UNKNOWN')
+    </update>
+</mapper>

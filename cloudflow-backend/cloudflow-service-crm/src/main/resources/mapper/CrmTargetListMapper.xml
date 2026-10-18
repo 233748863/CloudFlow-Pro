@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmTargetListMapper">
+    <sql id="scopedLists">
+        SELECT target.*, owner.dept_id AS scope_dept_id FROM crm_target_list target
+        LEFT JOIN sys_user owner ON owner.user_id = target.owner_id AND owner.tenant_id = target.tenant_id WHERE target.deleted = 0
+    </sql>
+    <select id="selectAllByDataScope" resultType="com.cloudflow.crm.domain.CrmTargetList">
+        SELECT * FROM (<include refid="scopedLists"/>) scoped ORDER BY update_time DESC, list_id DESC
+    </select>
+    <select id="selectAccessible" resultType="com.cloudflow.crm.domain.CrmTargetList">
+        SELECT * FROM (<include refid="scopedLists"/>) scoped WHERE list_id = #{id}
+    </select>
+    <select id="lockById" resultType="com.cloudflow.crm.domain.CrmTargetList">
+        SELECT * FROM crm_target_list WHERE list_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+</mapper>

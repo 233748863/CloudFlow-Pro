@@ -17,7 +17,7 @@ public class RemoteOaFallbackFactory implements FallbackFactory<RemoteOaService>
             @Override
             public R<Long> createContract(String innerCall, String fromService, ContractDraftRequest request) {
                 log.error("CRM 生成合同草稿失败: {}", request != null ? request.getContractName() : null);
-                return R.fail("OA 服务暂时不可用，无法生成合同草稿");
+                return R.fail("合同处理结果尚未确认，请核对后重试同一报价，系统会恢复已有合同关联");
             }
 
             @Override

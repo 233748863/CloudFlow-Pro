@@ -4,6 +4,53 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.crm.mapper.CrmReceivableMapper">
 
+    <sql id="bindingLocked">
+        (t.received_amount &gt; 0 OR t.invoice_id IS NOT NULL
+            OR EXISTS(SELECT 1 FROM oa_invoice invoice WHERE invoice.tenant_id = t.tenant_id AND invoice.receivable_id = t.receivable_id AND invoice.deleted = 0)
+            OR EXISTS(SELECT 1 FROM crm_deal_team team WHERE team.tenant_id = t.tenant_id AND team.biz_type = 'RECEIVABLE' AND team.biz_id = t.receivable_id)
+            OR EXISTS(SELECT 1 FROM crm_deal_event event WHERE event.tenant_id = t.tenant_id AND event.biz_type = 'RECEIVABLE' AND event.biz_id = t.receivable_id)
+            OR EXISTS(SELECT 1 FROM crm_approval approval WHERE approval.tenant_id = t.tenant_id AND approval.business_ref_type = 'CRM_RECEIVABLE'
+                AND approval.business_ref_id = t.receivable_id AND approval.deleted = 0)) AS binding_locked
+    </sql>
+
+    <select id="lockById" resultType="com.cloudflow.crm.domain.CrmReceivable">
+        SELECT * FROM crm_receivable WHERE receivable_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockAccessible" resultType="com.cloudflow.crm.domain.CrmReceivable">
+        SELECT receivable.*, customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        FROM crm_receivable receivable JOIN crm_customer customer ON customer.customer_id = receivable.customer_id
+            AND customer.tenant_id = receivable.tenant_id AND customer.deleted = 0
+        WHERE receivable.receivable_id = #{id} AND receivable.tenant_id = #{tenantId} AND receivable.deleted = 0 FOR UPDATE
+    </select>
+    <update id="writeOwner">
+        UPDATE crm_receivable SET owner_id = #{record.ownerId}, owner_name = #{record.ownerName},
+            version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE receivable_id = #{record.receivableId} AND tenant_id = #{record.tenantId} AND version = #{expectedVersion} AND deleted = 0
+    </update>
+
+    <update id="writePlan">
+        UPDATE crm_receivable SET customer_id = #{record.customerId}, customer_name = #{record.customerName},
+            contract_id = #{record.contractId}, contract_no = #{record.contractNo}, receivable_name = #{record.receivableName},
+            planned_amount = #{record.plannedAmount}, outstanding_amount = #{record.outstandingAmount}, status = #{record.status},
+            owner_id = #{record.ownerId}, owner_name = #{record.ownerName},
+            due_date = #{record.dueDate}, remark = #{record.remark}, version = version + 1,
+            update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE receivable_id = #{record.receivableId} AND tenant_id = #{record.tenantId} AND version = #{expectedVersion} AND deleted = 0
+    </update>
+
+    <update id="writeSettlement">
+        UPDATE crm_receivable SET received_amount = #{record.receivedAmount}, outstanding_amount = #{record.outstandingAmount},
+            received_date = #{record.receivedDate}, status = #{record.status}, invoice_id = #{record.invoiceId},
+            invoice_status = #{record.invoiceStatus}, remark = #{record.remark}, version = version + 1,
+            update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE receivable_id = #{record.receivableId} AND tenant_id = #{record.tenantId} AND version = #{expectedVersion} AND deleted = 0
+    </update>
+
+    <update id="deletePlan">
+        UPDATE crm_receivable SET deleted = 1, version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE receivable_id = #{record.receivableId} AND tenant_id = #{record.tenantId} AND version = #{expectedVersion} AND deleted = 0
+    </update>
+
     <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmReceivable">
         SELECT t.receivable_id,
                t.tenant_id,
@@ -25,6 +72,8 @@
                t.remark,
                t.status,
                t.deleted,
+               t.version,
+               <include refid="bindingLocked"/>,
                t.create_by,
                t.create_time,
                t.update_by,
@@ -32,7 +81,7 @@
                c.dept_id AS scope_dept_id,
                c.owner_id AS scope_owner_id
         FROM crm_receivable t
-                 INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.deleted = '0'
+                 INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.tenant_id = t.tenant_id AND c.deleted = '0'
         WHERE t.deleted = '0'
         <if test="query != null and query.customerId != null">
             AND t.customer_id = #{query.customerId}
@@ -70,6 +119,8 @@
                t.remark,
                t.status,
                t.deleted,
+               t.version,
+               <include refid="bindingLocked"/>,
                t.create_by,
                t.create_time,
                t.update_by,
@@ -77,7 +128,7 @@
                c.dept_id AS scope_dept_id,
                c.owner_id AS scope_owner_id
         FROM crm_receivable t
-                 INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.deleted = '0'
+                 INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.tenant_id = t.tenant_id AND c.deleted = '0'
         WHERE t.receivable_id = #{receivableId}
           AND t.deleted = '0'
     </select>

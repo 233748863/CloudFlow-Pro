@@ -11,14 +11,14 @@ import java.util.List;
 public interface ICrmPerformanceQueryService {
 
     /** 按员工聚合。 */
-    List<CrmPerformanceSummaryVO> summarizeByOwner(List<Long> ownerIds, String startDate, String endDate);
+    List<CrmPerformanceSummaryVO> summarizeByOwner(List<Long> ownerIds, String startDate, String endDate, String calculationBasis, String currency);
 
     /** 按部门聚合。 */
-    List<CrmPerformanceSummaryVO> summarizeByDept(List<Long> deptIds, String startDate, String endDate);
+    List<CrmPerformanceSummaryVO> summarizeByDept(List<Long> deptIds, String startDate, String endDate, String calculationBasis, String currency);
 
     /** 员工排行榜，按回款金额倒序。 */
-    List<CrmPerformanceSummaryVO> topOwners(int limit, String startDate, String endDate);
+    List<CrmPerformanceSummaryVO> topOwners(int limit, String startDate, String endDate, String calculationBasis, String currency);
 
     /** 部门排行榜，按回款金额倒序。 */
-    List<CrmPerformanceSummaryVO> topDepartments(int limit, String startDate, String endDate);
+    List<CrmPerformanceSummaryVO> topDepartments(int limit, String startDate, String endDate, String calculationBasis, String currency);
 }

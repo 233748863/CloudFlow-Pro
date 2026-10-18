@@ -37,8 +37,8 @@ public class RemoteHrFallbackFactory implements FallbackFactory<RemoteHrService>
 
             @Override
             public R<List<HrEmployeeSummaryVO>> listEmployeesByUserIds(List<Long> userIds) {
-                log.warn("HR 服务不可用，按 userIds 批量查询员工降级为空列表");
-                return R.ok(List.of());
+                log.warn("HR 服务不可用，按 userIds 批量查询员工失败");
+                return R.fail("员工服务暂不可用，请稍后重试");
             }
 
             @Override

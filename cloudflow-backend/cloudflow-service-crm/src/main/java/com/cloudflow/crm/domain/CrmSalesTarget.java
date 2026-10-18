@@ -30,7 +30,10 @@ public class CrmSalesTarget implements Serializable {
     private String deptName;
     private Long ownerId;
     private String ownerName;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal targetAmount;
+    private String calculationBasis;
+    private String currency;
     private String status;
     private String remark;
     private Integer deleted;
@@ -44,13 +47,20 @@ public class CrmSalesTarget implements Serializable {
     private LocalDateTime updateTime;
 
     @TableField(exist = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal achievedAmount;
 
     @TableField(exist = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal completionRate;
 
     @TableField(exist = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal gapAmount;
+
+    @TableField(exist = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private BigDecimal baselineAmount;
 
     @TableField(exist = false)
     private String periodLabel;

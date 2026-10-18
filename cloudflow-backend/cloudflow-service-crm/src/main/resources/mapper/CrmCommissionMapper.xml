@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmCommissionMapper">
+    <select id="source" resultType="com.cloudflow.common.event.commission.CommissionEvents$Fact">
+        SELECT allocation.tenant_id, allocation.allocation_id, allocation.event_id,
+            allocation.reversal_of_id AS original_allocation_id, event.reversal_of_id AS original_event_id,
+            allocation.employee_id, allocation.sales_user_id, allocation.dept_id, event.event_type, event.biz_type,
+            event.biz_id, event.currency, event.occurred_time, allocation.allocated_amount, allocation.commission_rate,
+            allocation.commission_amount, event.baseline_flag, allocation.commission_status, allocation.comp_change_id
+        FROM crm_deal_allocation allocation JOIN crm_deal_event event
+            ON event.tenant_id = allocation.tenant_id AND event.event_id = allocation.event_id
+        WHERE allocation.tenant_id = #{tenantId} AND allocation.allocation_id = #{allocationId}
+    </select>
+    <select id="page" resultType="com.cloudflow.crm.mapper.CrmCommissionMapper$Row">
+        SELECT allocation.allocation_id, allocation.event_id, allocation.reversal_of_id,
+            event.event_type, event.biz_type, event.biz_id, customer.customer_name, event.occurred_time,
+            COALESCE(receivable.receivable_name, opportunity.opportunity_name, contract.contract_name) AS business_name,
+            event.currency, event.team_version, event.baseline_flag, allocation.sales_user_id,
+            COALESCE(NULLIF(sales.nick_name, ''), sales.user_name) AS sales_user_name, allocation.dept_id, department.dept_name, allocation.role_type,
+            allocation.allocated_percentage, allocation.allocated_amount,
+            customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+            <if test="includeCommission">
+                , allocation.commission_rate, allocation.commission_amount, allocation.commission_status,
+                allocation.comp_change_id, change_item.payroll_period_id, period.period_name AS payroll_period_name,
+                EXISTS(SELECT 1 FROM outbox_event request WHERE request.tenant_id = allocation.tenant_id
+                    AND request.aggregate_type = 'cloudflow-service-crm' AND request.aggregate_id = allocation.allocation_id
+                    AND request.event_type = 'CRM_COMMISSION_REQUEST') AS commission_requested,
+                JSON_UNQUOTE(JSON_EXTRACT((SELECT audit.after_data FROM hr_audit_log audit
+                    WHERE audit.tenant_id = allocation.tenant_id AND audit.business_domain = 'CRM_COMMISSION'
+                        AND audit.business_id = allocation.comp_change_id AND audit.operation_type = 'COMMISSION_PROGRESS'
+                    ORDER BY audit.id DESC LIMIT 1), '$.state')) AS payroll_state
+            </if>
+        FROM crm_deal_allocation allocation JOIN crm_deal_event event
+            ON event.tenant_id = allocation.tenant_id AND event.event_id = allocation.event_id
+        JOIN crm_customer customer ON customer.tenant_id = event.tenant_id AND customer.customer_id = event.customer_id AND customer.deleted = 0
+        LEFT JOIN crm_receivable receivable ON event.biz_type = 'RECEIVABLE' AND receivable.tenant_id = event.tenant_id AND receivable.receivable_id = event.biz_id
+        LEFT JOIN crm_opportunity opportunity ON event.biz_type = 'OPPORTUNITY' AND opportunity.tenant_id = event.tenant_id AND opportunity.opportunity_id = event.biz_id
+        LEFT JOIN oa_contract contract ON event.biz_type = 'CONTRACT' AND contract.tenant_id = event.tenant_id AND contract.contract_id = event.biz_id
+        LEFT JOIN sys_user sales ON sales.tenant_id = allocation.tenant_id AND sales.user_id = allocation.sales_user_id
+        LEFT JOIN sys_dept department ON department.tenant_id = allocation.tenant_id AND department.dept_id = allocation.dept_id
+        <if test="includeCommission">
+            LEFT JOIN hr_comp_change change_item ON change_item.tenant_id = allocation.tenant_id AND change_item.id = allocation.comp_change_id
+                AND change_item.source_biz_type = 'CRM_COMMISSION' AND change_item.source_biz_id = CAST(allocation.allocation_id AS CHAR)
+            LEFT JOIN hr_payroll_period period ON period.tenant_id = allocation.tenant_id AND period.period_id = change_item.payroll_period_id
+        </if>
+        WHERE allocation.tenant_id = #{tenantId}
+        <if test="filters.startDate != null">AND event.occurred_time &gt;= #{filters.startDate}</if>
+        <if test="filters.endDate != null">AND event.occurred_time &lt; DATE_ADD(#{filters.endDate}, INTERVAL 1 DAY)</if>
+        <if test="filters.currency != null">AND event.currency = #{filters.currency}</if>
+        <if test="filters.eventType != null">AND event.event_type = #{filters.eventType}</if>
+        <if test="filters.bizType != null">AND event.biz_type = #{filters.bizType}</if>
+        <if test="filters.bizId != null">AND event.biz_id = #{filters.bizId}</if>
+        ORDER BY event.occurred_time DESC, event.event_id DESC, allocation.allocation_id
+    </select>
+    <select id="payroll" resultType="com.cloudflow.crm.mapper.CrmCommissionMapper$PayrollBinding">
+        SELECT change_item.id AS comp_change_id, change_item.source_biz_type, change_item.source_biz_id,
+            change_item.employee_id, change_item.deleted, change_item.payroll_period_id, change_item.salary_component_id, change_item.status,
+            (SELECT audit.after_data FROM hr_audit_log audit WHERE audit.tenant_id = change_item.tenant_id
+                AND audit.business_domain = 'CRM_COMMISSION' AND audit.business_id = change_item.id
+                AND audit.operation_type = 'COMMISSION_PROGRESS' ORDER BY audit.id DESC LIMIT 1) AS audit_json
+        FROM hr_comp_change change_item WHERE change_item.tenant_id = #{tenantId} AND change_item.id = #{compChangeId}
+    </select>
+    <select id="approval" resultType="java.lang.String">
+        SELECT after_val FROM sys_audit_log WHERE tenant_id = #{tenantId} AND biz_module = 'crm'
+            AND audit_name = '核定到账提成' AND audit_field = CAST(#{allocationId} AS CHAR)
+        ORDER BY audit_id DESC LIMIT 1
+    </select>
+    <select id="periods" resultType="com.cloudflow.crm.mapper.CrmCommissionMapper$Choice">
+        SELECT period_id AS id, CONCAT(period_name, ' · ', start_date, ' 至 ', end_date) AS name
+        FROM hr_payroll_period WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = 'OPEN'
+        ORDER BY start_date DESC, period_id DESC LIMIT 200
+    </select>
+    <select id="components" resultType="com.cloudflow.crm.mapper.CrmCommissionMapper$Choice">
+        SELECT id, component_name AS name FROM hr_comp_component
+        WHERE tenant_id = #{tenantId} AND status = 1 AND component_type = 'VARIABLE' AND taxable = 1
+        ORDER BY sort_order, id LIMIT 200
+    </select>
+</mapper>

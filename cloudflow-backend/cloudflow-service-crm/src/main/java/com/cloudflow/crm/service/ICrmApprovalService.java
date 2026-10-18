@@ -20,10 +20,13 @@ public interface ICrmApprovalService {
     Long submitCustomerLevelChange(Long customerId, String action, String targetLevel, String remark);
 
     /** 申请商机降级关闭（action: DOWNGRADE | CLOSE），targetStage 为降级目标阶段。 */
-    Long submitOpportunityDowngrade(Long opportunityId, String action, String targetStage, String lostReason);
+    Long submitOpportunityDowngrade(Long opportunityId, String action, String targetStage, String lostReason,
+            java.util.List<com.cloudflow.crm.domain.dto.CrmOpportunityLossDTO.Reason> reasons, Integer version);
 
     /** 申请退款（针对回款 receivable）。 */
-    Long submitRefund(Long receivableId, BigDecimal refundAmount, String reason);
+    Long submitRefund(Long receivableId, Long receiptEventId, Integer version, BigDecimal refundAmount, String reason);
 
     CrmApproval getById(Long approvalId);
+
+    Long submitCustomerCredit(com.cloudflow.crm.domain.CrmCustomerCredit proposed);
 }

@@ -3,6 +3,9 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.crm.mapper.CrmCustomerMapper">
+    <select id="selectAllByDataScope" resultType="com.cloudflow.crm.domain.CrmCustomer">
+        SELECT * FROM crm_customer WHERE deleted = 0
+    </select>
 
     <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmCustomer">
         SELECT customer_id,
@@ -35,6 +38,13 @@
                original_owner_name,
                remark,
                status,
+               territory_id,
+               market_segment,
+               employee_scale,
+               annual_revenue,
+               unsubscribe_flag,
+               campaign_id,
+               version,
                deleted,
                create_by,
                create_time,
@@ -42,6 +52,11 @@
                update_time
         FROM crm_customer
         WHERE deleted = '0'
+        <if test="query != null and query.keyword != null and query.keyword != ''">
+            AND (customer_name LIKE CONCAT('%', #{query.keyword}, '%')
+                OR customer_code LIKE CONCAT('%', #{query.keyword}, '%')
+                OR customer_tags LIKE CONCAT('%', #{query.keyword}, '%'))
+        </if>
         <if test="query != null and query.customerName != null and query.customerName != ''">
             AND customer_name LIKE CONCAT('%', #{query.customerName}, '%')
         </if>
@@ -57,6 +72,10 @@
         <if test="query != null and query.status != null and query.status != ''">
             AND status = #{query.status}
         </if>
+        <if test="query != null and query.territoryId != null">AND territory_id = #{query.territoryId}</if>
+        <if test="query != null and query.marketSegment != null and query.marketSegment != ''">AND market_segment = #{query.marketSegment}</if>
+        <if test="query != null and query.industry != null and query.industry != ''">AND industry = #{query.industry}</if>
+        <if test="query != null and query.campaignId != null">AND campaign_id = #{query.campaignId}</if>
         ORDER BY update_time DESC
     </select>
 
@@ -91,6 +110,13 @@
                original_owner_name,
                remark,
                status,
+               territory_id,
+               market_segment,
+               employee_scale,
+               annual_revenue,
+               unsubscribe_flag,
+               campaign_id,
+               version,
                deleted,
                create_by,
                create_time,

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmPortalTicketMapper">
+    <sql id="identity">
+        SELECT portal_user.portal_user_id FROM sys_portal_user portal_user
+        JOIN crm_contact contact ON contact.tenant_id = portal_user.tenant_id
+            AND contact.contact_id = portal_user.ref_biz_id AND contact.customer_id = portal_user.customer_id
+        JOIN crm_customer customer ON customer.tenant_id = contact.tenant_id AND customer.customer_id = contact.customer_id
+        JOIN sys_tenant tenant ON tenant.tenant_id = portal_user.tenant_id
+        WHERE portal_user.tenant_id = #{identity.tenantId} AND portal_user.portal_user_id = #{identity.portalUserId}
+            AND portal_user.customer_id = #{identity.customerId} AND portal_user.ref_biz_id = #{identity.contactId}
+            AND portal_user.user_type = 'CUSTOMER_CONTACT' AND portal_user.ref_biz_type = 'CRM_CONTACT'
+            AND portal_user.status = 'ACTIVE' AND portal_user.deleted = 0
+            AND portal_user.session_version = #{identity.sessionVersion}
+            AND contact.version = #{identity.contactVersion} AND contact.status = 'ACTIVE' AND contact.deleted = 0
+            AND customer.status = 'ACTIVE' AND customer.deleted = 0
+            AND tenant.status = '0' AND tenant.deleted = 0
+            AND (tenant.expire_time IS NULL OR tenant.expire_time &gt; CURRENT_TIMESTAMP)
+    </sql>
+    <select id="activeIdentity" resultType="boolean">
+        SELECT EXISTS(<include refid="identity" />)
+    </select>
+    <select id="lockActiveIdentity" resultType="java.lang.Long">
+        <include refid="identity" /> FOR UPDATE
+    </select>
+    <select id="customer" resultType="com.cloudflow.crm.domain.CrmCustomer">
+        SELECT customer_id, customer_name FROM crm_customer
+        WHERE tenant_id = #{identity.tenantId} AND customer_id = #{identity.customerId} AND deleted = 0 AND status = 'ACTIVE'
+    </select>
+    <sql id="publicFields">
+        ticket.ticket_id, ticket.ticket_no, ticket.ticket_title AS title,
+        CASE WHEN ticket.portal_contact_id IS NOT NULL AND ticket.owner_id IS NULL AND ticket.status = 'OPEN'
+            THEN 'PENDING_ASSIGNMENT' ELSE ticket.status END AS status,
+        ticket.sla_status, ticket.opened_time, ticket.first_response_due, ticket.first_response_time,
+        ticket.resolution_due, ticket.resolved_time, ticket.response_breached_flag AS response_breached,
+        ticket.resolution_breached_flag AS resolution_breached
+    </sql>
+    <sql id="customerTickets">
+        FROM crm_service_ticket ticket
+        WHERE ticket.tenant_id = #{identity.tenantId} AND ticket.customer_id = #{identity.customerId}
+            AND ticket.deleted = 0 AND EXISTS(<include refid="identity" />)
+    </sql>
+    <select id="page" resultType="com.cloudflow.common.core.domain.PortalTicketVO">
+        SELECT <include refid="publicFields" />
+        <include refid="customerTickets" />
+        <if test="keyword != null and keyword != ''">AND ticket.ticket_title LIKE CONCAT('%', #{keyword}, '%')</if>
+        <if test="status != null and status != ''">
+            <choose>
+                <when test="status == 'PENDING_ASSIGNMENT'">
+                    AND ticket.portal_contact_id IS NOT NULL AND ticket.owner_id IS NULL AND ticket.status = 'OPEN'
+                </when>
+                <otherwise>
+                    AND ticket.status = #{status}
+                    <if test="status == 'OPEN'">AND (ticket.portal_contact_id IS NULL OR ticket.owner_id IS NOT NULL)</if>
+                </otherwise>
+            </choose>
+        </if>
+        ORDER BY ticket.opened_time DESC, ticket.ticket_id DESC
+    </select>
+    <select id="detail" resultType="com.cloudflow.common.core.domain.PortalTicketVO">
+        SELECT <include refid="publicFields" />,
+            CASE WHEN ticket.portal_contact_id IS NOT NULL THEN ticket.description ELSE NULL END AS description,
+            CASE WHEN ticket.portal_solution_time IS NOT NULL THEN ticket.portal_solution ELSE NULL END AS solution,
+            CASE WHEN ticket.portal_solution IS NOT NULL THEN ticket.portal_solution_time ELSE NULL END AS solution_published_time
+        <include refid="customerTickets" /> AND ticket.ticket_id = #{ticketId}
+    </select>
+    <select id="byNumber" resultType="com.cloudflow.crm.domain.CrmServiceTicket">
+        SELECT ticket_id, tenant_id, customer_id, portal_contact_id, ticket_title, description, deleted
+        FROM crm_service_ticket WHERE tenant_id = #{tenantId} AND ticket_no = #{number}
+    </select>
+    <select id="files" resultType="com.cloudflow.common.core.domain.PortalFileVO">
+        SELECT files.file_id, files.file_name, files.file_size, files.file_type AS extension
+        FROM sys_file files
+        JOIN crm_service_ticket ticket ON ticket.tenant_id = files.tenant_id AND CAST(ticket.ticket_id AS CHAR) = files.biz_id
+        JOIN crm_customer customer ON customer.tenant_id = ticket.tenant_id AND customer.customer_id = ticket.customer_id
+        WHERE files.tenant_id = #{tenantId} AND ticket.ticket_id = #{ticketId} AND ticket.deleted = 0 AND customer.deleted = 0
+            AND files.biz_type = 'CRM_PORTAL_TICKET' AND files.portal_owner_id IS NOT NULL AND files.deleted = 0
+            AND files.access_type = 'PRIVATE' AND files.file_type REGEXP '^[a-z0-9]{1,10}$'
+        ORDER BY files.file_id
+    </select>
+    <select id="lockUpload" resultType="com.cloudflow.crm.mapper.CrmPortalTicketMapper$Upload">
+        SELECT file_id, portal_owner_id, biz_type, access_type, deleted FROM sys_file
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId} FOR UPDATE
+    </select>
+    <update id="bindFile">
+        UPDATE sys_file SET biz_type = 'CRM_PORTAL_TICKET', biz_id = #{ticketId}
+        WHERE tenant_id = #{identity.tenantId} AND file_id = #{fileId} AND portal_owner_id = #{identity.portalUserId}
+            AND biz_type = 'PORTAL_TICKET_UPLOAD' AND access_type = 'PRIVATE' AND deleted = 0
+    </update>
+    <sql id="ticketHandler">
+        FROM sys_user users
+        LEFT JOIN sys_dept department ON department.tenant_id = users.tenant_id AND department.dept_id = users.dept_id
+            AND department.deleted = 0 AND department.status = '0'
+        WHERE users.tenant_id = #{tenantId} AND users.status = '0' AND users.deleted = 0
+            AND EXISTS(SELECT 1 FROM sys_user_role membership
+                JOIN sys_role roles ON roles.tenant_id = membership.tenant_id AND roles.role_id = membership.role_id
+                WHERE membership.tenant_id = users.tenant_id AND membership.user_id = users.user_id
+                    AND roles.role_key IN ('admin', 'sales_manager', 'sales_rep', 'customer_success')
+                    AND roles.status = '0' AND roles.deleted = 0)
+            AND 3 = (SELECT COUNT(DISTINCT menu.perms) FROM sys_user_role permission_membership
+                JOIN sys_role permission_role ON permission_role.tenant_id = permission_membership.tenant_id
+                    AND permission_role.role_id = permission_membership.role_id
+                JOIN sys_role_menu grants ON grants.tenant_id = permission_role.tenant_id AND grants.role_id = permission_role.role_id
+                JOIN sys_menu menu ON menu.menu_id = grants.menu_id AND menu.status = '0'
+                WHERE permission_membership.tenant_id = users.tenant_id AND permission_membership.user_id = users.user_id
+                    AND permission_role.status = '0' AND permission_role.deleted = 0
+                    AND menu.perms IN ('crm:ticket:list', 'crm:ticket:edit', 'crm:ticket:respond'))
+    </sql>
+    <select id="handlers" resultType="com.cloudflow.crm.mapper.CrmPortalTicketMapper$Handler">
+        SELECT users.user_id, COALESCE(NULLIF(users.nick_name, ''), users.user_name) AS name, department.dept_name AS department
+        <include refid="ticketHandler" />
+        <if test="keyword != null and keyword != ''">
+            AND (users.user_name LIKE CONCAT('%', #{keyword}, '%') OR users.nick_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY users.user_id
+    </select>
+    <select id="handler" resultType="com.cloudflow.crm.mapper.CrmPortalTicketMapper$Handler">
+        SELECT users.user_id, COALESCE(NULLIF(users.nick_name, ''), users.user_name) AS name, department.dept_name AS department
+        <include refid="ticketHandler" /> AND users.user_id = #{userId}
+    </select>
+    <select id="dispatcher" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM sys_user users
+            JOIN sys_user_role membership ON membership.tenant_id = users.tenant_id AND membership.user_id = users.user_id
+            JOIN sys_role roles ON roles.tenant_id = membership.tenant_id AND roles.role_id = membership.role_id
+            JOIN sys_role_menu grants ON grants.tenant_id = roles.tenant_id AND grants.role_id = roles.role_id
+            JOIN sys_menu menu ON menu.menu_id = grants.menu_id AND menu.status = '0'
+            WHERE users.tenant_id = #{tenantId} AND users.user_id = #{userId} AND users.deleted = 0 AND users.status = '0'
+                AND roles.role_key IN ('admin', 'customer_success') AND roles.deleted = 0 AND roles.status = '0'
+                AND menu.perms = 'crm:ticket:edit')
+    </select>
+    <select id="publisher" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM sys_user users
+            JOIN sys_user_role membership ON membership.tenant_id = users.tenant_id AND membership.user_id = users.user_id
+            JOIN sys_role roles ON roles.tenant_id = membership.tenant_id AND roles.role_id = membership.role_id
+            JOIN sys_role_menu grants ON grants.tenant_id = roles.tenant_id AND grants.role_id = roles.role_id
+            JOIN sys_menu menu ON menu.menu_id = grants.menu_id AND menu.status = '0'
+            WHERE users.tenant_id = #{tenantId} AND users.user_id = #{userId} AND users.deleted = 0 AND users.status = '0'
+                AND roles.deleted = 0 AND roles.status = '0' AND menu.perms = 'crm:portal:solution:publish')
+    </select>
+</mapper>

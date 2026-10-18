@@ -11,6 +11,8 @@ import java.time.LocalDate;
 public class ReceivableInvoiceSyncDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    private String eventId;
+
     private Long invoiceId;
     private String invoiceStatus;
     private BigDecimal grossAmount;

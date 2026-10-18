@@ -1,5 +1,7 @@
 package com.cloudflow.crm.domain;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -34,15 +36,44 @@ public class CrmServiceTicket implements Serializable {
     private LocalDateTime dueTime;
     private String description;
     private String solution;
+    private Long portalContactId;
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String portalSolution;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private LocalDateTime portalSolutionTime;
+    @TableField(exist = false)
+    private Boolean portalQueue;
     private String attachmentUrl;
     private String status;
+    private Long slaPolicyId;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime firstResponseDue;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime resolutionDue;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime firstResponseTime;
+    private Integer firstResponseMinutes;
+    private Integer resolutionMinutes;
+    private Integer slaPausedMinutes;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private LocalDateTime pauseStartTime;
+    private String slaStatus;
+    private Integer responseBreachedFlag;
+    private Integer resolutionBreachedFlag;
+    @TableField(fill = FieldFill.INSERT)
     private Integer deleted;
     @Version
     private Integer version;
+    @TableField(fill = FieldFill.INSERT)
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private String updateBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 }

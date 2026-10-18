@@ -1,9 +1,10 @@
 package com.cloudflow.crm.service.impl;
 
+import com.cloudflow.common.job.annotation.JobHandler;
+import com.cloudflow.common.job.model.JobResult;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.common.core.event.SystemNoticeDispatchEvent;
-import com.cloudflow.common.event.core.BusinessEventEnvelope;
-import com.cloudflow.common.event.outbox.OutboxPublisher;
+import com.cloudflow.common.message.api.MessageSender;
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.redis.config.RuntimeSysConfigService;
 import com.cloudflow.common.redis.config.SysConfigKeys;
@@ -19,17 +20,18 @@ import com.cloudflow.crm.mapper.CrmReceivableMapper;
 import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmNotificationService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.IntSupplier;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -41,9 +43,9 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     private final CrmServiceTicketMapper serviceTicketMapper;
     private final ICrmCustomerService crmCustomerService;
     private final TenantIterator tenantIterator;
-    private final OutboxPublisher outboxPublisher;
-    private final ObjectMapper objectMapper;
+    private final MessageSender messageSender;
     private final RuntimeSysConfigService runtimeSysConfigService;
+    private final CrmSlaService slaService;
 
     public CrmNotificationServiceImpl(CrmCustomerMapper customerMapper,
                                       CrmReceivableMapper receivableMapper,
@@ -51,50 +53,48 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
                                       CrmServiceTicketMapper serviceTicketMapper,
                                       ICrmCustomerService crmCustomerService,
                                       TenantIterator tenantIterator,
-                                      OutboxPublisher outboxPublisher,
-                                      ObjectMapper objectMapper,
-                                      RuntimeSysConfigService runtimeSysConfigService) {
+                                      MessageSender messageSender,
+                                      RuntimeSysConfigService runtimeSysConfigService, CrmSlaService slaService) {
         this.customerMapper = customerMapper;
         this.receivableMapper = receivableMapper;
         this.opportunityMapper = opportunityMapper;
         this.serviceTicketMapper = serviceTicketMapper;
         this.crmCustomerService = crmCustomerService;
         this.tenantIterator = tenantIterator;
-        this.outboxPublisher = outboxPublisher;
-        this.objectMapper = objectMapper;
+        this.messageSender = messageSender;
         this.runtimeSysConfigService = runtimeSysConfigService;
+        this.slaService = slaService;
     }
 
     /** 每天 09:00 触发跟进逾期 / 回款到期 / 商机停滞通知。 */
-    @Scheduled(cron = "0 0 9 * * ?")
+    @JobHandler(value = "crmDailyDispatch", desc = "CRM每日通知派发")
     @DistributedJob(name = "crm-notification-dispatch-job", lockTime = 1800, waitTime = 5)
-    public void scheduledDispatch() {
+    public JobResult scheduledDispatch() {
         log.info("CRM notification scheduled dispatch start");
-        java.util.concurrent.atomic.AtomicInteger total = new java.util.concurrent.atomic.AtomicInteger();
+        AtomicInteger total = new AtomicInteger();
+        List<RuntimeException> failures = new ArrayList<>();
         tenantIterator.forEachActiveTenant(tid -> {
-            try {
-                total.addAndGet(dispatchFollowUpOverdue() + dispatchReceivableDue() + dispatchStalledOpportunity());
-            } catch (Exception e) {
-                log.error("CRM notification dispatch failed, tenantId={}", tid, e);
-            }
+            total.addAndGet(dispatch(tid, "跟进逾期", this::dispatchFollowUpOverdue, failures));
+            total.addAndGet(dispatch(tid, "回款到期", this::dispatchReceivableDue, failures));
+            total.addAndGet(dispatch(tid, "商机停滞", this::dispatchStalledOpportunity, failures));
         });
+        throwFailures("CRM每日提醒", failures);
         log.info("CRM notification scheduled dispatch end, published={}", total.get());
+        return JobResult.success(total.get(), "CRM每日提醒完成：已提交" + total.get() + "条提醒请求");
     }
 
     /** 每小时扫描一次即将到期 / 已超时工单，避免日级任务错过 SLA 窗口。 */
-    @Scheduled(cron = "${cloudflow.crm.notification.ticket-sla-cron:0 0 * * * ?}")
+    @JobHandler(value = "ticketSlaDispatch", desc = "工单SLA通知派发")
     @DistributedJob(name = "crm-ticket-sla-notification-job", lockTime = 1800, waitTime = 5)
-    public void scheduledTicketSlaDispatch() {
+    public JobResult scheduledTicketSlaDispatch() {
         log.info("CRM ticket SLA notification dispatch start");
-        java.util.concurrent.atomic.AtomicInteger total = new java.util.concurrent.atomic.AtomicInteger();
-        tenantIterator.forEachActiveTenant(tid -> {
-            try {
-                total.addAndGet(dispatchTicketSlaDue());
-            } catch (Exception e) {
-                log.error("CRM ticket SLA dispatch failed, tenantId={}", tid, e);
-            }
-        });
+        AtomicInteger total = new AtomicInteger();
+        List<RuntimeException> failures = new ArrayList<>();
+        tenantIterator.forEachActiveTenant(tid -> total.addAndGet(dispatch(tid, "工单时限",
+                this::dispatchTicketSlaDue, failures)));
+        throwFailures("工单时限提醒", failures);
         log.info("CRM ticket SLA notification dispatch end, published={}", total.get());
+        return JobResult.success(total.get(), "工单时限提醒完成：已提交" + total.get() + "条提醒请求");
     }
 
     @Override
@@ -182,67 +182,32 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
 
     @Override
     public int dispatchTicketSlaDue() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime reminderWindow = now.plusHours(ticketSlaReminderHours());
-        List<CrmServiceTicket> rows = serviceTicketMapper.selectList(new LambdaQueryWrapper<CrmServiceTicket>()
-                .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
-                .isNotNull(CrmServiceTicket::getOwnerId)
-                .isNotNull(CrmServiceTicket::getDueTime)
-                .le(CrmServiceTicket::getDueTime, reminderWindow)
-                .notIn(CrmServiceTicket::getStatus,
-                        CrmConstants.TicketStatus.RESOLVED,
-                        CrmConstants.TicketStatus.CLOSED));
-        int count = 0;
-        Set<Long> refreshedCustomerIds = new HashSet<>();
-        for (CrmServiceTicket ticket : rows) {
-            boolean overdue = ticket.getDueTime().isBefore(now);
-            String title = (overdue ? "工单SLA已超时：" : "工单SLA即将到期：") + ticket.getTicketTitle();
-            String content = String.format("客户【%s】工单【%s】严重度【%s】，SLA截止时间 %s，当前状态 %s。",
-                    ticket.getCustomerName(),
-                    ticket.getTicketTitle(),
-                    ticket.getSeverity(),
-                    ticket.getDueTime(),
-                    ticket.getStatus());
-            String priority = overdue
-                    || CrmConstants.TicketSeverity.HIGH.equalsIgnoreCase(ticket.getSeverity())
-                    || CrmConstants.TicketSeverity.CRITICAL.equalsIgnoreCase(ticket.getSeverity())
-                    ? "H" : "M";
-            if (publish(title, content, overdue ? "3" : "1", priority, ticket.getTenantId(), ticket.getOwnerId())) {
-                count++;
-            }
-            if (ticket.getCustomerId() != null && refreshedCustomerIds.add(ticket.getCustomerId())) {
-                crmCustomerService.refreshHealth(ticket.getCustomerId());
-            }
-        }
-        return count;
+        return slaService.dispatchDue();
     }
 
     private boolean publish(String title, String content, String type, String priority, Long tenantId, Long ownerId) {
         if (ownerId == null) {
             return false;
         }
-        try {
-            SystemNoticeDispatchEvent event = new SystemNoticeDispatchEvent();
-            event.setTenantId(tenantId);
-            event.setRecipientId(ownerId);
-            event.setSenderId(null);
-            event.setSenderName("crm-system");
-            event.setTitle(title);
-            event.setContent(content);
-            event.setType(type);
+        messageSender.send(ownerId, title, content, type, null, "crm-system");
+        return true;
+    }
 
-            BusinessEventEnvelope envelope = BusinessEventEnvelope.builder()
-                    .eventType("SYSTEM_NOTICE_DISPATCH")
-                    .sourceModule("cloudflow-crm")
-                    .sourceId(ownerId)
-                    .tenantId(tenantId)
-                    .payload(objectMapper.writeValueAsString(event))
-                    .build();
-            outboxPublisher.publish(envelope);
-            return true;
-        } catch (Exception e) {
-            log.warn("CRM publish owner notice failed: {} - {}", title, e.getMessage());
-            return false;
+    private int dispatch(Long tenantId, String business, IntSupplier operation, List<RuntimeException> failures) {
+        try {
+            return operation.getAsInt();
+        } catch (RuntimeException exception) {
+            log.error("CRM提醒分项失败, tenantId={}, business={}", tenantId, business, exception);
+            failures.add(new IllegalStateException(business + "提醒失败，租户：" + tenantId, exception));
+            return 0;
+        }
+    }
+
+    private void throwFailures(String task, List<RuntimeException> failures) {
+        if (!failures.isEmpty()) {
+            IllegalStateException failure = new IllegalStateException(task + "存在失败分项：" + failures.size() + "项");
+            failures.forEach(failure::addSuppressed);
+            throw failure;
         }
     }
 
@@ -258,7 +223,4 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
         return runtimeSysConfigService.getInt(SysConfigKeys.CRM_NOTIFICATION_OPPORTUNITY_STALLED_DAYS, 14);
     }
 
-    private int ticketSlaReminderHours() {
-        return runtimeSysConfigService.getInt(SysConfigKeys.CRM_NOTIFICATION_TICKET_SLA_REMINDER_HOURS, 2);
-    }
 }

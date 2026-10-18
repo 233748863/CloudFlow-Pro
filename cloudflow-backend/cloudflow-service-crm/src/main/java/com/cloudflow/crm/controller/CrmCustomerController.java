@@ -135,9 +135,10 @@ public class CrmCustomerController {
     @PostMapping("/{id}/workspace/receivable/{receivableId}/confirm")
     @SaCheckPermission("crm:receivable:confirm")
     public R<Void> confirmWorkspaceReceivable(@PathVariable("id") Long id,
-                                              @PathVariable("receivableId") Long receivableId) {
+                                              @PathVariable("receivableId") Long receivableId,
+                                              @RequestBody com.cloudflow.crm.domain.dto.CrmReceivableConfirmDTO dto) {
         try {
-            return R.result(crmCrossModuleDraftService.confirmReceivable(id, receivableId));
+            return R.result(crmCrossModuleDraftService.confirmReceivable(id, receivableId, dto.version()));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -151,8 +152,8 @@ public class CrmCustomerController {
     public R<Void> add(@RequestBody CrmCustomer customer) {
         try {
             return R.result(crmCustomerService.createCustomer(customer));
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
+        } catch (IllegalArgumentException exception) {
+            return R.fail(400, exception.getMessage());
         }
     }
 
@@ -162,8 +163,8 @@ public class CrmCustomerController {
     public R<Void> edit(@RequestBody CrmCustomer customer) {
         try {
             return R.result(crmCustomerService.updateCustomer(customer));
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
+        } catch (IllegalArgumentException exception) {
+            return R.fail(400, exception.getMessage());
         }
     }
 

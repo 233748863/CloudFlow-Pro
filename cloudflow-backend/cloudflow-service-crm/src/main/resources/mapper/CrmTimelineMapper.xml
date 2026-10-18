@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmTimelineMapper">
+    <select id="selectCustomerTimeline" resultType="com.cloudflow.crm.domain.vo.CrmTimelineItemVO">
+        SELECT 'ACTIVITY' AS type, activity.activity_id AS source_id, activity.subject AS title,
+               activity.result_summary AS content, activity.status, COALESCE(activity.complete_time, activity.start_time) AS event_time,
+               activity.owner_name, activity.dept_id,
+               CASE WHEN EXISTS (SELECT 1 FROM crm_activity_participant participant
+                   WHERE participant.activity_id = activity.activity_id AND participant.tenant_id = #{tenantId}
+                     AND participant.deleted = 0 AND participant.participant_type = 'USER'
+                     AND participant.participant_ref_id = #{userId}) THEN #{userId} ELSE activity.owner_id END AS owner_id
+        FROM crm_activity activity WHERE activity.customer_id = #{customerId} AND activity.tenant_id = #{tenantId} AND activity.deleted = 0
+        UNION ALL
+        SELECT 'FOLLOW_UP', follow_up.follow_up_id, follow_up.follow_up_type, follow_up.content, NULL,
+               follow_up.follow_up_time, follow_up.owner_name, customer.dept_id, customer.owner_id
+        FROM crm_follow_up follow_up INNER JOIN crm_customer customer ON customer.customer_id = follow_up.customer_id
+            AND customer.tenant_id = #{tenantId} AND customer.deleted = 0
+        WHERE follow_up.customer_id = #{customerId} AND follow_up.tenant_id = #{tenantId} AND follow_up.deleted = 0
+        UNION ALL
+        SELECT 'OPPORTUNITY', opportunity_id, opportunity_name, stage, status,
+               COALESCE(stage_changed_time, create_time), owner_name, dept_id, owner_id
+        FROM crm_opportunity WHERE customer_id = #{customerId} AND tenant_id = #{tenantId} AND deleted = 0
+        UNION ALL
+        SELECT 'QUOTE', quote.quote_id, quote.quote_name, quote.remark, quote.status, quote.create_time,
+               quote.owner_name, customer.dept_id, customer.owner_id
+        FROM crm_quote quote INNER JOIN crm_customer customer ON customer.customer_id = quote.customer_id
+            AND customer.tenant_id = #{tenantId} AND customer.deleted = 0
+        WHERE quote.customer_id = #{customerId} AND quote.tenant_id = #{tenantId} AND quote.deleted = 0
+        UNION ALL
+        SELECT 'RECEIVABLE', receivable.receivable_id, receivable.receivable_no, receivable.remark, receivable.status,
+               COALESCE(CAST(receivable.received_date AS DATETIME), receivable.create_time), receivable.owner_name,
+               customer.dept_id, customer.owner_id
+        FROM crm_receivable receivable INNER JOIN crm_customer customer ON customer.customer_id = receivable.customer_id
+            AND customer.tenant_id = #{tenantId} AND customer.deleted = 0
+        WHERE receivable.customer_id = #{customerId} AND receivable.tenant_id = #{tenantId} AND receivable.deleted = 0
+        UNION ALL
+        SELECT 'TICKET', ticket.ticket_id, ticket.ticket_title, ticket.solution, ticket.status,
+               COALESCE(ticket.resolved_time, ticket.opened_time), ticket.owner_name, customer.dept_id, customer.owner_id
+        FROM crm_service_ticket ticket INNER JOIN crm_customer customer ON customer.customer_id = ticket.customer_id
+            AND customer.tenant_id = #{tenantId} AND customer.deleted = 0
+        WHERE ticket.customer_id = #{customerId} AND ticket.tenant_id = #{tenantId} AND ticket.deleted = 0
+        UNION ALL
+        SELECT 'EMAIL', email.email_id, email.subject, email.content_summary, email.send_status,
+               COALESCE(email.send_time, email.create_time), email.create_by, customer.dept_id, customer.owner_id
+        <include refid="com.cloudflow.crm.mapper.CrmEmailRecordMapper.businessJoins"/>
+        WHERE email.tenant_id = #{tenantId} AND email.customer_id = #{customerId}
+            AND <include refid="com.cloudflow.crm.mapper.CrmEmailRecordMapper.validBusiness"/>
+            AND EXISTS(SELECT 1 FROM sys_user account
+                JOIN sys_tenant tenant_entry ON tenant_entry.tenant_id = account.tenant_id
+                    AND tenant_entry.deleted = 0 AND tenant_entry.status = '0'
+                JOIN sys_user_role membership ON membership.user_id = account.user_id AND membership.tenant_id = account.tenant_id
+                JOIN sys_role role_entry ON role_entry.role_id = membership.role_id AND role_entry.tenant_id = account.tenant_id
+                    AND role_entry.deleted = 0 AND role_entry.status = '0'
+                JOIN sys_role_menu grant_entry ON grant_entry.role_id = role_entry.role_id AND grant_entry.tenant_id = account.tenant_id
+                JOIN sys_menu menu_entry ON menu_entry.menu_id = grant_entry.menu_id AND menu_entry.status = '0' AND menu_entry.perms = 'crm:email:list'
+                WHERE account.tenant_id = #{tenantId} AND account.user_id = #{userId} AND account.status = '0' AND account.deleted = 0
+                    AND (tenant_entry.expire_time IS NULL OR tenant_entry.expire_time &gt; NOW()))
+            AND EXISTS(SELECT 1 FROM sys_user_role membership
+                JOIN sys_role role_entry ON role_entry.role_id = membership.role_id AND role_entry.tenant_id = membership.tenant_id
+                    AND role_entry.deleted = 0 AND role_entry.status = '0'
+                JOIN sys_role_menu grant_entry ON grant_entry.role_id = role_entry.role_id AND grant_entry.tenant_id = membership.tenant_id
+                JOIN sys_menu menu_entry ON menu_entry.menu_id = grant_entry.menu_id AND menu_entry.status = '0'
+                    AND menu_entry.perms = CASE email.biz_type WHEN 'CUSTOMER' THEN 'crm:customer:list' WHEN 'OPPORTUNITY' THEN 'crm:opportunity:list'
+                        WHEN 'QUOTE' THEN 'crm:quote:list' WHEN 'TICKET' THEN 'crm:ticket:list' END
+                WHERE membership.tenant_id = #{tenantId} AND membership.user_id = #{userId})
+    </select>
+</mapper>

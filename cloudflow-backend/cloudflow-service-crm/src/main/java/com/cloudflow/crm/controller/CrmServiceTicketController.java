@@ -64,6 +64,7 @@ public class CrmServiceTicketController {
     }
 
     @SysLog("解决CRM工单")
+    @RepeatSubmit
     @PostMapping("/{id}/resolve")
     @SaCheckPermission("crm:ticket:resolve")
     public R<Void> resolve(@PathVariable("id") Long id, @RequestBody(required = false) CrmServiceTicket payload) {
@@ -75,6 +76,7 @@ public class CrmServiceTicketController {
     }
 
     @SysLog("关闭CRM工单")
+    @RepeatSubmit
     @PostMapping("/{id}/close")
     @SaCheckPermission("crm:ticket:close")
     public R<Void> close(@PathVariable("id") Long id) {
@@ -96,12 +98,18 @@ public class CrmServiceTicketController {
             } catch (IllegalArgumentException e) {
                 return R.fail(e.getMessage());
             }
-            CrmServiceTicket ticket = new CrmServiceTicket();
-            ticket.setTicketId(id);
-            ticket.setDeleted(1);
-            crmServiceTicketService.updateById(ticket);
+            com.cloudflow.common.datascope.DataScopeUtils.assertOwnership(persisted, CrmServiceTicket::getOwnerId, "服务工单");
+            crmServiceTicketService.removeById(id);
             customerService.refreshHealth(persisted.getCustomerId());
         }
         return R.ok();
+    }
+
+    @PostMapping("/{id}/respond")
+    @RepeatSubmit
+    @SysLog("记录工单首次响应")
+    @SaCheckPermission("crm:ticket:respond")
+    public R<Void> respond(@PathVariable Long id) {
+        return R.result(crmServiceTicketService.respondTicket(id));
     }
 }

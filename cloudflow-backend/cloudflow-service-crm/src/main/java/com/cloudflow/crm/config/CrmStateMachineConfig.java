@@ -25,6 +25,8 @@ public class CrmStateMachineConfig implements CommandLineRunner {
             StateMachine.builder("CrmLead", CrmLeadStatus.class, CrmLeadEvent.class)
                 .transition(CrmLeadStatus.NEW, CrmLeadEvent.CONTACT, CrmLeadStatus.CONTACTED)
                 .transition(CrmLeadStatus.CONTACTED, CrmLeadEvent.QUALIFY, CrmLeadStatus.QUALIFIED)
+                .transition(CrmLeadStatus.NEW, CrmLeadEvent.CONVERT, CrmLeadStatus.CONVERTED)
+                .transition(CrmLeadStatus.CONTACTED, CrmLeadEvent.CONVERT, CrmLeadStatus.CONVERTED)
                 .transition(CrmLeadStatus.QUALIFIED, CrmLeadEvent.CONVERT, CrmLeadStatus.CONVERTED)
                 .transition(CrmLeadStatus.NEW, CrmLeadEvent.INVALIDATE, CrmLeadStatus.INVALID)
                 .transition(CrmLeadStatus.CONTACTED, CrmLeadEvent.INVALIDATE, CrmLeadStatus.INVALID)

@@ -1,5 +1,7 @@
 package com.cloudflow.crm.domain;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -11,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -28,6 +31,8 @@ public class CrmCustomer implements Serializable {
     private String levelCode;
     private String source;
     private String customerTags;
+    @TableField(exist = false)
+    private String keyword;
     private Long ownerId;
     private String ownerName;
     private Long deptId;
@@ -57,13 +62,25 @@ public class CrmCustomer implements Serializable {
     private String originalOwnerName;
     private String remark;
     private String status;
+    private Long territoryId;
+    private String marketSegment;
+    private String employeeScale;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private BigDecimal annualRevenue;
+    private Integer unsubscribeFlag;
+    private Long campaignId;
+    @TableField(fill = FieldFill.INSERT)
     private Integer deleted;
     @Version
     private Integer version;
+    @TableField(fill = FieldFill.INSERT)
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private String updateBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 }

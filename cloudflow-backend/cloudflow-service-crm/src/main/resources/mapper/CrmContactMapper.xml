@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmContactMapper">
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmContact">
+        SELECT * FROM (
+            SELECT contact.*, customer.owner_id AS scope_owner_id, customer.dept_id AS scope_dept_id
+            FROM crm_contact contact JOIN crm_customer customer ON customer.customer_id = contact.customer_id AND customer.tenant_id = contact.tenant_id
+            WHERE contact.deleted = 0 AND customer.deleted = 0
+            <if test="query.customerId != null">AND contact.customer_id = #{query.customerId}</if>
+            <if test="query.contactName != null and query.contactName != ''">AND contact.contact_name LIKE CONCAT('%', #{query.contactName}, '%')</if>
+            <if test="query.status != null and query.status != ''">AND contact.status = #{query.status}</if>
+        ) scoped ORDER BY update_time DESC, contact_id DESC
+    </select>
+    <select id="selectAllByDataScope" resultType="com.cloudflow.crm.domain.CrmContact">
+        SELECT * FROM (
+            SELECT contact.*, customer.owner_id AS scope_owner_id, customer.dept_id AS scope_dept_id
+            FROM crm_contact contact JOIN crm_customer customer ON customer.customer_id = contact.customer_id AND customer.tenant_id = contact.tenant_id
+            WHERE contact.deleted = 0 AND customer.deleted = 0 AND contact.status = 'ACTIVE'
+        ) scoped
+    </select>
+</mapper>

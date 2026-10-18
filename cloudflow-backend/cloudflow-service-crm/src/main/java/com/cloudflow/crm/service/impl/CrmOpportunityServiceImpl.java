@@ -2,6 +2,7 @@ package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
@@ -9,9 +10,9 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
-import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.CrmQuote;
+import com.cloudflow.crm.domain.CrmSalesStage;
 import com.cloudflow.crm.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardCardVO;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardColumnVO;
@@ -21,7 +22,10 @@ import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmOpportunityService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
-import com.cloudflow.crm.service.remote.RemoteHrService;
+import com.cloudflow.crm.service.opportunity.CrmOpportunityAccessService;
+import com.cloudflow.crm.service.opportunity.CrmOpportunityStagePolicy;
+import com.cloudflow.crm.service.opportunity.CrmOpportunityWriteService;
+import com.cloudflow.crm.service.opportunity.CrmSalesStageService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +33,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -49,44 +52,36 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
     private final ICrmCustomerService crmCustomerService;
     private final CrmQuoteMapper quoteMapper;
     private final RemoteOaService remoteOaService;
-    private final RemoteHrService remoteHrService;
     private final CrmEventPublisher crmEventPublisher;
+    private final CrmCreditService creditService;
+    private final CrmReferenceService references;
+    private final CrmOpportunityAccessService access;
+    private final CrmOpportunityWriteService writes;
+    private final CrmSalesStageService stages;
 
     @Override
     public PageResult<CrmOpportunity> queryPage(CrmOpportunity query, PageQuery pageQuery) {
-        return PageResult.build(baseMapper.selectPageByDataScope(
+        Page<CrmOpportunity> result = baseMapper.selectPageByDataScope(
                 pageQuery.build(),
                 query,
-                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)));
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
+        result.getRecords().forEach(this::correctDuration);
+        return PageResult.build(result);
     }
 
     @Override
     public CrmOpportunity getAccessibleOpportunity(Long opportunityId) {
-        if (opportunityId == null) {
-            throw new IllegalArgumentException("商机ID不能为空");
-        }
-        CrmOpportunity opportunity = baseMapper.selectByIdWithDataScope(
-                opportunityId,
-                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
-        if (opportunity == null) {
-            throw new IllegalArgumentException("商机不存在");
-        }
+        CrmOpportunity opportunity = access.read(opportunityId);
+        correctDuration(opportunity);
         return opportunity;
     }
 
     @Override
     public boolean createOpportunity(CrmOpportunity opportunity) {
-        if (opportunity.getOwnerId() == null) {
-            opportunity.setOwnerId(UserContext.getUserId());
-        }
-        enrichOwnerFromHr(opportunity);
-        fillCustomerSnapshot(opportunity);
-        validate(opportunity);
-        if (!StringUtils.hasText(opportunity.getOwnerName())) {
-            opportunity.setOwnerName(currentUserName());
-        }
-        Localize.fillCommonAudit(opportunity, currentTenantId(), currentUserName(), now());
-        return save(opportunity);
+        CrmRecordSupport.require(opportunity, "商机不能为空");
+        CrmOpportunity saved = writes.create(opportunity, owner(opportunity.getOwnerId() == null ? UserContext.getUserId() : opportunity.getOwnerId()));
+        org.springframework.beans.BeanUtils.copyProperties(saved, opportunity);
+        return true;
     }
 
     @Override
@@ -96,45 +91,40 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
             throw new IllegalArgumentException("商机ID不能为空");
         }
         CrmOpportunity persisted = getAccessibleOpportunity(opportunity.getOpportunityId());
-        // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(persisted, CrmOpportunity::getOwnerId, "商机");
-        validateEditStageTransition(persisted, opportunity.getStage());
-        if (StringUtils.hasText(opportunity.getStatus()) && !Objects.equals(opportunity.getStatus(), persisted.getStatus())) {
-            throw new IllegalArgumentException("商机关闭请走审批流程，赢单请使用赢单操作");
-        }
-        opportunity.setTenantId(persisted.getTenantId());
-        opportunity.setOwnerId(opportunity.getOwnerId() == null ? persisted.getOwnerId() : opportunity.getOwnerId());
-        enrichOwnerFromHr(opportunity);
-        fillCustomerSnapshot(opportunity);
-        validate(opportunity);
-        if (!StringUtils.hasText(opportunity.getOwnerName())) {
-            opportunity.setOwnerName(persisted.getOwnerName());
-        }
-        if (opportunity.getDeptId() == null) {
-            opportunity.setDeptId(persisted.getDeptId());
-            opportunity.setDeptName(persisted.getDeptName());
-        }
-        opportunity.setStatus(persisted.getStatus());
-        opportunity.setUpdateBy(currentUserName());
-        opportunity.setUpdateTime(now());
-        return updateById(opportunity);
+        CrmOpportunityStagePolicy.version(opportunity.getVersion(), persisted);
+        writes.update(opportunity, owner(opportunity.getOwnerId() == null ? persisted.getOwnerId() : opportunity.getOwnerId()));
+        return true;
     }
 
     @Override
-    public boolean winOpportunity(Long opportunityId) {
-        CrmOpportunity opportunity = getAccessibleOpportunity(opportunityId);
-        opportunity.setStage(CrmConstants.OpportunityStage.WON);
-        opportunity.setStatus(CrmConstants.OpportunityStatus.CLOSED);
-        opportunity.setStageChangedTime(now());
-        opportunity.setUpdateBy(currentUserName());
-        opportunity.setUpdateTime(now());
-        boolean updated = updateById(opportunity);
-        if (updated) {
-            Long contractId = ensureContractDraft(opportunity);
-            publishOpportunityWon(opportunity, contractId);
-            crmCustomerService.refreshHealth(opportunity.getCustomerId());
+    public CrmOpportunity previewImport(CrmOpportunity opportunity) {
+        CrmRecordSupport.require(opportunity, "商机不能为空");
+        Long ownerId = opportunity.getOwnerId();
+        if (ownerId == null) {
+            ownerId = opportunity.getOpportunityId() == null ? UserContext.getUserId()
+                    : getAccessibleOpportunity(opportunity.getOpportunityId()).getOwnerId();
         }
-        return updated;
+        return writes.previewImport(opportunity, owner(ownerId));
+    }
+
+    @Override
+    public boolean winOpportunity(Long opportunityId, Long competitorId, Integer version) {
+        CrmOpportunity opportunity = getAccessibleOpportunity(opportunityId);
+        DataScopeUtils.assertOwnership(opportunity, CrmOpportunity::getOwnerId, "商机");
+        CrmOpportunityStagePolicy.version(version, opportunity);
+        if (CrmConstants.OpportunityStage.WON.equals(opportunity.getStage())) return true;
+        if (CrmConstants.OpportunityStage.LOST.equals(opportunity.getStage())) throw new IllegalArgumentException("已输单商机不能直接赢单");
+        CrmQuote acceptedQuote = findAcceptedQuote(opportunityId);
+        if (acceptedQuote == null || acceptedQuote.getContractId() == null) {
+            RemoteOaService.ContractDraftRequest draft = buildContractDraftRequest(opportunity, acceptedQuote);
+            creditService.check(opportunity.getCustomerId(), draft.getAmount(), draft.getCurrency(), "CRM_OPPORTUNITY_CONTRACT", opportunityId);
+        }
+        CrmOpportunity won = writes.win(opportunityId, competitorId, version);
+        Long contractId = ensureContractDraft(won);
+        publishOpportunityWon(won, contractId);
+        crmCustomerService.refreshHealth(won.getCustomerId());
+        return true;
     }
 
     /**
@@ -206,10 +196,13 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         if (quote != null && quote.getQuoteId() != null) {
             request.setSourceType("CRM_QUOTE");
             request.setSourceId(quote.getQuoteId());
+            request.setSourceVersion(quote.getVersion());
+            request.setOpportunityVersion(opportunity.getVersion());
             request.setRemark("由 CRM 报价 " + quote.getQuoteNo() + " / 商机赢单 #" + opportunity.getOpportunityId() + " 自动生成");
         } else {
             request.setSourceType("CRM_OPPORTUNITY");
             request.setSourceId(opportunity.getOpportunityId());
+            request.setSourceVersion(opportunity.getVersion());
             request.setRemark("由 CRM 商机赢单 #" + opportunity.getOpportunityId() + " 自动生成");
         }
         return request;
@@ -232,17 +225,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
 
     @Override
     public boolean loseOpportunity(Long opportunityId, String lostReason) {
-        CrmOpportunity opportunity = getAccessibleOpportunity(opportunityId);
-        opportunity.setStage(CrmConstants.OpportunityStage.LOST);
-        opportunity.setStatus(CrmConstants.OpportunityStatus.CLOSED);
-        opportunity.setLostReason(StringUtils.hasText(lostReason) ? lostReason : opportunity.getLostReason());
-        opportunity.setUpdateBy(currentUserName());
-        opportunity.setUpdateTime(now());
-        boolean updated = updateById(opportunity);
-        if (updated) {
-            crmCustomerService.refreshHealth(opportunity.getCustomerId());
-        }
-        return updated;
+        throw new IllegalArgumentException("输单必须选择结构化原因并提交关闭审批");
     }
 
     @Override
@@ -283,15 +266,19 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
                 new CrmOpportunity(),
                 DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)).getRecords();
         Map<String, CrmOpportunityBoardColumnVO> columns = new LinkedHashMap<>();
-        for (String stage : List.of("LEAD", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON", "LOST")) {
+        for (CrmSalesStage rule : stages.list()) {
+            String stage = rule.getStageCode();
             CrmOpportunityBoardColumnVO column = new CrmOpportunityBoardColumnVO();
             column.setStage(stage);
-            column.setStageLabel(resolveStageLabel(stage));
+            column.setStageLabel(rule.getStageName());
+            column.setSortNo(rule.getSortNo());
+            column.setEnabled("ACTIVE".equals(rule.getStatus()));
+            column.setAllowSkipFlag(rule.getAllowSkipFlag());
+            column.setOverdueDays(rule.getOverdueDays());
             column.setCount(0);
             column.setTotalAmount(BigDecimal.ZERO);
             columns.put(stage, column);
         }
-        LocalDate today = LocalDate.now();
         for (CrmOpportunity item : opportunities) {
             CrmOpportunityBoardColumnVO column = columns.computeIfAbsent(item.getStage(), stage -> {
                 CrmOpportunityBoardColumnVO created = new CrmOpportunityBoardColumnVO();
@@ -308,12 +295,12 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
             card.setOpportunityName(item.getOpportunityName());
             card.setExpectedAmount(item.getExpectedAmount());
             card.setWinRate(item.getWinRate());
+            card.setVersion(item.getVersion());
+            card.setWeightedAmount(item.getWeightedAmount());
             card.setOwnerName(item.getOwnerName());
             card.setExpectedSignDate(item.getExpectedSignDate() == null ? null : String.valueOf(item.getExpectedSignDate()));
-            LocalDate pivotDate = item.getStageChangedTime() != null ? item.getStageChangedTime().toLocalDate()
-                    : item.getUpdateTime() != null ? item.getUpdateTime().toLocalDate()
-                    : item.getCreateTime() != null ? item.getCreateTime().toLocalDate() : today;
-            card.setStageStayDays((int) ChronoUnit.DAYS.between(pivotDate, today));
+            correctDuration(item);
+            card.setStageStayDays(item.getStageChangedTime() == null ? null : item.getStageDurationDays());
             column.getItems().add(card);
             column.setCount(column.getCount() + 1);
             column.setTotalAmount(column.getTotalAmount().add(item.getExpectedAmount() == null ? BigDecimal.ZERO : item.getExpectedAmount()));
@@ -323,134 +310,23 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
 
     @Override
     @Audit(name = "更新商机阶段")
-    public boolean updateStage(Long opportunityId, String stage, String lostReason) {
-        if (opportunityId == null) {
-            throw new IllegalArgumentException("商机ID不能为空");
-        }
-        if (!StringUtils.hasText(stage)) {
-            throw new IllegalArgumentException("商机阶段不能为空");
-        }
-        if ("LOST".equalsIgnoreCase(stage)) {
-            return loseOpportunity(opportunityId, lostReason);
-        }
-        if ("WON".equalsIgnoreCase(stage)) {
-            return winOpportunity(opportunityId);
-        }
-        CrmOpportunity opportunity = getAccessibleOpportunity(opportunityId);
-        // M1-4: 所有权校验
-        DataScopeUtils.assertOwnership(opportunity, CrmOpportunity::getOwnerId, "商机");
-        opportunity.setStage(stage);
-        opportunity.setStatus(CrmConstants.OpportunityStatus.OPEN);
-        opportunity.setStageChangedTime(now());
-        opportunity.setUpdateBy(currentUserName());
-        opportunity.setUpdateTime(now());
-        return updateById(opportunity);
+    public boolean updateStage(Long opportunityId, String stage, Integer version) {
+        writes.advance(opportunityId, stage, version);
+        return true;
     }
 
-    private void validate(CrmOpportunity opportunity) {
-        if (opportunity == null) {
-            throw new IllegalArgumentException("商机不能为空");
-        }
-        if (opportunity.getCustomerId() == null) {
-            throw new IllegalArgumentException("客户ID不能为空");
-        }
-        if (!StringUtils.hasText(opportunity.getOpportunityName())) {
-            throw new IllegalArgumentException("商机名称不能为空");
-        }
-        if (opportunity.getExpectedAmount() == null) {
-            opportunity.setExpectedAmount(BigDecimal.ZERO);
-        }
-        if (opportunity.getWinRate() == null) {
-            opportunity.setWinRate(BigDecimal.ZERO);
-        }
-        if (!StringUtils.hasText(opportunity.getStage())) {
-            opportunity.setStage(CrmConstants.OpportunityStage.LEAD);
-        }
-        if (!StringUtils.hasText(opportunity.getStatus())) {
-            opportunity.setStatus(CrmConstants.OpportunityStatus.OPEN);
-        }
-        if (opportunity.getStageChangedTime() == null) {
-            opportunity.setStageChangedTime(now());
-        }
+    private CrmOpportunityWriteService.Owner owner(Long userId) {
+        CrmRecordSupport.require(userId, "商机负责人不能为空");
+        HrEmployeeSummaryVO employee = references.user(userId);
+        if (!Objects.equals(userId, employee.getUserId())) throw new IllegalArgumentException("商机负责人校验失败");
+        return new CrmOpportunityWriteService.Owner(userId, employee.getEmployeeName(), employee.getDeptId(), employee.getDeptName());
     }
 
-    private void fillCustomerSnapshot(CrmOpportunity opportunity) {
-        if (opportunity == null || opportunity.getCustomerId() == null) {
-            return;
+    private void correctDuration(CrmOpportunity opportunity) {
+        if (opportunity.getStageChangedTime() != null) {
+            long elapsed = ChronoUnit.SECONDS.between(opportunity.getStageChangedTime(), now());
+            opportunity.setStageDurationDays(Math.toIntExact(Math.max(0, elapsed) / 86400));
         }
-        CrmCustomer customer = crmCustomerService.getAccessibleCustomer(opportunity.getCustomerId());
-        opportunity.setCustomerName(customer.getCustomerName());
-        if (opportunity.getDeptId() == null) {
-            opportunity.setDeptId(customer.getDeptId());
-            opportunity.setDeptName(customer.getDeptName());
-        }
-    }
-
-    /**
-     * 商机归属保护：ownerId 对应的员工必须在职；同时补齐 ownerName / dept 快照。
-     */
-    private void enrichOwnerFromHr(CrmOpportunity opportunity) {
-        if (opportunity == null || opportunity.getOwnerId() == null) {
-            return;
-        }
-        try {
-            R<HrEmployeeSummaryVO> response = remoteHrService.getEmployeeByUserId(opportunity.getOwnerId());
-            if (response == null || !response.isSuccess() || response.getData() == null) {
-                return;
-            }
-            HrEmployeeSummaryVO employee = response.getData();
-            if (!employee.isActive()) {
-                throw new IllegalArgumentException("商机归属员工已离职，请选择其它员工");
-            }
-            if (!StringUtils.hasText(opportunity.getOwnerName())) {
-                opportunity.setOwnerName(employee.getEmployeeName());
-            }
-            if (opportunity.getDeptId() == null && employee.getDeptId() != null) {
-                opportunity.setDeptId(employee.getDeptId());
-                opportunity.setDeptName(employee.getDeptName());
-            }
-        } catch (IllegalArgumentException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            log.warn("enrichOpportunityOwnerFromHr failed, ownerId={}, error={}",
-                    opportunity.getOwnerId(), ex.getMessage());
-        }
-    }
-
-    private void validateEditStageTransition(CrmOpportunity persisted, String targetStage) {
-        if (persisted == null || !StringUtils.hasText(targetStage)) {
-            return;
-        }
-        String current = normalizeStage(persisted.getStage());
-        String target = normalizeStage(targetStage);
-        if (target == null || target.equals(current)) {
-            return;
-        }
-        if (CrmConstants.OpportunityStage.WON.equals(target)) {
-            throw new IllegalArgumentException("商机赢单请使用赢单操作");
-        }
-        if (CrmConstants.OpportunityStage.LOST.equals(target) || stageOrder(target) < stageOrder(current)) {
-            throw new IllegalArgumentException("商机降级/输单请走审批流程");
-        }
-    }
-
-    private String normalizeStage(String stage) {
-        return StringUtils.hasText(stage) ? stage.trim().toUpperCase() : null;
-    }
-
-    private int stageOrder(String stage) {
-        if (stage == null) {
-            return Integer.MAX_VALUE;
-        }
-        return switch (stage) {
-            case CrmConstants.OpportunityStage.LEAD -> 1;
-            case CrmConstants.OpportunityStage.QUALIFIED -> 2;
-            case CrmConstants.OpportunityStage.PROPOSAL -> 3;
-            case CrmConstants.OpportunityStage.NEGOTIATION -> 4;
-            case CrmConstants.OpportunityStage.WON -> 5;
-            case CrmConstants.OpportunityStage.LOST -> 6;
-            default -> Integer.MAX_VALUE;
-        };
     }
 
     private String resolveStageLabel(String stage) {

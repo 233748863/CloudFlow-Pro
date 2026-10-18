@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmCustomerCreditMapper">
+    <select id="lockCustomer" resultType="java.lang.Long">
+        SELECT customer_id FROM crm_customer WHERE customer_id = #{customerId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockByCustomer" resultType="com.cloudflow.crm.domain.CrmCustomerCredit">
+        SELECT * FROM crm_customer_credit WHERE customer_id = #{customerId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="exposure" resultType="java.util.HashMap">
+        SELECT COALESCE(SUM(GREATEST(planned_amount - COALESCE(received_amount, 0), 0)), 0) AS occupied,
+               COALESCE(SUM(CASE WHEN due_date &lt; #{today} THEN GREATEST(planned_amount - COALESCE(received_amount, 0), 0) ELSE 0 END), 0) AS overdue
+        FROM crm_receivable WHERE customer_id = #{customerId} AND deleted = 0
+          AND status NOT IN ('CANCELLED', 'CLOSED')
+    </select>
+</mapper>

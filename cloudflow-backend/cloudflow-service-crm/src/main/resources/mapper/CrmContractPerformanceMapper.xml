@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmContractPerformanceMapper">
+    <select id="lockContract" resultType="com.cloudflow.crm.mapper.CrmContractPerformanceMapper$Contract">
+        SELECT contract_id, tenant_id, customer_id, currency, version, contract_type, instance_id, start_date, end_date,
+            signed_flag, our_signee_id, our_sign_time, counterparty_signee, counterparty_sign_time, signed_file_url FROM oa_contract
+        WHERE contract_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE
+    </select>
+</mapper>

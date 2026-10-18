@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmMassEmailRecipientMapper">
+    <select id="selectForUpdate" resultType="com.cloudflow.crm.domain.CrmMassEmailRecipient">
+        SELECT * FROM crm_mass_email_recipient WHERE tenant_id = #{tenantId} AND recipient_id = #{recipientId} FOR UPDATE
+    </select>
+    <select id="selectByOpenToken" resultType="com.cloudflow.crm.domain.CrmMassEmailRecipient">
+        SELECT * FROM crm_mass_email_recipient WHERE open_token_hash = #{tokenHash}
+    </select>
+    <select id="selectByUnsubscribeToken" resultType="com.cloudflow.crm.domain.CrmMassEmailRecipient">
+        SELECT * FROM crm_mass_email_recipient WHERE unsubscribe_token_hash = #{tokenHash}
+    </select>
+    <select id="selectPending" resultType="com.cloudflow.crm.domain.CrmMassEmailRecipient">
+        SELECT * FROM crm_mass_email_recipient
+        WHERE tenant_id = #{tenantId} AND mass_email_id = #{massEmailId} AND test_flag = #{testFlag} AND status = 'PENDING'
+        ORDER BY recipient_id LIMIT #{limit}
+    </select>
+    <update id="updateSnapshot">
+        UPDATE crm_mass_email_recipient SET email_encrypted = #{emailEncrypted}, variable_snapshot_encrypted = #{variableSnapshotEncrypted}
+        WHERE tenant_id = #{tenantId} AND recipient_id = #{recipientId} AND status = 'PENDING' AND email_encrypted = 'PENDING'
+    </update>
+    <update id="stopPending">
+        UPDATE crm_mass_email_recipient SET status = #{status}, update_by = 'mail-cancel', update_time = NOW()
+        WHERE tenant_id = #{tenantId} AND mass_email_id = #{massEmailId} AND status = 'PENDING'
+    </update>
+    <select id="counts" resultType="java.util.LinkedHashMap">
+        SELECT status, COUNT(*) AS amount FROM crm_mass_email_recipient
+        WHERE tenant_id = #{tenantId} AND mass_email_id = #{massEmailId} AND test_flag = 0 GROUP BY status
+    </select>
+</mapper>

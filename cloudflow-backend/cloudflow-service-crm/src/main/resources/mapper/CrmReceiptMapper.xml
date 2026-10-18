@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmReceiptMapper">
+    <select id="refundSources" resultType="com.cloudflow.crm.domain.vo.CrmRefundReceiptVO">
+        SELECT original.event_id AS receipt_event_id, original.occurred_time, original.currency, original.team_version, original.amount,
+            CASE WHEN original.event_key LIKE 'OA_INVOICE_RECEIPT:%' THEN 'INVOICE' ELSE 'CRM' END AS source,
+            -COALESCE((SELECT SUM(refund.amount) FROM crm_deal_event refund
+                WHERE refund.tenant_id = original.tenant_id AND refund.reversal_of_id = original.event_id), 0) AS refunded_amount,
+            original.amount + COALESCE((SELECT SUM(refund.amount) FROM crm_deal_event refund
+                WHERE refund.tenant_id = original.tenant_id AND refund.reversal_of_id = original.event_id), 0) AS remaining_amount
+        FROM crm_deal_event original
+        WHERE original.tenant_id = #{tenantId} AND original.biz_type = 'RECEIVABLE' AND original.biz_id = #{id}
+            AND original.event_type = 'RECEIPT' AND original.reversal_of_id IS NULL AND original.baseline_flag = 0
+        <if test="receiptEventId != null">AND original.event_id = #{receiptEventId}</if>
+        ORDER BY original.occurred_time DESC, original.event_id DESC
+    </select>
+    <select id="netReceived" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0) FROM crm_deal_event
+        WHERE tenant_id = #{tenantId} AND biz_type = 'RECEIVABLE' AND biz_id = #{id} AND event_type = 'RECEIPT'
+            AND baseline_flag = 0 AND currency = #{currency}
+    </select>
+    <select id="pendingRefund" resultType="java.lang.Long">
+        SELECT approval_id FROM crm_approval WHERE tenant_id = #{tenantId} AND business_type = 'crm_refund'
+            AND business_ref_type = 'CRM_RECEIVABLE' AND business_ref_id = #{id} AND status = 'PENDING' AND deleted = 0
+        ORDER BY approval_id LIMIT 1
+    </select>
+    <select id="readCurrency" resultType="java.lang.String">
+        SELECT currency FROM oa_contract WHERE tenant_id = #{tenantId} AND contract_id = #{id} AND deleted = 0
+    </select>
+    <select id="lockCurrency" resultType="java.lang.String">
+        SELECT currency FROM oa_contract WHERE tenant_id = #{tenantId} AND contract_id = #{id} AND deleted = 0 FOR SHARE
+    </select>
+    <select id="lockContractSource" resultType="com.cloudflow.crm.mapper.CrmReceiptMapper$ContractSource">
+        SELECT contract_id, tenant_id, customer_id, contract_no, owner_id, currency FROM oa_contract
+        WHERE tenant_id = #{tenantId} AND contract_id = #{id} AND deleted = 0 FOR SHARE
+    </select>
+</mapper>

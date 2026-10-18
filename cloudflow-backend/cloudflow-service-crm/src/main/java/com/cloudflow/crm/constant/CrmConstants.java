@@ -169,10 +169,10 @@ public final class CrmConstants {
     /** 服务工单严重度。 */
     public static final class TicketSeverity {
         private TicketSeverity() {}
-        public static final String LOW = "LOW";
-        public static final String MEDIUM = "MEDIUM";
-        public static final String HIGH = "HIGH";
-        public static final String CRITICAL = "CRITICAL";
+        public static final String P4 = "P4";
+        public static final String P3 = "P3";
+        public static final String P2 = "P2";
+        public static final String P1 = "P1";
     }
 
     /** 服务工单状态。 */
@@ -180,6 +180,7 @@ public final class CrmConstants {
         private TicketStatus() {}
         public static final String OPEN = "OPEN";
         public static final String IN_PROGRESS = "IN_PROGRESS";
+        public static final String WAITING_CUSTOMER = "WAITING_CUSTOMER";
         public static final String RESOLVED = "RESOLVED";
         public static final String CLOSED = "CLOSED";
     }

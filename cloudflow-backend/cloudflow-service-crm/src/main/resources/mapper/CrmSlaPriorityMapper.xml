@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmSlaPriorityMapper">
+    <update id="deactivateChildren">
+        UPDATE crm_sla_priority SET deleted = 1 WHERE policy_id = #{parentId}
+    </update>
+    <insert id="upsert">
+        INSERT INTO crm_sla_priority (tenant_id, policy_id, priority_code, priority_name, first_response_minutes, resolution_minutes, sort_no, deleted, create_by, create_time, update_by, update_time)
+        VALUES (#{entity.tenantId}, #{entity.policyId}, #{entity.priorityCode}, #{entity.priorityName}, #{entity.firstResponseMinutes}, #{entity.resolutionMinutes}, #{entity.sortNo}, #{entity.deleted}, #{entity.createBy}, #{entity.createTime}, #{entity.updateBy}, #{entity.updateTime})
+        ON DUPLICATE KEY UPDATE priority_code = VALUES(priority_code),
+          priority_name = VALUES(priority_name),
+          first_response_minutes = VALUES(first_response_minutes),
+          resolution_minutes = VALUES(resolution_minutes),
+          sort_no = VALUES(sort_no),
+          deleted = VALUES(deleted),
+          update_by = VALUES(update_by),
+          update_time = VALUES(update_time)
+    </insert>
+</mapper>
+

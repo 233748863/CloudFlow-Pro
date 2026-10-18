@@ -22,7 +22,7 @@ import java.time.LocalDate;
 )
 public interface RemoteOaService {
 
-    @PostMapping("/contract")
+    @PostMapping("/inner/oa/crm-contracts/draft")
     R<Long> createContract(@RequestHeader("X-Inner-Call") String innerCall,
                            @RequestHeader("X-From-Service") String fromService,
                            @RequestBody ContractDraftRequest request);
@@ -42,10 +42,10 @@ public interface RemoteOaService {
                           @RequestHeader("X-From-Service") String fromService,
                           @RequestBody InvoiceDraftRequest request);
 
-    @GetMapping("/contract/{id}")
+    @GetMapping("/inner/oa/crm-contracts/{id}")
     R<ContractInfo> getContract(@PathVariable("id") Long id);
 
-    @GetMapping("/contract/list")
+    @GetMapping("/inner/oa/crm-contracts/list")
     R<PageResult<ContractInfo>> listContracts(@RequestParam("pageNum") int pageNum,
                                               @RequestParam("pageSize") int pageSize,
                                               @RequestParam(value = "customerId", required = false) Long customerId,
@@ -95,6 +95,8 @@ public interface RemoteOaService {
         private String remark;
         private String sourceType;
         private Long sourceId;
+        private Integer sourceVersion;
+        private Integer opportunityVersion;
     }
 
     @Data

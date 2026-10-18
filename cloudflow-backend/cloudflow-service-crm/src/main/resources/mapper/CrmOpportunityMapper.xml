@@ -3,6 +3,38 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.crm.mapper.CrmOpportunityMapper">
+    <update id="writeOpportunity">
+        UPDATE crm_opportunity SET customer_id = #{record.customerId}, customer_name = #{record.customerName},
+            opportunity_name = #{record.opportunityName}, source = #{record.source}, expected_amount = #{record.expectedAmount},
+            win_rate = #{record.winRate}, expected_sign_date = #{record.expectedSignDate}, owner_id = #{record.ownerId},
+            owner_name = #{record.ownerName}, dept_id = #{record.deptId}, dept_name = #{record.deptName},
+            contact_id = #{record.contactId}, contact_name = #{record.contactName}, campaign_id = #{record.campaignId},
+            competitor_id = #{record.competitorId}, remark = #{record.remark}, stage = #{record.stage},
+            last_stage = #{record.lastStage}, stage_changed_time = #{record.stageChangedTime},
+            stage_duration_days = #{record.stageDurationDays}, weighted_amount = #{record.weightedAmount},
+            status = #{record.status}, lost_reason = #{record.lostReason}, team_version = #{record.teamVersion}, version = version + 1,
+            update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE opportunity_id = #{record.opportunityId} AND tenant_id = #{record.tenantId}
+            AND deleted = 0 AND version = #{expectedVersion}
+    </update>
+    <update id="initializeTeam">
+        UPDATE crm_opportunity SET team_version = #{record.teamVersion}
+        WHERE opportunity_id = #{record.opportunityId} AND tenant_id = #{record.tenantId} AND version = #{record.version} AND team_version = 0 AND deleted = 0
+    </update>
+    <update id="writeTeam">
+        UPDATE crm_opportunity SET team_version = #{record.teamVersion}, owner_id = #{record.ownerId}, owner_name = #{record.ownerName},
+            dept_id = #{record.deptId}, dept_name = #{record.deptName}, version = version + 1, update_by = #{record.updateBy}, update_time = #{record.updateTime}
+        WHERE opportunity_id = #{record.opportunityId} AND tenant_id = #{record.tenantId} AND version = #{expectedVersion} AND deleted = 0
+    </update>
+    <select id="lockById" resultType="com.cloudflow.crm.domain.CrmOpportunity">
+        SELECT * FROM crm_opportunity WHERE opportunity_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="lockAccessible" resultType="com.cloudflow.crm.domain.CrmOpportunity">
+        SELECT opportunity.*, customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        FROM crm_opportunity opportunity JOIN crm_customer customer ON customer.customer_id = opportunity.customer_id
+            AND customer.tenant_id = opportunity.tenant_id AND customer.deleted = 0
+        WHERE opportunity.opportunity_id = #{id} AND opportunity.tenant_id = #{tenantId} AND opportunity.deleted = 0 FOR UPDATE
+    </select>
 
     <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmOpportunity">
         SELECT t.opportunity_id,
@@ -14,6 +46,10 @@
                t.source,
                t.expected_amount,
                t.win_rate,
+               t.last_stage,
+               t.weighted_amount,
+               t.stage_duration_days,
+               t.team_version,
                t.expected_sign_date,
                t.owner_id,
                t.owner_name,
@@ -26,6 +62,9 @@
                t.lost_reason,
                t.remark,
                t.status,
+               t.campaign_id,
+               t.competitor_id,
+               t.version,
                t.deleted,
                t.create_by,
                t.create_time,
@@ -61,6 +100,10 @@
                t.source,
                t.expected_amount,
                t.win_rate,
+               t.last_stage,
+               t.weighted_amount,
+               t.stage_duration_days,
+               t.team_version,
                t.expected_sign_date,
                t.owner_id,
                t.owner_name,
@@ -73,6 +116,9 @@
                t.lost_reason,
                t.remark,
                t.status,
+               t.campaign_id,
+               t.competitor_id,
+               t.version,
                t.deleted,
                t.create_by,
                t.create_time,

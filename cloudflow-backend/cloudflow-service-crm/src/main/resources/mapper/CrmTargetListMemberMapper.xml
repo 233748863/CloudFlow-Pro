@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmTargetListMemberMapper">
+    <update id="deactivateChildren">
+        UPDATE crm_target_list_member SET deleted = 1 WHERE list_id = #{parentId}
+    </update>
+    <insert id="upsert">
+        INSERT INTO crm_target_list_member (tenant_id, list_id, member_type, member_ref_id, member_name, email, phone, opted_out_flag, add_time, deleted, create_by, create_time, update_by, update_time)
+        VALUES (#{entity.tenantId}, #{entity.listId}, #{entity.memberType}, #{entity.memberRefId}, #{entity.memberName}, #{entity.email}, #{entity.phone}, #{entity.optedOutFlag}, #{entity.addTime}, #{entity.deleted}, #{entity.createBy}, #{entity.createTime}, #{entity.updateBy}, #{entity.updateTime})
+        ON DUPLICATE KEY UPDATE member_type = VALUES(member_type),
+          member_ref_id = VALUES(member_ref_id),
+          member_name = VALUES(member_name),
+          email = VALUES(email),
+          phone = VALUES(phone),
+          opted_out_flag = VALUES(opted_out_flag),
+          add_time = VALUES(add_time),
+          deleted = VALUES(deleted),
+          update_by = VALUES(update_by),
+          update_time = VALUES(update_time)
+    </insert>
+</mapper>
+

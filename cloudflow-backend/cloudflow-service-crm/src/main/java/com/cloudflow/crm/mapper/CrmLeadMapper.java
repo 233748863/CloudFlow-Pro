@@ -9,6 +9,11 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface CrmLeadMapper extends BaseMapper<CrmLead> {
+    CrmLead lockById(@Param("leadId") Long leadId);
+    java.util.List<CrmLead> selectAllByDataScope(@Param("dataScope") DataScope dataScope);
+
+    CrmLead selectByIdWithDataScope(@Param("leadId") Long leadId,
+                                   @Param("dataScope") DataScope dataScope);
 
     Page<CrmLead> selectPageByDataScope(Page<CrmLead> page,
                                         @Param("query") CrmLead query,

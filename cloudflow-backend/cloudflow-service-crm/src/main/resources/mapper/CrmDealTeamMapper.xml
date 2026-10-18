@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmDealTeamMapper">
+    <select id="lockCurrent" resultType="com.cloudflow.crm.domain.CrmDealTeam">
+        SELECT * FROM crm_deal_team WHERE biz_type = #{bizType} AND biz_id = #{bizId} AND current_flag = 1
+        FOR UPDATE
+    </select>
+    <select id="versions" resultType="java.lang.Integer">
+        SELECT DISTINCT team_version FROM crm_deal_team WHERE biz_type = #{bizType} AND biz_id = #{bizId}
+        ORDER BY team_version DESC
+    </select>
+    <select id="lockVersions" resultType="java.lang.Integer">
+        SELECT team_version FROM crm_deal_team WHERE biz_type = #{bizType} AND biz_id = #{bizId} FOR UPDATE
+    </select>
+    <update id="retireCurrent">
+        UPDATE crm_deal_team SET current_flag = 0, update_by = #{actor}, update_time = #{now}
+        WHERE biz_type = #{bizType} AND biz_id = #{bizId} AND team_version = #{version} AND current_flag = 1
+    </update>
+    <update id="updatePreview">
+        UPDATE crm_deal_team SET allocated_amount = #{amount}, commission_amount = #{commission}, update_by = #{actor}, update_time = #{now}
+        WHERE biz_type = #{bizType} AND biz_id = #{bizId} AND team_version = #{version} AND current_flag = 1 AND sales_user_id = #{userId}
+    </update>
+</mapper>

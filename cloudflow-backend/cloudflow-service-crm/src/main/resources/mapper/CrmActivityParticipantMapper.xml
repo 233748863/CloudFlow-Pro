@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmActivityParticipantMapper">
+    <select id="lockActiveByActivity" resultType="com.cloudflow.crm.domain.CrmActivityParticipant">
+        SELECT * FROM crm_activity_participant
+        WHERE activity_id = #{activityId} AND deleted = 0
+        <!-- The caller already holds the activity lock. Sorting is unnecessary and the tenant parser reorders it after FOR UPDATE. -->
+        FOR UPDATE
+    </select>
+    <update id="deactivateByActivity">
+        UPDATE crm_activity_participant SET deleted = 1 WHERE activity_id = #{activityId}
+    </update>
+    <insert id="upsertParticipant">
+        INSERT INTO crm_activity_participant
+        (tenant_id, activity_id, participant_type, participant_ref_id, participant_name, is_organizer_flag,
+         acceptance_status, response_time, attend_flag, remark, deleted, create_by, create_time, update_by, update_time)
+        VALUES (#{participant.tenantId}, #{participant.activityId}, #{participant.participantType},
+         #{participant.participantRefId}, #{participant.participantName}, #{participant.isOrganizerFlag},
+         #{participant.acceptanceStatus}, #{participant.responseTime}, #{participant.attendFlag}, #{participant.remark},
+         0, #{participant.createBy}, #{participant.createTime}, #{participant.updateBy}, #{participant.updateTime})
+        ON DUPLICATE KEY UPDATE participant_name = VALUES(participant_name), is_organizer_flag = VALUES(is_organizer_flag),
+          acceptance_status = VALUES(acceptance_status), response_time = VALUES(response_time),
+          attend_flag = VALUES(attend_flag), remark = VALUES(remark), deleted = 0,
+          update_by = VALUES(update_by), update_time = VALUES(update_time)
+    </insert>
+</mapper>

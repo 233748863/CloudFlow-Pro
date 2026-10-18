@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmOpportunityReopenMapper">
+    <select id="latestHistory" resultType="com.cloudflow.crm.domain.CrmOpportunityStageHistory">
+        SELECT * FROM crm_opportunity_stage_history WHERE tenant_id = #{tenantId} AND opportunity_id = #{id}
+        ORDER BY history_id DESC LIMIT 1
+    </select>
+    <select id="latestReopen" resultType="com.cloudflow.crm.domain.CrmOpportunityStageHistory">
+        SELECT * FROM crm_opportunity_stage_history WHERE tenant_id = #{tenantId} AND opportunity_id = #{id}
+            AND JSON_UNQUOTE(JSON_EXTRACT(snapshot, '$.direction')) = 'REOPEN'
+        ORDER BY history_id DESC LIMIT 1
+    </select>
+    <select id="lostDetails" resultType="com.cloudflow.crm.domain.CrmOpportunityLostDetail">
+        SELECT * FROM crm_opportunity_lost_detail WHERE tenant_id = #{tenantId} AND opportunity_id = #{id} ORDER BY detail_id
+    </select>
+    <delete id="clearLostDetails">
+        DELETE FROM crm_opportunity_lost_detail WHERE tenant_id = #{tenantId} AND opportunity_id = #{id}
+    </delete>
+    <select id="quotes" resultType="com.cloudflow.crm.mapper.CrmOpportunityReopenMapper$Quote">
+        SELECT quote_id, customer_id, contract_id, version FROM crm_quote
+        WHERE tenant_id = #{tenantId} AND opportunity_id = #{id} ORDER BY quote_id
+    </select>
+    <select id="contracts" resultType="com.cloudflow.crm.mapper.CrmOpportunityReopenMapper$Contract">
+        SELECT contract_id, tenant_id, customer_id, currency, status, version, deleted, signed_flag, start_date
+        FROM oa_contract contract WHERE contract.tenant_id = #{tenantId}
+            AND ((contract.source_type = 'CRM_OPPORTUNITY' AND contract.source_id = #{id})
+                OR EXISTS(SELECT 1 FROM crm_quote quote WHERE quote.tenant_id = contract.tenant_id AND quote.opportunity_id = #{id}
+                    AND ((contract.source_type = 'CRM_QUOTE' AND contract.source_id = quote.quote_id) OR quote.contract_id = contract.contract_id)))
+        ORDER BY contract_id
+    </select>
+    <select id="lockContract" resultType="com.cloudflow.crm.mapper.CrmOpportunityReopenMapper$Contract">
+        SELECT contract_id, tenant_id, customer_id, currency, status, version, deleted, signed_flag, start_date
+        FROM oa_contract WHERE tenant_id = #{tenantId} AND contract_id = #{id} FOR UPDATE
+    </select>
+    <select id="receivables" resultType="com.cloudflow.crm.domain.CrmReceivable">
+        SELECT * FROM crm_receivable WHERE tenant_id = #{tenantId} AND contract_id = #{id} ORDER BY receivable_id
+    </select>
+    <select id="contractSources" resultType="com.cloudflow.common.event.outbox.OutboxEvent">
+        SELECT * FROM outbox_event WHERE tenant_id = #{tenantId} AND aggregate_id = #{id}
+            AND aggregate_type = 'cloudflow-service-oa' AND event_type = 'CONTRACT_PERFORMANCE_CHANGED' ORDER BY id
+    </select>
+    <select id="events" resultType="com.cloudflow.crm.domain.CrmDealEvent">
+        SELECT * FROM crm_deal_event WHERE tenant_id = #{tenantId} AND biz_type = #{type} AND biz_id = #{id} ORDER BY event_id
+    </select>
+    <select id="pendingInvoiceReceipts" resultType="long">
+        SELECT COUNT(*) FROM oa_invoice_writeoff writeoff
+        LEFT JOIN oa_invoice invoice ON invoice.invoice_id = writeoff.invoice_id AND invoice.tenant_id = writeoff.tenant_id
+        LEFT JOIN crm_deal_event event ON event.tenant_id = writeoff.tenant_id
+            AND event.event_key = CONCAT('OA_INVOICE_RECEIPT:', writeoff.invoice_id, ':', writeoff.writeoff_id)
+            AND event.biz_type = 'RECEIVABLE' AND event.biz_id = #{id} AND event.event_type = 'RECEIPT'
+            AND event.customer_id = invoice.customer_id AND event.amount = writeoff.writeoff_amount
+            AND event.baseline_flag = 0 AND event.reversal_of_id IS NULL
+        WHERE writeoff.tenant_id = #{tenantId} AND writeoff.business_type = 'CRM_RECEIVABLE'
+            AND (invoice.receivable_id = #{id} OR writeoff.business_id = #{id})
+            AND (event.event_id IS NULL OR invoice.receivable_id IS NULL OR invoice.receivable_id != #{id} OR writeoff.business_id != #{id})
+    </select>
+</mapper>

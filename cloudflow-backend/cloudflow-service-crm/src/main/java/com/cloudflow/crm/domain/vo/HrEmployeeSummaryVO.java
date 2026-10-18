@@ -8,6 +8,12 @@ import lombok.Data;
 @Data
 public class HrEmployeeSummaryVO {
 
+    private Long tenantId;
+
+    private boolean userEnabled;
+
+    private boolean departmentEnabled;
+
     private Long employeeId;
 
     private Long userId;

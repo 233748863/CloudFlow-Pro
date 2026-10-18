@@ -80,8 +80,8 @@ final class CrmHealthCalculator {
                 .eq(CrmServiceTicket::getCustomerId, customerId)
                 .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .in(CrmServiceTicket::getSeverity,
-                        CrmConstants.TicketSeverity.HIGH,
-                        CrmConstants.TicketSeverity.CRITICAL)
+                        CrmConstants.TicketSeverity.P2,
+                        CrmConstants.TicketSeverity.P1)
                 .notIn(CrmServiceTicket::getStatus,
                         CrmConstants.TicketStatus.RESOLVED,
                         CrmConstants.TicketStatus.CLOSED)) > 0;

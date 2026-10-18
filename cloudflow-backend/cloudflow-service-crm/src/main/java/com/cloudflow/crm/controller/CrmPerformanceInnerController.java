@@ -31,8 +31,10 @@ public class CrmPerformanceInnerController {
     public R<List<CrmPerformanceSummaryVO>> summarizeByOwner(
             @RequestParam(value = "ownerIds", required = false) List<Long> ownerIds,
             @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(crmPerformanceQueryService.summarizeByOwner(ownerIds, startDate, endDate));
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "calculationBasis", defaultValue = "OWNER_V1") String calculationBasis,
+            @RequestParam(value = "currency", defaultValue = "CNY") String currency) {
+        return R.ok(crmPerformanceQueryService.summarizeByOwner(ownerIds, startDate, endDate, calculationBasis, currency));
     }
 
     @Inner(allowedServices = HR_CALLERS)
@@ -40,8 +42,10 @@ public class CrmPerformanceInnerController {
     public R<List<CrmPerformanceSummaryVO>> summarizeByDept(
             @RequestParam(value = "deptIds", required = false) List<Long> deptIds,
             @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(crmPerformanceQueryService.summarizeByDept(deptIds, startDate, endDate));
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "calculationBasis", defaultValue = "OWNER_V1") String calculationBasis,
+            @RequestParam(value = "currency", defaultValue = "CNY") String currency) {
+        return R.ok(crmPerformanceQueryService.summarizeByDept(deptIds, startDate, endDate, calculationBasis, currency));
     }
 
     @Inner(allowedServices = HR_CALLERS)
@@ -49,8 +53,10 @@ public class CrmPerformanceInnerController {
     public R<List<CrmPerformanceSummaryVO>> topOwners(
             @RequestParam(value = "limit", defaultValue = "10") int limit,
             @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(crmPerformanceQueryService.topOwners(limit, startDate, endDate));
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "calculationBasis", defaultValue = "OWNER_V1") String calculationBasis,
+            @RequestParam(value = "currency", defaultValue = "CNY") String currency) {
+        return R.ok(crmPerformanceQueryService.topOwners(limit, startDate, endDate, calculationBasis, currency));
     }
 
     @Inner(allowedServices = HR_CALLERS)
@@ -58,7 +64,9 @@ public class CrmPerformanceInnerController {
     public R<List<CrmPerformanceSummaryVO>> topDepartments(
             @RequestParam(value = "limit", defaultValue = "10") int limit,
             @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(crmPerformanceQueryService.topDepartments(limit, startDate, endDate));
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "calculationBasis", defaultValue = "OWNER_V1") String calculationBasis,
+            @RequestParam(value = "currency", defaultValue = "CNY") String currency) {
+        return R.ok(crmPerformanceQueryService.topDepartments(limit, startDate, endDate, calculationBasis, currency));
     }
 }

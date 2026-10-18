@@ -16,12 +16,8 @@ public class CrmContactServiceImpl extends CrmServiceSupport<CrmContactMapper, C
 
     @Override
     public PageResult<CrmContact> queryPage(CrmContact query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmContact> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmContact::getDeleted, "0").orderByDesc(CrmContact::getUpdateTime);
-        eqIfPresent(wrapper, CrmContact::getCustomerId, query.getCustomerId());
-        likeIfPresent(wrapper, CrmContact::getContactName, query.getContactName());
-        eqIfPresent(wrapper, CrmContact::getStatus, query.getStatus());
-        return pageResult(pageQuery, wrapper);
+        return PageResult.build(baseMapper.selectPageByDataScope(pageQuery.build(), query,
+                com.cloudflow.common.datascope.DataScopeUtils.listScope("scope_dept_id", "scope_owner_id")));
     }
 
     @Override

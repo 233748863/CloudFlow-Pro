@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmReportMapper">
+    <sql id="customerScope">
+        <if test="!scope.all">
+            AND (1 = 2
+                <if test="scope.userId != null">OR customer.owner_id = #{scope.userId}</if>
+                <if test="!scope.departmentIds.isEmpty()">
+                    OR customer.dept_id IN <foreach collection="scope.departmentIds" item="departmentId" open="(" separator="," close=")">#{departmentId}</foreach>
+                </if>
+            )
+        </if>
+    </sql>
+    <select id="funnel" resultType="com.cloudflow.common.core.report.ReportRow" timeout="5">
+        SELECT <include refid="com.cloudflow.common.report.ReportSqlMapper.projection"/>
+        FROM (
+            SELECT opportunity.stage, COALESCE(stage.stage_name, opportunity.stage) AS stage_name,
+                opportunity.owner_id AS owner, opportunity.owner_name, opportunity.dept_id AS department,
+                opportunity.dept_name AS department_name, opportunity.opportunity_id AS opportunity_count,
+                opportunity.expected_amount, opportunity.weighted_amount,
+                (opportunity.expected_amount IS NULL OR opportunity.win_rate IS NULL OR opportunity.weighted_amount IS NULL
+                    OR opportunity.win_rate &lt; 0 OR opportunity.win_rate &gt; 100
+                    OR opportunity.weighted_amount &lt;&gt; ROUND(opportunity.expected_amount * opportunity.win_rate / 100, 2)) AS integrity_error
+            FROM crm_opportunity opportunity
+            INNER JOIN crm_customer customer ON customer.customer_id = opportunity.customer_id
+                AND customer.tenant_id = opportunity.tenant_id AND customer.deleted = 0
+            LEFT JOIN crm_sales_stage stage ON stage.tenant_id = opportunity.tenant_id
+                AND stage.stage_code = opportunity.stage AND stage.deleted = 0
+            WHERE opportunity.tenant_id = #{tenantId} AND opportunity.deleted = 0
+            <include refid="customerScope"/>
+        ) fact
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.filters"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.grouping"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.ordering"/>
+    </select>
+    <select id="aging" resultType="com.cloudflow.common.core.report.ReportRow" timeout="5">
+        SELECT <include refid="com.cloudflow.common.report.ReportSqlMapper.projection"/>
+        FROM (
+            SELECT receivable.customer_id AS customer, customer.customer_name,
+                receivable.owner_id AS owner, receivable.owner_name,
+                CASE WHEN receivable.due_date IS NULL THEN 'UNDATED'
+                    WHEN receivable.due_date &gt;= #{query.snapshotDate} THEN 'CURRENT'
+                    <foreach collection="tiers" item="tier">
+                        WHEN DATEDIFF(#{query.snapshotDate}, receivable.due_date) &lt;= #{tier.days} THEN #{tier.code}
+                    </foreach>
+                    ELSE #{overflow.code} END AS aging_bucket,
+                CASE WHEN receivable.due_date IS NULL THEN '未填写到期日'
+                    WHEN receivable.due_date &gt;= #{query.snapshotDate} THEN '未逾期'
+                    <foreach collection="tiers" item="tier">
+                        WHEN DATEDIFF(#{query.snapshotDate}, receivable.due_date) &lt;= #{tier.days} THEN #{tier.name}
+                    </foreach>
+                    ELSE #{overflow.name} END AS aging_bucket_name,
+                receivable.planned_amount, receivable.received_amount, receivable.outstanding_amount, 0 AS integrity_error
+            FROM crm_receivable receivable
+            INNER JOIN crm_customer customer ON customer.customer_id = receivable.customer_id
+                AND customer.tenant_id = receivable.tenant_id AND customer.deleted = 0
+            WHERE receivable.tenant_id = #{tenantId} AND receivable.deleted = 0
+            <include refid="customerScope"/>
+        ) fact
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.filters"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.grouping"/>
+        <include refid="com.cloudflow.common.report.ReportSqlMapper.ordering"/>
+    </select>
+</mapper>

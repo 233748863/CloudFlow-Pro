@@ -18,4 +18,6 @@ public interface ICrmServiceTicketService extends IService<CrmServiceTicket> {
     boolean resolveTicket(Long ticketId, String solution);
 
     boolean closeTicket(Long ticketId);
+
+    boolean respondTicket(Long ticketId);
 }

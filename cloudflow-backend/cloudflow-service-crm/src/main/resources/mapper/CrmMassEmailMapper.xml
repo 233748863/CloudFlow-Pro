@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmMassEmailMapper">
+    <select id="selectForUpdate" resultType="com.cloudflow.crm.domain.CrmMassEmail">
+        SELECT * FROM crm_mass_email WHERE tenant_id = #{tenantId} AND mass_email_id = #{massEmailId} AND deleted = 0 FOR UPDATE
+    </select>
+    <select id="due" resultType="java.lang.Long">
+        SELECT mass_email_id FROM crm_mass_email WHERE tenant_id = #{tenantId} AND deleted = 0
+            AND status IN ('SCHEDULED', 'SENDING') AND scheduled_time &lt;= #{now}
+            AND EXISTS(SELECT 1 FROM crm_mass_email_recipient recipient WHERE recipient.tenant_id = #{tenantId}
+                AND recipient.mass_email_id = crm_mass_email.mass_email_id AND recipient.test_flag = 0 AND recipient.status = 'PENDING')
+        ORDER BY scheduled_time, mass_email_id LIMIT #{limit}
+    </select>
+</mapper>

@@ -21,5 +21,5 @@ public interface ICrmCrossModuleDraftService {
 
     boolean voidInvoice(Long customerId, Long invoiceId, String remark);
 
-    boolean confirmReceivable(Long customerId, Long receivableId);
+    boolean confirmReceivable(Long customerId, Long receivableId, Integer version);
 }

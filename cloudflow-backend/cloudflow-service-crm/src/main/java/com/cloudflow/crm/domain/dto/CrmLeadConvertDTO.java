@@ -20,4 +20,9 @@ public class CrmLeadConvertDTO {
     private String address;
     private String creditCode;
     private String remark;
+    private Boolean createOpportunity;
+    private String opportunityName;
+    private java.math.BigDecimal expectedAmount;
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
+    private java.time.LocalDate expectedSignDate;
 }

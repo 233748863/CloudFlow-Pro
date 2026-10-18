@@ -63,6 +63,8 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
     private final CrmServiceTicketMapper serviceTicketMapper;
     private final RemoteHrService remoteHrService;
     private final CrmEventPublisher crmEventPublisher;
+    private final CrmProfileService profiles;
+    private final CrmAuditTrail audit;
 
     @Override
     public PageResult<CrmCustomer> queryPage(CrmCustomer query, PageQuery pageQuery) {
@@ -88,12 +90,16 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean createCustomer(CrmCustomer customer) {
         validate(customer);
+        CrmRecordSupport.create(customer, "customerId");
+        customer.setUnsubscribeFlag(CrmRecordSupport.flag(customer.getUnsubscribeFlag()));
         enrichOwnerFromHr(customer);
         Localize.fillCustomerDefaults(customer, currentTenantId(), currentUserName(), now());
         boolean saved = save(customer);
         if (saved) {
+            if (customer.getUnsubscribeFlag() == 1) audit.record("CRM_MARKETING_CONSENT", "CRM_CUSTOMER:" + customer.getCustomerId(), "退订=1", true);
             publishCustomerCreated(customer);
             refreshHealth(customer.getCustomerId());
         }
@@ -102,12 +108,16 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
 
     @Override
     @Audit(name = "更新客户")
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateCustomer(CrmCustomer customer) {
         if (customer == null || customer.getCustomerId() == null) {
             throw new IllegalArgumentException("客户ID不能为空");
         }
         validate(customer);
-        CrmCustomer persisted = requireById(customer.getCustomerId(), "客户不存在");
+        CrmCustomer persisted = getAccessibleCustomer(customer.getCustomerId());
+        CrmRecordSupport.update(customer, persisted);
+        if (customer.getUnsubscribeFlag() == null) customer.setUnsubscribeFlag(persisted.getUnsubscribeFlag());
+        customer.setUnsubscribeFlag(CrmRecordSupport.flag(customer.getUnsubscribeFlag()));
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(persisted, CrmCustomer::getOwnerId, "客户");
         if (customer.getPoolFlag() != null && !Objects.equals(customer.getPoolFlag(), persisted.getPoolFlag())) {
@@ -144,6 +154,13 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
         customer.setUpdateTime(now());
         boolean updated = updateById(customer);
         if (updated) {
+            baseMapper.update(null, new LambdaUpdateWrapper<CrmCustomer>().eq(CrmCustomer::getCustomerId, customer.getCustomerId())
+                    .set(CrmCustomer::getTerritoryId, customer.getTerritoryId()).set(CrmCustomer::getMarketSegment, customer.getMarketSegment())
+                    .set(CrmCustomer::getEmployeeScale, customer.getEmployeeScale()).set(CrmCustomer::getAnnualRevenue, customer.getAnnualRevenue())
+                    .set(CrmCustomer::getCampaignId, customer.getCampaignId()));
+            if (!Objects.equals(customer.getUnsubscribeFlag(), persisted.getUnsubscribeFlag())) {
+                audit.record("CRM_MARKETING_CONSENT", "CRM_CUSTOMER:" + customer.getCustomerId(), "退订=" + customer.getUnsubscribeFlag(), true);
+            }
             refreshHealth(customer.getCustomerId());
         }
         return updated;
@@ -298,9 +315,14 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
         if (customer == null) {
             throw new IllegalArgumentException("客户不能为空");
         }
-        if (!StringUtils.hasText(customer.getCustomerName())) {
+        String customerName = customer.getCustomerName();
+        if (!StringUtils.hasText(customerName)) {
             throw new IllegalArgumentException("客户名称不能为空");
         }
+        if (customerName.codePointCount(0, customerName.length()) > 120) {
+            throw new IllegalArgumentException("客户名称不能超过120个字符");
+        }
+        profiles.validate(customer.getTerritoryId(), customer.getMarketSegment(), customer.getEmployeeScale(), customer.getAnnualRevenue(), customer.getCampaignId());
         if (!StringUtils.hasText(customer.getCustomerCode())) {
             customer.setCustomerCode(Localize.nextNo(CrmConstants.NoPrefix.CUSTOMER));
         }

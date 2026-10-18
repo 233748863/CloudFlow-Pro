@@ -23,6 +23,7 @@ import com.cloudflow.crm.mapper.CrmQuoteLineMapper;
 import com.cloudflow.crm.mapper.CrmQuoteMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmQuoteService;
+import com.cloudflow.crm.service.deal.CrmQuoteTeamService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
 import com.cloudflow.crm.service.remote.RemoteWorkflowService;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -58,6 +59,10 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     private final CrmQuoteLineMapper quoteLineMapper;
     private final OutboxPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
+    private final CrmCreditService creditService;
+    private final com.cloudflow.crm.service.deal.CrmQuoteAccessService quoteAccess;
+    private final com.cloudflow.crm.service.deal.CrmQuoteTeamService quoteTeams;
+    private final com.cloudflow.crm.service.deal.CrmQuoteContractLinkService contractLinks;
 
     @Override
     public PageResult<CrmQuote> queryPage(CrmQuote query, PageQuery pageQuery) {
@@ -91,6 +96,8 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean createQuote(CrmQuote quote) {
+        CrmRecordSupport.require(quote, "报价不能为空");
+        if (quote.getContractId() != null || StringUtils.hasText(quote.getContractNo())) throw new IllegalArgumentException("新报价不能直接关联合同");
         fillCustomerSnapshot(quote);
         prepareQuoteForSave(quote);
         if (!StringUtils.hasText(quote.getQuoteNo())) {
@@ -99,15 +106,14 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         if (quote.getOwnerId() == null) {
             quote.setOwnerId(UserContext.getUserId());
         }
-        if (!StringUtils.hasText(quote.getOwnerName())) {
-            quote.setOwnerName(currentUserName());
-        }
+        CrmQuoteTeamService.Initial initialTeam = quoteTeams.prepareCreate(quote);
         Localize.fillCommonAudit(quote, currentTenantId(), currentUserName(), now());
         boolean saved = save(quote);
         if (!saved || quote.getQuoteId() == null) {
             return false;
         }
         saveQuoteLines(quote.getQuoteId(), quote.getQuoteLines());
+        quoteTeams.initialize(quote, initialTeam);
         return true;
     }
 
@@ -118,9 +124,14 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         if (quote == null || quote.getQuoteId() == null) {
             throw new IllegalArgumentException("报价ID不能为空");
         }
+        CrmQuote persisted = quoteAccess.lock(quote.getQuoteId());
+        CrmRecordSupport.update(quote, persisted);
+        quoteTeams.validateCurrency(persisted, quote);
+        if (StringUtils.hasText(quote.getStatus()) && !java.util.Objects.equals(quote.getStatus(), persisted.getStatus()))
+            throw new com.cloudflow.crm.exception.CrmBusinessException("报价状态须通过对应业务操作变更");
+        quote.setStatus(persisted.getStatus());
         fillCustomerSnapshot(quote);
         prepareQuoteForSave(quote);
-        CrmQuote persisted = getAccessibleQuote(quote.getQuoteId());
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(persisted, CrmQuote::getOwnerId, "报价");
         quote.setTenantId(persisted.getTenantId());
@@ -136,9 +147,10 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         quote.setInstanceId(persisted.getInstanceId());
         quote.setUpdateBy(currentUserName());
         quote.setUpdateTime(now());
+        quoteTeams.synchronize(quote, persisted);
         boolean updated = updateById(quote);
         if (!updated) {
-            return false;
+            throw new com.cloudflow.crm.exception.CrmBusinessException("报价已被修改，请刷新后重试");
         }
         replaceQuoteLines(quote.getQuoteId(), quote.getQuoteLines());
         return true;
@@ -153,6 +165,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
             throw new IllegalArgumentException("只有草稿或已驳回报价可以提交审批");
         }
 
+        creditService.check(quote.getCustomerId(), quote.getTotalAmount(), quote.getCurrency(), "CRM_QUOTE_SUBMIT", quoteId);
         quote.setStatus(CrmConstants.QuoteStatus.PENDING);
         quote.setUpdateBy(currentUserName());
         quote.setUpdateTime(now());
@@ -265,16 +278,13 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     public boolean acceptQuote(Long quoteId) {
         CrmQuote quote = getAccessibleQuote(quoteId);
         if (!CrmConstants.QuoteStatus.APPROVED.equals(quote.getStatus())
-                && !CrmConstants.QuoteStatus.SENT.equals(quote.getStatus())) {
+                && !CrmConstants.QuoteStatus.SENT.equals(quote.getStatus()) && !CrmConstants.QuoteStatus.ACCEPTED.equals(quote.getStatus())) {
             throw new IllegalArgumentException("当前报价状态不允许接受");
         }
         if (quote.getContractId() == null) {
             createContractDraft(quoteId);
         }
-        quote.setStatus(CrmConstants.QuoteStatus.ACCEPTED);
-        quote.setUpdateBy(currentUserName());
-        quote.setUpdateTime(now());
-        boolean updated = updateById(quote);
+        boolean updated = contractLinks.accept(quoteId);
         if (updated) {
             crmCustomerService.refreshHealth(quote.getCustomerId());
         }
@@ -285,8 +295,9 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     public Long createContractDraft(Long quoteId) {
         CrmQuote quote = getAccessibleQuote(quoteId);
         if (quote.getContractId() != null) {
-            return quote.getContractId();
+            return contractLinks.link(quoteId, quote.getContractId());
         }
+        creditService.check(quote.getCustomerId(), quote.getTotalAmount(), quote.getCurrency(), "CRM_QUOTE_CONTRACT", quoteId);
 
         RemoteOaService.ContractDraftRequest request = new RemoteOaService.ContractDraftRequest();
         request.setContractName(StringUtils.hasText(quote.getQuoteName()) ? quote.getQuoteName() : "CRM报价转合同");
@@ -300,6 +311,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         request.setCustomerName(quote.getCustomerName());
         request.setSourceType("CRM_QUOTE");
         request.setSourceId(quote.getQuoteId());
+        request.setSourceVersion(quote.getVersion());
         request.setRemark("由CRM报价 " + quote.getQuoteNo() + " 生成");
 
         R<Long> response = remoteOaService.createContract("true", "cloudflow-service-crm", request);
@@ -310,18 +322,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         if (contractId == null) {
             throw new IllegalArgumentException("OA 合同草稿返回ID为空");
         }
-        quote.setContractId(contractId);
-        try {
-            RemoteOaService.ContractInfo contractInfo = remoteOaService.getContract(contractId).getData();
-            if (contractInfo != null) {
-                quote.setContractNo(contractInfo.getContractNo());
-            }
-        } catch (Exception ignored) {
-        }
-        quote.setUpdateBy(currentUserName());
-        quote.setUpdateTime(now());
-        updateById(quote);
-        return contractId;
+        return contractLinks.link(quoteId, contractId);
     }
 
     @Override
@@ -340,6 +341,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         return updated;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public int expireDueQuotes() {
         List<CrmQuote> dueQuotes = baseMapper.selectList(new LambdaQueryWrapper<CrmQuote>()
                 .eq(CrmQuote::getDeleted, CrmConstants.DelFlag.NORMAL)
@@ -424,12 +426,8 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         if (line.getTaxRate() == null) {
             line.setTaxRate(BigDecimal.ZERO);
         }
-        if (line.getLineAmount() == null) {
-            line.setLineAmount(calcLineAmount(line));
-        }
-        if (line.getTaxAmount() == null) {
-            line.setTaxAmount(calcTaxAmount(line));
-        }
+        line.setLineAmount(calcLineAmount(line));
+        line.setTaxAmount(calcTaxAmount(line));
     }
 
     private BigDecimal calcLineAmount(CrmQuoteLine line) {
@@ -513,9 +511,9 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
             return;
         }
         for (CrmQuoteLine line : lines) {
-            Localize.fillCommonAudit(line, currentTenantId(), currentUserName(), now());
+            CrmRecordSupport.create(line, "quoteLineId");
             line.setQuoteId(quoteId);
-            quoteLineMapper.insert(line);
+            CrmRecordSupport.saved(quoteLineMapper.insert(line));
         }
     }
 

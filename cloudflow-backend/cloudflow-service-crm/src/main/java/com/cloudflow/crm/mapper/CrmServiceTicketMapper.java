@@ -10,6 +10,11 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface CrmServiceTicketMapper extends BaseMapper<CrmServiceTicket> {
 
+    CrmServiceTicket lockById(@Param("id") Long id);
+
+    java.util.List<CrmServiceTicket> selectSlaReportTickets(@Param("query") com.cloudflow.crm.domain.dto.CrmSlaReportQuery query,
+            @Param("dataScope") DataScope dataScope);
+
     Page<CrmServiceTicket> selectPageByDataScope(Page<CrmServiceTicket> page,
                                                  @Param("query") CrmServiceTicket query,
                                                  @Param("dataScope") DataScope dataScope);

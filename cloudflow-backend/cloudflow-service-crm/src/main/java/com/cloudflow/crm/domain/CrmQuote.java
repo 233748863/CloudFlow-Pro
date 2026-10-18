@@ -32,6 +32,9 @@ public class CrmQuote implements Serializable {
     private BigDecimal totalAmount;
     private BigDecimal taxAmount;
     private String currency;
+    @TableField(exist = false)
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    private Boolean currencyLocked;
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate validUntil;
     private Long ownerId;

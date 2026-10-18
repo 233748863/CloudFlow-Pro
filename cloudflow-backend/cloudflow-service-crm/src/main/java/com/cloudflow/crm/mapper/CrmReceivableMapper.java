@@ -10,6 +10,13 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface CrmReceivableMapper extends BaseMapper<CrmReceivable> {
 
+    CrmReceivable lockById(@Param("id") Long id);
+    CrmReceivable lockAccessible(@Param("id") Long id, @Param("tenantId") Long tenantId, @Param("dataScope") DataScope dataScope);
+    int writeOwner(@Param("record") CrmReceivable record, @Param("expectedVersion") Integer expectedVersion);
+    int writePlan(@Param("record") CrmReceivable record, @Param("expectedVersion") Integer expectedVersion);
+    int writeSettlement(@Param("record") CrmReceivable record, @Param("expectedVersion") Integer expectedVersion);
+    int deletePlan(@Param("record") CrmReceivable record, @Param("expectedVersion") Integer expectedVersion);
+
     Page<CrmReceivable> selectPageByDataScope(Page<CrmReceivable> page,
                                               @Param("query") CrmReceivable query,
                                               @Param("dataScope") DataScope dataScope);

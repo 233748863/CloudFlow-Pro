@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.cloudflow.common.log.annotation.SysLog;
 
 import java.util.List;
 
@@ -44,6 +45,7 @@ public class CrmHandoverTaskController {
     // M0-8: 防重复提交
     @RepeatSubmit
     @PostMapping("/{id}/reassign")
+    @SysLog("指派客户业务交接")
     @SaCheckPermission("crm:handover-task:reassign")
     public R<Void> reassign(@PathVariable("id") Long id, @Validated @RequestBody CrmHandoverReassignDTO dto) {
         try {
@@ -56,9 +58,14 @@ public class CrmHandoverTaskController {
 
     @RepeatSubmit
     @PostMapping("/{id}/close")
+    @SysLog("关闭客户业务交接待办")
     @SaCheckPermission("crm:handover-task:close")
     public R<Void> close(@PathVariable("id") Long id, @RequestBody(required = false) CrmHandoverCloseDTO dto) {
-        crmHandoverTaskService.close(id, dto == null ? null : dto.getRemark());
-        return R.ok();
+        try {
+            crmHandoverTaskService.close(id, dto == null ? null : dto.getRemark());
+            return R.ok();
+        } catch (IllegalArgumentException ex) {
+            return R.fail(ex.getMessage());
+        }
     }
 }

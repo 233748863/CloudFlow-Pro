@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmInvoiceReceiptMapper">
+    <select id="readInvoice" resultType="com.cloudflow.crm.mapper.CrmInvoiceReceiptMapper$Invoice">
+        SELECT invoice_id, receivable_id, customer_id, contract_id, status, version, gross_amount
+        FROM oa_invoice WHERE invoice_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0
+    </select>
+    <select id="readWriteoff" resultType="com.cloudflow.crm.mapper.CrmInvoiceReceiptMapper$Writeoff">
+        SELECT writeoff_id, invoice_id, business_id, business_type, writeoff_amount, writeoff_date
+        FROM oa_invoice_writeoff WHERE writeoff_id = #{id} AND tenant_id = #{tenantId}
+    </select>
+    <select id="boundInvoices" resultType="java.lang.Long">
+        SELECT invoice_id FROM oa_invoice WHERE receivable_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 ORDER BY invoice_id
+    </select>
+    <select id="pendingAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(writeoff.writeoff_amount), 0)
+        FROM oa_invoice_writeoff writeoff
+        JOIN oa_invoice invoice ON invoice.invoice_id = writeoff.invoice_id AND invoice.tenant_id = writeoff.tenant_id
+        LEFT JOIN crm_deal_event event ON event.tenant_id = writeoff.tenant_id
+            AND event.event_key = CONCAT('OA_INVOICE_RECEIPT:', writeoff.invoice_id, ':', writeoff.writeoff_id)
+        WHERE invoice.receivable_id = #{id} AND writeoff.tenant_id = #{tenantId} AND writeoff.business_type = 'CRM_RECEIVABLE'
+            AND writeoff.business_id = #{id} AND event.event_id IS NULL
+            AND EXISTS (SELECT 1 FROM outbox_event source WHERE source.tenant_id = writeoff.tenant_id
+                AND source.aggregate_type = 'cloudflow-service-oa' AND source.aggregate_id = writeoff.invoice_id
+                AND source.event_type = 'INVOICE_RECEIVABLE_CHANGED'
+                AND JSON_UNQUOTE(JSON_EXTRACT(JSON_UNQUOTE(JSON_EXTRACT(source.payload_json, '$.payload')), '$.writeoffId')) = writeoff.writeoff_id)
+    </select>
+</mapper>

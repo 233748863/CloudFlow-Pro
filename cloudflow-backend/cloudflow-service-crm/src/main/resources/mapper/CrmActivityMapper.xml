@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmActivityMapper">
+    <sql id="scopedColumns">
+        activity.*,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM crm_activity_participant participant
+            WHERE participant.activity_id = activity.activity_id AND participant.tenant_id = activity.tenant_id
+              AND participant.deleted = 0 AND participant.participant_type = 'USER'
+              AND participant.participant_ref_id = #{userId}
+        ) THEN #{userId} ELSE activity.owner_id END AS scope_owner_id
+    </sql>
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmActivity">
+        SELECT <include refid="scopedColumns"/> FROM crm_activity activity
+        WHERE activity.deleted = 0
+        <if test="query.activityType != null and query.activityType != ''">AND activity.activity_type = #{query.activityType}</if>
+        <if test="query.status != null and query.status != ''">AND activity.status = #{query.status}</if>
+        <if test="query.subject != null and query.subject != ''">AND activity.subject LIKE CONCAT('%', #{query.subject}, '%')</if>
+        <if test="query.customerId != null">AND activity.customer_id = #{query.customerId}</if>
+        <if test="query.bizType != null and query.bizType != ''">AND activity.biz_type = #{query.bizType}</if>
+        <if test="query.bizId != null">AND activity.biz_id = #{query.bizId}</if>
+        <if test="query.overdueFlag != null">
+            AND CASE WHEN activity.activity_type = 'TASK' AND activity.status IN ('PLANNED', 'IN_PROGRESS')
+                AND activity.end_time &lt; #{now} THEN 1 ELSE 0 END = #{query.overdueFlag}
+        </if>
+        <if test="query.start != null">AND activity.end_time &gt;= #{query.start}</if>
+        <if test="query.end != null">AND activity.start_time &lt; #{query.end}</if>
+        <if test="query.view != null">AND activity.status IN ('PLANNED', 'IN_PROGRESS')</if>
+        <if test="query.ownerId != null">
+            AND (activity.owner_id = #{query.ownerId} OR EXISTS (
+                SELECT 1 FROM crm_activity_participant member
+                WHERE member.activity_id = activity.activity_id AND member.tenant_id = activity.tenant_id
+                  AND member.deleted = 0 AND member.participant_type = 'USER'
+                  AND member.participant_ref_id = #{query.ownerId}
+            ))
+        </if>
+        ORDER BY activity.start_time, activity.activity_id
+    </select>
+    <select id="selectAccessible" resultType="com.cloudflow.crm.domain.CrmActivity">
+        SELECT <include refid="scopedColumns"/> FROM crm_activity activity
+        WHERE activity.activity_id = #{id} AND activity.deleted = 0
+    </select>
+    <select id="lockById" resultType="com.cloudflow.crm.domain.CrmActivity">
+        SELECT * FROM crm_activity WHERE activity_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <sql id="conflictingActivities">
+        WHERE activity.tenant_id = #{activity.tenantId} AND activity.deleted = 0
+          AND activity.activity_id != #{activity.activityId} AND activity.status IN ('PLANNED', 'IN_PROGRESS')
+          AND activity.start_time &lt; #{activity.endTime} AND activity.end_time &gt; #{activity.startTime}
+          AND (activity.owner_id IN <foreach collection="userIds" item="person" open="(" close=")" separator=",">#{person}</foreach>
+            OR EXISTS (SELECT 1 FROM crm_activity_participant member
+                WHERE member.tenant_id = activity.tenant_id AND member.activity_id = activity.activity_id
+                  AND member.deleted = 0 AND member.participant_type = 'USER' AND member.acceptance_status != 'DECLINED'
+                  AND member.participant_ref_id IN <foreach collection="userIds" item="person" open="(" close=")" separator=",">#{person}</foreach>))
+    </sql>
+    <select id="selectConflictingAccessible" resultType="com.cloudflow.crm.domain.CrmActivity">
+        SELECT <include refid="scopedColumns"/> FROM crm_activity activity
+        <include refid="conflictingActivities"/>
+        ORDER BY activity.start_time, activity.activity_id
+    </select>
+    <select id="selectConflictingPeriods" resultType="com.cloudflow.crm.domain.CrmActivity">
+        SELECT activity.activity_id, activity.start_time, activity.end_time FROM crm_activity activity
+        <include refid="conflictingActivities"/>
+        ORDER BY activity.start_time, activity.activity_id
+    </select>
+    <select id="selectPendingReminderActivities" resultType="java.lang.Long">
+        SELECT DISTINCT activity.activity_id FROM crm_activity activity
+        INNER JOIN crm_activity_reminder reminder ON reminder.activity_id = activity.activity_id
+            AND reminder.tenant_id = activity.tenant_id
+        WHERE activity.deleted = 0 AND activity.status IN ('PLANNED', 'IN_PROGRESS') AND reminder.sent_flag = 0
+          AND DATE_SUB(activity.start_time, INTERVAL reminder.remind_minutes_before MINUTE) &lt;= #{now}
+        ORDER BY activity.activity_id
+    </select>
+    <select id="activeParticipantCount" resultType="int">
+        SELECT COUNT(*) FROM sys_user WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = '0'
+        AND user_id IN <foreach collection="userIds" item="userId" open="(" close=")" separator=",">#{userId}</foreach>
+    </select>
+    <sql id="busyVisible">
+        (activity.owner_id = #{viewerId} OR EXISTS (SELECT 1 FROM crm_activity_participant viewer
+            WHERE viewer.tenant_id = activity.tenant_id AND viewer.activity_id = activity.activity_id
+                AND viewer.deleted = 0 AND viewer.participant_type = 'USER' AND viewer.participant_ref_id = #{viewerId}))
+    </sql>
+    <select id="participantBusy" resultType="com.cloudflow.common.core.domain.ParticipantBusy">
+        SELECT account.user_id, 'CRM' AS module,
+            CASE WHEN <include refid="busyVisible"/> THEN activity.activity_id ELSE NULL END AS business_id,
+            CASE WHEN <include refid="busyVisible"/> THEN activity.subject ELSE '忙碌时段' END AS title,
+            <include refid="busyVisible"/> AS details_visible, activity.start_time, activity.end_time
+        FROM crm_activity activity JOIN sys_user account ON account.tenant_id = activity.tenant_id
+            AND account.deleted = 0 AND account.status = '0'
+            AND account.user_id IN <foreach collection="userIds" item="userId" open="(" close=")" separator=",">#{userId}</foreach>
+        WHERE activity.tenant_id = #{tenantId} AND activity.deleted = 0 AND activity.status IN ('PLANNED', 'IN_PROGRESS')
+            AND activity.start_time &lt; #{end} AND activity.end_time &gt; #{start}
+            AND (activity.owner_id = account.user_id OR EXISTS (SELECT 1 FROM crm_activity_participant participant
+                WHERE participant.tenant_id = activity.tenant_id AND participant.activity_id = activity.activity_id
+                    AND participant.deleted = 0 AND participant.participant_type = 'USER'
+                    AND participant.participant_ref_id = account.user_id AND participant.acceptance_status != 'DECLINED'))
+        ORDER BY activity.start_time, activity.activity_id, account.user_id
+    </select>
+</mapper>

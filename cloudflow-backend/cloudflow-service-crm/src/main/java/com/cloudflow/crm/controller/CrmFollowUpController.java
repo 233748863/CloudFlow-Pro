@@ -21,7 +21,6 @@ import java.util.List;
 public class CrmFollowUpController {
 
     private final ICrmFollowUpService crmFollowUpService;
-    private final com.cloudflow.crm.service.ICrmCustomerService customerService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:follow-up:list")
@@ -67,19 +66,6 @@ public class CrmFollowUpController {
     @DeleteMapping("/{ids}")
     @SaCheckPermission("crm:follow-up:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
-        for (Long id : ids) {
-            CrmFollowUp persisted;
-            try {
-                persisted = crmFollowUpService.getAccessibleFollowUp(id);
-            } catch (IllegalArgumentException e) {
-                return R.fail(e.getMessage());
-            }
-            CrmFollowUp followUp = new CrmFollowUp();
-            followUp.setFollowUpId(id);
-            followUp.setDeleted(1);
-            crmFollowUpService.updateById(followUp);
-            customerService.refreshHealth(persisted.getCustomerId());
-        }
-        return R.ok();
+        return R.result(crmFollowUpService.removeFollowUps(ids));
     }
 }

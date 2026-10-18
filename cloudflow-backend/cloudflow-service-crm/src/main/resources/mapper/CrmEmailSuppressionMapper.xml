@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmEmailSuppressionMapper">
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM crm_email_suppression WHERE tenant_id = #{tenantId} AND email_hash = #{emailHash})
+    </select>
+    <select id="selectHashes" resultType="java.lang.String">
+        SELECT email_hash FROM crm_email_suppression WHERE tenant_id = #{tenantId} AND email_hash IN
+        <foreach collection="hashes" item="hash" open="(" separator="," close=")">#{hash}</foreach>
+    </select>
+    <insert id="insertOnce" useGeneratedKeys="true" keyProperty="suppressionId">
+        INSERT INTO crm_email_suppression
+            (tenant_id, email_hash, reason, source_recipient_id, unsubscribed_time, create_by, create_time)
+        VALUES (#{tenantId}, #{emailHash}, #{reason}, #{sourceRecipientId}, #{unsubscribedTime}, #{createBy}, #{createTime})
+        ON DUPLICATE KEY UPDATE suppression_id = suppression_id
+    </insert>
+    <update id="markLeadUnsubscribed">
+        UPDATE crm_lead SET unsubscribe_flag = 1, version = version + 1, update_by = 'email-unsubscribe', update_time = #{now}
+        WHERE tenant_id = #{tenantId} AND lead_id = #{targetId} AND deleted = 0 AND unsubscribe_flag = 0
+    </update>
+    <update id="markCustomerUnsubscribed">
+        UPDATE crm_customer SET unsubscribe_flag = 1, version = version + 1, update_by = 'email-unsubscribe', update_time = #{now}
+        WHERE tenant_id = #{tenantId} AND customer_id = #{targetId} AND deleted = 0 AND unsubscribe_flag = 0
+    </update>
+</mapper>

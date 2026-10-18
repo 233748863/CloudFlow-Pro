@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmTerritoryMapper">
+    <select id="lockTree" resultType="com.cloudflow.crm.domain.CrmTerritory">
+        SELECT * FROM crm_territory WHERE deleted = 0 FOR UPDATE
+    </select>
+</mapper>

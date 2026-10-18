@@ -1,5 +1,7 @@
 package com.cloudflow.crm.domain;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -27,6 +29,10 @@ public class CrmOpportunity implements Serializable {
     private String source;
     private BigDecimal expectedAmount;
     private BigDecimal winRate;
+    private String lastStage;
+    private BigDecimal weightedAmount;
+    private Integer stageDurationDays;
+    private Integer teamVersion;
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate expectedSignDate;
     private Long ownerId;
@@ -42,13 +48,20 @@ public class CrmOpportunity implements Serializable {
     private String lostReason;
     private String remark;
     private String status;
+    private Long campaignId;
+    private Long competitorId;
+    @TableField(fill = FieldFill.INSERT)
     private Integer deleted;
     @Version
     private Integer version;
+    @TableField(fill = FieldFill.INSERT)
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private String updateBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 }

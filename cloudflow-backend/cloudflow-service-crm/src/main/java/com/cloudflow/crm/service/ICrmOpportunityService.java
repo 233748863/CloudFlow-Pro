@@ -18,7 +18,9 @@ public interface ICrmOpportunityService extends IService<CrmOpportunity> {
 
     boolean updateOpportunity(CrmOpportunity opportunity);
 
-    boolean winOpportunity(Long opportunityId);
+    CrmOpportunity previewImport(CrmOpportunity opportunity);
+
+    boolean winOpportunity(Long opportunityId, Long competitorId, Integer version);
 
     boolean loseOpportunity(Long opportunityId, String lostReason);
 
@@ -26,5 +28,5 @@ public interface ICrmOpportunityService extends IService<CrmOpportunity> {
 
     List<CrmOpportunityBoardColumnVO> getBoard();
 
-    boolean updateStage(Long opportunityId, String stage, String lostReason);
+    boolean updateStage(Long opportunityId, String stage, Integer version);
 }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmPortalContactMapper">
+    <select id="candidates" resultType="com.cloudflow.crm.domain.CrmContact">
+        SELECT * FROM (
+            SELECT contact.*, customer.owner_id AS scope_owner_id, customer.dept_id AS scope_dept_id
+            FROM crm_contact contact
+            JOIN crm_customer customer ON customer.customer_id = contact.customer_id AND customer.tenant_id = contact.tenant_id
+            WHERE contact.tenant_id = #{tenantId} AND contact.deleted = 0 AND customer.deleted = 0
+                AND contact.status = 'ACTIVE' AND customer.status = 'ACTIVE'
+                <if test="keyword != null and keyword != ''">AND (contact.contact_name LIKE CONCAT('%', #{keyword}, '%')
+                    OR customer.customer_name LIKE CONCAT('%', #{keyword}, '%'))</if>
+        ) scoped ORDER BY contact_id DESC
+    </select>
+    <select id="visibleContactIds" resultType="java.lang.Long">
+        SELECT contact_id, scope_owner_id, scope_dept_id FROM (
+            SELECT contact.contact_id, customer.owner_id AS scope_owner_id, customer.dept_id AS scope_dept_id
+            FROM crm_contact contact
+            JOIN crm_customer customer ON customer.customer_id = contact.customer_id AND customer.tenant_id = contact.tenant_id
+            WHERE contact.tenant_id = #{tenantId} AND customer.deleted = 0
+        ) scoped ORDER BY contact_id
+    </select>
+</mapper>

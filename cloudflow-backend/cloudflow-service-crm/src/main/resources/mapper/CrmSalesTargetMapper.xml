@@ -1,43 +1,55 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.crm.mapper.CrmSalesTargetMapper">
-
+    <sql id="allowed">
+        target.tenant_id = #{scope.tenantId} AND target.deleted = 0
+        <if test="!scope.all">
+            AND (1 = 0
+                <if test="scope.userId != null">OR target.owner_id = #{scope.userId}</if>
+                <if test="scope.deptIds != null and !scope.deptIds.isEmpty()">OR target.dept_id IN
+                    <foreach collection="scope.deptIds" item="departmentId" open="(" separator="," close=")">#{departmentId}</foreach>
+                </if>)
+        </if>
+    </sql>
     <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmSalesTarget">
-        SELECT *
-        FROM crm_sales_target
-        <where>
-            deleted = '0'
-            <if test="query != null">
-                <if test="query.targetName != null and query.targetName != ''">
-                    AND target_name LIKE CONCAT('%', #{query.targetName}, '%')
-                </if>
-                <if test="query.targetNo != null and query.targetNo != ''">
-                    AND target_no LIKE CONCAT('%', #{query.targetNo}, '%')
-                </if>
-                <if test="query.dimensionType != null and query.dimensionType != ''">
-                    AND dimension_type = #{query.dimensionType}
-                </if>
-                <if test="query.periodType != null and query.periodType != ''">
-                    AND period_type = #{query.periodType}
-                </if>
-                <if test="query.targetYear != null">
-                    AND target_year = #{query.targetYear}
-                </if>
-                <if test="query.targetPeriod != null">
-                    AND target_period = #{query.targetPeriod}
-                </if>
-                <if test="query.status != null and query.status != ''">
-                    AND status = #{query.status}
-                </if>
-                <if test="query.ownerId != null">
-                    AND owner_id = #{query.ownerId}
-                </if>
-                <if test="query.deptId != null">
-                    AND dept_id = #{query.deptId}
-                </if>
-            </if>
-        </where>
-        ORDER BY update_time DESC
+        SELECT target.* FROM crm_sales_target target WHERE <include refid="allowed"/>
+        <if test="query != null">
+            <if test="query.targetName != null and query.targetName != ''">AND target.target_name LIKE CONCAT('%', #{query.targetName}, '%')</if>
+            <if test="query.targetNo != null and query.targetNo != ''">AND target.target_no = #{query.targetNo}</if>
+            <if test="query.dimensionType != null and query.dimensionType != ''">AND target.dimension_type = #{query.dimensionType}</if>
+            <if test="query.periodType != null and query.periodType != ''">AND target.period_type = #{query.periodType}</if>
+            <if test="query.targetYear != null">AND target.target_year = #{query.targetYear}</if>
+            <if test="query.targetPeriod != null">AND target.target_period = #{query.targetPeriod}</if>
+            <if test="query.status != null and query.status != ''">AND target.status = #{query.status}</if>
+            <if test="query.ownerId != null">AND target.owner_id = #{query.ownerId}</if>
+            <if test="query.deptId != null">AND target.dept_id = #{query.deptId}</if>
+            <if test="query.calculationBasis != null and query.calculationBasis != ''">AND target.calculation_basis = #{query.calculationBasis}</if>
+            <if test="query.currency != null and query.currency != ''">AND target.currency = #{query.currency}</if>
+        </if>
+        ORDER BY target.update_time DESC, target.sales_target_id DESC
     </select>
-
+    <select id="accessible" resultType="com.cloudflow.crm.domain.CrmSalesTarget">
+        SELECT target.* FROM crm_sales_target target WHERE target.sales_target_id = #{id} AND <include refid="allowed"/>
+        <if test="lock">FOR UPDATE</if>
+    </select>
+    <select id="byNumber" resultType="com.cloudflow.crm.domain.CrmSalesTarget">
+        SELECT * FROM crm_sales_target WHERE tenant_id = #{tenantId} AND target_no = #{number}
+        <if test="lock">FOR UPDATE</if>
+    </select>
+    <select id="departmentName" resultType="java.lang.String">
+        SELECT dept_name FROM sys_dept WHERE tenant_id = #{tenantId} AND dept_id = #{id} AND deleted = 0 AND status = '0'
+    </select>
+    <update id="write">
+        UPDATE crm_sales_target SET target_name = #{row.targetName}, dimension_type = #{row.dimensionType},
+            period_type = #{row.periodType}, target_year = #{row.targetYear}, target_period = #{row.targetPeriod},
+            dept_id = #{row.deptId}, dept_name = #{row.deptName}, owner_id = #{row.ownerId}, owner_name = #{row.ownerName},
+            target_amount = #{row.targetAmount}, calculation_basis = #{row.calculationBasis}, currency = #{row.currency},
+            status = #{row.status}, remark = #{row.remark}, version = version + 1,
+            update_by = #{row.updateBy}, update_time = #{row.updateTime}
+        WHERE sales_target_id = #{row.salesTargetId} AND tenant_id = #{row.tenantId} AND deleted = 0 AND version = #{row.version}
+    </update>
+    <update id="markDeleted">
+        UPDATE crm_sales_target SET deleted = 1, version = version + 1, update_by = #{row.updateBy}, update_time = #{row.updateTime}
+        WHERE sales_target_id = #{row.salesTargetId} AND tenant_id = #{row.tenantId} AND deleted = 0 AND version = #{row.version}
+    </update>
 </mapper>

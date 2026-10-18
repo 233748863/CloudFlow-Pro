@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmFinancePublicationMapper">
+    <resultMap id="state" type="com.cloudflow.common.core.domain.PortalFinanceState">
+        <id property="id" column="id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="customerId" column="customer_id"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="customerStatus" column="customer_status"/>
+        <result property="version" column="version"/>
+        <result property="publicVersion" column="portal_public_version"/>
+        <result property="publishedBy" column="portal_published_by"/>
+        <result property="publishedTime" column="portal_published_time"/>
+        <result property="fileIdsJson" column="portal_file_ids"/>
+        <association property="record" javaType="com.cloudflow.common.core.domain.PortalFinanceVO">
+            <result property="recordId" column="record_id"/>
+            <result property="kind" column="kind"/>
+            <result property="number" column="number"/>
+            <result property="plannedAmount" column="planned_amount"/>
+            <result property="receivedAmount" column="received_amount"/>
+            <result property="outstandingAmount" column="outstanding_amount"/>
+            <result property="dueDate" column="due_date"/>
+            <result property="receivedDate" column="received_date"/>
+            <result property="status" column="status"/>
+        </association>
+    </resultMap>
+    <sql id="publicColumns">CAST(record.receivable_id AS CHAR) AS record_id, 'RECEIVABLE' AS kind, record.receivable_no AS number,
+        CAST(record.planned_amount AS CHAR) AS planned_amount, CAST(record.received_amount AS CHAR) AS received_amount,
+        CAST(record.outstanding_amount AS CHAR) AS outstanding_amount, record.due_date, record.received_date, record.status</sql>
+    <sql id="stateColumns">
+        record.receivable_id AS id, record.tenant_id, record.customer_id, customer.customer_name, customer.status AS customer_status, record.version,
+        record.portal_public_version, record.portal_published_by, record.portal_published_time, record.portal_file_ids,
+        <include refid="publicColumns"/>
+    </sql>
+    <sql id="recordSource">
+        crm_receivable record JOIN crm_customer customer ON customer.tenant_id = record.tenant_id
+            AND customer.customer_id = record.customer_id AND customer.deleted = 0
+    </sql>
+    <select id="state" resultMap="state">
+        SELECT <include refid="stateColumns"/> FROM <include refid="recordSource"/>
+        WHERE record.tenant_id = #{tenantId} AND record.receivable_id = #{id} AND record.deleted = 0
+        <if test="locked">FOR UPDATE</if>
+    </select>
+    <sql id="activeIdentity">
+        SELECT 1 FROM sys_portal_user portal_user
+        JOIN crm_contact contact ON contact.tenant_id = portal_user.tenant_id
+            AND contact.contact_id = portal_user.ref_biz_id AND contact.customer_id = portal_user.customer_id
+        JOIN crm_customer customer ON customer.tenant_id = contact.tenant_id AND customer.customer_id = contact.customer_id
+        JOIN sys_tenant tenant ON tenant.tenant_id = portal_user.tenant_id
+        WHERE portal_user.tenant_id = #{identity.tenantId} AND portal_user.portal_user_id = #{identity.portalUserId}
+            AND portal_user.customer_id = #{identity.customerId} AND portal_user.ref_biz_id = #{identity.contactId}
+            AND portal_user.user_type = 'CUSTOMER_CONTACT' AND portal_user.ref_biz_type = 'CRM_CONTACT'
+            AND portal_user.status = 'ACTIVE' AND portal_user.deleted = 0
+            AND portal_user.session_version = #{identity.sessionVersion}
+            AND contact.version = #{identity.contactVersion} AND contact.status = 'ACTIVE' AND contact.deleted = 0
+            AND customer.status = 'ACTIVE' AND customer.deleted = 0 AND tenant.status = '0' AND tenant.deleted = 0
+            AND (tenant.expire_time IS NULL OR tenant.expire_time &gt; CURRENT_TIMESTAMP)
+    </sql>
+    <select id="activeIdentity" resultType="boolean">SELECT EXISTS(<include refid="activeIdentity"/>)</select>
+    <sql id="portalScope">
+        record.tenant_id = #{identity.tenantId} AND record.customer_id = #{identity.customerId} AND record.deleted = 0
+        AND record.portal_public_version = record.version AND record.portal_published_by IS NOT NULL
+        AND record.portal_published_time IS NOT NULL AND record.portal_file_ids IS NOT NULL
+        AND customer.status = 'ACTIVE' AND EXISTS(<include refid="activeIdentity"/>)
+    </sql>
+    <select id="opened" resultType="com.cloudflow.common.core.domain.PortalFinanceVO">
+        SELECT <include refid="publicColumns"/> FROM <include refid="recordSource"/> WHERE <include refid="portalScope"/>
+        <if test="keyword != null and keyword != ''">AND LOCATE(#{keyword}, record.receivable_no) &gt; 0</if>
+        ORDER BY record.receivable_id DESC
+    </select>
+    <select id="portalDetail" resultMap="state">
+        SELECT <include refid="stateColumns"/> FROM <include refid="recordSource"/>
+        WHERE <include refid="portalScope"/> AND record.receivable_id = #{id}
+    </select>
+    <sql id="fileColumns">file.file_id, file.file_name, file.file_size, file.file_type AS extension</sql>
+    <sql id="fileBinding">
+        file.tenant_id = record.tenant_id AND file.biz_type = 'PORTAL_FINANCE_RECEIVABLE'
+        AND file.biz_id = CAST(record.receivable_id AS CHAR) AND file.access_type = 'PRIVATE'
+        AND file.portal_owner_id IS NULL AND file.deleted = 0
+    </sql>
+    <select id="availableFiles" resultType="com.cloudflow.common.core.domain.PortalFinanceAttachment">
+        SELECT <include refid="fileColumns"/> FROM crm_receivable record JOIN sys_file file ON <include refid="fileBinding"/>
+        WHERE record.tenant_id = #{tenantId} AND record.receivable_id = #{id} AND record.deleted = 0
+            AND file.create_by = #{uploader}
+        <if test="selected != null">
+            <choose><when test="selected.size() > 0">AND file.file_id IN
+                <foreach collection="selected" item="fileId" open="(" close=")" separator=",">#{fileId}</foreach>
+            </when><otherwise>AND 1 = 0</otherwise></choose>
+        </if>
+        <choose><when test="locked">FOR UPDATE</when><otherwise>ORDER BY file.file_id</otherwise></choose>
+    </select>
+    <select id="publicFiles" resultType="com.cloudflow.common.core.domain.PortalFinanceAttachment">
+        SELECT <include refid="fileColumns"/> FROM <include refid="recordSource"/>
+        JOIN sys_file file ON <include refid="fileBinding"/>
+        WHERE <include refid="portalScope"/> AND record.receivable_id = #{id}
+            AND JSON_CONTAINS(record.portal_file_ids, JSON_QUOTE(CAST(file.file_id AS CHAR)))
+        ORDER BY file.file_id
+    </select>
+    <update id="publish">
+        UPDATE crm_receivable SET portal_public_version = version + 1, portal_published_by = #{userId},
+            portal_published_time = CURRENT_TIMESTAMP, portal_file_ids = #{files}, version = version + 1,
+            update_by = #{userName}, update_time = CURRENT_TIMESTAMP
+        WHERE tenant_id = #{tenantId} AND receivable_id = #{id} AND version = #{version} AND deleted = 0
+    </update>
+    <update id="withdraw">
+        UPDATE crm_receivable SET portal_public_version = NULL, portal_published_by = NULL,
+            portal_published_time = NULL, portal_file_ids = NULL, version = version + 1,
+            update_by = #{userName}, update_time = CURRENT_TIMESTAMP
+        WHERE tenant_id = #{tenantId} AND receivable_id = #{id} AND version = #{version} AND deleted = 0
+    </update>
+</mapper>

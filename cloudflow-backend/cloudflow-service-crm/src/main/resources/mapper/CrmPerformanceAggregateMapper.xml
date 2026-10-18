@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmPerformanceAggregateMapper">
+    <sql id="scopeFilter">
+        <if test="!scope.all">
+            AND (1 = 0
+                <if test="scope.userId != null">OR ${owner} = #{scope.userId}</if>
+                <if test="scope.deptIds != null and !scope.deptIds.isEmpty()">
+                    OR ${department} IN
+                    <foreach collection="scope.deptIds" item="departmentId" open="(" separator="," close=")">#{departmentId}</foreach>
+                </if>
+            )
+        </if>
+    </sql>
+    <sql id="targetFilter">
+        <if test="ids != null and !ids.isEmpty()">
+            AND <choose><when test="dimension == 'OWNER'">${owner}</when><otherwise>${department}</otherwise></choose> IN
+            <foreach collection="ids" item="targetId" open="(" separator="," close=")">#{targetId}</foreach>
+        </if>
+    </sql>
+    <select id="aggregate" resultType="com.cloudflow.crm.domain.vo.CrmPerformanceAggregateRow">
+        WITH
+        <if test="basis == 'TEAM_V2'">
+        selected_facts AS (
+            SELECT fact.tenant_id, fact.event_id,
+                <choose><when test="dimension == 'OWNER'">allocation.sales_user_id</when><otherwise>allocation.dept_id</otherwise></choose> AS target_id,
+                MAX(CASE WHEN fact.event_type = 'WON' AND fact.baseline_flag = 0 THEN CASE WHEN fact.reversal_of_id IS NULL THEN 1 ELSE -1 END ELSE 0 END) AS won_opportunity_count,
+                SUM(CASE WHEN fact.event_type = 'WON' AND fact.baseline_flag = 0 THEN (CASE WHEN fact.reversal_of_id IS NULL THEN 1 ELSE -1 END) * allocation.allocated_percentage ELSE 0 END) AS allocated_won_count,
+                SUM(CASE WHEN fact.event_type = 'WON' AND fact.baseline_flag = 0 THEN allocation.allocated_amount ELSE 0 END) AS won_amount,
+                SUM(CASE WHEN fact.event_type = 'CONTRACT' AND fact.baseline_flag = 0 THEN allocation.allocated_amount ELSE 0 END) AS contract_amount,
+                SUM(CASE WHEN fact.event_type = 'RECEIPT' AND fact.baseline_flag = 0 THEN allocation.allocated_amount ELSE 0 END) AS received_amount,
+                0 AS outstanding_amount,
+                SUM(CASE WHEN fact.event_type = 'WON' AND fact.baseline_flag = 1 THEN allocation.allocated_amount ELSE 0 END) AS baseline_won_amount,
+                SUM(CASE WHEN fact.event_type = 'CONTRACT' AND fact.baseline_flag = 1 THEN allocation.allocated_amount ELSE 0 END) AS baseline_contract_amount,
+                SUM(CASE WHEN fact.event_type = 'RECEIPT' AND fact.baseline_flag = 1 THEN allocation.allocated_amount ELSE 0 END) AS baseline_received_amount,
+                0 AS customer_count,
+                0 AS follow_up_count,
+                0 AS invalid_allocation_count
+            FROM crm_deal_event fact
+            JOIN crm_deal_allocation allocation ON allocation.tenant_id = fact.tenant_id AND allocation.event_id = fact.event_id
+            WHERE fact.tenant_id = #{scope.tenantId} AND fact.currency = #{currency}
+                AND ((fact.event_type = 'WON' AND fact.biz_type = 'OPPORTUNITY')
+                    OR (fact.event_type = 'CONTRACT' AND fact.biz_type = 'CONTRACT')
+                    OR (fact.event_type = 'RECEIPT' AND fact.biz_type = 'RECEIVABLE'))
+            AND fact.occurred_time IS NOT NULL
+            <if test="start != null">AND fact.occurred_time &gt;= #{start}</if>
+            <if test="end != null">AND fact.occurred_time &lt;= #{end}</if>
+            <include refid="scopeFilter"><property name="owner" value="allocation.sales_user_id"/><property name="department" value="allocation.dept_id"/></include>
+            <include refid="targetFilter"><property name="owner" value="allocation.sales_user_id"/><property name="department" value="allocation.dept_id"/></include>
+            GROUP BY fact.tenant_id, fact.event_id, target_id
+        ),
+        current_receivables AS (
+            SELECT receivable.tenant_id, receivable.receivable_id, receivable.owner_id,
+                owner.dept_id AS owner_dept_id, receivable.outstanding_amount
+            FROM crm_receivable receivable
+            LEFT JOIN sys_user owner ON owner.tenant_id = receivable.tenant_id AND owner.user_id = receivable.owner_id
+            LEFT JOIN oa_contract contract ON contract.tenant_id = receivable.tenant_id AND contract.contract_id = receivable.contract_id
+            WHERE receivable.tenant_id = #{scope.tenantId} AND receivable.deleted = 0
+                AND COALESCE(receivable.outstanding_amount, 0) &lt;&gt; 0
+                AND CASE WHEN receivable.contract_id IS NULL THEN 'CNY' ELSE contract.currency END = #{currency}
+        ),
+        current_members AS (
+            SELECT receivable.tenant_id, receivable.receivable_id, receivable.outstanding_amount,
+                team.sales_user_id, team.dept_id, team.role_type, team.allocated_percentage
+            FROM current_receivables receivable
+            JOIN crm_deal_team team ON team.tenant_id = receivable.tenant_id AND team.biz_type = 'RECEIVABLE'
+                AND team.biz_id = receivable.receivable_id AND team.current_flag = 1
+            UNION ALL
+            SELECT receivable.tenant_id, receivable.receivable_id, receivable.outstanding_amount,
+                receivable.owner_id AS sales_user_id, receivable.owner_dept_id AS dept_id, 'OWNER' AS role_type,
+                1.0000 AS allocated_percentage
+            FROM current_receivables receivable
+            WHERE NOT EXISTS (
+                SELECT 1 FROM crm_deal_team team WHERE team.tenant_id = receivable.tenant_id AND team.biz_type = 'RECEIVABLE'
+                    AND team.biz_id = receivable.receivable_id AND team.current_flag = 1
+            )
+        ),
+        current_rounding AS (
+            SELECT member.tenant_id, member.receivable_id, member.outstanding_amount, member.sales_user_id,
+                member.dept_id, member.role_type,
+                ROUND(member.outstanding_amount * member.allocated_percentage, 2) AS rounded_amount,
+                SUM(ROUND(member.outstanding_amount * member.allocated_percentage, 2)) OVER (PARTITION BY member.tenant_id, member.receivable_id) AS rounded_total,
+                SUM(CASE WHEN member.role_type = 'OWNER' THEN ROUND(member.outstanding_amount * member.allocated_percentage, 2) ELSE 0 END) OVER (PARTITION BY member.tenant_id, member.receivable_id) AS owner_rounded,
+                SUM(CASE WHEN member.role_type = 'OWNER' THEN 1 ELSE 0 END) OVER (PARTITION BY member.tenant_id, member.receivable_id) AS owner_count,
+                COUNT(*) OVER (PARTITION BY member.tenant_id, member.receivable_id) AS member_count,
+                SUM(member.allocated_percentage) OVER (PARTITION BY member.tenant_id, member.receivable_id) AS percentage_total,
+                MIN(member.allocated_percentage) OVER (PARTITION BY member.tenant_id, member.receivable_id) AS minimum_percentage,
+                MAX(member.allocated_percentage) OVER (PARTITION BY member.tenant_id, member.receivable_id) AS maximum_percentage
+            FROM current_members member
+        ),
+        current_allocations AS (
+            SELECT rounded.tenant_id, rounded.receivable_id, rounded.sales_user_id, rounded.dept_id,
+                rounded.rounded_amount + CASE WHEN rounded.role_type = 'OWNER' THEN rounded.outstanding_amount - rounded.rounded_total ELSE 0 END AS allocated_amount,
+                CASE WHEN rounded.owner_count &lt;&gt; 1 OR rounded.member_count &gt; 200 OR rounded.percentage_total &lt;&gt; 1.0000
+                    OR rounded.minimum_percentage &lt; 0 OR rounded.maximum_percentage &gt; 1 OR rounded.outstanding_amount &lt; 0
+                    OR rounded.owner_rounded + rounded.outstanding_amount - rounded.rounded_total &lt; 0
+                    THEN 1 ELSE 0 END AS invalid_allocation_count
+            FROM current_rounding rounded
+        ),
+        </if>
+        contributions AS (
+            <choose>
+            <when test="basis == 'TEAM_V2'">
+            SELECT fact.tenant_id, fact.target_id, fact.won_opportunity_count, fact.allocated_won_count, fact.won_amount, fact.contract_amount, fact.received_amount, fact.outstanding_amount, fact.baseline_won_amount, fact.baseline_contract_amount, fact.baseline_received_amount, fact.customer_count, fact.follow_up_count, fact.invalid_allocation_count
+            FROM selected_facts fact
+            UNION ALL
+            SELECT allocation.tenant_id,
+                <choose><when test="dimension == 'OWNER'">allocation.sales_user_id</when><otherwise>allocation.dept_id</otherwise></choose> AS target_id,
+                0 AS won_opportunity_count,
+                0 AS allocated_won_count,
+                0 AS won_amount,
+                0 AS contract_amount,
+                0 AS received_amount,
+                allocation.allocated_amount AS outstanding_amount,
+                0 AS baseline_won_amount,
+                0 AS baseline_contract_amount,
+                0 AS baseline_received_amount,
+                0 AS customer_count,
+                0 AS follow_up_count,
+                allocation.invalid_allocation_count AS invalid_allocation_count
+            FROM current_allocations allocation
+            WHERE allocation.tenant_id = #{scope.tenantId}
+            <include refid="scopeFilter"><property name="owner" value="allocation.sales_user_id"/><property name="department" value="allocation.dept_id"/></include>
+            <include refid="targetFilter"><property name="owner" value="allocation.sales_user_id"/><property name="department" value="allocation.dept_id"/></include>
+            </when>
+            <otherwise>
+            SELECT opportunity.tenant_id,
+                <choose><when test="dimension == 'OWNER'">opportunity.owner_id</when><otherwise>opportunity.dept_id</otherwise></choose> AS target_id,
+                1 AS won_opportunity_count,
+                1.0000 AS allocated_won_count,
+                COALESCE(opportunity.expected_amount, 0) AS won_amount,
+                COALESCE(opportunity.expected_amount, 0) AS contract_amount,
+                0 AS received_amount,
+                0 AS outstanding_amount,
+                0 AS baseline_won_amount,
+                0 AS baseline_contract_amount,
+                0 AS baseline_received_amount,
+                0 AS customer_count,
+                0 AS follow_up_count,
+                0 AS invalid_allocation_count
+            FROM crm_opportunity opportunity
+            WHERE opportunity.tenant_id = #{scope.tenantId} AND opportunity.deleted = 0
+                AND opportunity.stage = 'WON' AND #{currency} = 'CNY'
+            AND COALESCE(opportunity.stage_changed_time, opportunity.update_time, opportunity.create_time) IS NOT NULL
+            <if test="start != null">AND COALESCE(opportunity.stage_changed_time, opportunity.update_time, opportunity.create_time) &gt;= #{start}</if>
+            <if test="end != null">AND COALESCE(opportunity.stage_changed_time, opportunity.update_time, opportunity.create_time) &lt;= #{end}</if>
+            <include refid="scopeFilter"><property name="owner" value="opportunity.owner_id"/><property name="department" value="opportunity.dept_id"/></include>
+            <include refid="targetFilter"><property name="owner" value="opportunity.owner_id"/><property name="department" value="opportunity.dept_id"/></include>
+            UNION ALL
+            SELECT receivable.tenant_id,
+                <choose><when test="dimension == 'OWNER'">receivable.owner_id</when><otherwise>customer.dept_id</otherwise></choose> AS target_id,
+                0 AS won_opportunity_count,
+                0 AS allocated_won_count,
+                0 AS won_amount,
+                0 AS contract_amount,
+                COALESCE(receivable.received_amount, 0) AS received_amount,
+                COALESCE(receivable.outstanding_amount, 0) AS outstanding_amount,
+                0 AS baseline_won_amount,
+                0 AS baseline_contract_amount,
+                0 AS baseline_received_amount,
+                0 AS customer_count,
+                0 AS follow_up_count,
+                0 AS invalid_allocation_count
+            FROM crm_receivable receivable
+            LEFT JOIN crm_customer customer ON customer.tenant_id = receivable.tenant_id AND customer.customer_id = receivable.customer_id AND customer.deleted = 0
+            LEFT JOIN oa_contract contract ON contract.tenant_id = receivable.tenant_id AND contract.contract_id = receivable.contract_id
+            WHERE receivable.tenant_id = #{scope.tenantId} AND receivable.deleted = 0
+                AND CASE WHEN receivable.contract_id IS NULL THEN 'CNY' ELSE contract.currency END = #{currency}
+                AND CASE
+                    WHEN COALESCE(receivable.received_amount, 0) &gt; 0 THEN
+                        CASE WHEN 1 = 1 AND receivable.received_date IS NOT NULL
+            <if test="start != null">AND receivable.received_date &gt;= #{start}</if>
+            <if test="end != null">AND receivable.received_date &lt;= #{end}</if> THEN 1 ELSE 0 END
+                    WHEN COALESCE(receivable.received_amount, 0) = 0 AND COALESCE(receivable.outstanding_amount, 0) &gt; 0 THEN
+                        CASE WHEN 1 = 1 AND COALESCE(receivable.update_time, receivable.create_time) IS NOT NULL
+            <if test="start != null">AND COALESCE(receivable.update_time, receivable.create_time) &gt;= #{start}</if>
+            <if test="end != null">AND COALESCE(receivable.update_time, receivable.create_time) &lt;= #{end}</if> THEN 1 ELSE 0 END
+                    ELSE 1
+                END = 1
+            <include refid="scopeFilter"><property name="owner" value="receivable.owner_id"/><property name="department" value="customer.dept_id"/></include>
+            <include refid="targetFilter"><property name="owner" value="receivable.owner_id"/><property name="department" value="customer.dept_id"/></include>
+            </otherwise>
+            </choose>
+            UNION ALL
+            SELECT customer.tenant_id,
+                <choose><when test="dimension == 'OWNER'">customer.owner_id</when><otherwise>customer.dept_id</otherwise></choose> AS target_id,
+                0 AS won_opportunity_count,
+                0 AS allocated_won_count,
+                0 AS won_amount,
+                0 AS contract_amount,
+                0 AS received_amount,
+                0 AS outstanding_amount,
+                0 AS baseline_won_amount,
+                0 AS baseline_contract_amount,
+                0 AS baseline_received_amount,
+                1 AS customer_count,
+                0 AS follow_up_count,
+                0 AS invalid_allocation_count
+            FROM crm_customer customer
+            WHERE customer.tenant_id = #{scope.tenantId} AND customer.deleted = 0
+            <include refid="scopeFilter"><property name="owner" value="customer.owner_id"/><property name="department" value="customer.dept_id"/></include>
+            <include refid="targetFilter"><property name="owner" value="customer.owner_id"/><property name="department" value="customer.dept_id"/></include>
+            UNION ALL
+            SELECT followup.tenant_id,
+                <choose><when test="dimension == 'OWNER'">followup.owner_id</when><otherwise>customer.dept_id</otherwise></choose> AS target_id,
+                0 AS won_opportunity_count,
+                0 AS allocated_won_count,
+                0 AS won_amount,
+                0 AS contract_amount,
+                0 AS received_amount,
+                0 AS outstanding_amount,
+                0 AS baseline_won_amount,
+                0 AS baseline_contract_amount,
+                0 AS baseline_received_amount,
+                0 AS customer_count,
+                1 AS follow_up_count,
+                0 AS invalid_allocation_count
+            FROM crm_follow_up followup
+            LEFT JOIN crm_customer customer ON customer.tenant_id = followup.tenant_id AND customer.customer_id = followup.customer_id AND customer.deleted = 0
+            WHERE followup.tenant_id = #{scope.tenantId} AND followup.deleted = 0
+            AND COALESCE(followup.follow_up_time, followup.create_time) IS NOT NULL
+            <if test="start != null">AND COALESCE(followup.follow_up_time, followup.create_time) &gt;= #{start}</if>
+            <if test="end != null">AND COALESCE(followup.follow_up_time, followup.create_time) &lt;= #{end}</if>
+            <include refid="scopeFilter"><property name="owner" value="followup.owner_id"/><property name="department" value="customer.dept_id"/></include>
+            <include refid="targetFilter"><property name="owner" value="followup.owner_id"/><property name="department" value="customer.dept_id"/></include>
+        ),
+        summary AS (
+            SELECT contribution.tenant_id, contribution.target_id,
+                SUM(contribution.won_opportunity_count) AS won_opportunity_count,
+                SUM(contribution.allocated_won_count) AS allocated_won_count,
+                SUM(contribution.won_amount) AS won_amount,
+                SUM(contribution.contract_amount) AS contract_amount,
+                SUM(contribution.received_amount) AS received_amount,
+                SUM(contribution.outstanding_amount) AS outstanding_amount,
+                SUM(contribution.baseline_won_amount) AS baseline_won_amount,
+                SUM(contribution.baseline_contract_amount) AS baseline_contract_amount,
+                SUM(contribution.baseline_received_amount) AS baseline_received_amount,
+                SUM(contribution.customer_count) AS customer_count,
+                SUM(contribution.follow_up_count) AS follow_up_count,
+                MAX(contribution.invalid_allocation_count) AS invalid_allocation_count
+            FROM contributions contribution
+            WHERE contribution.tenant_id = #{scope.tenantId} AND contribution.target_id &gt; 0
+            GROUP BY contribution.tenant_id, contribution.target_id
+        )
+        SELECT metric.target_id,
+            <choose>
+                <when test="dimension == 'OWNER'">COALESCE(NULLIF(owner.nick_name, ''), NULLIF(owner.user_name, ''), CONCAT('#', metric.target_id))</when>
+                <otherwise>COALESCE(NULLIF(department.dept_name, ''), CONCAT('#', metric.target_id))</otherwise>
+            </choose> AS target_name,
+            metric.won_opportunity_count,
+            metric.allocated_won_count,
+            metric.won_amount,
+            metric.contract_amount,
+            metric.received_amount,
+            metric.outstanding_amount,
+            metric.baseline_won_amount,
+            metric.baseline_contract_amount,
+            metric.baseline_received_amount,
+            metric.customer_count,
+            metric.follow_up_count,
+            MAX(metric.invalid_allocation_count) OVER () AS invalid_allocation_count
+        FROM summary metric
+        <choose>
+            <when test="dimension == 'OWNER'">
+                LEFT JOIN sys_user owner ON owner.tenant_id = metric.tenant_id AND owner.user_id = metric.target_id
+            </when>
+            <otherwise>
+                LEFT JOIN sys_dept department ON department.tenant_id = metric.tenant_id AND department.dept_id = metric.target_id
+            </otherwise>
+        </choose>
+        WHERE metric.tenant_id = #{scope.tenantId}
+        <choose>
+            <when test="limit != null">ORDER BY metric.received_amount DESC, metric.target_id ASC LIMIT #{limit}</when>
+            <otherwise>ORDER BY metric.target_id ASC</otherwise>
+        </choose>
+    </select>
+</mapper>

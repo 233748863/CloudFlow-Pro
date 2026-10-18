@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmCampaignMapper">
+    <sql id="scopedCampaigns">
+        SELECT campaign.*, owner.dept_id AS scope_dept_id FROM crm_campaign campaign
+        LEFT JOIN sys_user owner ON owner.user_id = campaign.owner_id AND owner.tenant_id = campaign.tenant_id
+        WHERE campaign.deleted = 0
+    </sql>
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmCampaign">
+        SELECT * FROM (<include refid="scopedCampaigns"/>) scoped
+        <where>
+            <if test="query != null and query.campaignName != null and query.campaignName != ''">campaign_name LIKE CONCAT('%', #{query.campaignName}, '%')</if>
+            <if test="query != null and query.status != null and query.status != ''">AND status = #{query.status}</if>
+            <if test="query != null and query.campaignType != null and query.campaignType != ''">AND campaign_type = #{query.campaignType}</if>
+        </where>
+        ORDER BY update_time DESC, campaign_id DESC
+    </select>
+    <select id="selectAccessible" resultType="com.cloudflow.crm.domain.CrmCampaign">
+        SELECT * FROM (<include refid="scopedCampaigns"/>) scoped WHERE campaign_id = #{id}
+    </select>
+    <select id="lockById" resultType="com.cloudflow.crm.domain.CrmCampaign">
+        SELECT * FROM crm_campaign WHERE campaign_id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+    <update id="refreshWonCount">
+        UPDATE crm_campaign SET won_opportunity_count = (
+            SELECT COUNT(*) FROM crm_opportunity opportunity
+            WHERE opportunity.tenant_id = #{tenantId} AND opportunity.campaign_id = #{id} AND opportunity.deleted = 0 AND opportunity.stage = 'WON'
+                AND EXISTS(SELECT 1 FROM crm_lead campaign_lead WHERE campaign_lead.tenant_id = opportunity.tenant_id AND campaign_lead.campaign_id = #{id}
+                    AND campaign_lead.deleted = 0 AND campaign_lead.converted_customer_id = opportunity.customer_id AND campaign_lead.create_time &gt;= #{start} AND campaign_lead.create_time &lt; #{end})),
+            version = version + 1, update_by = #{actor}, update_time = #{now}
+        WHERE campaign_id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 AND version = #{version}
+    </update>
+</mapper>

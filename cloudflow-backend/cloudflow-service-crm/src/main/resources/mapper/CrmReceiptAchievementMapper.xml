@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmReceiptAchievementMapper">
+    <select id="team" resultType="com.cloudflow.crm.domain.vo.CrmReceiptAchievementRow">
+        SELECT allocation.sales_user_id AS owner_id, allocation.dept_id,
+            COALESCE(SUM(CASE WHEN fact.baseline_flag = 0 THEN allocation.allocated_amount ELSE 0 END), 0) AS received_amount,
+            COALESCE(SUM(CASE WHEN fact.baseline_flag = 1 THEN allocation.allocated_amount ELSE 0 END), 0) AS baseline_amount
+        FROM crm_deal_event fact JOIN crm_deal_allocation allocation
+            ON allocation.event_id = fact.event_id AND allocation.tenant_id = fact.tenant_id
+        WHERE fact.tenant_id = #{scope.tenantId} AND fact.event_type = 'RECEIPT' AND fact.biz_type = 'RECEIVABLE'
+            AND fact.currency = #{currency} AND fact.occurred_time &gt;= #{start} AND fact.occurred_time &lt;= #{end}
+        <if test="!scope.all">
+            AND (1 = 0
+                <if test="scope.userId != null">OR allocation.sales_user_id = #{scope.userId}</if>
+                <if test="scope.deptIds != null and !scope.deptIds.isEmpty()">OR allocation.dept_id IN
+                    <foreach collection="scope.deptIds" item="departmentId" open="(" separator="," close=")">#{departmentId}</foreach>
+                </if>)
+        </if>
+        <choose><when test="dimension == 'OWNER'">AND allocation.sales_user_id</when><otherwise>AND allocation.dept_id</otherwise></choose>
+        IN <foreach collection="ids" item="targetId" open="(" separator="," close=")">#{targetId}</foreach>
+        GROUP BY allocation.sales_user_id, allocation.dept_id
+    </select>
+    <select id="owner" resultType="com.cloudflow.crm.domain.vo.CrmReceiptAchievementRow">
+        SELECT receivable.owner_id, customer.dept_id, COALESCE(SUM(receivable.received_amount), 0) AS received_amount,
+            0 AS baseline_amount
+        FROM crm_receivable receivable
+        LEFT JOIN crm_customer customer ON customer.customer_id = receivable.customer_id
+            AND customer.tenant_id = receivable.tenant_id AND customer.deleted = 0
+        LEFT JOIN oa_contract contract ON contract.contract_id = receivable.contract_id AND contract.tenant_id = receivable.tenant_id
+        WHERE receivable.tenant_id = #{scope.tenantId} AND receivable.deleted = 0
+            AND receivable.received_date &gt;= #{start} AND receivable.received_date &lt;= #{end}
+            AND CASE WHEN receivable.contract_id IS NULL THEN 'CNY' ELSE contract.currency END = #{currency}
+        <if test="!scope.all">
+            AND (1 = 0
+                <if test="scope.userId != null">OR receivable.owner_id = #{scope.userId}</if>
+                <if test="scope.deptIds != null and !scope.deptIds.isEmpty()">OR customer.dept_id IN
+                    <foreach collection="scope.deptIds" item="departmentId" open="(" separator="," close=")">#{departmentId}</foreach>
+                </if>)
+        </if>
+        <choose><when test="dimension == 'OWNER'">AND receivable.owner_id</when><otherwise>AND customer.dept_id</otherwise></choose>
+        IN <foreach collection="ids" item="targetId" open="(" separator="," close=")">#{targetId}</foreach>
+        GROUP BY receivable.owner_id, customer.dept_id
+    </select>
+</mapper>

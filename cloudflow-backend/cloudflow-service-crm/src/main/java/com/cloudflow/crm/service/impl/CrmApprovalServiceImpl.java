@@ -11,6 +11,7 @@ import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmApproval;
 import com.cloudflow.crm.domain.CrmCustomer;
+import com.cloudflow.crm.domain.CrmDealEvent;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.CrmReceivable;
 import com.cloudflow.crm.domain.dto.InternalWorkflowStartDTO;
@@ -18,9 +19,15 @@ import com.cloudflow.crm.event.CrmApprovalSubmittedEvent;
 import com.cloudflow.crm.mapper.CrmApprovalMapper;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
-import com.cloudflow.crm.mapper.CrmReceivableMapper;
+import com.cloudflow.crm.service.receivable.CrmReceivableAccessService;
+import com.cloudflow.crm.service.receivable.CrmReceivableAmounts;
+import com.cloudflow.crm.service.receivable.CrmRefundService;
 import com.cloudflow.crm.service.ICrmApprovalService;
 import com.cloudflow.crm.service.remote.RemoteWorkflowService;
+import com.cloudflow.crm.service.opportunity.CrmOpportunityAccessService;
+import com.cloudflow.crm.service.opportunity.CrmOpportunityStagePolicy;
+import com.cloudflow.crm.service.opportunity.CrmOpportunityStageService;
+import com.cloudflow.crm.service.opportunity.CrmOpportunityWriteService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +44,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -46,10 +54,30 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
     private final CrmApprovalMapper approvalMapper;
     private final CrmCustomerMapper customerMapper;
     private final CrmOpportunityMapper opportunityMapper;
-    private final CrmReceivableMapper receivableMapper;
+    private final CrmReceivableAccessService receivableAccess;
+    private final CrmRefundService refunds;
     private final RemoteWorkflowService remoteWorkflowService;
     private final ObjectMapper objectMapper;
     private final OutboxPublisher outboxPublisher;
+    private final CrmLostAnalysisService lostAnalysisService;
+    private final CrmReferenceService references;
+    private final CrmApprovalInstanceBinder instanceBinder;
+    private final CrmOpportunityAccessService opportunityAccess;
+    private final CrmOpportunityStageService opportunityStages;
+    private final org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long submitCustomerCredit(com.cloudflow.crm.domain.CrmCustomerCredit proposed) {
+        CrmCustomer customer = references.customer(proposed.getCustomerId());
+        Map<String, Object> payload = objectMapper.convertValue(proposed,
+                new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String, Object>>() { });
+        CrmApproval approval = insertApproval(CrmBusinessTypes.CRM_CUSTOMER_CREDIT, "CREDIT_CHANGE",
+                "CRM_CUSTOMER", customer.getCustomerId(), customer.getCustomerName(), payload, proposed.getRemark());
+        publishApprovalSubmittedEvent(approval, "customer_credit_review");
+        startWorkflowAfterCommit(approval.getApprovalId(), "customer_credit_review");
+        return approval.getApprovalId();
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -101,21 +129,33 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long submitOpportunityDowngrade(Long opportunityId, String action, String targetStage, String lostReason) {
-        CrmOpportunity opportunity = requireOpportunity(opportunityId);
+    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
+    public Long submitOpportunityDowngrade(Long opportunityId, String action, String targetStage, String lostReason,
+            java.util.List<com.cloudflow.crm.domain.dto.CrmOpportunityLossDTO.Reason> reasons, Integer version) {
+        CrmOpportunity opportunity = opportunityAccess.lock(opportunityId);
+        CrmOpportunityStagePolicy.version(version, opportunity);
         String normalized = normalizeAction(action, "DOWNGRADE", "CLOSE");
-        if ("DOWNGRADE".equals(normalized) && !StringUtils.hasText(targetStage)) {
-            throw new IllegalArgumentException("降级目标阶段不能为空");
+        String target = "CLOSE".equals(normalized) ? CrmConstants.OpportunityStage.LOST : CrmOpportunityStagePolicy.code(targetStage);
+        if ("CLOSE".equals(normalized)) {
+            lostAnalysisService.validateReasons(reasons);
+        } else if (java.util.Set.of("WON", "LOST").contains(target)) {
+            throw new IllegalArgumentException("输单必须选择CLOSE动作并提供结构化原因");
         }
+        if (java.util.Set.of("WON", "LOST").contains(opportunity.getStage())) throw new IllegalArgumentException("已结案商机不能提交降级或输单审批");
+        CrmOpportunity proposed = new CrmOpportunity(); org.springframework.beans.BeanUtils.copyProperties(opportunity, proposed);
+        proposed.setStage(target);
+        opportunityStages.prepare(opportunity, proposed, CrmOpportunityStagePolicy.Action.APPROVED_DOWNGRADE,
+                CrmOpportunityWriteService.approvalReason(target, lostReason, reasons));
         if (hasPendingDowngradeApproval(opportunityId)) {
             throw new IllegalStateException("该商机已有待处理的降级/输单审批，请勿重复提交");
         }
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("opportunityId", opportunityId);
         payload.put("currentStage", opportunity.getStage());
-        payload.put("targetStage", "CLOSE".equals(normalized) ? CrmConstants.OpportunityStage.LOST : targetStage);
+        payload.put("opportunityVersion", opportunity.getVersion());
+        payload.put("targetStage", target);
         payload.put("lostReason", lostReason);
+        payload.put("reasons", reasons);
         payload.put("action", normalized);
         CrmApproval approval = insertApproval(
                 CrmBusinessTypes.CRM_OPPORTUNITY_DOWNGRADE,
@@ -147,21 +187,24 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long submitRefund(Long receivableId, BigDecimal refundAmount, String reason) {
+    public Long submitRefund(Long receivableId, Long receiptEventId, Integer version, BigDecimal refundAmount, String reason) {
         if (receivableId == null) {
             throw new IllegalArgumentException("回款ID不能为空");
         }
-        CrmReceivable receivable = receivableMapper.selectById(receivableId);
-        if (receivable == null || !CrmConstants.DelFlag.NORMAL.equals(receivable.getDeleted())) {
-            throw new IllegalArgumentException("回款计划不存在");
-        }
-        if (refundAmount == null || refundAmount.signum() <= 0) {
-            throw new IllegalArgumentException("退款金额必须大于 0");
-        }
-        if (receivable.getReceivedAmount() == null
-                || receivable.getReceivedAmount().compareTo(refundAmount) < 0) {
+        CrmReceivable receivable = receivableAccess.lockInScope(receivableId);
+        CrmReceivableAmounts.version(receivable, version);
+        CrmReceivableAmounts.active(receivable);
+        com.fasterxml.jackson.databind.node.ObjectNode approvalPolicy = refunds.prepareWorkflow(receivable);
+        refundAmount = CrmReceivableAmounts.positive(refundAmount, "退款金额");
+        if (CrmReceivableAmounts.received(receivable).compareTo(refundAmount) < 0) {
             throw new IllegalArgumentException("退款金额不能超过已到账金额");
         }
+        if (reason != null && reason.length() > 500) throw new IllegalArgumentException("退款原因最多500字符");
+        CrmDealEvent receipt = refunds.select(receivable, receiptEventId, refundAmount);
+        if (approvalMapper.selectCount(new LambdaQueryWrapper<CrmApproval>()
+                .eq(CrmApproval::getBusinessType, CrmBusinessTypes.CRM_REFUND).eq(CrmApproval::getBusinessRefType, "CRM_RECEIVABLE")
+                .eq(CrmApproval::getBusinessRefId, receivableId).eq(CrmApproval::getStatus, "PENDING").eq(CrmApproval::getDeleted, 0)) > 0)
+            throw new IllegalArgumentException("当前回款计划已有待处理退款审批");
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("receivableId", receivableId);
         payload.put("customerId", receivable.getCustomerId());
@@ -169,6 +212,12 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
         payload.put("contractId", receivable.getContractId());
         payload.put("refundAmount", refundAmount);
         payload.put("originalReceivedAmount", receivable.getReceivedAmount());
+        payload.put("originalVersion", receivable.getVersion());
+        payload.put("receiptEventId", receipt.getEventId());
+        payload.put("receiptEventKey", receipt.getEventKey());
+        payload.put("originalReceiptAmount", receipt.getAmount());
+        payload.put("currency", receipt.getCurrency());
+        payload.put("approvalPolicy", approvalPolicy);
         CrmApproval approval = insertApproval(
                 CrmBusinessTypes.CRM_REFUND,
                 "REFUND",
@@ -221,6 +270,12 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
     }
 
     public void startWorkflow(CrmApproval approval, String processDefKey) {
+        org.springframework.transaction.support.TransactionTemplate outsideTransaction = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        outsideTransaction.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
+        outsideTransaction.executeWithoutResult(status -> doStartWorkflow(approval, processDefKey));
+    }
+
+    private void doStartWorkflow(CrmApproval approval, String processDefKey) {
         CrmApproval current = approvalMapper.selectById(approval.getApprovalId());
         if (current == null) {
             throw new IllegalStateException("CRM审批记录不存在: " + approval.getApprovalId());
@@ -230,6 +285,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
                     current.getApprovalId(), current.getInstanceId());
             return;
         }
+        if (!"PENDING".equals(current.getStatus())) return;
         InternalWorkflowStartDTO dto = new InternalWorkflowStartDTO();
         dto.setTenantId(current.getTenantId());
         dto.setProcessDefKey(processDefKey);
@@ -243,6 +299,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
         variables.put("businessRefId", current.getBusinessRefId());
         variables.put("businessRefName", current.getBusinessRefName());
         variables.put("actionType", current.getActionType());
+        if (CrmBusinessTypes.CRM_REFUND.equals(current.getBusinessType())) variables.putAll(refunds.workflowVariables(current));
         WorkflowCallbackConstants.applyCallbackMetadata(
                 variables, current.getBusinessType(), current.getApprovalId(), current.getApprovalNo(),
                 "workflow:stream:approval-callback:crm");
@@ -259,13 +316,7 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
             throw new IllegalStateException("启动 CRM 审批流程未返回实例ID: approvalId=" + current.getApprovalId()
                     + ", processDefKey=" + processDefKey);
         }
-        LambdaUpdateWrapper<CrmApproval> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(CrmApproval::getApprovalId, current.getApprovalId())
-                .and(w -> w.isNull(CrmApproval::getInstanceId).or().eq(CrmApproval::getInstanceId, ""))
-                .set(CrmApproval::getInstanceId, instanceId)
-                .set(CrmApproval::getUpdateBy, current.getApplicantName())
-                .set(CrmApproval::getUpdateTime, LocalDateTime.now());
-        approvalMapper.update(null, wrapper);
+        instanceBinder.bind(current.getApprovalId(), instanceId);
     }
 
     private void startWorkflowAfterCommit(Long approvalId, String processDefKey) {
@@ -328,9 +379,10 @@ public class CrmApprovalServiceImpl implements ICrmApprovalService {
             case CrmBusinessTypes.CRM_CUSTOMER_LEVEL -> "LVL";
             case CrmBusinessTypes.CRM_OPPORTUNITY_DOWNGRADE -> "OPD";
             case CrmBusinessTypes.CRM_REFUND -> "RFD";
+            case CrmBusinessTypes.CRM_CUSTOMER_CREDIT -> "CRD";
             default -> "CRA";
         };
-        return Localize.nextNo(prefix);
+        return CrmBusinessTypes.CRM_REFUND.equals(businessType) ? prefix + UUID.randomUUID().toString().replace("-", "") : Localize.nextNo(prefix);
     }
 
     private CrmCustomer requireCustomer(Long customerId) {

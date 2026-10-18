@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmImportMapper">
+    <resultMap id="scopedReference" type="com.cloudflow.common.excel.importing.ImportReference" autoMapping="false">
+        <constructor>
+            <arg column="code" javaType="java.lang.String"/>
+            <arg column="name" javaType="java.lang.String"/>
+            <arg column="value" javaType="java.lang.Object"/>
+        </constructor>
+    </resultMap>
+    <select id="opportunityCustomers" resultMap="scopedReference">
+        SELECT customer.customer_code AS code, customer.customer_name AS name, customer.customer_id AS value,
+            customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        FROM crm_customer customer
+        WHERE customer.tenant_id = #{tenantId} AND customer.deleted = 0
+    </select>
+    <select id="opportunityContacts" resultMap="scopedReference">
+        SELECT CONCAT('CONTACT-', contact.contact_id) AS code,
+            CONCAT(customer.customer_code, ' / ', contact.contact_name) AS name, contact.contact_id AS value,
+            customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        FROM crm_contact contact JOIN crm_customer customer ON customer.customer_id = contact.customer_id
+            AND customer.tenant_id = contact.tenant_id AND customer.deleted = 0
+        WHERE contact.tenant_id = #{tenantId} AND contact.deleted = 0 AND contact.status = 'ACTIVE'
+    </select>
+    <select id="updateOpportunities" resultType="com.cloudflow.crm.domain.CrmOpportunity">
+        SELECT opportunity.*, customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id
+        FROM crm_opportunity opportunity JOIN crm_customer customer ON customer.customer_id = opportunity.customer_id
+            AND customer.tenant_id = opportunity.tenant_id AND customer.deleted = 0
+        WHERE opportunity.tenant_id = #{tenantId} AND opportunity.deleted = 0
+            AND opportunity.owner_id = #{operatorId} AND opportunity.status = 'OPEN'
+            AND opportunity.stage NOT IN ('WON', 'LOST') AND opportunity.opportunity_id &gt; #{afterId}
+        <if test="keyword != null and keyword != ''">
+            AND opportunity.opportunity_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+    </select>
+    <select id="owners" resultType="com.cloudflow.common.excel.importing.ImportReference">
+        SELECT employee.employee_no AS code, employee.name AS name, employee.user_id AS value
+        FROM hr_employee employee INNER JOIN sys_user account ON account.user_id = employee.user_id AND account.tenant_id = employee.tenant_id
+        WHERE employee.tenant_id = #{tenantId} AND account.tenant_id = #{tenantId} AND employee.deleted = 0
+            AND employee.employee_status NOT IN ('RESIGNED', 'TERMINATED') AND account.deleted = 0 AND account.status = '0'
+        ORDER BY employee.id
+    </select>
+    <select id="levels" resultType="com.cloudflow.common.excel.importing.ImportReference">
+        SELECT dict_value AS code, dict_label AS name, dict_value AS value
+        FROM sys_dict_data WHERE tenant_id IN (0, #{tenantId}) AND dict_type = 'crm_customer_level' AND status = '0'
+        ORDER BY dict_sort, dict_code
+    </select>
+    <select id="existingCustomers" resultType="java.lang.String">
+        SELECT customer_code FROM crm_customer WHERE tenant_id = #{tenantId} AND customer_code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+    </select>
+</mapper>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmStageAnalysisMapper">
+    <select id="current" resultType="com.cloudflow.crm.domain.vo.CrmStageAnalysisRow">
+        SELECT opportunity.stage, customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id,
+            COUNT(*) AS current_count, COALESCE(SUM(opportunity.expected_amount), 0) AS current_amount,
+            COALESCE(SUM(CASE WHEN opportunity.status = 'OPEN' THEN opportunity.weighted_amount ELSE 0 END), 0) AS weighted_forecast,
+            SUM(CASE WHEN opportunity.status = 'OPEN' AND opportunity.stage_changed_time IS NOT NULL THEN 1 ELSE 0 END) AS incomplete_count,
+            COALESCE(SUM(CASE WHEN opportunity.status = 'OPEN' AND opportunity.stage_changed_time IS NOT NULL
+                THEN GREATEST(0, TIMESTAMPDIFF(SECOND, opportunity.stage_changed_time, #{asOf})) ELSE 0 END), 0) AS incomplete_seconds,
+            SUM(CASE WHEN NOT EXISTS(SELECT 1 FROM crm_opportunity_stage_history history
+                WHERE history.tenant_id = opportunity.tenant_id AND history.opportunity_id = opportunity.opportunity_id) THEN 1 ELSE 0 END) AS untracked_count
+        FROM crm_opportunity opportunity JOIN crm_customer customer ON customer.customer_id = opportunity.customer_id
+            AND customer.tenant_id = opportunity.tenant_id AND customer.deleted = 0
+        WHERE opportunity.tenant_id = #{tenantId} AND opportunity.deleted = 0
+        <if test="ownerId != null">AND opportunity.owner_id = #{ownerId}</if>
+        GROUP BY opportunity.stage, customer.dept_id, customer.owner_id
+    </select>
+    <select id="completed" resultType="com.cloudflow.crm.domain.vo.CrmStageAnalysisRow">
+        SELECT history.from_stage AS stage, customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id,
+            COUNT(*) AS completed_count, COALESCE(SUM(history.duration_seconds), 0) AS completed_seconds
+        FROM crm_opportunity_stage_history history JOIN crm_opportunity opportunity ON opportunity.opportunity_id = history.opportunity_id
+            AND opportunity.tenant_id = history.tenant_id AND opportunity.deleted = 0
+        JOIN crm_customer customer ON customer.customer_id = opportunity.customer_id AND customer.tenant_id = opportunity.tenant_id AND customer.deleted = 0
+        WHERE history.tenant_id = #{tenantId} AND history.from_stage IS NOT NULL
+            AND history.entered_time &gt;= #{start} AND history.entered_time &lt; #{end} AND history.changed_time &lt;= #{asOf}
+        <if test="ownerId != null">AND opportunity.owner_id = #{ownerId}</if>
+        GROUP BY history.from_stage, customer.dept_id, customer.owner_id
+    </select>
+    <select id="cohorts" resultType="com.cloudflow.crm.domain.vo.CrmStageAnalysisRow">
+        SELECT entry.to_stage AS stage, customer.dept_id AS scope_dept_id, customer.owner_id AS scope_owner_id,
+            COUNT(DISTINCT entry.opportunity_id) AS cohort_count,
+            COUNT(DISTINCT CASE WHEN EXISTS(SELECT 1 FROM crm_opportunity_stage_history exit_event
+                WHERE exit_event.tenant_id = entry.tenant_id AND exit_event.opportunity_id = entry.opportunity_id
+                    AND exit_event.history_id &gt; entry.history_id AND exit_event.from_stage = entry.to_stage
+                    AND exit_event.changed_time &lt;= #{asOf}
+                    AND JSON_UNQUOTE(JSON_EXTRACT(exit_event.snapshot, '$.direction')) IN ('FORWARD', 'WON')) THEN entry.opportunity_id END) AS converted_count,
+            COUNT(DISTINCT CASE WHEN EXISTS(SELECT 1 FROM crm_opportunity_stage_history won_event
+                WHERE won_event.tenant_id = entry.tenant_id AND won_event.opportunity_id = entry.opportunity_id
+                    AND won_event.history_id &gt;= entry.history_id AND won_event.to_stage = 'WON'
+                    AND won_event.changed_time &lt;= #{asOf}
+                    AND NOT EXISTS(SELECT 1 FROM crm_opportunity_stage_history restored
+                        WHERE restored.tenant_id = won_event.tenant_id AND restored.opportunity_id = won_event.opportunity_id
+                            AND restored.history_id &gt; won_event.history_id AND restored.from_stage = 'WON'
+                            AND JSON_UNQUOTE(JSON_EXTRACT(restored.snapshot, '$.direction')) = 'REOPEN'
+                            AND restored.changed_time &lt;= #{asOf})) THEN entry.opportunity_id END) AS won_count,
+            COUNT(DISTINCT CASE WHEN EXISTS(SELECT 1 FROM crm_opportunity_stage_history lost_event
+                WHERE lost_event.tenant_id = entry.tenant_id AND lost_event.opportunity_id = entry.opportunity_id
+                    AND lost_event.history_id &gt;= entry.history_id AND lost_event.to_stage = 'LOST'
+                    AND lost_event.changed_time &lt;= #{asOf}
+                    AND NOT EXISTS(SELECT 1 FROM crm_opportunity_stage_history restored
+                        WHERE restored.tenant_id = lost_event.tenant_id AND restored.opportunity_id = lost_event.opportunity_id
+                            AND restored.history_id &gt; lost_event.history_id AND restored.from_stage = 'LOST'
+                            AND JSON_UNQUOTE(JSON_EXTRACT(restored.snapshot, '$.direction')) = 'REOPEN'
+                            AND restored.changed_time &lt;= #{asOf})) THEN entry.opportunity_id END) AS lost_count
+        FROM crm_opportunity_stage_history entry JOIN crm_opportunity opportunity ON opportunity.opportunity_id = entry.opportunity_id
+            AND opportunity.tenant_id = entry.tenant_id AND opportunity.deleted = 0
+        JOIN crm_customer customer ON customer.customer_id = opportunity.customer_id AND customer.tenant_id = opportunity.tenant_id AND customer.deleted = 0
+        WHERE entry.tenant_id = #{tenantId} AND entry.changed_time &gt;= #{start} AND entry.changed_time &lt; #{end} AND entry.changed_time &lt;= #{asOf}
+        <if test="ownerId != null">AND opportunity.owner_id = #{ownerId}</if>
+        GROUP BY entry.to_stage, customer.dept_id, customer.owner_id
+    </select>
+</mapper>

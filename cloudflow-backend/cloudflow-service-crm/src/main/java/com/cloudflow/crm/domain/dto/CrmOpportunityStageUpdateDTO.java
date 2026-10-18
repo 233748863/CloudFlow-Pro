@@ -7,4 +7,5 @@ public class CrmOpportunityStageUpdateDTO {
     private Long opportunityId;
     private String stage;
     private String lostReason;
+    private Integer version;
 }

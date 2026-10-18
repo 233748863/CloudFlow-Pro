@@ -22,6 +22,7 @@ import java.util.List;
 public class CrmLeadController {
 
     private final ICrmLeadService crmLeadService;
+    private final com.cloudflow.crm.service.impl.CrmReferenceService references;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:lead:list")
@@ -32,7 +33,7 @@ public class CrmLeadController {
     @GetMapping("/{id}")
     @SaCheckPermission("crm:lead:list")
     public R<CrmLead> getInfo(@PathVariable("id") Long id) {
-        CrmLead lead = crmLeadService.getById(id);
+        CrmLead lead = references.lead(id);
         return lead == null || !Integer.valueOf(0).equals(lead.getDeleted()) ? R.fail("线索不存在") : R.ok(lead);
     }
 
@@ -68,8 +69,8 @@ public class CrmLeadController {
     public R<Long> convert(@RequestBody CrmLeadConvertDTO request) {
         try {
             return R.ok(crmLeadService.convertLead(request));
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
+        } catch (IllegalArgumentException exception) {
+            return R.fail(400, exception.getMessage());
         }
     }
 
@@ -78,10 +79,10 @@ public class CrmLeadController {
     @SaCheckPermission("crm:lead:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
-            CrmLead lead = new CrmLead();
-            lead.setLeadId(id);
-            lead.setDeleted(1);
-            crmLeadService.updateById(lead);
+            CrmLead lead = references.lead(id);
+            com.cloudflow.common.datascope.DataScopeUtils.assertOwnership(lead, CrmLead::getOwnerId, "线索");
+            if (lead.getConvertedCustomerId() != null) throw new IllegalArgumentException("已转化线索须保留来源追溯");
+            crmLeadService.removeById(id);
         }
         return R.ok();
     }

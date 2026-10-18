@@ -11,8 +11,13 @@ import com.cloudflow.crm.mapper.CrmOpportunityMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmFollowUpService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.crm.exception.CrmBusinessException;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
@@ -85,6 +90,33 @@ public class CrmFollowUpServiceImpl extends CrmServiceSupport<CrmFollowUpMapper,
             crmCustomerService.refreshHealth(followUp.getCustomerId());
         }
         return updated;
+    }
+
+    @Override
+    @Audit(name = "删除跟进记录", highRisk = true)
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeFollowUps(List<Long> followUpIds) {
+        if (followUpIds == null || followUpIds.isEmpty()) throw new CrmBusinessException("请选择要删除的跟进记录");
+        List<CrmFollowUp> records = new ArrayList<>();
+        for (Long followUpId : new LinkedHashSet<>(followUpIds)) {
+            if (followUpId == null || followUpId <= 0) throw new CrmBusinessException("跟进ID无效");
+            CrmFollowUp record = baseMapper.selectByIdWithDataScope(followUpId,
+                    DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
+            records.add(CrmRecordSupport.require(record, "跟进记录不存在或无权访问"));
+        }
+        for (CrmFollowUp record : records) {
+            LambdaUpdateWrapper<CrmFollowUp> update = new LambdaUpdateWrapper<>();
+            update.eq(CrmFollowUp::getFollowUpId, record.getFollowUpId())
+                    .eq(CrmFollowUp::getTenantId, record.getTenantId())
+                    .eq(CrmFollowUp::getCustomerId, record.getCustomerId())
+                    .eq(CrmFollowUp::getDeleted, 0)
+                    .set(CrmFollowUp::getDeleted, 1)
+                    .set(CrmFollowUp::getUpdateBy, currentUserName())
+                    .set(CrmFollowUp::getUpdateTime, now());
+            CrmRecordSupport.saved(baseMapper.update(null, update));
+            crmCustomerService.refreshHealth(record.getCustomerId());
+        }
+        return true;
     }
 
     private void validate(CrmFollowUp followUp) {

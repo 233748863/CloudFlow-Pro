@@ -1,15 +1,13 @@
 package com.cloudflow.crm.service.impl;
 
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmReceivable;
-import com.cloudflow.crm.mapper.CrmCustomerMapper;
-import com.cloudflow.crm.mapper.CrmReceivableMapper;
-import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmCrossModuleDraftService;
 import com.cloudflow.crm.service.ICrmCustomerService;
+import com.cloudflow.crm.service.ICrmReceivableService;
+import com.cloudflow.crm.service.receivable.CrmReceivableAccessService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
 import com.cloudflow.common.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
@@ -19,9 +17,6 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -34,11 +29,11 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftService {
 
-    private final CrmCustomerMapper customerMapper;
-    private final CrmReceivableMapper receivableMapper;
     private final ICrmCustomerService crmCustomerService;
+    private final ICrmReceivableService receivableService;
+    private final CrmReceivableAccessService receivableAccess;
     private final RemoteOaService remoteOaService;
-    private final CrmEventPublisher crmEventPublisher;
+    private final CrmCreditService creditService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -47,6 +42,8 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
         RemoteOaService.ContractDraftRequest payload = request == null ? new RemoteOaService.ContractDraftRequest() : request;
         payload.setCustomerId(customerId);
         payload.setCustomerName(customer.getCustomerName());
+        payload.setSourceType("CRM_CUSTOMER");
+        payload.setSourceId(customerId);
         if (!StringUtils.hasText(payload.getCounterpartyName())) {
             payload.setCounterpartyName(customer.getCustomerName());
         }
@@ -59,6 +56,7 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
         if (payload.getAmount() == null) {
             payload.setAmount(BigDecimal.ZERO);
         }
+        creditService.check(customerId, payload.getAmount(), payload.getCurrency(), "CRM_CUSTOMER_CONTRACT", customerId);
         R<Long> response = remoteOaService.createContract("true", CrmConstants.SERVICE_NAME, payload);
         if (response == null || !response.isSuccess() || response.getData() == null) {
             throw new IllegalArgumentException(response != null ? response.getMsg() : "生成合同草稿失败");
@@ -200,43 +198,13 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean confirmReceivable(Long customerId, Long receivableId) {
-        CrmCustomer customer = requireCustomer(customerId);
-        CrmReceivable receivable = receivableMapper.selectById(receivableId);
-        if (receivable == null || !CrmConstants.DelFlag.NORMAL.equals(receivable.getDeleted())) {
-            throw new IllegalArgumentException("回款计划不存在");
-        }
+    public boolean confirmReceivable(Long customerId, Long receivableId, Integer version) {
+        requireCustomer(customerId);
+        CrmReceivable receivable = receivableAccess.lockInScope(receivableId);
         if (!Objects.equals(receivable.getCustomerId(), customerId)) {
             throw new IllegalArgumentException("回款计划不属于当前客户");
         }
-        receivable.setReceivedAmount(receivable.getPlannedAmount());
-        receivable.setOutstandingAmount(BigDecimal.ZERO);
-        receivable.setReceivedDate(receivable.getReceivedDate() == null ? LocalDate.now() : receivable.getReceivedDate());
-        receivable.setStatus(CrmConstants.ReceivableStatus.RECEIVED);
-        receivable.setUpdateTime(LocalDateTime.now());
-        boolean updated = receivableMapper.updateById(receivable) > 0;
-        if (updated) {
-            crmCustomerService.refreshHealth(customer.getCustomerId());
-            publishReceivableConfirmed(customer, receivable);
-        }
-        return updated;
-    }
-
-    private void publishReceivableConfirmed(CrmCustomer customer, CrmReceivable receivable) {
-        Map<String, Object> fields = new LinkedHashMap<>();
-        fields.put("receivableId", receivable.getReceivableId());
-        fields.put("receivableNo", receivable.getReceivableNo());
-        fields.put("receivableName", receivable.getReceivableName());
-        fields.put("customerId", receivable.getCustomerId());
-        fields.put("customerName", customer.getCustomerName());
-        fields.put("contractId", receivable.getContractId());
-        fields.put("contractNo", receivable.getContractNo());
-        fields.put("invoiceId", receivable.getInvoiceId());
-        fields.put("plannedAmount", receivable.getPlannedAmount());
-        fields.put("receivedAmount", receivable.getReceivedAmount());
-        fields.put("receivedDate", receivable.getReceivedDate());
-        crmEventPublisher.publish(CrmEventStreamConstants.EVENT_RECEIVABLE_CONFIRMED,
-                customer.getTenantId(), fields);
+        return receivableService.confirmReceipt(receivableId, version);
     }
 
     private CrmCustomer requireCustomer(Long customerId) {
