@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = await fs.realpath(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
+const statePath = await fs.realpath(process.argv[2]);
+const run = path.dirname(statePath);
+assert.equal(path.dirname(run), await fs.realpath(path.join(root, '.cloudflow-runtime/batch-g-integration')));
+assert.match(path.basename(run), /^[a-f0-9]{32}$/);
+assert.equal(path.basename(statePath), 'state.json');
+const state = JSON.parse((await fs.readFile(statePath, 'utf8')).replace(/^\uFEFF/, ''));
+assert.equal(await fs.realpath(state.run), run);
+assert.equal(state.status, 'RUNNING');
+const configuration = await fs.readFile(path.join(run, 'auth/integration.properties'), 'utf8');
+assert.match(configuration, /^management\.server\.address=127\.0\.0\.1\s*$/m);
+assert.doesNotMatch(configuration, /^\s*(?:cloudflow\.platform\.access\.|management\.endpoint\.env\.)/m);
+const auth = state.services.filter(item => item.name === 'auth');
+assert.equal(auth.length, 1);
+const port = auth[0].healthPort;
+assert.ok(Number.isSafeInteger(port) && port > 1024 && port < 65536);
+const response = await fetch(`http://127.0.0.1:${port}/actuator`, { signal: AbortSignal.timeout(10000) });
+assert.equal(response.status, 200);
+const endpoints = (await response.json())._links;
+assert.ok(endpoints?.health?.href && endpoints.self?.href);
+assert.equal(Object.entries(endpoints).filter(([name, link]) => name === 'env' || name.startsWith('env-')
+  || new URL(link.href.replace(/\{[^}]*\}/g, '')).pathname.startsWith('/actuator/env')).length, 0);
+const healthResponse = await fetch(`http://127.0.0.1:${port}/actuator/health`, { signal: AbortSignal.timeout(10000) });
+assert.equal(healthResponse.status, 200);
+assert.equal((await healthResponse.json()).status, 'UP');
+console.log('PACKAGE_TEMPORARY_ENV_ENDPOINT_RESTORED: registered_env_endpoints=0; temporary_configuration_keys=0; auth_healthy=true; production_modified=false');

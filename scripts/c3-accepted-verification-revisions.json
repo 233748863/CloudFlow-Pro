@@ -1,0 +1,212 @@
+[
+  {
+    "snapshot": "c1-form-live-20261005-r63/inputs.json",
+    "path": "scripts/run-c1-form-live.ps1",
+    "historical": "6181EDAD4D310F67DABB31162873989275807B27B597D1B562553D6792F315F7",
+    "current": "75514DDA671434F41D05ADB2715472C05B330D799E9850723DE730EB1AF1C3CF",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r63/inputs.json",
+    "path": "scripts/verify-batch-c-live.mjs",
+    "historical": "4EA5B19B30DF33DAF89EBD684F2D147D9A6EFA5CB47A1DF62D258835211328BE",
+    "current": "DBF95951033F490654BF373BAD0F443EF226717F02CD771674E28975E626AB93",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r63/inputs.json",
+    "path": "scripts/runtime-checks/form-browser-auth.mjs",
+    "historical": "476ACDC12EB3428A2DC52A12E86645CAD1A6D6B3EC0B9122402DE0FA5E9AF986",
+    "current": "65E2D1C7AFE1A2E9EDF77A8BE2ED458E0D5A9E781840EAEF0C36D191D9BDF4B3",
+    "reason": "OAuth-only platform fixture login branch; ordinary form accounts retain existing flow"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r63/inputs.json",
+    "path": "scripts/run-owned-captcha-allowance.mjs",
+    "historical": "94D5464B5E01C865F6AB1EDBAB1EB154AF267EDFC2F0A1380C9DAF7E42137080",
+    "current": "16735857B37A3422501E9404BDAA567ABD23CDB2FFD3A9CAC84522F885B3F07E",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r65/inputs.json",
+    "path": "scripts/run-c1-form-live.ps1",
+    "historical": "D9FA01B4DBE8134A10A79C6EADABB3E82173150864CA17A00E9AA37697DE62EC",
+    "current": "75514DDA671434F41D05ADB2715472C05B330D799E9850723DE730EB1AF1C3CF",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r65/inputs.json",
+    "path": "scripts/verify-batch-c-live.mjs",
+    "historical": "F698F8DCC4E036F20F5650DD5F80694B66462F2E68009D15B2963D2C66458F6E",
+    "current": "DBF95951033F490654BF373BAD0F443EF226717F02CD771674E28975E626AB93",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r65/inputs.json",
+    "path": "scripts/runtime-checks/form-browser-auth.mjs",
+    "historical": "476ACDC12EB3428A2DC52A12E86645CAD1A6D6B3EC0B9122402DE0FA5E9AF986",
+    "current": "65E2D1C7AFE1A2E9EDF77A8BE2ED458E0D5A9E781840EAEF0C36D191D9BDF4B3",
+    "reason": "OAuth-only platform fixture login branch; ordinary form accounts retain existing flow"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r65/inputs.json",
+    "path": "scripts/run-owned-captcha-allowance.mjs",
+    "historical": "5DFA702E0F5C327A8CD7D279E503A67FDD4D2DAB68EFFFE33473B82912188CD9",
+    "current": "16735857B37A3422501E9404BDAA567ABD23CDB2FFD3A9CAC84522F885B3F07E",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r66/inputs.json",
+    "path": "scripts/run-c1-form-live.ps1",
+    "historical": "20B4AEF86D25E175CA33A194A3FD9F66FE0B9D8BC147BFB36DA149D084A1BFCB",
+    "current": "75514DDA671434F41D05ADB2715472C05B330D799E9850723DE730EB1AF1C3CF",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r66/inputs.json",
+    "path": "scripts/verify-batch-c-live.mjs",
+    "historical": "7DD34697F464F31FF683CC13D2174FC6A33600276A1E2031F6848301F2B351A6",
+    "current": "DBF95951033F490654BF373BAD0F443EF226717F02CD771674E28975E626AB93",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r66/inputs.json",
+    "path": "scripts/runtime-checks/form-browser-auth.mjs",
+    "historical": "476ACDC12EB3428A2DC52A12E86645CAD1A6D6B3EC0B9122402DE0FA5E9AF986",
+    "current": "65E2D1C7AFE1A2E9EDF77A8BE2ED458E0D5A9E781840EAEF0C36D191D9BDF4B3",
+    "reason": "OAuth-only platform fixture login branch; ordinary form accounts retain existing flow"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r66/inputs.json",
+    "path": "scripts/run-owned-captcha-allowance.mjs",
+    "historical": "17E756C7749C2383195CE23F89AEDDF08331210411302A65106CAE5425AB34E7",
+    "current": "16735857B37A3422501E9404BDAA567ABD23CDB2FFD3A9CAC84522F885B3F07E",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r67/inputs.json",
+    "path": "scripts/run-c1-form-live.ps1",
+    "historical": "9D463ADC3FFE39741B519C1705A60F09866EFD1339DAAFCF68D2CB49107EA0A1",
+    "current": "75514DDA671434F41D05ADB2715472C05B330D799E9850723DE730EB1AF1C3CF",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r67/inputs.json",
+    "path": "scripts/verify-batch-c-live.mjs",
+    "historical": "FCC164BA9703BEBF31458AEE908343E3E824FF3C5D1C6112F478D157E837F59D",
+    "current": "DBF95951033F490654BF373BAD0F443EF226717F02CD771674E28975E626AB93",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r67/inputs.json",
+    "path": "scripts/runtime-checks/form-browser-auth.mjs",
+    "historical": "476ACDC12EB3428A2DC52A12E86645CAD1A6D6B3EC0B9122402DE0FA5E9AF986",
+    "current": "65E2D1C7AFE1A2E9EDF77A8BE2ED458E0D5A9E781840EAEF0C36D191D9BDF4B3",
+    "reason": "OAuth-only platform fixture login branch; ordinary form accounts retain existing flow"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r67/inputs.json",
+    "path": "scripts/run-owned-captcha-allowance.mjs",
+    "historical": "7B6932E95B0D828E222FB8D5107CF433E92BC9CEBE356C418901EF355332FE7D",
+    "current": "16735857B37A3422501E9404BDAA567ABD23CDB2FFD3A9CAC84522F885B3F07E",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r68/inputs.json",
+    "path": "scripts/run-c1-form-live.ps1",
+    "historical": "63F2C7245CBFFA8172464A91D8B4895C5E7FBAA22F85816C73739811E58F33F5",
+    "current": "75514DDA671434F41D05ADB2715472C05B330D799E9850723DE730EB1AF1C3CF",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r68/inputs.json",
+    "path": "scripts/verify-batch-c-live.mjs",
+    "historical": "05CD687F69A1FF4935D0248FF5A9A504B7355872CD404556C9BADF25F8B58B89",
+    "current": "DBF95951033F490654BF373BAD0F443EF226717F02CD771674E28975E626AB93",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r68/inputs.json",
+    "path": "scripts/runtime-checks/form-browser-auth.mjs",
+    "historical": "476ACDC12EB3428A2DC52A12E86645CAD1A6D6B3EC0B9122402DE0FA5E9AF986",
+    "current": "65E2D1C7AFE1A2E9EDF77A8BE2ED458E0D5A9E781840EAEF0C36D191D9BDF4B3",
+    "reason": "OAuth-only platform fixture login branch; ordinary form accounts retain existing flow"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r68/inputs.json",
+    "path": "scripts/run-owned-captcha-allowance.mjs",
+    "historical": "83649E1490DE5286A4514C79DABCEB626D859401821D71D2646928692FC999D6",
+    "current": "16735857B37A3422501E9404BDAA567ABD23CDB2FFD3A9CAC84522F885B3F07E",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r70/inputs.json",
+    "path": "scripts/run-c1-form-live.ps1",
+    "historical": "3AE7D42521E37DA858B776D72B60A432B76407DFD8C31364AA032D61A97C027E",
+    "current": "75514DDA671434F41D05ADB2715472C05B330D799E9850723DE730EB1AF1C3CF",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r70/inputs.json",
+    "path": "scripts/verify-batch-c-live.mjs",
+    "historical": "6435C080F9DF82AB02444DBC844089CC4CD3ADFE422B450B8FC251944E2D2897",
+    "current": "DBF95951033F490654BF373BAD0F443EF226717F02CD771674E28975E626AB93",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r70/inputs.json",
+    "path": "scripts/runtime-checks/form-browser-auth.mjs",
+    "historical": "476ACDC12EB3428A2DC52A12E86645CAD1A6D6B3EC0B9122402DE0FA5E9AF986",
+    "current": "65E2D1C7AFE1A2E9EDF77A8BE2ED458E0D5A9E781840EAEF0C36D191D9BDF4B3",
+    "reason": "OAuth-only platform fixture login branch; ordinary form accounts retain existing flow"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r70/inputs.json",
+    "path": "scripts/run-owned-captcha-allowance.mjs",
+    "historical": "94656304A1DAF12367618FEC07710B3C0E16706A6A94CB3AA13683014C5E1E19",
+    "current": "16735857B37A3422501E9404BDAA567ABD23CDB2FFD3A9CAC84522F885B3F07E",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r73/inputs.json",
+    "path": "scripts/run-c1-form-live.ps1",
+    "historical": "9DD8BF97DF5E50BB24A6FD2900C8849AE3746C4F2D897C7BE3338397F2414959",
+    "current": "75514DDA671434F41D05ADB2715472C05B330D799E9850723DE730EB1AF1C3CF",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r73/inputs.json",
+    "path": "scripts/verify-batch-c-live.mjs",
+    "historical": "5C51DE1501920AA5F55FB27F050408A6B943F772CA1CA216995D4AFAAD554B90",
+    "current": "DBF95951033F490654BF373BAD0F443EF226717F02CD771674E28975E626AB93",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r73/inputs.json",
+    "path": "scripts/run-owned-captcha-allowance.mjs",
+    "historical": "6134D0D5D0EF2A151279E8D8C4CF8737DEC1ACB11CE2A59E5E03EB123AA599F3",
+    "current": "16735857B37A3422501E9404BDAA567ABD23CDB2FFD3A9CAC84522F885B3F07E",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r75/inputs.json",
+    "path": "scripts/run-c1-form-live.ps1",
+    "historical": "C60AF4150FD70F326E233AF9C45D198D0D29C608BA937743D6978887F92BB89B",
+    "current": "75514DDA671434F41D05ADB2715472C05B330D799E9850723DE730EB1AF1C3CF",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r75/inputs.json",
+    "path": "scripts/verify-batch-c-live.mjs",
+    "historical": "660E1437B9658EE58D8EB83F9888CE805002F4460DE4642891670DCB1646E8DF",
+    "current": "DBF95951033F490654BF373BAD0F443EF226717F02CD771674E28975E626AB93",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  },
+  {
+    "snapshot": "c1-form-live-20261005-r75/inputs.json",
+    "path": "scripts/run-owned-captcha-allowance.mjs",
+    "historical": "42DF806374AA8A636779258290206618DF94B56D348566BD7B4EF41775C03C76",
+    "current": "16735857B37A3422501E9404BDAA567ABD23CDB2FFD3A9CAC84522F885B3F07E",
+    "reason": "Subsequent dedicated verification modes and binary preview response support; original scope module and product unchanged"
+  }
+]
